@@ -49,6 +49,16 @@ function Arnav() {
     setTime(initialTime);
   }
 
+  useEffect = () => ({
+    // if (isRunning) {
+    //   time -= 0.1;
+    //   console.log('hi')
+    //   // timer function
+    // }
+  } [isRunning])
+
+  console.log(isRunning);
+
   return (
     <ChakraProvider>
       <Card
@@ -87,11 +97,7 @@ function Arnav() {
             )
           }
 
-          <Progress value={50} width='100%' >
-            <Text fontSize='100%'>
-              50%
-            </Text>
-          </Progress>
+          <Progress value={initialTime-time/initialTime * 100} width='100%' />
         </CardFooter>
       </Card>
     </ChakraProvider>
