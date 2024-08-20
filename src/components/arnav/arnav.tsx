@@ -17,7 +17,6 @@ import ReusableButton from "../main/reusableButton.tsx";
 
 // ! I hate typescript
 
-// TODO : Set values to max 23:59:59 (>60 -> value-=60, prevValue+=1)
 // TODO : Convert to sec (for time & initialTime)
 
 const Arnav = () => {
@@ -40,7 +39,7 @@ const Arnav = () => {
       newValues[index] = e.target.value;
     }
     setValues(newValues);
-    setTimeValues(newValues);     // ! Fix somehow ASAP (ask json)
+    setTimeValues(newValues.map((x) => Number(x)));
 
     if (e.target.value.length === 2 && index < inputRefs.current.length - 1) {
       inputRefs.current[index + 1]?.focus();
@@ -67,7 +66,7 @@ const Arnav = () => {
       changes[0] -= timeValues[0]-23;
     }
 
-    setTimeValues(timeValues+changes);    // TODO : add the 2 arrays man
+    setTimeValues(timeValues.map((a, i) => a+changes[i]));
 
     setReadyToRun(true);
   };
