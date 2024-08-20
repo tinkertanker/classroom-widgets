@@ -1,12 +1,13 @@
-import * as React from 'react';
-import { useState, useEffect } from 'react';
+import * as React from "react";
+import { useState, useEffect } from "react";
+import ContentEditable from 'react-contenteditable';
 
 import {
   Card,
   CardHeader,
-  CardBody, 
-  CardFooter, 
-  Text, 
+  CardBody,
+  CardFooter,
+  Text,
   ChakraProvider,
   Stack,
   Heading,
@@ -18,9 +19,16 @@ import {
   Box,
   Progress,
   Popover,
-} from '@chakra-ui/react'
+  PopoverTrigger,
+  PopoverContent,
+  PopoverArrow,
+  PopoverCloseButton,
+  PopoverHeader,
+  PopoverBody,
+  Input,
+} from "@chakra-ui/react";
 
-import ReusableButton from './reusableButton.tsx';
+import ReusableButton from "./reusableButton.tsx";
 
 function Arnav() {
   const [initialTime, setInitialTime] = useState(10);
@@ -32,8 +40,8 @@ function Arnav() {
   const [showTimerButtons, setShowTimerButtons] = useState(true);
 
   const changeTimer = () => {
-    setInitialTime(initialTime+10);
-  }
+    setInitialTime(initialTime + 10);
+  };
 
   const startTimer = () => {
     if (initialTime != 0) {
@@ -41,22 +49,22 @@ function Arnav() {
       setShowStart(false);
       setShowTimerButtons(false);
     }
-  }
+  };
   const pauseTimer = () => {
     setIsRunning(false);
     setShowResume(true);
-  }
+  };
   const resumeTimer = () => {
     setIsRunning(true);
     setShowResume(false);
-  }
+  };
   const restartTimer = () => {
     setIsRunning(false);
     setShowStart(true);
     setShowResume(false);
     setTime(initialTime);
     setShowTimerButtons(true);
-  }
+  };
 
   React.useEffect(() => {
     // when updating time, check again if isRunning is true
@@ -88,6 +96,28 @@ function Arnav() {
     if (isCompleted) console.log("Done!");
   }, [isCompleted]);
 
+  const [value, setValue] = useState('10');
+
+  const handleChange = (event) => {
+    let inputValue = event.target.value;
+    console.log(inputValue, '');
+    // Check if the input is a number and does not exceed 2 characters
+    if ((/^[0-9]{0,2}$/.test(inputValue))) {
+      setValue(inputValue > 60 ? 60 : inputValue === '' ? 0 : inputValue[0] === '0' ? inputValue.slice(1) : inputValue);
+    }
+  };
+
+  // const validateNumber = (event) => {
+  //   const keyCode = event.keyCode || event.which
+  //   const string = String.fromCharCode(keyCode)
+  //   const regex = /[0-9,]|\./
+  
+  //   if (!regex.test(string)) {
+  //     event.returnValue = false
+  //     if (event.preventDefault) event.preventDefault()
+  //   }
+  // }
+
   // useEffect = () => (function() {
   //   // if (isRunning) {
   //   //   time -= 0.1;
@@ -100,14 +130,34 @@ function Arnav() {
 
   return (
     <ChakraProvider>
-      <Card
-        overflow='hidden'
-        variant='outline'
-        width='400px'
-        height='400px'
-      >
+      <Card overflow="hidden" variant="outline" width="400px" height="400px">
         <CardBody>
-          <Text contentEditable='true'>
+          <Popover>
+            <PopoverTrigger>
+              <Button>{value}</Button>
+            </PopoverTrigger>
+            <PopoverContent>
+              <PopoverArrow />
+              <PopoverCloseButton />
+              <PopoverBody>
+                {/* create a content editable text that only has 2 digits max, only numbers */}
+                <Input
+                  value={value}
+                  onChange={handleChange}
+                  placeholder="Enter numbers only"
+                />
+
+                {/* <Text contentEditable="true" >
+                  {Math.floor(time / 60)
+                    .toString()
+                    .padStart(2, "0")}
+                  :{(time % 60).toString().padStart(2, "0")}
+                </Text> */}
+              </PopoverBody>
+            </PopoverContent>
+          </Popover>
+
+          {/* <Text contentEditable='true'>
             {Math.floor(time / 60).toString().padStart(2, '0')}:{(time % 60).toString().padStart(2, '0')}
           </Text>
 
@@ -124,48 +174,36 @@ function Arnav() {
             ) : (
               <></>
             )
-          }
+          } */}
         </CardBody>
 
         <CardFooter>
-          <Stack width='100%'>
+          <Stack width="100%">
+            {showStart ? (
+              <ReusableButton onClick={startTimer}>Start</ReusableButton>
+            ) : (
+              <>
+                {showResume ? (
+                  <ReusableButton onClick={resumeTimer}>Resume</ReusableButton>
+                ) : (
+                  <ReusableButton onClick={pauseTimer}>Pause</ReusableButton>
+                )}
+                <ReusableButton onClick={restartTimer}>Restart</ReusableButton>
+              </>
+            )}
 
-            {
-              showStart ? (
-                <ReusableButton onClick={startTimer}>
-                  Start
-                </ReusableButton>
-              ) : (
-                <>
-                  {
-                    showResume ? (
-                      <ReusableButton onClick={resumeTimer}>
-                        Resume
-                      </ReusableButton>
-                    ) : (
-                      <ReusableButton onClick={pauseTimer}>
-                        Pause
-                      </ReusableButton>
-                    )
-                  }
-                  <ReusableButton onClick={restartTimer}>
-                    Restart
-                  </ReusableButton>
-                </>
-              )
-            }
-
-            <Progress value={(initialTime-time)/initialTime * 100} width='100%' />
+            <Progress
+              value={((initialTime - time) / initialTime) * 100}
+              width="100%"
+            />
           </Stack>
         </CardFooter>
       </Card>
     </ChakraProvider>
-  )
+  );
 }
 
 export default Arnav;
-
-
 
 // function Arnav() {
 //   const [initialTime, setInitialTime] = useState(0);
@@ -176,7 +214,7 @@ export default Arnav;
 
 //   return (
 //     <ChakraProvider>
-      
+
 //       <Card
 //         direction={{ base: 'column', sm: 'row' }}
 //         overflow='hidden'
