@@ -3,35 +3,27 @@ import { useState, useEffect, useRef } from "react";
 
 import {
   Card,
-  CardHeader,
   CardBody,
   CardFooter,
   Text,
   ChakraProvider,
   Stack,
-  Heading,
-  Button,
-  Image,
-  CircularProgress,
-  CircularProgressLabel,
-  useColorModeValue,
   Box,
   Progress,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverArrow,
-  PopoverCloseButton,
-  PopoverHeader,
-  PopoverBody,
   Input,
 } from "@chakra-ui/react";
 
 import ReusableButton from "../main/reusableButton.tsx";
 
+// ! I hate typescript
+
+// TODO : Set values to max 23:59:59 (>60 -> value-=60, prevValue+=1)
+// TODO : Convert to sec (for time & initialTime)
+
 const Arnav = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
+  const [readyToRun, setReadyToRun] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showStart, setShowStart] = useState(true);
@@ -39,6 +31,7 @@ const Arnav = () => {
   const [showTimerButtons, setShowTimerButtons] = useState(true);
 
   const [values, setValues] = useState(['', '', '']);
+  const [timeValues, setTimeValues] = useState([0, 0, 0]);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (e, index) => {
@@ -47,22 +40,36 @@ const Arnav = () => {
       newValues[index] = e.target.value;
     }
     setValues(newValues);
+    setTimeValues(newValues);     // ! Fix somehow ASAP (ask json)
 
     if (e.target.value.length === 2 && index < inputRefs.current.length - 1) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
-  const changeTimer = () => {
-    setInitialTime(initialTime + 10);
-  };
+  useEffect(() => {
+    if (readyToRun) {
+      // TODO : put back original startTimer() code
+    }
+  }, [readyToRun]);
 
   const startTimer = () => {
-    if (initialTime != 0) {
-      setIsRunning(true);
-      setShowStart(false);
-      setShowTimerButtons(false);
+    let changes = [0, 0, 0];
+    if (timeValues[2] > 60) {
+      changes[1] += 1;
+      changes[2] -= 60;
     }
+    if (timeValues[1]+changes[1] > 60) {
+      changes[0] += 1;
+      changes[1] -= 60;
+    }
+    if (timeValues[0]+changes[0] > 23) {
+      changes[0] -= timeValues[0]-23;
+    }
+
+    setTimeValues(timeValues+changes);    // TODO : add the 2 arrays man
+
+    setReadyToRun(true);
   };
   const pauseTimer = () => {
     setIsRunning(false);
@@ -139,8 +146,6 @@ const Arnav = () => {
   //   // //   // timer function
   //   // }
   // } [isRunning]);
-
-  console.log(isRunning);
 
   return (
     <ChakraProvider>
