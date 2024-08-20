@@ -1,7 +1,7 @@
 import logo from './logo.svg';
 import './App.css';
 import Jason from './components/jason/json.tsx';
-import Arnav from './components/arnav/arnav.tsx';
+import Arnav from './components/arnav/arnav.js';
 import Boaz from './components/boaz/boaz.js';
 
 function App() {
