@@ -1,6 +1,5 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
-import ContentEditable from 'react-contenteditable';
+import { useState, useEffect, useRef } from "react";
 
 import {
   Card,
@@ -28,9 +27,9 @@ import {
   Input,
 } from "@chakra-ui/react";
 
-import ReusableButton from "./reusableButton.tsx";
+import ReusableButton from "../main/reusableButton.tsx";
 
-function Arnav() {
+const Arnav = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
   const [isRunning, setIsRunning] = useState(false);
@@ -38,6 +37,21 @@ function Arnav() {
   const [showStart, setShowStart] = useState(true);
   const [showResume, setShowResume] = useState(false);
   const [showTimerButtons, setShowTimerButtons] = useState(true);
+
+  const [values, setValues] = useState(['', '', '']);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleChange = (e, index) => {
+    const newValues = [...values];
+    if (/^[0-9]/.test(e.target.value) || e.target.value === '') {
+      newValues[index] = e.target.value;
+    }
+    setValues(newValues);
+
+    if (e.target.value.length === 2 && index < inputRefs.current.length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
 
   const changeTimer = () => {
     setInitialTime(initialTime + 10);
@@ -98,14 +112,14 @@ function Arnav() {
 
   const [value, setValue] = useState('10');
 
-  const handleChange = (event) => {
-    let inputValue = event.target.value;
-    console.log(inputValue, '');
-    // Check if the input is a number and does not exceed 2 characters
-    if ((/^[0-9]{0,2}$/.test(inputValue))) {
-      setValue(inputValue > 60 ? 60 : inputValue === '' ? 0 : inputValue[0] === '0' ? inputValue.slice(1) : inputValue);
-    }
-  };
+  // const handleChange = (event) => {
+  //   let inputValue = event.target.value;
+  //   console.log(inputValue, '');
+  //   // Check if the input is a number and does not exceed 2 characters
+  //   if ((/^[0-9]{0,2}$/.test(inputValue))) {
+  //     setValue(inputValue > 60 ? 60 : inputValue === '' ? 0 : inputValue[0] === '0' ? inputValue.slice(1) : inputValue);
+  //   }
+  // };
 
   // const validateNumber = (event) => {
   //   const keyCode = event.keyCode || event.which
@@ -132,49 +146,21 @@ function Arnav() {
     <ChakraProvider>
       <Card overflow="hidden" variant="outline" width="400px" height="400px">
         <CardBody>
-          <Popover>
-            <PopoverTrigger>
-              <Button>{value}</Button>
-            </PopoverTrigger>
-            <PopoverContent>
-              <PopoverArrow />
-              <PopoverCloseButton />
-              <PopoverBody>
-                {/* create a content editable text that only has 2 digits max, only numbers */}
+          <Box p={5}>
+            <Stack direction="row" spacing={4}>
+              {values.map((value, index) => (
                 <Input
+                  key={index}
                   value={value}
-                  onChange={handleChange}
-                  placeholder="Enter numbers only"
+                  onChange={(e) => handleChange(e, index)}
+                  maxLength={2}
+                  type="text"
+                  inputMode="numeric"
+                  ref={(el) => (inputRefs.current[index] = el)}
                 />
-
-                {/* <Text contentEditable="true" >
-                  {Math.floor(time / 60)
-                    .toString()
-                    .padStart(2, "0")}
-                  :{(time % 60).toString().padStart(2, "0")}
-                </Text> */}
-              </PopoverBody>
-            </PopoverContent>
-          </Popover>
-
-          {/* <Text contentEditable='true'>
-            {Math.floor(time / 60).toString().padStart(2, '0')}:{(time % 60).toString().padStart(2, '0')}
-          </Text>
-
-          {
-            showTimerButtons ? (
-              <>
-                <ReusableButton onClick={changeTimer}>
-                  +10s
-                </ReusableButton>
-                <ReusableButton onClick={changeTimer}>
-                  -10s
-                </ReusableButton>
-              </>
-            ) : (
-              <></>
-            )
-          } */}
+              ))}
+            </Stack>
+          </Box>
         </CardBody>
 
         <CardFooter>
@@ -239,3 +225,48 @@ export default Arnav;
 //     </Button>
 //   </CardFooter>
 // </Stack>
+
+
+
+          // <Popover>
+          //   <PopoverTrigger>
+          //     <Button>{value}</Button>
+          //   </PopoverTrigger>
+          //   <PopoverContent>
+          //     <PopoverArrow />
+          //     <PopoverCloseButton />
+          //     <PopoverBody>
+          //       <Input
+          //         value={value}
+          //         onChange={handleChange}
+          //         placeholder="Enter numbers only"
+          //       />
+
+          //       {/* <Text contentEditable="true" >
+          //         {Math.floor(time / 60)
+          //           .toString()
+          //           .padStart(2, "0")}
+          //         :{(time % 60).toString().padStart(2, "0")}
+          //       </Text> */}
+          //     </PopoverBody>
+          //   </PopoverContent>
+          // </Popover>
+
+          // {/* <Text contentEditable='true'>
+          //   {Math.floor(time / 60).toString().padStart(2, '0')}:{(time % 60).toString().padStart(2, '0')}
+          // </Text>
+
+          // {
+          //   showTimerButtons ? (
+          //     <>
+          //       <ReusableButton onClick={changeTimer}>
+          //         +10s
+          //       </ReusableButton>
+          //       <ReusableButton onClick={changeTimer}>
+          //         -10s
+          //       </ReusableButton>
+          //     </>
+          //   ) : (
+          //     <></>
+          //   )
+          // } */}
