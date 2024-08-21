@@ -15,14 +15,12 @@ import {
 
 import ReusableButton from "../main/reusableButton.tsx";
 
-// ! I hate typescript
-
-// TODO : Convert to sec (for time & initialTime)
+// TODO find a way to make values[] update when time changes
+//      can do this by simply changing timeValues[] directly and updating values[] from there
 
 const Arnav = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
-  const [readyToRun, setReadyToRun] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showStart, setShowStart] = useState(true);
@@ -31,6 +29,7 @@ const Arnav = () => {
 
   const [values, setValues] = useState(['', '', '']);
   const [timeValues, setTimeValues] = useState([0, 0, 0]);
+  const inputDisplays = ["hh", "mm", "ss"];
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (e, index) => {
@@ -47,13 +46,17 @@ const Arnav = () => {
   };
 
   useEffect(() => {
-    if (readyToRun) {
-      // TODO : put back original startTimer() code
+    if (isRunning) {
+      setShowStart(false);
+      setShowTimerButtons(false);
     }
-  }, [readyToRun]);
+  }, [time]);
 
   const startTimer = () => {
+    if (initialTime === 0) return;
+
     let changes = [0, 0, 0];
+    let incomingTime = timeValues[2] + timeValues[1]*60 + timeValues[0]*3600;
     if (timeValues[2] > 60) {
       changes[1] += 1;
       changes[2] -= 60;
@@ -63,20 +66,26 @@ const Arnav = () => {
       changes[1] -= 60;
     }
     if (timeValues[0]+changes[0] > 23) {
-      changes[0] -= timeValues[0]-23;
+      let change = timeValues[0]-23;
+      changes[0] -= change;
+      incomingTime -= change*3600;
     }
 
-    setTimeValues(timeValues.map((a, i) => a+changes[i]));
+    let finalValues = timeValues.map((a, i) => a+changes[i]);
+    setTimeValues(finalValues);
+    setValues(finalValues.map((a) => String(a)));
+    setInitialTime(incomingTime);
+    setTime(incomingTime);
 
-    setReadyToRun(true);
+    setIsRunning(true);
   };
   const pauseTimer = () => {
     setIsRunning(false);
     setShowResume(true);
   };
   const resumeTimer = () => {
-    setIsRunning(true);
     setShowResume(false);
+    startTimer();
   };
   const restartTimer = () => {
     setIsRunning(false);
@@ -88,63 +97,23 @@ const Arnav = () => {
 
   React.useEffect(() => {
     // when updating time, check again if isRunning is true
-    isRunning && time > 0 && setTimeout(() => setTime(time - 1), 1000);
-    !isRunning && !showResume && setTime(initialTime);
+    if (isRunning) {
+      if (time > 0) setTimeout(() => setTime(time - 1), 1000);
+      else setIsCompleted(true);
+    } else {
+      !showResume && setTime(initialTime);
+    }
     console.log("running:", time);
-    // if (isRunning && time > 0) {
-    //   setTimeout(() => setTime(time - 1), 1000);
-    // }
   }, [time, isRunning]);
 
-  useEffect(() => {
-    setTime(initialTime);
-  }, [initialTime]);
-
-  // const timer = setInterval(function() {
-  //   if (isRunning && !isCompleted) {
-  //     setTime(time - 1);
-  //     console.log(time);
-  //   }
-  //   if (time === 0) {
-  //     clearInterval(timer);
-  //     setIsCompleted(true);
-  //   }
-  // }, 1000);
+  // useEffect(() => {
+  //   setTime(initialTime);
+  // }, [initialTime]);
 
   useEffect(() => {
     setIsRunning(false);
     if (isCompleted) console.log("Done!");
   }, [isCompleted]);
-
-  const [value, setValue] = useState('10');
-
-  // const handleChange = (event) => {
-  //   let inputValue = event.target.value;
-  //   console.log(inputValue, '');
-  //   // Check if the input is a number and does not exceed 2 characters
-  //   if ((/^[0-9]{0,2}$/.test(inputValue))) {
-  //     setValue(inputValue > 60 ? 60 : inputValue === '' ? 0 : inputValue[0] === '0' ? inputValue.slice(1) : inputValue);
-  //   }
-  // };
-
-  // const validateNumber = (event) => {
-  //   const keyCode = event.keyCode || event.which
-  //   const string = String.fromCharCode(keyCode)
-  //   const regex = /[0-9,]|\./
-  
-  //   if (!regex.test(string)) {
-  //     event.returnValue = false
-  //     if (event.preventDefault) event.preventDefault()
-  //   }
-  // }
-
-  // useEffect = () => (function() {
-  //   // if (isRunning) {
-  //   //   time -= 0.1;
-  //   //   console.log('hi')
-  //   // //   // timer function
-  //   // }
-  // } [isRunning]);
 
   return (
     <ChakraProvider>
@@ -156,6 +125,8 @@ const Arnav = () => {
                 <Input
                   key={index}
                   value={value}
+                  placeholder={inputDisplays[index]}
+                  isReadOnly={isRunning}       // for paused -> {... || (!isRunning && showResume)}
                   onChange={(e) => handleChange(e, index)}
                   maxLength={2}
                   type="text"
@@ -166,6 +137,7 @@ const Arnav = () => {
             </Stack>
           </Box>
         </CardBody>
+
 
         <CardFooter>
           <Stack width="100%">
@@ -194,83 +166,3 @@ const Arnav = () => {
 }
 
 export default Arnav;
-
-// function Arnav() {
-//   const [initialTime, setInitialTime] = useState(0);
-//   const [time, setTime] = useState(0);
-//   const [isRunning, setIsRunning] = useState(false);
-//   const [isReset, setIsReset] = useState(false);
-//   const [isCompleted, setIsCompleted] = useState(false);
-
-//   return (
-//     <ChakraProvider>
-
-//       <Card
-//         direction={{ base: 'column', sm: 'row' }}
-//         overflow='hidden'
-//         variant='outline'
-//         width='100%'
-//       >
-//       </Card>
-//     </ChakraProvider>
-//   );
-// }
-
-// <CircularProgress size='100%' value={initialTime-time/initialTime * 100}>
-//   <CircularProgressLabel fontSize='100%'>
-//       {Math.floor(time / 60).toString().padStart(2, '0')}:{(time % 60).toString().padStart(2, '0')}
-//   </CircularProgressLabel>
-// </CircularProgress>
-
-// <Stack width='full'>
-//   <CardFooter>
-//     <Button variant='solid' colorScheme='blue'>
-//       Start
-//     </Button>
-//   </CardFooter>
-// </Stack>
-
-
-
-          // <Popover>
-          //   <PopoverTrigger>
-          //     <Button>{value}</Button>
-          //   </PopoverTrigger>
-          //   <PopoverContent>
-          //     <PopoverArrow />
-          //     <PopoverCloseButton />
-          //     <PopoverBody>
-          //       <Input
-          //         value={value}
-          //         onChange={handleChange}
-          //         placeholder="Enter numbers only"
-          //       />
-
-          //       {/* <Text contentEditable="true" >
-          //         {Math.floor(time / 60)
-          //           .toString()
-          //           .padStart(2, "0")}
-          //         :{(time % 60).toString().padStart(2, "0")}
-          //       </Text> */}
-          //     </PopoverBody>
-          //   </PopoverContent>
-          // </Popover>
-
-          // {/* <Text contentEditable='true'>
-          //   {Math.floor(time / 60).toString().padStart(2, '0')}:{(time % 60).toString().padStart(2, '0')}
-          // </Text>
-
-          // {
-          //   showTimerButtons ? (
-          //     <>
-          //       <ReusableButton onClick={changeTimer}>
-          //         +10s
-          //       </ReusableButton>
-          //       <ReusableButton onClick={changeTimer}>
-          //         -10s
-          //       </ReusableButton>
-          //     </>
-          //   ) : (
-          //     <></>
-          //   )
-          // } */}
