@@ -22,7 +22,9 @@ import {
   SliderThumb,
   SliderMark,
 } from "@chakra-ui/react";
+import { Radio, RadioGroup } from "@chakra-ui/react";
 import { Fade, ScaleFade, Slide, SlideFade, Collapse } from "@chakra-ui/react";
+import Transitions from "./transitions.tsx";
 import { useDisclosure } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import * as React from "react";
@@ -53,15 +55,18 @@ let newX = 0,
   newY = 0,
   startX = 0,
   startY = 0;
-let actualresult = false;
-let temporaryslider = 0;
+let temporarytime = 0;
+let actual_choices: any[];
 
 function Jason() {
   const initialFocus = React.useRef(null);
   const [result, setResult] = useState("Type a list to randomise!");
   const [input, setInput] = useState("");
-  const [choices, setChoices] = useState<any[]>([""]);
+  const [choices, setChoices] = useState<any[]>([]);
+
+  const [remember, setRemember] = useState(true);
   const [selected, setSelected] = useState<any[]>([]);
+
   const [open, setOpen] = useState(true);
   const [cardx, setCardx] = useState(window.innerWidth / 2 - 200);
   const [cardy, setCardy] = useState(window.innerHeight / 2 - 200);
@@ -69,39 +74,41 @@ function Jason() {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [animation, setAnimation] = useState(true);
-  const [animationtime, setAnimationtime] = useState(15);
+  const [animationtracker, setAnimationtracker] = useState(0);
+  const [animationcount, setAnimationcount] = useState(20);
+  const [animationspeed, setAnimationspeed] = useState(0.06);
+  const [slowanimation, setSlowanimation] = useState(0);
+  const [animationtransition, setAnimationtransition] = useState("SlideFade");
 
   const [loading, setLoading] = useState(false);
 
-  const handleClick = () => {
-    setLoading(true);
-    console.log(choices[0]);
-    if (choices[0] != "") {
-      for (let j = 0; j < animationtime; j++) {
-        setTimeout(function () {
-          setOpen(false);
-          setTimeout(function () {
-            // Because j exceeds choices.length
-            setResult(choices[j % choices.length]);
-            setOpen(true);
-            console.log(choices[j % choices.length]);
-          }, 50);
-        }, 100 * j);
-      }
-      setTimeout(function () {
-        setOpen(false);
-        setTimeout(function () {
-          let placeholder = choices[Math.floor(Math.random() * choices.length)];
-          setResult(placeholder);
-          setSelected([...selected, placeholder]);
-          setOpen(true);
+  const handlerandomise = () => {
+    if (choices.length != 0) {
+      setLoading(true);
+      actual_choices = choices;
+      if (remember == true) {
+        actual_choices = actual_choices.filter((choice) => {
+          if (selected.includes(choice)) {
+            return;
+          } else {
+            return choice;
+          }
+        });
+        if (actual_choices.length == 0) {
           setLoading(false);
-        }, 500);
-      }, 100 * animationtime);
+          alert(
+            "All entries in the list have been chosen once! Please edit the list or your settings! "
+          );
+          onOpen();
+        }
+      }
+
+      setAnimationtracker(0);
     } else {
       setResult("Nothing to randomise!");
+      setInput("");
+      setChoices([]);
       onOpen();
-      setLoading(false);
       setTimeout(function () {
         setResult("Type a list to randomise!");
       }, 2000);
@@ -129,8 +136,6 @@ function Jason() {
     setCardx(thiscard.offsetLeft - newX);
     setCardy(thiscard.offsetTop - newY);
 
-    console.log(thiscard.offsetLeft - newX, thiscard.offsetTop - newY);
-    console.log({ startX, startY });
     unFocus();
   }
   function mouseUp() {
@@ -145,11 +150,68 @@ function Jason() {
     }
   };
 
+  function validatechoices(choice) {
+    if (choice == null) {
+      // this is a new line thus should be ignored
+    } else {
+      return choice.trim();
+    }
+  }
+
   useEffect(() => {
-    setChoices(input.split("\n"));
+    if (input == "") {
+      // This is on initialisation thus no modification should happen
+      return;
+    }
+    setSelected([]);
+    let temporarychoices = input.split("\n");
+
+    temporarychoices = temporarychoices.filter(validatechoices);
+
+    setChoices(temporarychoices);
   }, [input]);
 
-
+  useEffect(() => {
+    if (loading == true) {
+      if (animationtracker < animationcount) {
+        setTimeout(() => {
+          let temporaryslowness = 0;
+          if (animationtracker > animationcount * 0.6) {
+            temporaryslowness = slowanimation + 0.01;
+          }
+          setSlowanimation(temporaryslowness);
+          setOpen(false);
+          setTimeout(() => {
+            setResult(actual_choices[animationtracker % actual_choices.length]);
+            setOpen(true);
+            setAnimationtracker(animationtracker + 1);
+            console.log(animationspeed + temporaryslowness);
+          }, (animationspeed + temporaryslowness) * 1000);
+        }, (animationspeed + slowanimation) * 2 * 1000);
+      } else if (animationtracker == animationcount) {
+        console.log(animationspeed, slowanimation);
+        let closedelaytime = 0.02;
+        let opendelaytime = 20;
+        if (animation) {
+          closedelaytime = animationspeed;
+          opendelaytime = 500;
+        }
+        setTimeout(function () {
+          setOpen(false);
+          setTimeout(function () {
+            let placeholder =
+              actual_choices[Math.floor(Math.random() * actual_choices.length)];
+            setResult(placeholder);
+            setSelected([...selected, placeholder]);
+            setOpen(true);
+            setSlowanimation(0);
+            actual_choices = [];
+            setLoading(false);
+          }, opendelaytime);
+        }, (closedelaytime + slowanimation) * 2 * 1000);
+      }
+    }
+  }, [animationtracker, loading]);
 
   return (
     <ChakraProvider>
@@ -167,22 +229,36 @@ function Jason() {
         <CardBody>
           <VStack>
             <Button width="300px" height="300px" onClick={onOpen}>
-              <SlideFade
+              {/* <SlideFade
                 in={open}
                 offsetY="20px"
                 transition={{
-                  exit: { duration: 0.05 },
-                  enter: { duration: 0.05 },
+                  exit: { duration: animationspeed + slowanimation },
+                  enter: { duration: animationspeed + slowanimation },
                 }}
               >
                 <Text>{result}</Text>
-              </SlideFade>
+              </SlideFade> */}
+              <Transitions
+                choice={animationtransition}
+                open={open}
+                animationspeed={animationspeed}
+                slowanimation={slowanimation}
+              >
+                <Text
+                  maxWidth="300px"
+                  whiteSpace="normal"
+                  wordBreak="break-word"
+                  fontSize="2xl"
+                >
+                  {result}
+                </Text>
+              </Transitions>
             </Button>
             <Button
               colorScheme="teal"
               size="lg"
-              onClick={handleClick}
-              id="randomise"
+              onClick={handlerandomise}
               isLoading={loading}
             >
               Randomise!!
@@ -209,8 +285,20 @@ function Jason() {
                   <ModalBody>
                     <TabPanels>
                       <TabPanel>
-                        <HStack spacing="160px" paddingBottom="30px">
+                        <HStack paddingBottom="30px">
                           <Heading size="md">My list</Heading>
+                          <Button
+                            marginLeft="45px"
+                            colorScheme="teal"
+                            size="md"
+                            onClick={() => {
+                              setInput("");
+                              setChoices([]);
+                              setSelected([]);
+                            }}
+                          >
+                            Clear list
+                          </Button>
                           <Menu>
                             <MenuButton
                               as={Button}
@@ -247,7 +335,7 @@ function Jason() {
                           resize="none"
                           value={input}
                           id="textarea"
-                          placeholder="Start typing things to randomise..."
+                          placeholder="Start typing a list to randomise..."
                         ></Textarea>
                       </TabPanel>
                       <TabPanel>
@@ -259,27 +347,43 @@ function Jason() {
                             paddingTop="10px"
                             onChange={(e) => {
                               setAnimation(e.target.checked);
-                              console.log(animation,animationtime,temporaryslider);
-                              if (e.target.checked == false) {
-                                temporaryslider = animationtime;
-                                setAnimationtime(0);
+                              if (e.target.checked === false) {
+                                temporarytime = animationcount;
+                                setAnimationcount(0);
                               } else {
-                                setAnimationtime(temporaryslider);
+                                setAnimationcount(temporarytime);
                               }
                             }}
                           >
                             Enable Animation
                           </Checkbox>
                           <Text paddingTop="10px" paddingBottom="5px">
+                            Animation Type
+                          </Text>
+                          <RadioGroup
+                            onChange={(e) => {
+                              setAnimationtransition(e);
+                              console.log(e);
+                            }}
+                            value={animationtransition}
+                          >
+                            <HStack direction="row">
+                              <Radio value="Fade">Fade</Radio>
+                              <Radio value="ScaleFade">ScaleFade</Radio>
+                              <Radio value="SlideFade">SlideFade</Radio>
+                            </HStack>
+                          </RadioGroup>
+                          <Text paddingTop="10px" paddingBottom="5px">
                             Animation Duration
                           </Text>
                           <Slider
                             isDisabled={!animation}
-                            defaultValue={animation? animationtime:temporaryslider}
+                            defaultValue={
+                              animation ? animationcount : temporarytime
+                            }
                             min={0}
                             max={30}
-                            id='slider'
-                            onChangeEnd={(val) => setAnimationtime(val)}
+                            onChangeEnd={(val) => setAnimationcount(val)}
                           >
                             <SliderMark value={0} mt="2" ml="-3" fontSize="sm">
                               Short
@@ -300,18 +404,53 @@ function Jason() {
                             </SliderTrack>
                             <SliderThumb />
                           </Slider>
+                          <Text paddingTop="40px" paddingBottom="5px">
+                            Animation Speed
+                          </Text>
+                          <Slider
+                            isDisabled={!animation}
+                            defaultValue={animationspeed * 100}
+                            min={1}
+                            max={11}
+                            onChangeEnd={(val) => setAnimationspeed(val / 100)}
+                          >
+                            <SliderMark value={1} mt="2" ml="-3" fontSize="sm">
+                              Fast
+                            </SliderMark>
+                            <SliderMark value={6} mt="2" ml="-6" fontSize="sm">
+                              Medium
+                            </SliderMark>
+                            <SliderMark
+                              value={11}
+                              mt="2"
+                              ml="-3.5"
+                              fontSize="sm"
+                            >
+                              Slow
+                            </SliderMark>
+                            <SliderTrack>
+                              <SliderFilledTrack />
+                            </SliderTrack>
+                            <SliderThumb />
+                          </Slider>
                         </VStack>
                         <VStack align="left">
                           <Heading size="md">Randomiser Settings</Heading>
                           <Checkbox
                             colorScheme="green"
-                            defaultChecked
+                            defaultChecked={remember}
                             paddingTop="10px"
+                            onChange={(e) => {
+                              setRemember(e.target.checked);
+                              if (e.target.checked === false) {
+                                setSelected([]);
+                              }
+                            }}
                           >
-                            Remember chosen entries
+                            Avoid repeated results
                           </Checkbox>
                           <Text paddingTop="10px" paddingBottom="5px">
-                            {selected}
+                            Results picked: {selected.join(", ")}
                           </Text>
                         </VStack>
                       </TabPanel>
@@ -329,29 +468,3 @@ function Jason() {
 }
 
 export default Jason;
-
-// <Popover initialFocusRef={initialFocusRef} >
-//     <>
-//     <PopoverTrigger>
-//         <Button width='300px' height='300px'>
-//             <SlideFade in={open} offsetY='20px'>
-//                 <Text>
-//                     {result}
-//                 </Text>
-//             </SlideFade>
-//         </Button>
-//     </PopoverTrigger>
-
-//     <Portal placement='top'>
-//         <PopoverContent>
-//             <PopoverArrow />
-//             <PopoverHeader>Type the list of entries to randomise!</PopoverHeader>
-//             <PopoverCloseButton />
-
-//             <PopoverBody>
-//                 <Textarea onChange={handleList} ref={initialFocusRef}></Textarea>
-//             </PopoverBody>
-//         </PopoverContent>
-//     </Portal>
-//     </>
-// </Popover>
