@@ -1,5 +1,6 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Rnd } from "react-rnd";
 import Transitions from "./transitions.tsx";
 
 import { ChakraProvider, useDisclosure } from "@chakra-ui/react";
@@ -40,10 +41,7 @@ import {
 } from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 
-let newX = 0,
-  newY = 0,
-  startX = 0,
-  startY = 0;
+
 let temporarytime = 0;
 let actual_choices: any[];
 
@@ -58,8 +56,9 @@ function Jason() {
   const [selected, setSelected] = useState<any[]>([]);
 
   const [open, setOpen] = useState(true);
-  const [cardx, setCardx] = useState(window.innerWidth / 2 - 200);
-  const [cardy, setCardy] = useState(window.innerHeight / 2 - 200);
+
+  const [textheight, setTextheight] = useState(0);
+  const [boxheight, setBoxheight] = useState(0);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
@@ -109,41 +108,7 @@ function Jason() {
     }
   };
 
-  let thiscard;
-
-  function mouseDown(e) {
-    thiscard = document.getElementById("random");
-
-    startX = e.clientX;
-    startY = e.clientY;
-
-    document.addEventListener("mousemove", mouseMove);
-    document.addEventListener("mouseup", mouseUp);
-  }
-  function mouseMove(e) {
-    newX = startX - e.clientX;
-    newY = startY - e.clientY;
-
-    startX = e.clientX;
-    startY = e.clientY;
-
-    setCardx(thiscard.offsetLeft - newX);
-    setCardy(thiscard.offsetTop - newY);
-
-    unFocus();
-  }
-  function mouseUp() {
-    document.removeEventListener("mousemove", mouseMove);
-  }
-
-  let unFocus = function () {
-    if (window.getSelection()) {
-      window.getSelection()!.empty();
-    } else {
-      window.getSelection()!.removeAllRanges();
-    }
-  };
-
+  
   useEffect(() => {
     if (input == "") {
       // This is on initialisation thus no modification should happen
@@ -157,17 +122,14 @@ function Jason() {
 
       if (value == "") {
         // there are only spaces in that line, dont return
-        console.log(value + " just space");
       } else {
         if (array.indexOf(value) !== index) {
           // prevents duplicates, dont return
-          console.log(value + " duplicate");
         } else {
           return value;
         }
       }
     });
-    console.log(temporarychoices);
     setChoices(temporarychoices);
   }, [input]);
 
@@ -186,17 +148,9 @@ function Jason() {
             setResult(actual_choices[animationtracker % actual_choices.length]);
             setOpen(true);
             setAnimationtracker(animationtracker + 1);
-            console.log(animationspeed + temporaryslowness);
           }, (animationspeed + temporaryslowness) * 1000);
         }, (animationspeed + slowanimation) * 2 * 1000);
       } else if (animationtracker == animationcount) {
-        console.log(animationspeed, slowanimation);
-        // let closedelaytime = 0.02;
-        // let opendelaytime = 20;
-        // if (animation) {
-        //   closedelaytime = animationspeed;
-        //   opendelaytime = 500;
-        // }
         setTimeout(function () {
           setOpen(false);
           setTimeout(
@@ -227,71 +181,109 @@ function Jason() {
     }
   }, [animationtracker, loading]);
 
+  const textRef = useCallback((node) => {
+    if (node !== null) {
+      setTextheight(node.getBoundingClientRect().height);
+      const resizeObserver = new ResizeObserver(() => {
+        setTextheight(node.getBoundingClientRect().height);
+        console.log(node.getBoundingClientRect().height);
+      });
+      resizeObserver.observe(node);
+    }
+  }, []);
+
+  const boxRef = useCallback((node) => {
+    if (node !== null) {
+      setBoxheight(node.getBoundingClientRect().height);
+      const resizeObserver2 = new ResizeObserver(() => {
+        setBoxheight(node.getBoundingClientRect().height);
+        console.log(node.getBoundingClientRect().height);
+      });
+      resizeObserver2.observe(node);
+    }
+  }, []);
+
   return (
     <ChakraProvider>
-      <Card
-        size="lg"
-        width="400px"
-        height="400px"
-        position="fixed"
-        id="random"
-        onMouseDown={mouseDown}
-        top={cardy + "px"}
-        left={cardx + "px"}
+      <Rnd
+        id="widget1big"
+        default={{
+          x: window.innerWidth / 2 - 200,
+          y: window.innerHeight / 2 - 200,
+          width: "400px",
+          height: "400px",
+        }}
+        minWidth="125px"
+        lockAspectRatio={true}
       >
-        <CardBody>
-          <VStack>
-            <Button width="350px" height="300px" onClick={()=>{if(loading==false){onOpen()}}}>
-              {/* <SlideFade
-                in={open}
-                offsetY="20px"
-                transition={{
-                  exit: { duration: animationspeed + slowanimation },
-                  enter: { duration: animationspeed + slowanimation },
+        <Card
+          width="100%"
+          height="100%"
+          // position="fixed"
+          // onMouseDown={mouseDown}
+          // top={cardy + "px"}
+          // left={cardx + "px"}
+        >
+          <CardBody width="100%" height="100%" padding="0">
+            <VStack width="100%" height="100%">
+              <Button
+                width="87.5%"
+                height="75%"
+                marginTop="5%"
+                padding="0"
+                onClick={() => {
+                  if (loading == false) {
+                    onOpen();
+                  }
                 }}
               >
-                <Text>{result}</Text>
-              </SlideFade> */}
-              <Transitions
-                choice={animationtransition}
-                open={open}
-                animationspeed={animationspeed}
-                slowanimation={slowanimation}
-              >
+                {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
                 <Box
-                  height="300px"
-                  width="350px"
+                  ref={boxRef}
+                  height="100%"
+                  width="100%"
                   overflowY="auto"
                   display="flex"
-                  alignItems="center"
+                  alignItems={textheight > boxheight ? "start" : "center"}
                   justifyContent="center"
                 >
                   <Box
                     display="flex"
                     justifyContent="center"
                     alignItems="center"
-                    width="330px"
+                    width="95%"
                   >
-                    <Text
-                      whiteSpace="normal"
-                      wordBreak="break-word"
-                      fontSize="2xl"
-                      textAlign="left"
+                    <Transitions
+                      choice={animationtransition}
+                      open={open}
+                      animationspeed={animationspeed}
+                      slowanimation={slowanimation}
                     >
-                      {result}
-                    </Text>
+                      <Text
+                        whiteSpace="normal"
+                        wordBreak="break-word"
+                        fontSize="2xl"
+                        textAlign="left"
+                        ref={textRef}
+                      >
+                        {result}
+                      </Text>
+                    </Transitions>
                   </Box>
                 </Box>
-              </Transitions>
-            </Button>
-            <Button
-              colorScheme="teal"
-              size="lg"
-              onClick={handlerandomise}
-              isLoading={loading}
-            >
-              Randomise!!
-            </Button>
+              </Button>
+              <Button
+                colorScheme="teal"
+                width="37.5%"
+                height="12.5%"
+                padding="0"
+                onClick={handlerandomise}
+                isLoading={loading}
+              >
+                <Text fontSize='1.1em'> Randomise!!</Text>
+              </Button>
+            </VStack>
+
             <Modal
               initialFocusRef={initialResultFocus}
               onClose={onresultClose}
@@ -326,7 +318,9 @@ function Jason() {
                     >
                       {remember ? "Option removed" : "Remove option"}
                     </Button>
-                    <Button ref={initialResultFocus} colorScheme='teal'
+                    <Button
+                      ref={initialResultFocus}
+                      colorScheme="teal"
                       onClick={() => {
                         onresultClose();
                         handlerandomise();
@@ -334,7 +328,9 @@ function Jason() {
                     >
                       Again!
                     </Button>
-                    <Button onClick={onresultClose} colorScheme='red'>Close</Button>
+                    <Button onClick={onresultClose} colorScheme="red">
+                      Close
+                    </Button>
                   </HStack>
                 </ModalFooter>
               </ModalContent>
@@ -367,9 +363,7 @@ function Jason() {
                       <TabPanel>
                         <VStack>
                           <HStack paddingBottom="20px">
-                            <Heading size="md">
-                              My list
-                            </Heading>
+                            <Heading size="md">My list</Heading>
 
                             <Menu>
                               <MenuButton
@@ -409,7 +403,6 @@ function Jason() {
                                 setChoices([]);
                                 setSelected([]);
                               }}
-                              
                             >
                               Clear list
                             </Button>
@@ -424,11 +417,7 @@ function Jason() {
                             placeholder="Start typing a list to randomise..."
                             height="200px"
                           ></Textarea>
-                          <Text
-                            paddingTop="30px"
-                            fontSize="md"
-                            
-                          >
+                          <Text paddingTop="30px" fontSize="md">
                             Note: All leading and trailing spaces, empty rows,
                             and duplicates in the list are automatically removed
                             when generating.
@@ -436,11 +425,7 @@ function Jason() {
                         </VStack>
                       </TabPanel>
                       <TabPanel>
-                        <VStack
-                          align="left"
-                          paddingBottom="50px"
-                         
-                        >
+                        <VStack align="left" paddingBottom="50px">
                           <Heading size="md">Randomiser Settings</Heading>
                           <Checkbox
                             colorScheme="green"
@@ -459,7 +444,7 @@ function Jason() {
                             Options removed: {selected.join(", ")}
                           </Text>
                         </VStack>
-                        <VStack align="left" >
+                        <VStack align="left">
                           <Heading size="md">Animation Settings</Heading>
                           <Checkbox
                             colorScheme="green"
@@ -484,7 +469,6 @@ function Jason() {
                             isDisabled={!animation}
                             onChange={(e) => {
                               setAnimationtransition(e);
-                              console.log(e);
                             }}
                             value={animationtransition}
                           >
@@ -526,35 +510,35 @@ function Jason() {
                             <SliderThumb />
                           </Slider>
                           {/* <Text paddingTop="40px" paddingBottom="5px">
-                            Animation Speed
-                          </Text>
-                          <Slider
-                            
-                            isDisabled={!animation}
-                            defaultValue={animationspeed * 100}
-                            min={1}
-                            max={11}
-                            onChangeEnd={(val) => setAnimationspeed(val / 100)}
-                          >
-                            <SliderMark value={1} mt="2" ml="-3" fontSize="sm">
-                              Fast
-                            </SliderMark>
-                            <SliderMark value={6} mt="2" ml="-6" fontSize="sm">
-                              Medium
-                            </SliderMark>
-                            <SliderMark
-                              value={11}
-                              mt="2"
-                              ml="-3.5"
-                              fontSize="sm"
-                            >
-                              Slow
-                            </SliderMark>
-                            <SliderTrack>
-                              <SliderFilledTrack />
-                            </SliderTrack>
-                            <SliderThumb />
-                          </Slider> */}
+                    Animation Speed
+                  </Text>
+                  <Slider
+                    
+                    isDisabled={!animation}
+                    defaultValue={animationspeed * 100}
+                    min={1}
+                    max={11}
+                    onChangeEnd={(val) => setAnimationspeed(val / 100)}
+                  >
+                    <SliderMark value={1} mt="2" ml="-3" fontSize="sm">
+                      Fast
+                    </SliderMark>
+                    <SliderMark value={6} mt="2" ml="-6" fontSize="sm">
+                      Medium
+                    </SliderMark>
+                    <SliderMark
+                      value={11}
+                      mt="2"
+                      ml="-3.5"
+                      fontSize="sm"
+                    >
+                      Slow
+                    </SliderMark>
+                    <SliderTrack>
+                      <SliderFilledTrack />
+                    </SliderTrack>
+                    <SliderThumb />
+                  </Slider> */}
                         </VStack>
                       </TabPanel>
                     </TabPanels>
@@ -566,9 +550,9 @@ function Jason() {
                 </Tabs>
               </ModalContent>
             </Modal>
-          </VStack>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      </Rnd>
     </ChakraProvider>
   );
 }
