@@ -1,34 +1,26 @@
+import * as React from "react";
+import { useState, useEffect } from "react";
+import Transitions from "./transitions.tsx";
+
+import { ChakraProvider, useDisclosure } from "@chakra-ui/react";
 import {
-  ChakraProvider,
+  Checkbox,
+  Radio,
+  RadioGroup,
+  Box,
+  Card,
+  CardBody,
   VStack,
   HStack,
   Heading,
-  Checkbox,
-  CheckboxGroup,
-} from "@chakra-ui/react";
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
   Text,
-  Button,
   Textarea,
-} from "@chakra-ui/react";
-import {
+  Button,
   Slider,
   SliderTrack,
   SliderFilledTrack,
   SliderThumb,
   SliderMark,
-} from "@chakra-ui/react";
-import { Radio, RadioGroup } from "@chakra-ui/react";
-import { Fade, ScaleFade, Slide, SlideFade, Collapse } from "@chakra-ui/react";
-import Transitions from "./transitions.tsx";
-import { useDisclosure } from "@chakra-ui/react";
-import { useState, useEffect } from "react";
-import * as React from "react";
-import {
   Modal,
   ModalOverlay,
   ModalContent,
@@ -36,19 +28,16 @@ import {
   ModalFooter,
   ModalBody,
   ModalCloseButton,
-} from "@chakra-ui/react";
-import { Tabs, TabList, TabPanels, Tab, TabPanel } from "@chakra-ui/react";
-import {
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
   Menu,
   MenuButton,
   MenuList,
   MenuItem,
-  MenuItemOption,
-  MenuGroup,
-  MenuOptionGroup,
-  MenuDivider,
 } from "@chakra-ui/react";
-
 import { ChevronDownIcon } from "@chakra-ui/icons";
 
 let newX = 0,
@@ -60,11 +49,12 @@ let actual_choices: any[];
 
 function Jason() {
   const initialFocus = React.useRef(null);
+  const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Type a list to randomise!");
   const [input, setInput] = useState("");
   const [choices, setChoices] = useState<any[]>([]);
 
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(false);
   const [selected, setSelected] = useState<any[]>([]);
 
   const [open, setOpen] = useState(true);
@@ -72,11 +62,16 @@ function Jason() {
   const [cardy, setCardy] = useState(window.innerHeight / 2 - 200);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isresultOpen,
+    onOpen: onresultOpen,
+    onClose: onresultClose,
+  } = useDisclosure();
 
   const [animation, setAnimation] = useState(true);
   const [animationtracker, setAnimationtracker] = useState(0);
   const [animationcount, setAnimationcount] = useState(20);
-  const [animationspeed, setAnimationspeed] = useState(0.06);
+  const [animationspeed, setAnimationspeed] = useState(0.04);
   const [slowanimation, setSlowanimation] = useState(0);
   const [animationtransition, setAnimationtransition] = useState("SlideFade");
 
@@ -86,21 +81,20 @@ function Jason() {
     if (choices.length != 0) {
       setLoading(true);
       actual_choices = choices;
-      if (remember == true) {
-        actual_choices = actual_choices.filter((choice) => {
-          if (selected.includes(choice)) {
-            return;
-          } else {
-            return choice;
-          }
-        });
-        if (actual_choices.length == 0) {
-          setLoading(false);
-          alert(
-            "All entries in the list have been chosen once! Please edit the list or your settings! "
-          );
-          onOpen();
+
+      actual_choices = actual_choices.filter((choice) => {
+        if (selected.includes(choice)) {
+          return;
+        } else {
+          return choice;
         }
+      });
+      if (actual_choices.length == 0) {
+        setLoading(false);
+        alert(
+          "All entries in the list have been chosen once! Please edit the list or your settings! "
+        );
+        onOpen();
       }
 
       setAnimationtracker(0);
@@ -150,14 +144,6 @@ function Jason() {
     }
   };
 
-  function validatechoices(choice) {
-    if (choice == null) {
-      // this is a new line thus should be ignored
-    } else {
-      return choice.trim();
-    }
-  }
-
   useEffect(() => {
     if (input == "") {
       // This is on initialisation thus no modification should happen
@@ -165,12 +151,27 @@ function Jason() {
     }
     setSelected([]);
     let temporarychoices = input.split("\n");
+    temporarychoices = temporarychoices.filter((value, index, array) => {
+      // remove leading and trailing spaces
+      value = value.trim();
 
-    temporarychoices = temporarychoices.filter(validatechoices);
-
+      if (value == "") {
+        // there are only spaces in that line, dont return
+        console.log(value + " just space");
+      } else {
+        if (array.indexOf(value) !== index) {
+          // prevents duplicates, dont return
+          console.log(value + " duplicate");
+        } else {
+          return value;
+        }
+      }
+    });
+    console.log(temporarychoices);
     setChoices(temporarychoices);
   }, [input]);
 
+  // Recursive use effect that acts like a for loop and works, normal for loop doesnt work cause setInterval is async
   useEffect(() => {
     if (loading == true) {
       if (animationtracker < animationcount) {
@@ -190,25 +191,38 @@ function Jason() {
         }, (animationspeed + slowanimation) * 2 * 1000);
       } else if (animationtracker == animationcount) {
         console.log(animationspeed, slowanimation);
-        let closedelaytime = 0.02;
-        let opendelaytime = 20;
-        if (animation) {
-          closedelaytime = animationspeed;
-          opendelaytime = 500;
-        }
+        // let closedelaytime = 0.02;
+        // let opendelaytime = 20;
+        // if (animation) {
+        //   closedelaytime = animationspeed;
+        //   opendelaytime = 500;
+        // }
         setTimeout(function () {
           setOpen(false);
-          setTimeout(function () {
-            let placeholder =
-              actual_choices[Math.floor(Math.random() * actual_choices.length)];
-            setResult(placeholder);
-            setSelected([...selected, placeholder]);
-            setOpen(true);
-            setSlowanimation(0);
-            actual_choices = [];
-            setLoading(false);
-          }, opendelaytime);
-        }, (closedelaytime + slowanimation) * 2 * 1000);
+          setTimeout(
+            function () {
+              let placeholder =
+                actual_choices[
+                  Math.floor(Math.random() * actual_choices.length)
+                ];
+              setResult(placeholder);
+              if (remember) {
+                setSelected([...selected, placeholder]);
+              }
+              setOpen(true);
+              setSlowanimation(0);
+              actual_choices = [];
+              setLoading(false);
+              setTimeout(
+                function () {
+                  onresultOpen();
+                },
+                animation ? 300 : 0
+              );
+            },
+            animation ? 500 : 20
+          );
+        }, (animation ? animationspeed : 0.02 + slowanimation) * 2 * 1000);
       }
     }
   }, [animationtracker, loading]);
@@ -217,7 +231,6 @@ function Jason() {
     <ChakraProvider>
       <Card
         size="lg"
-        colorScheme="pink"
         width="400px"
         height="400px"
         position="fixed"
@@ -228,7 +241,7 @@ function Jason() {
       >
         <CardBody>
           <VStack>
-            <Button width="300px" height="300px" onClick={onOpen}>
+            <Button width="350px" height="300px" onClick={()=>{if(loading==false){onOpen()}}}>
               {/* <SlideFade
                 in={open}
                 offsetY="20px"
@@ -245,14 +258,30 @@ function Jason() {
                 animationspeed={animationspeed}
                 slowanimation={slowanimation}
               >
-                <Text
-                  maxWidth="300px"
-                  whiteSpace="normal"
-                  wordBreak="break-word"
-                  fontSize="2xl"
+                <Box
+                  height="300px"
+                  width="350px"
+                  overflowY="auto"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
                 >
-                  {result}
-                </Text>
+                  <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    width="330px"
+                  >
+                    <Text
+                      whiteSpace="normal"
+                      wordBreak="break-word"
+                      fontSize="2xl"
+                      textAlign="left"
+                    >
+                      {result}
+                    </Text>
+                  </Box>
+                </Box>
               </Transitions>
             </Button>
             <Button
@@ -263,7 +292,53 @@ function Jason() {
             >
               Randomise!!
             </Button>
-
+            <Modal
+              initialFocusRef={initialResultFocus}
+              onClose={onresultClose}
+              isOpen={isresultOpen}
+              isCentered
+            >
+              <ModalOverlay />
+              <ModalContent>
+                <ModalHeader>Result:</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody maxHeight="300px" overflowY="auto">
+                  <Card align="center">
+                    <CardBody>
+                      <Text
+                        whiteSpace="normal"
+                        wordBreak="break-word"
+                        fontSize="6xl"
+                      >
+                        {result}
+                      </Text>
+                    </CardBody>
+                  </Card>
+                </ModalBody>
+                <ModalFooter>
+                  <HStack>
+                    <Button
+                      isDisabled={remember}
+                      onClick={() => {
+                        setSelected([...selected, result]);
+                        onresultClose();
+                      }}
+                    >
+                      {remember ? "Option removed" : "Remove option"}
+                    </Button>
+                    <Button ref={initialResultFocus} colorScheme='teal'
+                      onClick={() => {
+                        onresultClose();
+                        handlerandomise();
+                      }}
+                    >
+                      Again!
+                    </Button>
+                    <Button onClick={onresultClose} colorScheme='red'>Close</Button>
+                  </HStack>
+                </ModalFooter>
+              </ModalContent>
+            </Modal>
             <Modal
               isOpen={isOpen}
               onClose={onClose}
@@ -274,72 +349,117 @@ function Jason() {
               <ModalContent>
                 <Tabs>
                   <ModalHeader>
-                    <HStack align="center" justify="left">
+                    <HStack align="center">
                       <TabList>
-                        <Tab>List</Tab>
-                        <Tab>Settings</Tab>
+                        <Tab marginBottom="0px">List</Tab>
+                        <Tab marginBottom="0px">Settings</Tab>
                       </TabList>
-                      <ModalCloseButton />
+                      <ModalCloseButton
+                        position="static"
+                        marginLeft="220px"
+                        size="md"
+                        marginTop="1px"
+                      />
                     </HStack>
                   </ModalHeader>
-                  <ModalBody>
+                  <ModalBody h="450px" overflowY="auto">
                     <TabPanels>
                       <TabPanel>
-                        <HStack paddingBottom="30px">
-                          <Heading size="md">My list</Heading>
-                          <Button
-                            marginLeft="45px"
-                            colorScheme="teal"
-                            size="md"
-                            onClick={() => {
-                              setInput("");
-                              setChoices([]);
-                              setSelected([]);
-                            }}
-                          >
-                            Clear list
-                          </Button>
-                          <Menu>
-                            <MenuButton
-                              as={Button}
-                              rightIcon={<ChevronDownIcon />}
-                            >
-                              Suggestions
-                            </MenuButton>
-                            <MenuList>
-                              <MenuItem
-                                onClick={() =>
-                                  setInput(
-                                    "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30"
-                                  )
-                                }
-                              >
-                                Generate numbers 1 to 30
-                              </MenuItem>
-                              <MenuItem
-                                onClick={() =>
-                                  setInput(
-                                    "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ"
-                                  )
-                                }
-                              >
-                                Generate the alphabet
-                              </MenuItem>
-                            </MenuList>
-                          </Menu>
-                        </HStack>
+                        <VStack>
+                          <HStack paddingBottom="20px">
+                            <Heading size="md">
+                              My list
+                            </Heading>
 
-                        <Textarea
-                          onChange={(e) => setInput(e.target.value)}
-                          ref={initialFocus}
-                          resize="none"
-                          value={input}
-                          id="textarea"
-                          placeholder="Start typing a list to randomise..."
-                        ></Textarea>
+                            <Menu>
+                              <MenuButton
+                                marginLeft="45px"
+                                as={Button}
+                                rightIcon={<ChevronDownIcon />}
+                                colorScheme="yellow"
+                              >
+                                Suggestions
+                              </MenuButton>
+                              <MenuList>
+                                <MenuItem
+                                  onClick={() =>
+                                    setInput(
+                                      "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30"
+                                    )
+                                  }
+                                >
+                                  Generate numbers 1 to 30
+                                </MenuItem>
+                                <MenuItem
+                                  onClick={() =>
+                                    setInput(
+                                      "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ"
+                                    )
+                                  }
+                                >
+                                  Generate the alphabet
+                                </MenuItem>
+                              </MenuList>
+                            </Menu>
+                            <Button
+                              colorScheme="red"
+                              size="md"
+                              onClick={() => {
+                                setInput("");
+                                setChoices([]);
+                                setSelected([]);
+                              }}
+                              
+                            >
+                              Clear list
+                            </Button>
+                          </HStack>
+
+                          <Textarea
+                            onChange={(e) => setInput(e.target.value)}
+                            ref={initialFocus}
+                            resize="none"
+                            value={input}
+                            id="textarea"
+                            placeholder="Start typing a list to randomise..."
+                            height="200px"
+                          ></Textarea>
+                          <Text
+                            paddingTop="30px"
+                            fontSize="md"
+                            
+                          >
+                            Note: All leading and trailing spaces, empty rows,
+                            and duplicates in the list are automatically removed
+                            when generating.
+                          </Text>
+                        </VStack>
                       </TabPanel>
                       <TabPanel>
-                        <VStack align="left" paddingBottom="50px">
+                        <VStack
+                          align="left"
+                          paddingBottom="50px"
+                         
+                        >
+                          <Heading size="md">Randomiser Settings</Heading>
+                          <Checkbox
+                            colorScheme="green"
+                            defaultChecked={remember}
+                            paddingTop="10px"
+                            onChange={(e) => {
+                              setRemember(e.target.checked);
+                              if (e.target.checked === false) {
+                                setSelected([]);
+                              }
+                            }}
+                          >
+                            Prevent picked options from repeating
+                          </Checkbox>
+                          <Text paddingTop="10px" paddingBottom="5px">
+                            Options removed: {selected.join(", ")}
+                          </Text>
+                        </VStack>
+                        <VStack align="left" >
                           <Heading size="md">Animation Settings</Heading>
                           <Checkbox
                             colorScheme="green"
@@ -361,6 +481,7 @@ function Jason() {
                             Animation Type
                           </Text>
                           <RadioGroup
+                            isDisabled={!animation}
                             onChange={(e) => {
                               setAnimationtransition(e);
                               console.log(e);
@@ -404,10 +525,11 @@ function Jason() {
                             </SliderTrack>
                             <SliderThumb />
                           </Slider>
-                          <Text paddingTop="40px" paddingBottom="5px">
+                          {/* <Text paddingTop="40px" paddingBottom="5px">
                             Animation Speed
                           </Text>
                           <Slider
+                            
                             isDisabled={!animation}
                             defaultValue={animationspeed * 100}
                             min={1}
@@ -432,31 +554,15 @@ function Jason() {
                               <SliderFilledTrack />
                             </SliderTrack>
                             <SliderThumb />
-                          </Slider>
-                        </VStack>
-                        <VStack align="left">
-                          <Heading size="md">Randomiser Settings</Heading>
-                          <Checkbox
-                            colorScheme="green"
-                            defaultChecked={remember}
-                            paddingTop="10px"
-                            onChange={(e) => {
-                              setRemember(e.target.checked);
-                              if (e.target.checked === false) {
-                                setSelected([]);
-                              }
-                            }}
-                          >
-                            Avoid repeated results
-                          </Checkbox>
-                          <Text paddingTop="10px" paddingBottom="5px">
-                            Results picked: {selected.join(", ")}
-                          </Text>
+                          </Slider> */}
                         </VStack>
                       </TabPanel>
                     </TabPanels>
                   </ModalBody>
-                  <ModalFooter></ModalFooter>
+                  <ModalFooter
+                    paddingTop="3px"
+                    paddingBottom="3px"
+                  ></ModalFooter>
                 </Tabs>
               </ModalContent>
             </Modal>

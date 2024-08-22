@@ -16,7 +16,6 @@ function Transitions({
   slowanimation,
   children
 }) {
-  console.log(choice);
   switch (choice) {
     case "Fade":
       return (
