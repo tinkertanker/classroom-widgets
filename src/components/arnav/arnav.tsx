@@ -5,7 +5,6 @@ import {
   Card,
   CardBody,
   CardFooter,
-  Text,
   ChakraProvider,
   Stack,
   Box,
@@ -13,17 +12,13 @@ import {
   Input,
 } from "@chakra-ui/react";
 
-import ReusableButton from "../main/reusableButton.tsx";
-
-// TODO find a way to make values[] update when time changes
-//      can do this by simply changing timeValues[] directly and updating values[] from there
+import ReusableButton from "../main/reusableButtonx";
 
 const Arnav = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
-  const [changeTime, setChangeTime] = useState(0);
+  const [changeTime, setChangeTime] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(false);
   const [showStart, setShowStart] = useState(true);
   const [showResume, setShowResume] = useState(false);
 
@@ -51,7 +46,7 @@ const Arnav = () => {
     }
   }, [time]);
 
-  const startTimer = () => {
+  const startTimer = (isResume=false) => {
     if (initialTime === 0) return;
 
     let changes = [0, 0, 0];
@@ -65,7 +60,7 @@ const Arnav = () => {
       changes[1] -= 60;
     }
     if (timeValues[0]+changes[0] > 23) {
-      let change = timeValues[0]-23;
+      let change = timeValues[0]+changes[0]-23;
       changes[0] -= change;
       incomingTime -= change*3600;
     }
@@ -73,8 +68,9 @@ const Arnav = () => {
     let finalValues = timeValues.map((a, i) => a+changes[i]);
     setTimeValues(finalValues);
     setValues(finalValues.map((a) => String(a)));
-    setInitialTime(incomingTime);
+    setInitialTime(isResume ? incomingTime-time+initialTime : incomingTime);
     setTime(incomingTime);
+    setTimeout(() => setChangeTime(changeTime+1), 1000);
 
     setIsRunning(true);
   };
@@ -84,35 +80,47 @@ const Arnav = () => {
   };
   const resumeTimer = () => {
     setShowResume(false);
-    startTimer();
+    startTimer(true);
   };
   const restartTimer = () => {
     setIsRunning(false);
     setShowStart(true);
     setShowResume(false);
     setTime(initialTime);
-    setShowTimerButtons(true);
   };
 
   useEffect(() => {
-    // when updating time, check again if isRunning is true
     if (isRunning) {
-      if (time > 0) setTimeout(() => setTime(time - 1), 1000);
-      else setIsCompleted(true);
+      if (time > 0) {
+        let changes = [0, 0 ,0];
+
+        if (timeValues[2] > 0) {
+          changes[2]--;
+        } else if (timeValues[1] > 0) {
+          changes[1]--;
+          changes[2]+=59;
+        } else if (timeValues[0] > 0) {
+          changes[0]--;
+          changes[1]+=59;
+          changes[2]+=59;
+        }
+
+        let finalValues = timeValues.map((a, i) => a+changes[i]);
+        setTimeValues(finalValues);
+        setValues(finalValues.map((a) => String(a)));
+        setTime(time-1);
+        setTimeout(() => setChangeTime(changeTime+1), 1000);
+      }
+      if (time <= 0) completed();
     } else {
       !showResume && setTime(initialTime);
     }
-    console.log("running:", time);
-  }, [time, isRunning]);
+  }, [changeTime]);
 
-  // useEffect(() => {
-  //   setTime(initialTime);
-  // }, [initialTime]);
-
-  useEffect(() => {
+  const completed = () => {
     setIsRunning(false);
-    if (isCompleted) console.log("Done!");
-  }, [isCompleted]);
+    console.log("Done!");
+  };
 
   return (
     <ChakraProvider>
