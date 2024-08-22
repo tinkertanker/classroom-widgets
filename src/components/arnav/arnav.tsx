@@ -12,7 +12,7 @@ import {
   Input,
 } from "@chakra-ui/react";
 
-import ReusableButton from "../main/reusableButtonx";
+import ReusableButton from "../main/reusableButton.tsx";
 
 const Arnav = () => {
   const [initialTime, setInitialTime] = useState(10);
@@ -41,8 +41,9 @@ const Arnav = () => {
   };
 
   useEffect(() => {
-    if (isRunning) {
-      setShowStart(false);
+    if (time <= 0) {
+      setIsRunning(false);
+      console.log("Done!");
     }
   }, [time]);
 
@@ -73,6 +74,7 @@ const Arnav = () => {
     setTimeout(() => setChangeTime(changeTime+1), 1000);
 
     setIsRunning(true);
+    setShowStart(false);
   };
   const pauseTimer = () => {
     setIsRunning(false);
@@ -87,6 +89,14 @@ const Arnav = () => {
     setShowStart(true);
     setShowResume(false);
     setTime(initialTime);
+
+    let actualValues = [0, 0, 0];
+    actualValues[0] = Math.floor(initialTime/3600);
+    actualValues[1] = Math.floor(initialTime/60) > 59 ? 59 : Math.floor(initialTime/60);
+    actualValues[2] = initialTime % 60;
+
+    setTimeValues(actualValues);
+    setValues(actualValues.map((a) => String(a)));
   };
 
   useEffect(() => {
@@ -111,16 +121,10 @@ const Arnav = () => {
         setTime(time-1);
         setTimeout(() => setChangeTime(changeTime+1), 1000);
       }
-      if (time <= 0) completed();
     } else {
       !showResume && setTime(initialTime);
     }
   }, [changeTime]);
-
-  const completed = () => {
-    setIsRunning(false);
-    console.log("Done!");
-  };
 
   return (
     <ChakraProvider>
