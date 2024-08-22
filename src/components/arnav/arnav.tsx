@@ -21,11 +21,11 @@ import ReusableButton from "../main/reusableButton.tsx";
 const Arnav = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
+  const [changeTime, setChangeTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showStart, setShowStart] = useState(true);
   const [showResume, setShowResume] = useState(false);
-  const [showTimerButtons, setShowTimerButtons] = useState(true);
 
   const [values, setValues] = useState(['', '', '']);
   const [timeValues, setTimeValues] = useState([0, 0, 0]);
@@ -48,7 +48,6 @@ const Arnav = () => {
   useEffect(() => {
     if (isRunning) {
       setShowStart(false);
-      setShowTimerButtons(false);
     }
   }, [time]);
 
@@ -95,7 +94,7 @@ const Arnav = () => {
     setShowTimerButtons(true);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     // when updating time, check again if isRunning is true
     if (isRunning) {
       if (time > 0) setTimeout(() => setTime(time - 1), 1000);
