@@ -7,6 +7,7 @@ import {
   CardFooter,
   ChakraProvider,
   Stack,
+  Text,
   Box,
   Progress,
   Input,
@@ -21,6 +22,7 @@ const Arnav = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [showStart, setShowStart] = useState(true);
   const [showResume, setShowResume] = useState(false);
+  const [showPauseResume, setShowPauseResume] = useState(true);
 
   const [values, setValues] = useState(['', '', '']);
   const [timeValues, setTimeValues] = useState([0, 0, 0]);
@@ -43,12 +45,13 @@ const Arnav = () => {
   useEffect(() => {
     if (time <= 0) {
       setIsRunning(false);
+      setShowPauseResume(false);
       console.log("Done!");
     }
   }, [time]);
 
   const startTimer = (isResume=false) => {
-    if (initialTime === 0) return;
+    if (!timeValues[0] && !timeValues[1] && !timeValues[2]) return;
 
     let changes = [0, 0, 0];
     let incomingTime = timeValues[2] + timeValues[1]*60 + timeValues[0]*3600;
@@ -68,13 +71,14 @@ const Arnav = () => {
 
     let finalValues = timeValues.map((a, i) => a+changes[i]);
     setTimeValues(finalValues);
-    setValues(finalValues.map((a) => String(a)));
+    setValues(finalValues.map((a) => String(a).length<2 ? '0'+String(a) : String(a)));
     setInitialTime(isResume ? incomingTime-time+initialTime : incomingTime);
     setTime(incomingTime);
     setTimeout(() => setChangeTime(changeTime+1), 1000);
 
     setIsRunning(true);
     setShowStart(false);
+    setShowPauseResume(true);
   };
   const pauseTimer = () => {
     setIsRunning(false);
@@ -99,6 +103,7 @@ const Arnav = () => {
     setValues(actualValues.map((a) => String(a)));
   };
 
+  // Timer logic
   useEffect(() => {
     if (isRunning) {
       if (time > 0) {
@@ -117,7 +122,7 @@ const Arnav = () => {
 
         let finalValues = timeValues.map((a, i) => a+changes[i]);
         setTimeValues(finalValues);
-        setValues(finalValues.map((a) => String(a)));
+        setValues(finalValues.map((a) => String(a).length<2 ? '0'+String(a) : String(a)));
         setTime(time-1);
         setTimeout(() => setChangeTime(changeTime+1), 1000);
       }
@@ -130,20 +135,40 @@ const Arnav = () => {
     <ChakraProvider>
       <Card overflow="hidden" variant="outline" width="400px" height="400px">
         <CardBody>
-          <Box p={5}>
-            <Stack direction="row" spacing={4}>
+          <Box
+            bg='gray.100'
+            borderRadius='md'
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            height="100%"
+          >
+            <Stack direction="row" spacing={4} alignItems='center'>
               {values.map((value, index) => (
-                <Input
-                  key={index}
-                  value={value}
-                  placeholder={inputDisplays[index]}
-                  isReadOnly={isRunning}       // for paused -> {... || (!isRunning && showResume)}
-                  onChange={(e) => handleChange(e, index)}
-                  maxLength={2}
-                  type="text"
-                  inputMode="numeric"
-                  ref={(el) => (inputRefs.current[index] = el)}
-                />
+                <React.Fragment key={index}>
+                  <Input
+                    variant='filled'
+                    size='lg'
+                    textAlign='center'
+                    lineHeight='10.01'
+                    height='100%'
+                    key={index}
+                    value={value}
+                    placeholder={inputDisplays[index]}
+                    isReadOnly={isRunning}       // for paused -> {... || (!isRunning && showResume)}
+                    onChange={(e) => handleChange(e, index)}
+                    maxLength={2}
+                    type="text"
+                    inputMode="numeric"
+                    ref={(el) => (inputRefs.current[index] = el)}
+                  />
+                  {/* Add a colon after each input, except the last one */}
+                  {index < values.length - 1 && (
+                    <Text fontSize="24px" lineHeight="1">
+                      :
+                    </Text>
+                  )}
+                </React.Fragment>
               ))}
             </Stack>
           </Box>
@@ -156,11 +181,14 @@ const Arnav = () => {
               <ReusableButton onClick={startTimer}>Start</ReusableButton>
             ) : (
               <>
-                {showResume ? (
-                  <ReusableButton onClick={resumeTimer}>Resume</ReusableButton>
-                ) : (
-                  <ReusableButton onClick={pauseTimer}>Pause</ReusableButton>
-                )}
+                {showPauseResume ?
+                  (showResume ? (
+                    <ReusableButton onClick={resumeTimer}>Resume</ReusableButton>
+                  ) : (
+                    <ReusableButton onClick={pauseTimer}>Pause</ReusableButton>
+                  )) : (
+                    <></>
+                  )}
                 <ReusableButton onClick={restartTimer}>Restart</ReusableButton>
               </>
             )}
