@@ -4,9 +4,7 @@ import {
   ChakraProvider,
   Fade,
   ScaleFade,
-  Slide,
   SlideFade,
-  Collapse,Text
 } from "@chakra-ui/react";
 
 function Transitions({
