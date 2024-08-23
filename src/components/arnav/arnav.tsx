@@ -176,7 +176,7 @@ const Arnav = () => {
 
 
         <CardFooter>
-          <Stack width="100%">
+          <Stack width="100%" gap="5%" height="100%">
             {showStart ? (
               <ReusableButton onClick={startTimer}>Start</ReusableButton>
             ) : (
@@ -196,6 +196,7 @@ const Arnav = () => {
             <Progress
               value={((initialTime - time) / initialTime) * 100}
               width="100%"
+              borderRadius="md"
             />
           </Stack>
         </CardFooter>
