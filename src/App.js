@@ -2,8 +2,8 @@ import logo from './logo.svg';
 import './App.css';
 import Jason from './components/jason/json.js';
 import Arnav from './components/arnav/arnav.js';
-import Boaz from './components/boaz/boaz.js';
-
+import Boaz from './components/boaz/boaz.tsx';
+import TrafficLight from './components/boaz/boaz.tsx';
 function App() {
   return (
     <div className="App">
