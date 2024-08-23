@@ -100,8 +100,8 @@ function Boaz() {
                 width: '100px',
                 height: '250px',
 
-            }} ref={boxRef}>
-                <Stack direction='row' width='100%' height='100%' bg="white"
+            }} >
+                <Stack direction='row' width='100%' height='100%' bg="white" ref={boxRef}
                 >
                     <Box id="boxlol"
                         width={boxWidth + 'px'}
@@ -150,7 +150,9 @@ function Boaz() {
                             ></Box>
                         </Stack>
                     </Box>
-                    <p>eeeeeeeeeeeeeeeeeeeeee</p>
+                    <Box bg='green' width='80%' height='100%'>
+
+                    </Box>
 
                 </Stack>
 
