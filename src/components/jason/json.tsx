@@ -2,6 +2,8 @@ import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import Transitions from "./transitions.tsx";
+import Confetti from 'react-confetti'
+import sound from './yay.mp3'
 
 import { ChakraProvider, useDisclosure } from "@chakra-ui/react";
 import {
@@ -44,7 +46,7 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 
 let temporarytime = 0;
 let actual_choices: any[];
-
+let yay = new Audio(sound);
 function Jason() {
   const initialFocus = React.useRef(null);
   const initialResultFocus = React.useRef(null);
@@ -73,10 +75,14 @@ function Jason() {
   const [animationspeed, setAnimationspeed] = useState(0.04);
   const [slowanimation, setSlowanimation] = useState(0);
   const [animationtransition, setAnimationtransition] = useState("SlideFade");
+  const [useconfetti, setUseconfetti] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
   const handlerandomise = () => {
+    setUseconfetti(false);
+    yay.pause();
+    yay.currentTime = 0;
     if (choices.length != 0) {
       setLoading(true);
       actual_choices = choices;
@@ -167,12 +173,17 @@ function Jason() {
               setSlowanimation(0);
               actual_choices = [];
               setLoading(false);
-              setTimeout(
-                function () {
-                  onresultOpen();
-                },
-                animation ? 300 : 0
-              );
+              setUseconfetti(true); // Trigger confetti
+              yay.play()
+
+
+              // setTimeout(
+              //   function () {
+              //     // onresultOpen();
+              //     setUseconfetti(false);
+              //   },
+              //   3000
+              // );
             },
             animation ? 500 : 20
           );
@@ -205,6 +216,17 @@ function Jason() {
 
   return (
     <ChakraProvider>
+      {useconfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500} // Increase number of pieces
+          gravity={0.3} // Adjust gravity for a slower fall
+          wind={0.01} // Add a slight wind effect
+          colors={['#FFC700', '#FF0000', '#2E3192', '#41BBC7']} // Custom colors
+        />
+      )}
       <Rnd
         id="widget1big"
         default={{
