@@ -1,11 +1,12 @@
-import logo from './logo.svg';
-import './App.css';
-import Jason from './components/jason/json.tsx';
-import Arnav from './components/arnav/arnav.js';
-import Boaz from './components/boaz/boaz.js';
-import { useEffect, useState } from 'react';
-import { createSwapy } from 'swapy';
-import Confetti from 'react-confetti';
+import logo from "./logo.svg";
+import "./App.css";
+import Jason from "./components/jason/json.tsx";
+import Time from "./components/jason/clock.tsx";
+import Arnav from "./components/arnav/arnav.js";
+import Boaz from "./components/boaz/boaz.js";
+import { useEffect, useState } from "react";
+import { createSwapy } from "swapy";
+import Confetti from "react-confetti";
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
@@ -15,24 +16,26 @@ function App() {
   };
 
   useEffect(() => {
-  //   const container = document.querySelector('.container');
-  //   const swapy = createSwapy(container, {
-  //     animation: 'dynamic' // or spring or none
-  //   });
-  //   swapy.enable(true);
-
-  //   // Clean up on unmount
-  //   return () => {
-  //     swapy.enable(false);
-  //   };
+    //   const container = document.querySelector('.container');
+    //   const swapy = createSwapy(container, {
+    //     animation: 'dynamic' // or spring or none
+    //   });
+    //   swapy.enable(true);
+    //   // Clean up on unmount
+    //   return () => {
+    //     swapy.enable(false);
+    //   };
   }, []);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <Jason toggleConfetti={toggleConfetti} />
+    <>
+      <div className="App">
+        <header className="App-header">
+          <Time />
 
-        {/* <div className="container">
+          {/* <Jason toggleConfetti={toggleConfetti} /> */}
+
+          {/* <div className="container">
           <div className="section-1" data-swapy-slot="slot1">
             <div className="content-a" data-swapy-item="itemA">
               <Jason />
@@ -57,20 +60,21 @@ function App() {
             </div>
           </div>
         </div> */}
-      </header>
-      {useconfetti && (
-        <Confetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={500}
-          gravity={0.3}
-          wind={0.01}
-          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
-          confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
-        />
-      )}
-    </div>
+        </header>
+        {useconfetti && (
+          <Confetti
+            width={window.innerWidth}
+            height={window.innerHeight}
+            recycle={false}
+            numberOfPieces={500}
+            gravity={0.3}
+            wind={0.01}
+            colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
+            confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
+          />
+        )}
+      </div>
+    </>
   );
 }
 
