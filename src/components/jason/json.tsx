@@ -306,8 +306,8 @@ function Jason() {
         lockAspectRatio={true}
       > */}
         <Card
-          width="400px"
-          height="400px"
+          width="100%"
+          height="100%"
           // width='100%'
           // height='100%'
 

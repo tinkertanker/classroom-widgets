@@ -14,39 +14,32 @@ html, body, .App {
   display: flex;
   justify-content: center;
   align-items: center;
+  height: 100vh;
+  width: 100vw;
 }
 
 .container {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: 10px; /* Optional: add some space between the grid items */
+  gap: 0;
   width: 100%;
   height: 100%;
+  padding: 16px;
 }
 
 .section-1, .section-2, .section-3, .section-4 {
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 1px solid #ccc; /* Optional: add a border to see the grid sections */
 }
 
-/* Make sure the items fill their slots */
 .content-a, .content-b, .content-c, .content-d {
   width: 100%;
-  height: 100%;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+  height: 50vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .App-header {
@@ -58,19 +51,6 @@ html, body, .App {
   justify-content: center;
   font-size: calc(10px + 2vmin);
   color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .water-fill {
