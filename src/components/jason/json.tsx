@@ -58,6 +58,7 @@ function Jason() {
   const [remember, setRemember] = useState(false);
   const [pressedDisable, setpressedDisable] = useState(false);
   const [selected, setSelected] = useState<any[]>([]);
+  const [clearedstorage, setClearedStorage] = useState(false);
 
   const [open, setOpen] = useState(true);
   const [buttonsettings, setButtonSettings] = useState("normal");
@@ -83,6 +84,9 @@ function Jason() {
   const [loading, setLoading] = useState(false);
 
   const handlerandomise = () => {
+
+    setClearedStorage(false);
+
     setpressedDisable(false);
     setUseconfetti(false);
     yay.pause();
@@ -287,6 +291,7 @@ function Jason() {
           gravity={0.3} // Adjust gravity for a slower fall
           wind={0.01} // Add a slight wind effect
           colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]} // Custom colors
+          confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
         />
       )}
       {/* <Rnd
@@ -433,7 +438,7 @@ function Jason() {
             >
               <ModalOverlay />
               <ModalContent>
-                <Tabs>
+                <Tabs w='450px'>
                   <ModalHeader>
                     <HStack align="center">
                       <TabList>
@@ -537,10 +542,12 @@ function Jason() {
                           <Button
                             colorScheme="red"
                             onClick={() => {
+                              setClearedStorage(true);
                               localStorage.removeItem("input");
                             }}
                             width="40%"
                             marginTop="20px"
+                            isDisabled={clearedstorage}
                           >
                             Clear saved list
                           </Button>
