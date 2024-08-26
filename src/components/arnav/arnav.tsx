@@ -196,6 +196,7 @@ const Arnav = () => {
             <Progress
               value={((initialTime - time) / initialTime) * 100}
               width="100%"
+              height="16px"
               borderRadius="md"
             />
           </Stack>
