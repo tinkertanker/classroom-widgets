@@ -1,6 +1,7 @@
 import logo from './logo.svg';
 import './App.css';
 import Jason from './components/jason/json.tsx';
+import Face from './components/jason/facerecognition.tsx'
 import Arnav from './components/arnav/arnav.js';
 import Boaz from './components/boaz/boaz.js';
 import { useEffect, useState } from 'react';
@@ -30,7 +31,8 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <Jason toggleConfetti={toggleConfetti} />
+        {/* <Jason toggleConfetti={toggleConfetti} /> */}
+        <Face/>
 
         {/* <div className="container">
           <div className="section-1" data-swapy-slot="slot1">
