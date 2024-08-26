@@ -133,7 +133,7 @@ function Jason({ toggleConfetti }) {
             height="12.5%"
             padding="0"
             onClick={handlerandomise}
-            isLoading={loading}
+            isDisabled={loading}
           >
             <Text fontSize="1.1em"> Randomise!!</Text>
           </Button>
@@ -160,7 +160,7 @@ function Jason({ toggleConfetti }) {
                 : "Remove option"}
             </Button>
             <Button
-              isLoading={loading}
+              isDisabled={loading}
               ref={initialResultFocus}
               colorScheme="teal"
               width="35%"
@@ -310,6 +310,7 @@ function Jason({ toggleConfetti }) {
           width="400px"
           height="400px"
           id='jason'
+          padding='3px'
           // width='100%'
           // height='100%'
 
