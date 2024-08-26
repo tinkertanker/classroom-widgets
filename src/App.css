@@ -1,5 +1,32 @@
 .App {
   text-align: center;
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 10px; /* Optional: add some space between the grid items */
+  width: 100%;
+  height: 100%;
+}
+
+.section-1, .section-2, .section-3, .section-4 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #ccc; /* Optional: add a border to see the grid sections */
+}
+
+/* Make sure the items fill their slots */
+.content-a, .content-b, .content-c, .content-d {
+  width: 100%;
+  height: 100%;
 }
 
 .App-logo {
