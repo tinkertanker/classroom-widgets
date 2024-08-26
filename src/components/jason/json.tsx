@@ -48,7 +48,7 @@ let actual_choices: any[];
 
 const sound = require("./yay.mp3");
 let yay = new Audio(sound);
-function Jason() {
+function Jason({ toggleConfetti }) {
   const initialFocus = React.useRef(null);
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
@@ -88,7 +88,7 @@ function Jason() {
     setClearedStorage(false);
 
     setpressedDisable(false);
-    setUseconfetti(false);
+    toggleConfetti(false);
     yay.pause();
     yay.currentTime = 0;
 
@@ -240,7 +240,8 @@ function Jason() {
               actual_choices = [];
               setButtonSettings("result");
               setLoading(false);
-              setUseconfetti(true); // Trigger confetti
+              toggleConfetti(true); // Start confetti
+              setUseconfetti(true)
               yay.play();
 
               // setTimeout(
@@ -308,6 +309,7 @@ function Jason() {
         <Card
           width="400px"
           height="400px"
+          id='jason'
           // width='100%'
           // height='100%'
 
