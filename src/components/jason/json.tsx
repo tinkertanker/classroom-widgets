@@ -2,8 +2,8 @@ import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import Transitions from "./transitions.tsx";
-import Confetti from 'react-confetti'
-import sound from './yay.mp3'
+import Confetti from "react-confetti";
+// import  sound from './yay.mp3';
 
 import { ChakraProvider, useDisclosure } from "@chakra-ui/react";
 import {
@@ -43,31 +43,34 @@ import {
 } from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 
-
 let temporarytime = 0;
 let actual_choices: any[];
+
+const sound = require("./yay.mp3");
 let yay = new Audio(sound);
 function Jason() {
   const initialFocus = React.useRef(null);
   const initialResultFocus = React.useRef(null);
-  const [result, setResult] = useState("Type a list to randomise!");
-  const [input, setInput] = useState("");
+  const [result, setResult] = useState("Enter a list to randomise!");
+  const [input, setInput] = useState(localStorage.getItem("input") ?? ""); // if there is nothing in local storage then input is ""
   const [choices, setChoices] = useState<any[]>([]);
 
   const [remember, setRemember] = useState(false);
+  const [pressedDisable, setpressedDisable] = useState(false);
   const [selected, setSelected] = useState<any[]>([]);
 
   const [open, setOpen] = useState(true);
+  const [buttonsettings, setButtonSettings] = useState("normal");
 
   const [textheight, setTextheight] = useState(0);
   const [boxheight, setBoxheight] = useState(0);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const {
-    isOpen: isresultOpen,
-    onOpen: onresultOpen,
-    onClose: onresultClose,
-  } = useDisclosure();
+  // const {
+  //   isOpen: isresultOpen,
+  //   onOpen: onresultOpen,
+  //   onClose: onresultClose,
+  // } = useDisclosure();
 
   const [animation, setAnimation] = useState(true);
   const [animationtracker, setAnimationtracker] = useState(0);
@@ -80,15 +83,18 @@ function Jason() {
   const [loading, setLoading] = useState(false);
 
   const handlerandomise = () => {
+    setpressedDisable(false);
     setUseconfetti(false);
     yay.pause();
     yay.currentTime = 0;
+
     if (choices.length != 0) {
       setLoading(true);
+      localStorage.setItem("input", input);
       actual_choices = choices;
 
       actual_choices = actual_choices.filter((choice) => {
-        if (selected.includes(choice)) {
+        if (!!~selected.indexOf(choice)) {
           return;
         } else {
           return choice;
@@ -104,33 +110,89 @@ function Jason() {
 
       setAnimationtracker(0);
     } else {
-      setResult("Nothing to randomise!");
+      setResult("Nothing to randomise! Click me to enter a list to randomise!");
       setInput("");
       setChoices([]);
-      onOpen();
       setTimeout(function () {
-        setResult("Type a list to randomise!");
+        setResult("Enter a list to randomise!");
       }, 2000);
     }
   };
 
-  
+  function Displaybuttons({ buttonsettings }) {
+    switch (buttonsettings) {
+      case "normal":
+        return (
+          <Button
+            colorScheme="teal"
+            width="37.5%"
+            height="12.5%"
+            padding="0"
+            onClick={handlerandomise}
+            isLoading={loading}
+          >
+            <Text fontSize="1.1em"> Randomise!!</Text>
+          </Button>
+        );
+      case "result":
+        return (
+          <HStack width="100%" height="12.5%" justifyContent="center">
+            <Button
+              hidden={loading}
+              isDisabled={remember ? true : pressedDisable}
+              colorScheme="yellow"
+              width="35%"
+              height="100%"
+              padding="0"
+              onClick={() => {
+                setSelected([...selected, result]);
+                setpressedDisable(true);
+              }}
+            >
+              {remember
+                ? "Option removed"
+                : pressedDisable
+                ? "Option removed"
+                : "Remove option"}
+            </Button>
+            <Button
+              isLoading={loading}
+              ref={initialResultFocus}
+              colorScheme="teal"
+              width="35%"
+              height="100%"
+              onClick={() => {
+                handlerandomise();
+              }}
+            >
+              Again!
+            </Button>
+          </HStack>
+        );
+    }
+  }
+
   useEffect(() => {
     if (input == "") {
       // This is on initialisation thus no modification should happen
       return;
     }
-    setSelected([]);
+    if (selected.length != 0) {
+      setSelected([]);
+    }
+    if (buttonsettings == "result") {
+      setButtonSettings("normal");
+    }
     let temporarychoices = input.split("\n");
+    temporarychoices = temporarychoices.map((value) => value.trim()); // remove leading and trailing spaces
     temporarychoices = temporarychoices.filter((value, index, array) => {
-      // remove leading and trailing spaces
-      value = value.trim();
-
       if (value == "") {
         // there are only spaces in that line, dont return
+        console.log(value);
       } else {
         if (array.indexOf(value) !== index) {
-          // prevents duplicates, dont return
+          // prevents duplicates, dont return if value exists in array
+          console.log(value);
         } else {
           return value;
         }
@@ -172,10 +234,10 @@ function Jason() {
               setOpen(true);
               setSlowanimation(0);
               actual_choices = [];
+              setButtonSettings("result");
               setLoading(false);
               setUseconfetti(true); // Trigger confetti
-              yay.play()
-
+              yay.play();
 
               // setTimeout(
               //   function () {
@@ -224,10 +286,10 @@ function Jason() {
           numberOfPieces={500} // Increase number of pieces
           gravity={0.3} // Adjust gravity for a slower fall
           wind={0.01} // Add a slight wind effect
-          colors={['#FFC700', '#FF0000', '#2E3192', '#41BBC7']} // Custom colors
+          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]} // Custom colors
         />
       )}
-      <Rnd
+      {/* <Rnd
         id="widget1big"
         default={{
           x: window.innerWidth / 2 - 200,
@@ -237,10 +299,14 @@ function Jason() {
         }}
         minWidth="125px"
         lockAspectRatio={true}
-      >
+      > */}
         <Card
-          width="100%"
-          height="100%"
+          width="400px"
+          height="400px"
+          // width='100%'
+          // height='100%'
+
+
           // position="fixed"
           // onMouseDown={mouseDown}
           // top={cardy + "px"}
@@ -252,6 +318,7 @@ function Jason() {
                 width="87.5%"
                 height="75%"
                 marginTop="5%"
+                marginBottom="2%"
                 padding="0"
                 onClick={() => {
                   if (loading == false) {
@@ -285,7 +352,7 @@ function Jason() {
                         whiteSpace="normal"
                         wordBreak="break-word"
                         fontSize="2xl"
-                        textAlign="left"
+                        textAlign="center"
                         ref={textRef}
                       >
                         {result}
@@ -294,7 +361,8 @@ function Jason() {
                   </Box>
                 </Box>
               </Button>
-              <Button
+              <Displaybuttons buttonsettings={buttonsettings}></Displaybuttons>
+              {/* <Button
                 colorScheme="teal"
                 width="37.5%"
                 height="12.5%"
@@ -302,11 +370,11 @@ function Jason() {
                 onClick={handlerandomise}
                 isLoading={loading}
               >
-                <Text fontSize='1.1em'> Randomise!!</Text>
-              </Button>
+                <Text fontSize="1.1em"> Randomise!!</Text>
+              </Button> */}
             </VStack>
 
-            <Modal
+            {/* <Modal
               initialFocusRef={initialResultFocus}
               onClose={onresultClose}
               isOpen={isresultOpen}
@@ -356,7 +424,7 @@ function Jason() {
                   </HStack>
                 </ModalFooter>
               </ModalContent>
-            </Modal>
+            </Modal> */}
             <Modal
               isOpen={isOpen}
               onClose={onClose}
@@ -380,7 +448,7 @@ function Jason() {
                       />
                     </HStack>
                   </ModalHeader>
-                  <ModalBody h="450px" overflowY="auto">
+                  <ModalBody h="500px" overflowY="auto">
                     <TabPanels>
                       <TabPanel>
                         <VStack>
@@ -437,7 +505,7 @@ function Jason() {
                             value={input}
                             id="textarea"
                             placeholder="Start typing a list to randomise..."
-                            height="200px"
+                            height="250px"
                           ></Textarea>
                           <Text paddingTop="30px" fontSize="md">
                             Note: All leading and trailing spaces, empty rows,
@@ -447,12 +515,13 @@ function Jason() {
                         </VStack>
                       </TabPanel>
                       <TabPanel>
-                        <VStack align="left" paddingBottom="50px">
+                        <VStack align="left" paddingBottom="20px">
                           <Heading size="md">Randomiser Settings</Heading>
+
                           <Checkbox
                             colorScheme="green"
                             defaultChecked={remember}
-                            paddingTop="10px"
+                            paddingTop="20px"
                             onChange={(e) => {
                               setRemember(e.target.checked);
                               if (e.target.checked === false) {
@@ -465,6 +534,16 @@ function Jason() {
                           <Text paddingTop="10px" paddingBottom="5px">
                             Options removed: {selected.join(", ")}
                           </Text>
+                          <Button
+                            colorScheme="red"
+                            onClick={() => {
+                              localStorage.removeItem("input");
+                            }}
+                            width="40%"
+                            marginTop="20px"
+                          >
+                            Clear saved list
+                          </Button>
                         </VStack>
                         <VStack align="left">
                           <Heading size="md">Animation Settings</Heading>
@@ -574,7 +653,7 @@ function Jason() {
             </Modal>
           </CardBody>
         </Card>
-      </Rnd>
+      {/* </Rnd> */}
     </ChakraProvider>
   );
 }
