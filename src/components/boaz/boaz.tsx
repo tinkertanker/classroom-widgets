@@ -1,4 +1,4 @@
-import { Box, ChakraProvider, Flex, Image, Stack } from '@chakra-ui/react'
+import { Box, ChakraProvider, Flex, Image, Input, Stack } from '@chakra-ui/react'
 import { Rnd } from 'react-rnd'
 import shh from './Be-quiet-now.png'
 import shhimg from './Silence-image.png'
@@ -16,25 +16,6 @@ function Boaz() {
     const img = [shh, whisp, yap, neighbour];
     const [displayState, setDisplay] = useState('flex')
     const ping = require('./discord-ping.mp3')
-    const [activeLight, setActiveLight] = useState('red');
-    const [boxWidth, setBoxWidth] = useState(100);
-
-    // Handlers for each light click
-    const handleRedClick = () => {
-        setActiveLight('red');
-        alert('Red light clicked!');
-    };
-
-    const handleYellowClick = () => {
-        setActiveLight('yellow');
-        alert('Yellow light clicked!');
-    };
-
-    const handleGreenClick = () => {
-        setActiveLight('green');
-        alert('Green light clicked!');
-    };
-
 
 
     function plaey() {
@@ -54,17 +35,7 @@ function Boaz() {
         }
         console.log(e.target)
     }
-    const boxRef = useCallback((node) => {
-        if (node !== null) {
-            setBoxWidth(node.getBoundingClientRect().height * 0.4);
-            console.log("bruh this sucks");
-            const resizeObserver2 = new ResizeObserver(() => {
-                console.log(node.getBoundingClientRect().height * 0.4);
-                setBoxWidth(node.getBoundingClientRect().height * 0.4);
-            });
-            resizeObserver2.observe(node);
-        }
-    }, []);
+
     return (
         <div>
             <Rnd id="widget1big" default={{
@@ -93,69 +64,6 @@ function Boaz() {
                         </Box>
                     </Box>
                 </ChakraProvider>
-            </Rnd>
-            <Rnd default={{
-                x: 0,
-                y: 0,
-                width: '100px',
-                height: '250px',
-
-            }} >
-                <Stack direction='row' width='100%' height='100%' bg="white" ref={boxRef}
-                >
-                    <Box id="boxlol"
-                        width={boxWidth + 'px'}
-                        height='100%'
-                        bg="grey"
-                        borderRadius="10px"
-                    >
-                        <Stack direction={['column']} align="center" h="100%" w='100%' spacing="0px" >
-                            {/* Red Light */}
-                            <Box
-                                width="50%"
-                                height="20%"
-                                borderRadius="100%"
-                                bg='red'
-                                filter='auto'
-                                brightness={(activeLight === 'red') ? '200%' : '50%'}
-                                cursor="pointer"
-                                onClick={handleRedClick}
-                                margin="12.5%"
-                                marginTop="25%"
-                            ></Box>
-                            {/* Yellow Light */}
-                            <Box
-                                width="50%"
-                                height="20%"
-                                borderRadius="100%"
-                                bg='yellow'
-                                filter='auto'
-                                brightness={(activeLight === 'yellow') ? '200%' : '50%'}
-                                cursor="pointer"
-                                onClick={handleYellowClick}
-                                margin="12.5%"
-                            ></Box>
-                            {/* Green Light */}
-                            <Box
-                                width="50%"
-                                height="20%"
-                                borderRadius="100%"
-                                bg='green'
-                                filter='auto'
-                                brightness={(activeLight === 'green') ? '200%' : '50%'}
-                                cursor="pointer"
-                                onClick={handleGreenClick}
-                                margin="12.5%"
-                                marginBottom="25%"
-                            ></Box>
-                        </Stack>
-                    </Box>
-                    <Box bg='green' width='80%' height='100%'>
-
-                    </Box>
-
-                </Stack>
-
             </Rnd>
         </div >
     )
