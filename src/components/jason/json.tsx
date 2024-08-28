@@ -281,6 +281,9 @@ function Jason({ toggleConfetti }) {
     }
   }, []);
 
+  useEffect(()=>{
+    setAnimationtransition("SlideFade")
+  },[])
   return (
     <ChakraProvider>
       {/* {useconfetti && (
