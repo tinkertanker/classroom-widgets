@@ -133,7 +133,7 @@ const Arnav = () => {
 
   return (
     <ChakraProvider>
-      <Card overflow="hidden" variant="outline" width="400px" height="400px">
+      <Card overflow="hidden" variant="outline" width="100%" height="100%">
         <CardBody>
           <Box
             bg='gray.100'
@@ -142,6 +142,7 @@ const Arnav = () => {
             alignItems="center"
             justifyContent="center"
             height="100%"
+            width="100%"
           >
             <Stack direction="row" spacing={4} alignItems='center'>
               {values.map((value, index) => (
