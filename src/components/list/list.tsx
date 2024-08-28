@@ -1,5 +1,3 @@
-// TODO : Add YAY when everything done
-
 import {
   Card,
   CardHeader,
@@ -143,7 +141,7 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
   return (
     <ChakraProvider>
       <Card width="100%" height="100%">
-        <CardHeader>
+        <CardHeader paddingBottom="8px">
           <Input
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
@@ -153,9 +151,9 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
             fontWeight="bold"
           />
         </CardHeader>
-        <CardBody overflowY="auto" mt={2}>
-          <Box>
-            <Stack spacing={1}>
+        <CardBody overflowY="auto" mt={2} paddingBlock="0">
+          <Box padding-top="0">
+            <Stack spacing={1} padding-top="0">
               {inputs.map((input, index) =>
                 hideComplete && completed[index] && isChecklist ? null : (
                   <Stack direction="row" align="center" key={index} spacing={1}>
