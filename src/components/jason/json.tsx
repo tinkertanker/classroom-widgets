@@ -78,7 +78,7 @@ function Jason({ toggleConfetti }) {
   const [animationcount, setAnimationcount] = useState(20);
   const [animationspeed, setAnimationspeed] = useState(0.04);
   const [slowanimation, setSlowanimation] = useState(0);
-  const [animationtransition, setAnimationtransition] = useState("SlideFade");
+  const [animationtransition, setAnimationtransition] = useState("ScaleFade");
   const [useconfetti, setUseconfetti] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -241,7 +241,7 @@ function Jason({ toggleConfetti }) {
               setButtonSettings("result");
               setLoading(false);
               toggleConfetti(true); // Start confetti
-              setUseconfetti(true)
+              // setUseconfetti(true)
               yay.play();
 
               // setTimeout(
@@ -283,7 +283,7 @@ function Jason({ toggleConfetti }) {
 
   return (
     <ChakraProvider>
-      {useconfetti && (
+      {/* {useconfetti && (
         <Confetti
           width={window.innerWidth}
           height={window.innerHeight}
@@ -294,7 +294,7 @@ function Jason({ toggleConfetti }) {
           colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]} // Custom colors
           confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
         />
-      )}
+      )} */}
       {/* <Rnd
         id="widget1big"
         default={{
