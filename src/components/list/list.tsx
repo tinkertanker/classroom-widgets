@@ -38,7 +38,7 @@ interface ListProps {
   toggleConfetti: (value: boolean) => boolean;
 }
 
-const List: React.FC<ListProps> = ({ title, toggleConfetti }) => {
+const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
   const [localTitle, setLocalTitle] =     useState<string>(localStorage.getItem('title') || title);
   const [inputs, setInputs] =             useState<string[]>(JSON.parse(localStorage.getItem('inputs') || '[]'));
   const [completed, setCompleted] =       useState<boolean[]>(JSON.parse(localStorage.getItem('completed') || '[]'));
