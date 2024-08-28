@@ -10,9 +10,12 @@ import Confetti from 'react-confetti';
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
-
+  const [useconfetti2, setUseconfetti2] = useState(false);
   const toggleConfetti = (hi) => {
     setUseconfetti(hi);
+  };
+  const toggleConfetti2 = (hi) => {
+    setUseconfetti2(hi);
   };
 
   useEffect(() => {
@@ -47,7 +50,7 @@ function App() {
 
           <div className="section-3" data-swapy-slot="slot3">
             <div className="content-c" data-swapy-item="itemC">
-              <List toggleConfetti={toggleConfetti} useConfetti={useconfetti} />
+              <List toggleConfetti={toggleConfetti2} />
             </div>
           </div>
 
@@ -70,6 +73,19 @@ function App() {
           confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
         />
       )}
+      {useconfetti2 && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.3}
+          wind={0.01}
+          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
+          confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
+        />
+      )}
+
     </div>
   );
 }
