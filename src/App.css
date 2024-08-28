@@ -28,10 +28,9 @@
   margin: 8px;
 }
 
-.content-a, .content-b, .content-c, .content-d {
+.content {
   width: 100%;
-  /* height: calc(50vh - 32px); Adjust to fit within half of the viewport height minus margins */
-  height: 100%;
+  height: calc(33.3vh - 32px);
   display: flex;
   justify-content: center;
   align-items: center;

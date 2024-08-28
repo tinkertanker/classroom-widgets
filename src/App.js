@@ -10,12 +10,9 @@ import Confetti from 'react-confetti';
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
+  const [useconfetti2, setUseconfetti2] = useState(false);
   const N = 2;
   const M = 3;
-
-  const toggleConfetti = (hi) => {
-    setUseconfetti(hi);
-  };
 
   useEffect(() => {
     document.documentElement.style.setProperty('--grid-columns', N);
@@ -23,7 +20,7 @@ function App() {
 
     const container = document.querySelector('.container');
     const swapy = createSwapy(container, {
-      animation: 'spring' // or 'spring' or 'none'
+      animation: 'dynamic'
     });
     swapy.enable(true);
 
@@ -38,31 +35,43 @@ function App() {
         
         <div className="container">
           <div className="slot section-1" data-swapy-slot="slot1">
-            <div className="content-a" data-swapy-item="itemA">
-              <Jason toggleConfetti={toggleConfetti}/>
+            <div className="content" data-swapy-item="itemA">
+              <Jason toggleConfetti={setUseconfetti}/>
             </div>
           </div>
 
           <div className="slot section-2" data-swapy-slot="slot2">
-            <div className="content-b" data-swapy-item="itemB">
+            <div className="content" data-swapy-item="itemB">
               <Arnav />
             </div>
           </div>
 
           <div className="slot section-3" data-swapy-slot="slot3">
-            <div className="content-c" data-swapy-item="itemC">
-              <List toggleConfetti={toggleConfetti} useConfetti={useconfetti} />
+            <div className="content" data-swapy-item="itemC">
+              <List toggleConfetti={setUseconfetti2} />
             </div>
           </div>
 
           <div className="slot section-4" data-swapy-slot="slot4">
-            <div className="content-d" data-swapy-item="itemD">
+            <div className="content" data-swapy-item="itemD">
               <Arnav />
             </div>
           </div>
         </div>
       </header>
       {useconfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.3}
+          wind={0.01}
+          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
+          confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
+        />
+      )}
+      {useconfetti2 && (
         <Confetti
           width={window.innerWidth}
           height={window.innerHeight}
