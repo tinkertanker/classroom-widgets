@@ -144,7 +144,7 @@ const Arnav = () => {
             height="100%"
             width="100%"
           >
-            <Stack direction="row" spacing={4} alignItems='center'>
+            <Stack direction="row" spacing={4} alignItems='center' height="100%">
               {values.map((value, index) => (
                 <React.Fragment key={index}>
                   <Input
@@ -197,6 +197,7 @@ const Arnav = () => {
             <Progress
               value={((initialTime - time) / initialTime) * 100}
               width="100%"
+              height="16px"
               borderRadius="md"
             />
           </Stack>
