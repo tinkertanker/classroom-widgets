@@ -154,10 +154,13 @@ function Face() {
           }}>Take a picture to analyse</Button>
           <Text>Number of people here: {studentNo}</Text>
           {capturedImage && (
-            <Image src={capturedImage} alt="Captured Image" style={{ width: '100%', height: 'auto' }} />
+            <Image
+              src={capturedImage}
+              alt="Captured Image"
+              style={{ width: "100%", height: "auto" }}
+            />
           )}
         </CardBody>
-        
       </Card>
 
       {/* <div className="margin">
