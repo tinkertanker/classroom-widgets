@@ -6,11 +6,19 @@
 
 .container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 0;
+  grid-template-columns: repeat(var(--grid-columns), 1fr);
+  grid-template-rows: repeat(var(--grid-rows), 1fr);
+  gap: 8px;
   width: 100%;
   height: 100%;
+}
+
+.slot {
+  background: #111;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .section-1, .section-2, .section-3, .section-4 {
@@ -22,7 +30,8 @@
 
 .content-a, .content-b, .content-c, .content-d {
   width: 100%;
-  height: calc(50vh - 32px); /* Adjust to fit within half of the viewport height minus margins */
+  /* height: calc(50vh - 32px); Adjust to fit within half of the viewport height minus margins */
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
