@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useRef, useState } from "react";
-import { ChakraProvider, Text, Card, CardBody ,Button} from "@chakra-ui/react";
+import { ChakraProvider, Text, Card, CardBody ,Button, Image} from "@chakra-ui/react";
 
 import * as faceapi from "face-api.js";
 await faceapi.nets.ssdMobilenetv1.loadFromUri("models/");
@@ -11,6 +11,7 @@ await faceapi.nets.ageGenderNet.loadFromUri("models/");
 function Face() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [studentNo, setStudentNo] = useState(0);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
 
   React.useEffect(() => {
     navigator.mediaDevices
@@ -127,9 +128,34 @@ function Face() {
             height="480px"
           />
           <canvas id="overlay" style={{ position: "relative" }} />
-          <Button>Take a picture to analyse</Button>
-          <Text>Number of people here: {studentNo}</Text>
+          <Button onClick={() => {
+            let canvas = document.getElementById("overlay") as HTMLCanvasElement;
+            let video = document.getElementById("video") as HTMLVideoElement;
 
+            // Get the 2D rendering context
+            let ctx = canvas.getContext('2d')!;
+
+            // Save the current canvas state
+            ctx.save();
+
+            // Flip the canvas horizontally
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+
+            // Draw the mirrored video frame
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Restore the canvas to its original state
+            ctx.restore();
+
+            let image_data_url = canvas.toDataURL('image/jpeg');
+            setCapturedImage(image_data_url);
+            
+          }}>Take a picture to analyse</Button>
+          <Text>Number of people here: {studentNo}</Text>
+          {capturedImage && (
+            <Image src={capturedImage} alt="Captured Image" style={{ width: '100%', height: 'auto' }} />
+          )}
         </CardBody>
         
       </Card>
