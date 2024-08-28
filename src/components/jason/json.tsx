@@ -5,7 +5,7 @@ import Transitions from "./transitions.tsx";
 import Confetti from "react-confetti";
 // import  sound from './yay.mp3';
 
-import { ChakraProvider, useDisclosure } from "@chakra-ui/react";
+import { CardFooter, ChakraProvider, useDisclosure } from "@chakra-ui/react";
 import {
   Checkbox,
   Radio,
@@ -84,7 +84,6 @@ function Jason({ toggleConfetti }) {
   const [loading, setLoading] = useState(false);
 
   const handlerandomise = () => {
-
     setClearedStorage(false);
 
     setpressedDisable(false);
@@ -130,7 +129,7 @@ function Jason({ toggleConfetti }) {
           <Button
             colorScheme="teal"
             width="37.5%"
-            height="12.5%"
+            height="60%"
             padding="0"
             onClick={handlerandomise}
             isDisabled={loading}
@@ -140,7 +139,7 @@ function Jason({ toggleConfetti }) {
         );
       case "result":
         return (
-          <HStack width="100%" height="12.5%" justifyContent="center">
+          <HStack width="100%" height="60%" justifyContent="center">
             <Button
               hidden={loading}
               isDisabled={remember ? true : pressedDisable}
@@ -281,9 +280,10 @@ function Jason({ toggleConfetti }) {
     }
   }, []);
 
-  useEffect(()=>{
-    setAnimationtransition("SlideFade")
-  },[])
+  // I dont know why this works but it fixes a problem with the animation in swapy so dont touch it
+  useEffect(() => {
+    setAnimationtransition("SlideFade");
+  }, []);
   return (
     <ChakraProvider>
       {/* {useconfetti && (
@@ -318,62 +318,61 @@ function Jason({ toggleConfetti }) {
           // height='100%'
 
 
-          // position="fixed"
-          // onMouseDown={mouseDown}
-          // top={cardy + "px"}
-          // left={cardx + "px"}
-        >
-          <CardBody width="100%" height="100%" padding="0">
-            <VStack width="100%" height="100%">
-              <Button
-                width="87.5%"
-                height="75%"
-                marginTop="5%"
-                marginBottom="2%"
-                padding="0"
-                onClick={() => {
-                  if (loading == false) {
-                    onOpen();
-                  }
-                }}
+        // position="fixed"
+        // onMouseDown={mouseDown}
+        // top={cardy + "px"}
+        // left={cardx + "px"}
+      >
+        <CardBody width="100%" height="80%" padding="0">
+          <VStack width="100%" height="100%">
+            <Button
+              width="87.5%"
+              height="95%"
+              marginTop="5%"
+              marginBottom="2%"
+              padding="0"
+              onClick={() => {
+                if (loading == false) {
+                  onOpen();
+                }
+              }}
+            >
+              {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
+              <Box
+                ref={boxRef}
+                height="100%"
+                width="100%"
+                overflowY="auto"
+                display="flex"
+                alignItems={textheight > boxheight ? "start" : "center"}
+                justifyContent="center"
               >
-                {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
                 <Box
-                  ref={boxRef}
-                  height="100%"
-                  width="100%"
-                  overflowY="auto"
                   display="flex"
-                  alignItems={textheight > boxheight ? "start" : "center"}
                   justifyContent="center"
+                  alignItems="center"
+                  width="95%"
                 >
-                  <Box
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    width="95%"
+                  <Transitions
+                    choice={animationtransition}
+                    open={open}
+                    animationspeed={animationspeed}
+                    slowanimation={slowanimation}
                   >
-                    <Transitions
-                      choice={animationtransition}
-                      open={open}
-                      animationspeed={animationspeed}
-                      slowanimation={slowanimation}
+                    <Text
+                      whiteSpace="normal"
+                      wordBreak="break-word"
+                      fontSize="2xl"
+                      textAlign="center"
+                      ref={textRef}
                     >
-                      <Text
-                        whiteSpace="normal"
-                        wordBreak="break-word"
-                        fontSize="2xl"
-                        textAlign="center"
-                        ref={textRef}
-                      >
-                        {result}
-                      </Text>
-                    </Transitions>
-                  </Box>
+                      {result}
+                    </Text>
+                  </Transitions>
                 </Box>
-              </Button>
-              <Displaybuttons buttonsettings={buttonsettings}></Displaybuttons>
-              {/* <Button
+              </Box>
+            </Button>
+            {/* <Button
                 colorScheme="teal"
                 width="37.5%"
                 height="12.5%"
@@ -383,9 +382,9 @@ function Jason({ toggleConfetti }) {
               >
                 <Text fontSize="1.1em"> Randomise!!</Text>
               </Button> */}
-            </VStack>
+          </VStack>
 
-            {/* <Modal
+          {/* <Modal
               initialFocusRef={initialResultFocus}
               onClose={onresultClose}
               isOpen={isresultOpen}
@@ -436,194 +435,189 @@ function Jason({ toggleConfetti }) {
                 </ModalFooter>
               </ModalContent>
             </Modal> */}
-            <Modal
-              isOpen={isOpen}
-              onClose={onClose}
-              initialFocusRef={initialFocus}
-              isCentered
-            >
-              <ModalOverlay />
-              <ModalContent>
-                <Tabs w='450px'>
-                  <ModalHeader>
-                    <HStack align="center">
-                      <TabList>
-                        <Tab marginBottom="0px">List</Tab>
-                        <Tab marginBottom="0px">Settings</Tab>
-                      </TabList>
-                      <ModalCloseButton
-                        position="static"
-                        marginLeft="220px"
-                        size="md"
-                        marginTop="1px"
-                      />
-                    </HStack>
-                  </ModalHeader>
-                  <ModalBody h="500px" overflowY="auto">
-                    <TabPanels>
-                      <TabPanel>
-                        <VStack>
-                          <HStack paddingBottom="20px">
-                            <Heading size="md">My list</Heading>
+          <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            initialFocusRef={initialFocus}
+            isCentered
+          >
+            <ModalOverlay />
+            <ModalContent>
+              <Tabs w="450px">
+                <ModalHeader>
+                  <HStack align="center">
+                    <TabList>
+                      <Tab marginBottom="0px">List</Tab>
+                      <Tab marginBottom="0px">Settings</Tab>
+                    </TabList>
+                    <ModalCloseButton
+                      position="static"
+                      marginLeft="220px"
+                      size="md"
+                      marginTop="1px"
+                    />
+                  </HStack>
+                </ModalHeader>
+                <ModalBody h="500px" overflowY="auto">
+                  <TabPanels>
+                    <TabPanel>
+                      <VStack>
+                        <HStack paddingBottom="20px">
+                          <Heading size="md">My list</Heading>
 
-                            <Menu>
-                              <MenuButton
-                                marginLeft="45px"
-                                as={Button}
-                                rightIcon={<ChevronDownIcon />}
-                                colorScheme="yellow"
-                              >
-                                Suggestions
-                              </MenuButton>
-                              <MenuList>
-                                <MenuItem
-                                  onClick={() =>
-                                    setInput(
-                                      "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30"
-                                    )
-                                  }
-                                >
-                                  Generate numbers 1 to 30
-                                </MenuItem>
-                                <MenuItem
-                                  onClick={() =>
-                                    setInput(
-                                      "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ"
-                                    )
-                                  }
-                                >
-                                  Generate the alphabet
-                                </MenuItem>
-                              </MenuList>
-                            </Menu>
-                            <Button
-                              colorScheme="red"
-                              size="md"
-                              onClick={() => {
-                                setInput("");
-                                setChoices([]);
-                                setSelected([]);
-                              }}
+                          <Menu>
+                            <MenuButton
+                              marginLeft="45px"
+                              as={Button}
+                              rightIcon={<ChevronDownIcon />}
+                              colorScheme="yellow"
                             >
-                              Clear list
-                            </Button>
-                          </HStack>
-
-                          <Textarea
-                            onChange={(e) => setInput(e.target.value)}
-                            ref={initialFocus}
-                            resize="none"
-                            value={input}
-                            id="textarea"
-                            placeholder="Start typing a list to randomise..."
-                            height="250px"
-                          ></Textarea>
-                          <Text paddingTop="30px" fontSize="md">
-                            Note: All leading and trailing spaces, empty rows,
-                            and duplicates in the list are automatically removed
-                            when generating.
-                          </Text>
-                        </VStack>
-                      </TabPanel>
-                      <TabPanel>
-                        <VStack align="left" paddingBottom="20px">
-                          <Heading size="md">Randomiser Settings</Heading>
-
-                          <Checkbox
-                            colorScheme="green"
-                            defaultChecked={remember}
-                            paddingTop="20px"
-                            onChange={(e) => {
-                              setRemember(e.target.checked);
-                              if (e.target.checked === false) {
-                                setSelected([]);
-                              }
-                            }}
-                          >
-                            Prevent picked options from repeating
-                          </Checkbox>
-                          <Text paddingTop="10px" paddingBottom="5px">
-                            Options removed: {selected.join(", ")}
-                          </Text>
+                              Suggestions
+                            </MenuButton>
+                            <MenuList>
+                              <MenuItem
+                                onClick={() =>
+                                  setInput(
+                                    "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30"
+                                  )
+                                }
+                              >
+                                Generate numbers 1 to 30
+                              </MenuItem>
+                              <MenuItem
+                                onClick={() =>
+                                  setInput(
+                                    "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ"
+                                  )
+                                }
+                              >
+                                Generate the alphabet
+                              </MenuItem>
+                            </MenuList>
+                          </Menu>
                           <Button
                             colorScheme="red"
+                            size="md"
                             onClick={() => {
-                              setClearedStorage(true);
-                              localStorage.removeItem("input");
+                              setInput("");
+                              setChoices([]);
+                              setSelected([]);
                             }}
-                            width="40%"
-                            marginTop="20px"
-                            isDisabled={clearedstorage}
                           >
-                            Clear saved list
+                            Clear list
                           </Button>
-                        </VStack>
-                        <VStack align="left">
-                          <Heading size="md">Animation Settings</Heading>
-                          <Checkbox
-                            colorScheme="green"
-                            defaultChecked={animation}
-                            paddingTop="10px"
-                            onChange={(e) => {
-                              setAnimation(e.target.checked);
-                              if (e.target.checked === false) {
-                                temporarytime = animationcount;
-                                setAnimationcount(0);
-                              } else {
-                                setAnimationcount(temporarytime);
-                              }
-                            }}
-                          >
-                            Enable Animation
-                          </Checkbox>
-                          <Text paddingTop="10px" paddingBottom="5px">
-                            Animation Type
-                          </Text>
-                          <RadioGroup
-                            isDisabled={!animation}
-                            onChange={(e) => {
-                              setAnimationtransition(e);
-                            }}
-                            value={animationtransition}
-                          >
-                            <HStack direction="row">
-                              <Radio value="Fade">Fade</Radio>
-                              <Radio value="ScaleFade">ScaleFade</Radio>
-                              <Radio value="SlideFade">SlideFade</Radio>
-                            </HStack>
-                          </RadioGroup>
-                          <Text paddingTop="10px" paddingBottom="5px">
-                            Animation Duration
-                          </Text>
-                          <Slider
-                            isDisabled={!animation}
-                            defaultValue={
-                              animation ? animationcount : temporarytime
+                        </HStack>
+
+                        <Textarea
+                          onChange={(e) => setInput(e.target.value)}
+                          ref={initialFocus}
+                          resize="none"
+                          value={input}
+                          id="textarea"
+                          placeholder="Start typing a list to randomise..."
+                          height="250px"
+                        ></Textarea>
+                        <Text paddingTop="30px" fontSize="md">
+                          Note: All leading and trailing spaces, empty rows, and
+                          duplicates in the list are automatically removed when
+                          generating.
+                        </Text>
+                      </VStack>
+                    </TabPanel>
+                    <TabPanel>
+                      <VStack align="left" paddingBottom="20px">
+                        <Heading size="md">Randomiser Settings</Heading>
+
+                        <Checkbox
+                          colorScheme="green"
+                          defaultChecked={remember}
+                          paddingTop="20px"
+                          onChange={(e) => {
+                            setRemember(e.target.checked);
+                            if (e.target.checked === false) {
+                              setSelected([]);
                             }
-                            min={0}
-                            max={30}
-                            onChangeEnd={(val) => setAnimationcount(val)}
-                          >
-                            <SliderMark value={0} mt="2" ml="-3" fontSize="sm">
-                              Short
-                            </SliderMark>
-                            <SliderMark value={15} mt="2" ml="-6" fontSize="sm">
-                              Medium
-                            </SliderMark>
-                            <SliderMark
-                              value={30}
-                              mt="2"
-                              ml="-3.5"
-                              fontSize="sm"
-                            >
-                              Long
-                            </SliderMark>
-                            <SliderTrack>
-                              <SliderFilledTrack />
-                            </SliderTrack>
-                            <SliderThumb />
-                          </Slider>
-                          {/* <Text paddingTop="40px" paddingBottom="5px">
+                          }}
+                        >
+                          Prevent picked options from repeating
+                        </Checkbox>
+                        <Text paddingTop="10px" paddingBottom="5px">
+                          Options removed: {selected.join(", ")}
+                        </Text>
+                        <Button
+                          colorScheme="red"
+                          onClick={() => {
+                            setClearedStorage(true);
+                            localStorage.removeItem("input");
+                          }}
+                          width="40%"
+                          marginTop="20px"
+                          isDisabled={clearedstorage}
+                        >
+                          Clear saved list
+                        </Button>
+                      </VStack>
+                      <VStack align="left">
+                        <Heading size="md">Animation Settings</Heading>
+                        <Checkbox
+                          colorScheme="green"
+                          defaultChecked={animation}
+                          paddingTop="10px"
+                          onChange={(e) => {
+                            setAnimation(e.target.checked);
+                            if (e.target.checked === false) {
+                              temporarytime = animationcount;
+                              setAnimationcount(0);
+                            } else {
+                              setAnimationcount(temporarytime);
+                            }
+                          }}
+                        >
+                          Enable Animation
+                        </Checkbox>
+                        <Text paddingTop="10px" paddingBottom="5px">
+                          Animation Type
+                        </Text>
+                        <RadioGroup
+                          isDisabled={!animation}
+                          onChange={(e) => {
+                            setAnimationtransition(e);
+                          }}
+                          value={animationtransition}
+                        >
+                          <HStack direction="row">
+                            <Radio value="Fade">Fade</Radio>
+                            <Radio value="ScaleFade">ScaleFade</Radio>
+                            <Radio value="SlideFade">SlideFade</Radio>
+                          </HStack>
+                        </RadioGroup>
+                        <Text paddingTop="10px" paddingBottom="5px">
+                          Animation Duration
+                        </Text>
+                        <Slider
+                          isDisabled={!animation}
+                          defaultValue={
+                            animation ? animationcount : temporarytime
+                          }
+                          min={0}
+                          max={30}
+                          onChangeEnd={(val) => setAnimationcount(val)}
+                        >
+                          <SliderMark value={0} mt="2" ml="-3" fontSize="sm">
+                            Short
+                          </SliderMark>
+                          <SliderMark value={15} mt="2" ml="-6" fontSize="sm">
+                            Medium
+                          </SliderMark>
+                          <SliderMark value={30} mt="2" ml="-3.5" fontSize="sm">
+                            Long
+                          </SliderMark>
+                          <SliderTrack>
+                            <SliderFilledTrack />
+                          </SliderTrack>
+                          <SliderThumb />
+                        </Slider>
+                        {/* <Text paddingTop="40px" paddingBottom="5px">
                     Animation Speed
                   </Text>
                   <Slider
@@ -653,19 +647,26 @@ function Jason({ toggleConfetti }) {
                     </SliderTrack>
                     <SliderThumb />
                   </Slider> */}
-                        </VStack>
-                      </TabPanel>
-                    </TabPanels>
-                  </ModalBody>
-                  <ModalFooter
-                    paddingTop="3px"
-                    paddingBottom="3px"
-                  ></ModalFooter>
-                </Tabs>
-              </ModalContent>
-            </Modal>
-          </CardBody>
-        </Card>
+                      </VStack>
+                    </TabPanel>
+                  </TabPanels>
+                </ModalBody>
+                <ModalFooter paddingTop="3px" paddingBottom="3px"></ModalFooter>
+              </Tabs>
+            </ModalContent>
+          </Modal>
+        </CardBody>
+        <CardFooter
+          height="20%"
+          width="100%"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          padding="0"
+        >
+          <Displaybuttons buttonsettings={buttonsettings}></Displaybuttons>
+        </CardFooter>
+      </Card>
       {/* </Rnd> */}
     </ChakraProvider>
   );
