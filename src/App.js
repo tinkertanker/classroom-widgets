@@ -18,7 +18,7 @@ function App() {
   useEffect(() => {
     const container = document.querySelector('.container');
     const swapy = createSwapy(container, {
-      animation: 'dynamic' // or spring or none
+      animation: 'spring' // or spring or none
     });
     swapy.enable(true);
 
