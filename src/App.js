@@ -47,7 +47,7 @@ function App() {
 
           <div className="section-3" data-swapy-slot="slot3">
             <div className="content-c" data-swapy-item="itemC">
-              <List toggleConfetti={toggleConfetti} />
+              <List toggleConfetti={toggleConfetti} useConfetti={useconfetti} />
             </div>
           </div>
 

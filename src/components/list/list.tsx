@@ -35,10 +35,11 @@ import AlertDialogExample from "../main/alert.tsx";
 
 interface ListProps {
   title: string;
-  toggleConfetti: boolean;
+  toggleConfetti: (value: boolean) => boolean;
+  useConfetti: boolean;
 }
 
-const List: React.FC<ListProps> = ({ title, toggleConfetti }) => {
+const List: React.FC<ListProps> = ({ title, toggleConfetti, useConfetti }) => {
   const [localTitle, setLocalTitle] =     useState<string>(localStorage.getItem('title') || title);
   const [inputs, setInputs] =             useState<string[]>(JSON.parse(localStorage.getItem('inputs') || '[]'));
   const [completed, setCompleted] =       useState<boolean[]>(JSON.parse(localStorage.getItem('completed') || '[]'));
@@ -62,7 +63,7 @@ const List: React.FC<ListProps> = ({ title, toggleConfetti }) => {
       return newInputs;
     });
     setCompleted([...completed, false]);
-    toggleConfetti = false;
+    toggleConfetti(false);
   };
 
   const handleInputChange = (index: number, value: string) => {
@@ -81,8 +82,10 @@ const List: React.FC<ListProps> = ({ title, toggleConfetti }) => {
     console.log(sumCompleted);
 
     if (inputs.length === sumCompleted && inputs.length > 0) {
-      toggleConfetti = true;
       console.log('hi');
+      if (useConfetti) return;
+      toggleConfetti(false);
+      setTimeout(() => toggleConfetti(true), 1000);
     }
   };
   // useEffect(() => {
