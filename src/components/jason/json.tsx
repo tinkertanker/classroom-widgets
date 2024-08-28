@@ -48,7 +48,7 @@ let actual_choices: any[];
 
 const sound = require("./yay.mp3");
 let yay = new Audio(sound);
-function Jason() {
+function Jason({ toggleConfetti }) {
   const initialFocus = React.useRef(null);
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
@@ -88,7 +88,7 @@ function Jason() {
     setClearedStorage(false);
 
     setpressedDisable(false);
-    setUseconfetti(false);
+    toggleConfetti(false);
     yay.pause();
     yay.currentTime = 0;
 
@@ -133,7 +133,7 @@ function Jason() {
             height="12.5%"
             padding="0"
             onClick={handlerandomise}
-            isLoading={loading}
+            isDisabled={loading}
           >
             <Text fontSize="1.1em"> Randomise!!</Text>
           </Button>
@@ -160,7 +160,7 @@ function Jason() {
                 : "Remove option"}
             </Button>
             <Button
-              isLoading={loading}
+              isDisabled={loading}
               ref={initialResultFocus}
               colorScheme="teal"
               width="35%"
@@ -240,7 +240,8 @@ function Jason() {
               actual_choices = [];
               setButtonSettings("result");
               setLoading(false);
-              setUseconfetti(true); // Trigger confetti
+              toggleConfetti(true); // Start confetti
+              setUseconfetti(true)
               yay.play();
 
               // setTimeout(
@@ -306,8 +307,10 @@ function Jason() {
         lockAspectRatio={true}
       > */}
         <Card
-          width="100%"
-          height="100%"
+          width="400px"
+          height="400px"
+          id='jason'
+          padding='3px'
           // width='100%'
           // height='100%'
 
