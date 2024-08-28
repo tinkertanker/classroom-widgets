@@ -143,7 +143,7 @@ const Arnav = () => {
             justifyContent="center"
             height="100%"
           >
-            <Stack direction="row" spacing={4} alignItems='center'>
+            <Stack direction="row" spacing={4} alignItems='center' height="100%">
               {values.map((value, index) => (
                 <React.Fragment key={index}>
                   <Input
