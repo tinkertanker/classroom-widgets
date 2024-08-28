@@ -1,6 +1,18 @@
 import * as React from "react";
 import { useRef, useState } from "react";
-import { ChakraProvider, Text, Card, CardBody ,Button, Image} from "@chakra-ui/react";
+import {
+  ChakraProvider,
+  Text,
+  Card,
+  CardBody,
+  Button,
+  Image,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+} from "@chakra-ui/react";
+import { ChevronDownIcon } from "@chakra-ui/icons";
 
 import * as faceapi from "face-api.js";
 await faceapi.nets.ssdMobilenetv1.loadFromUri("models/");
@@ -12,6 +24,30 @@ function Face() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [studentNo, setStudentNo] = useState(0);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [action, setAction] = useState("video");
+
+  function Displayaction({ action }) {
+    switch (action) {
+      case "video":
+        return (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              id="video"
+              style={{ transform: "scaleX(-1)", position: "absolute" }}
+              width="640px"
+              height="480px"
+            />
+            <canvas id="overlay" style={{ position: "relative" }} />
+          </>
+        );
+      case "pic":
+        return <p>Hi</p>;
+    }
+  }
 
   React.useEffect(() => {
     navigator.mediaDevices
@@ -130,26 +166,26 @@ function Face() {
           <canvas id="overlay" style={{ position: "relative" }} />
           <Button onClick={() => {
             let canvas = document.getElementById("overlay") as HTMLCanvasElement;
-            let video = document.getElementById("video") as HTMLVideoElement;
+              let video = document.getElementById("video") as HTMLVideoElement;
 
-            // Get the 2D rendering context
+              // Get the 2D rendering context
             let ctx = canvas.getContext('2d')!;
 
-            // Save the current canvas state
-            ctx.save();
+              // Save the current canvas state
+              ctx.save();
 
-            // Flip the canvas horizontally
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
+              // Flip the canvas horizontally
+              ctx.translate(canvas.width, 0);
+              ctx.scale(-1, 1);
 
-            // Draw the mirrored video frame
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              // Draw the mirrored video frame
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Restore the canvas to its original state
-            ctx.restore();
+              // Restore the canvas to its original state
+              ctx.restore();
 
             let image_data_url = canvas.toDataURL('image/jpeg');
-            setCapturedImage(image_data_url);
+              setCapturedImage(image_data_url);
             
           }}>Take a picture to analyse</Button>
           <Text>Number of people here: {studentNo}</Text>
