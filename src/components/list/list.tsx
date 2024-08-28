@@ -143,7 +143,7 @@ const List: React.FC<ListProps> = ({ title, toggleConfetti, useConfetti }) => {
 
   return (
     <ChakraProvider>
-      <Card width="400px" maxHeight="400px">
+      <Card width="100%" height="100%">
         <CardHeader>
           <Input
             value={localTitle}
