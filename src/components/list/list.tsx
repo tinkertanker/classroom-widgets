@@ -37,7 +37,7 @@ interface ListProps {
   title: string;
 }
 
-const List: React.FC<ListProps> = ({ title }) => {
+const List: React.FC<ListProps> = ({ title="" }) => {
   const [localTitle, setLocalTitle] =     useState<string>(localStorage.getItem('title') || title);
   const [inputs, setInputs] =             useState<string[]>(JSON.parse(localStorage.getItem('inputs') || '[]'));
   const [completed, setCompleted] =       useState<boolean[]>(JSON.parse(localStorage.getItem('completed') || '[]'));
