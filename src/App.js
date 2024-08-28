@@ -5,6 +5,8 @@ import Arnav from './components/arnav/arnav.js';
 import Boaz from './components/boaz/boaz.tsx';
 import TrafficLight from './components/boaz/boazbutbad.tsx';
 import AudioVolumeMonitor from './components/boaz/volumeLevel.tsx';
+import ShortenLink from './components/boaz/filename.tsx';
+import { ChakraProvider } from '@chakra-ui/react';
 function App() {
   return (
     <div className="App">
@@ -22,11 +24,14 @@ function App() {
         >
           Learn React
         </a>
-        <AudioVolumeMonitor />
-        <Jason />
-        <Arnav />
-        <Boaz />
-        <TrafficLight />
+        <ChakraProvider>
+          <Jason />
+          <Arnav />
+          <Boaz />
+          <AudioVolumeMonitor />
+          <TrafficLight />
+          <ShortenLink />
+        </ChakraProvider>
       </header>
     </div>
   );

@@ -1,3 +1,14 @@
+import {
+    Box,
+    Card,
+    CardBody,
+    CardHeader,
+    Heading,
+    Input,
+    Text,
+    VStack,
+    HStack,
+} from '@chakra-ui/react';
 import React, { useEffect, useRef, useState } from 'react';
 
 const AudioVolumeMonitor: React.FC = () => {
@@ -29,7 +40,12 @@ const AudioVolumeMonitor: React.FC = () => {
                 source.connect(analyserRef.current);
 
                 mediaStreamRef.current = stream;
-                monitorVolume();
+
+                const intervalId = setInterval(() => {
+                    monitorVolume();
+                }, 100); // Check volume every 0.5 seconds
+
+                return () => clearInterval(intervalId);
             } catch (err) {
                 console.error('Error accessing the microphone', err);
             }
@@ -73,70 +89,98 @@ const AudioVolumeMonitor: React.FC = () => {
 
             let sum = 0;
             for (let i = 0; i < dataArrayRef.current.length; i++) {
-                sum += (dataArrayRef.current[i] - 128) ** 2;
+                const value = dataArrayRef.current[i] - 128; // Centering the data around 0
+                sum += value * value; // Squaring by multiplication for efficiency
             }
             const rms = Math.sqrt(sum / dataArrayRef.current.length);
-            setVolume(rms);
+            const normalizedVolume = (rms / 128) * 100; // Normalize the volume to a percentage
+
+            setVolume(Math.min(normalizedVolume, 100)); // Cap at 100%
 
             // Check if the volume exceeds the threshold and cooldown is not active
-            if (rms > thresholdRef.current && !isCooldownRef.current) {
+            if (normalizedVolume > thresholdRef.current && !isCooldownRef.current) {
                 playAlertSound();
                 startCooldown();
             }
-
-            requestAnimationFrame(monitorVolume);
         }
     };
 
     const playAlertSound = () => {
         if (!sound.current) {
-            sound.current = new Audio(require("./discord-ping.mp3"));
+            sound.current = new Audio(require('./discord-ping.mp3'));
             sound.current.volume = 0.3;
         }
         sound.current.play();
     };
 
     return (
-        <div>
-            <div style={{ marginBottom: '10px' }}>
-                Set Volume Threshold:
-                <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={threshold}
-                    onChange={(e) => setThreshold(Number(e.target.value))}
-                />
-            </div>
-            <div style={{ marginBottom: '10px' }}>Volume Level: {volume.toFixed(2)}</div>
-            <div
-                style={{
-                    width: '300px',
-                    height: '20px',
-                    background: 'lightgray',
-                    position: 'relative',
-                }}
-            >
-                <div
-                    style={{
-                        width: `${volume * 3}px`,
-                        height: '100%',
-                        background: volume > threshold ? 'red' : 'green',
-                    }}
-                ></div>
-            </div>
-
-            {/* Cooldown Timer Display */}
-            <div style={{ marginTop: '20px' }}>
-                {isCooldownRef.current ? (
-                    <div>
-                        Cooldown: {cooldownTime} second{cooldownTime !== 1 ? 's' : ''} remaining
-                    </div>
-                ) : (
-                    <div>Bell is ready to play!</div>
-                )}
-            </div>
-        </div>
+        <Card
+            width='400px'
+            height='400px'
+            borderWidth='1px'
+            borderRadius='md'
+            boxShadow='md'
+            overflow='hidden'
+            display='flex'
+            flexDirection='column'
+        >
+            <CardHeader>
+                <Heading as='h3' size='md' mb={2}>
+                    Audio Volume Monitor
+                </Heading>
+                <VStack align='stretch' spacing={4}>
+                    <Box>
+                        <Text fontSize='sm' mb={2}>
+                            Set Volume Threshold
+                        </Text>
+                        <Input
+                            type='range'
+                            min='0'
+                            max='100'
+                            value={threshold}
+                            onChange={(e) => setThreshold(Number(e.target.value))}
+                            aria-label='Volume Threshold'
+                        />
+                        <Text mt={2} fontSize='sm'>
+                            Threshold: {threshold}
+                        </Text>
+                    </Box>
+                    <Box>
+                        <Text fontSize='sm'>Volume Level: {volume.toFixed(2)}</Text>
+                    </Box>
+                </VStack>
+            </CardHeader>
+            <CardBody flex='1'>
+                <Box
+                    width='100%'
+                    height='20px'
+                    background='gray.200'
+                    borderRadius='md'
+                    position='relative'
+                >
+                    <Box
+                        width={`${volume}%`} // Use volume to determine width
+                        height='100%'
+                        background={volume > threshold ? 'red.500' : 'green.500'}
+                        borderRadius='md'
+                        transition='width 0.2s ease'
+                    ></Box>
+                </Box>
+                <HStack mt={4} spacing={4} justify='space-between'>
+                    <Text fontSize='sm'>Cooldown Timer:</Text>
+                    {isCooldownRef.current ? (
+                        <Text fontSize='sm' color='red.500'>
+                            {cooldownTime} second{cooldownTime !== 1 ? 's' : ''}
+                            remaining
+                        </Text>
+                    ) : (
+                        <Text fontSize='sm' color='green.500'>
+                            Bell is ready to play!
+                        </Text>
+                    )}
+                </HStack>
+            </CardBody>
+        </Card>
     );
 };
 

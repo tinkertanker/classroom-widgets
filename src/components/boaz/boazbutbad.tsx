@@ -1,147 +1,152 @@
 import {
-    Box, ChakraProvider, Flex, Image, Input, Menu,
-    MenuButton,
-    MenuList,
-    MenuItem,
-    MenuItemOption,
-    MenuGroup,
-    MenuOptionGroup,
-    MenuDivider, Stack
-} from '@chakra-ui/react'
-import { Rnd } from 'react-rnd'
-import * as React from 'react';
-import { useState, useCallback } from 'react'
+    Box, Flex, Input, Stack, Card
+} from '@chakra-ui/react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import ContextMenus from './contextMenu.tsx';
+
 function TrafficLight() {
-    const [activeLight, setActiveLight] = useState('red');
-    const [boxWidth, setBoxWidth] = useState(100);
-    const [coords, setCoords] = useState({ x: 0, y: 0 })
-    const [num, setnum] = useState(0);
-    const initialContextMenu = {
-        show: false,
-        x: 0,
-        y: 0,
-    }
-    const [contextMenu, setContextMenu] = useState(initialContextMenu)
-    const boxRef = useCallback((node) => {
-        if (node !== null) {
-            setBoxWidth(Math.round(node.getBoundingClientRect().height) / 5 * 2);
-            console.log("bruh this sucks");
-            const resizeObserver2 = new ResizeObserver(() => {
-                console.log(Math.round(node.getBoundingClientRect().height / 5 * 2));
-                setBoxWidth(Math.round(node.getBoundingClientRect().height) / 5 * 2);
+    const [state, setState] = useState({
+        activeLight: 'red',
+        boxWidth: 100,
+        contextMenu: { show: false, x: 0, y: 0 },
+        num: 0
+    });
+
+    const boxRef = useRef(null);
+
+    useEffect(() => {
+        if (boxRef.current) {
+            const node = boxRef.current;
+            const resizeObserver = new ResizeObserver(() => {
+                const newWidth = Math.round(node.getBoundingClientRect().height / 5 * 2);
+                setState(prevState => ({
+                    ...prevState,
+                    boxWidth: newWidth
+                }));
             });
-            resizeObserver2.observe(node);
+
+            // Set initial box width
+            setState(prevState => ({
+                ...prevState,
+                boxWidth: Math.round(node.getBoundingClientRect().height / 5 * 2)
+            }));
+
+            resizeObserver.observe(node);
+
+            return () => {
+                resizeObserver.disconnect();
+            };
+        }
+    }, []); // Empty dependency array ensures this runs only once when the component mounts
+
+    const handleContextMenu = useCallback((e) => {
+        const target = e.target.closest("#baller");
+        if (target) {
+            const { pageX, pageY } = e;
+            e.preventDefault();
+            setState(prevState => ({
+                ...prevState,
+                contextMenu: { show: true, x: pageX, y: pageY }
+            }));
         }
     }, []);
 
-    window.oncontextmenu = function (e) {
-        if (document.getElementById("baller")?.contains(e.target)) {
-            const { pageX, pageY } = e;
-            e.preventDefault()
-            return (
-                setContextMenu({ show: true, x: pageX, y: pageY })
-            )
-        } else {
+    useEffect(() => {
+        window.addEventListener("contextmenu", handleContextMenu);
 
-        }
-        console.log(e.target)
-    }
-    // Handlers for each light click
-    const handleRedClick = () => {
-        setActiveLight('red');
-    };
+        return () => {
+            window.removeEventListener("contextmenu", handleContextMenu);
+        };
+    }, [handleContextMenu]);
 
-    const handleYellowClick = () => {
-        setActiveLight('yellow');
-    };
+    const closeContextMenu = useCallback(() => {
+        setState(prevState => ({
+            ...prevState,
+            contextMenu: { show: false, x: 0, y: 0 }
+        }));
+    }, []);
 
-    const handleGreenClick = () => {
-        setActiveLight('green');
-    };
-    const closeContextMenu = () => { setContextMenu(initialContextMenu) }
+    const handleLightClick = useCallback((color) => {
+        setState(prevState => ({
+            ...prevState,
+            activeLight: color
+        }));
+    }, []);
 
-    function inputButtons() {
-        if (num === 0) {
-            setnum(2)
-        }
-        if (num === 2) {
-            setnum(0)
-        }
-    }
-    
+    const toggleInputButtons = useCallback(() => {
+        setState(prevState => ({
+            ...prevState,
+            num: prevState.num === 0 ? 2 : 0
+        }));
+    }, []);
+
     return (
         <div>
-            {contextMenu.show && <ContextMenus x={contextMenu.x} y={contextMenu.y} closeContextMenu={closeContextMenu} inputButtons={inputButtons} buttonState={num} />}
-            <Rnd default={{
-                x: 0,
-                y: 0,
-                width: '300px',
-                height: '250px',
-            }} id="baller" minWidth={boxWidth + "px"} maxWidth={(num !== 2) ? boxWidth + "px" : window.innerWidth + "px"}>
-                <Stack borderRadius={"10px"} direction='row' width='100%' height='100%' bg="white" ref={boxRef} spacing="0px" >
-                    <Box id="boxlol"
-                        width={boxWidth + 'px'}
+            {state.contextMenu.show &&
+                <ContextMenus
+                    x={state.contextMenu.x}
+                    y={state.contextMenu.y}
+                    closeContextMenu={closeContextMenu}
+                    inputButtons={toggleInputButtons}
+                    buttonState={state.num}
+                />
+            }
+            <Card
+                width='400px'
+                height='400px'
+                id="baller"
+                minWidth={state.boxWidth + "px"}
+                maxWidth={(state.num !== 2) ? state.boxWidth + "px" : window.innerWidth + "px"}>
+                <Stack
+                    borderRadius="10px"
+                    direction='row'
+                    width='100%'
+                    height='100%'
+                    bg="white"
+                    ref={boxRef}
+                    spacing="0px">
+                    <Box
+                        id="boxlol"
+                        width={state.boxWidth + 'px'}
                         height='100%'
                         bg="darkslategrey"
                         borderRadius="10px"
                     >
-                        <Stack direction={['column']} align="center" h="100%" w='100%' spacing="0px" >
-                            {/* Red Light */}
-                            <Box
-                                width="50%"
-                                height="20%"
-                                borderRadius="100%"
-                                bg='red'
-                                filter='auto'
-                                brightness={(activeLight === 'red') ? '200%' : '50%'}
-                                cursor="pointer"
-                                onClick={handleRedClick}
-                                margin="12.5%"
-                                marginTop="25%"
-                            ></Box>
-                            {/* Yellow Light */}
-                            <Box
-                                width="50%"
-                                height="20%"
-                                borderRadius="100%"
-                                bg='yellow'
-                                filter='auto'
-                                brightness={(activeLight === 'yellow') ? '200%' : '50%'}
-                                cursor="pointer"
-                                onClick={handleYellowClick}
-                                margin="12.5%"
-                            ></Box>
-                            {/* Green Light */}
-                            <Box
-                                width="50%"
-                                height="20%"
-                                borderRadius="100%"
-                                bg='green'
-                                filter='auto'
-                                brightness={(activeLight === 'green') ? '200%' : '50%'}
-                                cursor="pointer"
-                                onClick={handleGreenClick}
-                                margin="12.5%"
-                                marginBottom="25%"
-                            ></Box>
+                        <Stack direction='column' align="center" h="100%" w='100%' spacing="0px">
+                            {['red', 'yellow', 'green'].map((color, index) => (
+                                <Box
+                                    key={color}
+                                    width="50%"
+                                    height="20%"
+                                    borderRadius="100%"
+                                    bg={color}
+                                    filter='auto'
+                                    brightness={state.activeLight === color ? '200%' : '30%'}
+                                    cursor="pointer"
+                                    onClick={() => handleLightClick(color)}
+                                    margin="12.5%"
+                                    marginTop={index === 0 ? '25%' : '12.5%'}
+                                    marginBottom={index === 2 ? '25%' : '12.5%'}
+                                ></Box>
+                            ))}
                         </Stack>
                     </Box>
-                    <Flex id="balls" flexDirection="column" bg='white' height='100%' justifyContent={"space-evenly"} width="0%" flexGrow={1}>
-                        <Input height="33.33%" placeholder='...' width='auto' textColor={"black"} variant='filled'>
-
-                        </Input>
-
-                        <Input height="33.34%" placeholder='...' width='auto' textColor={"black"} variant='filled'>
-                        </Input>
-                        <Input height="33.33%" placeholder='...' width='auto' textColor={"black"} variant='filled'>
-
-                        </Input>
+                    <Flex id="balls" flexDirection="column" bg='white' height='100%' justifyContent="space-evenly" width="0%" flexGrow={1}>
+                        {[...Array(3)].map((_, i) => (
+                            <Input
+                                key={i}
+                                height="33.33%"
+                                placeholder='...'
+                                width='auto'
+                                textColor="black"
+                                variant='filled'
+                            />
+                        ))}
                     </Flex>
                 </Stack>
-            </Rnd >
+            </Card>
         </div>
-        
-    )
+    );
 }
+
 export default TrafficLight;
