@@ -35,9 +35,10 @@ import AlertDialogExample from "../main/alert.tsx";
 
 interface ListProps {
   title: string;
+  toggleConfetti: boolean;
 }
 
-const List: React.FC<ListProps> = ({ title }) => {
+const List: React.FC<ListProps> = ({ title, toggleConfetti }) => {
   const [localTitle, setLocalTitle] =     useState<string>(localStorage.getItem('title') || title);
   const [inputs, setInputs] =             useState<string[]>(JSON.parse(localStorage.getItem('inputs') || '[]'));
   const [completed, setCompleted] =       useState<boolean[]>(JSON.parse(localStorage.getItem('completed') || '[]'));
@@ -61,6 +62,7 @@ const List: React.FC<ListProps> = ({ title }) => {
       return newInputs;
     });
     setCompleted([...completed, false]);
+    toggleConfetti = false;
   };
 
   const handleInputChange = (index: number, value: string) => {
@@ -73,7 +75,27 @@ const List: React.FC<ListProps> = ({ title }) => {
     const updatedCompleted = [...completed];
     updatedCompleted[index] = !updatedCompleted[index];
     setCompleted(updatedCompleted);
+
+    // get sum of all elements in completed using Number() [elements are true/false]
+    const sumCompleted = updatedCompleted.reduce((sum, value) => sum + Number(value), 0);
+    console.log(sumCompleted);
+
+    if (inputs.length === sumCompleted && inputs.length > 0) {
+      toggleConfetti = true;
+      console.log('hi');
+    }
   };
+  // useEffect(() => {
+  //   const savedInputs =       JSON.parse(localStorage.getItem('inputs') || '[]');
+  //   const savedCompleted =    JSON.parse(localStorage.getItem('completed') || '[]');
+  //   const savedHideComplete = JSON.parse(localStorage.getItem('hideComplete') || 'false');
+  //   const savedIsChecklist =  JSON.parse(localStorage.getItem('isChecklist') || 'true');
+
+  //   setInputs(savedInputs);
+  //   setCompleted(savedCompleted);
+  //   setHideComplete(savedHideComplete);
+  //   setIsChecklist(savedIsChecklist);
+  // }, []);
 
   const handleDeleteConfirm = (confirm: boolean) => {
     if (confirm) {
@@ -96,18 +118,6 @@ const List: React.FC<ListProps> = ({ title }) => {
 
 
   // LOCAL STORAGE
-  // useEffect(() => {
-  //   const savedInputs =       JSON.parse(localStorage.getItem('inputs') || '[]');
-  //   const savedCompleted =    JSON.parse(localStorage.getItem('completed') || '[]');
-  //   const savedHideComplete = JSON.parse(localStorage.getItem('hideComplete') || 'false');
-  //   const savedIsChecklist =  JSON.parse(localStorage.getItem('isChecklist') || 'true');
-
-  //   setInputs(savedInputs);
-  //   setCompleted(savedCompleted);
-  //   setHideComplete(savedHideComplete);
-  //   setIsChecklist(savedIsChecklist);
-  // }, []);
-
   useEffect(() => {
     localStorage.setItem('title', localTitle);
   }, [localTitle]);

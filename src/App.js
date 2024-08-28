@@ -2,6 +2,7 @@ import logo from './logo.svg';
 import './App.css';
 import Jason from './components/jason/json.tsx';
 import Arnav from './components/arnav/arnav.tsx';
+import List from './components/list/list.tsx'
 import Boaz from './components/boaz/boaz.js';
 import { useEffect, useState } from 'react';
 import { createSwapy } from 'swapy';
@@ -46,7 +47,7 @@ function App() {
 
           <div className="section-3" data-swapy-slot="slot3">
             <div className="content-c" data-swapy-item="itemC">
-              <Arnav />
+              <List toggleConfetti={toggleConfetti} />
             </div>
           </div>
 
