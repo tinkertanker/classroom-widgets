@@ -42,8 +42,7 @@ function App() {
     [true, true, false],
     [true, true, false],
   ]);
-  const [rowNo, setRowNo] = useState(3);
-  const [columnNo, setColumnNo] = useState(2);
+
 
   const handleBoxClick = (bigindex, index) => {
     const newSelected = selected.map((innerSelected, indexa) => {
@@ -94,20 +93,21 @@ function App() {
   //   setRowNo(rowNumber);
   //   setColumnNo(columnNumber);
   // }, [selected]);
-  useEffect(() => {
-    document.documentElement.style.setProperty("--grid-columns", columnNo);
-    document.documentElement.style.setProperty("--grid-rows", rowNo);
 
+  // arnav ran the code to create swapy multiple times which caused poor performance issues
+  useEffect(() => {
     const container = document.querySelector(".container");
     const swapy = createSwapy(container, {
       animation: "dynamic",
     });
     swapy.enable(true);
-
+    document.documentElement.style.setProperty("--grid-columns", 2); // Sets row number to 3 and column number to 2 by default
+    document.documentElement.style.setProperty("--grid-rows", 3);
     return () => {
       swapy.enable(false); // Disable the swapy instance
     };
-  }, [columnNo, rowNo]);
+  },[]);
+
   return (
     <ChakraProvider>
       <div className="App">
@@ -213,8 +213,9 @@ function App() {
                       (value) => value === false
                     );
                   }
-                  setRowNo(rowNumber);
-                  setColumnNo(columnNumber);
+                  document.documentElement.style.setProperty("--grid-columns", columnNumber);
+                  document.documentElement.style.setProperty("--grid-rows", rowNumber);
+              
                 }}
               >
                 Save
