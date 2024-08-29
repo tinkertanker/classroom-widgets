@@ -24,7 +24,7 @@ function Boaz() {
         { main: neighbour, thumbnail: neighbourimg },
     ];
 
-    const ping = require('./discord-ping.mp3');
+    const ping = require('./woosh-230554.mp3');
 
     const plaey = useCallback(() => {
         new Audio(ping).play();
@@ -34,22 +34,15 @@ function Boaz() {
         if (e.target.closest("#widget1")) {
             setState(prev => ({
                 ...prev,
-                borderW: "2px",
                 clicked: true,
             }));
             if (e.target.closest("#widget1inside")) {
                 plaey();
             }
-        } else {
-            setState(prev => ({
-                ...prev,
-                borderW: "0px",
-                clicked: false,
-            }));
         }
     }, [plaey]);
 
-    const handleChangeImage = useCallback((index) => {
+    const handleChangeImage = useCallback((index: number) => {
         setState(prev => ({
             ...prev,
             index,
@@ -65,18 +58,16 @@ function Boaz() {
 
     return (
         <div>
-            <Card width='400px' height='500px' minWidth='125px' id="widget1">
+            <Card width='400px' height='400px' id="widget1">
                 <Box padding="5%" borderWidth={state.borderW} borderColor={"skyblue"}>
-                    <CardHeader>
+                    <CardHeader display={"flex"} justifyContent={"center"}>
                         <Box
-                            alignItems="center"
                             pointerEvents="none"
                             display='flex'
-                            marginBottom="5%"
                             borderRadius='10%'
                             userSelect={"none"}
-                            w="100%"
-                            h={(state.borderW === "0px") ? "100%" : "80%"}
+                            w="70%"
+                            h="70%"
                             background={'white'}
                         >
                             <Image
@@ -95,11 +86,11 @@ function Boaz() {
                                     <Image
                                         key={i}
                                         draggable="false"
-                                        userSelect={"none"}
+                                        userSelect="none"
                                         marginLeft="12.5%"
-                                        marginRight={"12.5%"}
+                                        marginRight="12.5%"
                                         borderRadius='full'
-                                        backgroundColor={'white'}
+                                        backgroundColor='white'
                                         onClick={() => handleChangeImage(i)}
                                         src={image.thumbnail}
                                     />

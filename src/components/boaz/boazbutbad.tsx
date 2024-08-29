@@ -96,7 +96,8 @@ function TrafficLight() {
                 height='400px'
                 id="baller"
                 minWidth={state.boxWidth + "px"}
-                maxWidth={(state.num !== 2) ? state.boxWidth + "px" : window.innerWidth + "px"}>
+            //maxWidth={(state.num !== 2) ? state.boxWidth + "px" : window.innerWidth + "px"}}
+            >
                 <Stack
                     borderRadius="10px"
                     direction='row'

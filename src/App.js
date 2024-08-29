@@ -25,12 +25,12 @@ function App() {
           Learn React
         </a>
         <ChakraProvider>
-          <Jason />
+        <Jason />
           <Arnav />
           <Boaz />
           <AudioVolumeMonitor />
-          <TrafficLight />
-          <ShortenLink />
+        <TrafficLight />
+        <ShortenLink />
         </ChakraProvider>
       </header>
     </div>

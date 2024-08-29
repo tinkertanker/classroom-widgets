@@ -107,7 +107,7 @@ const AudioVolumeMonitor: React.FC = () => {
 
     const playAlertSound = () => {
         if (!sound.current) {
-            sound.current = new Audio(require('./discord-ping.mp3'));
+            sound.current = new Audio(require('./Ram-Bell-Sound.mp3'));
             sound.current.volume = 0.3;
         }
         sound.current.play();
