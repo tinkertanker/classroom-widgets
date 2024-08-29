@@ -20,7 +20,7 @@ function Time() {
   useEffect(() => {
     const interval = setInterval(() => {
       setValue(new Date());
-    }, 1);
+    }, 500)
 
     return () => {
       clearInterval(interval);
