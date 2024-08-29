@@ -78,21 +78,21 @@ function App() {
       ));
     });
   };
-  // useEffect(() => {
-  //   let rowNumber, columnNumber;
-  //   if (selected.findIndex((row) => row[0] === false) === -1) {
-  //     rowNumber = selected.length;
-  //   } else {
-  //     rowNumber = selected.findIndex((row) => row[0] === false);
-  //   }
-  //   if (selected[0].findIndex((value) => value === false) === -1) {
-  //     columnNumber = selected[0].length;
-  //   } else {
-  //     columnNumber = selected[0].findIndex((value) => value === false);
-  //   }
-  //   setRowNo(rowNumber);
-  //   setColumnNo(columnNumber);
-  // }, [selected]);
+  useEffect(() => {
+    let rowNumber, columnNumber;
+    if (selected.findIndex((row) => row[0] === false) === -1) {
+      rowNumber = selected.length;
+    } else {
+      rowNumber = selected.findIndex((row) => row[0] === false);
+    }
+    if (selected[0].findIndex((value) => value === false) === -1) {
+      columnNumber = selected[0].length;
+    } else {
+      columnNumber = selected[0].findIndex((value) => value === false);
+    }
+    document.documentElement.style.setProperty("--grid-columns", columnNumber);
+      document.documentElement.style.setProperty("--grid-rows", rowNumber);
+  }, [selected]);
 
   // arnav ran the code to create swapy multiple times which caused poor performance issues
   useEffect(() => {
@@ -197,26 +197,26 @@ function App() {
             <DrawerFooter>
               <Button
                 colorScheme="blue"
-                onClick={() => {
-                  let rowNumber, columnNumber;
-                  if (selected.findIndex((row) => row[0] === false) === -1) {
-                    rowNumber = selected.length;
-                  } else {
-                    rowNumber = selected.findIndex((row) => row[0] === false);
-                  }
-                  if (
-                    selected[0].findIndex((value) => value === false) === -1
-                  ) {
-                    columnNumber = selected[0].length;
-                  } else {
-                    columnNumber = selected[0].findIndex(
-                      (value) => value === false
-                    );
-                  }
-                  document.documentElement.style.setProperty("--grid-columns", columnNumber);
-                  document.documentElement.style.setProperty("--grid-rows", rowNumber);
+                // onClick={() => {
+                //   let rowNumber, columnNumber;
+                //   if (selected.findIndex((row) => row[0] === false) === -1) {
+                //     rowNumber = selected.length;
+                //   } else {
+                //     rowNumber = selected.findIndex((row) => row[0] === false);
+                //   }
+                //   if (
+                //     selected[0].findIndex((value) => value === false) === -1
+                //   ) {
+                //     columnNumber = selected[0].length;
+                //   } else {
+                //     columnNumber = selected[0].findIndex(
+                //       (value) => value === false
+                //     );
+                //   }
+                //   document.documentElement.style.setProperty("--grid-columns", columnNumber);
+                //   document.documentElement.style.setProperty("--grid-rows", rowNumber);
               
-                }}
+                // }}
               >
                 Save
               </Button>
