@@ -11,7 +11,6 @@ import {
   Box,
   VStack,
 } from "@chakra-ui/react";
-import "./clock.tsx";
 
 function Time() {
   const [value, setValue] = useState(new Date());
