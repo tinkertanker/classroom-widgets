@@ -3,55 +3,80 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import Clock from "react-clock";
 import "react-clock/dist/Clock.css";
-import { ChakraProvider, Text, Card, CardBody } from "@chakra-ui/react";
+import {
+  ChakraProvider,
+  Text,
+  Card,
+  CardBody,
+  Box,
+  VStack,
+} from "@chakra-ui/react";
+import "./clock.tsx";
 
 function Time() {
   const [value, setValue] = useState(new Date());
-  const [formattedtime, setFormattedTime] = useState("");
+  const [formattedTime, setFormattedTime] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => {
-      let date = new Date();
-      setValue(date);
-      let hours = date.getHours();
-      let minutes = date.getMinutes();
-      let seconds = date.getSeconds();
-
-      // Check whether AM or PM
-      let newformat = hours >= 12 ? "PM" : "AM";
-
-      // Find current hour in AM-PM Format
-      hours = hours % 12;
-
-      // To display "0" as "12"
-      hours = hours ? hours : 12;
-      let minutes2 = minutes < 10 ? "0" + minutes : minutes;
-      let seconds2 = seconds < 10 ? "0" + seconds : seconds;
-
-      setFormattedTime(
-        hours + ":" + minutes2 + ":" + seconds2 + " " + newformat
-      );
-    }, 1000);
+      setValue(new Date());
+    }, 1);
 
     return () => {
       clearInterval(interval);
     };
   }, []);
 
+  useEffect(() => {
+    const date = value;
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const seconds = date.getSeconds();
+    const miliseconds = date.getMilliseconds();
+
+    const newFormat = hours >= 12 ? "PM" : "AM";
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+    const formattedSeconds = seconds < 10 ? "0" + seconds : seconds;
+    // const formattedMiliseconds = String(Math.floor(miliseconds / 10)).padStart(2, '0');
+
+    setFormattedTime(
+      `${formattedHours}:${formattedMinutes}:${formattedSeconds} ${newFormat}`
+    );
+  }, [value]);
+
   return (
     <ChakraProvider>
-      <Card color="black">
-        <CardBody>
-          <Clock
-            value={value}
-            renderNumbers={true}
-            size={300} // Increase the size of the clock
-            renderMinuteMarks={true}
-            minuteMarksLength={5}
-          />
-          <Text color="black" paddingTop="10px">
-            {formattedtime}
-          </Text>
+      <Card color="black" width="100%" height="100%">
+        <CardBody
+          width="100%"
+          height="100%"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          padding="4px"
+        >
+          <VStack
+            width="100%"
+            height="100%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            {/* this doesnt work with swapy */}
+            {/* <Box height="100%" style={{ aspectRatio: "1/1" }}>
+              <Clock
+                size="100%"
+                value={value}
+                renderNumbers={true}
+                renderMinuteMarks={true}
+                minuteMarksLength={5}
+                renderHourMarks={true}
+                renderSecondHand={true}
+                className="jason"
+              />
+            </Box> */}
+            <Text color="black">{formattedTime}</Text>
+          </VStack>
         </CardBody>
       </Card>
     </ChakraProvider>
