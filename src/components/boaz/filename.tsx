@@ -48,8 +48,8 @@ const ShortenLink: React.FC = () => {
 
   return (
     <Box
-      width="400px"
-      height="400px"
+      width="100%"
+      height="100%"
       borderWidth="1px"
       borderRadius="lg"
       overflow="hidden"
@@ -72,14 +72,14 @@ const ShortenLink: React.FC = () => {
         {error && <Text color="red.500">{error}</Text>} {/* Display errors in red */}
 
         {shortenedLink && (
-          <Box textAlign="center"> {/* Use a Box with textAlign center */}
-            <Text textColor={"black"} >Your Shortened Link:</Text>
+          <Box display="flex" flexGrow={1} flexDirection={"row"} width="100%" justifyContent="space-evenly" alignItems={"center"} textAlign="center"> {/* Use a Box with textAlign center */}
             <Text color="blue.500">
+              <Text textColor={"black"} >Your Shortened Link:</Text>
               <a href={shortenedLink} target="_blank" rel="noopener noreferrer">
                 {shortenedLink}
               </a>
             </Text>
-            <Flex justifyContent={"center"} mt={2}> {/* Add a small margin-top to create space between the link and QR code */}
+            <Flex justifyContent={"center"} mt={2} width="128px"> {/* Add a small margin-top to create space between the link and QR code */}
               <QRCode value={qrCodeValue} size={128} /> {/* Set the QR code size to 128px */}
             </Flex>
           </Box>

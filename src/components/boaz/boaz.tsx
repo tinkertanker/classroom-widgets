@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as React from 'react'
-import { Card, Box, Image, CardFooter, CardHeader } from '@chakra-ui/react';
+import { Card, Box, Image, CardFooter, CardHeader, flexbox, Img } from '@chakra-ui/react';
 import shh from './Be-quiet-now.png';
 import shhimg from './Silence-image.png';
 import whisp from './Whisper-with-text.png';
@@ -20,8 +20,8 @@ function Boaz() {
     const images = [
         { main: shh, thumbnail: shhimg },
         { main: whisp, thumbnail: whispimg },
-        { main: yap, thumbnail: yapimg },
         { main: neighbour, thumbnail: neighbourimg },
+        { main: yap, thumbnail: yapimg },
     ];
 
     const ping = require('./woosh-230554.mp3');
@@ -57,50 +57,43 @@ function Boaz() {
     }, [handleClick]);
 
     return (
-        <div>
-            <Card width='400px' height='400px' id="widget1">
-                <Box padding="5%" borderWidth={state.borderW} borderColor={"skyblue"}>
-                    <CardHeader display={"flex"} justifyContent={"center"}>
-                        <Box
-                            pointerEvents="none"
-                            display='flex'
-                            borderRadius='10%'
-                            userSelect={"none"}
-                            w="70%"
-                            h="70%"
-                            background={'white'}
-                        >
-                            <Image
-                                pointerEvents="none"
-                                draggable="false"
-                                userSelect={"none"}
-                                id="mainimg"
-                                src={images[state.index].main}
-                            />
-                        </Box>
-                    </CardHeader>
-                    {state.clicked && (
-                        <CardFooter display="flex">
-                            <Box id="widget1inside" w="20%" display="flex" alignItems='baseline'>
-                                {images.map((image, i) => (
-                                    <Image
-                                        key={i}
-                                        draggable="false"
-                                        userSelect="none"
-                                        marginLeft="12.5%"
-                                        marginRight="12.5%"
-                                        borderRadius='full'
-                                        backgroundColor='white'
-                                        onClick={() => handleChangeImage(i)}
-                                        src={image.thumbnail}
-                                    />
-                                ))}
-                            </Box>
-                        </CardFooter>
-                    )}
+        <Card width="100%" height="100%" id="widget1">
+            <CardHeader height={"60%"} display={"flex"} justifyContent={"center"} flexDirection={"row"} flexShrink={1} minWidth={0}>
+                <Box
+                    pointerEvents="none"
+                    borderRadius='10%'
+                    userSelect={"none"}
+                    background={'white'}
+                    height="100%"
+                >
+                    <Image
+                        height="100%"
+                        pointerEvents="none"
+                        draggable="false"
+                        userSelect={"none"}
+                        id="mainimg"
+                        src={images[state.index].main}
+                    />
                 </Box>
-            </Card>
-        </div>
+            </CardHeader>
+            {state.clicked && (
+                <CardFooter display="flex" h="30%">
+                    <Box id="widget1inside" justifyContent="space-evenly" height="100%" display="flex">
+                        {images.map((image, i) => (
+                            <Image
+                                key={i}
+                                draggable="false"
+                                userSelect="none"
+                                borderRadius='full'
+                                backgroundColor='white'
+                                onClick={() => handleChangeImage(i)}
+                                src={image.thumbnail}
+                            />
+                        ))}
+                    </Box>
+                </CardFooter>
+            )}
+        </Card >
     );
 }
 

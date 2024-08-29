@@ -81,7 +81,12 @@ function TrafficLight() {
     }, []);
 
     return (
-        <div>
+
+        <Card
+            width="100%"
+            height="100%"
+            id="baller"
+        >
             {state.contextMenu.show &&
                 <ContextMenus
                     x={state.contextMenu.x}
@@ -91,62 +96,57 @@ function TrafficLight() {
                     buttonState={state.num}
                 />
             }
-            <Card
-                width='400px'
-                height='400px'
-                id="baller"
-                minWidth={state.boxWidth + "px"}
-            //maxWidth={(state.num !== 2) ? state.boxWidth + "px" : window.innerWidth + "px"}}
-            >
-                <Stack
-                    borderRadius="10px"
-                    direction='row'
-                    width='100%'
+            <Stack
+                borderRadius="10px"
+                direction='row'
+                width='100%'
+                height='100%'
+                bg="white"
+                ref={boxRef}
+                spacing="0px">
+                <Box
+                    display={"flex"}
+                    id="boxlol"
+                    maxW={state.boxWidth + 'px'}
                     height='100%'
-                    bg="white"
-                    ref={boxRef}
-                    spacing="0px">
-                    <Box
-                        id="boxlol"
-                        width={state.boxWidth + 'px'}
-                        height='100%'
-                        bg="darkslategrey"
-                        borderRadius="10px"
-                    >
-                        <Stack direction='column' align="center" h="100%" w='100%' spacing="0px">
-                            {['red', 'yellow', 'green'].map((color, index) => (
-                                <Box
-                                    key={color}
-                                    width="50%"
-                                    height="20%"
-                                    borderRadius="100%"
-                                    bg={color}
-                                    filter='auto'
-                                    brightness={state.activeLight === color ? '200%' : '30%'}
-                                    cursor="pointer"
-                                    onClick={() => handleLightClick(color)}
-                                    margin="12.5%"
-                                    marginTop={index === 0 ? '25%' : '12.5%'}
-                                    marginBottom={index === 2 ? '25%' : '12.5%'}
-                                ></Box>
-                            ))}
-                        </Stack>
-                    </Box>
-                    <Flex id="balls" flexDirection="column" bg='white' height='100%' justifyContent="space-evenly" width="0%" flexGrow={1}>
-                        {[...Array(3)].map((_, i) => (
-                            <Input
-                                key={i}
-                                height="33.33%"
-                                placeholder='...'
-                                width='auto'
-                                textColor="black"
-                                variant='filled'
-                            />
+                    bg="darkslategrey"
+                    borderRadius="10px"
+                    flexGrow={1}
+                    flexShrink={1}
+                >
+                    <Stack direction='column' align="center" h="100%" w='100%' spacing="0px">
+                        {['red', 'yellow', 'green'].map((color, index) => (
+                            <Box
+                                key={color}
+                                width="50%"
+                                height="20%"
+                                borderRadius="100%"
+                                bg={color}
+                                filter='auto'
+                                brightness={state.activeLight === color ? '200%' : '30%'}
+                                cursor="pointer"
+                                onClick={() => handleLightClick(color)}
+                                margin="12.5%"
+                                marginTop={index === 0 ? '25%' : '12.5%'}
+                                marginBottom={index === 2 ? '25%' : '12.5%'}
+                            ></Box>
                         ))}
-                    </Flex>
-                </Stack>
-            </Card>
-        </div>
+                    </Stack>
+                </Box>
+                <Flex id="balls" flexDirection="column" bg='white' height='100%' justifyContent="space-evenly" flexGrow={1}>
+                    {[...Array(3)].map((_, i) => (
+                        <Input
+                            key={i}
+                            height="33.33%"
+                            placeholder='...'
+                            width='auto'
+                            textColor="black"
+                            variant='filled'
+                        />
+                    ))}
+                </Flex>
+            </Stack>
+        </Card>
     );
 }
 

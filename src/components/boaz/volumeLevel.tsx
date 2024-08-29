@@ -115,8 +115,8 @@ const AudioVolumeMonitor: React.FC = () => {
 
     return (
         <Card
-            width='400px'
-            height='400px'
+            width="100%"
+            height="100%"
             borderWidth='1px'
             borderRadius='md'
             boxShadow='md'
@@ -150,7 +150,7 @@ const AudioVolumeMonitor: React.FC = () => {
                     </Box>
                 </VStack>
             </CardHeader>
-            <CardBody flex='1'>
+            <CardBody flex='1' >
                 <Box
                     width='100%'
                     height='20px'
