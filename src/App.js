@@ -2,8 +2,11 @@ import logo from './logo.svg';
 import './App.css';
 import Jason from './components/jason/json.tsx';
 import Arnav from './components/arnav/arnav.tsx';
-import Boaz from './components/boaz/boaz.js';
-import { useEffect } from 'react';
+import Boaz from './components/boaz/boaz.tsx';
+import TrafficLight from './components/boaz/boazbutbad.tsx';
+import AudioVolumeMonitor from './components/boaz/volumeLevel.tsx';
+import ShortenLink from './components/boaz/filename.tsx';
+import { ChakraProvider } from '@chakra-ui/react'; import { useEffect } from 'react';
 import { createSwapy } from 'swapy';
 
 function App() {
@@ -23,11 +26,12 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        
+
         <div className="container">
           <div className="section-1" data-swapy-slot="slot1">
             <div className="content-a" data-swapy-item="itemA">
-              <Jason />
+              <ChakraProvider>
+                <Jason />
             </div>
           </div>
 
@@ -49,8 +53,12 @@ function App() {
             </div>
           </div>
         </div>
-      </header>
-    </div>
+        <AudioVolumeMonitor />
+        <TrafficLight />
+        <ShortenLink />
+      </ChakraProvider>
+    </header>
+    </div >
   );
 }
 
