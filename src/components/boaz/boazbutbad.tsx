@@ -12,7 +12,7 @@ function TrafficLight() {
         num: 0
     });
 
-    const boxRef = useRef(null);
+    const boxRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (boxRef.current) {
@@ -81,7 +81,6 @@ function TrafficLight() {
     }, []);
 
     return (
-
         <Card
             width="100%"
             height="100%"
@@ -107,7 +106,8 @@ function TrafficLight() {
                 <Box
                     display={"flex"}
                     id="boxlol"
-                    maxW={state.boxWidth + 'px'}
+
+                    maxW={`${state.boxWidth}px`}
                     height='100%'
                     bg="darkslategrey"
                     borderRadius="10px"

@@ -19,7 +19,7 @@ const ContextMenus: FC<contextMenuProps> = ({ x, y, closeContextMenu, inputButto
         console.log(e.target)
     }
     return (
-        <VStack id="overallBox" zIndex="20" position="absolute" top={y + "px"} left={x + "px"} w="100" spacing="0px">
+        <VStack id="overallBox" zIndex="20" position="absolute" top={`${y}px`} left={`${x}px`} w="100" spacing="0px">
             <Button w="100%" h="50%">
                 <Flex bg="white" fontSize={"100%"} fontFamily={"sans-serif"} textColor="darkgrey" flexGrow={1}>Delete (uncoded)</Flex>
             </Button>
