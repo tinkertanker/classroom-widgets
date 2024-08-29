@@ -7,6 +7,7 @@ import Boaz from "./components/boaz/boaz.js";
 import { useEffect, useState, useRef } from "react";
 import { createSwapy } from "swapy";
 import Confetti from "react-confetti";
+import Time from "./components/jason/clock.tsx";
 import {
   ChakraProvider,
   Drawer,
@@ -114,14 +115,13 @@ function App() {
           <div className="container">
             <div className="slot section-1" data-swapy-slot="slot1">
               <div className="content" data-swapy-item="itemA">
-                {/* <Jason toggleConfetti={setUseconfetti} /> */}
-                <List toggleConfetti={setUseconfetti2} />
+                <Jason toggleConfetti={setUseconfetti} />
               </div>
             </div>
 
             <div className="slot section-2" data-swapy-slot="slot2">
               <div className="content" data-swapy-item="itemB">
-              <List toggleConfetti={setUseconfetti2} />
+                <Arnav/>
               </div>
             </div>
 
@@ -133,7 +133,7 @@ function App() {
 
             <div className="slot section-4" data-swapy-slot="slot4">
               <div className="content" data-swapy-item="itemD">
-                <List toggleConfetti={setUseconfetti2} />
+              <Time />
               </div>
             </div>
           </div>
@@ -229,3 +229,4 @@ function App() {
 }
 
 export default App;
+
