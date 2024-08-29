@@ -63,10 +63,11 @@ function App() {
   };
 
   const renderBoxes = () => {
+    console.log("WHAT");
     return selected.map((innerSelected, bigindex) => {
       return innerSelected.map((isSelected, index) => (
         <Button
-          key={bigindex*3+index+1}
+          key={index}
           width="100%"
           height="100%"
           colorScheme={isSelected ? "blue" : "gray"}
@@ -78,22 +79,21 @@ function App() {
       ));
     });
   };
-  useEffect(() => {
-    let rowNumber,columnNumber;
-    if (selected.findIndex((row)=>row[0]==false)==-1){
-      rowNumber = selected.length
-    }else{
-      rowNumber = selected.findIndex((row)=>row[0]==false)
-    }
-    if (selected[0].findIndex((value)=>value==false)==-1){
-      columnNumber = selected[0].length
-    }else{
-      columnNumber = selected[0].findIndex((value)=>value==false)
-        }
-    setRowNo(rowNumber);
-    setColumnNo(columnNumber);
-
-  }, [selected]);
+  // useEffect(() => {
+  //   let rowNumber, columnNumber;
+  //   if (selected.findIndex((row) => row[0] === false) === -1) {
+  //     rowNumber = selected.length;
+  //   } else {
+  //     rowNumber = selected.findIndex((row) => row[0] === false);
+  //   }
+  //   if (selected[0].findIndex((value) => value === false) === -1) {
+  //     columnNumber = selected[0].length;
+  //   } else {
+  //     columnNumber = selected[0].findIndex((value) => value === false);
+  //   }
+  //   setRowNo(rowNumber);
+  //   setColumnNo(columnNumber);
+  // }, [selected]);
   useEffect(() => {
     document.documentElement.style.setProperty("--grid-columns", columnNo);
     document.documentElement.style.setProperty("--grid-rows", rowNo);
@@ -105,7 +105,7 @@ function App() {
     swapy.enable(true);
 
     return () => {
-      swapy.enable(false);
+      swapy.enable(false); // Disable the swapy instance
     };
   }, [columnNo, rowNo]);
   return (
@@ -121,7 +121,7 @@ function App() {
 
             <div className="slot section-2" data-swapy-slot="slot2">
               <div className="content" data-swapy-item="itemB">
-                <Arnav/>
+                <Arnav />
               </div>
             </div>
 
@@ -133,8 +133,7 @@ function App() {
 
             <div className="slot section-4" data-swapy-slot="slot4">
               <div className="content" data-swapy-item="itemD">
-              <Time />
-
+                <Time />
               </div>
             </div>
           </div>
@@ -144,7 +143,6 @@ function App() {
             onClick={onOpen}
             icon={<HamburgerIcon />}
           ></IconButton>
-
         </header>
 
         <Drawer
@@ -197,7 +195,30 @@ function App() {
             </DrawerBody>
 
             <DrawerFooter>
-                <Button colorScheme="blue" onClick={onClose}>Save</Button>
+              <Button
+                colorScheme="blue"
+                onClick={() => {
+                  let rowNumber, columnNumber;
+                  if (selected.findIndex((row) => row[0] === false) === -1) {
+                    rowNumber = selected.length;
+                  } else {
+                    rowNumber = selected.findIndex((row) => row[0] === false);
+                  }
+                  if (
+                    selected[0].findIndex((value) => value === false) === -1
+                  ) {
+                    columnNumber = selected[0].length;
+                  } else {
+                    columnNumber = selected[0].findIndex(
+                      (value) => value === false
+                    );
+                  }
+                  setRowNo(rowNumber);
+                  setColumnNo(columnNumber);
+                }}
+              >
+                Save
+              </Button>
             </DrawerFooter>
           </DrawerContent>
         </Drawer>
@@ -231,4 +252,3 @@ function App() {
 }
 
 export default App;
-
