@@ -1,18 +1,33 @@
-import logo from './logo.svg';
 import './App.css';
 import Jason from './components/jason/json.tsx';
 import Arnav from './components/arnav/arnav.tsx';
 import List from './components/list/list.tsx'
 import Boaz from './components/boaz/boaz.js';
-import { useEffect, useState } from 'react';
+import WhichEt from './components/which-et/whichet.tsx';
+import { Component, useEffect, useState } from 'react';
 import { createSwapy } from 'swapy';
 import Confetti from 'react-confetti';
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
+  const [componentNum, setComponentNum] = useState([]);
   const N = 2;
   const M = 3;
+
+  const Components = [ // list of components
+    <Jason toggleConfetti={setUseconfetti} />,
+    <Arnav />,
+    <List toggleConfetti={setUseconfetti2} />,
+    <Boaz />,
+  ]
+
+  const ComponentNames = [ // list of component names
+    "Jason",
+    "Arnav",
+    "List",
+    "Boaz",
+  ]
 
   useEffect(() => {
     document.documentElement.style.setProperty('--grid-columns', N);
@@ -36,7 +51,7 @@ function App() {
         <div className="container">
           <div className="slot section-1" data-swapy-slot="slot1">
             <div className="content" data-swapy-item="itemA">
-              <Jason toggleConfetti={setUseconfetti}/>
+              <WhichEt Components={Components} ComponentNames={ComponentNames} ComponentNum={setComponentNum} />
             </div>
           </div>
 
