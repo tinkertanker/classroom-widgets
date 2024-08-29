@@ -191,11 +191,11 @@ function Jason({ toggleConfetti }) {
     temporarychoices = temporarychoices.filter((value, index, array) => {
       if (value == "") {
         // there are only spaces in that line, dont return
-        console.log(value);
+        // console.log(value);
       } else {
         if (array.indexOf(value) !== index) {
           // prevents duplicates, dont return if value exists in array
-          console.log(value);
+          // console.log(value);
         } else {
           return value;
         }
@@ -263,7 +263,7 @@ function Jason({ toggleConfetti }) {
       setTextheight(node.getBoundingClientRect().height);
       const resizeObserver = new ResizeObserver(() => {
         setTextheight(node.getBoundingClientRect().height);
-        console.log(node.getBoundingClientRect().height);
+        // console.log(node.getBoundingClientRect().height);
       });
       resizeObserver.observe(node);
     }
@@ -274,7 +274,7 @@ function Jason({ toggleConfetti }) {
       setBoxheight(node.getBoundingClientRect().height);
       const resizeObserver2 = new ResizeObserver(() => {
         setBoxheight(node.getBoundingClientRect().height);
-        console.log(node.getBoundingClientRect().height);
+        // console.log(node.getBoundingClientRect().height);
       });
       resizeObserver2.observe(node);
     }
