@@ -128,7 +128,7 @@ function Jason({ toggleConfetti }) {
           <Button
             colorScheme="teal"
             width="37.5%"
-            height="60%"
+            height="13%"
             padding="0"
             onClick={handlerandomise}
             isDisabled={loading}
@@ -139,7 +139,7 @@ function Jason({ toggleConfetti }) {
         );
       case "result":
         return (
-          <HStack width="100%" height="60%" justifyContent="center">
+          <HStack width="100%" height="13%" justifyContent="center">
             <Button
               hidden={loading}
               isDisabled={remember ? true : pressedDisable}
