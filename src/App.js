@@ -8,7 +8,7 @@ import AudioVolumeMonitor from './components/boaz/volumeLevel.tsx';
 import ShortenLink from './components/boaz/filename.tsx';
 import { Box, ChakraProvider, Heading } from '@chakra-ui/react'; import { useEffect } from 'react';
 import { createSwapy } from 'swapy';
-
+import InitialPopup from './components/boaz/InitialPopup.tsx';
 function App() {
   useEffect(() => {
     const container = document.querySelector('.container');
@@ -27,6 +27,7 @@ function App() {
     <Box className="App" width="100%">
       <Heading className="App-header" width="100%" >
         <ChakraProvider>
+          <InitialPopup />
           <div className="container">
             <div className="section-1" data-swapy-slot="slot1">
               <div className="content-a" data-swapy-item="itemA">
