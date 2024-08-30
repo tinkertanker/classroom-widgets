@@ -1,15 +1,12 @@
-import WhichEt from "./components/obselete_dont_delete/whichet.tsx";
 import "./App.css";
 import Randomiser from "./components/randomiser/randomiser.tsx";
 import Timer from "./components/timer/timer.tsx";
 import List from "./components/list/list.tsx";
-import Face from './components/jason/facerecognition.tsx'
 import Work from "./components/work/work.tsx";
 import TrafficLight from "./components/trafficLight/trafficLight.tsx";
 import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
 import ShortenLink from "./components/shortenLink/shortenLink.tsx";
 import { useEffect, useState, useRef } from "react";
-import { createSwapy } from "swapy";
 import { Rnd } from "react-rnd";
 import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 
