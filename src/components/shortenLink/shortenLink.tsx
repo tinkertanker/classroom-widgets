@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import QRCode from 'react-qr-code';
 import { Box, Button, Input, Stack, Text, Heading, Flex } from '@chakra-ui/react'; // Import necessary Chakra UI components
-import API_KEY from '../../secrets/shortioKey';
-const BASE_URL = 'https://api.short.io/links'; // Correct endpoint for Short.io API requests
+import API_KEY from '../../secrets/shortioKey'; // Import your API key securely from secrets
+const BASE_URL = 'https://api.short.io/links'; // Short.io API endpoint
 
 const ShortenLink: React.FC = () => {
-  const [link, setLink] = useState<string>('');
-  const [shortenedLink, setShortenedLink] = useState<string>('');
-  const [qrCodeValue, setQrCodeValue] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  const [link, setLink] = useState<string>(''); // State for the original link input
+  const [shortenedLink, setShortenedLink] = useState<string>(''); // State for the shortened link
+  const [qrCodeValue, setQrCodeValue] = useState<string>(''); // State for the QR code value
+  const [error, setError] = useState<string | null>(null); // State for any errors
 
+  // Function to handle link shortening
   const handleShortenLink = async () => {
     try {
+      // Send POST request to Short.io API
       const response = await axios.post(
         BASE_URL,
         {
@@ -29,6 +31,7 @@ const ShortenLink: React.FC = () => {
 
       console.log('API Response:', response.data);
 
+      // Check the response and set shortened link and QR code
       if (response.data && response.data.secureShortURL) {
         setShortenedLink(response.data.secureShortURL);
         setQrCodeValue(response.data.secureShortURL);
@@ -57,8 +60,8 @@ const ShortenLink: React.FC = () => {
       boxShadow="md"
       bg="white"
     >
-      <Stack spacing={4} align="center"> {/* Reduced the spacing to 2 */}
-        <Heading textColor="black" size="md">Shorten Your Link</Heading>
+      <Stack spacing={4} align="center"> {/* Reduced the spacing to 4 */}
+        <Heading textColor="black" size="md">Shorten Your Link</Heading> {/* Heading component for the title */}
         <Input
           placeholder="Enter your link here"
           value={link}
@@ -69,18 +72,26 @@ const ShortenLink: React.FC = () => {
           Shorten Link
         </Button>
 
-        {error && <Text color="red.500">{error}</Text>} {/* Display errors in red */}
+        {error && <Text color="red.500">{error}</Text>} {/* Display error message if exists */}
 
         {shortenedLink && (
-          <Box display="flex" flexGrow={1} flexDirection={"row"} width="100%" justifyContent="space-evenly" alignItems={"center"} textAlign="center"> {/* Use a Box with textAlign center */}
+          <Box
+            display="flex"
+            flexGrow={1}
+            flexDirection={"row"}
+            width="100%"
+            justifyContent="space-evenly"
+            alignItems={"center"}
+            textAlign="center"
+          >
             <Text color="blue.500">
-              <Text textColor={"black"} >Your Shortened Link:</Text>
+              <Text textColor={"black"}>Your Shortened Link:</Text>
               <a href={shortenedLink} target="_blank" rel="noopener noreferrer">
                 {shortenedLink}
               </a>
             </Text>
-            <Flex justifyContent={"center"} mt={2} width="128px"> {/* Add a small margin-top to create space between the link and QR code */}
-              <QRCode value={qrCodeValue} size={128} /> {/* Set the QR code size to 128px */}
+            <Flex justifyContent={"center"} mt={2} width="128px">
+              <QRCode value={qrCodeValue} size={128} /> {/* QR code with 128px size */}
             </Flex>
           </Box>
         )}
