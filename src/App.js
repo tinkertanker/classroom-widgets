@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from "react";
 import { createSwapy } from "swapy";
 import Confetti from "react-confetti";
 import Time from "./components/jason/clock.tsx";
+import { Rnd } from "react-rnd";
 import {
   ChakraProvider,
   Drawer,
@@ -35,14 +36,26 @@ import { HamburgerIcon } from "@chakra-ui/icons";
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  let { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
   const [selected, setSelected] = useState([
     [true, true, false],
     [true, true, false],
     [true, true, false],
   ]);
-
+  function handleShortcut(event) {
+    if (event.ctrlKey && event.key === "k") {
+      event.preventDefault();
+      // Toggle the drawer open/close
+      if (isOpen) {
+        isOpen = false;
+        onClose();
+      } else {
+        isOpen = true;
+        onOpen();
+      }
+    }
+  }
 
   const handleBoxClick = (bigindex, index) => {
     const newSelected = selected.map((innerSelected, indexa) => {
@@ -91,7 +104,7 @@ function App() {
       columnNumber = selected[0].findIndex((value) => value === false);
     }
     document.documentElement.style.setProperty("--grid-columns", columnNumber);
-      document.documentElement.style.setProperty("--grid-rows", rowNumber);
+    document.documentElement.style.setProperty("--grid-rows", rowNumber);
   }, [selected]);
 
   // arnav ran the code to create swapy multiple times which caused poor performance issues
@@ -103,10 +116,13 @@ function App() {
     swapy.enable(true);
     document.documentElement.style.setProperty("--grid-columns", 2); // Sets row number to 3 and column number to 2 by default
     document.documentElement.style.setProperty("--grid-rows", 3);
+
+    document.addEventListener("keydown", handleShortcut);
+
     return () => {
       swapy.enable(false); // Disable the swapy instance
     };
-  },[]);
+  }, []);
 
   return (
     <ChakraProvider>
@@ -120,9 +136,10 @@ function App() {
             </div>
 
             <div className="slot section-2" data-swapy-slot="slot2">
-              <div className="content" data-swapy-item="itemB">
-                <Arnav />
-              </div>
+              
+                <div className="content" data-swapy-item="itemB">
+                  <Arnav />
+                </div>
             </div>
 
             <div className="slot section-3" data-swapy-slot="slot3">
@@ -215,7 +232,7 @@ function App() {
                 //   }
                 //   document.documentElement.style.setProperty("--grid-columns", columnNumber);
                 //   document.documentElement.style.setProperty("--grid-rows", rowNumber);
-              
+
                 // }}
               >
                 Save

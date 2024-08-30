@@ -75,11 +75,10 @@ function Jason({ toggleConfetti }) {
 
   const [animation, setAnimation] = useState(true);
   const [animationtracker, setAnimationtracker] = useState(0);
-  const [animationcount, setAnimationcount] = useState(20);
+  const [animationcount, setAnimationcount] = useState(30);
   const [animationspeed, setAnimationspeed] = useState(0.04);
   const [slowanimation, setSlowanimation] = useState(0);
   const [animationtransition, setAnimationtransition] = useState("ScaleFade");
-  const [useconfetti, setUseconfetti] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
