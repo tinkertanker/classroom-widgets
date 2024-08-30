@@ -1,18 +1,19 @@
-import WhichEt from "./components/which-et/whichet.tsx";
+import WhichEt from "./components/obselete_dont_delete/whichet.tsx";
 import "./App.css";
-import Jason from "./components/jason/json.tsx";
-import Arnav from "./components/arnav/arnav.tsx";
+import Randomiser from "./components/randomiser/randomiser.tsx";
+import Timer from "./components/timer/timer.tsx";
 import List from "./components/list/list.tsx";
-import Boaz from "./components/boaz/boaz.tsx";
-import TrafficLight from './components/boaz/boazbutbad.tsx';
-import AudioVolumeMonitor from './components/boaz/volumeLevel.tsx';
-import ShortenLink from './components/boaz/filename.tsx';
+import Work from "./components/work/work.tsx";
+import TrafficLight from "./components/trafficLight/trafficLight.tsx";
+import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
+import ShortenLink from "./components/shortenLink/shortenLink.tsx";
 import { useEffect, useState, useRef } from "react";
 import { createSwapy } from "swapy";
 import { Rnd } from "react-rnd";
+import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 
 import Confetti from "react-confetti";
-import Time from "./components/jason/clock.tsx";
+import Time from "./components/clock/clock.tsx";
 import {
   ChakraProvider,
   Drawer,
@@ -36,7 +37,7 @@ import {
   Box,
   Card,
   CardBody,
-  Flex
+  Flex,
 } from "@chakra-ui/react";
 import { DeleteIcon, HamburgerIcon, Icon } from "@chakra-ui/icons";
 
@@ -47,39 +48,40 @@ function App() {
   const [activeIndex, setActiveIndex] = useState(null);
 
   const Components = [
-    // list of components
-    <Jason toggleConfetti={setUseconfetti} />,
-    <Arnav />,
+    <Randomiser toggleConfetti={setUseconfetti} />,
+    <Timer />,
     <List toggleConfetti={setUseconfetti2} />,
-    <Boaz />,
+    <Work />,
     <Time />,
-    <TrafficLight/>,
-    <AudioVolumeMonitor/>,
-    <ShortenLink/>
+    <TrafficLight />,
+    <AudioVolumeMonitor />,
+    <ShortenLink />,
   ];
 
   const ComponentNames = [
-    // list of component names
-    "RNG",
+    "Randomiser",
     "Timer",
     "List",
     "Work Symbols",
     "Clock",
     "Traffic Light",
     "Loudness Monitor",
-    "Link Shortener"
+    "Link Shortener",
   ];
+
   function Toolbar() {
     return (
-      <Card width="90%">
-        <CardBody width="100%">
-          <HStack alignItems="center" justifyContent="center">
+      <Card width="90%" height="100%">
+        <CardBody width="100%" height="100%">
+          <HStack alignItems="center" justifyContent="center" width="100%" height="100%">
             {ComponentNames.map((ComponentName, index) => (
               <Button
                 key={index}
                 onClick={() => {
-                  console.log([...componentList, index]);
-                  setComponentList((e) => [...e, index]);
+                  setComponentList((e) => [
+                    ...e,
+                    { id: uuidv4(), index }
+                  ]);
                 }}
                 colorScheme="teal"
                 justifyContent={"center"}
@@ -88,8 +90,8 @@ function App() {
               </Button>
             ))}
             <Text>{componentList.length}</Text>
-            <Flex justifyContent='right'>
-              <DeleteIcon/>
+            <Flex justifyContent="right">
+              <DeleteIcon id="trash" />
             </Flex>
           </HStack>
         </CardBody>
@@ -97,72 +99,109 @@ function App() {
     );
   }
 
+  const [generatedComponents, setGeneratedComponents] = useState([]);
+
+  useEffect(() => {
+    const components = componentList.map(({ id, index }) => (
+      <Rnd
+        default={{
+          x: 0,
+          y: 0,
+          width: index === 4 ? '150px' : '350px',
+          height: index === 4 ? '150px' : '350px',
+        }}
+        minWidth={index === 4 ? '150px' : '200px'}
+        minHeight={index === 4 ? '150px' : '200px'}
+        key={id}
+        lockAspectRatio={index === 5 ? false : true}
+        enableUserSelectHack={true}
+        bounds="parent"
+        dragGrid={[100, 100]}
+        resizeGrid={[1, 1]}
+        style={{
+          zIndex: activeIndex === id ? 999 : 'auto',
+          // borderWidth: activeIndex === id ? "2px":"0px",
+          // borderColor:"skyblue" // for future interns to implement
+        }}
+        onMouseDown={() => setActiveIndex(id)}
+        onTouchStart={() => setActiveIndex(id)}
+        onDragStop={(e, data) => {
+          trashHandler(e, data, id);
+        }}
+        onResizeStart={()=>setActiveIndex(id)}
+      >
+        {Components[index]}
+      </Rnd>
+    ));
+
+    setGeneratedComponents(components);
+  }, [componentList, activeIndex]);
+
+  function trashHandler(mouseEvent, data, id) {
+    const trashLocation = document
+      .getElementById("trash")
+      .getBoundingClientRect();
+    if (
+      mouseEvent.x >= trashLocation.x &&
+      mouseEvent.x <= trashLocation.x + trashLocation.width &&
+      mouseEvent.y >= trashLocation.y &&
+      mouseEvent.y <= trashLocation.y + trashLocation.height
+    ) {
+      setComponentList((oldList) =>
+        oldList.filter((component) => component.id !== id)
+      );
+    }
+  }
+
   return (
     <ChakraProvider>
       <div className="App">
         <header className="App-header">
-          <VStack width='100%' height='100%' justifyContent='center' alignItems='center'>
-          <Box position='absolute' right='10px' left='10px' top='10px' bottom='10px'>
-
-          {componentList.map((i, key) => {
-
-            return (
-              <Rnd
-              default={{
-                x: Math.floor(Math.random() * (window.innerWidth-370)),
-                y: Math.floor(Math.random() * (window.innerHeight-370)),
-                width: 350,
-                height: 350,
-              }}
-              minWidth={i===4?100:200}
-              minHeight={i===4?100:200}
-              key={key}
-              lockAspectRatio={i===5?false:true}
-              enableUserSelectHack={true}
-              bounds="parent"
-              dragGrid={[100,100]}
-              resizeGrid= {[1, 1]}
-              style={{
-                zIndex: activeIndex === key ? 1000 : 'auto',
-                onClick: () => setActiveIndex(key),
-                onTouchStart: () => setActiveIndex(key),
-              }}
-              >
-                {Components[i]}
-              </Rnd>
-            );
-          })}
-          </Box>
-          <Box className="toolbar-container">
-            <Toolbar />
-          </Box>
+          <VStack
+            width="100%"
+            height="100%"
+            justifyContent="center"
+            alignItems="center"
+          >
+            <Box
+              position="absolute"
+              right="10px"
+              left="10px"
+              top="10px"
+              bottom="10px"
+            >
+              {generatedComponents}
+            </Box>
+            <Box className="toolbar-container" width="100%" height="10%" marginBottom="10px">
+              <Toolbar />
+            </Box>
           </VStack>
         </header>
       </div>
       {useconfetti && (
-          <Confetti
-            width={window.innerWidth}
-            height={window.innerHeight}
-            recycle={false}
-            numberOfPieces={500}
-            gravity={0.3}
-            wind={0.01}
-            colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
-            confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
-          />
-        )}
-        {useconfetti2 && (
-          <Confetti
-            width={window.innerWidth}
-            height={window.innerHeight}
-            recycle={false}
-            numberOfPieces={500}
-            gravity={0.3}
-            wind={0.01}
-            colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
-            confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
-          />
-        )}
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.3}
+          wind={0.01}
+          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
+          confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
+        />
+      )}
+      {useconfetti2 && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.3}
+          wind={0.01}
+          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
+          confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
+        />
+      )}
     </ChakraProvider>
   );
 }

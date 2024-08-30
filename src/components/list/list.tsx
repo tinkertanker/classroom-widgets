@@ -37,11 +37,11 @@ interface ListProps {
 }
 
 const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
-  const [localTitle, setLocalTitle] =     useState<string>(localStorage.getItem('title') || title);
-  const [inputs, setInputs] =             useState<string[]>(JSON.parse(localStorage.getItem('inputs') || '[]'));
-  const [completed, setCompleted] =       useState<boolean[]>(JSON.parse(localStorage.getItem('completed') || '[]'));
-  const [hideComplete, setHideComplete] = useState<boolean>(JSON.parse(localStorage.getItem('hideComplete') || 'false'));
-  const [isChecklist, setIsChecklist] =   useState<boolean>(JSON.parse(localStorage.getItem('isChecklist') || 'true'));
+  const [localTitle, setLocalTitle] =     useState<string>(/*localStorage.getItem('title') ||*/ title);
+  const [inputs, setInputs] =             useState<string[]>(/*JSON.parse(localStorage.getItem('inputs') ||*/ []);
+  const [completed, setCompleted] =       useState<boolean[]>(/*JSON.parse(localStorage.getItem('completed') ||*/ []);
+  const [hideComplete, setHideComplete] = useState<boolean>(/*JSON.parse(localStorage.getItem('hideComplete') ||*/ false);
+  const [isChecklist, setIsChecklist] =   useState<boolean>(/*JSON.parse(localStorage.getItem('isChecklist') ||*/ true);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const initialFocus = React.useRef(null);
@@ -117,26 +117,26 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
   };
 
 
-  // LOCAL STORAGE
-  useEffect(() => {
-    localStorage.setItem('title', localTitle);
-  }, [localTitle]);
+  // // LOCAL STORAGE
+  // useEffect(() => {
+  //   localStorage.setItem('title', localTitle);
+  // }, [localTitle]);
 
-  useEffect(() => {
-    localStorage.setItem('inputs', JSON.stringify(inputs));
-  }, [inputs]);
+  // useEffect(() => {
+  //   localStorage.setItem('inputs', JSON.stringify(inputs));
+  // }, [inputs]);
 
-  useEffect(() => {
-    localStorage.setItem('completed', JSON.stringify(completed));
-  }, [completed]);
+  // useEffect(() => {
+  //   localStorage.setItem('completed', JSON.stringify(completed));
+  // }, [completed]);
 
-  useEffect(() => {
-    localStorage.setItem('hideComplete', JSON.stringify(hideComplete));
-  }, [hideComplete]);
+  // useEffect(() => {
+  //   localStorage.setItem('hideComplete', JSON.stringify(hideComplete));
+  // }, [hideComplete]);
 
-  useEffect(() => {
-    localStorage.setItem('isChecklist', JSON.stringify(isChecklist));
-  }, [isChecklist]);
+  // useEffect(() => {
+  //   localStorage.setItem('isChecklist', JSON.stringify(isChecklist));
+  // }, [isChecklist]);
 
   return (
     <ChakraProvider>

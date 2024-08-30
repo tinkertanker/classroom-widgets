@@ -7,7 +7,7 @@ import {
   ChakraProvider,
 } from "@chakra-ui/react";
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import ContextMenus from "./contextMenu.tsx";
+import ContextMenus from "../obselete_dont_delete/contextMenu.tsx";
 
 function TrafficLight() {
   const [state, setState] = useState({
@@ -153,7 +153,7 @@ function TrafficLight() {
                 key={i}
                 height="33.33%"
                 placeholder="..."
-                width="auto"
+                width="100%"
                 textColor="black"
                 variant="filled"
               />

@@ -48,11 +48,11 @@ let actual_choices: any[];
 
 const sound = require("./yay.mp3");
 let yay = new Audio(sound);
-function Jason({ toggleConfetti }) {
+function Randomiser({ toggleConfetti }) {
   const initialFocus = React.useRef(null);
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
-  const [input, setInput] = useState(localStorage.getItem("input") ?? ""); // if there is nothing in local storage then input is ""
+  const [input, setInput] = useState(/*localStorage.getItem("input") ??*/ ""); // if there is nothing in local storage then input is ""
   const [choices, setChoices] = useState<any[]>([]);
 
   const [remember, setRemember] = useState(false);
@@ -92,7 +92,7 @@ function Jason({ toggleConfetti }) {
 
     if (choices.length !== 0) {
       setLoading(true);
-      localStorage.setItem("input", input);
+      // localStorage.setItem("input", input);
       actual_choices = choices;
 
       actual_choices = actual_choices.filter((choice) => {
@@ -546,7 +546,7 @@ function Jason({ toggleConfetti }) {
                         <Text paddingTop="10px" paddingBottom="5px">
                           Options removed: {selected.join(", ")}
                         </Text>
-                        <Button
+                        {/* <Button
                           colorScheme="red"
                           onClick={() => {
                             setClearedStorage(true);
@@ -557,7 +557,7 @@ function Jason({ toggleConfetti }) {
                           isDisabled={clearedstorage}
                         >
                           Clear saved list
-                        </Button>
+                        </Button> */}
                       </VStack>
                       <VStack align="left">
                         <Heading size="md">Animation Settings</Heading>
@@ -667,4 +667,4 @@ function Jason({ toggleConfetti }) {
   );
 }
 
-export default Jason;
+export default Randomiser;

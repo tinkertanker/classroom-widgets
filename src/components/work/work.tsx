@@ -10,7 +10,7 @@ import yapimg from './yap.png';
 import neighbour from './Discuss-with-neighbour-with-text.png';
 import neighbourimg from './Discuss.png';
 
-function Boaz() {
+function Work() {
     const [state, setState] = useState({
         borderW: "2px",
         index: 0,
@@ -97,4 +97,4 @@ function Boaz() {
     );
 }
 
-export default Boaz;
+export default Work;

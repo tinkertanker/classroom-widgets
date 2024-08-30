@@ -15,7 +15,7 @@ import {
 
 import ReusableButton from "../main/reusableButton.tsx";
 
-const Arnav = () => {
+const Timer = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
   const [changeTime, setChangeTime] = useState(-1);
@@ -207,5 +207,5 @@ const Arnav = () => {
   );
 }
 
-export default Arnav;
+export default Timer;
 
