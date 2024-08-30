@@ -1,4 +1,5 @@
 import WhichEt from "./components/which-et/whichet.tsx";
+import WhichEt from "./components/which-et/whichet.tsx";
 import "./App.css";
 import Jason from "./components/jason/json.tsx";
 import Arnav from "./components/arnav/arnav.tsx";
