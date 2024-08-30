@@ -309,13 +309,14 @@ function Jason({ toggleConfetti }) {
         minWidth="125px"
         lockAspectRatio={true}
       > */}
-      <Card
-        width="400px"
-        height="400px"
-        id="jason"
-        padding="3px"
-        // width='100%'
-        // height='100%'
+        <Card
+          width="100%"
+          height="100%"
+          id='jason'
+          padding='3px'
+          // width='100%'
+          // height='100%'
+
 
         // position="fixed"
         // onMouseDown={mouseDown}
