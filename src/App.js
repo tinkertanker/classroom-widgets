@@ -8,7 +8,6 @@ import { useEffect, useState, useRef } from "react";
 import { createSwapy } from "swapy";
 import Confetti from "react-confetti";
 import Time from "./components/jason/clock.tsx";
-import { Rnd } from "react-rnd";
 import {
   ChakraProvider,
   Drawer,
@@ -36,8 +35,8 @@ import { HamburgerIcon } from "@chakra-ui/icons";
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
-  let [componentNum, setComponentNum] = useState([]);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [componentNum, setComponentNum] = useState([]);
+  let { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
   const [selected, setSelected] = useState([
     [true, true, false],
