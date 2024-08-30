@@ -1,4 +1,4 @@
-import logo from "./logo.svg";
+import WhichEt from './components/which-et/whichet.tsx';
 import "./App.css";
 import Jason from "./components/jason/json.tsx";
 import Arnav from "./components/arnav/arnav.tsx";
@@ -36,7 +36,8 @@ import { HamburgerIcon } from "@chakra-ui/icons";
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
-  let { isOpen, onOpen, onClose } = useDisclosure();
+  let [componentNum, setComponentNum] = useState([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
   const [selected, setSelected] = useState([
     [true, true, false],
@@ -86,11 +87,26 @@ function App() {
           onClick={() => handleBoxClick(bigindex, index)}
           alignItems="center"
           justifyContent="center"
-          // _hover={{ bg: isSelected ? "blue.500" : "gray.300" }}
         ></Button>
       ));
     });
   };
+  const Components = [ // list of components
+    <Jason toggleConfetti={setUseconfetti} />,
+    <Arnav />,
+    <List toggleConfetti={setUseconfetti2} />,
+    <Boaz />,
+    <Time />,
+  ]
+
+  const ComponentNames = [ // list of component names
+    "RNG",
+    "Timer",
+    "List",
+    "Work Symbols",
+    "Clock",
+  ]
+
   useEffect(() => {
     let rowNumber, columnNumber;
     if (selected.findIndex((row) => row[0] === false) === -1) {
@@ -107,7 +123,7 @@ function App() {
     document.documentElement.style.setProperty("--grid-rows", rowNumber);
   }, [selected]);
 
-  // arnav ran the code to create swapy multiple times which caused poor performance issues
+  // chatgpt ran the code to create swapy multiple times which caused poor performance issues
   useEffect(() => {
     const container = document.querySelector(".container");
     const swapy = createSwapy(container, {
@@ -144,7 +160,7 @@ function App() {
 
             <div className="slot section-3" data-swapy-slot="slot3">
               <div className="content" data-swapy-item="itemC">
-                <List toggleConfetti={setUseconfetti2} />
+                <WhichEt Components={Components} ComponentNames={ComponentNames} ComponentNum={setComponentNum} />
               </div>
             </div>
 
@@ -159,7 +175,10 @@ function App() {
             colorScheme="teal"
             onClick={onOpen}
             icon={<HamburgerIcon />}
-          ></IconButton>
+            position="absolute"
+            top="0"
+            right="0"
+          />
         </header>
 
         <Drawer
@@ -174,27 +193,6 @@ function App() {
             <DrawerHeader>Formatting</DrawerHeader>
 
             <DrawerBody width="100%" height="100%">
-              {/* <VStack align='left'>
-                <HStack>
-                  <Text textAlign='center' width='60px'>Row</Text>
-                  <Text textAlign='center' width='20px'>x</Text>
-                  <Text textAlign='center' width='60px'>Column</Text>
-                </HStack>
-                
-                <HStack>
-                  <PinInput
-                    defaultValue={rowNo.toString() + columnNo.toString()}
-                    placeholder=""
-                    onChange={(e)=>{
-                      console.log(e)
-                    }}
-                  >
-                    <PinInputField width='60px'/>
-                    <Text textAlign='center' width='20px'>x</Text>
-                    <PinInputField width='60px' />
-                  </PinInput>
-                </HStack>
-              </VStack> */}
               <VStack width="100%" height="100%" align="left">
                 <Text marginBottom="10px" fontSize="xl">
                   Grid Size
@@ -210,7 +208,6 @@ function App() {
                 </SimpleGrid>
               </VStack>
             </DrawerBody>
-
             <DrawerFooter>
               <Button
                 colorScheme="blue"
