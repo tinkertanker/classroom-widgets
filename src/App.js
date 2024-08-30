@@ -3,6 +3,7 @@ import "./App.css";
 import Randomiser from "./components/randomiser/randomiser.tsx";
 import Timer from "./components/timer/timer.tsx";
 import List from "./components/list/list.tsx";
+import Face from './components/jason/facerecognition.tsx'
 import Work from "./components/work/work.tsx";
 import TrafficLight from "./components/trafficLight/trafficLight.tsx";
 import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
