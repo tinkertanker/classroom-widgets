@@ -1,4 +1,4 @@
-import WhichEt from './components/which-et/whichet.tsx';
+import WhichEt from "./components/which-et/whichet.tsx";
 import "./App.css";
 import Jason from "./components/jason/json.tsx";
 import Arnav from "./components/arnav/arnav.tsx";
@@ -6,6 +6,8 @@ import List from "./components/list/list.tsx";
 import Boaz from "./components/boaz/boaz.js";
 import { useEffect, useState, useRef } from "react";
 import { createSwapy } from "swapy";
+import { Rnd } from "react-rnd";
+
 import Confetti from "react-confetti";
 import Time from "./components/jason/clock.tsx";
 import {
@@ -29,214 +31,101 @@ import {
   SimpleGrid,
   Heading,
   Box,
+  Card,
+  CardBody,
 } from "@chakra-ui/react";
 import { HamburgerIcon } from "@chakra-ui/icons";
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
-  const [componentNum, setComponentNum] = useState([]);
-  let { isOpen, onOpen, onClose } = useDisclosure();
-  const btnRef = useRef();
-  const [selected, setSelected] = useState([
-    [true, true, false],
-    [true, true, false],
-    [true, true, false],
-  ]);
-  function handleShortcut(event) {
-    if (event.ctrlKey && event.key === "k") {
-      event.preventDefault();
-      // Toggle the drawer open/close
-      if (isOpen) {
-        isOpen = false;
-        onClose();
-      } else {
-        isOpen = true;
-        onOpen();
-      }
-    }
-  }
+  const [componentList, setComponentList] = useState([]);
+  const [activeIndex, setActiveIndex] = useState(null);
 
-  const handleBoxClick = (bigindex, index) => {
-    const newSelected = selected.map((innerSelected, indexa) => {
-      return innerSelected.map((_, i) => {
-        if (indexa <= bigindex) {
-          if (i <= index) {
-            return true;
-          } else {
-            return false;
-          }
-        } else {
-          return false;
-        }
-      });
-    });
-    setSelected(newSelected);
-  };
-
-  const renderBoxes = () => {
-    console.log("WHAT");
-    return selected.map((innerSelected, bigindex) => {
-      return innerSelected.map((isSelected, index) => (
-        <Button
-          key={index}
-          width="100%"
-          height="100%"
-          colorScheme={isSelected ? "blue" : "gray"}
-          onClick={() => handleBoxClick(bigindex, index)}
-          alignItems="center"
-          justifyContent="center"
-        ></Button>
-      ));
-    });
-  };
-  const Components = [ // list of components
+  const Components = [
+    // list of components
     <Jason toggleConfetti={setUseconfetti} />,
     <Arnav />,
     <List toggleConfetti={setUseconfetti2} />,
     <Boaz />,
     <Time />,
-  ]
+  ];
 
-  const ComponentNames = [ // list of component names
+  const ComponentNames = [
+    // list of component names
     "RNG",
     "Timer",
     "List",
     "Work Symbols",
     "Clock",
-  ]
-
-  useEffect(() => {
-    let rowNumber, columnNumber;
-    if (selected.findIndex((row) => row[0] === false) === -1) {
-      rowNumber = selected.length;
-    } else {
-      rowNumber = selected.findIndex((row) => row[0] === false);
-    }
-    if (selected[0].findIndex((value) => value === false) === -1) {
-      columnNumber = selected[0].length;
-    } else {
-      columnNumber = selected[0].findIndex((value) => value === false);
-    }
-    document.documentElement.style.setProperty("--grid-columns", columnNumber);
-    document.documentElement.style.setProperty("--grid-rows", rowNumber);
-  }, [selected]);
-
-  // chatgpt ran the code to create swapy multiple times which caused poor performance issues
-  useEffect(() => {
-    const container = document.querySelector(".container");
-    const swapy = createSwapy(container, {
-      animation: "dynamic",
-    });
-    swapy.enable(true);
-    document.documentElement.style.setProperty("--grid-columns", 2); // Sets row number to 3 and column number to 2 by default
-    document.documentElement.style.setProperty("--grid-rows", 3);
-
-    document.addEventListener("keydown", handleShortcut);
-
-    return () => {
-      swapy.enable(false); // Disable the swapy instance
-    };
-  }, []);
+  ];
+  function Toolbar() {
+    return (
+      <Card width="90%">
+        <CardBody width="100%">
+          <HStack alignItems="center" justifyContent="center">
+            {ComponentNames.map((ComponentName, index) => (
+              <Button
+                key={index}
+                onClick={() => {
+                  console.log([...componentList, index]);
+                  setComponentList((e) => [...e, index]);
+                }}
+                colorScheme="teal"
+                justifyContent={"center"}
+              >
+                {ComponentName}
+              </Button>
+            ))}
+            <Text>{componentList.length}</Text>
+          </HStack>
+        </CardBody>
+      </Card>
+    );
+  }
 
   return (
     <ChakraProvider>
       <div className="App">
         <header className="App-header">
-          <div className="container">
-            <div className="slot section-1" data-swapy-slot="slot1">
-              <div className="content" data-swapy-item="itemA">
-                <Jason toggleConfetti={setUseconfetti} />
-              </div>
-            </div>
+          <VStack width='100%' height='100%' justifyContent='center' alignItems='center'>
+          <Box position='absolute' right='10px' left='10px' top='10px' bottom='10px'>
 
-            <div className="slot section-2" data-swapy-slot="slot2">
-              
-                <div className="content" data-swapy-item="itemB">
-                  <Arnav />
-                </div>
-            </div>
-
-            <div className="slot section-3" data-swapy-slot="slot3">
-              <div className="content" data-swapy-item="itemC">
-                <WhichEt Components={Components} ComponentNames={ComponentNames} ComponentNum={setComponentNum} />
-              </div>
-            </div>
-
-            <div className="slot section-4" data-swapy-slot="slot4">
-              <div className="content" data-swapy-item="itemD">
-                <Time />
-              </div>
-            </div>
-          </div>
-          <IconButton
-            ref={btnRef}
-            colorScheme="teal"
-            onClick={onOpen}
-            icon={<HamburgerIcon />}
-            position="absolute"
-            top="0"
-            right="0"
-          />
-        </header>
-
-        <Drawer
-          isOpen={isOpen}
-          placement="right"
-          onClose={onClose}
-          finalFocusRef={btnRef}
-        >
-          <DrawerOverlay />
-          <DrawerContent>
-            <DrawerCloseButton />
-            <DrawerHeader>Formatting</DrawerHeader>
-
-            <DrawerBody width="100%" height="100%">
-              <VStack width="100%" height="100%" align="left">
-                <Text marginBottom="10px" fontSize="xl">
-                  Grid Size
-                </Text>
-                <SimpleGrid
-                  columns={3}
-                  spacingX={4}
-                  spacingY={4}
-                  width="100%"
-                  height="30%"
-                >
-                  {renderBoxes()}
-                </SimpleGrid>
-              </VStack>
-            </DrawerBody>
-            <DrawerFooter>
-              <Button
-                colorScheme="blue"
-                // onClick={() => {
-                //   let rowNumber, columnNumber;
-                //   if (selected.findIndex((row) => row[0] === false) === -1) {
-                //     rowNumber = selected.length;
-                //   } else {
-                //     rowNumber = selected.findIndex((row) => row[0] === false);
-                //   }
-                //   if (
-                //     selected[0].findIndex((value) => value === false) === -1
-                //   ) {
-                //     columnNumber = selected[0].length;
-                //   } else {
-                //     columnNumber = selected[0].findIndex(
-                //       (value) => value === false
-                //     );
-                //   }
-                //   document.documentElement.style.setProperty("--grid-columns", columnNumber);
-                //   document.documentElement.style.setProperty("--grid-rows", rowNumber);
-
-                // }}
+          {componentList.map((number, index) => {
+            return (
+              <Rnd
+              default={{
+                x: Math.floor(Math.random() * (window.innerWidth-370)),
+                y: Math.floor(Math.random() * (window.innerHeight-370)),
+                width: 350,
+                height: 350,
+              }}
+              minWidth='100'
+              minHeight='100'
+              key={index}
+              lockAspectRatio={true}
+              enableUserSelectHack={true}
+              bounds="parent"
+              dragGrid={[100,100]}
+              resizeGrid= {[1, 1]}
+              style={{
+                zIndex: activeIndex === index ? 1000 : 'auto',
+                onClick: () => setActiveIndex(index),
+                onTouchStart: () => setActiveIndex(index),
+              }}
               >
-                Save
-              </Button>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
-        {useconfetti && (
+                {Components[number]}
+              </Rnd>
+            );
+          })}
+          </Box>
+          <Box className="toolbar-container">
+            <Toolbar />
+          </Box>
+          </VStack>
+        </header>
+      </div>
+      {useconfetti && (
           <Confetti
             width={window.innerWidth}
             height={window.innerHeight}
@@ -260,7 +149,6 @@ function App() {
             confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
           />
         )}
-      </div>
     </ChakraProvider>
   );
 }

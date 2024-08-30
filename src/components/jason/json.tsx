@@ -132,8 +132,9 @@ function Jason({ toggleConfetti }) {
             padding="0"
             onClick={handlerandomise}
             isDisabled={loading}
+            textAlign={"center"}
           >
-            <Text fontSize="1.1em"> Randomise!!</Text>
+            <Text fontSize='1.1em'> Randomise!!</Text>
           </Button>
         );
       case "result":
