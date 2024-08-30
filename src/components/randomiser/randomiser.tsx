@@ -83,7 +83,7 @@ function Randomiser({ toggleConfetti }) {
   const [loading, setLoading] = useState(false);
 
   const handlerandomise = () => {
-    setClearedStorage(false);
+    console.log("what");
 
     setpressedDisable(false);
     toggleConfetti(false);
@@ -110,6 +110,15 @@ function Randomiser({ toggleConfetti }) {
         onOpen();
       }
 
+      // Randomize the order of elements in actual_choices using Fisher-Yates shuffle algorithm
+      for (let i = actual_choices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [actual_choices[i], actual_choices[j]] = [
+          actual_choices[j],
+          actual_choices[i],
+        ];
+      }
+
       setAnimationtracker(0);
     } else {
       setResult("Nothing to randomise! Click me to enter a list to randomise!");
@@ -121,59 +130,7 @@ function Randomiser({ toggleConfetti }) {
     }
   };
 
-  function Displaybuttons({ buttonsettings }) {
-    switch (buttonsettings) {
-      case "normal":
-        return (
-          <Button
-            colorScheme="teal"
-            width="37.5%"
-            height="13%"
-            padding="0"
-            onClick={handlerandomise}
-            isDisabled={loading}
-            textAlign={"center"}
-          >
-            <Text fontSize='1.1em'> Randomise!!</Text>
-          </Button>
-        );
-      case "result":
-        return (
-          <HStack width="100%" height="13%" justifyContent="center">
-            <Button
-              hidden={loading}
-              isDisabled={remember ? true : pressedDisable}
-              colorScheme="yellow"
-              width="35%"
-              height="100%"
-              padding="0"
-              onClick={() => {
-                setSelected([...selected, result]);
-                setpressedDisable(true);
-              }}
-            >
-              {remember
-                ? "Option removed"
-                : pressedDisable
-                  ? "Option removed"
-                  : "Remove option"}
-            </Button>
-            <Button
-              isDisabled={loading}
-              ref={initialResultFocus}
-              colorScheme="teal"
-              width="35%"
-              height="100%"
-              onClick={() => {
-                handlerandomise();
-              }}
-            >
-              Again!
-            </Button>
-          </HStack>
-        );
-    }
-  }
+  
 
   useEffect(() => {
     if (input === "") {
@@ -228,7 +185,7 @@ function Randomiser({ toggleConfetti }) {
             function () {
               let placeholder =
                 actual_choices[
-                Math.floor(Math.random() * actual_choices.length)
+                  Math.floor(Math.random() * actual_choices.length)
                 ];
               setResult(placeholder);
               if (remember) {
@@ -309,19 +266,18 @@ function Randomiser({ toggleConfetti }) {
         minWidth="125px"
         lockAspectRatio={true}
       > */}
-        <Card
-          width="100%"
-          height="100%"
-          id='jason'
-          padding='3px'
-          // width='100%'
-          // height='100%'
+      <Card
+        width="100%"
+        height="100%"
+        id="jason"
+        padding="3px"
+        // width='100%'
+        // height='100%'
 
-
-      // position="fixed"
-      // onMouseDown={mouseDown}
-      // top={cardy + "px"}
-      // left={cardx + "px"}
+        // position="fixed"
+        // onMouseDown={mouseDown}
+        // top={cardy + "px"}
+        // left={cardx + "px"}
       >
         <CardBody width="100%" height="100%" padding="0">
           <VStack width="100%" height="100%">
@@ -372,17 +328,52 @@ function Randomiser({ toggleConfetti }) {
                 </Box>
               </Box>
             </Button>
-            <Displaybuttons buttonsettings={buttonsettings}></Displaybuttons>
-            {/* <Button
+            {buttonsettings === "normal" ? (
+              <Button
                 colorScheme="teal"
                 width="37.5%"
-                height="12.5%"
+                height="13%"
                 padding="0"
-                onClick={handlerandomise}
-                isLoading={loading}
+                onClick={()=>handlerandomise()}
+                isDisabled={loading}
+                textAlign={"center"}
               >
                 <Text fontSize="1.1em"> Randomise!!</Text>
-              </Button> */}
+              </Button>
+            ) : buttonsettings === "result" ? (
+              <HStack width="100%" height="13%" justifyContent="center">
+                <Button
+                  hidden={loading}
+                  isDisabled={remember ? true : pressedDisable}
+                  colorScheme="yellow"
+                  width="35%"
+                  height="100%"
+                  padding="0"
+                  onClick={() => {
+                    setSelected([...selected, result]);
+                    setpressedDisable(true);
+                  }}
+                >
+                  {remember
+                    ? "Option removed"
+                    : pressedDisable
+                    ? "Option removed"
+                    : "Remove option"}
+                </Button>
+                <Button
+                  isDisabled={loading}
+                  ref={initialResultFocus}
+                  colorScheme="teal"
+                  width="35%"
+                  height="100%"
+                  onClick={() => {
+                    handlerandomise();
+                  }}
+                >
+                  Again!
+                </Button>
+              </HStack>
+            ) : null}
           </VStack>
 
           {/* <Modal
@@ -436,7 +427,7 @@ function Randomiser({ toggleConfetti }) {
                 </ModalFooter>
               </ModalContent>
             </Modal> */}
-          
+
           <Modal
             isOpen={isOpen}
             onClose={onClose}
@@ -520,9 +511,9 @@ function Randomiser({ toggleConfetti }) {
                           height="250px"
                         ></Textarea>
                         <Text paddingTop="30px" fontSize="md">
-                          Note: All leading and trailing spaces, empty rows,
-                          and duplicates in the list are automatically removed
-                          when generating.
+                          Note: All leading and trailing spaces, empty rows, and
+                          duplicates in the list are automatically removed when
+                          generating.
                         </Text>
                       </VStack>
                     </TabPanel>
@@ -653,10 +644,7 @@ function Randomiser({ toggleConfetti }) {
                     </TabPanel>
                   </TabPanels>
                 </ModalBody>
-                <ModalFooter
-                  paddingTop="3px"
-                  paddingBottom="3px"
-                ></ModalFooter>
+                <ModalFooter paddingTop="3px" paddingBottom="3px"></ModalFooter>
               </Tabs>
             </ModalContent>
           </Modal>

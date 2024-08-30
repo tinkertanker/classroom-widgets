@@ -44,6 +44,7 @@ function App() {
   const [useconfetti2, setUseconfetti2] = useState(false);
   const [componentList, setComponentList] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
+  const [generatedComponents, setGeneratedComponents] = useState([]);
 
   const Components = [
     <Randomiser toggleConfetti={setUseconfetti} />,
@@ -97,8 +98,6 @@ function App() {
     );
   }
 
-  const [generatedComponents, setGeneratedComponents] = useState([]);
-
   useEffect(() => {
     const components = componentList.map(({ id, index }) => (
       <Rnd
@@ -111,22 +110,44 @@ function App() {
         minWidth={index === 4 ? '150px' : '200px'}
         minHeight={index === 4 ? '150px' : '200px'}
         key={id}
+        id={id}
         lockAspectRatio={index === 5 ? false : true}
         enableUserSelectHack={true}
         bounds="parent"
-        dragGrid={[100, 100]}
-        resizeGrid={[1, 1]}
+        // dragGrid={[100, 100]} // can implement grid if future interns want
+        // resizeGrid={[1, 1]}
         style={{
-          zIndex: activeIndex === id ? 999 : 'auto',
+          zIndex: activeIndex === id ? 998 : 'auto',
+          
           // borderWidth: activeIndex === id ? "2px":"0px",
           // borderColor:"skyblue" // for future interns to implement
         }}
-        onMouseDown={() => setActiveIndex(id)}
-        onTouchStart={() => setActiveIndex(id)}
+        onDragStart={()=>{
+          setActiveIndex(id);
+        }}
+        onResizeStart={()=>{
+          setActiveIndex(id);
+        }}
+        onTouchStart={() => {
+          setActiveIndex(id);
+        }}
         onDragStop={(e, data) => {
           trashHandler(e, data, id);
+          const element = document.getElementById(id);
+          if (element) {
+            const { x, y } = element.getBoundingClientRect();
+            if (x === 10 && y === 10) {
+              // If the element is still at the top-left corner after being dragged,
+              // stop the event propagation and reset the active index but this needs further work
+              // setActiveIndex(null);
+            }
+          }
+          
+          
         }}
-        onResizeStart={()=>setActiveIndex(id)}
+
+       
+       
       >
         {Components[index]}
       </Rnd>
@@ -186,6 +207,7 @@ function App() {
           wind={0.01}
           colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
           confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
+          style={{zIndex:1000}}
         />
       )}
       {useconfetti2 && (
