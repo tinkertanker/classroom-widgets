@@ -1,10 +1,12 @@
 import WhichEt from "./components/which-et/whichet.tsx";
-import WhichEt from "./components/which-et/whichet.tsx";
 import "./App.css";
 import Jason from "./components/jason/json.tsx";
 import Arnav from "./components/arnav/arnav.tsx";
 import List from "./components/list/list.tsx";
-import Boaz from "./components/boaz/boaz.js";
+import Boaz from "./components/boaz/boaz.tsx";
+import TrafficLight from './components/boaz/boazbutbad.tsx';
+import AudioVolumeMonitor from './components/boaz/volumeLevel.tsx';
+import ShortenLink from './components/boaz/filename.tsx';
 import { useEffect, useState, useRef } from "react";
 import { createSwapy } from "swapy";
 import { Rnd } from "react-rnd";
@@ -50,6 +52,9 @@ function App() {
     <List toggleConfetti={setUseconfetti2} />,
     <Boaz />,
     <Time />,
+    <TrafficLight/>,
+    <AudioVolumeMonitor/>,
+    <ShortenLink/>
   ];
 
   const ComponentNames = [
@@ -59,6 +64,9 @@ function App() {
     "List",
     "Work Symbols",
     "Clock",
+    "Traffic Light",
+    "Loudness Monitor",
+    "Link Shortener"
   ];
   function Toolbar() {
     return (

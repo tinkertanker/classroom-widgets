@@ -90,7 +90,7 @@ function Jason({ toggleConfetti }) {
     yay.pause();
     yay.currentTime = 0;
 
-    if (choices.length != 0) {
+    if (choices.length !== 0) {
       setLoading(true);
       localStorage.setItem("input", input);
       actual_choices = choices;
@@ -102,7 +102,7 @@ function Jason({ toggleConfetti }) {
           return choice;
         }
       });
-      if (actual_choices.length == 0) {
+      if (actual_choices.length === 0) {
         setLoading(false);
         alert(
           "All entries in the list have been chosen once! Please edit the list or your settings! "
@@ -155,8 +155,8 @@ function Jason({ toggleConfetti }) {
               {remember
                 ? "Option removed"
                 : pressedDisable
-                ? "Option removed"
-                : "Remove option"}
+                  ? "Option removed"
+                  : "Remove option"}
             </Button>
             <Button
               isDisabled={loading}
@@ -176,20 +176,20 @@ function Jason({ toggleConfetti }) {
   }
 
   useEffect(() => {
-    if (input == "") {
+    if (input === "") {
       // This is on initialisation thus no modification should happen
       return;
     }
     if (selected.length != 0) {
       setSelected([]);
     }
-    if (buttonsettings == "result") {
+    if (buttonsettings === "result") {
       setButtonSettings("normal");
     }
     let temporarychoices = input.split("\n");
     temporarychoices = temporarychoices.map((value) => value.trim()); // remove leading and trailing spaces
     temporarychoices = temporarychoices.filter((value, index, array) => {
-      if (value == "") {
+      if (value === "") {
         // there are only spaces in that line, dont return
         // console.log(value);
       } else {
@@ -206,7 +206,7 @@ function Jason({ toggleConfetti }) {
 
   // Recursive use effect that acts like a for loop and works, normal for loop doesnt work cause setInterval is async
   useEffect(() => {
-    if (loading == true) {
+    if (loading === true) {
       if (animationtracker < animationcount) {
         setTimeout(() => {
           let temporaryslowness = 0;
@@ -221,14 +221,14 @@ function Jason({ toggleConfetti }) {
             setAnimationtracker(animationtracker + 1);
           }, (animationspeed + temporaryslowness) * 1000);
         }, (animationspeed + slowanimation) * 2 * 1000);
-      } else if (animationtracker == animationcount) {
+      } else if (animationtracker === animationcount) {
         setTimeout(function () {
           setOpen(false);
           setTimeout(
             function () {
               let placeholder =
                 actual_choices[
-                  Math.floor(Math.random() * actual_choices.length)
+                Math.floor(Math.random() * actual_choices.length)
                 ];
               setResult(placeholder);
               if (remember) {
@@ -295,7 +295,7 @@ function Jason({ toggleConfetti }) {
           gravity={0.3} // Adjust gravity for a slower fall
           wind={0.01} // Add a slight wind effect
           colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]} // Custom colors
-          confettiSource={{x: 0, y: 0, w: window.innerWidth, h:0}}
+          confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
         />
       )} */}
       {/* <Rnd
@@ -318,21 +318,21 @@ function Jason({ toggleConfetti }) {
           // height='100%'
 
 
-        // position="fixed"
-        // onMouseDown={mouseDown}
-        // top={cardy + "px"}
-        // left={cardx + "px"}
+      // position="fixed"
+      // onMouseDown={mouseDown}
+      // top={cardy + "px"}
+      // left={cardx + "px"}
       >
-        <CardBody width="100%" height="80%" padding="0">
+        <CardBody width="100%" height="100%" padding="0">
           <VStack width="100%" height="100%">
             <Button
               width="87.5%"
-              height="95%"
+              height="75%"
               marginTop="5%"
               marginBottom="2%"
               padding="0"
               onClick={() => {
-                if (loading == false) {
+                if (loading === false) {
                   onOpen();
                 }
               }}
@@ -372,6 +372,7 @@ function Jason({ toggleConfetti }) {
                 </Box>
               </Box>
             </Button>
+            <Displaybuttons buttonsettings={buttonsettings}></Displaybuttons>
             {/* <Button
                 colorScheme="teal"
                 width="37.5%"
@@ -435,6 +436,7 @@ function Jason({ toggleConfetti }) {
                 </ModalFooter>
               </ModalContent>
             </Modal> */}
+          
           <Modal
             isOpen={isOpen}
             onClose={onClose}
@@ -518,9 +520,9 @@ function Jason({ toggleConfetti }) {
                           height="250px"
                         ></Textarea>
                         <Text paddingTop="30px" fontSize="md">
-                          Note: All leading and trailing spaces, empty rows, and
-                          duplicates in the list are automatically removed when
-                          generating.
+                          Note: All leading and trailing spaces, empty rows,
+                          and duplicates in the list are automatically removed
+                          when generating.
                         </Text>
                       </VStack>
                     </TabPanel>
@@ -651,21 +653,14 @@ function Jason({ toggleConfetti }) {
                     </TabPanel>
                   </TabPanels>
                 </ModalBody>
-                <ModalFooter paddingTop="3px" paddingBottom="3px"></ModalFooter>
+                <ModalFooter
+                  paddingTop="3px"
+                  paddingBottom="3px"
+                ></ModalFooter>
               </Tabs>
             </ModalContent>
           </Modal>
         </CardBody>
-        <CardFooter
-          height="20%"
-          width="100%"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          padding="0"
-        >
-          <Displaybuttons buttonsettings={buttonsettings}></Displaybuttons>
-        </CardFooter>
       </Card>
       {/* </Rnd> */}
     </ChakraProvider>
