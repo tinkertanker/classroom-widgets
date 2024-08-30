@@ -107,7 +107,7 @@ function TrafficLight() {
                     display={"flex"}
                     id="boxlol"
 
-                    maxW={`${state.boxWidth}px`}
+                    minW={`${state.boxWidth}px`}
                     height='100%'
                     bg="darkslategrey"
                     borderRadius="10px"
