@@ -48,3 +48,11 @@
   background-color: #00aaff;
   transition: height 1s linear;
 }
+
+.water-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background-color: #00aaff;
+  transition: height 1s linear;
+}
