@@ -1,4 +1,4 @@
-import logo from "./logo.svg";
+import WhichEt from './components/which-et/whichet.tsx';
 import "./App.css";
 import Jason from "./components/jason/json.tsx";
 import Arnav from "./components/arnav/arnav.tsx";
@@ -35,6 +35,7 @@ import { HamburgerIcon } from "@chakra-ui/icons";
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
+  const [componentNum, setComponentNum] = useState([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
   const [selected, setSelected] = useState([
@@ -78,6 +79,22 @@ function App() {
       ));
     });
   };
+  const Components = [ // list of components
+    <Jason toggleConfetti={setUseconfetti} />,
+    <Arnav />,
+    <List toggleConfetti={setUseconfetti2} />,
+    <Boaz />,
+    <Time />,
+  ]
+
+  const ComponentNames = [ // list of component names
+    "RNG",
+    "Timer",
+    "List",
+    "Work Symbols",
+    "Clock",
+  ]
+
   useEffect(() => {
     let rowNumber, columnNumber;
     if (selected.findIndex((row) => row[0] === false) === -1) {
@@ -127,7 +144,7 @@ function App() {
 
             <div className="slot section-3" data-swapy-slot="slot3">
               <div className="content" data-swapy-item="itemC">
-                <List toggleConfetti={setUseconfetti2} />
+                <WhichEt Components={Components} ComponentNames={ComponentNames} ComponentNum={setComponentNum} />
               </div>
             </div>
 
@@ -142,6 +159,9 @@ function App() {
             colorScheme="teal"
             onClick={onOpen}
             icon={<HamburgerIcon />}
+            position="absolute"
+            top="0"
+            right="0"
           ></IconButton>
         </header>
 
