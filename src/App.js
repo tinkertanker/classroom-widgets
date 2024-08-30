@@ -1,4 +1,4 @@
-import WhichEt from './components/which-et/whichet.tsx';
+import WhichEt from "./components/which-et/whichet.tsx";
 import "./App.css";
 import Jason from "./components/jason/json.tsx";
 import Arnav from "./components/arnav/arnav.tsx";
@@ -35,8 +35,12 @@ import { HamburgerIcon } from "@chakra-ui/icons";
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
-  const [componentNum, setComponentNum] = useState([]);
-  let { isOpen, onOpen, onClose } = useDisclosure();
+  const [componentNum, setComponentNum] = useState([
+    [-1, -1, -1],
+    [-1, -1, -1],
+    [-1, -1, -1],
+  ]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const btnRef = useRef();
   const [selected, setSelected] = useState([
     [true, true, false],
@@ -56,6 +60,35 @@ function App() {
       }
     }
   }
+  const itemNames = [
+    ["itemA", "itemB", "itemC"],
+    ["itemD", "itemE", "itemF"],
+    ["itemG", "itemH", "itemI"],
+  ];
+  const Components = [
+    <Jason toggleConfetti={setUseconfetti} />,
+    <Arnav />,
+    <List toggleConfetti={setUseconfetti2} />,
+    <Boaz />,
+    <Time />,
+    <Arnav />,
+    <List toggleConfetti={setUseconfetti2} />,
+    <Boaz />,
+    <Time />,
+  ];
+  const ComponentNames = [
+    "RNG",
+    "Timer",
+    "List",
+    "Work Symbols",
+    "Clock",
+    "Timer",
+    "List",
+    "Work Symbols",
+    "Clock",
+  ];
+  const [rows, setRows] = useState(3);
+  const [columns, setColumns] = useState(3);
 
   const handleBoxClick = (bigindex, index) => {
     const newSelected = selected.map((innerSelected, indexa) => {
@@ -90,21 +123,6 @@ function App() {
       ));
     });
   };
-  const Components = [ // list of components
-    <Jason toggleConfetti={setUseconfetti} />,
-    <Arnav />,
-    <List toggleConfetti={setUseconfetti2} />,
-    <Boaz />,
-    <Time />,
-  ]
-
-  const ComponentNames = [ // list of component names
-    "RNG",
-    "Timer",
-    "List",
-    "Work Symbols",
-    "Clock",
-  ]
 
   useEffect(() => {
     let rowNumber, columnNumber;
@@ -129,7 +147,7 @@ function App() {
       animation: "dynamic",
     });
     swapy.enable(true);
-    document.documentElement.style.setProperty("--grid-columns", 2); // Sets row number to 3 and column number to 2 by default
+    document.documentElement.style.setProperty("--grid-columns", 3);
     document.documentElement.style.setProperty("--grid-rows", 3);
 
     document.addEventListener("keydown", handleShortcut);
@@ -144,31 +162,25 @@ function App() {
       <div className="App">
         <header className="App-header">
           <div className="container">
-            <div className="slot section-1" data-swapy-slot="slot1">
-              <div className="content" data-swapy-item="itemA">
-                <Jason toggleConfetti={setUseconfetti} />
-              </div>
-            </div>
-
-            <div className="slot section-2" data-swapy-slot="slot2">
-              
-                <div className="content" data-swapy-item="itemB">
-                  <Arnav />
-                </div>
-            </div>
-
-            <div className="slot section-3" data-swapy-slot="slot3">
-              <div className="content" data-swapy-item="itemC">
-                <WhichEt Components={Components} ComponentNames={ComponentNames} ComponentNum={setComponentNum} />
-              </div>
-            </div>
-
-            <div className="slot section-4" data-swapy-slot="slot4">
-              <div className="content" data-swapy-item="itemD">
-                <Time />
-              </div>
-            </div>
+            <VStack>
+              {itemNames.map((row, rowIndex) => (
+                <HStack>
+                  {row.map((item, itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      className="slot section"
+                      data-swapy-slot={"item" + item}
+                    >
+                      <div className="content" data-swapy-item={"item" + item}>
+                        {Components[rowIndex * 3 + itemIndex]}
+                      </div>
+                    </div>
+                  ))}
+                </HStack>
+              ))}
+            </VStack>
           </div>
+
           <IconButton
             ref={btnRef}
             colorScheme="teal"
@@ -208,31 +220,7 @@ function App() {
               </VStack>
             </DrawerBody>
             <DrawerFooter>
-              <Button
-                colorScheme="blue"
-                // onClick={() => {
-                //   let rowNumber, columnNumber;
-                //   if (selected.findIndex((row) => row[0] === false) === -1) {
-                //     rowNumber = selected.length;
-                //   } else {
-                //     rowNumber = selected.findIndex((row) => row[0] === false);
-                //   }
-                //   if (
-                //     selected[0].findIndex((value) => value === false) === -1
-                //   ) {
-                //     columnNumber = selected[0].length;
-                //   } else {
-                //     columnNumber = selected[0].findIndex(
-                //       (value) => value === false
-                //     );
-                //   }
-                //   document.documentElement.style.setProperty("--grid-columns", columnNumber);
-                //   document.documentElement.style.setProperty("--grid-rows", rowNumber);
-
-                // }}
-              >
-                Save
-              </Button>
+              <Button colorScheme="blue">Save</Button>
             </DrawerFooter>
           </DrawerContent>
         </Drawer>
