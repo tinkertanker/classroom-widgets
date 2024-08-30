@@ -44,7 +44,6 @@ function App() {
     [true, true, false],
   ]);
 
-
   const handleBoxClick = (bigindex, index) => {
     const newSelected = selected.map((innerSelected, indexa) => {
       return innerSelected.map((_, i) => {
@@ -74,7 +73,6 @@ function App() {
           onClick={() => handleBoxClick(bigindex, index)}
           alignItems="center"
           justifyContent="center"
-          // _hover={{ bg: isSelected ? "blue.500" : "gray.300" }}
         ></Button>
       ));
     });
@@ -111,7 +109,7 @@ function App() {
       document.documentElement.style.setProperty("--grid-rows", rowNumber);
   }, [selected]);
 
-  // arnav ran the code to create swapy multiple times which caused poor performance issues
+  // chatgpt ran the code to create swapy multiple times which caused poor performance issues
   useEffect(() => {
     const container = document.querySelector(".container");
     const swapy = createSwapy(container, {
@@ -162,7 +160,7 @@ function App() {
             position="absolute"
             top="0"
             right="0"
-          ></IconButton>
+          />
         </header>
 
         <Drawer
@@ -177,27 +175,6 @@ function App() {
             <DrawerHeader>Formatting</DrawerHeader>
 
             <DrawerBody width="100%" height="100%">
-              {/* <VStack align='left'>
-                <HStack>
-                  <Text textAlign='center' width='60px'>Row</Text>
-                  <Text textAlign='center' width='20px'>x</Text>
-                  <Text textAlign='center' width='60px'>Column</Text>
-                </HStack>
-                
-                <HStack>
-                  <PinInput
-                    defaultValue={rowNo.toString() + columnNo.toString()}
-                    placeholder=""
-                    onChange={(e)=>{
-                      console.log(e)
-                    }}
-                  >
-                    <PinInputField width='60px'/>
-                    <Text textAlign='center' width='20px'>x</Text>
-                    <PinInputField width='60px' />
-                  </PinInput>
-                </HStack>
-              </VStack> */}
               <VStack width="100%" height="100%" align="left">
                 <Text marginBottom="10px" fontSize="xl">
                   Grid Size
@@ -213,30 +190,9 @@ function App() {
                 </SimpleGrid>
               </VStack>
             </DrawerBody>
-
             <DrawerFooter>
               <Button
                 colorScheme="blue"
-                // onClick={() => {
-                //   let rowNumber, columnNumber;
-                //   if (selected.findIndex((row) => row[0] === false) === -1) {
-                //     rowNumber = selected.length;
-                //   } else {
-                //     rowNumber = selected.findIndex((row) => row[0] === false);
-                //   }
-                //   if (
-                //     selected[0].findIndex((value) => value === false) === -1
-                //   ) {
-                //     columnNumber = selected[0].length;
-                //   } else {
-                //     columnNumber = selected[0].findIndex(
-                //       (value) => value === false
-                //     );
-                //   }
-                //   document.documentElement.style.setProperty("--grid-columns", columnNumber);
-                //   document.documentElement.style.setProperty("--grid-rows", rowNumber);
-              
-                // }}
               >
                 Save
               </Button>

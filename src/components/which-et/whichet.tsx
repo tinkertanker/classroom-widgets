@@ -110,7 +110,7 @@ const WhichEt: React.FC<WhichEtProps> = ({ Components, ComponentNames, Component
                   overflow="hidden"
                   pointerEvents="none"
                 >
-                    {Components[chosenComponent]}
+                  {Components[chosenComponent]}
                 </Box>
               </Flex>
             </HStack>
