@@ -36,8 +36,9 @@ import {
   Box,
   Card,
   CardBody,
+  Flex
 } from "@chakra-ui/react";
-import { HamburgerIcon } from "@chakra-ui/icons";
+import { DeleteIcon, HamburgerIcon, Icon } from "@chakra-ui/icons";
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
@@ -87,6 +88,9 @@ function App() {
               </Button>
             ))}
             <Text>{componentList.length}</Text>
+            <Flex justifyContent='right'>
+              <DeleteIcon/>
+            </Flex>
           </HStack>
         </CardBody>
       </Card>
@@ -100,7 +104,8 @@ function App() {
           <VStack width='100%' height='100%' justifyContent='center' alignItems='center'>
           <Box position='absolute' right='10px' left='10px' top='10px' bottom='10px'>
 
-          {componentList.map((number, index) => {
+          {componentList.map((i, key) => {
+
             return (
               <Rnd
               default={{
@@ -109,21 +114,21 @@ function App() {
                 width: 350,
                 height: 350,
               }}
-              minWidth='100'
-              minHeight='100'
-              key={index}
-              lockAspectRatio={true}
+              minWidth={i===4?100:200}
+              minHeight={i===4?100:200}
+              key={key}
+              lockAspectRatio={i===5?false:true}
               enableUserSelectHack={true}
               bounds="parent"
               dragGrid={[100,100]}
               resizeGrid= {[1, 1]}
               style={{
-                zIndex: activeIndex === index ? 1000 : 'auto',
-                onClick: () => setActiveIndex(index),
-                onTouchStart: () => setActiveIndex(index),
+                zIndex: activeIndex === key ? 1000 : 'auto',
+                onClick: () => setActiveIndex(key),
+                onTouchStart: () => setActiveIndex(key),
               }}
               >
-                {Components[number]}
+                {Components[i]}
               </Rnd>
             );
           })}
