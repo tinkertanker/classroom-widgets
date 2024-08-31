@@ -58,58 +58,6 @@ function App() {
     // <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
-<<<<<<< HEAD
-  const ComponentNames = [
-    "Randomiser",
-    "Timer",
-    "List",
-    "Work Symbols",
-    "Clock",
-    "Traffic Light",
-    "Loudness Monitor",
-    // "Link Shortener", //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
-  ];
-
-  function Toolbar() {
-    return (
-      <Card width="90%" height="100%">
-        <CardBody width="100%" height="100%">
-          <HStack alignItems="center" justifyContent="center" width="100%" height="100%">
-            {ComponentNames.map((ComponentName, index) => (
-              <Button
-                key={index}
-                onClick={() => {
-                  const element = document.getElementById(activeIndex);
-                  if (element) {
-                    const { x, y } = element.getBoundingClientRect();
-                    if (x === 10 && y === 10) {
-                      // If the element is still at the top-left corner after being dragged,
-                      // stop the event propagation and reset the active index so that user will know that something appeared on top
-                      setActiveIndex(null);
-                    }
-                  }
-                  setComponentList((e) => [
-                    ...e,
-                    { id: uuidv4(), index }
-                  ]);
-                }}
-                colorScheme="teal"
-                justifyContent={"center"}
-              >
-                {ComponentName}
-              </Button>
-            ))}
-            <Text>{componentList.length}</Text>
-            <Flex justifyContent="right">
-              <DeleteIcon id="trash" />
-            </Flex>
-          </HStack>
-        </CardBody>
-      </Card>
-    );
-  }
-=======
->>>>>>> b2885a9 (refactored the toolbar component out into its own file)
 
   useEffect(() => {
     const components = componentList.map(({ id, index }) => (
