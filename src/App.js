@@ -1,17 +1,18 @@
 import "./App.css";
+import Toolbar from "./components/toolbar/toolbar.tsx";
 import Randomiser from "./components/randomiser/randomiser.tsx";
+import Time from "./components/clock/clock.tsx";
 import Timer from "./components/timer/timer.tsx";
 import List from "./components/list/list.tsx";
 import Work from "./components/work/work.tsx";
 import TrafficLight from "./components/trafficLight/trafficLight.tsx";
 import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
 import ShortenLink from "./components/shortenLink/shortenLink.tsx";
+
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
-import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 
 import Confetti from "react-confetti";
-import Time from "./components/clock/clock.tsx";
 import {
   ChakraProvider,
   Drawer,
@@ -37,7 +38,7 @@ import {
   CardBody,
   Flex,
 } from "@chakra-ui/react";
-import { DeleteIcon, HamburgerIcon, Icon } from "@chakra-ui/icons";
+import { HamburgerIcon, Icon } from "@chakra-ui/icons";
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
@@ -57,6 +58,7 @@ function App() {
     // <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
+<<<<<<< HEAD
   const ComponentNames = [
     "Randomiser",
     "Timer",
@@ -106,6 +108,8 @@ function App() {
       </Card>
     );
   }
+=======
+>>>>>>> b2885a9 (refactored the toolbar component out into its own file)
 
   useEffect(() => {
     const components = componentList.map(({ id, index }) => (
@@ -144,8 +148,6 @@ function App() {
           trashHandler(e, data, id);
           
         }}
-
-       
        
       >
         {Components[index]}
@@ -191,7 +193,7 @@ function App() {
               {generatedComponents}
             </Box>
             <Box className="toolbar-container" width="100%" height="10%" marginBottom="10px">
-              <Toolbar />
+              <Toolbar setComponentList={setComponentList} />
             </Box>
           </VStack>
         </header>
