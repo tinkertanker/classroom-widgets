@@ -1,17 +1,19 @@
 import "./App.css";
+import Toolbar from "./components/toolbar/toolbar.tsx";
 import Randomiser from "./components/randomiser/randomiser.tsx";
+import Time from "./components/clock/clock.tsx";
 import Timer from "./components/timer/timer.tsx";
 import List from "./components/list/list.tsx";
 import Work from "./components/work/work.tsx";
 import TrafficLight from "./components/trafficLight/trafficLight.tsx";
 import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
 import ShortenLink from "./components/shortenLink/shortenLink.tsx";
+
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
 import { v4 as uuidv4 } from "uuid"; // Import UUID package
 
 import Confetti from "react-confetti";
-import Time from "./components/clock/clock.tsx";
 import {
   ChakraProvider,
   Drawer,
@@ -38,7 +40,7 @@ import {
   Flex,
   extendTheme,
 } from "@chakra-ui/react";
-import { DeleteIcon, HamburgerIcon, Icon } from "@chakra-ui/icons";
+import { HamburgerIcon, Icon } from "@chakra-ui/icons";
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
@@ -46,15 +48,6 @@ function App() {
   const [componentList, setComponentList] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
   const [generatedComponents, setGeneratedComponents] = useState([]);
-  // const breakpoints = {
-  //   base: "0px",
-  //   sm: "480px",
-  //   md: "768px",
-  //   lg: "992px",
-  //   xl: "1200px",
-  //   "2xl": "1536px",
-  // };
-  // const theme = extendTheme({ breakpoints })
   const Components = [
     <Randomiser toggleConfetti={setUseconfetti} />,
     <Timer />,
@@ -66,65 +59,6 @@ function App() {
     <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
-  const ComponentNames = [
-    "Randomiser",
-    "Timer",
-    "List",
-    "Work Symbols",
-    "Clock",
-    "Traffic Light",
-    "Loudness Monitor",
-    "Link Shortener", //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
-  ];
-
-  function Toolbar() {
-    return (
-      <Card width="90%" height="100%">
-        <CardBody width="100%" height="100%" paddingX='10px' paddingY='0'>
-          <HStack
-            alignItems="center"
-            justifyContent="left"
-            width="100%"
-            height="100%"
-            overflowX='auto'
-            overflowY='visible'
-          >
-            {ComponentNames.map((ComponentName, index) => (
-              <Button
-                key={index}
-                onClick={() => {
-                  const element = document.getElementById(activeIndex);
-                  if (element) {
-                    const { x, y } = element.getBoundingClientRect();
-                    if (x === 10 && y === 10) {
-                      setActiveIndex(null);
-                    }
-                  }
-                  setComponentList((e) => [...e, { id: uuidv4(), index }]);
-                }}
-                colorScheme="teal"
-                justifyContent="center"
-                fontSize={{
-                  base: "0.3rem",
-                  sm: "0.5rem",
-                  md: "0.8rem",
-                  lg: "1.1rem",
-                  xl: "1.1rem",
-                }}
- 
-              >
-                {ComponentName}
-              </Button>
-            ))}
-            <Text>{componentList.length}</Text>
-            <Flex justifyContent="right">
-              <DeleteIcon id="trash" />
-            </Flex>
-          </HStack>
-        </CardBody>
-      </Card>
-    );
-  }
 
   useEffect(() => {
     const components = componentList.map(({ id, index }) => (
@@ -162,6 +96,7 @@ function App() {
         onDragStop={(e, data) => {
           trashHandler(e, data, id);
         }}
+       
       >
         {Components[index]}
       </Rnd>
@@ -205,13 +140,8 @@ function App() {
             >
               {generatedComponents}
             </Box>
-            <Box
-              className="toolbar-container"
-              width="100%"
-              height="10%"
-              marginBottom="10px"
-            >
-              <Toolbar />
+            <Box className="toolbar-container" width="100%" height="10%" marginBottom="10px">
+              <Toolbar setComponentList={setComponentList} activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
             </Box>
           </VStack>
         </header>
