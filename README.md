@@ -1,6 +1,17 @@
-# Getting Started with Create React App
+# Introduction
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+
+## Setting up Development Environment
+
+Clone the github repository
+
+Run `npm install`
+
+Copy `src/secrets/shortioKey.example.js` to `src/secrets/shortioKey.js` and
+enter the Short.io API key from our account.
+
+
 
 ## Available Scripts
 

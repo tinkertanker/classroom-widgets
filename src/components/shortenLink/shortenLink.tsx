@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import QRCode from 'react-qr-code';
 import { Box, Button, Input, Stack, Text, Heading, Flex } from '@chakra-ui/react'; // Import necessary Chakra UI components
-import API_KEY from '../../secrets/shortioKey'; // Import your API key securely from secrets
-const BASE_URL = 'https://api.short.io/links'; // Short.io API endpoint
+import { API_KEY, BASE_URL } from '../../secrets/shortioKey'; // Import your API key securely from secrets
 
 const ShortenLink: React.FC = () => {
   const [link, setLink] = useState<string>(''); // State for the original link input
