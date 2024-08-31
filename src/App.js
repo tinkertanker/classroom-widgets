@@ -8,7 +8,7 @@ import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
 import ShortenLink from "./components/shortenLink/shortenLink.tsx";
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
-import { v4 as uuidv4 } from 'uuid'; // Import UUID package
+import { v4 as uuidv4 } from "uuid"; // Import UUID package
 
 import Confetti from "react-confetti";
 import Time from "./components/clock/clock.tsx";
@@ -36,6 +36,7 @@ import {
   Card,
   CardBody,
   Flex,
+  extendTheme,
 } from "@chakra-ui/react";
 import { DeleteIcon, HamburgerIcon, Icon } from "@chakra-ui/icons";
 
@@ -45,7 +46,15 @@ function App() {
   const [componentList, setComponentList] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
   const [generatedComponents, setGeneratedComponents] = useState([]);
-
+  // const breakpoints = {
+  //   base: "0px",
+  //   sm: "480px",
+  //   md: "768px",
+  //   lg: "992px",
+  //   xl: "1200px",
+  //   "2xl": "1536px",
+  // };
+  // const theme = extendTheme({ breakpoints })
   const Components = [
     <Randomiser toggleConfetti={setUseconfetti} />,
     <Timer />,
@@ -54,7 +63,7 @@ function App() {
     <Time />,
     <TrafficLight />,
     <AudioVolumeMonitor />,
-    // <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
+    <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
   const ComponentNames = [
@@ -65,14 +74,21 @@ function App() {
     "Clock",
     "Traffic Light",
     "Loudness Monitor",
-    // "Link Shortener", //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
+    "Link Shortener", //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
   function Toolbar() {
     return (
       <Card width="90%" height="100%">
-        <CardBody width="100%" height="100%">
-          <HStack alignItems="center" justifyContent="center" width="100%" height="100%">
+        <CardBody width="100%" height="100%" paddingX='10px' paddingY='0'>
+          <HStack
+            alignItems="center"
+            justifyContent="left"
+            width="100%"
+            height="100%"
+            overflowX='auto'
+            overflowY='visible'
+          >
             {ComponentNames.map((ComponentName, index) => (
               <Button
                 key={index}
@@ -81,18 +97,21 @@ function App() {
                   if (element) {
                     const { x, y } = element.getBoundingClientRect();
                     if (x === 10 && y === 10) {
-                      // If the element is still at the top-left corner after being dragged,
-                      // stop the event propagation and reset the active index so that user will know that something appeared on top
                       setActiveIndex(null);
                     }
                   }
-                  setComponentList((e) => [
-                    ...e,
-                    { id: uuidv4(), index }
-                  ]);
+                  setComponentList((e) => [...e, { id: uuidv4(), index }]);
                 }}
                 colorScheme="teal"
-                justifyContent={"center"}
+                justifyContent="center"
+                fontSize={{
+                  base: "0.3rem",
+                  sm: "0.5rem",
+                  md: "0.8rem",
+                  lg: "1.1rem",
+                  xl: "1.1rem",
+                }}
+ 
               >
                 {ComponentName}
               </Button>
@@ -113,11 +132,11 @@ function App() {
         default={{
           x: 0,
           y: 0,
-          width: index === 4 ? '150px' : '350px',
-          height: index === 4 ? '150px' : '350px',
+          width: index === 4 ? "150px" : "350px",
+          height: index === 4 ? "150px" : "350px",
         }}
-        minWidth={index === 4 ? '150px' : '200px'}
-        minHeight={index === 4 ? '150px' : '200px'}
+        minWidth={index === 4 ? "150px" : "200px"}
+        minHeight={index === 4 ? "150px" : "200px"}
         key={id}
         id={id}
         lockAspectRatio={index === 5 ? false : true}
@@ -126,15 +145,15 @@ function App() {
         // dragGrid={[100, 100]} // can implement grid if future interns want
         // resizeGrid={[1, 1]}
         style={{
-          zIndex: activeIndex === id ? 998 : 'auto',
-          
+          zIndex: activeIndex === id ? 998 : "auto",
+
           // borderWidth: activeIndex === id ? "2px":"0px",
           // borderColor:"skyblue" // for future interns to implement
         }}
-        onDragStart={()=>{
+        onDragStart={() => {
           setActiveIndex(id);
         }}
-        onResizeStart={()=>{
+        onResizeStart={() => {
           setActiveIndex(id);
         }}
         onTouchStart={() => {
@@ -142,11 +161,7 @@ function App() {
         }}
         onDragStop={(e, data) => {
           trashHandler(e, data, id);
-          
         }}
-
-       
-       
       >
         {Components[index]}
       </Rnd>
@@ -190,7 +205,12 @@ function App() {
             >
               {generatedComponents}
             </Box>
-            <Box className="toolbar-container" width="100%" height="10%" marginBottom="10px">
+            <Box
+              className="toolbar-container"
+              width="100%"
+              height="10%"
+              marginBottom="10px"
+            >
               <Toolbar />
             </Box>
           </VStack>
@@ -206,7 +226,7 @@ function App() {
           wind={0.01}
           colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
           confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
-          style={{zIndex:1000}}
+          style={{ zIndex: 1000 }}
         />
       )}
       {useconfetti2 && (
