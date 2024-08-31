@@ -50,7 +50,7 @@ function TrafficLight() {
     const target = e.target.closest("#baller");
     if (target) {
       const { pageX, pageY } = e;
-      e.preventDefault();
+      // e.preventDefault(); this is supposed to disable right click but can be explored in future
       setState((prevState) => ({
         ...prevState,
         contextMenu: { show: true, x: pageX, y: pageY },

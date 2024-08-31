@@ -54,7 +54,7 @@ function App() {
     <Time />,
     <TrafficLight />,
     <AudioVolumeMonitor />,
-    <ShortenLink />,
+    // <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
   const ComponentNames = [
@@ -65,7 +65,7 @@ function App() {
     "Clock",
     "Traffic Light",
     "Loudness Monitor",
-    "Link Shortener",
+    // "Link Shortener", //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
   function Toolbar() {
@@ -77,6 +77,15 @@ function App() {
               <Button
                 key={index}
                 onClick={() => {
+                  const element = document.getElementById(activeIndex);
+                  if (element) {
+                    const { x, y } = element.getBoundingClientRect();
+                    if (x === 10 && y === 10) {
+                      // If the element is still at the top-left corner after being dragged,
+                      // stop the event propagation and reset the active index so that user will know that something appeared on top
+                      setActiveIndex(null);
+                    }
+                  }
                   setComponentList((e) => [
                     ...e,
                     { id: uuidv4(), index }
@@ -133,16 +142,6 @@ function App() {
         }}
         onDragStop={(e, data) => {
           trashHandler(e, data, id);
-          const element = document.getElementById(id);
-          if (element) {
-            const { x, y } = element.getBoundingClientRect();
-            if (x === 10 && y === 10) {
-              // If the element is still at the top-left corner after being dragged,
-              // stop the event propagation and reset the active index but this needs further work
-              // setActiveIndex(null);
-            }
-          }
-          
           
         }}
 
