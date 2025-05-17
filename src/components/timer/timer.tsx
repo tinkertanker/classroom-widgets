@@ -6,11 +6,13 @@ import {
   CardBody,
   CardFooter,
   ChakraProvider,
-  Stack,
+  Stack, VStack, HStack,
   Text,
   Box,
-  Progress,
   Input,
+  CircularProgress,
+  CircularProgressLabel,
+  AspectRatio,
 } from "@chakra-ui/react";
 
 import ReusableButton from "../main/reusableButton.tsx";
@@ -20,6 +22,7 @@ const Timer = () => {
   const [time, setTime] = useState(10);
   const [changeTime, setChangeTime] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
+  const [inEditMode, setInEditMode] = useState(false);
   const [showStart, setShowStart] = useState(true);
   const [showResume, setShowResume] = useState(false);
   const [showPauseResume, setShowPauseResume] = useState(true);
@@ -77,11 +80,13 @@ const Timer = () => {
     setTimeout(() => setChangeTime(changeTime+1), 1000);
 
     setIsRunning(true);
+    setInEditMode(false);
     setShowStart(false);
     setShowPauseResume(true);
   };
   const pauseTimer = () => {
     setIsRunning(false);
+    setInEditMode(true);
     setShowResume(true);
   };
   const resumeTimer = () => {
@@ -90,6 +95,7 @@ const Timer = () => {
   };
   const restartTimer = () => {
     setIsRunning(false);
+    setInEditMode(true);
     setShowStart(true);
     setShowResume(false);
     setTime(initialTime);
@@ -134,73 +140,91 @@ const Timer = () => {
   return (
     <ChakraProvider>
       <Card overflow="hidden" variant="outline" width="100%" height="100%">
-        <CardBody>
-          <Box
-            bg='gray.100'
-            borderRadius='md'
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            height="100%"
-            width="100%"
-          >
-            <Stack direction="row" spacing={4} alignItems='center' height="100%">
-              {values.map((value, index) => (
-                <React.Fragment key={index}>
-                  <Input
-                    variant='filled'
-                    size='lg'
-                    textAlign='center'
-                    lineHeight='10.01'
-                    height='100%'
-                    key={index}
-                    value={value}
-                    placeholder={inputDisplays[index]}
-                    isReadOnly={isRunning}       // for paused -> {... || (!isRunning && showResume)}
-                    onChange={(e) => handleChange(e, index)}
-                    maxLength={2}
-                    type="text"
-                    inputMode="numeric"
-                    ref={(el) => (inputRefs.current[index] = el)}
-                  />
-                  {/* Add a colon after each input, except the last one */}
-                  {index < values.length - 1 && (
-                    <Text fontSize="24px" lineHeight="1">
+        <CardBody height="85%" py={1}>
+            <AspectRatio ratio={1} width="100%" height="100%" py={1}>
+              <CircularProgress
+                value={((initialTime - time) / initialTime) * 100}
+                size="100%"
+                thickness="10px"
+                color="gray.200"
+                trackColor="blue.400"
+                position="relative"
+              >
+                <Box
+                  as="button"
+                  position="absolute"
+                  top="50%"
+                  left="50%"
+                  transform="translate(-50%, -50%)"
+                  onClick={() => {
+                    if (isRunning) {
+                      pauseTimer();
+                    }
+                  }}
+                >
+                  {isRunning && !inEditMode ? (
+                    /* DISPLAY MODE */
+                    <VStack spacing={1} align="centel" pt={6}>
+                      <HStack spacing={2}>
+                        <Text fontSize="clamp(1rem, 7vw, 6rem)" lineHeight="1">{values[0]}</Text>
+                        <Text fontSize="clamp(1rem, 7vw, 6rem)" lineHeight="1">:</Text>
+                        <Text fontSize="clamp(1rem, 7vw, 6rem)" lineHeight="1">{values[1]}</Text>
+                      </HStack>
+                      <Text fontSize="clamp(1rem, 5vw, 2rem)">{values[2]}</Text>
+                    </VStack>
+                  ) : (
+                     /* EDIT MODE */
+                  <HStack spacing={1}>
+                    {values.map((val, idx) => (
+                    <React.Fragment key={idx}>
+                      <Input
+                        key={idx}
+                        value={val}
+                        placeholder={inputDisplays[idx]}
+                        onChange={(e) => handleChange(e, idx)}
+                        onFocus={(e) => e.target.select()}
+                        maxLength={2}
+                        size="lg"
+                        px={0}
+                        textAlign="center"
+                        maxLength={2}
+                        readOnly={isRunning && !inEditMode}
+                      />
+                      
+                      {/* Add a colon after each input, except the last one */}
+                      {idx < values.length - 1 && (
+                       <Text fontSize="24px" lineHeight="1">
                       :
-                    </Text>
+                       </Text>
+                      )}
+                    </React.Fragment>
+                    ))}
+                  </HStack>
                   )}
-                </React.Fragment>
-              ))}
-            </Stack>
-          </Box>
+                </Box>
+              </CircularProgress>
+            </AspectRatio>
+
         </CardBody>
-
-
-        <CardFooter>
-          <Stack width="100%" gap="5%" height="100%">
+        <CardFooter pt={0}>
+          <HStack width="100%" gap="5%" height="100%">
             {showStart ? (
-              <ReusableButton onClick={startTimer}>Start</ReusableButton>
+              <ReusableButton onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (
               <>
                 {showPauseResume ?
                   (showResume ? (
-                    <ReusableButton onClick={resumeTimer}>Resume</ReusableButton>
+                    <ReusableButton onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
                   ) : (
-                    <ReusableButton onClick={pauseTimer}>Pause</ReusableButton>
+                    <ReusableButton onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
                   )) : (
                     <></>
                   )}
-                <ReusableButton onClick={restartTimer}>Restart</ReusableButton>
+                <ReusableButton onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
               </>
             )}
+          </HStack>
 
-            <Progress
-              value={((initialTime - time) / initialTime) * 100}
-              width="100%"
-              height="16px"
-              borderRadius="md"
-            />
-          </Stack>
         </CardFooter>
       </Card>
     </ChakraProvider>

@@ -123,6 +123,7 @@ function App() {
 
   return (
     <ChakraProvider>
+      <meta charset="UTF-8" />
       <div className="App">
         <header className="App-header">
           <VStack
