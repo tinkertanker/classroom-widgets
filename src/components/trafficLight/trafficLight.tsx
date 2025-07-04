@@ -1,11 +1,4 @@
-import {
-  Box,
-  Flex,
-  Input,
-  Stack, HStack, VStack,
-  Card,
-  ChakraProvider,
-} from "@chakra-ui/react";
+// Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import ContextMenus from "../obselete_dont_delete/contextMenu.tsx";
 
@@ -90,71 +83,48 @@ function TrafficLight() {
 
 
   return (
-    <ChakraProvider>
-      <Card width="100%" height="100%" id="baller" borderRadius={"md"}>
-        <Stack
-          borderRadius="md"
-          direction="row"
-          width="100%"
-          height="100%"
-          bg="white"
+    <>
+      <div className="bg-white rounded-md shadow-md w-full h-full" id="baller">
+        <div
+          className="rounded-md flex flex-row w-full h-full bg-white"
           ref={boxRef}
-          spacing="0px"
         >
-          <Box
-            display={"flex"}
+          <div
+            className="flex rounded-md bg-black flex-grow flex-shrink h-full"
             id="boxlol"
-            maxW={`${state.boxWidth}px`}
-            minW={`${state.boxWidth}px`}
-            height="100%"
-            bgColor="blackAlpha.900"
-            borderRadius="md"
-            flexGrow={1}
-            flexShrink={1}
+            style={{
+              maxWidth: `${state.boxWidth}px`,
+              minWidth: `${state.boxWidth}px`
+            }}
           >
-            <Stack
-              direction="column"
-              align="center"
-              h="100%"
-              w="100%"
-              spacing="0px"
+            <div
+              className="flex flex-col items-center h-full w-full"
             >
               {["#ff0000", "#ffff00", "#00ff00"].map((color, index) => (
-                <Box
+                <div
                   key={color}
-                  width="50%"
-                  height="20%"
-                  boxShadow={
-                    state.activeLight === color
-                      ? "0px 0px 40px 20px" + color
-                      : "none"
-                  }
-                  borderRadius="100%"
-                  bg={color}
-                  filter="auto"
-                  brightness={state.activeLight === color ? "200%" : "30%"}
-                  cursor="pointer"
+                  className="w-1/2 h-1/5 rounded-full cursor-pointer m-[12.5%]"
+                  style={{
+                    boxShadow: state.activeLight === color ? `0px 0px 40px 20px ${color}` : "none",
+                    backgroundColor: color,
+                    filter: state.activeLight === color ? "brightness(200%)" : "brightness(30%)",
+                    marginTop: index === 0 ? "25%" : "12.5%",
+                    marginBottom: index === 2 ? "25%" : "12.5%"
+                  }}
                   onClick={() => handleLightClick(color)}
-                  margin="12.5%"
-                  marginTop={index === 0 ? "25%" : "12.5%"}
-                  marginBottom={index === 2 ? "25%" : "12.5%"}
-                ></Box>
+                />
               ))}
-            </Stack>
-          </Box>
-          <Flex
+            </div>
+          </div>
+          <div
             id="balls"
-            flexDirection="column"
-            bg="white"
-            height="100%"
-            justifyContent="space-evenly"
-            flexGrow={1}
+            className="flex flex-col bg-white h-full justify-evenly flex-grow px-4"
           >
-          <h1>Teacher’s turn to speak. Be attentive and quiet.</h1>
-          </Flex>
-        </Stack>
-      </Card>
-    </ChakraProvider>
+          <h1 className="text-gray-800">Teacher’s turn to speak. Be attentive and quiet.</h1>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 

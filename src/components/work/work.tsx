@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as React from 'react'
-import { Card, Box, Image, CardFooter, CardHeader, flexbox, Img } from '@chakra-ui/react';
+// Removed Chakra UI imports
 import shh from './Be-quiet-now.png';
 import shhimg from './Silence-image.png';
 import whisp from './Whisper-with-text.png';
@@ -57,43 +57,37 @@ function Work() {
     }, [handleClick]);
 
     return (
-        <Card width="100%" height="100%" id="widget1">
-            <CardHeader height={"60%"} display={"flex"} justifyContent={"center"} flexDirection={"row"} flexShrink={1} minWidth={0}>
-                <Box
-                    pointerEvents="none"
-                    borderRadius='10%'
-                    userSelect={"none"}
-                    background={'white'}
-                    height="100%"
+        <div className="bg-white rounded-lg shadow-md w-full h-full" id="widget1">
+            <div className="h-[60%] flex justify-center flex-row flex-shrink min-w-0 p-4">
+                <div
+                    className="pointer-events-none rounded-[10%] select-none bg-white h-full"
                 >
-                    <Image
-                        height="100%"
-                        pointerEvents="none"
+                    <img
+                        className="h-full pointer-events-none select-none"
                         draggable="false"
-                        userSelect={"none"}
                         id="mainimg"
                         src={images[state.index].main}
+                        alt="Work mode"
                     />
-                </Box>
-            </CardHeader>
+                </div>
+            </div>
             {state.clicked && (
-                <CardFooter display="flex" h="30%">
-                    <Box id="widget1inside" justifyContent="space-evenly" height="100%" display="flex">
+                <div className="flex h-[30%] p-4">
+                    <div id="widget1inside" className="flex justify-evenly h-full w-full">
                         {images.map((image, i) => (
-                            <Image
+                            <img
                                 key={i}
                                 draggable="false"
-                                userSelect="none"
-                                borderRadius='full'
-                                backgroundColor='white'
+                                className="select-none rounded-full bg-white cursor-pointer h-full"
                                 onClick={() => handleChangeImage(i)}
                                 src={image.thumbnail}
+                                alt={`Option ${i + 1}`}
                             />
                         ))}
-                    </Box>
-                </CardFooter>
+                    </div>
+                </div>
             )}
-        </Card >
+        </div>
     );
 }
 

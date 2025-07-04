@@ -3,14 +3,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import Clock from "react-clock";
 import "react-clock/dist/Clock.css";
-import {
-  ChakraProvider,
-  Text,
-  Card,
-  CardBody,
-  Box,
-  VStack,
-} from "@chakra-ui/react";
+// Removed Chakra UI imports
 
 function Time() {
   const [value, setValue] = useState(new Date());
@@ -45,21 +38,13 @@ function Time() {
   }, [value]);
 
   return (
-    <ChakraProvider>
-      <Card color="black" width="100%" height="100%">
-        <CardBody
-          width="100%"
-          height="100%"
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          padding="4px"
+    <>
+      <div className="bg-white rounded-lg shadow-md text-black w-full h-full">
+        <div
+          className="w-full h-full flex justify-center items-center p-1"
         >
-          <VStack
-            width="100%"
-            height="100%"
-            justifyContent="center"
-            alignItems="center"
+          <div
+            className="flex flex-col w-full h-full justify-center items-center"
           >
             {/* this doesnt work with swapy */}
             {/* <Box height="100%" style={{ aspectRatio: "1/1" }}>
@@ -74,11 +59,11 @@ function Time() {
                 className="jason"
               />
             </Box> */}
-            <Text color="black">{formattedTime}</Text>
-          </VStack>
-        </CardBody>
-      </Card>
-    </ChakraProvider>
+            <p className="text-black text-2xl">{formattedTime}</p>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 

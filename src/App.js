@@ -14,33 +14,6 @@ import { Rnd } from "react-rnd";
 import { v4 as uuidv4 } from "uuid"; // Import UUID package
 
 import Confetti from "react-confetti";
-import {
-  ChakraProvider,
-  Drawer,
-  DrawerBody,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
-  Button,
-  Input,
-  useDisclosure,
-  PinInput,
-  PinInputField,
-  HStack,
-  VStack,
-  Text,
-  IconButton,
-  SimpleGrid,
-  Heading,
-  Box,
-  Card,
-  CardBody,
-  Flex,
-  extendTheme,
-} from "@chakra-ui/react";
-import { HamburgerIcon, Icon } from "@chakra-ui/icons";
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
@@ -122,29 +95,18 @@ function App() {
   }
 
   return (
-    <ChakraProvider>
+    <>
       <meta charset="UTF-8" />
       <div className="App">
         <header className="App-header">
-          <VStack
-            width="100%"
-            height="100%"
-            justifyContent="center"
-            alignItems="center"
-          >
-            <Box
-              position="absolute"
-              right="10px"
-              left="10px"
-              top="10px"
-              bottom="10px"
-            >
+          <div className="flex flex-col w-full h-full justify-center items-center">
+            <div className="absolute right-2.5 left-2.5 top-2.5 bottom-2.5">
               {generatedComponents}
-            </Box>
-            <Box className="toolbar-container" width="100%" height="10%" marginBottom="10px">
+            </div>
+            <div className="toolbar-container w-full h-[10%] mb-2.5">
               <Toolbar setComponentList={setComponentList} activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
-            </Box>
-          </VStack>
+            </div>
+          </div>
         </header>
       </div>
       {useconfetti && (
@@ -172,7 +134,7 @@ function App() {
           confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
         />
       )}
-    </ChakraProvider>
+    </>
   );
 }
 

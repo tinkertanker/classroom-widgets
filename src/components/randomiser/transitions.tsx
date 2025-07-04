@@ -1,12 +1,5 @@
 import * as React from "react";
 
-import {
-  ChakraProvider,
-  Fade,
-  ScaleFade,
-  SlideFade,
-} from "@chakra-ui/react";
-
 function Transitions({
   choice,
   open,
@@ -14,51 +7,41 @@ function Transitions({
   slowanimation,
   children
 }) {
-  switch (choice) {
-    case "Fade":
-      return (
-        <ChakraProvider>
-          <Fade
-            in={open}
-            transition={{
-              exit: { duration: animationspeed + slowanimation },
-              enter: { duration: animationspeed + slowanimation },
-            }}
-          >
-            {children}
-          </Fade>
-        </ChakraProvider>
-      );
-    case "ScaleFade":
-      return (
-        <ChakraProvider>
-          <ScaleFade
-            in={open}
-            initialScale={0.5}
-            transition={{
-              exit: { duration: animationspeed + slowanimation },
-              enter: { duration: animationspeed + slowanimation },
-            }}
-          >
-            {children}
-          </ScaleFade>
-        </ChakraProvider>
-      );
-    case "SlideFade":
-      return (
-        <ChakraProvider>
-          <SlideFade
-            in={open}
-            offsetY="20px"
-            transition={{
-              exit: { duration: animationspeed + slowanimation },
-              enter: { duration: animationspeed + slowanimation },
-            }}
-          >
-            {children}
-          </SlideFade>
-        </ChakraProvider>
-      );
-  }
+  const duration = (animationspeed + slowanimation) * 1000;
+  
+  const getTransitionStyle = () => {
+    const baseStyle = {
+      transition: `all ${duration}ms ease-in-out`,
+    };
+
+    switch (choice) {
+      case "Fade":
+        return {
+          ...baseStyle,
+          opacity: open ? 1 : 0,
+        };
+      case "ScaleFade":
+        return {
+          ...baseStyle,
+          opacity: open ? 1 : 0,
+          transform: open ? 'scale(1)' : 'scale(0.5)',
+        };
+      case "SlideFade":
+        return {
+          ...baseStyle,
+          opacity: open ? 1 : 0,
+          transform: open ? 'translateY(0)' : 'translateY(20px)',
+        };
+      default:
+        return baseStyle;
+    }
+  };
+
+  return (
+    <div style={getTransitionStyle()}>
+      {children}
+    </div>
+  );
 }
+
 export default Transitions;

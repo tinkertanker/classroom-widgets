@@ -1,14 +1,4 @@
-import {
-    Box,
-    Card,
-    CardBody,
-    CardHeader,
-    Heading,
-    Input,
-    Text,
-    VStack,
-    HStack,
-} from '@chakra-ui/react';
+// Removed Chakra UI imports
 import React, { useEffect, useRef, useState } from 'react';
 
 const AudioVolumeMonitor: React.FC = () => {
@@ -114,73 +104,59 @@ const AudioVolumeMonitor: React.FC = () => {
     };
 
     return (
-        <Card
-            width="100%"
-            height="100%"
-            borderWidth='1px'
-            borderRadius='md'
-            boxShadow='md'
-            overflow='hidden'
-            display='flex'
-            flexDirection='column'
+        <div
+            className="w-full h-full border border-gray-200 rounded-md shadow-md overflow-hidden flex flex-col bg-white"
         >
-            <CardHeader>
-                <Heading as='h3' size='md' mb={2}>
+            <div className="p-4">
+                <h3 className="text-lg font-semibold mb-2 text-gray-800">
                     Audio Volume Monitor
-                </Heading>
-                <VStack align='stretch' spacing={4}>
-                    <Box>
-                        <Text fontSize='sm' mb={2}>
+                </h3>
+                <div className="flex flex-col space-y-4">
+                    <div>
+                        <p className="text-sm mb-2 text-gray-700">
                             Set Volume Threshold
-                        </Text>
-                        <Input
+                        </p>
+                        <input
                             type='range'
                             min='0'
                             max='100'
                             value={threshold}
                             onChange={(e) => setThreshold(Number(e.target.value))}
                             aria-label='Volume Threshold'
+                            className="w-full"
                         />
-                        <Text mt={2} fontSize='sm'>
+                        <p className="mt-2 text-sm text-gray-700">
                             Threshold: {threshold}
-                        </Text>
-                    </Box>
-                    <Box>
-                        <Text fontSize='sm'>Volume Level: {volume.toFixed(2)}</Text>
-                    </Box>
-                </VStack>
-            </CardHeader>
-            <CardBody flex='1' >
-                <Box
-                    width='100%'
-                    height='20px'
-                    background='gray.200'
-                    borderRadius='md'
-                    position='relative'
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-700">Volume Level: {volume.toFixed(2)}</p>
+                    </div>
+                </div>
+            </div>
+            <div className="flex-1 p-4">
+                <div
+                    className="w-full h-5 bg-gray-200 rounded-md relative"
                 >
-                    <Box
-                        width={`${volume}%`} // Use volume to determine width
-                        height='100%'
-                        background={volume > threshold ? 'red.500' : 'green.500'}
-                        borderRadius='md'
-                        transition='width 0.2s ease'
-                    ></Box>
-                </Box>
-                <HStack mt={4} spacing={4} justify='space-between'>
-                    <Text fontSize='sm'>Cooldown Timer:</Text>
+                    <div
+                        style={{ width: `${volume}%` }}
+                        className={`h-full rounded-md transition-all duration-200 ${volume > threshold ? 'bg-red-500' : 'bg-green-500'}`}
+                    />
+                </div>
+                <div className="flex flex-row mt-4 space-x-4 justify-between">
+                    <p className="text-sm text-gray-700">Cooldown Timer:</p>
                     {isCooldownRef.current ? (
-                        <Text fontSize='sm' color='red.500'>
-                            {cooldownTime} second{cooldownTime !== 1 ? 's' : ''}
-                            remaining
-                        </Text>
+                        <p className="text-sm text-red-500">
+                            {cooldownTime} second{cooldownTime !== 1 ? 's' : ''} remaining
+                        </p>
                     ) : (
-                        <Text fontSize='sm' color='green.500'>
+                        <p className="text-sm text-green-500">
                             Bell is ready to play!
-                        </Text>
+                        </p>
                     )}
-                </HStack>
-            </CardBody>
-        </Card>
+                </div>
+            </div>
+        </div>
     );
 };
 

@@ -5,43 +5,7 @@ import Transitions from "./transitions.tsx";
 import Confetti from "react-confetti";
 // import  sound from './yay.mp3';
 
-import { CardFooter, ChakraProvider, useDisclosure } from "@chakra-ui/react";
-import {
-  Checkbox,
-  Radio,
-  RadioGroup,
-  Box,
-  Card,
-  CardBody,
-  VStack,
-  HStack,
-  Heading,
-  Text,
-  Textarea,
-  Button,
-  Slider,
-  SliderTrack,
-  SliderFilledTrack,
-  SliderThumb,
-  SliderMark,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  ModalCloseButton,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-} from "@chakra-ui/react";
-import { ChevronDownIcon } from "@chakra-ui/icons";
+// Removed Chakra UI imports
 
 let temporarytime = 0;
 let actual_choices: any[];
@@ -66,7 +30,11 @@ function Randomiser({ toggleConfetti }) {
   const [textheight, setTextheight] = useState(0);
   const [boxheight, setBoxheight] = useState(0);
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
   // const {
   //   isOpen: isresultOpen,
   //   onOpen: onresultOpen,
@@ -242,7 +210,7 @@ function Randomiser({ toggleConfetti }) {
     setAnimationtransition("SlideFade");
   }, []);
   return (
-    <ChakraProvider>
+    <>
       {/* {useconfetti && (
         <Confetti
           width={window.innerWidth}
@@ -266,27 +234,14 @@ function Randomiser({ toggleConfetti }) {
         minWidth="125px"
         lockAspectRatio={true}
       > */}
-      <Card
-        width="100%"
-        height="100%"
+      <div
+        className="bg-white rounded-lg shadow-md w-full h-full p-1"
         id="jason"
-        padding="3px"
-        // width='100%'
-        // height='100%'
-
-        // position="fixed"
-        // onMouseDown={mouseDown}
-        // top={cardy + "px"}
-        // left={cardx + "px"}
       >
-        <CardBody width="100%" height="100%" padding="0">
-          <VStack width="100%" height="100%">
-            <Button
-              width="87.5%"
-              height="75%"
-              marginTop="5%"
-              marginBottom="2%"
-              padding="0"
+        <div className="w-full h-full p-0">
+          <div className="flex flex-col w-full h-full">
+            <button
+              className="w-[87.5%] h-[75%] mt-[5%] mb-[2%] p-0 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
               onClick={() => {
                 if (loading === false) {
                   onOpen();
@@ -294,20 +249,15 @@ function Randomiser({ toggleConfetti }) {
               }}
             >
               {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
-              <Box
+              <div
                 ref={boxRef}
-                height="100%"
-                width="100%"
-                overflowY="auto"
-                display="flex"
-                alignItems={textheight > boxheight ? "start" : "center"}
-                justifyContent="center"
+                className="h-full w-full overflow-y-auto flex justify-center"
+                style={{
+                  alignItems: textheight > boxheight ? "start" : "center"
+                }}
               >
-                <Box
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  width="95%"
+                <div
+                  className="flex justify-center items-center w-[95%]"
                 >
                   <Transitions
                     choice={animationtransition}
@@ -315,40 +265,29 @@ function Randomiser({ toggleConfetti }) {
                     animationspeed={animationspeed}
                     slowanimation={slowanimation}
                   >
-                    <Text
-                      whiteSpace="normal"
-                      wordBreak="break-word"
-                      fontSize="2xl"
-                      textAlign="center"
+                    <p
+                      className="whitespace-normal break-words text-2xl text-center text-gray-800"
                       ref={textRef}
                     >
                       {result}
-                    </Text>
+                    </p>
                   </Transitions>
-                </Box>
-              </Box>
-            </Button>
+                </div>
+              </div>
+            </button>
             {buttonsettings === "normal" ? (
-              <Button
-                colorScheme="teal"
-                width="37.5%"
-                height="13%"
-                padding="0"
+              <button
+                className="w-[37.5%] h-[13%] p-0 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={()=>handlerandomise()}
-                isDisabled={loading}
-                textAlign={"center"}
+                disabled={loading}
               >
-                <Text fontSize="1.1em"> Randomise!!</Text>
-              </Button>
+                <span className="text-[1.1em]"> Randomise!!</span>
+              </button>
             ) : buttonsettings === "result" ? (
-              <HStack width="100%" height="13%" justifyContent="center">
-                <Button
-                  hidden={loading}
-                  isDisabled={remember ? true : pressedDisable}
-                  colorScheme="yellow"
-                  width="35%"
-                  height="100%"
-                  padding="0"
+              <div className="flex flex-row w-full h-[13%] justify-center gap-2">
+                <button
+                  className={`w-[35%] h-full p-0 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
+                  disabled={remember ? true : pressedDisable}
                   onClick={() => {
                     setSelected([...selected, result]);
                     setpressedDisable(true);
@@ -359,22 +298,20 @@ function Randomiser({ toggleConfetti }) {
                     : pressedDisable
                     ? "Option removed"
                     : "Remove option"}
-                </Button>
-                <Button
-                  isDisabled={loading}
+                </button>
+                <button
+                  disabled={loading}
                   ref={initialResultFocus}
-                  colorScheme="teal"
-                  width="35%"
-                  height="100%"
+                  className="w-[35%] h-full bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => {
                     handlerandomise();
                   }}
                 >
                   Again!
-                </Button>
-              </HStack>
+                </button>
+              </div>
             ) : null}
-          </VStack>
+          </div>
 
           {/* <Modal
               initialFocusRef={initialResultFocus}
@@ -428,115 +365,129 @@ function Randomiser({ toggleConfetti }) {
               </ModalContent>
             </Modal> */}
 
-          <Modal
-            isOpen={isOpen}
-            onClose={onClose}
-            initialFocusRef={initialFocus}
-            isCentered
-          >
-            <ModalOverlay />
-            <ModalContent>
-              <Tabs w="450px">
-                <ModalHeader>
-                  <HStack align="center">
-                    <TabList>
-                      <Tab marginBottom="0px">List</Tab>
-                      <Tab marginBottom="0px">Settings</Tab>
-                    </TabList>
-                    <ModalCloseButton
-                      position="static"
-                      marginLeft="220px"
-                      size="md"
-                      marginTop="1px"
-                    />
-                  </HStack>
-                </ModalHeader>
-                <ModalBody h="500px" overflowY="auto">
-                  <TabPanels>
-                    <TabPanel>
-                      <VStack>
-                        <HStack paddingBottom="20px">
-                          <Heading size="md">My list</Heading>
-
-                          <Menu>
-                            <MenuButton
-                              marginLeft="45px"
-                              as={Button}
-                              rightIcon={<ChevronDownIcon />}
-                              colorScheme="yellow"
-                            >
-                              Suggestions
-                            </MenuButton>
-                            <MenuList>
-                              <MenuItem
-                                onClick={() =>
-                                  setInput(
-                                    "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30"
-                                  )
-                                }
-                              >
-                                Generate numbers 1 to 30
-                              </MenuItem>
-                              <MenuItem
-                                onClick={() =>
-                                  setInput(
-                                    "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ"
-                                  )
-                                }
-                              >
-                                Generate the alphabet
-                              </MenuItem>
-                            </MenuList>
-                          </Menu>
-                          <Button
-                            colorScheme="red"
-                            size="md"
-                            onClick={() => {
-                              setInput("");
-                              setChoices([]);
-                              setSelected([]);
-                            }}
+          {isOpen && (
+            <>
+              {/* Overlay */}
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 z-50"
+                onClick={onClose}
+              />
+              {/* Modal Content */}
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-lg shadow-xl w-[450px] max-w-full" onClick={(e) => e.stopPropagation()}>
+                  <div className="w-full">
+                    <div className="px-6 py-4 border-b">
+                      <div className="flex items-center">
+                        <div className="flex space-x-4">
+                          <button
+                            className={`pb-2 border-b-2 ${tabIndex === 0 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-700'}`}
+                            onClick={() => setTabIndex(0)}
                           >
-                            Clear list
-                          </Button>
-                        </HStack>
-
-                        <Textarea
-                          onChange={(e) => setInput(e.target.value)}
-                          ref={initialFocus}
-                          resize="none"
-                          value={input}
-                          id="textarea"
-                          placeholder="Start typing a list to randomise..."
-                          height="250px"
-                        ></Textarea>
-                        <Text paddingTop="30px" fontSize="md">
-                          Note: All leading and trailing spaces, empty rows, and
-                          duplicates in the list are automatically removed when
-                          generating.
-                        </Text>
-                      </VStack>
-                    </TabPanel>
-                    <TabPanel>
-                      <VStack align="left" paddingBottom="20px">
-                        <Heading size="md">Randomiser Settings</Heading>
-
-                        <Checkbox
-                          colorScheme="green"
-                          defaultChecked={remember}
-                          paddingTop="20px"
-                          onChange={(e) => {
-                            setRemember(e.target.checked);
-                            if (e.target.checked === false) {
-                              setSelected([]);
-                            }
-                          }}
+                            List
+                          </button>
+                          <button
+                            className={`pb-2 border-b-2 ${tabIndex === 1 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-700'}`}
+                            onClick={() => setTabIndex(1)}
+                          >
+                            Settings
+                          </button>
+                        </div>
+                        <button
+                          onClick={onClose}
+                          className="ml-auto text-gray-500 hover:text-gray-700"
                         >
-                          Prevent picked options from repeating
-                        </Checkbox>
-                        <Text paddingTop="10px" paddingBottom="5px">
-                          Options removed: {selected.join(", ")}
-                        </Text>
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                    <div className="h-[500px] overflow-y-auto px-6 py-4">
+                      {tabIndex === 0 ? (
+                        <div className="flex flex-col space-y-4">
+                          <div className="flex flex-row items-center justify-between pb-5">
+                            <h3 className="text-lg font-semibold text-gray-800">My list</h3>
+                            <div className="flex space-x-2">
+                              <div className="relative">
+                                <button
+                                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors duration-200 flex items-center"
+                                  onClick={() => setMenuOpen(!menuOpen)}
+                                >
+                                  Suggestions
+                                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </button>
+                                {menuOpen && (
+                                  <div className="absolute mt-1 w-full bg-white rounded-md shadow-lg z-10">
+                                    <button
+                                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
+                                      onClick={() => {
+                                        setInput("1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30");
+                                        setMenuOpen(false);
+                                      }}
+                                    >
+                                      Generate numbers 1 to 30
+                                    </button>
+                                    <button
+                                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
+                                      onClick={() => {
+                                        setInput("A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ");
+                                        setMenuOpen(false);
+                                      }}
+                                    >
+                                      Generate the alphabet
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded transition-colors duration-200"
+                                onClick={() => {
+                                  setInput("");
+                                  setChoices([]);
+                                  setSelected([]);
+                                }}
+                              >
+                                Clear list
+                              </button>
+                            </div>
+                          </div>
+
+                          <textarea
+                            onChange={(e) => setInput(e.target.value)}
+                            ref={initialFocus}
+                            value={input}
+                            id="textarea"
+                            placeholder="Start typing a list to randomise..."
+                            className="w-full h-[250px] px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+                          />
+                          <p className="pt-8 text-base text-gray-600">
+                            Note: All leading and trailing spaces, empty rows, and
+                            duplicates in the list are automatically removed when
+                            generating.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex flex-col items-start space-y-4">
+                            <h3 className="text-lg font-semibold text-gray-800">Randomiser Settings</h3>
+
+                          <label className="flex items-center pt-5">
+                            <input
+                              type="checkbox"
+                              defaultChecked={remember}
+                              onChange={(e) => {
+                                setRemember(e.target.checked);
+                                if (e.target.checked === false) {
+                                  setSelected([]);
+                                }
+                              }}
+                              className="mr-2 w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                            />
+                            <span className="text-gray-700">Prevent picked options from repeating</span>
+                          </label>
+                          <p className="pt-2.5 pb-1.5 text-gray-700">
+                            Options removed: {selected.join(", ")}
+                          </p>
                         {/* <Button
                           colorScheme="red"
                           onClick={() => {
@@ -549,67 +500,86 @@ function Randomiser({ toggleConfetti }) {
                         >
                           Clear saved list
                         </Button> */}
-                      </VStack>
-                      <VStack align="left">
-                        <Heading size="md">Animation Settings</Heading>
-                        <Checkbox
-                          colorScheme="green"
-                          defaultChecked={animation}
-                          paddingTop="10px"
-                          onChange={(e) => {
-                            setAnimation(e.target.checked);
-                            if (e.target.checked === false) {
-                              temporarytime = animationcount;
-                              setAnimationcount(0);
-                            } else {
-                              setAnimationcount(temporarytime);
-                            }
-                          }}
-                        >
-                          Enable Animation
-                        </Checkbox>
-                        <Text paddingTop="10px" paddingBottom="5px">
-                          Animation Type
-                        </Text>
-                        <RadioGroup
-                          isDisabled={!animation}
-                          onChange={(e) => {
-                            setAnimationtransition(e);
-                          }}
-                          value={animationtransition}
-                        >
-                          <HStack direction="row">
-                            <Radio value="Fade">Fade</Radio>
-                            <Radio value="ScaleFade">ScaleFade</Radio>
-                            <Radio value="SlideFade">SlideFade</Radio>
-                          </HStack>
-                        </RadioGroup>
-                        <Text paddingTop="10px" paddingBottom="5px">
-                          Animation Duration
-                        </Text>
-                        <Slider
-                          isDisabled={!animation}
-                          defaultValue={
-                            animation ? animationcount : temporarytime
-                          }
-                          min={0}
-                          max={30}
-                          onChangeEnd={(val) => setAnimationcount(val)}
-                        >
-                          <SliderMark value={0} mt="2" ml="-3" fontSize="sm">
-                            Short
-                          </SliderMark>
-                          <SliderMark value={15} mt="2" ml="-6" fontSize="sm">
-                            Medium
-                          </SliderMark>
-                          <SliderMark value={30} mt="2" ml="-3.5" fontSize="sm">
-                            Long
-                          </SliderMark>
-                          <SliderTrack>
-                            <SliderFilledTrack />
-                          </SliderTrack>
-                          <SliderThumb />
-                        </Slider>
+                        </div>
+                        <div className="flex flex-col items-start space-y-4">
+                          <h3 className="text-lg font-semibold text-gray-800">Animation Settings</h3>
+                          <label className="flex items-center pt-2.5">
+                            <input
+                              type="checkbox"
+                              defaultChecked={animation}
+                              onChange={(e) => {
+                                setAnimation(e.target.checked);
+                                if (e.target.checked === false) {
+                                  temporarytime = animationcount;
+                                  setAnimationcount(0);
+                                } else {
+                                  setAnimationcount(temporarytime);
+                                }
+                              }}
+                              className="mr-2 w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                            />
+                            <span className="text-gray-700">Enable Animation</span>
+                          </label>
+                          <p className="pt-2.5 pb-1.5 text-gray-700">
+                            Animation Type
+                          </p>
+                          <div className="flex flex-row space-x-4">
+                            <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
+                              <input
+                                type="radio"
+                                name="animationType"
+                                value="Fade"
+                                checked={animationtransition === "Fade"}
+                                onChange={(e) => setAnimationtransition(e.target.value)}
+                                disabled={!animation}
+                                className="mr-2"
+                              />
+                              <span className="text-gray-700">Fade</span>
+                            </label>
+                            <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
+                              <input
+                                type="radio"
+                                name="animationType"
+                                value="ScaleFade"
+                                checked={animationtransition === "ScaleFade"}
+                                onChange={(e) => setAnimationtransition(e.target.value)}
+                                disabled={!animation}
+                                className="mr-2"
+                              />
+                              <span className="text-gray-700">ScaleFade</span>
+                            </label>
+                            <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
+                              <input
+                                type="radio"
+                                name="animationType"
+                                value="SlideFade"
+                                checked={animationtransition === "SlideFade"}
+                                onChange={(e) => setAnimationtransition(e.target.value)}
+                                disabled={!animation}
+                                className="mr-2"
+                              />
+                              <span className="text-gray-700">SlideFade</span>
+                            </label>
+                          </div>
+                          <p className="pt-2.5 pb-1.5 text-gray-700">
+                            Animation Duration
+                          </p>
+                          <div className="w-full relative pt-8">
+                            <input
+                              type="range"
+                              disabled={!animation}
+                              defaultValue={animation ? animationcount : temporarytime}
+                              min={0}
+                              max={30}
+                              onChange={(e) => setAnimationcount(Number(e.target.value))}
+                              className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${!animation ? 'opacity-50' : ''}`}
+                            />
+                            <div className="flex justify-between text-sm mt-2">
+                              <span className="ml-[-12px] text-gray-600">Short</span>
+                              <span className="ml-[-24px] text-gray-600">Medium</span>
+                              <span className="ml-[-14px] text-gray-600">Long</span>
+                            </div>
+                          </div>
                         {/* <Text paddingTop="40px" paddingBottom="5px">
                     Animation Speed
                   </Text>
@@ -640,18 +610,20 @@ function Randomiser({ toggleConfetti }) {
                     </SliderTrack>
                     <SliderThumb />
                   </Slider> */}
-                      </VStack>
-                    </TabPanel>
-                  </TabPanels>
-                </ModalBody>
-                <ModalFooter paddingTop="3px" paddingBottom="3px"></ModalFooter>
-              </Tabs>
-            </ModalContent>
-          </Modal>
-        </CardBody>
-      </Card>
+                        </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="px-6 py-3 border-t"></div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
       {/* </Rnd> */}
-    </ChakraProvider>
+    </>
   );
 }
 

@@ -1,5 +1,4 @@
 import React, { useRef } from 'react';
-import { Input } from '@chakra-ui/react';
 
 const NumericInput = ({ value, onChange, onKeyUp, refToNext, refToPrev }) => {
   const handleChange = (e) => {
@@ -22,13 +21,12 @@ const NumericInput = ({ value, onChange, onKeyUp, refToNext, refToPrev }) => {
   };
 
   return (
-    <Input
+    <input
       maxLength={2}
       value={value}
       onChange={handleChange}
       onKeyUp={handleKeyUp}
-      textAlign="center"
-      size="lg"
+      className="w-full px-4 py-3 text-lg text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
     />
   );
 };

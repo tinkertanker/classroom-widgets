@@ -1,22 +1,13 @@
 // NOTE: Lazy so this is NOT a reusable component !!!
 
-
 import * as React from 'react';
-import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogContent,
-  AlertDialogOverlay,
-  Button,
-  useDisclosure,
-} from '@chakra-ui/react';
-
 
 function AlertDialogExample({ onDeleteConfirm }) {
-  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [isOpen, setIsOpen] = React.useState(false);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
+
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
 
   const handleDelete = () => {
     onDeleteConfirm(true);
@@ -25,36 +16,54 @@ function AlertDialogExample({ onDeleteConfirm }) {
 
   return (
     <>
-      <Button colorScheme='red' onClick={onOpen}>
-        Delete List
-      </Button>
-
-      <AlertDialog
-        isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
-        onClose={onClose}
+      <button
+        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
+        onClick={onOpen}
       >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize='lg' fontWeight='bold'>
-              Delete List
-            </AlertDialogHeader>
+        Delete List
+      </button>
 
-            <AlertDialogBody>
-              Are you sure? You can't undo this action afterwards.
-            </AlertDialogBody>
+      {isOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={onClose}
+          />
+          
+          {/* Dialog */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              {/* Header */}
+              <div className="px-6 py-4 border-b">
+                <h2 className="text-lg font-bold">Delete List</h2>
+              </div>
 
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
-                Cancel
-              </Button>
-              <Button colorScheme='red' onClick={handleDelete} ml={3}>
-                Delete
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+              {/* Body */}
+              <div className="px-6 py-4">
+                <p>Are you sure? You can't undo this action afterwards.</p>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t flex justify-end space-x-3">
+                <button
+                  ref={cancelRef}
+                  onClick={onClose}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   )
 }

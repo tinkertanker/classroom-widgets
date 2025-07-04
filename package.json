@@ -3,10 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@chakra-ui/icons": "^2.1.1",
-    "@chakra-ui/react": "^2.8.2",
-    "@emotion/react": "^11.13.3",
-    "@emotion/styled": "^11.13.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
@@ -16,7 +12,6 @@
     "caniuse-lite": "^1.0.30001653",
     "canvas": "^2.11.2",
     "face-api.js": "^0.22.2",
-    "framer-motion": "^11.3.30",
     "postcss-loader": "^8.1.1",
     "react": "^18.3.1",
     "react-clock": "^5.0.0",
@@ -56,6 +51,9 @@
     ]
   },
   "devDependencies": {
-    "npm-watch": "^0.13.0"
+    "autoprefixer": "^10.4.21",
+    "npm-watch": "^0.13.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17"
   }
 }

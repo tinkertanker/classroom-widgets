@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import QRCode from 'react-qr-code';
-import { Box, Button, Input, Stack, Text, Heading, Flex } from '@chakra-ui/react'; // Import necessary Chakra UI components
+// Removed Chakra UI imports
 import { API_KEY, BASE_URL } from '../../secrets/shortioKey.example.js'; // Import your API key securely from secrets
 
 const ShortenLink: React.FC = () => {
@@ -49,53 +49,40 @@ const ShortenLink: React.FC = () => {
   };
 
   return (
-    <Box
-      width="100%"
-      height="100%"
-      borderWidth="1px"
-      borderRadius="lg"
-      overflow="hidden"
-      p="4"
-      boxShadow="md"
-      bg="white"
+    <div
+      className="w-full h-full border border-gray-200 rounded-lg overflow-hidden p-4 shadow-md bg-white"
     >
-      <Stack spacing={4} align="center"> {/* Reduced the spacing to 4 */}
-        <Heading textColor="black" size="md">Shorten Your Link</Heading> {/* Heading component for the title */}
-        <Input
+      <div className="flex flex-col space-y-4 items-center">
+        <h2 className="text-black text-lg font-semibold">Shorten Your Link</h2>
+        <input
           placeholder="Enter your link here"
           value={link}
           onChange={(e) => setLink(e.target.value)}
-          textColor={"black"}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <Button onClick={handleShortenLink} colorScheme="teal" width="full">
+        <button onClick={handleShortenLink} className="w-full px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200">
           Shorten Link
-        </Button>
+        </button>
 
-        {error && <Text color="red.500">{error}</Text>} {/* Display error message if exists */}
+        {error && <p className="text-red-500">{error}</p>} {/* Display error message if exists */}
 
         {shortenedLink && (
-          <Box
-            display="flex"
-            flexGrow={1}
-            flexDirection={"row"}
-            width="100%"
-            justifyContent="space-evenly"
-            alignItems={"center"}
-            textAlign="center"
+          <div
+            className="flex flex-grow flex-row w-full justify-evenly items-center text-center"
           >
-            <Text color="blue.500">
-              <Text textColor={"black"}>Your Shortened Link:</Text>
+            <div className="text-blue-500">
+              <p className="text-black">Your Shortened Link:</p>
               <a href={shortenedLink} target="_blank" rel="noopener noreferrer">
                 {shortenedLink}
               </a>
-            </Text>
-            <Flex justifyContent={"center"} mt={2} width="128px">
+            </div>
+            <div className="flex justify-center mt-2 w-32">
               <QRCode value={qrCodeValue} size={128} /> {/* QR code with 128px size */}
-            </Flex>
-          </Box>
+            </div>
+          </div>
         )}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
 

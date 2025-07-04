@@ -1,19 +1,7 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 
-import {
-  Card,
-  CardBody,
-  CardFooter,
-  ChakraProvider,
-  Stack, VStack, HStack,
-  Text,
-  Box,
-  Input,
-  CircularProgress,
-  CircularProgressLabel,
-  AspectRatio,
-} from "@chakra-ui/react";
+// Removed Chakra UI imports
 
 import ReusableButton from "../main/reusableButton.tsx";
 
@@ -138,76 +126,82 @@ const Timer = () => {
   }, [changeTime]);
 
   return (
-    <ChakraProvider>
-      <Card overflow="hidden" variant="outline" width="100%" height="100%">
-        <CardBody height="85%" py={1}>
-            <AspectRatio ratio={1} width="100%" height="100%" py={1}>
-              <CircularProgress
-                value={((initialTime - time) / initialTime) * 100}
-                size="100%"
-                thickness="10px"
-                color="gray.200"
-                trackColor="blue.400"
-                position="relative"
+    <>
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 w-full h-full overflow-hidden">
+        <div className="h-[85%] py-1">
+          <div className="w-full h-full py-1 relative">
+            {/* Custom Circular Progress */}
+            <div className="relative w-full h-full flex items-center justify-center">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="50%"
+                  cy="50%"
+                  r="45%"
+                  stroke="rgb(59, 130, 246)"
+                  strokeWidth="10"
+                  fill="none"
+                />
+                <circle
+                  cx="50%"
+                  cy="50%"
+                  r="45%"
+                  stroke="rgb(229, 231, 235)"
+                  strokeWidth="10"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 45} ${2 * Math.PI * 45}`}
+                  strokeDashoffset={`${2 * Math.PI * 45 * (1 - (initialTime - time) / initialTime)}`}
+                  className="transition-all duration-500"
+                />
+              </svg>
+              <button
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                onClick={() => {
+                  if (isRunning) {
+                    pauseTimer();
+                  }
+                }}
               >
-                <Box
-                  as="button"
-                  position="absolute"
-                  top="50%"
-                  left="50%"
-                  transform="translate(-50%, -50%)"
-                  onClick={() => {
-                    if (isRunning) {
-                      pauseTimer();
-                    }
-                  }}
-                >
-                  {isRunning && !inEditMode ? (
-                    /* DISPLAY MODE */
-                    <VStack spacing={1} align="centel" pt={6}>
-                      <HStack spacing={2}>
-                        <Text fontSize="clamp(1rem, 7vw, 6rem)" lineHeight="1">{values[0]}</Text>
-                        <Text fontSize="clamp(1rem, 7vw, 6rem)" lineHeight="1">:</Text>
-                        <Text fontSize="clamp(1rem, 7vw, 6rem)" lineHeight="1">{values[1]}</Text>
-                      </HStack>
-                      <Text fontSize="clamp(1rem, 5vw, 2rem)">{values[2]}</Text>
-                    </VStack>
-                  ) : (
-                     /* EDIT MODE */
-                  <HStack spacing={1}>
+                {isRunning && !inEditMode ? (
+                  /* DISPLAY MODE */
+                  <div className="flex flex-col items-center space-y-1 pt-6">
+                    <div className="flex flex-row items-center space-x-2">
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none">{values[0]}</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none">:</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none">{values[1]}</span>
+                    </div>
+                    <span className="text-[clamp(1rem,5vw,2rem)]">{values[2]}</span>
+                  </div>
+                ) : (
+                  /* EDIT MODE */
+                  <div className="flex flex-row items-center space-x-1">
                     {values.map((val, idx) => (
-                    <React.Fragment key={idx}>
-                      <Input
-                        key={idx}
-                        value={val}
-                        placeholder={inputDisplays[idx]}
-                        onChange={(e) => handleChange(e, idx)}
-                        onFocus={(e) => e.target.select()}
-                        maxLength={2}
-                        size="lg"
-                        px={0}
-                        textAlign="center"
-                        maxLength={2}
-                        readOnly={isRunning && !inEditMode}
-                      />
-                      
-                      {/* Add a colon after each input, except the last one */}
-                      {idx < values.length - 1 && (
-                       <Text fontSize="24px" lineHeight="1">
-                      :
-                       </Text>
-                      )}
-                    </React.Fragment>
+                      <React.Fragment key={idx}>
+                        <input
+                          value={val}
+                          placeholder={inputDisplays[idx]}
+                          onChange={(e) => handleChange(e, idx)}
+                          onFocus={(e) => e.target.select()}
+                          maxLength={2}
+                          readOnly={isRunning && !inEditMode}
+                          className="w-16 px-0 py-3 text-lg text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        
+                        {/* Add a colon after each input, except the last one */}
+                        {idx < values.length - 1 && (
+                          <span className="text-2xl leading-none">
+                            :
+                          </span>
+                        )}
+                      </React.Fragment>
                     ))}
-                  </HStack>
-                  )}
-                </Box>
-              </CircularProgress>
-            </AspectRatio>
-
-        </CardBody>
-        <CardFooter pt={0}>
-          <HStack width="100%" gap="5%" height="100%">
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="h-[15%] pt-0 px-4 pb-4">
+          <div className="flex flex-row w-full gap-[5%] h-full">
             {showStart ? (
               <ReusableButton onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (
@@ -223,11 +217,10 @@ const Timer = () => {
                 <ReusableButton onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
               </>
             )}
-          </HStack>
-
-        </CardFooter>
-      </Card>
-    </ChakraProvider>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 

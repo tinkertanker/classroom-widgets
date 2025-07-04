@@ -1,32 +1,4 @@
-import {
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  ChakraProvider,
-  Stack,
-  Box,
-  Input,
-  Button,
-  IconButton,
-  Modal,
-  useDisclosure,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  InputGroup,
-  InputRightElement,
-  Heading,
-  Text,
-  Radio,
-  RadioGroup,
-  Checkbox,
-  ModalCloseButton,
-} from "@chakra-ui/react";
 import { useState, useRef, useEffect } from "react";
-import { CheckIcon, DeleteIcon, SettingsIcon } from "@chakra-ui/icons";
 
 import * as React from "react";
 import AlertDialogExample from "../main/alert.tsx";
@@ -43,7 +15,9 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
   const [hideComplete, setHideComplete] = useState<boolean>(/*JSON.parse(localStorage.getItem('hideComplete') ||*/ false);
   const [isChecklist, setIsChecklist] =   useState<boolean>(/*JSON.parse(localStorage.getItem('isChecklist') ||*/ true);
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
+  const onOpen = () => setIsOpen(true);
+  const onClose = () => setIsOpen(false);
   const initialFocus = React.useRef(null);
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
@@ -139,114 +113,151 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
   // }, [isChecklist]);
 
   return (
-    <ChakraProvider>
-      <Card width="100%" height="100%">
-        <CardHeader paddingBottom="8px">
-          <Input
+    <>
+      <div className="bg-white rounded-lg shadow-md w-full h-full flex flex-col">
+        <div className="px-4 pt-4 pb-2">
+          <input
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
-            variant="flushed"
             placeholder="Title"
-            fontSize="2xl"
-            fontWeight="bold"
+            className="w-full text-2xl font-bold text-gray-800 placeholder-gray-400 border-b border-gray-300 focus:border-blue-500 focus:outline-none px-1 py-1"
           />
-        </CardHeader>
-        <CardBody overflowY="auto" mt={2} paddingBlock="0">
-          <Box padding-top="0">
-            <Stack spacing={1} padding-top="0">
+        </div>
+        <div className="flex-1 overflow-y-auto mt-2 px-4">
+          <div className="pt-0">
+            <div className="flex flex-col space-y-1 pt-0">
               {inputs.map((input, index) =>
                 hideComplete && completed[index] && isChecklist ? null : (
-                  <Stack direction="row" align="center" key={index} spacing={1}>
+                  <div className="flex flex-row items-center gap-1" key={index}>
                     {isChecklist ? (
-                      <IconButton
-                        icon={<CheckIcon />}
+                      <button
                         onClick={() => toggleCompleted(index)}
                         aria-label="Complete task"
-                        bg={completed[index] && isChecklist ? "green.500" : "gray.200"}
-                        color={completed[index] && isChecklist ? "white" : "black"}
-                        _hover={{ bg: completed[index] && isChecklist ? "green.600" : "gray.300" }}
-                      />
+                        className={`p-2 rounded transition-colors duration-200 ${
+                          completed[index] && isChecklist
+                            ? "bg-green-500 hover:bg-green-600 text-white"
+                            : "bg-gray-200 hover:bg-gray-300 text-black"
+                        }`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
                     ) : null}
-                    <InputGroup>
-                      <Input
+                    <div className="relative flex-1">
+                      <input
                         ref={(el) => (inputRefs.current[index] = el!)}
                         value={input}
                         onChange={(e) => handleInputChange(index, e.target.value)}
-                        variant="filled"
                         placeholder="Type away!"
-                        textDecoration={completed[index] && isChecklist ? "line-through" : "none"}
-                        bg={completed[index] && isChecklist ? "green.100" : "gray.100"}
-                        _hover={{ bg: completed[index] && isChecklist ? "green.200" : "gray.200" }}
+                        className={`w-full px-3 py-2 pr-10 rounded text-gray-800 placeholder-gray-500 transition-colors duration-200 ${
+                          completed[index] && isChecklist
+                            ? "bg-green-100 hover:bg-green-200 line-through"
+                            : "bg-gray-100 hover:bg-gray-200"
+                        }`}
                       />
-                      <InputRightElement>
-                        <IconButton
-                          icon={<DeleteIcon />}
-                          size="sm"
-                          aria-label="Delete Task"
-                          bg="transparent"
-                          color="gray.800"
-                          _hover={{ bg: "red.600", color: "white" }}
-                          onClick={() => handleDeleteInput(index)}
-                          tabIndex={-1} // Make the button unselectable via tabbing
-                        />
-                      </InputRightElement>
-                    </InputGroup>
-                  </Stack>
+                      <button
+                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded text-gray-800 hover:bg-red-600 hover:text-white transition-colors duration-200"
+                        aria-label="Delete Task"
+                        onClick={() => handleDeleteInput(index)}
+                        tabIndex={-1}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 )
               )}
-            </Stack>
-          </Box>
-        </CardBody>
-        <CardFooter>
-          <Button colorScheme="teal" onClick={handleAddInput}>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 border-t flex items-center">
+          <button
+            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200"
+            onClick={handleAddInput}
+          >
             Add Item
-          </Button>
-          <IconButton
+          </button>
+          <button
             aria-label="Settings"
-            icon={<SettingsIcon />}
-            ml="auto"
-            bg="gray.800"
-            color="white"
-            _hover={{ bg: "gray.700" }}
+            className="ml-auto p-2 bg-gray-800 hover:bg-gray-700 text-white rounded transition-colors duration-200"
             onClick={onOpen}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      {isOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={onClose}
           />
-        </CardFooter>
-      </Card>
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        initialFocusRef={initialFocus}
-        isCentered
-      >
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
-            <Text>Settings</Text>
-            <ModalCloseButton />
-          </ModalHeader>
-          <ModalBody>
-            <Stack spacing={2}>
-              <Heading size="md">List Settings</Heading>
-              <Checkbox
-                isChecked={hideComplete} // Bind checkbox state to `hideComplete`
-                onChange={handleHideCompletedItemsChange}
-              >
-                Hide Completed Items
-              </Checkbox>
-              <Text>List Type</Text>
-              <RadioGroup value={isChecklist ? "1" : "2"} onChange={handleRadioChange}>
-                <Stack spacing={4} direction="row">
-                  <Radio value="1">Checklist</Radio>
-                  <Radio value="2">Normal List</Radio>
-                </Stack>
-              </RadioGroup>
-              <Heading size="md">Item Settings</Heading>
-              <AlertDialogExample onDeleteConfirm={handleDeleteConfirm} />
-            </Stack>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </ChakraProvider>
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="px-6 py-4 border-b flex items-center justify-between">
+                <p className="text-lg font-semibold text-gray-800">Settings</p>
+                <button
+                  onClick={onClose}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="px-6 py-4">
+                <div className="flex flex-col space-y-4">
+                  <h3 className="text-md font-semibold text-gray-800">List Settings</h3>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={hideComplete}
+                      onChange={handleHideCompletedItemsChange}
+                      className="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-gray-700">Hide Completed Items</span>
+                  </label>
+                  <p className="text-gray-700">List Type</p>
+                  <div className="flex flex-row space-x-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="listType"
+                        value="1"
+                        checked={isChecklist}
+                        onChange={() => handleRadioChange("1")}
+                        className="mr-2"
+                      />
+                      <span className="text-gray-700">Checklist</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="listType"
+                        value="2"
+                        checked={!isChecklist}
+                        onChange={() => handleRadioChange("2")}
+                        className="mr-2"
+                      />
+                      <span className="text-gray-700">Normal List</span>
+                    </label>
+                  </div>
+                  <h3 className="text-md font-semibold text-gray-800">Item Settings</h3>
+                  <AlertDialogExample onDeleteConfirm={handleDeleteConfirm} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 
