@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 import React from 'react';
 
-export default function Toolbar({setComponentList,activeIndex,setActiveIndex}) {
+export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
 
   const ComponentNames = [
     "Randomiser",
@@ -39,7 +39,11 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex}) {
           <div className="flex justify-end">
             <svg
               id="trash"
-              className="w-6 h-6 text-gray-500 hover:text-red-500 cursor-pointer transition-colors"
+              className={`w-6 h-6 cursor-pointer transition-all duration-200 ${
+                hoveringTrash 
+                  ? 'text-red-500 transform scale-125' 
+                  : 'text-gray-500'
+              }`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

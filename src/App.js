@@ -15,12 +15,17 @@ import { v4 as uuidv4 } from "uuid"; // Import UUID package
 
 import Confetti from "react-confetti";
 
+// Audio import for trash sound
+const trashSound = require("./sounds/trash-crumple.mp3");
+const trashAudio = new Audio(trashSound);
+
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
   const [useconfetti2, setUseconfetti2] = useState(false);
   const [componentList, setComponentList] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
   const [generatedComponents, setGeneratedComponents] = useState([]);
+  const [hoveringTrashId, setHoveringTrashId] = useState(null);
   const Components = [
     <Randomiser toggleConfetti={setUseconfetti} />,
     <Timer />,
@@ -53,12 +58,23 @@ function App() {
         // resizeGrid={[1, 1]}
         style={{
           zIndex: activeIndex === id ? 998 : "auto",
-
+          opacity: hoveringTrashId === id ? 0.2 : 1,
+          transition: "opacity 0.2s ease",
+          cursor: hoveringTrashId === id ? "not-allowed" : "auto",
           // borderWidth: activeIndex === id ? "2px":"0px",
           // borderColor:"skyblue" // for future interns to implement
         }}
         onDragStart={() => {
           setActiveIndex(id);
+        }}
+        onDrag={(e) => {
+          // Check if ANY widget being dragged is over trash
+          if (isOverTrash(e.clientX, e.clientY)) {
+            setHoveringTrashId(id);
+          } else {
+            // Clear hover state when not over trash
+            setHoveringTrashId(null);
+          }
         }}
         onResizeStart={() => {
           setActiveIndex(id);
@@ -68,6 +84,10 @@ function App() {
         }}
         onDragStop={(e, data) => {
           trashHandler(e, data, id);
+          // Always clear hover state when drag ends
+          if (hoveringTrashId === id) {
+            setHoveringTrashId(null);
+          }
         }}
        
       >
@@ -76,21 +96,36 @@ function App() {
     ));
 
     setGeneratedComponents(components);
-  }, [componentList, activeIndex]);
+  }, [componentList, activeIndex, hoveringTrashId]);
+
+  function isOverTrash(x, y) {
+    const trashElement = document.getElementById("trash");
+    if (!trashElement) return false;
+    
+    const trashLocation = trashElement.getBoundingClientRect();
+    // Create a larger hitbox that extends upward
+    const extendedHeight = trashLocation.height * 2; // Double the height
+    const extendedTop = trashLocation.y - trashLocation.height; // Extend upward by one trash height
+    
+    return (
+      x >= trashLocation.x &&
+      x <= trashLocation.x + trashLocation.width &&
+      y >= extendedTop &&
+      y <= trashLocation.y + trashLocation.height
+    );
+  }
 
   function trashHandler(mouseEvent, data, id) {
-    const trashLocation = document
-      .getElementById("trash")
-      .getBoundingClientRect();
-    if (
-      mouseEvent.x >= trashLocation.x &&
-      mouseEvent.x <= trashLocation.x + trashLocation.width &&
-      mouseEvent.y >= trashLocation.y &&
-      mouseEvent.y <= trashLocation.y + trashLocation.height
-    ) {
+    if (isOverTrash(mouseEvent.x, mouseEvent.y)) {
+      // Play trash sound
+      trashAudio.play().catch(error => {
+        console.error("Error playing trash sound:", error);
+      });
+      
       setComponentList((oldList) =>
         oldList.filter((component) => component.id !== id)
       );
+      setHoveringTrashId(null);
     }
   }
 
@@ -104,7 +139,7 @@ function App() {
               {generatedComponents}
             </div>
             <div className="toolbar-container w-full h-[10%] mb-2.5">
-              <Toolbar setComponentList={setComponentList} activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
+              <Toolbar setComponentList={setComponentList} activeIndex={activeIndex} setActiveIndex={setActiveIndex} hoveringTrash={hoveringTrashId !== null} />
             </div>
           </div>
         </header>
