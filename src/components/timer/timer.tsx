@@ -5,6 +5,10 @@ import { useState, useEffect, useRef } from "react";
 
 import ReusableButton from "../main/reusableButton.tsx";
 
+// Audio import
+const timerEndSound = require("./timer-end.mp3");
+const timerEndAudio = new Audio(timerEndSound);
+
 const Timer = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
@@ -71,12 +75,16 @@ const Timer = () => {
   };
 
   useEffect(() => {
-    if (time <= 0) {
+    if (time <= 0 && isRunning) {
       setIsRunning(false);
       setShowPauseResume(false);
       console.log("Done!");
+      // Play the timer end sound
+      timerEndAudio.play().catch(error => {
+        console.error("Error playing timer end sound:", error);
+      });
     }
-  }, [time]);
+  }, [time, isRunning]);
 
   const startTimer = (isResume=false) => {
     if (!timeValues[0] && !timeValues[1] && !timeValues[2]) return;
