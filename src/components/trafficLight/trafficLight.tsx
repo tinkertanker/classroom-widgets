@@ -2,7 +2,7 @@ import {
   Box,
   Flex,
   Input,
-  Stack,
+  Stack, HStack, VStack,
   Card,
   ChakraProvider,
 } from "@chakra-ui/react";
@@ -87,6 +87,8 @@ function TrafficLight() {
     }));
   }, []);
 
+
+
   return (
     <ChakraProvider>
       <Card width="100%" height="100%" id="baller" borderRadius={"md"}>
@@ -148,16 +150,7 @@ function TrafficLight() {
             justifyContent="space-evenly"
             flexGrow={1}
           >
-            {[...Array(3)].map((_, i) => (
-              <Input
-                key={i}
-                height="33.33%"
-                placeholder="..."
-                width="100%"
-                textColor="black"
-                variant="filled"
-              />
-            ))}
+          <h1>Teacher’s turn to speak. Be attentive and quiet.</h1>
           </Flex>
         </Stack>
       </Card>
