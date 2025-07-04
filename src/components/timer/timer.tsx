@@ -170,6 +170,13 @@ const Timer = () => {
     }
   }, [changeTime]);
 
+  // Focus first input when entering edit mode
+  useEffect(() => {
+    if (inEditMode && inputRefs.current[0]) {
+      inputRefs.current[0].focus();
+    }
+  }, [inEditMode]);
+
   return (
     <>
       <div className="bg-white rounded-lg shadow-md border border-gray-200 w-full h-full overflow-hidden">
@@ -193,17 +200,12 @@ const Timer = () => {
                   fill="rgb(59, 130, 246)"
                 />
               </svg>
-              <button
+              <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
-                onClick={() => {
-                  if (isRunning) {
-                    pauseTimer();
-                  }
-                }}
               >
                 {isRunning && !inEditMode ? (
                   /* DISPLAY MODE */
-                  <div className="flex flex-col items-center space-y-1 pt-6">
+                  <div className="flex flex-col items-center space-y-1 pt-6 cursor-pointer" onClick={pauseTimer}>
                     <div className="flex flex-row items-center space-x-2">
                       <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">{values[0]}</span>
                       <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">:</span>
@@ -217,6 +219,7 @@ const Timer = () => {
                     {values.map((val, idx) => (
                       <React.Fragment key={idx}>
                         <input
+                          ref={el => inputRefs.current[idx] = el}
                           value={val}
                           placeholder={inputDisplays[idx]}
                           onChange={(e) => handleChange(e, idx)}
@@ -236,7 +239,7 @@ const Timer = () => {
                     ))}
                   </div>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
