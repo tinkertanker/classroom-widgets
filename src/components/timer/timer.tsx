@@ -15,14 +15,51 @@ const Timer = () => {
   const [showResume, setShowResume] = useState(false);
   const [showPauseResume, setShowPauseResume] = useState(true);
 
-  const [values, setValues] = useState(['', '', '']);
-  const [timeValues, setTimeValues] = useState([0, 0, 0]);
+  // Initialize values based on initialTime (10 seconds)
+  const [values, setValues] = useState(['00', '00', '10']);
+  const [timeValues, setTimeValues] = useState([0, 0, 10]);
   const inputDisplays = ["hh", "mm", "ss"];
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Calculate SVG path for the arc
+  const getArcPath = (percentage: number) => {
+    const centerRadius = 45;
+    const strokeWidth = 5; // Thinner stroke
+    const outerRadius = centerRadius + strokeWidth / 2;
+    const innerRadius = centerRadius - strokeWidth / 2;
+    const startAngle = -90; // Start at top
+    const endAngle = startAngle + (percentage * 360);
+    
+    const startAngleRad = (startAngle * Math.PI) / 180;
+    const endAngleRad = (endAngle * Math.PI) / 180;
+    
+    // Outer arc points
+    const x1 = 50 + outerRadius * Math.cos(startAngleRad);
+    const y1 = 50 + outerRadius * Math.sin(startAngleRad);
+    const x2 = 50 + outerRadius * Math.cos(endAngleRad);
+    const y2 = 50 + outerRadius * Math.sin(endAngleRad);
+    
+    // Inner arc points
+    const x3 = 50 + innerRadius * Math.cos(endAngleRad);
+    const y3 = 50 + innerRadius * Math.sin(endAngleRad);
+    const x4 = 50 + innerRadius * Math.cos(startAngleRad);
+    const y4 = 50 + innerRadius * Math.sin(startAngleRad);
+    
+    const largeArcFlag = percentage > 0.5 ? 1 : 0;
+    
+    if (percentage >= 0.9999) {
+      // Full circle requires special handling
+      return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 1 1 ${x1 - 0.01} ${y1} L ${x4 - 0.01} ${y4} A ${innerRadius} ${innerRadius} 0 1 0 ${x4} ${y4} Z`;
+    } else if (percentage <= 0.0001) {
+      return '';
+    }
+    
+    return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
+  };
+
   const handleChange = (e, index) => {
     const newValues = [...values];
-    if (/^[0-9]/.test(e.target.value) || e.target.value === '') {
+    if (/^[0-9]*$/.test(e.target.value)) {
       newValues[index] = e.target.value;
     }
     setValues(newValues);
@@ -132,25 +169,20 @@ const Timer = () => {
           <div className="w-full h-full py-1 relative">
             {/* Custom Circular Progress */}
             <div className="relative w-full h-full flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90">
+              <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
+                {/* Background circle (gray) */}
                 <circle
-                  cx="50%"
-                  cy="50%"
-                  r="45%"
-                  stroke="rgb(59, 130, 246)"
-                  strokeWidth="10"
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="rgb(229, 231, 235)"
+                  strokeWidth="5"
                   fill="none"
                 />
-                <circle
-                  cx="50%"
-                  cy="50%"
-                  r="45%"
-                  stroke="rgb(229, 231, 235)"
-                  strokeWidth="10"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 45} ${2 * Math.PI * 45}`}
-                  strokeDashoffset={`${2 * Math.PI * 45 * (1 - (initialTime - time) / initialTime)}`}
-                  className="transition-all duration-500"
+                {/* Progress arc (blue) */}
+                <path
+                  d={getArcPath(time / initialTime)}
+                  fill="rgb(59, 130, 246)"
                 />
               </svg>
               <button
@@ -165,11 +197,11 @@ const Timer = () => {
                   /* DISPLAY MODE */
                   <div className="flex flex-col items-center space-y-1 pt-6">
                     <div className="flex flex-row items-center space-x-2">
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none">{values[0]}</span>
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none">:</span>
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none">{values[1]}</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">{values[0]}</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">:</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">{values[1]}</span>
                     </div>
-                    <span className="text-[clamp(1rem,5vw,2rem)]">{values[2]}</span>
+                    <span className="text-[clamp(1rem,5vw,2rem)] text-gray-800">{values[2]}</span>
                   </div>
                 ) : (
                   /* EDIT MODE */
@@ -183,12 +215,12 @@ const Timer = () => {
                           onFocus={(e) => e.target.select()}
                           maxLength={2}
                           readOnly={isRunning && !inEditMode}
-                          className="w-16 px-0 py-3 text-lg text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-16 px-0 py-3 text-lg text-center text-gray-800 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                         
                         {/* Add a colon after each input, except the last one */}
                         {idx < values.length - 1 && (
-                          <span className="text-2xl leading-none">
+                          <span className="text-2xl leading-none text-gray-800">
                             :
                           </span>
                         )}
