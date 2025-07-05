@@ -26,6 +26,7 @@ function App() {
   const [generatedComponents, setGeneratedComponents] = useState([]);
   const [hoveringTrashId, setHoveringTrashId] = useState(null);
   const [widgetPositions, setWidgetPositions] = useState(new Map());
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const Components = [
     <Randomiser toggleConfetti={setUseconfetti} />,
     <Timer />,
@@ -89,6 +90,24 @@ function App() {
     };
   };
 
+  // Handle fullscreen toggle
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   useEffect(() => {
     const components = componentList.map(({ id, index }) => {
@@ -233,6 +252,38 @@ function App() {
       <div className="App">
         <header className="App-header">
           <div className="flex flex-col w-full h-full justify-center items-center">
+            {/* Fullscreen button */}
+            <button
+              onClick={toggleFullscreen}
+              className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {isFullscreen ? (
+                  // Exit fullscreen icon
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
+                  />
+                ) : (
+                  // Enter fullscreen icon
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                  />
+                )}
+              </svg>
+            </button>
             <div className="absolute right-2.5 left-2.5 top-2.5 bottom-2.5">
               {generatedComponents}
             </div>
