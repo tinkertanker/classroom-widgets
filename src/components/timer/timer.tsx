@@ -246,7 +246,7 @@ const Timer = () => {
 
   return (
     <>
-      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden @container">
+      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden" style={{ containerType: 'size' }}>
         <div className="h-[85%] py-1">
           <div className="w-full h-full py-1 relative">
             {/* Custom Circular Progress */}
@@ -289,7 +289,7 @@ const Timer = () => {
                   <div className="flex items-center justify-center w-full h-full cursor-pointer" onClick={pauseTimer}>
                     {time >= 3600 ? (
                       // Show hours:minutes:seconds - smaller text to fit
-                      <div className="flex items-center text-[length:clamp(1.5rem,15cqmin,5rem)]">
+                      <div className="flex items-center" style={{ fontSize: 'clamp(1rem, 12cqmin, 3rem)' }}>
                         <span className="leading-none text-warm-gray-800 font-bold">{values[0]}</span>
                         <span className="leading-none text-warm-gray-800 font-bold">:</span>
                         <span className="leading-none text-warm-gray-800 font-bold">{values[1]}</span>
@@ -298,14 +298,14 @@ const Timer = () => {
                       </div>
                     ) : time >= 60 ? (
                       // Show minutes:seconds - medium text
-                      <div className="flex items-center text-[length:clamp(2rem,25cqmin,7rem)]">
+                      <div className="flex items-center" style={{ fontSize: 'clamp(1.5rem, 20cqmin, 5rem)' }}>
                         <span className="leading-none text-warm-gray-800 font-bold">{values[1]}</span>
                         <span className="leading-none text-warm-gray-800 font-bold">:</span>
                         <span className="leading-none text-warm-gray-800 font-bold">{values[2]}</span>
                       </div>
                     ) : (
                       // Show only seconds - largest text
-                      <div className="flex items-center text-[length:clamp(3rem,35cqmin,9rem)]">
+                      <div className="flex items-center" style={{ fontSize: 'clamp(2rem, 28cqmin, 7rem)' }}>
                         <span className="leading-none text-warm-gray-800 font-bold">{time}</span>
                       </div>
                     )}
@@ -324,16 +324,21 @@ const Timer = () => {
                               onChange={handleSegmentChange}
                               onBlur={handleSegmentBlur}
                               onKeyDown={handleKeyDown}
-                              className="w-[clamp(3rem,10vw,5rem)] text-[clamp(2rem,8vw,4rem)] text-center text-warm-gray-800 bg-warm-gray-100 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
+                              className="text-center text-warm-gray-800 bg-warm-gray-100 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
+                              style={{ 
+                                width: 'clamp(2.5rem, 15cqmin, 5rem)',
+                                fontSize: 'clamp(1.5rem, 12cqmin, 3rem)'
+                              }}
                               autoFocus
                             />
                           ) : (
                             <span
                               onClick={() => handleSegmentClick(idx)}
-                              className={`text-[clamp(2rem,8vw,4rem)] leading-none text-warm-gray-800 cursor-pointer hover:bg-warm-gray-100 px-1 rounded-md transition-colors ${
+                              className={`leading-none text-warm-gray-800 cursor-pointer hover:bg-warm-gray-100 px-1 rounded-md transition-colors ${
                                 !isRunning ? 'hover:text-sage-600' : ''
                               }`}
                               title={!isRunning ? 'Click to edit' : ''}
+                              style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}
                             >
                               {val}
                             </span>
@@ -341,7 +346,7 @@ const Timer = () => {
                           
                           {/* Colon separator */}
                           {idx < values.length - 1 && (
-                            <span className="text-[clamp(2rem,8vw,4rem)] leading-none text-warm-gray-800 mx-0">
+                            <span className="leading-none text-warm-gray-800 mx-0" style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}>
                               :
                             </span>
                           )}
@@ -359,8 +364,8 @@ const Timer = () => {
             </div>
           </div>
         </div>
-        <div className="h-[15%] pt-0 px-4 pb-4">
-          <div className="flex flex-row w-full gap-[5%] h-full">
+        <div className="h-[15%] pt-0 px-2 pb-2" style={{ minHeight: '60px' }}>
+          <div className="flex flex-row w-full gap-2 h-full">
             {showStart ? (
               <ReusableButton size="sm" colorScheme="sage" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (

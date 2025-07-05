@@ -240,8 +240,8 @@ function App() {
             width: `${widgetWidth}px`,
             height: `${widgetHeight}px`,
           }}
-        minWidth={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.SOUND_EFFECTS ? "80px" : "200px"}
-        minHeight={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.RANDOMISER ? "150px" : index === WIDGET_TYPES.TEXT_BANNER ? "80px" : "200px"}
+        minWidth={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.SOUND_EFFECTS ? "80px" : index === WIDGET_TYPES.TIMER ? "250px" : "200px"}
+        minHeight={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.RANDOMISER ? "150px" : index === WIDGET_TYPES.TEXT_BANNER ? "80px" : index === WIDGET_TYPES.TIMER ? "250px" : "200px"}
         key={id}
         id={id}
         lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS ? false : true}
