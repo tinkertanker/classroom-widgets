@@ -244,7 +244,7 @@ function App() {
         minHeight={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.RANDOMISER ? "150px" : index === WIDGET_TYPES.TEXT_BANNER ? "80px" : index === WIDGET_TYPES.TIMER ? "306px" : "200px"}
         key={id}
         id={id}
-        lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS ? false : index === WIDGET_TYPES.TIMER ? (350 / 406) : true}
+        lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS || index === WIDGET_TYPES.LIST ? false : index === WIDGET_TYPES.TIMER ? (350 / 406) : true}
         enableUserSelectHack={true}
         bounds="parent"
         // dragGrid={[100, 100]} // can implement grid if future interns want
