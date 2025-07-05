@@ -325,7 +325,9 @@ function App() {
         // dragGrid={[100, 100]} // can implement grid if future interns want
         // resizeGrid={[1, 1]}
         style={{
-          zIndex: activeIndex === id ? 998 : "auto",
+          zIndex: index === WIDGET_TYPES.STAMP 
+            ? (activeIndex === id ? 999 : 900) // Stickers always 900+
+            : (activeIndex === id ? 500 : "auto"), // Other widgets max 500
           opacity: hoveringTrashId === id ? 0.2 : 1,
           transition: "opacity 0.2s ease",
           cursor: hoveringTrashId === id ? "not-allowed" : "auto",
