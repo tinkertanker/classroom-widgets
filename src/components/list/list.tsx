@@ -155,7 +155,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                           statuses[index] === 4 ? "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-300" :
                           "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-800"
                         } ${
-                          isLarge ? "text-lg py-3" : "text-sm py-2"
+                          isLarge ? "text-2xl py-3" : "text-sm py-2"
                         }`}
                       />
                       <button
