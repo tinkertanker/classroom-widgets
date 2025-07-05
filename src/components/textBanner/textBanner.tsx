@@ -131,6 +131,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           onChange={(e) => setEditText(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           className="w-full h-full p-4 text-xl bg-soft-white text-warm-gray-800 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600"
           placeholder="Enter your message..."
           autoFocus
