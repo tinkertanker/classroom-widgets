@@ -31,10 +31,10 @@ export const WIDGET_CONFIGS = {
     lockAspectRatio: true
   },
   [WIDGET_TYPES.TRAFFIC_LIGHT]: {
-    defaultWidth: 200,
-    defaultHeight: 100,
-    minWidth: 150,
-    minHeight: 80,
+    defaultWidth: 300,
+    defaultHeight: 175,
+    minWidth: 250,
+    minHeight: 150,
     lockAspectRatio: false
   },
   [WIDGET_TYPES.SOUND_MONITOR]: {
