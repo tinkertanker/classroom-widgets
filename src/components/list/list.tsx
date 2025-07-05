@@ -5,14 +5,14 @@ interface ListProps {
   toggleConfetti: (value: boolean) => boolean;
   savedState?: {
     inputs: string[];
-    completed: boolean[];
+    statuses: number[];
   };
   onStateChange?: (state: any) => void;
 }
 
 const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }) => {
   const [inputs, setInputs] = useState<string[]>(savedState?.inputs || []);
-  const [completed, setCompleted] = useState<boolean[]>(savedState?.completed || []);
+  const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || []); // 0: none, 1: green, 2: yellow, 3: red
 
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
@@ -21,7 +21,7 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
     if (onStateChange) {
       onStateChange({
         inputs: inputs,
-        completed: completed
+        statuses: statuses
       });
     }
   };
@@ -34,7 +34,7 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
       return;
     }
     updateState();
-  }, [inputs, completed]);
+  }, [inputs, statuses]);
 
   const handleAddInput = () => {
     setInputs((prevInputs) => {
@@ -44,7 +44,7 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
       }, 0);
       return newInputs;
     });
-    setCompleted([...completed, false]);
+    setStatuses([...statuses, 0]);
     toggleConfetti(false);
   };
 
@@ -54,18 +54,14 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
     setInputs(newInputs);
   };
 
-  const toggleCompleted = (index: number) => {
-    const updatedCompleted = [...completed];
-    updatedCompleted[index] = !updatedCompleted[index];
-    setCompleted(updatedCompleted);
+  const cycleStatus = (index: number) => {
+    const updatedStatuses = [...statuses];
+    updatedStatuses[index] = (updatedStatuses[index] + 1) % 4; // Cycle through 0, 1, 2, 3
+    setStatuses(updatedStatuses);
 
-    // get sum of all elements in completed using Number() [elements are true/false]
-    const sumCompleted = updatedCompleted.reduce((sum, value) => sum + Number(value), 0);
-    console.log(sumCompleted);
-
-    if (inputs.length === sumCompleted && inputs.length > 0) {
-      console.log('hi');
-      // if (useConfetti) return;
+    // Check if all items are green (status === 1) for confetti
+    const allGreen = updatedStatuses.every(status => status === 1);
+    if (inputs.length > 0 && allGreen) {
       toggleConfetti(false);
       setTimeout(() => toggleConfetti(true), 1000);
     }
@@ -85,9 +81,9 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
 
   const handleDeleteInput = (index: number) => {
     const newInputs = inputs.filter((_, i) => i !== index);
-    const newCompleted = completed.filter((_, i) => i !== index);
+    const newStatuses = statuses.filter((_, i) => i !== index);
     setInputs(newInputs);
-    setCompleted(newCompleted);
+    setStatuses(newStatuses);
   };
 
 
@@ -121,17 +117,15 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
               {inputs.map((input, index) => (
                   <div className="flex flex-row items-center gap-1" key={index}>
                     <button
-                        onClick={() => toggleCompleted(index)}
-                        aria-label="Complete task"
-                        className={`p-2 rounded transition-colors duration-200 ${
-                          completed[index]
-                            ? "bg-green-500 hover:bg-green-600 text-white"
-                            : "bg-warm-gray-200 hover:bg-warm-gray-300 text-black"
+                        onClick={() => cycleStatus(index)}
+                        aria-label="Cycle status"
+                        className={`w-8 h-8 rounded transition-colors duration-200 ${
+                          statuses[index] === 1 ? "bg-green-500 hover:bg-green-600" :
+                          statuses[index] === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
+                          statuses[index] === 3 ? "bg-red-500 hover:bg-red-600" :
+                          "bg-warm-gray-200 hover:bg-warm-gray-300"
                         }`}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
                       </button>
                     <div className="relative flex-1">
                       <input
@@ -140,9 +134,10 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
                         onChange={(e) => handleInputChange(index, e.target.value)}
                         placeholder="Type away!"
                         className={`w-full px-3 py-2 pr-10 rounded text-warm-gray-800 placeholder-warm-gray-500 transition-colors duration-200 ${
-                          completed[index]
-                            ? "bg-green-100 hover:bg-green-200 line-through"
-                            : "bg-warm-gray-100 hover:bg-warm-gray-200"
+                          statuses[index] === 1 ? "bg-green-100 hover:bg-green-200" :
+                          statuses[index] === 2 ? "bg-yellow-100 hover:bg-yellow-200" :
+                          statuses[index] === 3 ? "bg-red-100 hover:bg-red-200" :
+                          "bg-warm-gray-100 hover:bg-warm-gray-200"
                         }`}
                       />
                       <button
