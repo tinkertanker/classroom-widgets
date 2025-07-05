@@ -194,10 +194,10 @@ const Timer = () => {
                   strokeWidth="5"
                   fill="none"
                 />
-                {/* Progress arc (blue) */}
+                {/* Progress arc (sage) */}
                 <path
                   d={getArcPath(time / initialTime)}
-                  fill="rgb(59, 130, 246)"
+                  fill="#5e8b5e"
                 />
               </svg>
               <div
