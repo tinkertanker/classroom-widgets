@@ -157,7 +157,7 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
                       </button>
                     </div>
                   </div>
-              ))
+              ))}
             </div>
           </div>
         </div>
