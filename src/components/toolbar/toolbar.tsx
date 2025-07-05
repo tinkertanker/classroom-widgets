@@ -8,7 +8,7 @@ import {
   FaListCheck,      // List
   FaUserGroup,      // Work Symbols
   FaTrafficLight,   // Traffic Light
-  FaVolumeHigh,     // Loudness Monitor
+  FaVolumeHigh,     // Sound Monitor
   FaLink,           // Link Shortener
   FaBars,           // Menu icon
   FaArrowRotateLeft,// Reset icon
@@ -16,7 +16,8 @@ import {
   FaTextWidth,      // Text Banner
   FaImage,          // Image Display
   FaMusic,          // Sound Effects
-  FaPalette         // Background icon
+  FaPalette,        // Background icon
+  FaWrench          // Customize icon
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType}) {
@@ -26,6 +27,26 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   const menuButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
+  const [customizeToolbarOpen, setCustomizeToolbarOpen] = useState(false);
+  const [selectedToolbarWidgets, setSelectedToolbarWidgets] = useState(() => {
+    // Load saved toolbar configuration from localStorage
+    const saved = localStorage.getItem('toolbarWidgets');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // If parsing fails, return default
+      }
+    }
+    // Default toolbar widgets
+    return [
+      WIDGET_TYPES.RANDOMISER, 
+      WIDGET_TYPES.TIMER, 
+      WIDGET_TYPES.LIST, 
+      WIDGET_TYPES.WORK_SYMBOLS, 
+      WIDGET_TYPES.SOUND_MONITOR
+    ];
+  });
 
   useEffect(() => {
     const updateTime = () => {
@@ -75,22 +96,14 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   AllComponentData[WIDGET_TYPES.LIST] = { name: "List", icon: FaListCheck };
   AllComponentData[WIDGET_TYPES.WORK_SYMBOLS] = { name: "Work Symbols", icon: FaUserGroup };
   AllComponentData[WIDGET_TYPES.TRAFFIC_LIGHT] = { name: "Traffic Light", icon: FaTrafficLight };
-  AllComponentData[WIDGET_TYPES.LOUDNESS_MONITOR] = { name: "Loudness Monitor", icon: FaVolumeHigh };
+  AllComponentData[WIDGET_TYPES.SOUND_MONITOR] = { name: "Sound Monitor", icon: FaVolumeHigh };
   AllComponentData[WIDGET_TYPES.LINK_SHORTENER] = { name: "Link Shortener", icon: FaLink };
   AllComponentData[WIDGET_TYPES.TEXT_BANNER] = { name: "Text Banner", icon: FaTextWidth };
   AllComponentData[WIDGET_TYPES.IMAGE_DISPLAY] = { name: "Image", icon: FaImage };
   AllComponentData[WIDGET_TYPES.SOUND_EFFECTS] = { name: "Sound Effects", icon: FaMusic };
   
-  // Define which widgets appear in the toolbar
-  // Easy to rearrange: just change the widget types in this array
-  const toolbarWidgetIndices = [
-    WIDGET_TYPES.RANDOMISER, 
-    WIDGET_TYPES.TIMER, 
-    WIDGET_TYPES.LIST, 
-    WIDGET_TYPES.WORK_SYMBOLS, 
-    WIDGET_TYPES.LOUDNESS_MONITOR
-  ];
-  const ToolbarComponentData = toolbarWidgetIndices.map(index => AllComponentData[index]);
+  // Use customized toolbar widget selection
+  const ToolbarComponentData = selectedToolbarWidgets.map(index => AllComponentData[index]).filter(Boolean);
 
   return (
     <>
@@ -267,6 +280,17 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   </button>
                 </div>
               </div>
+              <div className="border-t border-warm-gray-200 my-2"></div>
+              <button
+                onClick={() => {
+                  setCustomizeToolbarOpen(true);
+                  setMenuOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 flex items-center gap-3 text-warm-gray-700 transition-colors duration-150"
+              >
+                <FaWrench className="w-4 h-4" />
+                <span>Customize Toolbar</span>
+              </button>
             </div>,
             document.body
           )}
@@ -349,6 +373,108 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+    
+    {/* Customize Toolbar Dialog */}
+    {customizeToolbarOpen && ReactDOM.createPortal(
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"
+        onClick={() => setCustomizeToolbarOpen(false)}
+      >
+        <div 
+          className="bg-soft-white rounded-2xl shadow-2xl p-6 max-w-2xl max-h-[80vh] overflow-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-warm-gray-800">Customize Toolbar</h2>
+            <button
+              onClick={() => setCustomizeToolbarOpen(false)}
+              className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
+            >
+              ×
+            </button>
+          </div>
+          
+          <p className="text-sm text-warm-gray-600 mb-4">
+            Select up to 5 widgets to appear in the toolbar. You can always access all widgets from the "More" button.
+          </p>
+          
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            {Object.entries(WIDGET_TYPES).map(([key, widgetType]) => {
+              const component = AllComponentData[widgetType];
+              if (!component) return null;
+              const Icon = component.icon;
+              const isSelected = selectedToolbarWidgets.includes(widgetType);
+              
+              return (
+                <button
+                  key={widgetType}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedToolbarWidgets(prev => prev.filter(id => id !== widgetType));
+                    } else if (selectedToolbarWidgets.length < 5) {
+                      setSelectedToolbarWidgets(prev => [...prev, widgetType]);
+                    }
+                  }}
+                  disabled={!isSelected && selectedToolbarWidgets.length >= 5}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all duration-200 ${
+                    isSelected 
+                      ? 'bg-sage-100 border-2 border-sage-500' 
+                      : 'bg-warm-gray-50 border-2 border-warm-gray-200 hover:bg-warm-gray-100'
+                  } ${!isSelected && selectedToolbarWidgets.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    isSelected ? 'bg-sage-500' : 'bg-warm-gray-300'
+                  }`}>
+                    <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}`} />
+                  </div>
+                  <span className={`text-xs ${isSelected ? 'text-sage-700 font-medium' : 'text-warm-gray-700'}`}>
+                    {component.name}
+                  </span>
+                  {isSelected && (
+                    <div className="text-xs text-sage-600">
+                      #{selectedToolbarWidgets.indexOf(widgetType) + 1}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          
+          <div className="flex justify-between items-center pt-4 border-t border-warm-gray-200">
+            <span className="text-sm text-warm-gray-600">
+              {selectedToolbarWidgets.length}/5 widgets selected
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setSelectedToolbarWidgets([
+                    WIDGET_TYPES.RANDOMISER, 
+                    WIDGET_TYPES.TIMER, 
+                    WIDGET_TYPES.LIST, 
+                    WIDGET_TYPES.WORK_SYMBOLS, 
+                    WIDGET_TYPES.SOUND_MONITOR
+                  ]);
+                }}
+                className="px-4 py-2 text-sm bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+              >
+                Reset to Default
+              </button>
+              <button
+                onClick={() => {
+                  // Save to localStorage
+                  localStorage.setItem('toolbarWidgets', JSON.stringify(selectedToolbarWidgets));
+                  setCustomizeToolbarOpen(false);
+                }}
+                className="px-4 py-2 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded-md transition-colors duration-200"
+              >
+                Save Changes
+              </button>
+            </div>
           </div>
         </div>
       </div>,
