@@ -1,14 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as React from 'react'
-// Removed Chakra UI imports
-import shh from './Be-quiet-now.png';
-import shhimg from './Silence-image.png';
-import whisp from './Whisper-with-text.png';
-import whispimg from './Whisper.png';
-import yap from './yap-with-text.png';
-import yapimg from './yap.png';
-import neighbour from './Discuss-with-neighbour-with-text.png';
-import neighbourimg from './Discuss.png';
+import { 
+  FaVolumeXmark,     // Silence
+  FaVolumeLow,       // Whisper
+  FaComments,        // Ask Neighbour
+  FaPeopleGroup      // Work Together
+} from 'react-icons/fa6';
 
 function Work() {
     const [state, setState] = useState({
@@ -17,11 +14,11 @@ function Work() {
         clicked: true,
     });
 
-    const images = [
-        { main: shh, thumbnail: shhimg },
-        { main: whisp, thumbnail: whispimg },
-        { main: neighbour, thumbnail: neighbourimg },
-        { main: yap, thumbnail: yapimg },
+    const workModes = [
+        { icon: FaVolumeXmark, label: 'Silence', color: 'text-red-500' },
+        { icon: FaVolumeLow, label: 'Whisper', color: 'text-orange-500' },
+        { icon: FaComments, label: 'Ask Neighbour', color: 'text-blue-500' },
+        { icon: FaPeopleGroup, label: 'Work Together', color: 'text-green-500' },
     ];
 
     const ping = require('./woosh-230554.mp3');
@@ -57,33 +54,37 @@ function Work() {
     }, [handleClick]);
 
     return (
-        <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full" id="widget1">
-            <div className="h-[60%] flex justify-center flex-row flex-shrink min-w-0 p-4">
-                <div
-                    className="pointer-events-none rounded-[10%] select-none bg-soft-white h-full"
-                >
-                    <img
-                        className="h-full pointer-events-none select-none"
-                        draggable="false"
-                        id="mainimg"
-                        src={images[state.index].main}
-                        alt="Work mode"
-                    />
+        <div className="bg-transparent rounded-lg w-full h-full flex flex-col" id="widget1">
+            <div className="flex-1 flex flex-col justify-center items-center p-4">
+                <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
+                    {React.createElement(workModes[state.index].icon, {
+                        className: `w-2/3 h-2/3 ${workModes[state.index].color}`,
+                        style: { maxWidth: '200px', maxHeight: '200px' }
+                    })}
+                    <h2 className={`text-2xl font-bold ${workModes[state.index].color}`}>
+                        {workModes[state.index].label}
+                    </h2>
                 </div>
             </div>
             {state.clicked && (
-                <div className="flex h-[30%] p-4">
-                    <div id="widget1inside" className="flex justify-evenly h-full w-full">
-                        {images.map((image, i) => (
-                            <img
-                                key={i}
-                                draggable="false"
-                                className="select-none rounded-full bg-soft-white cursor-pointer h-full"
-                                onClick={() => handleChangeImage(i)}
-                                src={image.thumbnail}
-                                alt={`Option ${i + 1}`}
-                            />
-                        ))}
+                <div className="p-4">
+                    <div id="widget1inside" className="flex justify-center gap-1">
+                        {workModes.map((mode, i) => {
+                            const Icon = mode.icon;
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => handleChangeImage(i)}
+                                    className={`p-3 rounded-lg transition-all duration-200 ${
+                                        state.index === i 
+                                            ? 'bg-warm-gray-200 shadow-inner' 
+                                            : 'bg-warm-gray-100 hover:bg-warm-gray-200'
+                                    }`}
+                                >
+                                    <Icon className="w-6 h-6 text-warm-gray-700" />
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
