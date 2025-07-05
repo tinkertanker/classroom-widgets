@@ -10,7 +10,8 @@ import {
   FaVolumeHigh,     // Loudness Monitor
   FaLink,           // Link Shortener
   FaBars,           // Menu icon
-  FaArrowRotateLeft // Reset icon
+  FaArrowRotateLeft,// Reset icon
+  FaTableCells      // Grid icon for more widgets
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
@@ -19,6 +20,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [launchpadOpen, setLaunchpadOpen] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -61,7 +63,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  const ComponentData = [
+  const AllComponentData = [
     { name: "Randomiser", icon: FaDice },
     { name: "Timer", icon: FaClock },
     { name: "List", icon: FaListCheck },
@@ -70,16 +72,24 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     { name: "Loudness Monitor", icon: FaVolumeHigh },
     { name: "Link Shortener", icon: FaLink },
   ];
+  
+  // Define which widgets appear in the toolbar (by index)
+  // Easy to rearrange: just change the indices in this array
+  const toolbarWidgetIndices = [0, 1, 2, 3, 5]; // Randomiser, Timer, List, Work Symbols, Loudness Monitor
+  const ToolbarComponentData = toolbarWidgetIndices.map(index => AllComponentData[index]);
 
   return (
-    <div className="w-[90%] h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200">
-      <div className="w-full h-full px-2.5 py-0">
-        <div className="flex items-center justify-start w-full h-full overflow-x-auto overflow-y-visible space-x-2">
-          {ComponentData.map((component, index) => {
+    <>
+      <div className="w-[90%] h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200">
+        <div className="w-full h-full px-2.5 py-0">
+        <div className="flex items-center justify-center w-full h-full overflow-x-auto overflow-y-visible space-x-2">
+          {ToolbarComponentData.map((component, toolbarIndex) => {
             const Icon = component.icon;
+            // Find the actual index in AllComponentData
+            const actualIndex = AllComponentData.findIndex(c => c.name === component.name);
             return (
               <button
-                key={index}
+                key={component.name}
                 onClick={() => {
                   const element = document.getElementById(activeIndex!);
                   if (element) {
@@ -89,7 +99,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     }
                   }
                   const newId = uuidv4();
-                  setComponentList((e) => [...e, { id: newId, index }]);
+                  setComponentList((e) => [...e, { id: newId, index: actualIndex }]);
                   setActiveIndex(newId); // Set the new widget as active
                 }}
                 className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
@@ -99,6 +109,16 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               </button>
             );
           })}
+          
+          {/* More widgets button */}
+          <button
+            onClick={() => setLaunchpadOpen(true)}
+            className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+            title="More widgets"
+          >
+            <FaTableCells className="w-4 h-4" />
+            <span>More</span>
+          </button>
           
           {/* Menu button */}
           <div className="relative ml-2 menu-container">
@@ -184,7 +204,55 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           </div>
         </div>
       </div>
+      
+      {/* Launchpad Dialog */}
+      {launchpadOpen && ReactDOM.createPortal(
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"
+        onClick={() => setLaunchpadOpen(false)}
+      >
+        <div 
+          className="bg-soft-white rounded-2xl shadow-2xl p-8 max-w-4xl max-h-[80vh] overflow-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-semibold text-warm-gray-800">All Widgets</h2>
+            <button
+              onClick={() => setLaunchpadOpen(false)}
+              className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
+            >
+              ×
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-4 gap-6">
+            {AllComponentData.map((component, index) => {
+              const Icon = component.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    const newId = uuidv4();
+                    setComponentList((e) => [...e, { id: newId, index }]);
+                    setActiveIndex(newId);
+                    setLaunchpadOpen(false);
+                  }}
+                  className="flex flex-col items-center gap-3 p-6 rounded-xl hover:bg-warm-gray-100 transition-colors duration-200 group"
+                >
+                  <div className="w-16 h-16 bg-sage-500 group-hover:bg-sage-600 rounded-2xl flex items-center justify-center transition-colors duration-200">
+                    <Icon className="w-8 h-8 text-white" />
+                  </div>
+                  <span className="text-sm text-warm-gray-700">{component.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
     </div>
+    </>
   );
 
 }
