@@ -142,7 +142,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
                   width: '100%',
                 }}
               >
-                <div className="text-2xl px-4 py-2 text-warm-gray-600">
+                <div className="text-3xl px-4 py-2 text-warm-gray-800 font-medium">
                   {getItemAtPosition(position)}
                 </div>
               </div>
