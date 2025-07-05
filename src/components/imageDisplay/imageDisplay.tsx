@@ -1,17 +1,30 @@
 import React, { useState, useRef, useEffect } from 'react';
 
-const ImageDisplay: React.FC = () => {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+interface ImageDisplayProps {
+  savedState?: { imageUrl: string | null };
+  onStateChange?: (state: { imageUrl: string | null }) => void;
+}
+
+const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(savedState?.imageUrl || null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Update image and notify parent
+  const updateImage = (url: string | null) => {
+    setImageUrl(url);
+    if (onStateChange) {
+      onStateChange({ imageUrl: url });
+    }
+  };
 
   // Handle file selection
   const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImageUrl(e.target?.result as string);
+        updateImage(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }

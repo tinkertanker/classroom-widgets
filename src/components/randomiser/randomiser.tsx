@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Rnd } from "react-rnd";
 import SlotMachine from "./slotMachine.tsx";
 import Confetti from "react-confetti";
@@ -11,12 +11,22 @@ let actual_choices: any[];
 
 const sound = require("./yay.mp3");
 let yay = new Audio(sound);
-function Randomiser({ toggleConfetti }) {
+
+interface RandomiserProps {
+  toggleConfetti: (value: boolean) => void;
+  savedState?: {
+    input: string;
+    choices: any[];
+  };
+  onStateChange?: (state: any) => void;
+}
+
+function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserProps) {
   const initialFocus = React.useRef(null);
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
-  const [input, setInput] = useState(/*localStorage.getItem("input") ??*/ ""); // if there is nothing in local storage then input is ""
-  const [choices, setChoices] = useState<any[]>([]);
+  const [input, setInput] = useState(savedState?.input || "");
+  const [choices, setChoices] = useState<any[]>(savedState?.choices || []);
 
   const [remember, setRemember] = useState(false);
   const [pressedDisable, setpressedDisable] = useState(false);
@@ -45,6 +55,26 @@ function Randomiser({ toggleConfetti }) {
   const [isSpinning, setIsSpinning] = useState(false);
 
   const [loading, setLoading] = useState(false);
+
+  // Notify parent of state changes
+  const updateState = () => {
+    if (onStateChange) {
+      onStateChange({
+        input: input,
+        choices: choices
+      });
+    }
+  };
+
+  // Update state whenever input or choices change (skip initial render)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    updateState();
+  }, [input, choices]);
 
   const handlerandomise = () => {
     console.log("what");

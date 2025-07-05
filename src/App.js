@@ -29,17 +29,18 @@ function App() {
   const [hoveringTrashId, setHoveringTrashId] = useState(null);
   const [widgetPositions, setWidgetPositions] = useState(new Map());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const Components = [
-    <Randomiser toggleConfetti={setUseconfetti} />,
-    <Timer />,
-    <List toggleConfetti={setUseconfetti2} />,
-    <Work />,
-    <TrafficLight />,
-    <AudioVolumeMonitor />,
-    <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
-    <TextBanner />,
-    <ImageDisplay />,
-  ];
+  const [widgetStates, setWidgetStates] = useState(new Map());
+  
+  // Update individual widget state
+  const updateWidgetState = (widgetId, state) => {
+    setWidgetStates(prev => {
+      const newMap = new Map(prev);
+      newMap.set(widgetId, state);
+      return newMap;
+    });
+  };
+
+  // Component definitions moved to rendering function to use props
 
   // Find a non-overlapping position for a new widget
   const findAvailablePosition = (widgetWidth, widgetHeight) => {
@@ -94,6 +95,53 @@ function App() {
     };
   };
 
+  // Save workspace state to localStorage
+  const saveWorkspaceState = () => {
+    const workspaceData = {
+      componentList: componentList,
+      widgetPositions: Array.from(widgetPositions.entries()),
+      widgetStates: Array.from(widgetStates.entries()),
+      activeIndex: activeIndex
+    };
+    localStorage.setItem('workspaceState', JSON.stringify(workspaceData));
+  };
+
+  // Load workspace state from localStorage
+  const loadWorkspaceState = () => {
+    const savedState = localStorage.getItem('workspaceState');
+    if (savedState) {
+      try {
+        const workspaceData = JSON.parse(savedState);
+        setComponentList(workspaceData.componentList || []);
+        setWidgetPositions(new Map(workspaceData.widgetPositions || []));
+        setWidgetStates(new Map(workspaceData.widgetStates || []));
+        setActiveIndex(workspaceData.activeIndex || null);
+      } catch (error) {
+        console.error('Error loading workspace state:', error);
+      }
+    }
+  };
+
+  // Track if initial load is complete
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load state on mount
+  useEffect(() => {
+    loadWorkspaceState();
+    setIsInitialized(true);
+  }, []);
+
+  // Save state whenever relevant data changes (but not on initial load)
+  useEffect(() => {
+    if (isInitialized) {
+      const timeoutId = setTimeout(() => {
+        saveWorkspaceState();
+      }, 500); // Debounce for 500ms
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [componentList, widgetPositions, widgetStates, activeIndex]);
+
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -118,6 +166,49 @@ function App() {
       // Determine widget size
       const widgetWidth = index === 4 ? 150 : index === 7 ? 500 : 350;
       const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : index === 7 ? 200 : 350;
+      
+      // Get saved state for this widget
+      const savedState = widgetStates.get(id);
+      
+      // Create component with state props if needed
+      const getComponentWithState = () => {
+        switch(index) {
+          case 0: // Randomiser
+            return <Randomiser 
+              toggleConfetti={setUseconfetti} 
+              savedState={savedState}
+              onStateChange={(state) => updateWidgetState(id, state)}
+            />;
+          case 1: // Timer
+            return <Timer />;
+          case 2: // List
+            return <List 
+              toggleConfetti={setUseconfetti2}
+              savedState={savedState}
+              onStateChange={(state) => updateWidgetState(id, state)}
+            />;
+          case 3: // Work
+            return <Work />;
+          case 4: // Traffic Light
+            return <TrafficLight />;
+          case 5: // Loudness Monitor
+            return <AudioVolumeMonitor />;
+          case 6: // Link Shortener
+            return <ShortenLink />;
+          case 7: // Text Banner
+            return <TextBanner
+              savedState={savedState}
+              onStateChange={(state) => updateWidgetState(id, state)}
+            />;
+          case 8: // Image Display
+            return <ImageDisplay
+              savedState={savedState}
+              onStateChange={(state) => updateWidgetState(id, state)}
+            />;
+          default:
+            return null;
+        }
+      };
       
       // Get or calculate position
       let position = widgetPositions.get(id);
@@ -204,7 +295,7 @@ function App() {
           });
         }}
       >
-        {Components[index]}
+        {getComponentWithState()}
       </Rnd>
       );
     });
@@ -243,6 +334,13 @@ function App() {
       
       // Remove position from map
       setWidgetPositions(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
+      
+      // Remove state from map
+      setWidgetStates(prev => {
         const newMap = new Map(prev);
         newMap.delete(id);
         return newMap;

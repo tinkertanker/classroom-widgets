@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const TextBanner: React.FC = () => {
-  const [text, setText] = useState('Double-click to edit');
+interface TextBannerProps {
+  savedState?: { text: string };
+  onStateChange?: (state: { text: string }) => void;
+}
+
+const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
+  const [text, setText] = useState(savedState?.text || 'Double-click to edit');
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(text);
   const [fontSize, setFontSize] = useState(24);
@@ -93,14 +98,23 @@ const TextBanner: React.FC = () => {
     setEditText(text);
   };
 
+  // Update text and notify parent
+  const updateText = (newText: string) => {
+    const finalText = newText || 'Double-click to edit';
+    setText(finalText);
+    if (onStateChange) {
+      onStateChange({ text: finalText });
+    }
+  };
+
   const handleBlur = () => {
-    setText(editText || 'Double-click to edit');
+    updateText(editText);
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      setText(editText || 'Double-click to edit');
+      updateText(editText);
       setIsEditing(false);
     }
   };

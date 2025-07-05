@@ -162,6 +162,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     setComponentList([]);
                     setActiveIndex(null);
                     setMenuOpen(false);
+                    localStorage.removeItem('workspaceState');
                   }
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 flex items-center gap-3 text-warm-gray-700 transition-colors duration-150"

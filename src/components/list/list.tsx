@@ -4,22 +4,53 @@ import * as React from "react";
 import AlertDialogExample from "../main/alert.tsx";
 
 interface ListProps {
-  title: string;
+  title?: string;
   toggleConfetti: (value: boolean) => boolean;
+  savedState?: {
+    title: string;
+    inputs: string[];
+    completed: boolean[];
+    hideComplete: boolean;
+    isChecklist: boolean;
+  };
+  onStateChange?: (state: any) => void;
 }
 
-const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
-  const [localTitle, setLocalTitle] =     useState<string>(/*localStorage.getItem('title') ||*/ title);
-  const [inputs, setInputs] =             useState<string[]>(/*JSON.parse(localStorage.getItem('inputs') ||*/ []);
-  const [completed, setCompleted] =       useState<boolean[]>(/*JSON.parse(localStorage.getItem('completed') ||*/ []);
-  const [hideComplete, setHideComplete] = useState<boolean>(/*JSON.parse(localStorage.getItem('hideComplete') ||*/ false);
-  const [isChecklist, setIsChecklist] =   useState<boolean>(/*JSON.parse(localStorage.getItem('isChecklist') ||*/ true);
+const List: React.FC<ListProps> = ({ title="", toggleConfetti, savedState, onStateChange }) => {
+  const [localTitle, setLocalTitle] =     useState<string>(savedState?.title || title);
+  const [inputs, setInputs] =             useState<string[]>(savedState?.inputs || []);
+  const [completed, setCompleted] =       useState<boolean[]>(savedState?.completed || []);
+  const [hideComplete, setHideComplete] = useState<boolean>(savedState?.hideComplete || false);
+  const [isChecklist, setIsChecklist] =   useState<boolean>(savedState?.isChecklist ?? true);
 
   const [isOpen, setIsOpen] = useState(false);
   const onOpen = () => setIsOpen(true);
   const onClose = () => setIsOpen(false);
   const initialFocus = React.useRef(null);
   const inputRefs = useRef<HTMLInputElement[]>([]);
+
+  // Notify parent of state changes
+  const updateState = () => {
+    if (onStateChange) {
+      onStateChange({
+        title: localTitle,
+        inputs: inputs,
+        completed: completed,
+        hideComplete: hideComplete,
+        isChecklist: isChecklist
+      });
+    }
+  };
+
+  // Update state whenever any value changes (skip initial render)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    updateState();
+  }, [localTitle, inputs, completed, hideComplete, isChecklist]);
 
   const handleRadioChange = (value: string) => {
     setIsChecklist(value === '1');
