@@ -10,6 +10,7 @@ import ShortenLink from "./components/shortenLink/shortenLink.tsx";
 import TextBanner from "./components/textBanner/textBanner.tsx";
 import ImageDisplay from "./components/imageDisplay/imageDisplay.tsx";
 import SoundEffects from "./components/soundEffects/soundEffects.tsx";
+import Background from "./components/backgrounds/backgrounds.tsx";
 
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
@@ -31,6 +32,7 @@ function App() {
   const [widgetPositions, setWidgetPositions] = useState(new Map());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [widgetStates, setWidgetStates] = useState(new Map());
+  const [backgroundType, setBackgroundType] = useState('solid');
   
   // Update individual widget state
   const updateWidgetState = (widgetId, state) => {
@@ -102,7 +104,8 @@ function App() {
       componentList: componentList,
       widgetPositions: Array.from(widgetPositions.entries()),
       widgetStates: Array.from(widgetStates.entries()),
-      activeIndex: activeIndex
+      activeIndex: activeIndex,
+      backgroundType: backgroundType
     };
     localStorage.setItem('workspaceState', JSON.stringify(workspaceData));
   };
@@ -117,6 +120,9 @@ function App() {
         setWidgetPositions(new Map(workspaceData.widgetPositions || []));
         setWidgetStates(new Map(workspaceData.widgetStates || []));
         setActiveIndex(workspaceData.activeIndex || null);
+        if (workspaceData.backgroundType) {
+          setBackgroundType(workspaceData.backgroundType);
+        }
       } catch (error) {
         console.error('Error loading workspace state:', error);
       }
@@ -141,7 +147,7 @@ function App() {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [componentList, widgetPositions, widgetStates, activeIndex]);
+  }, [componentList, widgetPositions, widgetStates, activeIndex, backgroundType]);
 
   // Handle fullscreen toggle
   const toggleFullscreen = () => {
@@ -355,6 +361,7 @@ function App() {
     <>
       <meta charset="UTF-8" />
       <div className="App">
+        <Background type={backgroundType} />
         <header className="App-header">
           <div className="flex flex-col w-full h-full justify-center items-center">
             {/* Fullscreen button */}
@@ -393,7 +400,14 @@ function App() {
               {generatedComponents}
             </div>
             <div className="toolbar-container w-full h-[10%] mb-2.5">
-              <Toolbar setComponentList={setComponentList} activeIndex={activeIndex} setActiveIndex={setActiveIndex} hoveringTrash={hoveringTrashId !== null} />
+              <Toolbar 
+                setComponentList={setComponentList} 
+                activeIndex={activeIndex} 
+                setActiveIndex={setActiveIndex} 
+                hoveringTrash={hoveringTrashId !== null}
+                backgroundType={backgroundType}
+                setBackgroundType={setBackgroundType}
+              />
             </div>
           </div>
         </header>

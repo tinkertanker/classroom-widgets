@@ -14,10 +14,11 @@ import {
   FaTableCells,     // Grid icon for more widgets
   FaTextWidth,      // Text Banner
   FaImage,          // Image Display
-  FaMusic           // Sound Effects
+  FaMusic,          // Sound Effects
+  FaPalette         // Background icon
 } from 'react-icons/fa6';
 
-export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
+export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType}) {
   const [formattedTime, setFormattedTime] = useState("");
   const [colonVisible, setColonVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -172,6 +173,93 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 <FaArrowRotateLeft className="w-4 h-4" />
                 <span>Reset Workspace</span>
               </button>
+              <div className="border-t border-warm-gray-200 my-2"></div>
+              <div className="px-4 py-2">
+                <div className="flex items-center gap-3 text-warm-gray-700 mb-2">
+                  <FaPalette className="w-4 h-4" />
+                  <span className="font-medium">Background</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setBackgroundType('solid');
+                      setMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
+                      backgroundType === 'solid' 
+                        ? 'bg-sage-500 text-white border-sage-600' 
+                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                    }`}
+                  >
+                    Solid
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBackgroundType('geometric');
+                      setMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
+                      backgroundType === 'geometric' 
+                        ? 'bg-sage-500 text-white border-sage-600' 
+                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                    }`}
+                  >
+                    Geometric
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBackgroundType('gradient');
+                      setMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
+                      backgroundType === 'gradient' 
+                        ? 'bg-sage-500 text-white border-sage-600' 
+                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                    }`}
+                  >
+                    Gradient
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBackgroundType('paper');
+                      setMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
+                      backgroundType === 'paper' 
+                        ? 'bg-sage-500 text-white border-sage-600' 
+                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                    }`}
+                  >
+                    Paper
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBackgroundType('lines');
+                      setMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
+                      backgroundType === 'lines' 
+                        ? 'bg-sage-500 text-white border-sage-600' 
+                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                    }`}
+                  >
+                    Lines
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBackgroundType('dots');
+                      setMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
+                      backgroundType === 'dots' 
+                        ? 'bg-sage-500 text-white border-sage-600' 
+                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                    }`}
+                  >
+                    Dots
+                  </button>
+                </div>
+              </div>
             </div>,
             document.body
           )}
