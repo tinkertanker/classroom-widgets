@@ -71,3 +71,14 @@
   z-index: 999;
   padding-bottom: 10px;
 }
+
+/* Custom range slider styles */
+input[type="range"] {
+  accent-color: #d4847a;
+  cursor: pointer;
+  width: 100%;
+}
+
+.dark input[type="range"] {
+  accent-color: #e39b93;
+}
