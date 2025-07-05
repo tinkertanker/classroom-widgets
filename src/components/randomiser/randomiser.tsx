@@ -239,7 +239,7 @@ function Randomiser({ toggleConfetti }) {
         id="jason"
       >
         <div className="w-full h-full p-0">
-          <div className="flex flex-col w-full h-full">
+          <div className="flex flex-col w-full h-full items-center">
             <button
               className="w-[87.5%] h-[75%] mt-[5%] mb-[2%] p-0 bg-gray-100 hover:bg-gray-200 rounded transition-colors duration-200"
               onClick={() => {
@@ -276,17 +276,19 @@ function Randomiser({ toggleConfetti }) {
               </div>
             </button>
             {buttonsettings === "normal" ? (
-              <button
-                className="w-[37.5%] h-[13%] p-0 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={()=>handlerandomise()}
-                disabled={loading}
-              >
-                <span className="text-sm"> Randomise!!</span>
-              </button>
-            ) : buttonsettings === "result" ? (
-              <div className="flex flex-row w-full h-[13%] justify-center gap-2">
+              <div className="flex w-full h-[10%] justify-center">
                 <button
-                  className={`w-[35%] h-full p-0 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
+                  className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  onClick={()=>handlerandomise()}
+                  disabled={loading}
+                >
+                  <span className="text-sm">Randomise!!</span>
+                </button>
+              </div>
+            ) : buttonsettings === "result" ? (
+              <div className="flex flex-row w-full h-[10%] justify-center gap-2">
+                <button
+                  className={`px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${loading ? 'hidden' : ''}`}
                   disabled={remember ? true : pressedDisable}
                   onClick={() => {
                     setSelected([...selected, result]);
@@ -304,7 +306,7 @@ function Randomiser({ toggleConfetti }) {
                 <button
                   disabled={loading}
                   ref={initialResultFocus}
-                  className="w-[35%] h-full bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   onClick={() => {
                     handlerandomise();
                   }}

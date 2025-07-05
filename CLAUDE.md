@@ -83,6 +83,36 @@ src/
 - The default test file (App.test.js) is outdated and doesn't test actual functionality
 - Mixed file extensions (.js/.tsx) without proper TypeScript configuration
 
+## Styling Guidelines
+
+### Typography
+- **Student-facing content** (results, displays): Large text sizes (text-2xl, text-lg)
+- **UI controls** (buttons, labels): Small text sizes (text-sm)
+- **Headings in modals**: text-base for main titles, text-sm for section headers
+- **Consistent font sizes** across all widget settings screens
+
+### Button Styling
+- **Primary buttons**: Use `px-3 py-1.5` padding with `text-sm`
+- **Consistent height**: Button containers should use h-[10%] or similar
+- **Alignment**: Center buttons using `flex justify-center`
+- **Color scheme**: 
+  - Primary actions: bg-teal-500 hover:bg-teal-600
+  - Destructive actions: bg-red-500 hover:bg-red-600
+  - Secondary actions: bg-yellow-500 hover:bg-yellow-600
+- **Disabled state**: opacity-50 cursor-not-allowed
+- **Vertical text alignment**: Use `flex items-center` on buttons
+
+### Layout Principles
+- **Widget centering**: Use `flex items-center` on main containers
+- **Consistent margins**: Ensure equal left/right spacing
+- **Modal dialogs**: Max width with centered positioning
+- **Responsive design**: Use percentage-based heights for sections
+
+### Component Structure
+- **Main display area**: ~75% height
+- **Control area**: ~10-15% height
+- **Padding**: Use consistent padding (p-4, px-6 py-4 for modals)
+
 ## Development Notes
 
 - No custom linting beyond Create React App defaults

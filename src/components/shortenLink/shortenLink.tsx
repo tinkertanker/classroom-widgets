@@ -53,14 +53,14 @@ const ShortenLink: React.FC = () => {
       className="w-full h-full border border-gray-200 rounded-lg overflow-hidden p-4 shadow-md bg-white"
     >
       <div className="flex flex-col space-y-4 items-center">
-        <h2 className="text-black text-lg font-semibold">Shorten Your Link</h2>
+        <h2 className="text-black text-base font-semibold">Shorten Your Link</h2>
         <input
           placeholder="Enter your link here"
           value={link}
           onChange={(e) => setLink(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <button onClick={handleShortenLink} className="w-full px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200">
+        <button onClick={handleShortenLink} className="w-full px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded transition-colors duration-200">
           Shorten Link
         </button>
 
@@ -71,7 +71,7 @@ const ShortenLink: React.FC = () => {
             className="flex flex-grow flex-row w-full justify-evenly items-center text-center"
           >
             <div className="text-blue-500">
-              <p className="text-black">Your Shortened Link:</p>
+              <p className="text-black text-sm">Your Shortened Link:</p>
               <a href={shortenedLink} target="_blank" rel="noopener noreferrer">
                 {shortenedLink}
               </a>

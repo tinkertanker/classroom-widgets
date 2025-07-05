@@ -108,7 +108,7 @@ const AudioVolumeMonitor: React.FC = () => {
             className="w-full h-full border border-gray-200 rounded-md shadow-md overflow-hidden flex flex-col bg-white"
         >
             <div className="p-4">
-                <h3 className="text-lg font-semibold mb-2 text-gray-800">
+                <h3 className="text-base font-semibold mb-2 text-gray-800">
                     Audio Volume Monitor
                 </h3>
                 <div className="flex flex-col space-y-4">
