@@ -105,15 +105,15 @@ const AudioVolumeMonitor: React.FC = () => {
 
     return (
         <div
-            className="w-full h-full border border-gray-200 rounded-md shadow-md overflow-hidden flex flex-col bg-white"
+            className="w-full h-full border border-warm-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col bg-soft-white"
         >
             <div className="p-4">
-                <h3 className="text-base font-semibold mb-2 text-gray-800">
+                <h3 className="text-base font-semibold mb-2 text-warm-gray-800">
                     Audio Volume Monitor
                 </h3>
                 <div className="flex flex-col space-y-4">
                     <div>
-                        <p className="text-sm mb-2 text-gray-700">
+                        <p className="text-sm mb-2 text-warm-gray-700">
                             Set Volume Threshold
                         </p>
                         <input
@@ -125,28 +125,28 @@ const AudioVolumeMonitor: React.FC = () => {
                             aria-label='Volume Threshold'
                             className="w-full"
                         />
-                        <p className="mt-2 text-sm text-gray-700">
+                        <p className="mt-2 text-sm text-warm-gray-700">
                             Threshold: {threshold}
                         </p>
                     </div>
                     <div>
-                        <p className="text-sm text-gray-700">Volume Level: {volume.toFixed(2)}</p>
+                        <p className="text-sm text-warm-gray-700">Volume Level: {volume.toFixed(2)}</p>
                     </div>
                 </div>
             </div>
             <div className="flex-1 p-4">
                 <div
-                    className="w-full h-5 bg-gray-200 rounded-md relative"
+                    className="w-full h-5 bg-warm-gray-200 rounded-md relative"
                 >
                     <div
                         style={{ width: `${volume}%` }}
-                        className={`h-full rounded-md transition-all duration-200 ${volume > threshold ? 'bg-red-500' : 'bg-green-500'}`}
+                        className={`h-full rounded-md transition-all duration-200 ${volume > threshold ? 'bg-dusty-rose-500' : 'bg-green-500'}`}
                     />
                 </div>
                 <div className="flex flex-row mt-4 space-x-4 justify-between">
-                    <p className="text-sm text-gray-700">Cooldown Timer:</p>
+                    <p className="text-sm text-warm-gray-700">Cooldown Timer:</p>
                     {isCooldownRef.current ? (
-                        <p className="text-sm text-red-500">
+                        <p className="text-sm text-dusty-rose-500">
                             {cooldownTime} second{cooldownTime !== 1 ? 's' : ''} remaining
                         </p>
                     ) : (

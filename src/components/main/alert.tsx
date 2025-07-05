@@ -17,7 +17,7 @@ function AlertDialogExample({ onDeleteConfirm }) {
   return (
     <>
       <button
-        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
+        className="px-4 py-2 bg-dusty-rose-500 text-white rounded hover:bg-dusty-rose-600 transition-colors duration-200"
         onClick={onOpen}
       >
         Delete List
@@ -49,13 +49,13 @@ function AlertDialogExample({ onDeleteConfirm }) {
                 <button
                   ref={cancelRef}
                   onClick={onClose}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors duration-200"
+                  className="px-4 py-2 bg-warm-gray-200 text-warm-gray-800 rounded hover:bg-warm-gray-300 transition-colors duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-200"
+                  className="px-4 py-2 bg-dusty-rose-500 text-white rounded hover:bg-dusty-rose-600 transition-colors duration-200"
                 >
                   Delete
                 </button>

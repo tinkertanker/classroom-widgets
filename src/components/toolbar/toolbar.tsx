@@ -15,7 +15,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   ];
 
   return (
-    <div className="w-[90%] h-full bg-white rounded-lg shadow-md">
+    <div className="w-[90%] h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200">
       <div className="w-full h-full px-2.5 py-0">
         <div className="flex items-center justify-start w-full h-full overflow-x-auto overflow-y-visible space-x-2">
           {ComponentNames.map((ComponentName, index) => (
@@ -31,7 +31,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }
                 setComponentList((e) => [...e, { id: uuidv4(), index }]);
               }}
-              className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0"
+              className="px-4 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0"
             >
               {ComponentName}
             </button>
@@ -41,8 +41,8 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               id="trash"
               className={`w-6 h-6 cursor-pointer transition-all duration-200 ${
                 hoveringTrash 
-                  ? 'text-red-500 transform scale-125' 
-                  : 'text-gray-500'
+                  ? 'text-dusty-rose-500 transform scale-125' 
+                  : 'text-warm-gray-500'
               }`}
               fill="none"
               stroke="currentColor"

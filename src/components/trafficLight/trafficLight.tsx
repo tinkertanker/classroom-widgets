@@ -84,9 +84,9 @@ function TrafficLight() {
 
   return (
     <>
-      <div className="bg-white rounded-md shadow-md w-full h-full" id="baller">
+      <div className="bg-soft-white rounded-md shadow-sm border border-warm-gray-200 w-full h-full" id="baller">
         <div
-          className="rounded-md flex flex-row w-full h-full bg-white"
+          className="rounded-md flex flex-row w-full h-full bg-soft-white"
           ref={boxRef}
         >
           <div
@@ -118,9 +118,9 @@ function TrafficLight() {
           </div>
           <div
             id="balls"
-            className="flex flex-col bg-white h-full justify-evenly flex-grow px-4"
+            className="flex flex-col bg-soft-white h-full justify-evenly flex-grow px-4"
           >
-          <h1 className="text-gray-800">Teacher’s turn to speak. Be attentive and quiet.</h1>
+          <h1 className="text-warm-gray-800">Teacher’s turn to speak. Be attentive and quiet.</h1>
           </div>
         </div>
       </div>

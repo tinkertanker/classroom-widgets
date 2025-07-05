@@ -39,7 +39,7 @@ function Time() {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-md text-black w-full h-full">
+      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 text-black w-full h-full">
         <div
           className="w-full h-full flex justify-center items-center p-1"
         >

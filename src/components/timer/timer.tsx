@@ -179,7 +179,7 @@ const Timer = () => {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 w-full h-full overflow-hidden">
+      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden">
         <div className="h-[85%] py-1">
           <div className="w-full h-full py-1 relative">
             {/* Custom Circular Progress */}
@@ -207,11 +207,11 @@ const Timer = () => {
                   /* DISPLAY MODE */
                   <div className="flex flex-col items-center space-y-1 pt-6 cursor-pointer" onClick={pauseTimer}>
                     <div className="flex flex-row items-center space-x-2">
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">{values[0]}</span>
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">:</span>
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-gray-800">{values[1]}</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-warm-gray-800">{values[0]}</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-warm-gray-800">:</span>
+                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-warm-gray-800">{values[1]}</span>
                     </div>
-                    <span className="text-[clamp(1rem,5vw,2rem)] text-gray-800">{values[2]}</span>
+                    <span className="text-[clamp(1rem,5vw,2rem)] text-warm-gray-800">{values[2]}</span>
                   </div>
                 ) : (
                   /* EDIT MODE */
@@ -226,12 +226,12 @@ const Timer = () => {
                           onFocus={(e) => e.target.select()}
                           maxLength={2}
                           readOnly={isRunning && !inEditMode}
-                          className="w-16 px-0 py-3 text-lg text-center text-gray-800 placeholder-gray-400 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-16 px-0 py-3 text-lg text-center text-warm-gray-800 placeholder-gray-400 border border-warm-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                         
                         {/* Add a colon after each input, except the last one */}
                         {idx < values.length - 1 && (
-                          <span className="text-2xl leading-none text-gray-800">
+                          <span className="text-2xl leading-none text-warm-gray-800">
                             :
                           </span>
                         )}

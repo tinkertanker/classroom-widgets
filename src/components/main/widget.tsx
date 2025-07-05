@@ -35,7 +35,7 @@ function Widget({ width, height, children }) {
     >
       <div
         id="widget1"
-        className="bg-white rounded-lg shadow-md p-[5%] transition-all"
+        className="bg-white rounded-lg shadow-sm p-[5%] transition-all"
         style={{
           borderWidth: borderW,
           borderColor: borderW === "2px" ? "skyblue" : "transparent"

@@ -57,10 +57,10 @@ function Work() {
     }, [handleClick]);
 
     return (
-        <div className="bg-white rounded-lg shadow-md w-full h-full" id="widget1">
+        <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full" id="widget1">
             <div className="h-[60%] flex justify-center flex-row flex-shrink min-w-0 p-4">
                 <div
-                    className="pointer-events-none rounded-[10%] select-none bg-white h-full"
+                    className="pointer-events-none rounded-[10%] select-none bg-soft-white h-full"
                 >
                     <img
                         className="h-full pointer-events-none select-none"
@@ -78,7 +78,7 @@ function Work() {
                             <img
                                 key={i}
                                 draggable="false"
-                                className="select-none rounded-full bg-white cursor-pointer h-full"
+                                className="select-none rounded-full bg-soft-white cursor-pointer h-full"
                                 onClick={() => handleChangeImage(i)}
                                 src={image.thumbnail}
                                 alt={`Option ${i + 1}`}

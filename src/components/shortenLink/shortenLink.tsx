@@ -50,7 +50,7 @@ const ShortenLink: React.FC = () => {
 
   return (
     <div
-      className="w-full h-full border border-gray-200 rounded-lg overflow-hidden p-4 shadow-md bg-white"
+      className="w-full h-full border border-warm-gray-200 rounded-lg overflow-hidden p-4 shadow-sm bg-soft-white"
     >
       <div className="flex flex-col space-y-4 items-center">
         <h2 className="text-black text-base font-semibold">Shorten Your Link</h2>
@@ -58,13 +58,13 @@ const ShortenLink: React.FC = () => {
           placeholder="Enter your link here"
           value={link}
           onChange={(e) => setLink(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-warm-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <button onClick={handleShortenLink} className="w-full px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded transition-colors duration-200">
+        <button onClick={handleShortenLink} className="w-full px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200">
           Shorten Link
         </button>
 
-        {error && <p className="text-red-500">{error}</p>} {/* Display error message if exists */}
+        {error && <p className="text-dusty-rose-500">{error}</p>} {/* Display error message if exists */}
 
         {shortenedLink && (
           <div

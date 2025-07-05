@@ -3,9 +3,10 @@ import React from 'react';
 const ReusableButton = ({ colorScheme, size, width, height, children, ...props }) => {
   // Map colorScheme to Tailwind classes
   const colorClasses = {
-    teal: 'bg-teal-500 hover:bg-teal-600 text-white',
-    red: 'bg-red-500 hover:bg-red-600 text-white',
-    yellow: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    teal: 'bg-sage-500 hover:bg-sage-600 text-white',
+    sage: 'bg-sage-500 hover:bg-sage-600 text-white',
+    red: 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white',
+    yellow: 'bg-terracotta-500 hover:bg-terracotta-600 text-white',
     green: 'bg-green-500 hover:bg-green-600 text-white',
     blue: 'bg-blue-500 hover:bg-blue-600 text-white',
   };

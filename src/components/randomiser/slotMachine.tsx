@@ -105,7 +105,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
   };
   
   if (items.length === 0) {
-    return <div className="text-gray-500">No items to display</div>;
+    return <div className="text-warm-gray-500">No items to display</div>;
   }
   
   // Calculate positions for visible items
@@ -115,8 +115,8 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
     <div className="relative w-full h-full overflow-hidden">
       {/* Gradient masks for fade effect */}
       <div className="absolute inset-0 pointer-events-none z-10">
-        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-gray-100 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-gray-100 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-warm-gray-100 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-warm-gray-100 to-transparent" />
       </div>
       
       
@@ -142,7 +142,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
                   width: '100%',
                 }}
               >
-                <div className="text-2xl px-4 py-2 text-gray-600">
+                <div className="text-2xl px-4 py-2 text-warm-gray-600">
                   {getItemAtPosition(position)}
                 </div>
               </div>

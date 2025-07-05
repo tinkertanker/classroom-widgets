@@ -88,6 +88,16 @@ src/
 
 ## Styling Guidelines
 
+### Color Palette
+- **Background**: `#f7f5f2` (warm off-white) 
+- **Widget backgrounds**: `bg-soft-white` (#fdfcfb)
+- **Shadows**: Use `shadow-sm` for subtle depth
+- **Text colors**: Use warm-gray scale (warm-gray-600 to warm-gray-800)
+- **Primary actions**: Sage green (sage-500/600)
+- **Secondary actions**: Terracotta (terracotta-500/600)
+- **Destructive actions**: Dusty rose (dusty-rose-500/600)
+- **Borders**: warm-gray-200/300
+
 ### Typography
 - **Student-facing content** (results, displays): Large text sizes (text-2xl, text-lg)
 - **UI controls** (buttons, labels): Small text sizes (text-sm)
@@ -101,9 +111,9 @@ src/
 - **Container spacing**: Use `mt-2 pb-3` for button containers to ensure consistent margins
 - **Alignment**: Center buttons using `flex justify-center`
 - **Color scheme**: 
-  - Primary actions: bg-teal-500 hover:bg-teal-600
-  - Destructive actions: bg-red-500 hover:bg-red-600
-  - Secondary actions: bg-yellow-500 hover:bg-yellow-600
+  - Primary actions: bg-sage-500 hover:bg-sage-600
+  - Destructive actions: bg-dusty-rose-500 hover:bg-dusty-rose-600
+  - Secondary actions: bg-terracotta-500 hover:bg-terracotta-600
 - **Disabled state**: opacity-50 cursor-not-allowed
 - **Buttons with icons**: Use `inline-flex items-center` for proper alignment
 
