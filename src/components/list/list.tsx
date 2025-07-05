@@ -101,22 +101,26 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
 
   return (
     <>
-      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full flex flex-col">
+      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full flex flex-col" style={{ containerType: 'size' }}>
         <div className="flex-1 overflow-y-auto px-4 pt-4">
           <div className="pt-0">
-            <div className="flex flex-col space-y-1 pt-0">
+            <div className="flex flex-col pt-0" style={{ gap: 'max(0.25rem, min(0.5rem, 1.5cqh))' }}>
               {inputs.map((input, index) => (
                   <div className="flex flex-row items-center gap-1" key={index}>
                     <button
                         onClick={() => cycleStatus(index)}
                         aria-label="Cycle status"
-                        className={`w-10 h-10 rounded-full flex-shrink-0 transition-colors duration-200 ${
+                        className={`rounded-full flex-shrink-0 transition-colors duration-200 ${
                           statuses[index] === 1 ? "bg-green-500 hover:bg-green-600" :
                           statuses[index] === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
                           statuses[index] === 3 ? "bg-red-500 hover:bg-red-600" :
                           statuses[index] === 4 ? "bg-warm-gray-400 hover:bg-warm-gray-500" :
                           "bg-warm-gray-200 hover:bg-warm-gray-300"
                         }`}
+                        style={{
+                          width: 'max(2rem, min(2.5rem, 8cqw))',
+                          height: 'max(2rem, min(2.5rem, 8cqw))'
+                        }}
                       >
                       </button>
                     <div className="relative flex-1">
@@ -125,13 +129,17 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                         value={input}
                         onChange={(e) => handleInputChange(index, e.target.value)}
                         placeholder="Type away!"
-                        className={`w-full px-3 py-2 pr-10 rounded placeholder-warm-gray-500 transition-colors duration-200 ${
+                        className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 transition-colors duration-200 ${
                           statuses[index] === 1 ? "bg-green-100 hover:bg-green-200 text-warm-gray-800" :
                           statuses[index] === 2 ? "bg-yellow-100 hover:bg-yellow-200 text-warm-gray-800" :
                           statuses[index] === 3 ? "bg-red-100 hover:bg-red-200 text-warm-gray-800" :
                           statuses[index] === 4 ? "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-300" :
                           "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-800"
                         }`}
+                        style={{
+                          fontSize: 'max(0.875rem, min(1.125rem, 3.5cqw))',
+                          padding: 'max(0.375rem, min(0.5rem, 2cqh)) 0.75rem'
+                        }}
                       />
                       <button
                         className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-dusty-rose-600 hover:text-white transition-colors duration-200 ${
@@ -141,7 +149,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                         onClick={() => handleDeleteInput(index)}
                         tabIndex={-1}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg style={{ width: 'max(1rem, min(1.25rem, 4cqw))', height: 'max(1rem, min(1.25rem, 4cqw))' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
@@ -153,7 +161,11 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
         </div>
         <div className="p-4 border-t flex items-center">
           <button
-            className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
+            className="px-3 bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200"
+            style={{
+              fontSize: 'max(0.875rem, min(1rem, 3cqw))',
+              padding: 'max(0.375rem, min(0.5rem, 2cqh)) 0.75rem'
+            }}
             onClick={handleAddInput}
           >
             Add Item
