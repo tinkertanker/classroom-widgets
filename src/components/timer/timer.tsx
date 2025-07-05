@@ -246,8 +246,8 @@ const Timer = () => {
 
   return (
     <>
-      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden" style={{ containerType: 'size' }}>
-        <div className="h-[85%] py-1">
+      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden flex flex-col" style={{ containerType: 'size' }}>
+        <div className="flex-1 py-1">
           <div className="w-full h-full py-1 relative">
             {/* Custom Circular Progress */}
             <div className="relative w-full h-full flex items-center justify-center">
@@ -364,21 +364,21 @@ const Timer = () => {
             </div>
           </div>
         </div>
-        <div className="h-[15%] pt-0 px-4 pb-4">
+        <div className="px-3 pb-3" style={{ height: '32px' }}>
           <div className="flex flex-row w-full gap-[5%] h-full">
             {showStart ? (
-              <ReusableButton size="sm" colorScheme="sage" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
+              <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (
               <>
                 {showPauseResume ?
                   (showResume ? (
-                    <ReusableButton size="sm" colorScheme="sage" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
+                    <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
                   ) : (
-                    <ReusableButton size="sm" colorScheme="sage" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
+                    <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
                   )) : (
                     <></>
                   )}
-                <ReusableButton size="sm" colorScheme="sage" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
+                <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
               </>
             )}
           </div>

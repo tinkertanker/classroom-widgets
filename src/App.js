@@ -173,7 +173,7 @@ function App() {
     const components = componentList.map(({ id, index }) => {
       // Determine widget size
       const widgetWidth = index === WIDGET_TYPES.TRAFFIC_LIGHT ? 150 : index === WIDGET_TYPES.TEXT_BANNER ? 500 : index === WIDGET_TYPES.SOUND_EFFECTS ? 80 : 350;
-      const widgetHeight = index === WIDGET_TYPES.TRAFFIC_LIGHT ? 150 : index === WIDGET_TYPES.RANDOMISER ? 250 : index === WIDGET_TYPES.TEXT_BANNER ? 200 : index === WIDGET_TYPES.SOUND_EFFECTS ? 420 : index === WIDGET_TYPES.TIMER ? 412 : 350;
+      const widgetHeight = index === WIDGET_TYPES.TRAFFIC_LIGHT ? 150 : index === WIDGET_TYPES.RANDOMISER ? 250 : index === WIDGET_TYPES.TEXT_BANNER ? 200 : index === WIDGET_TYPES.SOUND_EFFECTS ? 420 : index === WIDGET_TYPES.TIMER ? 382 : 350;
       
       // Get saved state for this widget
       const savedState = widgetStates.get(id);
@@ -241,10 +241,10 @@ function App() {
             height: `${widgetHeight}px`,
           }}
         minWidth={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.SOUND_EFFECTS ? "80px" : index === WIDGET_TYPES.TIMER ? "250px" : "200px"}
-        minHeight={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.RANDOMISER ? "150px" : index === WIDGET_TYPES.TEXT_BANNER ? "80px" : index === WIDGET_TYPES.TIMER ? "294px" : "200px"}
+        minHeight={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.RANDOMISER ? "150px" : index === WIDGET_TYPES.TEXT_BANNER ? "80px" : index === WIDGET_TYPES.TIMER ? "282px" : "200px"}
         key={id}
         id={id}
-        lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS ? false : index === WIDGET_TYPES.TIMER ? 0.85 : true}
+        lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS ? false : index === WIDGET_TYPES.TIMER ? (350 / 382) : true}
         enableUserSelectHack={true}
         bounds="parent"
         // dragGrid={[100, 100]} // can implement grid if future interns want
