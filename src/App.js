@@ -207,7 +207,7 @@ function App() {
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
           case 9: // Sound Effects
-            return <SoundEffects />;
+            return <SoundEffects isActive={activeIndex === id} />;
           default:
             return null;
         }

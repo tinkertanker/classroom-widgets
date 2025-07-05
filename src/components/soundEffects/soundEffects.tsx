@@ -32,7 +32,11 @@ interface SoundButton {
   soundFile?: string;
 }
 
-const SoundEffects: React.FC = () => {
+interface SoundEffectsProps {
+  isActive?: boolean;
+}
+
+const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   const [audioElements, setAudioElements] = useState<Map<string, HTMLAudioElement>>(new Map());
 
   // Sound effect definitions with our color palette
@@ -72,6 +76,42 @@ const SoundEffects: React.FC = () => {
     };
   }, []);
 
+  // Keyboard shortcuts (1-9 for first 9 sounds, 0 for 10th sound)
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Check if it's a number key (1-9 or 0)
+      const key = e.key;
+      let index = -1;
+      
+      if (key >= '1' && key <= '9') {
+        index = parseInt(key) - 1;
+      } else if (key === '0') {
+        index = 9; // 0 key represents the 10th sound
+      }
+      
+      // Also support numpad keys
+      if (e.code.startsWith('Numpad')) {
+        const numpadKey = e.code.replace('Numpad', '');
+        if (numpadKey >= '1' && numpadKey <= '9') {
+          index = parseInt(numpadKey) - 1;
+        } else if (numpadKey === '0') {
+          index = 9;
+        }
+      }
+      
+      // Play the sound if valid index
+      if (index >= 0 && index < soundButtons.length) {
+        e.preventDefault();
+        playSound(soundButtons[index].name);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isActive, soundButtons, audioElements]);
+
   const playSound = (soundName: string) => {
     // Play the sound if available
     const audio = audioElements.get(soundName);
@@ -99,17 +139,23 @@ const SoundEffects: React.FC = () => {
   return (
     <div className="w-full h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 p-2 overflow-y-auto">
       <div className="flex flex-col gap-1 h-full">
-        {soundButtons.map((sound) => {
+        {soundButtons.map((sound, index) => {
           const Icon = sound.icon;
+          const keyNumber = index < 9 ? (index + 1).toString() : '0';
           return (
             <button
               key={sound.name}
               id={`sound-${sound.name}`}
               onClick={() => playSound(sound.name)}
-              className={`${sound.color} text-white rounded-md py-2 px-2 flex items-center justify-center transition-all duration-150 transform active:scale-95 shadow-sm`}
-              title={sound.name}
+              className={`${sound.color} text-white rounded-md py-2 px-1.5 flex items-center justify-center gap-1.5 transition-all duration-150 transform active:scale-95 shadow-sm`}
+              title={`${sound.name} (Press ${keyNumber})`}
             >
               <Icon className="w-5 h-5" />
+              {isActive && (
+                <span className="text-xs opacity-70 font-mono">
+                  {keyNumber}
+                </span>
+              )}
             </button>
           );
         })}
