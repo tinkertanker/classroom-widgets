@@ -240,7 +240,7 @@ function App() {
             height: `${widgetHeight}px`,
           }}
         minWidth={index === 4 ? "150px" : index === 9 ? "80px" : "200px"}
-        minHeight={index === 4 ? "150px" : index === 0 ? "150px" : "200px"}
+        minHeight={index === 4 ? "150px" : index === 0 ? "150px" : index === 7 ? "80px" : "200px"}
         key={id}
         id={id}
         lockAspectRatio={index === 5 || index === 0 || index === 7 || index === 8 || index === 9 ? false : true}
