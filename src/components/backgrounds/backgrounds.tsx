@@ -7,10 +7,11 @@ interface BackgroundProps {
 }
 
 const Background: React.FC<BackgroundProps> = ({ type }) => {
+  console.log('Background type:', type);
   switch (type) {
     case 'geometric':
       return (
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
           <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="hexagons" x="0" y="0" width="60" height="70" patternUnits="userSpaceOnUse">
@@ -30,17 +31,32 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
 
     case 'gradient':
       return (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <div className="absolute inset-0 bg-[#f7f5f2]" />
-          <div className="absolute top-0 left-0 w-[60%] h-[60%] bg-gradient-radial from-sage-100/20 to-transparent blur-3xl" />
-          <div className="absolute bottom-0 right-0 w-[50%] h-[50%] bg-gradient-radial from-terracotta-100/20 to-transparent blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] bg-gradient-radial from-warm-gray-100/30 to-transparent blur-3xl" />
+          <div 
+            className="absolute top-0 left-0 w-[60%] h-[60%] blur-3xl" 
+            style={{
+              background: 'radial-gradient(circle, rgba(168, 195, 168, 0.2) 0%, transparent 70%)'
+            }}
+          />
+          <div 
+            className="absolute bottom-0 right-0 w-[50%] h-[50%] blur-3xl"
+            style={{
+              background: 'radial-gradient(circle, rgba(217, 167, 157, 0.2) 0%, transparent 70%)'
+            }}
+          />
+          <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] blur-3xl"
+            style={{
+              background: 'radial-gradient(circle, rgba(214, 210, 204, 0.3) 0%, transparent 70%)'
+            }}
+          />
         </div>
       );
 
     case 'paper':
       return (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <div className="absolute inset-0 bg-[#f7f5f2]" />
           <svg className="absolute inset-0 w-full h-full opacity-[0.03]">
             <filter id="paper">
@@ -56,7 +72,7 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
 
     case 'lines':
       return (
-        <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
           <div className="absolute inset-0 bg-[#f7f5f2]" />
           <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -82,7 +98,7 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
 
     case 'dots':
       return (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
