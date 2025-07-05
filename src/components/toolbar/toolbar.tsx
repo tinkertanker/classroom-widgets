@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'; // Import UUID package
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import { 
   FaDice,           // Randomiser
   FaClock,          // Timer
@@ -7,12 +8,17 @@ import {
   FaUserGroup,      // Work Symbols
   FaTrafficLight,   // Traffic Light
   FaVolumeHigh,     // Loudness Monitor
-  FaLink            // Link Shortener
+  FaLink,           // Link Shortener
+  FaBars,           // Menu icon
+  FaArrowRotateLeft // Reset icon
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
   const [formattedTime, setFormattedTime] = useState("");
   const [colonVisible, setColonVisible] = useState(true);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const updateTime = () => {
@@ -42,6 +48,18 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
 
     return () => clearInterval(interval);
   }, []);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuOpen && !event.target.closest('.menu-container')) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
 
   const ComponentData = [
     { name: "Randomiser", icon: FaDice },
@@ -81,6 +99,56 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               </button>
             );
           })}
+          
+          {/* Menu button */}
+          <div className="relative ml-2 menu-container">
+            <button
+              ref={menuButtonRef}
+              onClick={() => {
+                if (!menuOpen && menuButtonRef.current) {
+                  const rect = menuButtonRef.current.getBoundingClientRect();
+                  setMenuPosition({
+                    top: rect.top - 8, // 8px gap
+                    left: rect.left
+                  });
+                }
+                setMenuOpen(!menuOpen);
+              }}
+              className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+              title="Menu"
+            >
+              <FaBars className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* Popup menu - rendered as portal */}
+          {menuOpen && ReactDOM.createPortal(
+            <div 
+              className="fixed bg-soft-white border border-warm-gray-200 rounded-lg shadow-lg py-2 min-w-[200px] menu-container"
+              style={{
+                top: `${menuPosition.top}px`,
+                left: `${menuPosition.left}px`,
+                transform: 'translateY(-100%)',
+                zIndex: 1000
+              }}
+            >
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to reset the workspace? This will remove all widgets.')) {
+                    setComponentList([]);
+                    setActiveIndex(null);
+                    setMenuOpen(false);
+                  }
+                }}
+                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 flex items-center gap-3 text-warm-gray-700 transition-colors duration-150"
+              >
+                <FaArrowRotateLeft className="w-4 h-4" />
+                <span>Reset Workspace</span>
+              </button>
+            </div>,
+            document.body
+          )}
+          
           <div className="flex items-center space-x-4 ml-auto">
             <div className="bg-warm-gray-900 text-sage-400 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
               {formattedTime.split(':').map((part, index) => (
