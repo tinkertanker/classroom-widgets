@@ -207,11 +207,12 @@ function Randomiser({ toggleConfetti }) {
           <div className="flex flex-col w-full h-full items-center">
             <button
               className="w-[87.5%] h-[75%] mt-[5%] mb-[2%] p-0 bg-warm-gray-100 hover:bg-warm-gray-200 rounded transition-colors duration-200"
-              onClick={() => {
+              onDoubleClick={() => {
                 if (loading === false) {
                   onOpen();
                 }
               }}
+              title="Double-click to open settings"
             >
               {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
               <div
