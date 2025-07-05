@@ -15,40 +15,59 @@ interface StampProps {
   savedState?: {
     colorIndex: number;
     stampType?: string;
+    rotation?: number;
   };
   onStateChange?: (state: any) => void;
 }
 
 const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) => {
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex || 0);
+  const [rotation, setRotation] = useState(savedState?.rotation || 0);
+
+  // Generate random rotation between -40 and 40 in steps of 5
+  const getRandomRotation = () => {
+    const steps = [];
+    for (let i = -40; i <= 40; i += 5) {
+      steps.push(i);
+    }
+    return steps[Math.floor(Math.random() * steps.length)];
+  };
 
   // Ensure stampType is saved in state on mount
   React.useEffect(() => {
     if (onStateChange && (!savedState || savedState.stampType !== stampType)) {
       onStateChange({
         colorIndex: colorIndex,
-        stampType: stampType
+        stampType: stampType,
+        rotation: rotation
       });
     }
   }, [stampType]);
 
-  // Define color schemes for cycling
+  // Define more vibrant color schemes for cycling
   const colorSchemes = [
-    'text-dusty-rose-500',
-    'text-terracotta-500', 
-    'text-sage-600'
+    'text-pink-500',      // Bright pink
+    'text-orange-500',    // Vibrant orange
+    'text-emerald-500',   // Bright green
+    'text-blue-500',      // Bright blue
+    'text-purple-500',    // Vibrant purple
+    'text-yellow-500'     // Bright yellow
   ];
 
-  // Handle click to cycle colors
+  // Handle click to cycle colors and rotation
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent widget selection
     const newColorIndex = (colorIndex + 1) % colorSchemes.length;
+    const newRotation = getRandomRotation();
+    
     setColorIndex(newColorIndex);
+    setRotation(newRotation);
     
     if (onStateChange) {
       onStateChange({ 
         colorIndex: newColorIndex,
-        stampType: stampType  // Preserve the stamp type
+        stampType: stampType,  // Preserve the stamp type
+        rotation: newRotation
       });
     }
   };
@@ -110,7 +129,11 @@ const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) =
     <div 
       className="w-full h-full cursor-pointer p-3"
       onClick={handleClick}
-      title="Click to change color"
+      title="Click to change color and rotation"
+      style={{
+        transform: `rotate(${rotation}deg)`,
+        transition: 'transform 0.3s ease'
+      }}
     >
       {getStampIcon()}
     </div>

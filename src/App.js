@@ -303,13 +303,17 @@ function App() {
         }));
       }
       
+      // Use the stored size if available (for stamps with random sizes)
+      const actualWidth = position.width || widgetWidth;
+      const actualHeight = position.height || widgetHeight;
+      
       return (
         <Rnd
           default={{
             x: position.x,
             y: position.y,
-            width: `${widgetWidth}px`,
-            height: `${widgetHeight}px`,
+            width: `${actualWidth}px`,
+            height: `${actualHeight}px`,
           }}
         minWidth={`${widgetConfig.minWidth}px`}
         minHeight={`${widgetConfig.minHeight}px`}
@@ -449,18 +453,38 @@ function App() {
     // Add stamp to component list
     setComponentList(prev => [...prev, { id: newId, index: WIDGET_TYPES.STAMP }]);
     
-    // Set initial position centered on click
+    // Generate random rotation for new stamp
+    const getRandomRotation = () => {
+      const steps = [];
+      for (let i = -40; i <= 40; i += 5) {
+        steps.push(i);
+      }
+      return steps[Math.floor(Math.random() * steps.length)];
+    };
+    
+    // Generate random color index (0-5 for 6 colors)
+    const getRandomColorIndex = () => {
+      return Math.floor(Math.random() * 6);
+    };
+    
+    // Generate random size variation (90% to 110% of default)
+    const sizeVariation = 0.9 + Math.random() * 0.2; // Random between 0.9 and 1.1
+    const randomWidth = Math.round(stampConfig.defaultWidth * sizeVariation);
+    const randomHeight = Math.round(stampConfig.defaultHeight * sizeVariation);
+    
+    // Set initial position centered on click with random size
     setWidgetPositions(prev => new Map(prev).set(newId, {
-      x: x - stampConfig.defaultWidth / 2,
-      y: y - stampConfig.defaultHeight / 2,
-      width: stampConfig.defaultWidth,
-      height: stampConfig.defaultHeight
+      x: x - randomWidth / 2,
+      y: y - randomHeight / 2,
+      width: randomWidth,
+      height: randomHeight
     }));
     
     // Set stamp type in widget state
     setWidgetStates(prev => new Map(prev).set(newId, { 
       stampType: selectedStampType,
-      colorIndex: 0 
+      colorIndex: getRandomColorIndex(),
+      rotation: getRandomRotation()
     }));
     
     setActiveIndex(newId);
