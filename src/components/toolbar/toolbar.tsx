@@ -70,7 +70,9 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                       setActiveIndex(null);
                     }
                   }
-                  setComponentList((e) => [...e, { id: uuidv4(), index }]);
+                  const newId = uuidv4();
+                  setComponentList((e) => [...e, { id: newId, index }]);
+                  setActiveIndex(newId); // Set the new widget as active
                 }}
                 className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
               >
