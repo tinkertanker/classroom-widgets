@@ -7,6 +7,7 @@ import Work from "./components/work/work.tsx";
 import TrafficLight from "./components/trafficLight/trafficLight.tsx";
 import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
 import ShortenLink from "./components/shortenLink/shortenLink.tsx";
+import TextBanner from "./components/textBanner/textBanner.tsx";
 
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
@@ -35,6 +36,7 @@ function App() {
     <TrafficLight />,
     <AudioVolumeMonitor />,
     <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
+    <TextBanner />,
   ];
 
   // Find a non-overlapping position for a new widget
@@ -112,8 +114,8 @@ function App() {
   useEffect(() => {
     const components = componentList.map(({ id, index }) => {
       // Determine widget size
-      const widgetWidth = index === 4 ? 150 : 350;
-      const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : 350;
+      const widgetWidth = index === 4 ? 150 : index === 7 ? 500 : 350;
+      const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : index === 7 ? 200 : 350;
       
       // Get or calculate position
       let position = widgetPositions.get(id);
@@ -139,7 +141,7 @@ function App() {
         minHeight={index === 4 ? "150px" : index === 0 ? "150px" : "200px"}
         key={id}
         id={id}
-        lockAspectRatio={index === 5 || index === 0 ? false : true}
+        lockAspectRatio={index === 5 || index === 0 || index === 7 ? false : true}
         enableUserSelectHack={true}
         bounds="parent"
         // dragGrid={[100, 100]} // can implement grid if future interns want
