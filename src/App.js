@@ -25,7 +25,6 @@ const trashAudio = new Audio(trashSound);
 
 function App() {
   const [useconfetti, setUseconfetti] = useState(false);
-  const [useconfetti2, setUseconfetti2] = useState(false);
   const [componentList, setComponentList] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
   const [generatedComponents, setGeneratedComponents] = useState([]);
@@ -191,7 +190,6 @@ function App() {
             return <Timer />;
           case WIDGET_TYPES.LIST:
             return <List 
-              toggleConfetti={setUseconfetti2}
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
@@ -424,18 +422,6 @@ function App() {
           colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
           confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
           style={{ zIndex: 1000 }}
-        />
-      )}
-      {useconfetti2 && (
-        <Confetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={500}
-          gravity={0.3}
-          wind={0.01}
-          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]}
-          confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
         />
       )}
     </>

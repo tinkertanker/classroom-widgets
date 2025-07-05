@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import * as React from "react";
 
 interface ListProps {
-  toggleConfetti: (value: boolean) => boolean;
   savedState?: {
     inputs: string[];
     statuses: number[];
@@ -10,7 +9,7 @@ interface ListProps {
   onStateChange?: (state: any) => void;
 }
 
-const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }) => {
+const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   const [inputs, setInputs] = useState<string[]>(savedState?.inputs || []);
   const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || []); // 0: none, 1: green, 2: yellow, 3: red
 
@@ -45,7 +44,6 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
       return newInputs;
     });
     setStatuses([...statuses, 0]);
-    toggleConfetti(false);
   };
 
   const handleInputChange = (index: number, value: string) => {
@@ -58,13 +56,6 @@ const List: React.FC<ListProps> = ({ toggleConfetti, savedState, onStateChange }
     const updatedStatuses = [...statuses];
     updatedStatuses[index] = (updatedStatuses[index] + 1) % 4; // Cycle through 0, 1, 2, 3
     setStatuses(updatedStatuses);
-
-    // Check if all items are green (status === 1) for confetti
-    const allGreen = updatedStatuses.every(status => status === 1);
-    if (inputs.length > 0 && allGreen) {
-      toggleConfetti(false);
-      setTimeout(() => toggleConfetti(true), 1000);
-    }
   };
   // useEffect(() => {
   //   const savedInputs =       JSON.parse(localStorage.getItem('inputs') || '[]');
