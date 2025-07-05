@@ -1,14 +1,44 @@
 import { v4 as uuidv4 } from 'uuid'; // Import UUID package
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
+  const [formattedTime, setFormattedTime] = useState("");
+  const [colonVisible, setColonVisible] = useState(true);
+
+  useEffect(() => {
+    const updateTime = () => {
+      const date = new Date();
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+
+      const formattedHours = hours % 12 || 12;
+      const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+
+      setFormattedTime(
+        `${formattedHours}:${formattedMinutes}`
+      );
+    };
+
+    updateTime(); // Initial update
+    const interval = setInterval(updateTime, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Separate effect for blinking colon
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setColonVisible(prev => !prev);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const ComponentNames = [
     "Randomiser",
     "Timer",
     "List",
     "Work Symbols",
-    "Clock",
     "Traffic Light",
     "Loudness Monitor",
     "Link Shortener",
@@ -29,14 +59,28 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     setActiveIndex(null);
                   }
                 }
-                setComponentList((e) => [...e, { id: uuidv4(), index }]);
+                // Map the button index to component index, skipping the old Clock position (4)
+                const componentIndex = index >= 4 ? index + 1 : index;
+                setComponentList((e) => [...e, { id: uuidv4(), index: componentIndex }]);
               }}
               className="px-4 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0"
             >
               {ComponentName}
             </button>
           ))}
-          <div className="flex justify-end">
+          <div className="flex items-center space-x-4 ml-auto">
+            <div className="bg-warm-gray-900 text-sage-400 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
+              {formattedTime.split(':').map((part, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && (
+                    <span className={`${colonVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-100`}>
+                      :
+                    </span>
+                  )}
+                  <span>{part}</span>
+                </React.Fragment>
+              ))}
+            </div>
             <svg
               id="trash"
               className={`w-6 h-6 cursor-pointer transition-all duration-200 ${

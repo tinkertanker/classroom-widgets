@@ -1,7 +1,6 @@
 import "./App.css";
 import Toolbar from "./components/toolbar/toolbar.tsx";
 import Randomiser from "./components/randomiser/randomiser.tsx";
-import Time from "./components/clock/clock.tsx";
 import Timer from "./components/timer/timer.tsx";
 import List from "./components/list/list.tsx";
 import Work from "./components/work/work.tsx";
@@ -31,7 +30,7 @@ function App() {
     <Timer />,
     <List toggleConfetti={setUseconfetti2} />,
     <Work />,
-    <Time />,
+    // Clock removed - now integrated in toolbar
     <TrafficLight />,
     <AudioVolumeMonitor />,
     <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future

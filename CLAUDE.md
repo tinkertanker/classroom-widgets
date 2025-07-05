@@ -46,10 +46,14 @@ The application uses a dynamic widget system where widgets are:
 - **Timer** (`src/components/timer/`) - Countdown/timing functionality
 - **List** (`src/components/list/`) - Task list with confetti trigger
 - **Work Symbols** (`src/components/work/`) - Visual work mode indicators
-- **Clock** (`src/components/clock/`) - Time display (smaller default size: 150px)
 - **Traffic Light** (`src/components/trafficLight/`) - Status indicators
 - **Volume Level Monitor** (`src/components/volumeLevel/`) - Audio level visualization
 - **Link Shortener** (`src/components/shortenLink/`) - URL shortening (requires API key)
+
+### Toolbar Features
+- Widget creation buttons
+- Integrated clock display (shows current time in 12-hour format)
+- Trash icon for widget deletion
 
 ### State Management
 - Widget instances stored in `componentList` array with `{id, index}` structure
@@ -76,7 +80,6 @@ src/
 4. **Aspect Ratio**: All widgets maintain aspect ratio when resizing except Traffic Light and Randomiser
 5. **Size Constraints**: 
    - Default size: 350x350px
-   - Clock widget: 150x150px  
    - Randomiser widget: 350x250px (landscape orientation)
 6. **Cleanup**: Remove widgets by implementing drag-to-trash functionality
 
