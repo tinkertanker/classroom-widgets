@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { WIDGET_TYPES } from '../../constants/widgetTypes';
 import { 
   FaDice,           // Randomiser
   FaClock,          // Timer
@@ -67,22 +68,28 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  const AllComponentData = [
-    { name: "Randomiser", icon: FaDice },
-    { name: "Timer", icon: FaClock },
-    { name: "List", icon: FaListCheck },
-    { name: "Work Symbols", icon: FaUserGroup },
-    { name: "Traffic Light", icon: FaTrafficLight },
-    { name: "Loudness Monitor", icon: FaVolumeHigh },
-    { name: "Link Shortener", icon: FaLink },
-    { name: "Text Banner", icon: FaTextWidth },
-    { name: "Image", icon: FaImage },
-    { name: "Sound Effects", icon: FaMusic },
-  ];
+  // Component data indexed by widget type
+  const AllComponentData = [];
+  AllComponentData[WIDGET_TYPES.RANDOMISER] = { name: "Randomiser", icon: FaDice };
+  AllComponentData[WIDGET_TYPES.TIMER] = { name: "Timer", icon: FaClock };
+  AllComponentData[WIDGET_TYPES.LIST] = { name: "List", icon: FaListCheck };
+  AllComponentData[WIDGET_TYPES.WORK_SYMBOLS] = { name: "Work Symbols", icon: FaUserGroup };
+  AllComponentData[WIDGET_TYPES.TRAFFIC_LIGHT] = { name: "Traffic Light", icon: FaTrafficLight };
+  AllComponentData[WIDGET_TYPES.LOUDNESS_MONITOR] = { name: "Loudness Monitor", icon: FaVolumeHigh };
+  AllComponentData[WIDGET_TYPES.LINK_SHORTENER] = { name: "Link Shortener", icon: FaLink };
+  AllComponentData[WIDGET_TYPES.TEXT_BANNER] = { name: "Text Banner", icon: FaTextWidth };
+  AllComponentData[WIDGET_TYPES.IMAGE_DISPLAY] = { name: "Image", icon: FaImage };
+  AllComponentData[WIDGET_TYPES.SOUND_EFFECTS] = { name: "Sound Effects", icon: FaMusic };
   
-  // Define which widgets appear in the toolbar (by index)
-  // Easy to rearrange: just change the indices in this array
-  const toolbarWidgetIndices = [0, 1, 2, 3, 5]; // Randomiser, Timer, List, Work Symbols, Loudness Monitor
+  // Define which widgets appear in the toolbar
+  // Easy to rearrange: just change the widget types in this array
+  const toolbarWidgetIndices = [
+    WIDGET_TYPES.RANDOMISER, 
+    WIDGET_TYPES.TIMER, 
+    WIDGET_TYPES.LIST, 
+    WIDGET_TYPES.WORK_SYMBOLS, 
+    WIDGET_TYPES.LOUDNESS_MONITOR
+  ];
   const ToolbarComponentData = toolbarWidgetIndices.map(index => AllComponentData[index]);
 
   return (
@@ -321,14 +328,16 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           </div>
           
           <div className="grid grid-cols-4 gap-6">
-            {AllComponentData.map((component, index) => {
+            {Object.entries(WIDGET_TYPES).map(([key, widgetType]) => {
+              const component = AllComponentData[widgetType];
+              if (!component) return null;
               const Icon = component.icon;
               return (
                 <button
-                  key={index}
+                  key={widgetType}
                   onClick={() => {
                     const newId = uuidv4();
-                    setComponentList((e) => [...e, { id: newId, index }]);
+                    setComponentList((e) => [...e, { id: newId, index: widgetType }]);
                     setActiveIndex(newId);
                     setLaunchpadOpen(false);
                   }}

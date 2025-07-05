@@ -1,0 +1,13 @@
+// Widget type constants
+export const WIDGET_TYPES = {
+  RANDOMISER: 0,
+  TIMER: 1,
+  LIST: 2,
+  WORK_SYMBOLS: 3,
+  TRAFFIC_LIGHT: 4,
+  LOUDNESS_MONITOR: 5,
+  LINK_SHORTENER: 6,
+  TEXT_BANNER: 7,
+  IMAGE_DISPLAY: 8,
+  SOUND_EFFECTS: 9
+};

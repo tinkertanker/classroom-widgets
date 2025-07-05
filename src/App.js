@@ -17,6 +17,7 @@ import { Rnd } from "react-rnd";
 import { v4 as uuidv4 } from "uuid"; // Import UUID package
 
 import Confetti from "react-confetti";
+import { WIDGET_TYPES } from "./constants/widgetTypes";
 
 // Audio import for trash sound
 const trashSound = require("./sounds/trash-crumple.mp3");
@@ -171,8 +172,8 @@ function App() {
   useEffect(() => {
     const components = componentList.map(({ id, index }) => {
       // Determine widget size
-      const widgetWidth = index === 4 ? 150 : index === 7 ? 500 : index === 9 ? 80 : 350;
-      const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : index === 7 ? 200 : index === 9 ? 420 : 350;
+      const widgetWidth = index === WIDGET_TYPES.TRAFFIC_LIGHT ? 150 : index === WIDGET_TYPES.TEXT_BANNER ? 500 : index === WIDGET_TYPES.SOUND_EFFECTS ? 80 : 350;
+      const widgetHeight = index === WIDGET_TYPES.TRAFFIC_LIGHT ? 150 : index === WIDGET_TYPES.RANDOMISER ? 250 : index === WIDGET_TYPES.TEXT_BANNER ? 200 : index === WIDGET_TYPES.SOUND_EFFECTS ? 420 : 350;
       
       // Get saved state for this widget
       const savedState = widgetStates.get(id);
@@ -180,39 +181,39 @@ function App() {
       // Create component with state props if needed
       const getComponentWithState = () => {
         switch(index) {
-          case 0: // Randomiser
+          case WIDGET_TYPES.RANDOMISER:
             return <Randomiser 
               toggleConfetti={setUseconfetti} 
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
-          case 1: // Timer
+          case WIDGET_TYPES.TIMER:
             return <Timer />;
-          case 2: // List
+          case WIDGET_TYPES.LIST:
             return <List 
               toggleConfetti={setUseconfetti2}
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
-          case 3: // Work
+          case WIDGET_TYPES.WORK_SYMBOLS:
             return <Work />;
-          case 4: // Traffic Light
+          case WIDGET_TYPES.TRAFFIC_LIGHT:
             return <TrafficLight />;
-          case 5: // Loudness Monitor
+          case WIDGET_TYPES.LOUDNESS_MONITOR:
             return <AudioVolumeMonitor />;
-          case 6: // Link Shortener
+          case WIDGET_TYPES.LINK_SHORTENER:
             return <ShortenLink />;
-          case 7: // Text Banner
+          case WIDGET_TYPES.TEXT_BANNER:
             return <TextBanner
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
-          case 8: // Image Display
+          case WIDGET_TYPES.IMAGE_DISPLAY:
             return <ImageDisplay
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
-          case 9: // Sound Effects
+          case WIDGET_TYPES.SOUND_EFFECTS:
             return <SoundEffects isActive={activeIndex === id} />;
           default:
             return null;
@@ -239,11 +240,11 @@ function App() {
             width: `${widgetWidth}px`,
             height: `${widgetHeight}px`,
           }}
-        minWidth={index === 4 ? "150px" : index === 9 ? "80px" : "200px"}
-        minHeight={index === 4 ? "150px" : index === 0 ? "150px" : index === 7 ? "80px" : "200px"}
+        minWidth={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.SOUND_EFFECTS ? "80px" : "200px"}
+        minHeight={index === WIDGET_TYPES.TRAFFIC_LIGHT ? "150px" : index === WIDGET_TYPES.RANDOMISER ? "150px" : index === WIDGET_TYPES.TEXT_BANNER ? "80px" : "200px"}
         key={id}
         id={id}
-        lockAspectRatio={index === 5 || index === 0 || index === 7 || index === 8 || index === 9 ? false : true}
+        lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS ? false : true}
         enableUserSelectHack={true}
         bounds="parent"
         // dragGrid={[100, 100]} // can implement grid if future interns want
