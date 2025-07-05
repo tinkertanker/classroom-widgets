@@ -314,11 +314,10 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
         onClick={() => setLaunchpadOpen(false)}
       >
         <div 
-          className="bg-soft-white rounded-2xl shadow-2xl p-8 max-w-4xl max-h-[80vh] overflow-auto"
+          className="bg-soft-white rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-warm-gray-800">All Widgets</h2>
+          <div className="flex justify-end mb-4">
             <button
               onClick={() => setLaunchpadOpen(false)}
               className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
@@ -327,7 +326,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             </button>
           </div>
           
-          <div className="grid grid-cols-4 gap-6">
+          <div className="grid grid-cols-4 gap-2">
             {Object.entries(WIDGET_TYPES).map(([key, widgetType]) => {
               const component = AllComponentData[widgetType];
               if (!component) return null;
@@ -341,9 +340,9 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     setActiveIndex(newId);
                     setLaunchpadOpen(false);
                   }}
-                  className="flex flex-col items-center gap-3 p-6 rounded-xl hover:bg-warm-gray-100 transition-colors duration-200 group"
+                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-warm-gray-100 transition-colors duration-200 group"
                 >
-                  <div className="w-16 h-16 bg-sage-500 group-hover:bg-sage-600 rounded-2xl flex items-center justify-center transition-colors duration-200">
+                  <div className="w-16 h-16 bg-sage-500 group-hover:bg-sage-600 rounded-xl flex items-center justify-center transition-colors duration-200">
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <span className="text-sm text-warm-gray-700">{component.name}</span>
