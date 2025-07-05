@@ -13,7 +13,8 @@ import {
   FaArrowRotateLeft,// Reset icon
   FaTableCells,     // Grid icon for more widgets
   FaTextWidth,      // Text Banner
-  FaImage           // Image Display
+  FaImage,          // Image Display
+  FaMusic           // Sound Effects
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
@@ -75,6 +76,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     { name: "Link Shortener", icon: FaLink },
     { name: "Text Banner", icon: FaTextWidth },
     { name: "Image", icon: FaImage },
+    { name: "Sound Effects", icon: FaMusic },
   ];
   
   // Define which widgets appear in the toolbar (by index)

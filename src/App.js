@@ -9,6 +9,7 @@ import AudioVolumeMonitor from "./components/volumeLevel/volumeLevel.tsx";
 import ShortenLink from "./components/shortenLink/shortenLink.tsx";
 import TextBanner from "./components/textBanner/textBanner.tsx";
 import ImageDisplay from "./components/imageDisplay/imageDisplay.tsx";
+import SoundEffects from "./components/soundEffects/soundEffects.tsx";
 
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
@@ -164,8 +165,8 @@ function App() {
   useEffect(() => {
     const components = componentList.map(({ id, index }) => {
       // Determine widget size
-      const widgetWidth = index === 4 ? 150 : index === 7 ? 500 : 350;
-      const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : index === 7 ? 200 : 350;
+      const widgetWidth = index === 4 ? 150 : index === 7 ? 500 : index === 9 ? 80 : 350;
+      const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : index === 7 ? 200 : index === 9 ? 420 : 350;
       
       // Get saved state for this widget
       const savedState = widgetStates.get(id);
@@ -205,6 +206,8 @@ function App() {
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
+          case 9: // Sound Effects
+            return <SoundEffects />;
           default:
             return null;
         }
@@ -230,11 +233,11 @@ function App() {
             width: `${widgetWidth}px`,
             height: `${widgetHeight}px`,
           }}
-        minWidth={index === 4 ? "150px" : "200px"}
+        minWidth={index === 4 ? "150px" : index === 9 ? "80px" : "200px"}
         minHeight={index === 4 ? "150px" : index === 0 ? "150px" : "200px"}
         key={id}
         id={id}
-        lockAspectRatio={index === 5 || index === 0 || index === 7 || index === 8 ? false : true}
+        lockAspectRatio={index === 5 || index === 0 || index === 7 || index === 8 || index === 9 ? false : true}
         enableUserSelectHack={true}
         bounds="parent"
         // dragGrid={[100, 100]} // can implement grid if future interns want
