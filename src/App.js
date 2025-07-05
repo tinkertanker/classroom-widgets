@@ -30,7 +30,6 @@ function App() {
     <Timer />,
     <List toggleConfetti={setUseconfetti2} />,
     <Work />,
-    // Clock removed - now integrated in toolbar
     <TrafficLight />,
     <AudioVolumeMonitor />,
     <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
