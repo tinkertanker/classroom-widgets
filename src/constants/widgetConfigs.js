@@ -71,16 +71,40 @@ export const WIDGET_CONFIGS = {
     minWidth: 80,
     minHeight: 200,
     lockAspectRatio: false
+  },
+  [WIDGET_TYPES.STAMP]: {
+    defaultWidth: 60,
+    defaultHeight: 60,
+    minWidth: 30,
+    minHeight: 30,
+    lockAspectRatio: true,
+    // Stamp-specific configurations for tall shapes
+    stampConfigs: {
+      exclamation: {
+        defaultWidth: 45,
+        defaultHeight: 80,
+        minWidth: 25,
+        minHeight: 45,
+        lockAspectRatio: 45 / 80
+      }
+    }
   }
 };
 
 // Helper function to get widget config
-export function getWidgetConfig(widgetType) {
-  return WIDGET_CONFIGS[widgetType] || {
+export function getWidgetConfig(widgetType, stampType = null) {
+  const baseConfig = WIDGET_CONFIGS[widgetType] || {
     defaultWidth: 350,
     defaultHeight: 350,
     minWidth: 200,
     minHeight: 200,
     lockAspectRatio: true
   };
+  
+  // For stamps, check if there's a stamp-specific config
+  if (widgetType === WIDGET_TYPES.STAMP && stampType && baseConfig.stampConfigs && baseConfig.stampConfigs[stampType]) {
+    return { ...baseConfig, ...baseConfig.stampConfigs[stampType] };
+  }
+  
+  return baseConfig;
 }

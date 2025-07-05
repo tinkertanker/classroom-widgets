@@ -11,6 +11,7 @@ import TextBanner from "./components/textBanner/textBanner.tsx";
 import ImageDisplay from "./components/imageDisplay/imageDisplay.tsx";
 import SoundEffects from "./components/soundEffects/soundEffects.tsx";
 import Background from "./components/backgrounds/backgrounds.tsx";
+import Stamp from "./components/stamp/stamp.tsx";
 
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
@@ -43,6 +44,8 @@ function App() {
     // Check system preference
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  const [stampMode, setStampMode] = useState(false);
+  const [selectedStampType, setSelectedStampType] = useState('heart');
   
   // Update individual widget state
   const updateWidgetState = (widgetId, state) => {
@@ -217,15 +220,29 @@ function App() {
     };
   }, []);
 
+  // Handle ESC key to exit stamp mode
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && stampMode) {
+        setStampMode(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [stampMode]);
+
   useEffect(() => {
     const components = componentList.map(({ id, index }) => {
-      // Get widget configuration
-      const widgetConfig = getWidgetConfig(index);
-      const widgetWidth = widgetConfig.defaultWidth;
-      const widgetHeight = widgetConfig.defaultHeight;
-      
       // Get saved state for this widget
       const savedState = widgetStates.get(id);
+      
+      // Get widget configuration (with stamp type if applicable)
+      const widgetConfig = index === WIDGET_TYPES.STAMP 
+        ? getWidgetConfig(index, savedState?.stampType)
+        : getWidgetConfig(index);
+      const widgetWidth = widgetConfig.defaultWidth;
+      const widgetHeight = widgetConfig.defaultHeight;
       
       // Create component with state props if needed
       const getComponentWithState = () => {
@@ -263,6 +280,12 @@ function App() {
             />;
           case WIDGET_TYPES.SOUND_EFFECTS:
             return <SoundEffects isActive={activeIndex === id} />;
+          case WIDGET_TYPES.STAMP:
+            return <Stamp
+              stampType={savedState?.stampType || 'heart'}
+              savedState={savedState}
+              onStateChange={(state) => updateWidgetState(id, state)}
+            />;
           default:
             return null;
         }
@@ -407,6 +430,42 @@ function App() {
     }
   }
 
+  // Handle stamp placement
+  const handleBoardClick = (e) => {
+    if (!stampMode) return;
+    
+    // Get click position relative to the board
+    const boardElement = document.getElementById('widget-board');
+    const rect = boardElement.getBoundingClientRect();
+    const scrollContainer = document.querySelector('.board-scroll-container');
+    
+    const x = e.clientX - rect.left + scrollContainer.scrollLeft;
+    const y = e.clientY - rect.top + scrollContainer.scrollTop;
+    
+    // Create new stamp
+    const newId = uuidv4();
+    const stampConfig = getWidgetConfig(WIDGET_TYPES.STAMP, selectedStampType);
+    
+    // Add stamp to component list
+    setComponentList(prev => [...prev, { id: newId, index: WIDGET_TYPES.STAMP }]);
+    
+    // Set initial position centered on click
+    setWidgetPositions(prev => new Map(prev).set(newId, {
+      x: x - stampConfig.defaultWidth / 2,
+      y: y - stampConfig.defaultHeight / 2,
+      width: stampConfig.defaultWidth,
+      height: stampConfig.defaultHeight
+    }));
+    
+    // Set stamp type in widget state
+    setWidgetStates(prev => new Map(prev).set(newId, { 
+      stampType: selectedStampType,
+      colorIndex: 0 
+    }));
+    
+    setActiveIndex(newId);
+  };
+
   return (
     <>
       <meta charset="UTF-8" />
@@ -457,17 +516,41 @@ function App() {
               setBackgroundType={setBackgroundType}
               darkMode={darkMode}
               setDarkMode={setDarkMode}
+              stampMode={stampMode}
+              setStampMode={setStampMode}
+              selectedStampType={selectedStampType}
+              setSelectedStampType={setSelectedStampType}
             />
           </div>
         </div>
         
         {/* Scrollable board */}
         <div className="board-scroll-container">
-          <div className="board" id="widget-board">
+          <div 
+            className="board" 
+            id="widget-board"
+            onClick={handleBoardClick}
+            style={{ cursor: stampMode ? 'crosshair' : 'default' }}
+          >
             <Background type={backgroundType} />
             {generatedComponents}
           </div>
         </div>
+        
+        {/* Stamp mode indicator */}
+        {stampMode && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] bg-soft-white dark:bg-warm-gray-800 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-3">
+            <span className="text-warm-gray-700 dark:text-warm-gray-200">
+              Stamp mode: Click to place {selectedStampType}
+            </span>
+            <button
+              onClick={() => setStampMode(false)}
+              className="px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
+            >
+              Exit (ESC)
+            </button>
+          </div>
+        )}
       </div>
       {useconfetti && (
         <Confetti
