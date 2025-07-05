@@ -12,7 +12,8 @@ import {
   FaBars,           // Menu icon
   FaArrowRotateLeft,// Reset icon
   FaTableCells,     // Grid icon for more widgets
-  FaTextWidth       // Text Banner
+  FaTextWidth,      // Text Banner
+  FaImage           // Image Display
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash}) {
@@ -73,6 +74,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     { name: "Loudness Monitor", icon: FaVolumeHigh },
     { name: "Link Shortener", icon: FaLink },
     { name: "Text Banner", icon: FaTextWidth },
+    { name: "Image", icon: FaImage },
   ];
   
   // Define which widgets appear in the toolbar (by index)

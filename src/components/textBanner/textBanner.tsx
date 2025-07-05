@@ -108,7 +108,7 @@ const TextBanner: React.FC = () => {
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full bg-terracotta-500 rounded-lg flex items-center justify-center p-5 relative overflow-hidden"
+      className="w-full h-full bg-terracotta-500 rounded-lg shadow-sm border border-warm-gray-200 flex items-center justify-center p-5 relative overflow-hidden"
       onDoubleClick={handleDoubleClick}
     >
       {isEditing ? (
