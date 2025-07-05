@@ -7,7 +7,6 @@ interface BackgroundProps {
 }
 
 const Background: React.FC<BackgroundProps> = ({ type }) => {
-  console.log('Background type:', type);
   switch (type) {
     case 'geometric':
       return (
@@ -17,9 +16,9 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
               <pattern id="hexagons" x="0" y="0" width="60" height="70" patternUnits="userSpaceOnUse">
                 <polygon points="30,0 60,17.5 60,52.5 30,70 0,52.5 0,17.5" 
                   fill="none" 
-                  stroke="#d6d2cc" 
-                  strokeWidth="0.5" 
-                  opacity="0.1"
+                  stroke="#a8c3a8" 
+                  strokeWidth="1" 
+                  opacity="0.3"
                 />
               </pattern>
             </defs>
@@ -58,7 +57,7 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
       return (
         <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <div className="absolute inset-0 bg-[#f7f5f2]" />
-          <svg className="absolute inset-0 w-full h-full opacity-[0.03]">
+          <svg className="absolute inset-0 w-full h-full opacity-[0.15]">
             <filter id="paper">
               <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
               <feDiffuseLighting in="noise" lightingColor="white" surfaceScale="1">
@@ -78,16 +77,28 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
             <defs>
               <pattern id="waves" x="0" y="0" width="400" height="400" patternUnits="userSpaceOnUse">
                 <path d="M0,200 Q100,150 200,200 T400,200" 
-                  stroke="#d6d2cc" 
-                  strokeWidth="0.5" 
+                  stroke="#a8c3a8" 
+                  strokeWidth="1.5" 
                   fill="none" 
-                  opacity="0.1"
+                  opacity="0.4"
                 />
                 <path d="M0,250 Q100,200 200,250 T400,250" 
-                  stroke="#a8c3a8" 
-                  strokeWidth="0.5" 
+                  stroke="#d9a79d" 
+                  strokeWidth="1.5" 
                   fill="none" 
-                  opacity="0.08"
+                  opacity="0.3"
+                />
+                <path d="M0,150 Q100,100 200,150 T400,150" 
+                  stroke="#d6d2cc" 
+                  strokeWidth="1" 
+                  fill="none" 
+                  opacity="0.35"
+                />
+                <path d="M0,300 Q100,250 200,300 T400,300" 
+                  stroke="#a8c3a8" 
+                  strokeWidth="1" 
+                  fill="none" 
+                  opacity="0.25"
                 />
               </pattern>
             </defs>
@@ -102,7 +113,7 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
           <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="10" cy="10" r="0.5" fill="#d6d2cc" opacity="0.3" />
+                <circle cx="10" cy="10" r="1" fill="#a8c3a8" opacity="0.5" />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="#f7f5f2" />
