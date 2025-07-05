@@ -364,7 +364,7 @@ const Timer = () => {
             </div>
           </div>
         </div>
-        <div className="px-3 pb-3" style={{ height: '44px' }}>
+        <div className="px-3 pb-3" style={{ height: '56px' }}>
           <div className="flex flex-row w-full gap-[5%] h-full">
             {showStart ? (
               <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
