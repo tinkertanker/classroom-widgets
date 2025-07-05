@@ -4,7 +4,7 @@ import ContextMenus from "../obselete_dont_delete/contextMenu.tsx";
 
 function TrafficLight() {
   const [state, setState] = useState({
-    activeLight: "red",
+    activeLight: "#ff0000",
     boxWidth: 100,
     contextMenu: { show: false, x: 0, y: 0 },
     num: 0,
@@ -105,7 +105,7 @@ function TrafficLight() {
                   key={color}
                   className="w-1/2 h-1/5 rounded-full cursor-pointer m-[12.5%]"
                   style={{
-                    boxShadow: state.activeLight === color ? `0px 0px 40px 20px ${color}` : "none",
+                    boxShadow: state.activeLight === color ? `0px 0px 20px 10px ${color}` : "none",
                     backgroundColor: color,
                     filter: state.activeLight === color ? "brightness(200%)" : "brightness(30%)",
                     marginTop: index === 0 ? "25%" : "12.5%",
@@ -120,7 +120,11 @@ function TrafficLight() {
             id="balls"
             className="flex flex-col bg-soft-white h-full justify-evenly flex-grow px-4"
           >
-          <h1 className="text-warm-gray-800">Teacher’s turn to speak. Be attentive and quiet.</h1>
+          <h1 className="text-warm-gray-800">
+            {state.activeLight === "#ff0000" && "Teacher's turn to speak. Be attentive and quiet."}
+            {state.activeLight === "#ffff00" && "Work on your own quietly."}
+            {state.activeLight === "#00ff00" && "Discuss with your partners using your inside voice."}
+          </h1>
           </div>
         </div>
       </div>
