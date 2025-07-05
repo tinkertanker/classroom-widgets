@@ -78,8 +78,8 @@ export const WIDGET_CONFIGS = {
     minWidth: 30,
     minHeight: 30,
     lockAspectRatio: true,
-    // Stamp-specific configurations for tall shapes
-    stampConfigs: {
+    // Sticker-specific configurations for tall shapes
+    stickerConfigs: {
       exclamation: {
         defaultWidth: 45,
         defaultHeight: 80,
@@ -92,7 +92,7 @@ export const WIDGET_CONFIGS = {
 };
 
 // Helper function to get widget config
-export function getWidgetConfig(widgetType, stampType = null) {
+export function getWidgetConfig(widgetType, stickerType = null) {
   const baseConfig = WIDGET_CONFIGS[widgetType] || {
     defaultWidth: 350,
     defaultHeight: 350,
@@ -101,9 +101,9 @@ export function getWidgetConfig(widgetType, stampType = null) {
     lockAspectRatio: true
   };
   
-  // For stamps, check if there's a stamp-specific config
-  if (widgetType === WIDGET_TYPES.STAMP && stampType && baseConfig.stampConfigs && baseConfig.stampConfigs[stampType]) {
-    return { ...baseConfig, ...baseConfig.stampConfigs[stampType] };
+  // For stickers, check if there's a sticker-specific config
+  if (widgetType === WIDGET_TYPES.STAMP && stickerType && baseConfig.stickerConfigs && baseConfig.stickerConfigs[stickerType]) {
+    return { ...baseConfig, ...baseConfig.stickerConfigs[stickerType] };
   }
   
   return baseConfig;

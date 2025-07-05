@@ -31,7 +31,7 @@ import {
   FaCheck
 } from 'react-icons/fa6';
 
-export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stampMode,setStampMode,selectedStampType,setSelectedStampType}) {
+export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}) {
   const [formattedTime, setFormattedTime] = useState("");
   const [colonVisible, setColonVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,7 +39,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
   const [customizeToolbarOpen, setCustomizeToolbarOpen] = useState(false);
-  const [stampPaletteOpen, setStampPaletteOpen] = useState(false);
+  const [stickerPaletteOpen, setStickerPaletteOpen] = useState(false);
   const [selectedToolbarWidgets, setSelectedToolbarWidgets] = useState(() => {
     // Load saved toolbar configuration from localStorage
     const saved = localStorage.getItem('toolbarWidgets');
@@ -159,18 +159,18 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             <span>More</span>
           </button>
           
-          {/* Stamp button */}
+          {/* Sticker button */}
           <button
-            onClick={() => setStampPaletteOpen(true)}
+            onClick={() => setStickerPaletteOpen(true)}
             className={`px-2.5 py-1.5 rounded-md transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2 ${
-              stampMode 
+              stickerMode 
                 ? 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700' 
                 : 'bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700'
             }`}
-            title="Stamps"
+            title="Stickers"
           >
             <FaStamp className="w-4 h-4" />
-            <span>Stamp</span>
+            <span>Sticker</span>
           </button>
           
           {/* Menu button */}
@@ -500,20 +500,20 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
       document.body
     )}
     
-    {/* Stamp Palette Dialog */}
-    {stampPaletteOpen && ReactDOM.createPortal(
+    {/* Sticker Palette Dialog */}
+    {stickerPaletteOpen && ReactDOM.createPortal(
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"
-        onClick={() => setStampPaletteOpen(false)}
+        onClick={() => setStickerPaletteOpen(false)}
       >
         <div 
           className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-md"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">Choose a Stamp</h2>
+            <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">Choose a Sticker</h2>
             <button
-              onClick={() => setStampPaletteOpen(false)}
+              onClick={() => setStickerPaletteOpen(false)}
               className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
             >
               ×
@@ -534,12 +534,12 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               <button
                 key={type}
                 onClick={() => {
-                  setSelectedStampType(type);
-                  setStampMode(true);
-                  setStampPaletteOpen(false);
+                  setSelectedStickerType(type);
+                  setStickerMode(true);
+                  setStickerPaletteOpen(false);
                 }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-colors duration-200 ${
-                  selectedStampType === type && stampMode
+                  selectedStickerType === type && stickerMode
                     ? 'bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500'
                     : 'hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 border-2 border-transparent'
                 }`}
@@ -551,19 +551,19 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             ))}
           </div>
           
-          {stampMode && (
+          {stickerMode && (
             <div className="mt-4 p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-center">
               <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300">
-                Stamp mode active! Click on the board to place stamps.
+                Sticker mode active! Click on the board to stamp stickers.
               </p>
               <button
                 onClick={() => {
-                  setStampMode(false);
-                  setStampPaletteOpen(false);
+                  setStickerMode(false);
+                  setStickerPaletteOpen(false);
                 }}
                 className="mt-2 px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200 text-sm"
               >
-                Exit Stamp Mode
+                Exit Sticker Mode
               </button>
             </div>
           )}

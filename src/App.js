@@ -11,7 +11,7 @@ import TextBanner from "./components/textBanner/textBanner.tsx";
 import ImageDisplay from "./components/imageDisplay/imageDisplay.tsx";
 import SoundEffects from "./components/soundEffects/soundEffects.tsx";
 import Background from "./components/backgrounds/backgrounds.tsx";
-import Stamp from "./components/stamp/stamp.tsx";
+import Sticker from "./components/sticker/sticker.tsx";
 
 import { useEffect, useState, useRef } from "react";
 import { Rnd } from "react-rnd";
@@ -44,8 +44,8 @@ function App() {
     // Check system preference
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-  const [stampMode, setStampMode] = useState(false);
-  const [selectedStampType, setSelectedStampType] = useState('heart');
+  const [stickerMode, setStickerMode] = useState(false);
+  const [selectedStickerType, setSelectedStickerType] = useState('heart');
   
   // Update individual widget state
   const updateWidgetState = (widgetId, state) => {
@@ -220,17 +220,17 @@ function App() {
     };
   }, []);
 
-  // Handle ESC key to exit stamp mode
+  // Handle ESC key to exit sticker mode
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && stampMode) {
-        setStampMode(false);
+      if (e.key === 'Escape' && stickerMode) {
+        setStickerMode(false);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [stampMode]);
+  }, [stickerMode]);
 
   useEffect(() => {
     const components = componentList.map(({ id, index }) => {
@@ -239,7 +239,7 @@ function App() {
       
       // Get widget configuration (with stamp type if applicable)
       const widgetConfig = index === WIDGET_TYPES.STAMP 
-        ? getWidgetConfig(index, savedState?.stampType)
+        ? getWidgetConfig(index, savedState?.stickerType || savedState?.stampType)
         : getWidgetConfig(index);
       const widgetWidth = widgetConfig.defaultWidth;
       const widgetHeight = widgetConfig.defaultHeight;
@@ -281,8 +281,8 @@ function App() {
           case WIDGET_TYPES.SOUND_EFFECTS:
             return <SoundEffects isActive={activeIndex === id} />;
           case WIDGET_TYPES.STAMP:
-            return <Stamp
-              stampType={savedState?.stampType || 'heart'}
+            return <Sticker
+              stickerType={savedState?.stickerType || savedState?.stampType || 'heart'}
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
@@ -303,7 +303,7 @@ function App() {
         }));
       }
       
-      // Use the stored size if available (for stamps with random sizes)
+      // Use the stored size if available (for stickers with random sizes)
       const actualWidth = position.width || widgetWidth;
       const actualHeight = position.height || widgetHeight;
       
@@ -434,9 +434,9 @@ function App() {
     }
   }
 
-  // Handle stamp placement
+  // Handle sticker placement
   const handleBoardClick = (e) => {
-    if (!stampMode) return;
+    if (!stickerMode) return;
     
     // Get click position relative to the board
     const boardElement = document.getElementById('widget-board');
@@ -446,14 +446,14 @@ function App() {
     const x = e.clientX - rect.left + scrollContainer.scrollLeft;
     const y = e.clientY - rect.top + scrollContainer.scrollTop;
     
-    // Create new stamp
+    // Create new sticker
     const newId = uuidv4();
-    const stampConfig = getWidgetConfig(WIDGET_TYPES.STAMP, selectedStampType);
+    const stickerConfig = getWidgetConfig(WIDGET_TYPES.STAMP, selectedStickerType);
     
-    // Add stamp to component list
+    // Add sticker to component list
     setComponentList(prev => [...prev, { id: newId, index: WIDGET_TYPES.STAMP }]);
     
-    // Generate random rotation for new stamp
+    // Generate random rotation for new sticker
     const getRandomRotation = () => {
       const steps = [];
       for (let i = -40; i <= 40; i += 5) {
@@ -469,8 +469,8 @@ function App() {
     
     // Generate random size variation (90% to 110% of default)
     const sizeVariation = 0.9 + Math.random() * 0.2; // Random between 0.9 and 1.1
-    const randomWidth = Math.round(stampConfig.defaultWidth * sizeVariation);
-    const randomHeight = Math.round(stampConfig.defaultHeight * sizeVariation);
+    const randomWidth = Math.round(stickerConfig.defaultWidth * sizeVariation);
+    const randomHeight = Math.round(stickerConfig.defaultHeight * sizeVariation);
     
     // Set initial position centered on click with random size
     setWidgetPositions(prev => new Map(prev).set(newId, {
@@ -480,9 +480,9 @@ function App() {
       height: randomHeight
     }));
     
-    // Set stamp type in widget state
+    // Set sticker type in widget state
     setWidgetStates(prev => new Map(prev).set(newId, { 
-      stampType: selectedStampType,
+      stickerType: selectedStickerType,
       colorIndex: getRandomColorIndex(),
       rotation: getRandomRotation()
     }));
@@ -540,10 +540,10 @@ function App() {
               setBackgroundType={setBackgroundType}
               darkMode={darkMode}
               setDarkMode={setDarkMode}
-              stampMode={stampMode}
-              setStampMode={setStampMode}
-              selectedStampType={selectedStampType}
-              setSelectedStampType={setSelectedStampType}
+              stickerMode={stickerMode}
+              setStickerMode={setStickerMode}
+              selectedStickerType={selectedStickerType}
+              setSelectedStickerType={setSelectedStickerType}
             />
           </div>
         </div>
@@ -554,21 +554,21 @@ function App() {
             className="board" 
             id="widget-board"
             onClick={handleBoardClick}
-            style={{ cursor: stampMode ? 'crosshair' : 'default' }}
+            style={{ cursor: stickerMode ? 'crosshair' : 'default' }}
           >
             <Background type={backgroundType} />
             {generatedComponents}
           </div>
         </div>
         
-        {/* Stamp mode indicator */}
-        {stampMode && (
+        {/* Sticker mode indicator */}
+        {stickerMode && (
           <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] bg-soft-white dark:bg-warm-gray-800 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-3">
             <span className="text-warm-gray-700 dark:text-warm-gray-200">
-              Stamp mode: Click to place {selectedStampType}
+              Sticker mode: Click to stamp {selectedStickerType}
             </span>
             <button
-              onClick={() => setStampMode(false)}
+              onClick={() => setStickerMode(false)}
               className="px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
             >
               Exit (ESC)

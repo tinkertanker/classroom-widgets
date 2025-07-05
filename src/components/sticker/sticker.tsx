@@ -10,17 +10,18 @@ import {
   FaCheck
 } from 'react-icons/fa6';
 
-interface StampProps {
-  stampType: string;
+interface StickerProps {
+  stickerType: string;
   savedState?: {
     colorIndex: number;
-    stampType?: string;
+    stickerType?: string;
+    stampType?: string; // For backward compatibility
     rotation?: number;
   };
   onStateChange?: (state: any) => void;
 }
 
-const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) => {
+const Sticker: React.FC<StickerProps> = ({ stickerType, savedState, onStateChange }) => {
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex || 0);
   const [rotation, setRotation] = useState(savedState?.rotation || 0);
 
@@ -33,16 +34,16 @@ const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) =
     return steps[Math.floor(Math.random() * steps.length)];
   };
 
-  // Ensure stampType is saved in state on mount
+  // Ensure stickerType is saved in state on mount
   React.useEffect(() => {
-    if (onStateChange && (!savedState || savedState.stampType !== stampType)) {
+    if (onStateChange && (!savedState || (savedState.stickerType !== stickerType && savedState.stampType !== stickerType))) {
       onStateChange({
         colorIndex: colorIndex,
-        stampType: stampType,
+        stickerType: stickerType,
         rotation: rotation
       });
     }
-  }, [stampType]);
+  }, [stickerType]);
 
   // Define more vibrant color schemes for cycling
   const colorSchemes = [
@@ -66,14 +67,14 @@ const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) =
     if (onStateChange) {
       onStateChange({ 
         colorIndex: newColorIndex,
-        stampType: stampType,  // Preserve the stamp type
+        stickerType: stickerType,  // Preserve the sticker type
         rotation: newRotation
       });
     }
   };
 
-  // Get the appropriate icon based on stamp type
-  const getStampIcon = () => {
+  // Get the appropriate icon based on sticker type
+  const getStickerIcon = () => {
     const iconClass = `w-full h-full ${colorSchemes[colorIndex]} transition-colors duration-200`;
     
     // Check if dark mode
@@ -96,7 +97,7 @@ const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) =
     };
     
     const renderIconWithBorder = () => {
-      switch (stampType) {
+      switch (stickerType) {
         case 'thumbsup':
           return <FaThumbsUp className={iconClass} style={dropShadowStyle} />;
         case 'heart':
@@ -135,9 +136,9 @@ const Stamp: React.FC<StampProps> = ({ stampType, savedState, onStateChange }) =
         transition: 'transform 0.3s ease'
       }}
     >
-      {getStampIcon()}
+      {getStickerIcon()}
     </div>
   );
 };
 
-export default Stamp;
+export default Sticker;
