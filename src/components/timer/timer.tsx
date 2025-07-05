@@ -246,18 +246,18 @@ const Timer = () => {
         <div className="h-[15%] pt-0 px-4 pb-4">
           <div className="flex flex-row w-full gap-[5%] h-full">
             {showStart ? (
-              <ReusableButton onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
+              <ReusableButton size="sm" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (
               <>
                 {showPauseResume ?
                   (showResume ? (
-                    <ReusableButton onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
+                    <ReusableButton size="sm" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
                   ) : (
-                    <ReusableButton onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
+                    <ReusableButton size="sm" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
                   )) : (
                     <></>
                   )}
-                <ReusableButton onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
+                <ReusableButton size="sm" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
               </>
             )}
           </div>

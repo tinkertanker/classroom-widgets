@@ -281,7 +281,7 @@ function Randomiser({ toggleConfetti }) {
                 onClick={()=>handlerandomise()}
                 disabled={loading}
               >
-                <span className="text-[1.1em]"> Randomise!!</span>
+                <span className="text-sm"> Randomise!!</span>
               </button>
             ) : buttonsettings === "result" ? (
               <div className="flex flex-row w-full h-[13%] justify-center gap-2">
@@ -293,11 +293,13 @@ function Randomiser({ toggleConfetti }) {
                     setpressedDisable(true);
                   }}
                 >
-                  {remember
-                    ? "Option removed"
-                    : pressedDisable
-                    ? "Option removed"
-                    : "Remove option"}
+                  <span className="text-sm">
+                    {remember
+                      ? "Option removed"
+                      : pressedDisable
+                      ? "Option removed"
+                      : "Remove option"}
+                  </span>
                 </button>
                 <button
                   disabled={loading}
@@ -307,7 +309,7 @@ function Randomiser({ toggleConfetti }) {
                     handlerandomise();
                   }}
                 >
-                  Again!
+                  <span className="text-sm">Again!</span>
                 </button>
               </div>
             ) : null}
@@ -380,13 +382,13 @@ function Randomiser({ toggleConfetti }) {
                       <div className="flex items-center">
                         <div className="flex space-x-4">
                           <button
-                            className={`pb-2 border-b-2 ${tabIndex === 0 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-700'}`}
+                            className={`pb-2 border-b-2 text-sm ${tabIndex === 0 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-700'}`}
                             onClick={() => setTabIndex(0)}
                           >
                             List
                           </button>
                           <button
-                            className={`pb-2 border-b-2 ${tabIndex === 1 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-700'}`}
+                            className={`pb-2 border-b-2 text-sm ${tabIndex === 1 ? 'border-blue-500 text-blue-500' : 'border-transparent text-gray-700'}`}
                             onClick={() => setTabIndex(1)}
                           >
                             Settings
@@ -404,11 +406,11 @@ function Randomiser({ toggleConfetti }) {
                       {tabIndex === 0 ? (
                         <div className="flex flex-col space-y-4">
                           <div className="flex flex-row items-center justify-between pb-5">
-                            <h3 className="text-lg font-semibold text-gray-800">My list</h3>
+                            <h3 className="text-base font-semibold text-gray-800">My list</h3>
                             <div className="flex space-x-2">
                               <div className="relative">
                                 <button
-                                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors duration-200 flex items-center"
+                                  className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded transition-colors duration-200 flex items-center"
                                   onClick={() => setMenuOpen(!menuOpen)}
                                 >
                                   Suggestions
@@ -419,7 +421,7 @@ function Randomiser({ toggleConfetti }) {
                                 {menuOpen && (
                                   <div className="absolute mt-1 w-full bg-white rounded-md shadow-lg z-10">
                                     <button
-                                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
+                                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800 text-sm"
                                       onClick={() => {
                                         setInput("1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30");
                                         setMenuOpen(false);
@@ -428,7 +430,7 @@ function Randomiser({ toggleConfetti }) {
                                       Generate numbers 1 to 30
                                     </button>
                                     <button
-                                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
+                                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800 text-sm"
                                       onClick={() => {
                                         setInput("A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ");
                                         setMenuOpen(false);
@@ -440,7 +442,7 @@ function Randomiser({ toggleConfetti }) {
                                 )}
                               </div>
                               <button
-                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded transition-colors duration-200"
+                                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition-colors duration-200"
                                 onClick={() => {
                                   setInput("");
                                   setChoices([]);
@@ -458,9 +460,9 @@ function Randomiser({ toggleConfetti }) {
                             value={input}
                             id="textarea"
                             placeholder="Start typing a list to randomise..."
-                            className="w-full h-[250px] px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 placeholder-gray-500"
+                            className="w-full h-[250px] px-3 py-2 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-800 text-sm placeholder-gray-500"
                           />
-                          <p className="pt-8 text-base text-gray-600">
+                          <p className="pt-8 text-sm text-gray-600">
                             Note: All leading and trailing spaces, empty rows, and
                             duplicates in the list are automatically removed when
                             generating.
@@ -469,7 +471,7 @@ function Randomiser({ toggleConfetti }) {
                       ) : (
                         <>
                           <div className="flex flex-col items-start space-y-4">
-                            <h3 className="text-lg font-semibold text-gray-800">Randomiser Settings</h3>
+                            <h3 className="text-base font-semibold text-gray-800">Randomiser Settings</h3>
 
                           <label className="flex items-center pt-5">
                             <input
@@ -483,9 +485,9 @@ function Randomiser({ toggleConfetti }) {
                               }}
                               className="mr-2 w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
                             />
-                            <span className="text-gray-700">Prevent picked options from repeating</span>
+                            <span className="text-gray-700 text-sm">Prevent picked options from repeating</span>
                           </label>
-                          <p className="pt-2.5 pb-1.5 text-gray-700">
+                          <p className="pt-2.5 pb-1.5 text-gray-700 text-sm">
                             Options removed: {selected.join(", ")}
                           </p>
                         {/* <Button
@@ -502,7 +504,7 @@ function Randomiser({ toggleConfetti }) {
                         </Button> */}
                         </div>
                         <div className="flex flex-col items-start space-y-4">
-                          <h3 className="text-lg font-semibold text-gray-800">Animation Settings</h3>
+                          <h3 className="text-base font-semibold text-gray-800">Animation Settings</h3>
                           <label className="flex items-center pt-2.5">
                             <input
                               type="checkbox"
@@ -518,9 +520,9 @@ function Randomiser({ toggleConfetti }) {
                               }}
                               className="mr-2 w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
                             />
-                            <span className="text-gray-700">Enable Animation</span>
+                            <span className="text-gray-700 text-sm">Enable Animation</span>
                           </label>
-                          <p className="pt-2.5 pb-1.5 text-gray-700">
+                          <p className="pt-2.5 pb-1.5 text-gray-700 text-sm">
                             Animation Type
                           </p>
                           <div className="flex flex-row space-x-4">
@@ -534,7 +536,7 @@ function Randomiser({ toggleConfetti }) {
                                 disabled={!animation}
                                 className="mr-2"
                               />
-                              <span className="text-gray-700">Fade</span>
+                              <span className="text-gray-700 text-sm">Fade</span>
                             </label>
                             <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
                               <input
@@ -546,7 +548,7 @@ function Randomiser({ toggleConfetti }) {
                                 disabled={!animation}
                                 className="mr-2"
                               />
-                              <span className="text-gray-700">ScaleFade</span>
+                              <span className="text-gray-700 text-sm">ScaleFade</span>
                             </label>
                             <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
                               <input
@@ -558,10 +560,10 @@ function Randomiser({ toggleConfetti }) {
                                 disabled={!animation}
                                 className="mr-2"
                               />
-                              <span className="text-gray-700">SlideFade</span>
+                              <span className="text-gray-700 text-sm">SlideFade</span>
                             </label>
                           </div>
-                          <p className="pt-2.5 pb-1.5 text-gray-700">
+                          <p className="pt-2.5 pb-1.5 text-gray-700 text-sm">
                             Animation Duration
                           </p>
                           <div className="w-full relative pt-8">

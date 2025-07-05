@@ -175,7 +175,7 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
         </div>
         <div className="p-4 border-t flex items-center">
           <button
-            className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200"
+            className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded transition-colors duration-200"
             onClick={handleAddInput}
           >
             Add Item
@@ -204,7 +204,7 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
               <div className="px-6 py-4 border-b flex items-center justify-between">
-                <p className="text-lg font-semibold text-gray-800">Settings</p>
+                <p className="text-base font-semibold text-gray-800">Settings</p>
                 <button
                   onClick={onClose}
                   className="text-gray-500 hover:text-gray-700"
@@ -214,7 +214,7 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
               </div>
               <div className="px-6 py-4">
                 <div className="flex flex-col space-y-4">
-                  <h3 className="text-md font-semibold text-gray-800">List Settings</h3>
+                  <h3 className="text-sm font-semibold text-gray-800">List Settings</h3>
                   <label className="flex items-center">
                     <input
                       type="checkbox"
@@ -222,9 +222,9 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
                       onChange={handleHideCompletedItemsChange}
                       className="mr-2 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-gray-700">Hide Completed Items</span>
+                    <span className="text-gray-700 text-sm">Hide Completed Items</span>
                   </label>
-                  <p className="text-gray-700">List Type</p>
+                  <p className="text-gray-700 text-sm">List Type</p>
                   <div className="flex flex-row space-x-4">
                     <label className="flex items-center">
                       <input
@@ -235,7 +235,7 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
                         onChange={() => handleRadioChange("1")}
                         className="mr-2"
                       />
-                      <span className="text-gray-700">Checklist</span>
+                      <span className="text-gray-700 text-sm">Checklist</span>
                     </label>
                     <label className="flex items-center">
                       <input
@@ -246,10 +246,10 @@ const List: React.FC<ListProps> = ({ title="", toggleConfetti }) => {
                         onChange={() => handleRadioChange("2")}
                         className="mr-2"
                       />
-                      <span className="text-gray-700">Normal List</span>
+                      <span className="text-gray-700 text-sm">Normal List</span>
                     </label>
                   </div>
-                  <h3 className="text-md font-semibold text-gray-800">Item Settings</h3>
+                  <h3 className="text-sm font-semibold text-gray-800">Item Settings</h3>
                   <AlertDialogExample onDeleteConfirm={handleDeleteConfirm} />
                 </div>
               </div>
