@@ -22,8 +22,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       const textElement = textRef.current;
       
       // Get container dimensions with padding
-      const containerWidth = container.clientWidth - 40; // 20px padding on each side
-      const containerHeight = container.clientHeight - 40;
+      const containerWidth = container.clientWidth - 32; // 16px padding on each side
+      const containerHeight = container.clientHeight - 32;
       
       // Start with a large font size and decrease until text fits
       let size = 200; // Start with max size
@@ -63,8 +63,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
         const container = containerRef.current;
         const textElement = textRef.current;
         
-        const containerWidth = container.clientWidth - 40;
-        const containerHeight = container.clientHeight - 40;
+        const containerWidth = container.clientWidth - 32;
+        const containerHeight = container.clientHeight - 32;
         
         let size = 200;
         let minSize = 12;
@@ -122,7 +122,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full bg-terracotta-500 rounded-lg shadow-sm border border-warm-gray-200 flex items-center justify-center p-5 relative overflow-hidden"
+      className="w-full h-full bg-terracotta-500 rounded-lg shadow-sm border border-warm-gray-200 flex items-center justify-center p-4 relative overflow-hidden"
       onDoubleClick={handleDoubleClick}
     >
       {isEditing ? (
