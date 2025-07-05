@@ -25,6 +25,7 @@ function App() {
   const [activeIndex, setActiveIndex] = useState(null);
   const [generatedComponents, setGeneratedComponents] = useState([]);
   const [hoveringTrashId, setHoveringTrashId] = useState(null);
+  const [widgetPositions, setWidgetPositions] = useState(new Map());
   const Components = [
     <Randomiser toggleConfetti={setUseconfetti} />,
     <Timer />,
@@ -35,16 +36,86 @@ function App() {
     <ShortenLink />, //for some reason the link shortener doesnt work when deployed due to cors, to be fixed in future
   ];
 
+  // Find a non-overlapping position for a new widget
+  const findAvailablePosition = (widgetWidth, widgetHeight) => {
+    const padding = 20; // Minimum space between widgets
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    const toolbarHeight = 80; // Approximate toolbar height
+    
+    // Try grid positions starting from top-left
+    const gridSize = 50; // Grid step size
+    const maxAttempts = 50;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Try positions in a spiral pattern from center
+      const angle = attempt * 0.5;
+      const radius = attempt * 15;
+      const centerX = windowWidth / 2;
+      const centerY = (windowHeight - toolbarHeight) / 2;
+      
+      const x = Math.max(padding, Math.min(
+        centerX + Math.cos(angle) * radius - widgetWidth / 2,
+        windowWidth - widgetWidth - padding
+      ));
+      const y = Math.max(padding, Math.min(
+        centerY + Math.sin(angle) * radius - widgetHeight / 2,
+        windowHeight - widgetHeight - toolbarHeight - padding
+      ));
+      
+      // Check if this position overlaps with any existing widget
+      let overlaps = false;
+      for (const [id, pos] of widgetPositions) {
+        if (
+          x < pos.x + pos.width + padding &&
+          x + widgetWidth + padding > pos.x &&
+          y < pos.y + pos.height + padding &&
+          y + widgetHeight + padding > pos.y
+        ) {
+          overlaps = true;
+          break;
+        }
+      }
+      
+      if (!overlaps) {
+        return { x: Math.round(x), y: Math.round(y) };
+      }
+    }
+    
+    // If no position found, use random position
+    return {
+      x: Math.round(Math.random() * (windowWidth - widgetWidth - padding * 2) + padding),
+      y: Math.round(Math.random() * (windowHeight - widgetHeight - toolbarHeight - padding * 2) + padding)
+    };
+  };
+
 
   useEffect(() => {
-    const components = componentList.map(({ id, index }) => (
-      <Rnd
-        default={{
-          x: 0,
-          y: 0,
-          width: index === 4 ? "150px" : "350px",
-          height: index === 4 ? "150px" : index === 0 ? "250px" : "350px",
-        }}
+    const components = componentList.map(({ id, index }) => {
+      // Determine widget size
+      const widgetWidth = index === 4 ? 150 : 350;
+      const widgetHeight = index === 4 ? 150 : index === 0 ? 250 : 350;
+      
+      // Get or calculate position
+      let position = widgetPositions.get(id);
+      if (!position) {
+        position = findAvailablePosition(widgetWidth, widgetHeight);
+        setWidgetPositions(prev => new Map(prev).set(id, { 
+          x: position.x, 
+          y: position.y, 
+          width: widgetWidth, 
+          height: widgetHeight 
+        }));
+      }
+      
+      return (
+        <Rnd
+          default={{
+            x: position.x,
+            y: position.y,
+            width: `${widgetWidth}px`,
+            height: `${widgetHeight}px`,
+          }}
         minWidth={index === 4 ? "150px" : "200px"}
         minHeight={index === 4 ? "150px" : index === 0 ? "150px" : "200px"}
         key={id}
@@ -86,12 +157,34 @@ function App() {
           if (hoveringTrashId === id) {
             setHoveringTrashId(null);
           }
+          // Update position in state
+          setWidgetPositions(prev => {
+            const newMap = new Map(prev);
+            const existing = newMap.get(id);
+            if (existing) {
+              newMap.set(id, { ...existing, x: data.x, y: data.y });
+            }
+            return newMap;
+          });
         }}
-       
+        onResizeStop={(e, direction, ref, delta, position) => {
+          // Update size and position in state
+          setWidgetPositions(prev => {
+            const newMap = new Map(prev);
+            newMap.set(id, {
+              x: position.x,
+              y: position.y,
+              width: parseInt(ref.style.width),
+              height: parseInt(ref.style.height)
+            });
+            return newMap;
+          });
+        }}
       >
         {Components[index]}
       </Rnd>
-    ));
+      );
+    });
 
     setGeneratedComponents(components);
   }, [componentList, activeIndex, hoveringTrashId]);
@@ -124,6 +217,13 @@ function App() {
         oldList.filter((component) => component.id !== id)
       );
       setHoveringTrashId(null);
+      
+      // Remove position from map
+      setWidgetPositions(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
     }
   }
 
