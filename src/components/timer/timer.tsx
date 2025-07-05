@@ -25,6 +25,7 @@ const Timer = () => {
   const [editingSegment, setEditingSegment] = useState<number | null>(null);
   const [tempValue, setTempValue] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [pulseAngle, setPulseAngle] = useState(-90); // Start at top
 
   // Calculate SVG path for the arc
   const getArcPath = (percentage: number) => {
@@ -215,6 +216,34 @@ const Timer = () => {
     }
   }, [inEditMode]);
 
+  // Animate the pulse around the arc when timer is running
+  useEffect(() => {
+    if (isRunning && time > 0) {
+      const startTime = Date.now();
+      let animationFrameId: number;
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        // Complete one rotation per second counter-clockwise (-360 degrees/second)
+        const angle = -90 - (elapsed / 1000) * 360;
+        setPulseAngle(angle % 360);
+        
+        animationFrameId = requestAnimationFrame(animate);
+      };
+      
+      animationFrameId = requestAnimationFrame(animate);
+      
+      return () => {
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+        }
+      };
+    } else {
+      // Reset to top when not running
+      setPulseAngle(-90);
+    }
+  }, [isRunning, time]);
+
   return (
     <>
       <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden @container">
@@ -237,6 +266,20 @@ const Timer = () => {
                   d={getArcPath(time / initialTime)}
                   fill="#5e8b5e"
                 />
+                
+                {/* Animated dash indicator */}
+                {isRunning && time > 0 && (
+                  <g transform={`rotate(${pulseAngle} 50 50)`}>
+                    {/* Small dash on the outside of the arc */}
+                    <rect
+                      x="48"
+                      y="1"
+                      width="4"
+                      height="2"
+                      fill="#5e8b5e"
+                    />
+                  </g>
+                )}
               </svg>
               <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] flex items-center justify-center"
