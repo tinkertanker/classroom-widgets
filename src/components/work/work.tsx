@@ -21,11 +21,11 @@ function Work() {
         { icon: FaPeopleGroup, label: 'Work Together', color: 'text-green-500' },
     ];
 
-    const ping = require('./woosh-230554.mp3');
+    const actionClickSound = require('../../sounds/action_click.mp3');
 
     const plaey = useCallback(() => {
-        new Audio(ping).play();
-    }, [ping]);
+        new Audio(actionClickSound).play();
+    }, [actionClickSound]);
 
     const handleClick = useCallback((e) => {
         if (e.target.closest("#widget1")) {
