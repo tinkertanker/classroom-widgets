@@ -110,7 +110,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                     <button
                         onClick={() => cycleStatus(index)}
                         aria-label="Cycle status"
-                        className={`w-8 h-8 rounded transition-colors duration-200 ${
+                        className={`w-10 h-10 rounded-full flex-shrink-0 transition-colors duration-200 ${
                           statuses[index] === 1 ? "bg-green-500 hover:bg-green-600" :
                           statuses[index] === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
                           statuses[index] === 3 ? "bg-red-500 hover:bg-red-600" :
