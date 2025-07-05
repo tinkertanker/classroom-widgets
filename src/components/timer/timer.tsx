@@ -364,21 +364,21 @@ const Timer = () => {
             </div>
           </div>
         </div>
-        <div className="px-3 pb-3" style={{ height: '32px' }}>
+        <div className="px-3 pb-3" style={{ height: '44px' }}>
           <div className="flex flex-row w-full gap-[5%] h-full">
             {showStart ? (
-              <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
+              <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (
               <>
                 {showPauseResume ?
                   (showResume ? (
-                    <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
+                    <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
                   ) : (
-                    <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
+                    <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
                   )) : (
                     <></>
                   )}
-                <ReusableButton size="sm" colorScheme="sage" height="20px" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
+                <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
               </>
             )}
           </div>
