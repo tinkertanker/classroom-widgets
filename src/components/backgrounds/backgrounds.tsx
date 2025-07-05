@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BackgroundType = 'solid' | 'geometric' | 'gradient' | 'paper' | 'lines' | 'dots';
+export type BackgroundType = 'geometric' | 'gradient' | 'lines' | 'dots';
 
 interface BackgroundProps {
   type: BackgroundType;
@@ -51,46 +51,46 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
       return (
         <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-main)' }} />
+          
+          {/* Layer 1: Dusty rose gradient */}
           <div 
-            className="absolute top-0 left-0 w-[60%] h-[60%] blur-3xl" 
+            className="absolute top-0 left-0 w-[80%] h-[80%] blur-3xl opacity-40" 
             style={{
               background: isDarkMode 
-                ? 'radial-gradient(circle, rgba(59, 90, 59, 0.2) 0%, transparent 70%)'
-                : 'radial-gradient(circle, rgba(168, 195, 168, 0.2) 0%, transparent 70%)'
+                ? 'radial-gradient(ellipse at top left, rgba(212, 132, 122, 0.3) 0%, rgba(168, 105, 97, 0.2) 40%, transparent 70%)'
+                : 'radial-gradient(ellipse at top left, rgba(227, 155, 147, 0.3) 0%, rgba(212, 132, 122, 0.2) 40%, transparent 70%)'
             }}
           />
+          
+          {/* Layer 2: Sage gradient */}
           <div 
-            className="absolute bottom-0 right-0 w-[50%] h-[50%] blur-3xl"
+            className="absolute bottom-0 right-0 w-[70%] h-[70%] blur-3xl opacity-40"
             style={{
               background: isDarkMode
-                ? 'radial-gradient(circle, rgba(120, 66, 42, 0.2) 0%, transparent 70%)'
-                : 'radial-gradient(circle, rgba(217, 167, 157, 0.2) 0%, transparent 70%)'
+                ? 'radial-gradient(ellipse at bottom right, rgba(94, 139, 94, 0.3) 0%, rgba(74, 109, 74, 0.2) 40%, transparent 70%)'
+                : 'radial-gradient(ellipse at bottom right, rgba(168, 195, 168, 0.3) 0%, rgba(138, 161, 138, 0.2) 40%, transparent 70%)'
             }}
           />
+          
+          {/* Layer 3: Terracotta gradient */}
           <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40%] h-[40%] blur-3xl"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] blur-3xl opacity-30"
             style={{
               background: isDarkMode
-                ? 'radial-gradient(circle, rgba(61, 56, 53, 0.3) 0%, transparent 70%)'
-                : 'radial-gradient(circle, rgba(214, 210, 204, 0.3) 0%, transparent 70%)'
+                ? 'radial-gradient(circle at center, rgba(217, 167, 157, 0.25) 0%, rgba(186, 130, 119, 0.2) 30%, transparent 60%)'
+                : 'radial-gradient(circle at center, rgba(237, 192, 183, 0.25) 0%, rgba(217, 167, 157, 0.2) 30%, transparent 60%)'
             }}
           />
-        </div>
-      );
-
-    case 'paper':
-      return (
-        <div className="absolute inset-0" style={{ zIndex: 0 }}>
-          <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-main)' }} />
-          <svg className="absolute inset-0 w-full h-full opacity-[0.15] dark:opacity-[0.05]">
-            <filter id="paper">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise" />
-              <feDiffuseLighting in="noise" lightingColor={isDarkMode ? "#666" : "white"} surfaceScale="1">
-                <feDistantLight azimuth="45" elevation="60" />
-              </feDiffuseLighting>
-            </filter>
-            <rect width="100%" height="100%" filter="url(#paper)" />
-          </svg>
+          
+          {/* Layer 4: Warm gray accent */}
+          <div 
+            className="absolute top-[20%] right-[20%] w-[40%] h-[40%] blur-2xl opacity-30"
+            style={{
+              background: isDarkMode
+                ? 'radial-gradient(circle, rgba(214, 210, 204, 0.2) 0%, transparent 60%)'
+                : 'radial-gradient(circle, rgba(242, 238, 232, 0.2) 0%, transparent 60%)'
+            }}
+          />
         </div>
       );
 
@@ -101,29 +101,59 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
           <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="waves" x="0" y="0" width="400" height="400" patternUnits="userSpaceOnUse">
-                <path d="M0,200 Q100,150 200,200 T400,200" 
+                <path d="M0,50 Q100,25 200,50 T400,50" 
                   stroke="var(--pattern-sage)" 
+                  strokeWidth="2" 
+                  fill="none" 
+                  opacity={isDarkMode ? "0.2" : "0.4"}
+                />
+                <path d="M0,100 Q100,75 200,100 T400,100" 
+                  stroke="var(--pattern-terracotta)" 
+                  strokeWidth="1.5" 
+                  fill="none" 
+                  opacity={isDarkMode ? "0.15" : "0.35"}
+                />
+                <path d="M0,150 Q100,125 200,150 T400,150" 
+                  stroke="var(--pattern-gray)" 
                   strokeWidth="1.5" 
                   fill="none" 
                   opacity={isDarkMode ? "0.2" : "0.4"}
                 />
-                <path d="M0,250 Q100,200 200,250 T400,250" 
+                <path d="M0,200 Q100,175 200,200 T400,200" 
+                  stroke="var(--pattern-sage)" 
+                  strokeWidth="2" 
+                  fill="none" 
+                  opacity={isDarkMode ? "0.25" : "0.45"}
+                />
+                <path d="M0,250 Q100,225 200,250 T400,250" 
                   stroke="var(--pattern-terracotta)" 
                   strokeWidth="1.5" 
                   fill="none" 
                   opacity={isDarkMode ? "0.15" : "0.3"}
                 />
-                <path d="M0,150 Q100,100 200,150 T400,150" 
+                <path d="M0,300 Q100,275 200,300 T400,300" 
                   stroke="var(--pattern-gray)" 
                   strokeWidth="1" 
                   fill="none" 
-                  opacity={isDarkMode ? "0.2" : "0.35"}
+                  opacity={isDarkMode ? "0.15" : "0.35"}
                 />
-                <path d="M0,300 Q100,250 200,300 T400,300" 
+                <path d="M0,350 Q100,325 200,350 T400,350" 
                   stroke="var(--pattern-sage)" 
+                  strokeWidth="1.5" 
+                  fill="none" 
+                  opacity={isDarkMode ? "0.2" : "0.3"}
+                />
+                <path d="M0,25 Q100,50 200,25 T400,25" 
+                  stroke="var(--pattern-terracotta)" 
                   strokeWidth="1" 
                   fill="none" 
-                  opacity={isDarkMode ? "0.15" : "0.25"}
+                  opacity={isDarkMode ? "0.1" : "0.25"}
+                />
+                <path d="M0,375 Q100,350 200,375 T400,375" 
+                  stroke="var(--pattern-gray)" 
+                  strokeWidth="1.5" 
+                  fill="none" 
+                  opacity={isDarkMode ? "0.15" : "0.3"}
                 />
               </pattern>
             </defs>
@@ -137,8 +167,12 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
         <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="10" cy="10" r="1" fill="var(--pattern-sage)" opacity={isDarkMode ? "0.3" : "0.5"} />
+              <pattern id="dots" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
+                <circle cx="15" cy="15" r="3" fill="var(--pattern-sage)" opacity={isDarkMode ? "0.4" : "0.6"} />
+                <circle cx="0" cy="0" r="2" fill="var(--pattern-terracotta)" opacity={isDarkMode ? "0.3" : "0.5"} />
+                <circle cx="30" cy="0" r="2" fill="var(--pattern-terracotta)" opacity={isDarkMode ? "0.3" : "0.5"} />
+                <circle cx="0" cy="30" r="2" fill="var(--pattern-terracotta)" opacity={isDarkMode ? "0.3" : "0.5"} />
+                <circle cx="30" cy="30" r="2" fill="var(--pattern-terracotta)" opacity={isDarkMode ? "0.3" : "0.5"} />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="var(--bg-main)" />
@@ -147,9 +181,12 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
         </div>
       );
 
-    case 'solid':
     default:
-      return <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-main)' }} />;
+      return (
+        <div className="absolute inset-0" style={{ zIndex: 0 }}>
+          <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-main)' }} />
+        </div>
+      );
   }
 };
 

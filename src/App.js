@@ -33,7 +33,7 @@ function App() {
   const [widgetPositions, setWidgetPositions] = useState(new Map());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [widgetStates, setWidgetStates] = useState(new Map());
-  const [backgroundType, setBackgroundType] = useState('solid');
+  const [backgroundType, setBackgroundType] = useState('geometric');
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage for saved preference
     const saved = localStorage.getItem('darkMode');

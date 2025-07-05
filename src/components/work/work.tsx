@@ -15,10 +15,10 @@ function Work() {
     });
 
     const workModes = [
-        { icon: FaVolumeXmark, label: 'Silence', color: 'text-red-500' },
-        { icon: FaVolumeLow, label: 'Whisper', color: 'text-orange-500' },
-        { icon: FaComments, label: 'Ask Neighbour', color: 'text-blue-500' },
-        { icon: FaPeopleGroup, label: 'Work Together', color: 'text-green-500' },
+        { icon: FaVolumeXmark, label: 'Silence', color: 'text-dusty-rose-500' },
+        { icon: FaVolumeLow, label: 'Whisper', color: 'text-terracotta-500' },
+        { icon: FaComments, label: 'Ask Neighbour', color: 'text-sage-600' },
+        { icon: FaPeopleGroup, label: 'Work Together', color: 'text-warm-gray-600' },
     ];
 
     const actionClickSound = require('../../sounds/action_click.mp3');

@@ -481,7 +481,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                                   setSelected([]);
                                 }
                               }}
-                              className="mr-2 w-4 h-4 text-green-500 border-warm-gray-300 rounded focus:ring-green-500"
+                              className="mr-2 w-4 h-4 text-terracotta-500 border-warm-gray-300 rounded focus:ring-terracotta-500"
                             />
                             <span className="text-warm-gray-700 dark:text-warm-gray-300 text-sm">Prevent picked options from repeating</span>
                           </label>
@@ -510,7 +510,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                               onChange={(e) => {
                                 setAnimation(e.target.checked);
                               }}
-                              className="mr-2 w-4 h-4 text-green-500 border-warm-gray-300 rounded focus:ring-green-500"
+                              className="mr-2 w-4 h-4 text-terracotta-500 border-warm-gray-300 rounded focus:ring-terracotta-500"
                             />
                             <span className="text-warm-gray-700 dark:text-warm-gray-300 text-sm">Enable Animation</span>
                           </label>

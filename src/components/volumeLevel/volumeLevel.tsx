@@ -140,7 +140,12 @@ const AudioVolumeMonitor: React.FC = () => {
                 >
                     <div
                         style={{ width: `${volume}%` }}
-                        className={`h-full rounded-md transition-all duration-200 ${volume > threshold ? 'bg-dusty-rose-500' : 'bg-green-500'}`}
+                        className={`h-full rounded-md transition-all duration-200 ${
+                            volume > threshold ? 'bg-dusty-rose-500' : 
+                            volume > 60 ? 'bg-terracotta-500' :
+                            volume > 30 ? 'bg-sage-600' :
+                            'bg-warm-gray-400'
+                        }`}
                     />
                 </div>
                 <div className="flex flex-row mt-4 space-x-4 justify-between">
@@ -150,7 +155,7 @@ const AudioVolumeMonitor: React.FC = () => {
                             {cooldownTime} second{cooldownTime !== 1 ? 's' : ''} remaining
                         </p>
                     ) : (
-                        <p className="text-sm text-green-500">
+                        <p className="text-sm text-sage-600">
                             Bell is ready to play!
                         </p>
                     )}

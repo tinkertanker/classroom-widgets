@@ -142,7 +142,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           {/* More widgets button */}
           <button
             onClick={() => setLaunchpadOpen(true)}
-            className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+            className="px-2.5 py-1.5 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
             title="More widgets"
           >
             <FaTableCells className="w-4 h-4" />
@@ -204,19 +204,6 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => {
-                      setBackgroundType('solid');
-                      setMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
-                      backgroundType === 'solid' 
-                        ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                    }`}
-                  >
-                    Solid
-                  </button>
-                  <button
-                    onClick={() => {
                       setBackgroundType('geometric');
                       setMenuOpen(false);
                     }}
@@ -240,19 +227,6 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     }`}
                   >
                     Gradient
-                  </button>
-                  <button
-                    onClick={() => {
-                      setBackgroundType('paper');
-                      setMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
-                      backgroundType === 'paper' 
-                        ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                    }`}
-                  >
-                    Paper
                   </button>
                   <button
                     onClick={() => {
@@ -309,7 +283,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           )}
           
           <div className="flex items-center space-x-4 ml-auto">
-            <div className="bg-warm-gray-900 dark:bg-warm-gray-950 text-sage-400 dark:text-sage-300 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
+            <div className="bg-warm-gray-200 dark:bg-warm-gray-900 text-terracotta-600 dark:text-sage-400 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
               {formattedTime.split(':').map((part, index) => (
                 <React.Fragment key={index}>
                   {index > 0 && (
@@ -379,7 +353,11 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group"
                 >
-                  <div className="w-16 h-16 bg-sage-500 group-hover:bg-sage-600 rounded-xl flex items-center justify-center transition-colors duration-200">
+                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-200 ${
+                    [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500 group-hover:bg-dusty-rose-600' :
+                    [WIDGET_TYPES.TIMER, WIDGET_TYPES.WORK_SYMBOLS, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500 group-hover:bg-terracotta-600' :
+                    'bg-sage-600 group-hover:bg-sage-700'
+                  }`}>
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200">{component.name}</span>
@@ -441,7 +419,11 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   } ${!isSelected && selectedToolbarWidgets.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    isSelected ? 'bg-sage-500' : 'bg-warm-gray-300 dark:bg-warm-gray-600'
+                    isSelected ? (
+                      [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500' :
+                      [WIDGET_TYPES.TIMER, WIDGET_TYPES.WORK_SYMBOLS, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500' :
+                      'bg-sage-600'
+                    ) : 'bg-warm-gray-300 dark:bg-warm-gray-600'
                   }`}>
                     <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}`} />
                   </div>
@@ -483,7 +465,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   localStorage.setItem('toolbarWidgets', JSON.stringify(selectedToolbarWidgets));
                   setCustomizeToolbarOpen(false);
                 }}
-                className="px-4 py-2 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded-md transition-colors duration-200"
+                className="px-4 py-2 text-sm bg-terracotta-500 hover:bg-terracotta-600 text-white rounded-md transition-colors duration-200"
               >
                 Save Changes
               </button>
