@@ -73,8 +73,11 @@ src/
 1. **Widget Creation**: When adding widgets, always generate a unique ID using uuid()
 2. **Positioning**: New widgets appear at (0,0). The react-rnd library handles drag boundaries
 3. **Z-Index Management**: Active widget should have highest z-index (100 + index)
-4. **Aspect Ratio**: All widgets maintain aspect ratio when resizing except Traffic Light
-5. **Size Constraints**: Default size is 350px, Clock widget uses 150px
+4. **Aspect Ratio**: All widgets maintain aspect ratio when resizing except Traffic Light and Randomiser
+5. **Size Constraints**: 
+   - Default size: 350x350px
+   - Clock widget: 150x150px  
+   - Randomiser widget: 350x250px (landscape orientation)
 6. **Cleanup**: Remove widgets by implementing drag-to-trash functionality
 
 ## Known Issues
@@ -93,14 +96,16 @@ src/
 
 ### Button Styling
 - **Primary buttons**: Use `px-3 py-1.5` padding with `text-sm`
-- **Consistent height**: Button containers should use h-[10%] or similar
+- **Button text**: Place text directly in button element, avoid `<span>` wrappers
+- **Consistent height**: ~24px height achieved through padding, avoid percentage-based heights
+- **Container spacing**: Use `mt-2 pb-3` for button containers to ensure consistent margins
 - **Alignment**: Center buttons using `flex justify-center`
 - **Color scheme**: 
   - Primary actions: bg-teal-500 hover:bg-teal-600
   - Destructive actions: bg-red-500 hover:bg-red-600
   - Secondary actions: bg-yellow-500 hover:bg-yellow-600
 - **Disabled state**: opacity-50 cursor-not-allowed
-- **Vertical text alignment**: Use `flex items-center` on buttons
+- **Buttons with icons**: Use `inline-flex items-center` for proper alignment
 
 ### Layout Principles
 - **Widget centering**: Use `flex items-center` on main containers

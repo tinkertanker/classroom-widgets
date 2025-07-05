@@ -1,13 +1,12 @@
 import * as React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Rnd } from "react-rnd";
-import Transitions from "./transitions.tsx";
+import SlotMachine from "./slotMachine.tsx";
 import Confetti from "react-confetti";
 // import  sound from './yay.mp3';
 
 // Removed Chakra UI imports
 
-let temporarytime = 0;
 let actual_choices: any[];
 
 const sound = require("./yay.mp3");
@@ -24,7 +23,6 @@ function Randomiser({ toggleConfetti }) {
   const [selected, setSelected] = useState<any[]>([]);
   const [clearedstorage, setClearedStorage] = useState(false);
 
-  const [open, setOpen] = useState(true);
   const [buttonsettings, setButtonSettings] = useState("normal");
 
   const [textheight, setTextheight] = useState(0);
@@ -42,11 +40,9 @@ function Randomiser({ toggleConfetti }) {
   // } = useDisclosure();
 
   const [animation, setAnimation] = useState(true);
-  const [animationtracker, setAnimationtracker] = useState(0);
-  const [animationcount, setAnimationcount] = useState(30);
   const [animationspeed, setAnimationspeed] = useState(0.04);
-  const [slowanimation, setSlowanimation] = useState(0);
-  const [animationtransition, setAnimationtransition] = useState("ScaleFade");
+  const [selectedItemIndex, setSelectedItemIndex] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   const [loading, setLoading] = useState(false);
 
@@ -87,7 +83,6 @@ function Randomiser({ toggleConfetti }) {
         ];
       }
 
-      setAnimationtracker(0);
     } else {
       setResult("Nothing to randomise! Click me to enter a list to randomise!");
       setInput("");
@@ -129,59 +124,33 @@ function Randomiser({ toggleConfetti }) {
     setChoices(temporarychoices);
   }, [input]);
 
-  // Recursive use effect that acts like a for loop and works, normal for loop doesnt work cause setInterval is async
+  // Slot machine animation effect
   useEffect(() => {
     if (loading === true) {
-      if (animationtracker < animationcount) {
-        setTimeout(() => {
-          let temporaryslowness = 0;
-          if (animationtracker > animationcount * 0.6) {
-            temporaryslowness = slowanimation + 0.01;
-          }
-          setSlowanimation(temporaryslowness);
-          setOpen(false);
-          setTimeout(() => {
-            setResult(actual_choices[animationtracker % actual_choices.length]);
-            setOpen(true);
-            setAnimationtracker(animationtracker + 1);
-          }, (animationspeed + temporaryslowness) * 1000);
-        }, (animationspeed + slowanimation) * 2 * 1000);
-      } else if (animationtracker === animationcount) {
-        setTimeout(function () {
-          setOpen(false);
-          setTimeout(
-            function () {
-              let placeholder =
-                actual_choices[
-                  Math.floor(Math.random() * actual_choices.length)
-                ];
-              setResult(placeholder);
-              if (remember) {
-                setSelected([...selected, placeholder]);
-              }
-              setOpen(true);
-              setSlowanimation(0);
-              actual_choices = [];
-              setButtonSettings("result");
-              setLoading(false);
-              toggleConfetti(true); // Start confetti
-              // setUseconfetti(true)
-              yay.play();
-
-              // setTimeout(
-              //   function () {
-              //     // onresultOpen();
-              //     setUseconfetti(false);
-              //   },
-              //   3000
-              // );
-            },
-            animation ? 500 : 20
-          );
-        }, (animation ? animationspeed : 0.02 + slowanimation) * 2 * 1000);
-      }
+      // Select a random index from actual_choices
+      const randomIndex = Math.floor(Math.random() * actual_choices.length);
+      setSelectedItemIndex(randomIndex);
+      setIsSpinning(true);
+      
+      // Duration based on animation settings - increased 3x
+      const spinDuration = animation ? (animationspeed * 1000 * 90) : 1500;
+      
+      // Set result after spinning completes
+      setTimeout(() => {
+        const selectedItem = actual_choices[randomIndex];
+        setResult(selectedItem);
+        if (remember) {
+          setSelected([...selected, selectedItem]);
+        }
+        actual_choices = [];
+        setButtonSettings("result");
+        setLoading(false);
+        setIsSpinning(false);
+        toggleConfetti(true);
+        yay.play();
+      }, spinDuration);
     }
-  }, [animationtracker, loading]);
+  }, [loading]);
 
   const textRef = useCallback((node) => {
     if (node !== null) {
@@ -205,10 +174,6 @@ function Randomiser({ toggleConfetti }) {
     }
   }, []);
 
-  // I dont know why this works but it fixes a problem with the animation in swapy so dont touch it
-  useEffect(() => {
-    setAnimationtransition("SlideFade");
-  }, []);
   return (
     <>
       {/* {useconfetti && (
@@ -256,62 +221,62 @@ function Randomiser({ toggleConfetti }) {
                   alignItems: textheight > boxheight ? "start" : "center"
                 }}
               >
-                <div
-                  className="flex justify-center items-center w-[95%]"
-                >
-                  <Transitions
-                    choice={animationtransition}
-                    open={open}
-                    animationspeed={animationspeed}
-                    slowanimation={slowanimation}
-                  >
+                {choices.length > 0 ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <SlotMachine
+                      items={choices}
+                      selectedIndex={selectedItemIndex}
+                      isSpinning={isSpinning}
+                      duration={animation ? (animationspeed * 1000 * 90) : 1500}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center w-[95%]">
                     <p
                       className="whitespace-normal break-words text-2xl text-center text-gray-800"
                       ref={textRef}
                     >
                       {result}
                     </p>
-                  </Transitions>
-                </div>
+                  </div>
+                )}
               </div>
             </button>
             {buttonsettings === "normal" ? (
-              <div className="flex w-full h-[10%] justify-center">
+              <div className="flex w-full justify-center mt-2 pb-3">
                 <button
-                  className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={()=>handlerandomise()}
                   disabled={loading}
                 >
-                  <span className="text-sm">Randomise!!</span>
+                  Randomise!!
                 </button>
               </div>
             ) : buttonsettings === "result" ? (
-              <div className="flex flex-row w-full h-[10%] justify-center gap-2">
+              <div className="flex flex-row w-full justify-center gap-2 mt-2 pb-3">
                 <button
-                  className={`px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center ${loading ? 'hidden' : ''}`}
+                  className={`px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
                   disabled={remember ? true : pressedDisable}
                   onClick={() => {
                     setSelected([...selected, result]);
                     setpressedDisable(true);
                   }}
                 >
-                  <span className="text-sm">
-                    {remember
-                      ? "Option removed"
-                      : pressedDisable
-                      ? "Option removed"
-                      : "Remove option"}
-                  </span>
+                  {remember
+                    ? "Option removed"
+                    : pressedDisable
+                    ? "Option removed"
+                    : "Remove option"}
                 </button>
                 <button
                   disabled={loading}
                   ref={initialResultFocus}
-                  className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-3 py-1.5 bg-teal-500 hover:bg-teal-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => {
                     handlerandomise();
                   }}
                 >
-                  <span className="text-sm">Again!</span>
+                  Again!
                 </button>
               </div>
             ) : null}
@@ -412,7 +377,7 @@ function Randomiser({ toggleConfetti }) {
                             <div className="flex space-x-2">
                               <div className="relative">
                                 <button
-                                  className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded transition-colors duration-200 flex items-center"
+                                  className="px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
                                   onClick={() => setMenuOpen(!menuOpen)}
                                 >
                                   Suggestions
@@ -513,58 +478,11 @@ function Randomiser({ toggleConfetti }) {
                               defaultChecked={animation}
                               onChange={(e) => {
                                 setAnimation(e.target.checked);
-                                if (e.target.checked === false) {
-                                  temporarytime = animationcount;
-                                  setAnimationcount(0);
-                                } else {
-                                  setAnimationcount(temporarytime);
-                                }
                               }}
                               className="mr-2 w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
                             />
                             <span className="text-gray-700 text-sm">Enable Animation</span>
                           </label>
-                          <p className="pt-2.5 pb-1.5 text-gray-700 text-sm">
-                            Animation Type
-                          </p>
-                          <div className="flex flex-row space-x-4">
-                            <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
-                              <input
-                                type="radio"
-                                name="animationType"
-                                value="Fade"
-                                checked={animationtransition === "Fade"}
-                                onChange={(e) => setAnimationtransition(e.target.value)}
-                                disabled={!animation}
-                                className="mr-2"
-                              />
-                              <span className="text-gray-700 text-sm">Fade</span>
-                            </label>
-                            <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
-                              <input
-                                type="radio"
-                                name="animationType"
-                                value="ScaleFade"
-                                checked={animationtransition === "ScaleFade"}
-                                onChange={(e) => setAnimationtransition(e.target.value)}
-                                disabled={!animation}
-                                className="mr-2"
-                              />
-                              <span className="text-gray-700 text-sm">ScaleFade</span>
-                            </label>
-                            <label className={`flex items-center ${!animation ? 'opacity-50' : ''}`}>
-                              <input
-                                type="radio"
-                                name="animationType"
-                                value="SlideFade"
-                                checked={animationtransition === "SlideFade"}
-                                onChange={(e) => setAnimationtransition(e.target.value)}
-                                disabled={!animation}
-                                className="mr-2"
-                              />
-                              <span className="text-gray-700 text-sm">SlideFade</span>
-                            </label>
-                          </div>
                           <p className="pt-2.5 pb-1.5 text-gray-700 text-sm">
                             Animation Duration
                           </p>
@@ -572,10 +490,10 @@ function Randomiser({ toggleConfetti }) {
                             <input
                               type="range"
                               disabled={!animation}
-                              defaultValue={animation ? animationcount : temporarytime}
-                              min={0}
+                              defaultValue={15}
+                              min={5}
                               max={30}
-                              onChange={(e) => setAnimationcount(Number(e.target.value))}
+                              onChange={(e) => setAnimationspeed(Number(e.target.value) / 300)}
                               className={`w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer ${!animation ? 'opacity-50' : ''}`}
                             />
                             <div className="flex justify-between text-sm mt-2">

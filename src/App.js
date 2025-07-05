@@ -45,13 +45,13 @@ function App() {
           x: 0,
           y: 0,
           width: index === 4 ? "150px" : "350px",
-          height: index === 4 ? "150px" : "350px",
+          height: index === 4 ? "150px" : index === 0 ? "250px" : "350px",
         }}
         minWidth={index === 4 ? "150px" : "200px"}
-        minHeight={index === 4 ? "150px" : "200px"}
+        minHeight={index === 4 ? "150px" : index === 0 ? "150px" : "200px"}
         key={id}
         id={id}
-        lockAspectRatio={index === 5 ? false : true}
+        lockAspectRatio={index === 5 || index === 0 ? false : true}
         enableUserSelectHack={true}
         bounds="parent"
         // dragGrid={[100, 100]} // can implement grid if future interns want
