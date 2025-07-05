@@ -11,7 +11,7 @@ interface ListProps {
 
 const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   const [inputs, setInputs] = useState<string[]>(savedState?.inputs || []);
-  const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || []); // 0: none, 1: green, 2: yellow, 3: red
+  const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || []); // 0: none, 1: green, 2: yellow, 3: red, 4: faded
 
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
@@ -54,7 +54,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
 
   const cycleStatus = (index: number) => {
     const updatedStatuses = [...statuses];
-    updatedStatuses[index] = (updatedStatuses[index] + 1) % 4; // Cycle through 0, 1, 2, 3
+    updatedStatuses[index] = (updatedStatuses[index] + 1) % 5; // Cycle through 0, 1, 2, 3, 4
     setStatuses(updatedStatuses);
   };
   // useEffect(() => {
@@ -114,6 +114,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                           statuses[index] === 1 ? "bg-green-500 hover:bg-green-600" :
                           statuses[index] === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
                           statuses[index] === 3 ? "bg-red-500 hover:bg-red-600" :
+                          statuses[index] === 4 ? "bg-warm-gray-400 hover:bg-warm-gray-500" :
                           "bg-warm-gray-200 hover:bg-warm-gray-300"
                         }`}
                       >
@@ -124,15 +125,18 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                         value={input}
                         onChange={(e) => handleInputChange(index, e.target.value)}
                         placeholder="Type away!"
-                        className={`w-full px-3 py-2 pr-10 rounded text-warm-gray-800 placeholder-warm-gray-500 transition-colors duration-200 ${
-                          statuses[index] === 1 ? "bg-green-100 hover:bg-green-200" :
-                          statuses[index] === 2 ? "bg-yellow-100 hover:bg-yellow-200" :
-                          statuses[index] === 3 ? "bg-red-100 hover:bg-red-200" :
-                          "bg-warm-gray-100 hover:bg-warm-gray-200"
+                        className={`w-full px-3 py-2 pr-10 rounded placeholder-warm-gray-500 transition-colors duration-200 ${
+                          statuses[index] === 1 ? "bg-green-100 hover:bg-green-200 text-warm-gray-800" :
+                          statuses[index] === 2 ? "bg-yellow-100 hover:bg-yellow-200 text-warm-gray-800" :
+                          statuses[index] === 3 ? "bg-red-100 hover:bg-red-200 text-warm-gray-800" :
+                          statuses[index] === 4 ? "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-300" :
+                          "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-800"
                         }`}
                       />
                       <button
-                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded text-warm-gray-800 hover:bg-dusty-rose-600 hover:text-white transition-colors duration-200"
+                        className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-dusty-rose-600 hover:text-white transition-colors duration-200 ${
+                          statuses[index] === 4 ? "text-warm-gray-300" : "text-warm-gray-800"
+                        }`}
                         aria-label="Delete Task"
                         onClick={() => handleDeleteInput(index)}
                         tabIndex={-1}
