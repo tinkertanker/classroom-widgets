@@ -48,28 +48,28 @@ function App() {
   // Find a non-overlapping position for a new widget
   const findAvailablePosition = (widgetWidth, widgetHeight) => {
     const padding = 20; // Minimum space between widgets
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-    const toolbarHeight = 80; // Approximate toolbar height
+    const boardWidth = 3000; // Board width
+    const boardHeight = 2000; // Board height
+    const scrollContainer = document.querySelector('.board-scroll-container');
+    const viewportCenterX = scrollContainer ? scrollContainer.scrollLeft + window.innerWidth / 2 : window.innerWidth / 2;
+    const viewportCenterY = scrollContainer ? scrollContainer.scrollTop + window.innerHeight / 2 : window.innerHeight / 2;
     
     // Try grid positions starting from top-left
     const gridSize = 50; // Grid step size
     const maxAttempts = 50;
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // Try positions in a spiral pattern from center
+      // Try positions in a spiral pattern from viewport center
       const angle = attempt * 0.5;
       const radius = attempt * 15;
-      const centerX = windowWidth / 2;
-      const centerY = (windowHeight - toolbarHeight) / 2;
       
       const x = Math.max(padding, Math.min(
-        centerX + Math.cos(angle) * radius - widgetWidth / 2,
-        windowWidth - widgetWidth - padding
+        viewportCenterX + Math.cos(angle) * radius - widgetWidth / 2,
+        boardWidth - widgetWidth - padding
       ));
       const y = Math.max(padding, Math.min(
-        centerY + Math.sin(angle) * radius - widgetHeight / 2,
-        windowHeight - widgetHeight - toolbarHeight - padding
+        viewportCenterY + Math.sin(angle) * radius - widgetHeight / 2,
+        boardHeight - widgetHeight - padding
       ));
       
       // Check if this position overlaps with any existing widget
@@ -91,10 +91,10 @@ function App() {
       }
     }
     
-    // If no position found, use random position
+    // If no position found, use random position near viewport center
     return {
-      x: Math.round(Math.random() * (windowWidth - widgetWidth - padding * 2) + padding),
-      y: Math.round(Math.random() * (windowHeight - widgetHeight - toolbarHeight - padding * 2) + padding)
+      x: Math.round(viewportCenterX - widgetWidth / 2 + (Math.random() - 0.5) * 400),
+      y: Math.round(viewportCenterY - widgetHeight / 2 + (Math.random() - 0.5) * 400)
     };
   };
 
@@ -244,7 +244,7 @@ function App() {
         id={id}
         lockAspectRatio={index === WIDGET_TYPES.LOUDNESS_MONITOR || index === WIDGET_TYPES.RANDOMISER || index === WIDGET_TYPES.TEXT_BANNER || index === WIDGET_TYPES.IMAGE_DISPLAY || index === WIDGET_TYPES.SOUND_EFFECTS || index === WIDGET_TYPES.LIST ? false : index === WIDGET_TYPES.TIMER ? (350 / 406) : true}
         enableUserSelectHack={true}
-        bounds="parent"
+        bounds="#widget-board"
         // dragGrid={[100, 100]} // can implement grid if future interns want
         // resizeGrid={[1, 1]}
         style={{
@@ -320,6 +320,7 @@ function App() {
     const extendedHeight = trashLocation.height * 2; // Double the height
     const extendedTop = trashLocation.y - trashLocation.height; // Extend upward by one trash height
     
+    // x and y are already in viewport coordinates from the drag event
     return (
       x >= trashLocation.x &&
       x <= trashLocation.x + trashLocation.width &&
@@ -360,56 +361,61 @@ function App() {
     <>
       <meta charset="UTF-8" />
       <div className="App">
-        <Background type={backgroundType} />
-        <header className="App-header">
-          <div className="flex flex-col w-full h-full justify-center items-center">
-            {/* Fullscreen button */}
-            <button
-              onClick={toggleFullscreen}
-              className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        {/* Fixed UI elements */}
+        <div className="fixed-ui">
+          {/* Fullscreen button */}
+          <button
+            onClick={toggleFullscreen}
+            className="fixed top-4 right-4 z-[999] p-2 bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {isFullscreen ? (
-                  // Exit fullscreen icon
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
-                  />
-                ) : (
-                  // Enter fullscreen icon
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                  />
-                )}
-              </svg>
-            </button>
-            <div className="absolute right-2.5 left-2.5 top-2.5 bottom-2.5">
-              {generatedComponents}
-            </div>
-            <div className="toolbar-container w-full h-[10%] mb-2.5">
-              <Toolbar 
-                setComponentList={setComponentList} 
-                activeIndex={activeIndex} 
-                setActiveIndex={setActiveIndex} 
-                hoveringTrash={hoveringTrashId !== null}
-                backgroundType={backgroundType}
-                setBackgroundType={setBackgroundType}
-              />
-            </div>
+              {isFullscreen ? (
+                // Exit fullscreen icon
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
+                />
+              ) : (
+                // Enter fullscreen icon
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                />
+              )}
+            </svg>
+          </button>
+          
+          {/* Fixed toolbar */}
+          <div className="toolbar-container">
+            <Toolbar 
+              setComponentList={setComponentList} 
+              activeIndex={activeIndex} 
+              setActiveIndex={setActiveIndex} 
+              hoveringTrash={hoveringTrashId !== null}
+              backgroundType={backgroundType}
+              setBackgroundType={setBackgroundType}
+            />
           </div>
-        </header>
+        </div>
+        
+        {/* Scrollable board */}
+        <div className="board-scroll-container">
+          <div className="board" id="widget-board">
+            <Background type={backgroundType} />
+            {generatedComponents}
+          </div>
+        </div>
       </div>
       {useconfetti && (
         <Confetti

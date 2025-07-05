@@ -6,29 +6,38 @@
 }
 
 .App {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
   position: relative;
   width: 100vw;
   height: 100vh;
+  overflow: hidden;
 }
 
-
-.App-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: #4a5568;
-  padding: 0;
-  width:100vw;
-  height:100vh;
-  overflow: hidden;
+.fixed-ui {
   position: relative;
-  z-index: 1;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.fixed-ui > * {
+  pointer-events: auto;
+}
+
+.board-scroll-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: auto;
+  scroll-behavior: smooth;
+}
+
+.board {
+  position: relative;
+  width: 3000px;
+  height: 2000px;
+  min-width: 100vw;
+  min-height: 100vh;
 }
 
 .toolbar-container {
@@ -39,4 +48,5 @@
   display: flex;
   justify-content: center;
   z-index: 999;
+  padding-bottom: 10px;
 }
