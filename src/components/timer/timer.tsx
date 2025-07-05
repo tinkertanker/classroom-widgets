@@ -22,8 +22,9 @@ const Timer = () => {
   // Initialize values based on initialTime (10 seconds)
   const [values, setValues] = useState(['00', '00', '10']);
   const [timeValues, setTimeValues] = useState([0, 0, 10]);
-  const inputDisplays = ["hh", "mm", "ss"];
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [editingSegment, setEditingSegment] = useState<number | null>(null);
+  const [tempValue, setTempValue] = useState('');
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Calculate SVG path for the arc
   const getArcPath = (percentage: number) => {
@@ -61,16 +62,52 @@ const Timer = () => {
     return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
   };
 
-  const handleChange = (e, index) => {
-    const newValues = [...values];
-    if (/^[0-9]*$/.test(e.target.value)) {
-      newValues[index] = e.target.value;
+  const handleSegmentClick = (index: number) => {
+    if (!isRunning) {
+      setEditingSegment(index);
+      setTempValue(values[index]);
+      setTimeout(() => inputRef.current?.select(), 0);
     }
-    setValues(newValues);
-    setTimeValues(newValues.map((x) => Number(x)));
+  };
 
-    if (e.target.value.length === 2 && index < inputRefs.current.length - 1) {
-      inputRefs.current[index + 1]?.focus();
+  const handleSegmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (/^[0-9]*$/.test(value) && value.length <= 2) {
+      setTempValue(value);
+    }
+  };
+
+  const handleSegmentBlur = () => {
+    if (editingSegment !== null) {
+      const newValues = [...values];
+      const numValue = parseInt(tempValue) || 0;
+      
+      // Validate ranges
+      let validValue = numValue;
+      if (editingSegment === 0) { // hours
+        validValue = Math.min(99, numValue);
+      } else { // minutes or seconds
+        validValue = Math.min(59, numValue);
+      }
+      
+      newValues[editingSegment] = validValue.toString().padStart(2, '0');
+      setValues(newValues);
+      setTimeValues(newValues.map((x) => Number(x)));
+      setEditingSegment(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSegmentBlur();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      handleSegmentBlur();
+      const nextSegment = editingSegment !== null ? (editingSegment + 1) % 3 : 0;
+      handleSegmentClick(nextSegment);
+    } else if (e.key === 'Escape') {
+      setEditingSegment(null);
+      setTempValue('');
     }
   };
 
@@ -107,7 +144,7 @@ const Timer = () => {
 
     let finalValues = timeValues.map((a, i) => a+changes[i]);
     setTimeValues(finalValues);
-    setValues(finalValues.map((a) => String(a).length<2 ? '0'+String(a) : String(a)));
+    setValues(finalValues.map((a) => String(a).padStart(2, '0')));
     setInitialTime(isResume ? incomingTime-time+initialTime : incomingTime);
     setTime(incomingTime);
     setTimeout(() => setChangeTime(changeTime+1), 1000);
@@ -139,7 +176,7 @@ const Timer = () => {
     actualValues[2] = initialTime % 60;
 
     setTimeValues(actualValues);
-    setValues(actualValues.map((a) => String(a)));
+    setValues(actualValues.map((a) => String(a).padStart(2, '0')));
   };
 
   // Timer logic
@@ -161,7 +198,7 @@ const Timer = () => {
 
         let finalValues = timeValues.map((a, i) => a+changes[i]);
         setTimeValues(finalValues);
-        setValues(finalValues.map((a) => String(a).length<2 ? '0'+String(a) : String(a)));
+        setValues(finalValues.map((a) => String(a).padStart(2, '0')));
         setTime(time-1);
         setTimeout(() => setChangeTime(changeTime+1), 1000);
       }
@@ -170,16 +207,17 @@ const Timer = () => {
     }
   }, [changeTime]);
 
-  // Focus first input when entering edit mode
+  // When entering edit mode, you can click on any segment to edit
   useEffect(() => {
-    if (inEditMode && inputRefs.current[0]) {
-      inputRefs.current[0].focus();
+    if (inEditMode) {
+      // Reset editing state when entering edit mode
+      setEditingSegment(null);
     }
   }, [inEditMode]);
 
   return (
     <>
-      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden">
+      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden @container">
         <div className="h-[85%] py-1">
           <div className="w-full h-full py-1 relative">
             {/* Custom Circular Progress */}
@@ -201,42 +239,77 @@ const Timer = () => {
                 />
               </svg>
               <div
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] flex items-center justify-center"
               >
                 {isRunning && !inEditMode ? (
                   /* DISPLAY MODE */
-                  <div className="flex flex-col items-center space-y-1 pt-6 cursor-pointer" onClick={pauseTimer}>
-                    <div className="flex flex-row items-center space-x-2">
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-warm-gray-800">{values[0]}</span>
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-warm-gray-800">:</span>
-                      <span className="text-[clamp(1rem,7vw,6rem)] leading-none text-warm-gray-800">{values[1]}</span>
-                    </div>
-                    <span className="text-[clamp(1rem,5vw,2rem)] text-warm-gray-800">{values[2]}</span>
+                  <div className="flex items-center justify-center w-full h-full cursor-pointer" onClick={pauseTimer}>
+                    {time >= 3600 ? (
+                      // Show hours:minutes:seconds - smaller text to fit
+                      <div className="flex items-center text-[length:clamp(1.5rem,15cqmin,5rem)]">
+                        <span className="leading-none text-warm-gray-800 font-bold">{values[0]}</span>
+                        <span className="leading-none text-warm-gray-800 font-bold">:</span>
+                        <span className="leading-none text-warm-gray-800 font-bold">{values[1]}</span>
+                        <span className="leading-none text-warm-gray-800 font-bold">:</span>
+                        <span className="leading-none text-warm-gray-800 font-bold">{values[2]}</span>
+                      </div>
+                    ) : time >= 60 ? (
+                      // Show minutes:seconds - medium text
+                      <div className="flex items-center text-[length:clamp(2rem,25cqmin,7rem)]">
+                        <span className="leading-none text-warm-gray-800 font-bold">{values[1]}</span>
+                        <span className="leading-none text-warm-gray-800 font-bold">:</span>
+                        <span className="leading-none text-warm-gray-800 font-bold">{values[2]}</span>
+                      </div>
+                    ) : (
+                      // Show only seconds - largest text
+                      <div className="flex items-center text-[length:clamp(3rem,35cqmin,9rem)]">
+                        <span className="leading-none text-warm-gray-800 font-bold">{time}</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  /* EDIT MODE */
-                  <div className="flex flex-row items-center space-x-1">
-                    {values.map((val, idx) => (
-                      <React.Fragment key={idx}>
-                        <input
-                          ref={el => inputRefs.current[idx] = el}
-                          value={val}
-                          placeholder={inputDisplays[idx]}
-                          onChange={(e) => handleChange(e, idx)}
-                          onFocus={(e) => e.target.select()}
-                          maxLength={2}
-                          readOnly={isRunning && !inEditMode}
-                          className="w-16 px-0 py-3 text-lg text-center text-warm-gray-800 placeholder-gray-400 border border-warm-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                        
-                        {/* Add a colon after each input, except the last one */}
-                        {idx < values.length - 1 && (
-                          <span className="text-2xl leading-none text-warm-gray-800">
-                            :
-                          </span>
-                        )}
-                      </React.Fragment>
-                    ))}
+                  /* EDIT MODE - Inline Editable Display */
+                  <div className="flex flex-col items-center">
+                    <div className="flex flex-row items-center">
+                      {values.map((val, idx) => (
+                        <React.Fragment key={idx}>
+                          {editingSegment === idx ? (
+                            <input
+                              ref={inputRef}
+                              type="text"
+                              value={tempValue}
+                              onChange={handleSegmentChange}
+                              onBlur={handleSegmentBlur}
+                              onKeyDown={handleKeyDown}
+                              className="w-[clamp(3rem,10vw,5rem)] text-[clamp(2rem,8vw,4rem)] text-center text-warm-gray-800 bg-warm-gray-100 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
+                              autoFocus
+                            />
+                          ) : (
+                            <span
+                              onClick={() => handleSegmentClick(idx)}
+                              className={`text-[clamp(2rem,8vw,4rem)] leading-none text-warm-gray-800 cursor-pointer hover:bg-warm-gray-100 px-1 rounded-md transition-colors ${
+                                !isRunning ? 'hover:text-sage-600' : ''
+                              }`}
+                              title={!isRunning ? 'Click to edit' : ''}
+                            >
+                              {val}
+                            </span>
+                          )}
+                          
+                          {/* Colon separator */}
+                          {idx < values.length - 1 && (
+                            <span className="text-[clamp(2rem,8vw,4rem)] leading-none text-warm-gray-800 mx-0">
+                              :
+                            </span>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                    {!isRunning && editingSegment === null && (
+                      <div className="text-xs text-warm-gray-500 mt-1">
+                        <span>Click to edit</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -246,18 +319,18 @@ const Timer = () => {
         <div className="h-[15%] pt-0 px-4 pb-4">
           <div className="flex flex-row w-full gap-[5%] h-full">
             {showStart ? (
-              <ReusableButton size="sm" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
+              <ReusableButton size="sm" colorScheme="sage" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
             ) : (
               <>
                 {showPauseResume ?
                   (showResume ? (
-                    <ReusableButton size="sm" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
+                    <ReusableButton size="sm" colorScheme="sage" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
                   ) : (
-                    <ReusableButton size="sm" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
+                    <ReusableButton size="sm" colorScheme="sage" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
                   )) : (
                     <></>
                   )}
-                <ReusableButton size="sm" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
+                <ReusableButton size="sm" colorScheme="sage" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
               </>
             )}
           </div>
