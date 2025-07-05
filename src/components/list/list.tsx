@@ -122,7 +122,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
 
   return (
     <>
-      <div ref={containerRef} className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full flex flex-col">
+      <div ref={containerRef} className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col">
         <div className="flex-1 overflow-y-auto px-4 pt-4">
           <div className="pt-0">
             <div className={`flex flex-col pt-0 ${isLarge ? "space-y-2" : "space-y-1"}`}>
@@ -136,7 +136,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                           statuses[index] === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
                           statuses[index] === 3 ? "bg-red-500 hover:bg-red-600" :
                           statuses[index] === 4 ? "bg-warm-gray-400 hover:bg-warm-gray-500" :
-                          "bg-warm-gray-200 hover:bg-warm-gray-300"
+                          "bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-500"
                         } ${
                           isLarge ? "w-12 h-12" : "w-8 h-8"
                         }`}
@@ -148,19 +148,19 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                         value={input}
                         onChange={(e) => handleInputChange(index, e.target.value)}
                         placeholder="Type away!"
-                        className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 transition-colors duration-200 ${
-                          statuses[index] === 1 ? "bg-green-100 hover:bg-green-200 text-warm-gray-800" :
-                          statuses[index] === 2 ? "bg-yellow-100 hover:bg-yellow-200 text-warm-gray-800" :
-                          statuses[index] === 3 ? "bg-red-100 hover:bg-red-200 text-warm-gray-800" :
-                          statuses[index] === 4 ? "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-300" :
-                          "bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-800"
+                        className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 dark:placeholder-warm-gray-400 transition-colors duration-200 ${
+                          statuses[index] === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                          statuses[index] === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                          statuses[index] === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                          statuses[index] === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
+                          "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
                         } ${
                           isLarge ? "text-2xl py-3" : "text-sm py-2"
                         }`}
                       />
                       <button
                         className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-dusty-rose-600 hover:text-white transition-colors duration-200 ${
-                          statuses[index] === 4 ? "text-warm-gray-300" : "text-warm-gray-800"
+                          statuses[index] === 4 ? "text-warm-gray-300 dark:text-warm-gray-500" : "text-warm-gray-800 dark:text-warm-gray-200"
                         }`}
                         aria-label="Delete Task"
                         onClick={() => handleDeleteInput(index)}
@@ -176,9 +176,9 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
             </div>
           </div>
         </div>
-        <div className="p-4 border-t flex items-center">
+        <div className="p-4 border-t dark:border-warm-gray-700 flex items-center">
           <button
-            className={`px-3 bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200 ${
+            className={`px-3 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200 ${
               isLarge ? "text-base py-2" : "text-sm py-1.5"
             }`}
             onClick={handleAddInput}

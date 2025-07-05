@@ -137,7 +137,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   };
 
   return (
-    <div className="w-full h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 p-2 overflow-y-auto">
+    <div className="w-full h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 p-2 overflow-y-auto">
       <div className="flex flex-col gap-1 h-full">
         {soundButtons.map((sound, index) => {
           const Icon = sound.icon;

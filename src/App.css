@@ -1,3 +1,19 @@
+:root {
+  --bg-main: #f7f5f2;
+  --pattern-sage: #a8c3a8;
+  --pattern-terracotta: #d9a79d;
+  --pattern-gray: #d6d2cc;
+  --timer-arc: #5e8b5e;
+}
+
+.dark {
+  --bg-main: #1a1917;
+  --pattern-sage: #3b5a3b;
+  --pattern-terracotta: #78422a;
+  --pattern-gray: #3d3835;
+  --timer-arc: #7fa57f;
+}
+
 .shadow-red {
   box-shadow: red;
 }
@@ -10,6 +26,7 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  transition: background-color 0.3s ease;
 }
 
 .fixed-ui {

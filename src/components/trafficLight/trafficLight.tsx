@@ -84,9 +84,9 @@ function TrafficLight() {
 
   return (
     <>
-      <div className="bg-soft-white rounded-md shadow-sm border border-warm-gray-200 w-full h-full" id="baller">
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-md shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full" id="baller">
         <div
-          className="rounded-md flex flex-row w-full h-full bg-soft-white"
+          className="rounded-md flex flex-row w-full h-full bg-soft-white dark:bg-warm-gray-800"
           ref={boxRef}
         >
           <div
@@ -118,9 +118,9 @@ function TrafficLight() {
           </div>
           <div
             id="balls"
-            className="flex flex-col bg-soft-white h-full justify-evenly flex-grow px-4"
+            className="flex flex-col bg-soft-white dark:bg-warm-gray-800 h-full justify-evenly flex-grow px-4"
           >
-          <h1 className="text-warm-gray-800">
+          <h1 className="text-warm-gray-800 dark:text-warm-gray-200">
             {state.activeLight === "#ff0000" && "Teacher's turn to speak. Be attentive and quiet."}
             {state.activeLight === "#ffff00" && "Work on your own quietly."}
             {state.activeLight === "#00ff00" && "Discuss with your partners using your inside voice."}

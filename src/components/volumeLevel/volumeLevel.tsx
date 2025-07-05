@@ -105,15 +105,15 @@ const AudioVolumeMonitor: React.FC = () => {
 
     return (
         <div
-            className="w-full h-full border border-warm-gray-200 rounded-md shadow-sm overflow-hidden flex flex-col bg-soft-white"
+            className="w-full h-full border border-warm-gray-200 dark:border-warm-gray-700 rounded-md shadow-sm overflow-hidden flex flex-col bg-soft-white dark:bg-warm-gray-800"
         >
             <div className="p-4">
-                <h3 className="text-base font-semibold mb-2 text-warm-gray-800">
+                <h3 className="text-base font-semibold mb-2 text-warm-gray-800 dark:text-warm-gray-200">
                     Sound Monitor
                 </h3>
                 <div className="flex flex-col space-y-4">
                     <div>
-                        <p className="text-sm mb-2 text-warm-gray-700">
+                        <p className="text-sm mb-2 text-warm-gray-700 dark:text-warm-gray-300">
                             Set Volume Threshold
                         </p>
                         <input
@@ -125,18 +125,18 @@ const AudioVolumeMonitor: React.FC = () => {
                             aria-label='Volume Threshold'
                             className="w-full"
                         />
-                        <p className="mt-2 text-sm text-warm-gray-700">
+                        <p className="mt-2 text-sm text-warm-gray-700 dark:text-warm-gray-300">
                             Threshold: {threshold}
                         </p>
                     </div>
                     <div>
-                        <p className="text-sm text-warm-gray-700">Volume Level: {volume.toFixed(2)}</p>
+                        <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300">Volume Level: {volume.toFixed(2)}</p>
                     </div>
                 </div>
             </div>
             <div className="flex-1 p-4">
                 <div
-                    className="w-full h-5 bg-warm-gray-200 rounded-md relative"
+                    className="w-full h-5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-md relative"
                 >
                     <div
                         style={{ width: `${volume}%` }}
@@ -144,7 +144,7 @@ const AudioVolumeMonitor: React.FC = () => {
                     />
                 </div>
                 <div className="flex flex-row mt-4 space-x-4 justify-between">
-                    <p className="text-sm text-warm-gray-700">Cooldown Timer:</p>
+                    <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300">Cooldown Timer:</p>
                     {isCooldownRef.current ? (
                         <p className="text-sm text-dusty-rose-500">
                             {cooldownTime} second{cooldownTime !== 1 ? 's' : ''} remaining

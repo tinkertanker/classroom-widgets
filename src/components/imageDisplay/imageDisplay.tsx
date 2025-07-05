@@ -107,12 +107,12 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
   return (
     <div
       ref={containerRef}
-      className={`w-full h-full rounded-lg shadow-sm border border-warm-gray-200 flex items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
+      className={`w-full h-full rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
         isDragging 
-          ? 'bg-sage-100' 
+          ? 'bg-sage-100 dark:bg-sage-900/30' 
           : imageUrl 
-          ? 'bg-warm-gray-100' 
-          : 'bg-warm-gray-200'
+          ? 'bg-warm-gray-100 dark:bg-warm-gray-800' 
+          : 'bg-warm-gray-200 dark:bg-warm-gray-700'
       }`}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
@@ -139,7 +139,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
       ) : (
         <div className="text-center p-6">
           <svg
-            className="w-16 h-16 mx-auto mb-4 text-warm-gray-400"
+            className="w-16 h-16 mx-auto mb-4 text-warm-gray-400 dark:text-warm-gray-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -152,17 +152,17 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-warm-gray-600 font-medium mb-2">
+          <p className="text-warm-gray-600 dark:text-warm-gray-300 font-medium mb-2">
             {isDragging ? 'Drop image here' : 'Add an image'}
           </p>
-          <p className="text-sm text-warm-gray-500">
+          <p className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
             Click to browse, drag & drop, or paste
           </p>
         </div>
       )}
       
       {imageUrl && (
-        <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
+        <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 dark:bg-opacity-70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
           Double-click to change
         </div>
       )}

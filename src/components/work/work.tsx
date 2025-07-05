@@ -77,11 +77,11 @@ function Work() {
                                     onClick={() => handleChangeImage(i)}
                                     className={`p-3 rounded-lg transition-all duration-200 ${
                                         state.index === i 
-                                            ? 'bg-warm-gray-200 shadow-inner' 
-                                            : 'bg-warm-gray-100 hover:bg-warm-gray-200'
+                                            ? 'bg-warm-gray-200 dark:bg-warm-gray-700 shadow-inner' 
+                                            : 'bg-warm-gray-100 dark:bg-warm-gray-800 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700'
                                     }`}
                                 >
-                                    <Icon className="w-6 h-6 text-warm-gray-700" />
+                                    <Icon className="w-6 h-6 text-warm-gray-700 dark:text-warm-gray-300" />
                                 </button>
                             );
                         })}

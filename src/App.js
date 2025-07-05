@@ -34,6 +34,15 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [widgetStates, setWidgetStates] = useState(new Map());
   const [backgroundType, setBackgroundType] = useState('solid');
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage for saved preference
+    const saved = localStorage.getItem('darkMode');
+    if (saved !== null) {
+      return JSON.parse(saved);
+    }
+    // Check system preference
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   
   // Update individual widget state
   const updateWidgetState = (widgetId, state) => {
@@ -43,6 +52,16 @@ function App() {
       return newMap;
     });
   };
+
+  // Apply dark mode class to document
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+  }, [darkMode]);
 
   // Component definitions moved to rendering function to use props
 
@@ -391,13 +410,13 @@ function App() {
   return (
     <>
       <meta charset="UTF-8" />
-      <div className="App">
+      <div className="App dark:bg-warm-gray-900">
         {/* Fixed UI elements */}
         <div className="fixed-ui">
           {/* Fullscreen button */}
           <button
             onClick={toggleFullscreen}
-            className="fixed top-4 right-4 z-[999] p-2 bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+            className="fixed top-4 right-4 z-[999] p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-800 dark:hover:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
             title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             <svg
@@ -436,6 +455,8 @@ function App() {
               hoveringTrash={hoveringTrashId !== null}
               backgroundType={backgroundType}
               setBackgroundType={setBackgroundType}
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
             />
           </div>
         </div>

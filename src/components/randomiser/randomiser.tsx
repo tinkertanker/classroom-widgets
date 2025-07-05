@@ -230,13 +230,13 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
         lockAspectRatio={true}
       > */}
       <div
-        className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full p-1"
+        className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full p-1"
         id="jason"
       >
         <div className="w-full h-full p-0">
           <div className="flex flex-col w-full h-full items-center">
             <button
-              className="w-[87.5%] h-[75%] mt-[5%] mb-[2%] p-0 bg-warm-gray-100 hover:bg-warm-gray-200 rounded transition-colors duration-200"
+              className="w-[87.5%] h-[75%] mt-[5%] mb-[2%] p-0 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors duration-200"
               onDoubleClick={() => {
                 if (loading === false) {
                   onOpen();
@@ -264,7 +264,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                 ) : (
                   <div className="flex justify-center items-center w-[95%]">
                     <p
-                      className="whitespace-normal break-words text-2xl text-center text-warm-gray-800"
+                      className="whitespace-normal break-words text-2xl text-center text-warm-gray-800 dark:text-warm-gray-200"
                       ref={textRef}
                     >
                       {result}
@@ -276,7 +276,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
             {buttonsettings === "normal" ? (
               <div className="flex w-full justify-center mt-2 pb-3">
                 <button
-                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={()=>handlerandomise()}
                   disabled={loading}
                 >
@@ -286,7 +286,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
             ) : buttonsettings === "result" ? (
               <div className="flex flex-row w-full justify-center gap-2 mt-2 pb-3">
                 <button
-                  className={`px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
+                  className={`px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
                   disabled={remember ? true : pressedDisable}
                   onClick={() => {
                     setSelected([...selected, result]);
@@ -302,7 +302,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                 <button
                   disabled={loading}
                   ref={initialResultFocus}
-                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => {
                     handlerandomise();
                   }}
@@ -374,19 +374,19 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
               />
               {/* Modal Content */}
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="bg-soft-white rounded-lg shadow-xl w-[450px] max-w-full" onClick={(e) => e.stopPropagation()}>
+                <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl w-[450px] max-w-full" onClick={(e) => e.stopPropagation()}>
                   <div className="w-full">
                     <div className="px-6 py-4 border-b">
                       <div className="flex items-center">
                         <div className="flex space-x-4">
                           <button
-                            className={`pb-2 border-b-2 text-sm ${tabIndex === 0 ? 'border-blue-500 text-blue-500' : 'border-transparent text-warm-gray-700'}`}
+                            className={`pb-2 border-b-2 text-sm ${tabIndex === 0 ? 'border-blue-500 text-blue-500' : 'border-transparent text-warm-gray-700 dark:text-warm-gray-300'}`}
                             onClick={() => setTabIndex(0)}
                           >
                             List
                           </button>
                           <button
-                            className={`pb-2 border-b-2 text-sm ${tabIndex === 1 ? 'border-blue-500 text-blue-500' : 'border-transparent text-warm-gray-700'}`}
+                            className={`pb-2 border-b-2 text-sm ${tabIndex === 1 ? 'border-blue-500 text-blue-500' : 'border-transparent text-warm-gray-700 dark:text-warm-gray-300'}`}
                             onClick={() => setTabIndex(1)}
                           >
                             Settings
@@ -394,7 +394,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                         </div>
                         <button
                           onClick={onClose}
-                          className="ml-auto text-warm-gray-500 hover:text-warm-gray-700"
+                          className="ml-auto text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200"
                         >
                           ✕
                         </button>
@@ -404,11 +404,11 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                       {tabIndex === 0 ? (
                         <div className="flex flex-col space-y-4">
                           <div className="flex flex-row items-center justify-between pb-5">
-                            <h3 className="text-base font-semibold text-warm-gray-800">My list</h3>
+                            <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">My list</h3>
                             <div className="flex space-x-2">
                               <div className="relative">
                                 <button
-                                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
                                   onClick={() => setMenuOpen(!menuOpen)}
                                 >
                                   Suggestions
@@ -417,9 +417,9 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                                   </svg>
                                 </button>
                                 {menuOpen && (
-                                  <div className="absolute mt-1 w-full bg-soft-white rounded-md shadow-lg z-10">
+                                  <div className="absolute mt-1 w-full bg-soft-white dark:bg-warm-gray-700 rounded-md shadow-lg z-10">
                                     <button
-                                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 text-warm-gray-800 text-sm"
+                                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                                       onClick={() => {
                                         setInput("1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30");
                                         setMenuOpen(false);
@@ -428,7 +428,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                                       Generate numbers 1 to 30
                                     </button>
                                     <button
-                                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 text-warm-gray-800 text-sm"
+                                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                                       onClick={() => {
                                         setInput("A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ");
                                         setMenuOpen(false);
@@ -440,7 +440,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                                 )}
                               </div>
                               <button
-                                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white text-sm rounded transition-colors duration-200"
+                                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200"
                                 onClick={() => {
                                   setInput("");
                                   setChoices([]);
@@ -458,9 +458,9 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                             value={input}
                             id="textarea"
                             placeholder="Start typing a list to randomise..."
-                            className="w-full h-[250px] px-3 py-2 border border-warm-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-warm-gray-800 text-sm placeholder-warm-gray-500"
+                            className="w-full h-[250px] px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 text-sm placeholder-warm-gray-500 dark:placeholder-warm-gray-400"
                           />
-                          <p className="pt-8 text-sm text-warm-gray-600">
+                          <p className="pt-8 text-sm text-warm-gray-600 dark:text-warm-gray-400">
                             Note: All leading and trailing spaces, empty rows, and
                             duplicates in the list are automatically removed when
                             generating.
@@ -469,7 +469,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                       ) : (
                         <>
                           <div className="flex flex-col items-start space-y-4">
-                            <h3 className="text-base font-semibold text-warm-gray-800">Randomiser Settings</h3>
+                            <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">Randomiser Settings</h3>
 
                           <label className="flex items-center pt-5">
                             <input
@@ -483,9 +483,9 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                               }}
                               className="mr-2 w-4 h-4 text-green-500 border-warm-gray-300 rounded focus:ring-green-500"
                             />
-                            <span className="text-warm-gray-700 text-sm">Prevent picked options from repeating</span>
+                            <span className="text-warm-gray-700 dark:text-warm-gray-300 text-sm">Prevent picked options from repeating</span>
                           </label>
-                          <p className="pt-2.5 pb-1.5 text-warm-gray-700 text-sm">
+                          <p className="pt-2.5 pb-1.5 text-warm-gray-700 dark:text-warm-gray-300 text-sm">
                             Options removed: {selected.join(", ")}
                           </p>
                         {/* <Button
@@ -502,7 +502,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                         </Button> */}
                         </div>
                         <div className="flex flex-col items-start space-y-4">
-                          <h3 className="text-base font-semibold text-warm-gray-800">Animation Settings</h3>
+                          <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">Animation Settings</h3>
                           <label className="flex items-center pt-2.5">
                             <input
                               type="checkbox"
@@ -512,9 +512,9 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                               }}
                               className="mr-2 w-4 h-4 text-green-500 border-warm-gray-300 rounded focus:ring-green-500"
                             />
-                            <span className="text-warm-gray-700 text-sm">Enable Animation</span>
+                            <span className="text-warm-gray-700 dark:text-warm-gray-300 text-sm">Enable Animation</span>
                           </label>
-                          <p className="pt-2.5 pb-1.5 text-warm-gray-700 text-sm">
+                          <p className="pt-2.5 pb-1.5 text-warm-gray-700 dark:text-warm-gray-300 text-sm">
                             Animation Duration
                           </p>
                           <div className="w-full relative pt-8">
@@ -525,12 +525,12 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                               min={5}
                               max={30}
                               onChange={(e) => setAnimationspeed(Number(e.target.value) / 300)}
-                              className={`w-full h-2 bg-warm-gray-200 rounded-lg appearance-none cursor-pointer ${!animation ? 'opacity-50' : ''}`}
+                              className={`w-full h-2 bg-warm-gray-200 dark:bg-warm-gray-600 rounded-lg appearance-none cursor-pointer ${!animation ? 'opacity-50' : ''}`}
                             />
                             <div className="flex justify-between text-sm mt-2">
-                              <span className="ml-[-12px] text-warm-gray-600">Short</span>
-                              <span className="ml-[-24px] text-warm-gray-600">Medium</span>
-                              <span className="ml-[-14px] text-warm-gray-600">Long</span>
+                              <span className="ml-[-12px] text-warm-gray-600 dark:text-warm-gray-400">Short</span>
+                              <span className="ml-[-24px] text-warm-gray-600 dark:text-warm-gray-400">Medium</span>
+                              <span className="ml-[-14px] text-warm-gray-600 dark:text-warm-gray-400">Long</span>
                             </div>
                           </div>
                         {/* <Text paddingTop="40px" paddingBottom="5px">

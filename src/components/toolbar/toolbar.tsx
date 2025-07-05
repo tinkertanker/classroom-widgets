@@ -17,10 +17,12 @@ import {
   FaImage,          // Image Display
   FaMusic,          // Sound Effects
   FaPalette,        // Background icon
-  FaWrench          // Customize icon
+  FaWrench,         // Customize icon
+  FaMoon,           // Dark mode
+  FaSun             // Light mode
 } from 'react-icons/fa6';
 
-export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType}) {
+export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode}) {
   const [formattedTime, setFormattedTime] = useState("");
   const [colonVisible, setColonVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -107,7 +109,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
 
   return (
     <>
-      <div className="w-[90%] h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200">
+      <div className="w-[90%] h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700">
         <div className="w-full h-full px-2.5 py-2">
         <div className="flex items-center justify-center w-full h-full overflow-x-auto overflow-y-visible space-x-2">
           {ToolbarComponentData.map((component, toolbarIndex) => {
@@ -129,7 +131,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   setComponentList((e) => [...e, { id: newId, index: actualIndex }]);
                   setActiveIndex(newId); // Set the new widget as active
                 }}
-                className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+                className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
               >
                 <Icon className="w-4 h-4" />
                 <span>{component.name}</span>
@@ -140,7 +142,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           {/* More widgets button */}
           <button
             onClick={() => setLaunchpadOpen(true)}
-            className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+            className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
             title="More widgets"
           >
             <FaTableCells className="w-4 h-4" />
@@ -161,7 +163,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }
                 setMenuOpen(!menuOpen);
               }}
-              className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+              className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
               title="Menu"
             >
               <FaBars className="w-4 h-4" />
@@ -171,7 +173,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           {/* Popup menu - rendered as portal */}
           {menuOpen && ReactDOM.createPortal(
             <div 
-              className="fixed bg-soft-white border border-warm-gray-200 rounded-lg shadow-lg py-2 min-w-[200px] menu-container"
+              className="fixed bg-soft-white dark:bg-warm-gray-800 border border-warm-gray-200 dark:border-warm-gray-700 rounded-lg shadow-lg py-2 min-w-[200px] menu-container"
               style={{
                 top: `${menuPosition.top}px`,
                 left: `${menuPosition.left}px`,
@@ -188,14 +190,14 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     localStorage.removeItem('workspaceState');
                   }
                 }}
-                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 flex items-center gap-3 text-warm-gray-700 transition-colors duration-150"
+                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
               >
                 <FaArrowRotateLeft className="w-4 h-4" />
                 <span>Reset Workspace</span>
               </button>
-              <div className="border-t border-warm-gray-200 my-2"></div>
+              <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
               <div className="px-4 py-2">
-                <div className="flex items-center gap-3 text-warm-gray-700 mb-2">
+                <div className="flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 mb-2">
                   <FaPalette className="w-4 h-4" />
                   <span className="font-medium">Background</span>
                 </div>
@@ -208,7 +210,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
                       backgroundType === 'solid' 
                         ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                     }`}
                   >
                     Solid
@@ -221,7 +223,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
                       backgroundType === 'geometric' 
                         ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                     }`}
                   >
                     Geometric
@@ -234,7 +236,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
                       backgroundType === 'gradient' 
                         ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                     }`}
                   >
                     Gradient
@@ -247,7 +249,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
                       backgroundType === 'paper' 
                         ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                     }`}
                   >
                     Paper
@@ -260,7 +262,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
                       backgroundType === 'lines' 
                         ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                     }`}
                   >
                     Lines
@@ -273,30 +275,41 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
                       backgroundType === 'dots' 
                         ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white text-warm-gray-700 border-warm-gray-300 hover:bg-warm-gray-100'
+                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                     }`}
                   >
                     Dots
                   </button>
                 </div>
               </div>
-              <div className="border-t border-warm-gray-200 my-2"></div>
+              <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
               <button
                 onClick={() => {
                   setCustomizeToolbarOpen(true);
                   setMenuOpen(false);
                 }}
-                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 flex items-center gap-3 text-warm-gray-700 transition-colors duration-150"
+                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
               >
                 <FaWrench className="w-4 h-4" />
                 <span>Customize Toolbar</span>
+              </button>
+              <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
+              <button
+                onClick={() => {
+                  setDarkMode(!darkMode);
+                  setMenuOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
+              >
+                {darkMode ? <FaSun className="w-4 h-4" /> : <FaMoon className="w-4 h-4" />}
+                <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </button>
             </div>,
             document.body
           )}
           
           <div className="flex items-center space-x-4 ml-auto">
-            <div className="bg-warm-gray-900 text-sage-400 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
+            <div className="bg-warm-gray-900 dark:bg-warm-gray-950 text-sage-400 dark:text-sage-300 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
               {formattedTime.split(':').map((part, index) => (
                 <React.Fragment key={index}>
                   {index > 0 && (
@@ -313,7 +326,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               className={`w-6 h-6 cursor-pointer transition-all duration-200 ${
                 hoveringTrash 
                   ? 'text-dusty-rose-500 transform scale-125' 
-                  : 'text-warm-gray-500'
+                  : 'text-warm-gray-500 dark:text-warm-gray-400'
               }`}
               fill="none"
               stroke="currentColor"
@@ -338,7 +351,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
         onClick={() => setLaunchpadOpen(false)}
       >
         <div 
-          className="bg-soft-white rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto"
+          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-end mb-4">
@@ -364,12 +377,12 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     setActiveIndex(newId);
                     setLaunchpadOpen(false);
                   }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-warm-gray-100 transition-colors duration-200 group"
+                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group"
                 >
                   <div className="w-16 h-16 bg-sage-500 group-hover:bg-sage-600 rounded-xl flex items-center justify-center transition-colors duration-200">
                     <Icon className="w-8 h-8 text-white" />
                   </div>
-                  <span className="text-sm text-warm-gray-700">{component.name}</span>
+                  <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200">{component.name}</span>
                 </button>
               );
             })}
@@ -386,11 +399,11 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
         onClick={() => setCustomizeToolbarOpen(false)}
       >
         <div 
-          className="bg-soft-white rounded-2xl shadow-2xl p-6 max-w-2xl max-h-[80vh] overflow-auto"
+          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-2xl max-h-[80vh] overflow-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-warm-gray-800">Customize Toolbar</h2>
+            <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">Customize Toolbar</h2>
             <button
               onClick={() => setCustomizeToolbarOpen(false)}
               className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
@@ -399,7 +412,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             </button>
           </div>
           
-          <p className="text-sm text-warm-gray-600 mb-4">
+          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-300 mb-4">
             Select up to 5 widgets to appear in the toolbar. You can always access all widgets from the "More" button.
           </p>
           
@@ -424,15 +437,15 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all duration-200 ${
                     isSelected 
                       ? 'bg-sage-100 border-2 border-sage-500' 
-                      : 'bg-warm-gray-50 border-2 border-warm-gray-200 hover:bg-warm-gray-100'
+                      : 'bg-warm-gray-50 dark:bg-warm-gray-700 border-2 border-warm-gray-200 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
                   } ${!isSelected && selectedToolbarWidgets.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    isSelected ? 'bg-sage-500' : 'bg-warm-gray-300'
+                    isSelected ? 'bg-sage-500' : 'bg-warm-gray-300 dark:bg-warm-gray-600'
                   }`}>
                     <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}`} />
                   </div>
-                  <span className={`text-xs ${isSelected ? 'text-sage-700 font-medium' : 'text-warm-gray-700'}`}>
+                  <span className={`text-xs ${isSelected ? 'text-sage-700 dark:text-sage-300 font-medium' : 'text-warm-gray-700 dark:text-warm-gray-200'}`}>
                     {component.name}
                   </span>
                   {isSelected && (
@@ -446,7 +459,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           </div>
           
           <div className="flex justify-between items-center pt-4 border-t border-warm-gray-200">
-            <span className="text-sm text-warm-gray-600">
+            <span className="text-sm text-warm-gray-600 dark:text-warm-gray-300">
               {selectedToolbarWidgets.length}/5 widgets selected
             </span>
             <div className="flex gap-2">
@@ -460,7 +473,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                     WIDGET_TYPES.SOUND_MONITOR
                   ]);
                 }}
-                className="px-4 py-2 text-sm bg-warm-gray-200 hover:bg-warm-gray-300 text-warm-gray-700 rounded-md transition-colors duration-200"
+                className="px-4 py-2 text-sm bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
               >
                 Reset to Default
               </button>

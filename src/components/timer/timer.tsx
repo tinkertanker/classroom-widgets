@@ -246,7 +246,7 @@ const Timer = () => {
 
   return (
     <>
-      <div className="bg-soft-white rounded-lg shadow-sm border border-warm-gray-200 w-full h-full overflow-hidden flex flex-col" style={{ containerType: 'size' }}>
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full overflow-hidden flex flex-col" style={{ containerType: 'size' }}>
         <div className="flex-1 py-1">
           <div className="w-full h-full py-1 relative">
             {/* Custom Circular Progress */}
@@ -264,7 +264,7 @@ const Timer = () => {
                 {/* Progress arc (sage) */}
                 <path
                   d={getArcPath(time / initialTime)}
-                  fill="#5e8b5e"
+                  fill="var(--timer-arc)"
                 />
                 
                 {/* Animated dash indicator */}
@@ -276,7 +276,7 @@ const Timer = () => {
                       y="1"
                       width="4"
                       height="2"
-                      fill="#5e8b5e"
+                      fill="var(--timer-arc)"
                     />
                   </g>
                 )}
@@ -290,23 +290,23 @@ const Timer = () => {
                     {time >= 3600 ? (
                       // Show hours:minutes:seconds - smaller text to fit
                       <div className="flex items-center" style={{ fontSize: 'clamp(1rem, 12cqmin, 3rem)' }}>
-                        <span className="leading-none text-warm-gray-800 font-bold">{values[0]}</span>
-                        <span className="leading-none text-warm-gray-800 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 font-bold">{values[1]}</span>
-                        <span className="leading-none text-warm-gray-800 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 font-bold">{values[2]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[0]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[1]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[2]}</span>
                       </div>
                     ) : time >= 60 ? (
                       // Show minutes:seconds - medium text
                       <div className="flex items-center" style={{ fontSize: 'clamp(1.5rem, 20cqmin, 5rem)' }}>
-                        <span className="leading-none text-warm-gray-800 font-bold">{values[1]}</span>
-                        <span className="leading-none text-warm-gray-800 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 font-bold">{values[2]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[1]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[2]}</span>
                       </div>
                     ) : (
                       // Show only seconds - largest text
                       <div className="flex items-center" style={{ fontSize: 'clamp(2rem, 28cqmin, 7rem)' }}>
-                        <span className="leading-none text-warm-gray-800 font-bold">{time}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{time}</span>
                       </div>
                     )}
                   </div>
@@ -324,7 +324,7 @@ const Timer = () => {
                               onChange={handleSegmentChange}
                               onBlur={handleSegmentBlur}
                               onKeyDown={handleKeyDown}
-                              className="text-center text-warm-gray-800 bg-warm-gray-100 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
+                              className="text-center text-warm-gray-800 dark:text-warm-gray-200 bg-warm-gray-100 dark:bg-warm-gray-700 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
                               style={{ 
                                 width: 'clamp(2.5rem, 15cqmin, 5rem)',
                                 fontSize: 'clamp(1.5rem, 12cqmin, 3rem)'
@@ -334,7 +334,7 @@ const Timer = () => {
                           ) : (
                             <span
                               onClick={() => handleSegmentClick(idx)}
-                              className={`leading-none text-warm-gray-800 cursor-pointer hover:bg-warm-gray-100 px-1 rounded-md transition-colors ${
+                              className={`leading-none text-warm-gray-800 dark:text-warm-gray-200 cursor-pointer hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 px-1 rounded-md transition-colors ${
                                 !isRunning ? 'hover:text-sage-600' : ''
                               }`}
                               title={!isRunning ? 'Click to edit' : ''}
@@ -346,7 +346,7 @@ const Timer = () => {
                           
                           {/* Colon separator */}
                           {idx < values.length - 1 && (
-                            <span className="leading-none text-warm-gray-800 mx-0" style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}>
+                            <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 mx-0" style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}>
                               :
                             </span>
                           )}
@@ -354,7 +354,7 @@ const Timer = () => {
                       ))}
                     </div>
                     {!isRunning && editingSegment === null && (
-                      <div className="text-xs text-warm-gray-500 mt-1">
+                      <div className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
                         <span>Click to edit</span>
                       </div>
                     )}

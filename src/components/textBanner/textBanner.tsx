@@ -122,7 +122,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   return (
     <div 
       ref={containerRef}
-      className="w-full h-full bg-terracotta-500 rounded-lg shadow-sm border border-warm-gray-200 flex items-center justify-center p-4 relative overflow-hidden"
+      className="w-full h-full bg-terracotta-500 dark:bg-terracotta-600 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center p-4 relative overflow-hidden"
       onDoubleClick={handleDoubleClick}
     >
       {isEditing ? (
@@ -133,14 +133,14 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           onBlur={handleBlur}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
-          className="w-full h-full p-4 text-xl bg-soft-white text-warm-gray-800 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600"
+          className="w-full h-full p-4 text-xl bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
           placeholder="Enter your message..."
           autoFocus
         />
       ) : (
         <div
           ref={textRef}
-          className="text-soft-white font-bold text-center leading-tight select-none cursor-pointer"
+          className="text-soft-white dark:text-white font-bold text-center leading-tight select-none cursor-pointer"
           style={{ fontSize: `${fontSize}px` }}
           title="Double-click to edit"
         >

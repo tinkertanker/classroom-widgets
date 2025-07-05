@@ -3,12 +3,12 @@ import React from 'react';
 const ReusableButton = ({ colorScheme, size, width, height, children, ...props }) => {
   // Map colorScheme to Tailwind classes
   const colorClasses = {
-    teal: 'bg-sage-500 hover:bg-sage-600 text-white',
-    sage: 'bg-sage-500 hover:bg-sage-600 text-white',
-    red: 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white',
-    yellow: 'bg-terracotta-500 hover:bg-terracotta-600 text-white',
-    green: 'bg-green-500 hover:bg-green-600 text-white',
-    blue: 'bg-blue-500 hover:bg-blue-600 text-white',
+    teal: 'bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white',
+    sage: 'bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white',
+    red: 'bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white',
+    yellow: 'bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white',
+    green: 'bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white',
+    blue: 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white',
   };
 
   // Map size to Tailwind classes
