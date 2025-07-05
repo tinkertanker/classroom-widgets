@@ -48,14 +48,24 @@ function App() {
   // Find a non-overlapping position for a new widget
   const findAvailablePosition = (widgetWidth, widgetHeight) => {
     const padding = 20; // Minimum space between widgets
-    const boardWidth = 3000; // Board width
-    const boardHeight = 2000; // Board height
     const scrollContainer = document.querySelector('.board-scroll-container');
-    const viewportCenterX = scrollContainer ? scrollContainer.scrollLeft + window.innerWidth / 2 : window.innerWidth / 2;
-    const viewportCenterY = scrollContainer ? scrollContainer.scrollTop + window.innerHeight / 2 : window.innerHeight / 2;
     
-    // Try grid positions starting from top-left
-    const gridSize = 50; // Grid step size
+    // Get current viewport bounds
+    const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0;
+    const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Define the bounds for placing new widgets (within current viewport)
+    const minX = scrollLeft + padding;
+    const maxX = scrollLeft + viewportWidth - widgetWidth - padding;
+    const minY = scrollTop + padding;
+    const maxY = scrollTop + viewportHeight - widgetHeight - padding - 60; // Account for toolbar
+    
+    // Center of current viewport
+    const viewportCenterX = scrollLeft + viewportWidth / 2;
+    const viewportCenterY = scrollTop + viewportHeight / 2;
+    
     const maxAttempts = 50;
     
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -63,13 +73,14 @@ function App() {
       const angle = attempt * 0.5;
       const radius = attempt * 15;
       
-      const x = Math.max(padding, Math.min(
+      // Calculate position but constrain to viewport bounds
+      const x = Math.max(minX, Math.min(
         viewportCenterX + Math.cos(angle) * radius - widgetWidth / 2,
-        boardWidth - widgetWidth - padding
+        maxX
       ));
-      const y = Math.max(padding, Math.min(
+      const y = Math.max(minY, Math.min(
         viewportCenterY + Math.sin(angle) * radius - widgetHeight / 2,
-        boardHeight - widgetHeight - padding
+        maxY
       ));
       
       // Check if this position overlaps with any existing widget
@@ -91,10 +102,10 @@ function App() {
       }
     }
     
-    // If no position found, use random position near viewport center
+    // If no position found, place at a random position within viewport
     return {
-      x: Math.round(viewportCenterX - widgetWidth / 2 + (Math.random() - 0.5) * 400),
-      y: Math.round(viewportCenterY - widgetHeight / 2 + (Math.random() - 0.5) * 400)
+      x: Math.round(minX + Math.random() * (maxX - minX)),
+      y: Math.round(minY + Math.random() * (maxY - minY))
     };
   };
 
@@ -166,6 +177,24 @@ function App() {
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Prevent swipe navigation
+  useEffect(() => {
+    // Push a dummy state to history
+    window.history.pushState(null, '', window.location.href);
+    
+    const handlePopState = (e) => {
+      // Push state again to prevent navigation
+      window.history.pushState(null, '', window.location.href);
+    };
+
+    // Listen for browser back button
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   useEffect(() => {

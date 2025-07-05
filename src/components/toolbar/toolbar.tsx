@@ -95,7 +95,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   return (
     <>
       <div className="w-[90%] h-full bg-soft-white rounded-lg shadow-sm border border-warm-gray-200">
-        <div className="w-full h-full px-2.5 py-0">
+        <div className="w-full h-full px-2.5 py-2">
         <div className="flex items-center justify-center w-full h-full overflow-x-auto overflow-y-visible space-x-2">
           {ToolbarComponentData.map((component, toolbarIndex) => {
             const Icon = component.icon;
@@ -116,7 +116,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   setComponentList((e) => [...e, { id: newId, index: actualIndex }]);
                   setActiveIndex(newId); // Set the new widget as active
                 }}
-                className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+                className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
               >
                 <Icon className="w-4 h-4" />
                 <span>{component.name}</span>
@@ -127,7 +127,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           {/* More widgets button */}
           <button
             onClick={() => setLaunchpadOpen(true)}
-            className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+            className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
             title="More widgets"
           >
             <FaTableCells className="w-4 h-4" />
