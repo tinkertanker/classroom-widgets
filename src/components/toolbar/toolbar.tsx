@@ -2,6 +2,9 @@ import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
+import { useModal } from '../../contexts/ModalContext';
+import CustomizeToolbar from './CustomizeToolbar';
+import StickerPalette from './StickerPalette';
 // @ts-ignore
 import { 
   FaDice,           // Randomiser
@@ -21,15 +24,7 @@ import {
   FaWrench,         // Customize icon
   FaMoon,           // Dark mode
   FaSun,            // Light mode
-  FaStamp,          // Stamp icon
-  FaThumbsUp,       // Stamps
-  FaHeart,
-  FaStar,
-  FaFaceSmile,
-  FaFaceSurprise,
-  FaExclamation,
-  FaFire,
-  FaCheck
+  FaStamp           // Stamp icon
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}) {
@@ -39,8 +34,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   const menuButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
-  const [customizeToolbarOpen, setCustomizeToolbarOpen] = useState(false);
-  const [stickerPaletteOpen, setStickerPaletteOpen] = useState(false);
+  const { showModal, hideModal } = useModal();
   const [selectedToolbarWidgets, setSelectedToolbarWidgets] = useState(() => {
     // Load saved toolbar configuration from localStorage
     const saved = localStorage.getItem('toolbarWidgets');
@@ -162,7 +156,18 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           
           {/* Sticker button */}
           <button
-            onClick={() => setStickerPaletteOpen(true)}
+            onClick={() => showModal({
+              title: 'Sticker Palette',
+              content: (
+                <StickerPalette
+                  selectedStickerType={selectedStickerType}
+                  setSelectedStickerType={setSelectedStickerType}
+                  setStickerMode={setStickerMode}
+                  stickerMode={stickerMode}
+                  onClose={hideModal}
+                />
+              )
+            })}
             className={`px-2.5 py-1.5 rounded-md transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2 ${
               stickerMode 
                 ? 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700' 
@@ -284,7 +289,20 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
               <button
                 onClick={() => {
-                  setCustomizeToolbarOpen(true);
+                  showModal({
+                    title: 'Customize Toolbar',
+                    content: (
+                      <CustomizeToolbar
+                        selectedToolbarWidgets={selectedToolbarWidgets}
+                        setSelectedToolbarWidgets={setSelectedToolbarWidgets}
+                        AllComponentData={AllComponentData}
+                        onSave={() => {
+                          localStorage.setItem('toolbarWidgets', JSON.stringify(selectedToolbarWidgets));
+                          hideModal();
+                        }}
+                      />
+                    )
+                  });
                   setMenuOpen(false);
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
@@ -390,184 +408,6 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               );
             })}
           </div>
-        </div>
-      </div>,
-      document.body
-    )}
-    
-    {/* Customize Toolbar Dialog */}
-    {customizeToolbarOpen && ReactDOM.createPortal(
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"
-        onClick={() => setCustomizeToolbarOpen(false)}
-      >
-        <div 
-          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-2xl max-h-[80vh] overflow-auto"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">Customize Toolbar</h2>
-            <button
-              onClick={() => setCustomizeToolbarOpen(false)}
-              className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
-            >
-              ×
-            </button>
-          </div>
-          
-          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-300 mb-4">
-            Select up to 5 widgets to appear in the toolbar. You can always access all widgets from the "More" button.
-          </p>
-          
-          <div className="grid grid-cols-3 gap-3 mb-6">
-            {Object.entries(WIDGET_TYPES).map(([key, widgetType]) => {
-              const component = AllComponentData[widgetType];
-              if (!component) return null;
-              const Icon = component.icon;
-              const isSelected = selectedToolbarWidgets.includes(widgetType);
-              
-              return (
-                <button
-                  key={widgetType}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedToolbarWidgets(prev => prev.filter(id => id !== widgetType));
-                    } else if (selectedToolbarWidgets.length < 5) {
-                      setSelectedToolbarWidgets(prev => [...prev, widgetType]);
-                    }
-                  }}
-                  disabled={!isSelected && selectedToolbarWidgets.length >= 5}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all duration-200 ${
-                    isSelected 
-                      ? 'bg-sage-100 border-2 border-sage-500' 
-                      : 'bg-warm-gray-50 dark:bg-warm-gray-700 border-2 border-warm-gray-200 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                  } ${!isSelected && selectedToolbarWidgets.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    isSelected ? (
-                      [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500' :
-                      [WIDGET_TYPES.TIMER, WIDGET_TYPES.WORK_SYMBOLS, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500' :
-                      'bg-sage-600'
-                    ) : 'bg-warm-gray-300 dark:bg-warm-gray-600'
-                  }`}>
-                    {React.createElement(Icon as any, { className: `w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}` })}
-                  </div>
-                  <span className={`text-xs ${isSelected ? 'text-sage-700 dark:text-sage-300 font-medium' : 'text-warm-gray-700 dark:text-warm-gray-200'}`}>
-                    {component.name}
-                  </span>
-                  {isSelected && (
-                    <div className="text-xs text-sage-600">
-                      #{selectedToolbarWidgets.indexOf(widgetType) + 1}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          
-          <div className="flex justify-between items-center pt-4 border-t border-warm-gray-200">
-            <span className="text-sm text-warm-gray-600 dark:text-warm-gray-300">
-              {selectedToolbarWidgets.length}/5 widgets selected
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setSelectedToolbarWidgets([
-                    WIDGET_TYPES.RANDOMISER, 
-                    WIDGET_TYPES.TIMER, 
-                    WIDGET_TYPES.LIST, 
-                    WIDGET_TYPES.WORK_SYMBOLS, 
-                    WIDGET_TYPES.SOUND_MONITOR
-                  ]);
-                }}
-                className="px-4 py-2 text-sm bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
-              >
-                Reset to Default
-              </button>
-              <button
-                onClick={() => {
-                  // Save to localStorage
-                  localStorage.setItem('toolbarWidgets', JSON.stringify(selectedToolbarWidgets));
-                  setCustomizeToolbarOpen(false);
-                }}
-                className="px-4 py-2 text-sm bg-terracotta-500 hover:bg-terracotta-600 text-white rounded-md transition-colors duration-200"
-              >
-                Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>,
-      document.body
-    )}
-    
-    {/* Sticker Palette Dialog */}
-    {stickerPaletteOpen && ReactDOM.createPortal(
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"
-        onClick={() => setStickerPaletteOpen(false)}
-      >
-        <div 
-          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-md"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">Choose a Sticker</h2>
-            <button
-              onClick={() => setStickerPaletteOpen(false)}
-              className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
-            >
-              ×
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { type: 'thumbsup', icon: FaThumbsUp, label: 'Thumbs Up' },
-              { type: 'heart', icon: FaHeart, label: 'Heart' },
-              { type: 'star', icon: FaStar, label: 'Star' },
-              { type: 'smile', icon: FaFaceSmile, label: 'Smile' },
-              { type: 'shocked', icon: FaFaceSurprise, label: 'Shocked' },
-              { type: 'exclamation', icon: FaExclamation, label: 'Exclaim' },
-              { type: 'fire', icon: FaFire, label: 'Fire' },
-              { type: 'check', icon: FaCheck, label: 'Check' },
-            ].map(({ type, icon: Icon, label }) => (
-              <button
-                key={type}
-                onClick={() => {
-                  setSelectedStickerType(type);
-                  setStickerMode(true);
-                  setStickerPaletteOpen(false);
-                }}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-colors duration-200 ${
-                  selectedStickerType === type && stickerMode
-                    ? 'bg-amber-100 dark:bg-amber-900/30 border-2 border-amber-500'
-                    : 'hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 border-2 border-transparent'
-                }`}
-                title={label}
-              >
-                {React.createElement(Icon as any, { className: "w-8 h-8 text-warm-gray-700 dark:text-warm-gray-300" })}
-                <span className="text-xs text-warm-gray-600 dark:text-warm-gray-400">{label}</span>
-              </button>
-            ))}
-          </div>
-          
-          {stickerMode && (
-            <div className="mt-4 p-3 bg-amber-100 dark:bg-amber-900/30 rounded-lg text-center">
-              <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300">
-                Sticker mode active! Click on the board to stamp stickers.
-              </p>
-              <button
-                onClick={() => {
-                  setStickerMode(false);
-                  setStickerPaletteOpen(false);
-                }}
-                className="mt-2 px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200 text-sm"
-              >
-                Exit Sticker Mode
-              </button>
-            </div>
-          )}
         </div>
       </div>,
       document.body

@@ -9,6 +9,9 @@ import Board from "./components/Board/Board";
 import WidgetContainer from "./components/Widget/WidgetContainer";
 import Background, { BackgroundType } from "./components/backgrounds/backgrounds";
 
+// Contexts
+import { ModalProvider } from "./contexts/ModalContext";
+
 // Hooks
 import { useDarkMode } from "./hooks/useDarkMode";
 import { useFullscreen } from "./hooks/useFullscreen";
@@ -177,7 +180,7 @@ function App() {
   };
 
   return (
-    <>
+    <ModalProvider>
       <meta charSet="UTF-8" />
       <div className="App dark:bg-warm-gray-900">
         {/* Fixed UI elements */}
@@ -318,7 +321,7 @@ function App() {
           style={{ zIndex: 1000 }}
         />
       )}
-    </>
+    </ModalProvider>
   );
 }
 
