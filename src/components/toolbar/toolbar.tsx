@@ -118,8 +118,8 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   return (
     <>
       <div className="w-[90%] h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700">
-        <div className="w-full h-full px-2.5 py-2">
-        <div className="flex items-center justify-center w-full h-full overflow-x-auto overflow-y-visible space-x-2">
+        <div className="w-full h-full px-2 py-1.5">
+        <div className="flex items-center justify-center w-full h-full overflow-x-auto overflow-y-visible space-x-1.5">
           {ToolbarComponentData.map((component, toolbarIndex) => {
             const Icon = component.icon;
             // Find the actual index in AllComponentData
@@ -139,7 +139,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   setComponentList((e) => [...e, { id: newId, index: actualIndex }]);
                   setActiveIndex(newId); // Set the new widget as active
                 }}
-                className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+                className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
               >
                 <div className="relative inline-flex items-center">
                   <Icon className="w-4 h-4" />
@@ -157,7 +157,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           {/* More widgets button */}
           <button
             onClick={() => setLaunchpadOpen(true)}
-            className="px-2.5 py-1.5 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
+            className="px-3 py-2 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
             title="More widgets"
           >
             {React.createElement(FaTableCells as any, { className: "w-4 h-4" })}
@@ -178,7 +178,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 />
               )
             })}
-            className={`px-2.5 py-1.5 rounded-md transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2 ${
+            className={`px-3 py-2 rounded-md transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5 ${
               stickerMode 
                 ? 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700' 
                 : 'bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700'
@@ -336,7 +336,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
           )}
           
           <div className="flex items-center space-x-4 ml-auto">
-            <div className="bg-warm-gray-200 dark:bg-warm-gray-900 text-terracotta-600 dark:text-sage-400 px-3 py-1 rounded font-mono text-lg tracking-wider whitespace-nowrap">
+            <div className="bg-warm-gray-200 dark:bg-warm-gray-900 text-terracotta-600 dark:text-sage-400 px-2.5 py-0.5 rounded font-mono text-sm tracking-wider whitespace-nowrap">
               {formattedTime.split(':').map((part, index) => (
                 <React.Fragment key={index}>
                   {index > 0 && (
@@ -350,7 +350,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             </div>
             <svg
               id="trash"
-              className={`w-6 h-6 cursor-pointer transition-all duration-200 ${
+              className={`w-5 h-5 cursor-pointer transition-all duration-200 ${
                 hoveringTrash 
                   ? 'text-dusty-rose-500 transform scale-125' 
                   : 'text-warm-gray-500 dark:text-warm-gray-400'
