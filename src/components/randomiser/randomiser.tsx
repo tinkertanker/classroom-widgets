@@ -26,8 +26,10 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   const [result, setResult] = useState("Enter a list to randomise!");
   const [input, setInput] = useState(savedState?.input || "");
   const [choices, setChoices] = useState<any[]>(savedState?.choices || []);
+  const choicesRef = useRef(choices);
 
-  const [removed, setRemoved] = useState<string[]>([]);
+  const [removedChoices, setRemovedChoices] = useState<string[]>([]);
+  const removedChoicesRef = useRef(removedChoices);
 
   const [buttonsettings, setButtonSettings] = useState("normal");
 
@@ -42,29 +44,45 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       title: "Randomiser Settings",
       content: (
         <RandomiserSettings
-          input={input}
-          setInput={setInput}
-          setChoices={setChoices}
-          removed={removed}
-          setRemoved={setRemoved}
+          choices={choices}
+          removedChoices={removedChoices}
+          onUpdateChoices={(newChoices) => {
+            setChoices(newChoices);
+            choicesRef.current = newChoices;
+            setInput(newChoices.join('\n'));
+          }}
+          onUpdateRemovedChoices={(newRemovedChoices) => {
+            setRemovedChoices(newRemovedChoices);
+            removedChoicesRef.current = newRemovedChoices;
+          }}
         />
       ),
       className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl",
       onClose: () => {
-        // Choices are automatically synced via useEffect when input changes
+        console.log("Settings modal closed, final choices:", choicesRef.current);
+        console.log("Settings modal closed, removed choices:", removedChoicesRef.current);
+        // Update displayChoices to show items immediately if there are active choices
+        const activeChoices = choicesRef.current.filter(choice => !removedChoicesRef.current.includes(choice));
+        if (activeChoices.length > 0) {
+          setDisplayChoices(activeChoices);
+          // Reset spinning state and select first item
+          setIsSpinning(false);
+          setSelectedItemIndex(0);
+        } else {
+          // Clear display choices if no active choices
+          setDisplayChoices([]);
+          setResult("Enter a list to randomise!");
+        }
       }
     });
   };
-  // const {
-  //   isOpen: isresultOpen,
-  //   onOpen: onresultOpen,
-  //   onClose: onresultClose,
-  // } = useDisclosure();
+
 
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [displayChoices, setDisplayChoices] = useState<string[]>([]);
 
   // Notify parent of state changes
   const updateState = () => {
@@ -87,8 +105,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   }, [input, choices]);
 
   const handlerandomise = () => {
-    console.log("what");
-
     toggleConfetti(false);
     yay.pause();
     yay.currentTime = 0;
@@ -100,7 +116,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       setLoading(true);
       // localStorage.setItem("input", input);
       // Filter out removed items
-      actual_choices = processedChoices.filter(choice => !removed.includes(choice));
+      actual_choices = processedChoices.filter(choice => !removedChoices.includes(choice));
 
       if (actual_choices.length === 0) {
         setLoading(false);
@@ -109,8 +125,10 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
         return;
       }
 
-      // Clean up removed items that are no longer in the choices
-      setRemoved(prev => prev.filter(item => processedChoices.includes(item)));
+      // Set the display choices to the filtered list
+      setDisplayChoices(actual_choices);
+
+      // Don't clean up removed items - they should persist even if not in active list
 
       // Randomize the order of elements in actual_choices using Fisher-Yates shuffle algorithm
       for (let i = actual_choices.length - 1; i > 0; i--) {
@@ -211,7 +229,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       setBoxheight(node.getBoundingClientRect().height);
       const resizeObserver2 = new ResizeObserver(() => {
         setBoxheight(node.getBoundingClientRect().height);
-        // console.log(node.getBoundingClientRect().height);
       });
       resizeObserver2.observe(node);
     }
@@ -219,29 +236,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
 
   return (
     <>
-      {/* {useConfetti && (
-        <Confetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={500} // Increase number of pieces
-          gravity={0.3} // Adjust gravity for a slower fall
-          wind={0.01} // Add a slight wind effect
-          colors={["#FFC700", "#FF0000", "#2E3192", "#41BBC7"]} // Custom colors
-          confettiSource={{ x: 0, y: 0, w: window.innerWidth, h: 0 }}
-        />
-      )} */}
-      {/* <Rnd
-        id="widget1big"
-        default={{
-          x: window.innerWidth / 2 - 200,
-          y: window.innerHeight / 2 - 200,
-          width: "400px",
-          height: "400px",
-        }}
-        minWidth="125px"
-        lockAspectRatio={true}
-      > */}
       <div
         className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col"
         id="jason"
@@ -264,11 +258,11 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                 alignItems: textheight > boxheight ? "start" : "center"
               }}
             >
-              {choices.length > 0 ? (
+              {displayChoices.length > 0  ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <SlotMachine
-                    key={choices.join(',')}
-                    items={choices}
+                    key={displayChoices.join(',')}
+                    items={displayChoices}
                     selectedIndex={selectedItemIndex}
                     isSpinning={isSpinning}
                     duration={3600}
@@ -302,13 +296,35 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
             <button
               className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => {
-                if (result && !removed.includes(result)) {
-                  setRemoved([...removed, result]);
+                if (result && !removedChoices.includes(result)) {
+                  // Add to removed list
+                  const newRemovedChoices = [...removedChoices, result];
+                  setRemovedChoices(newRemovedChoices);
+                  removedChoicesRef.current = newRemovedChoices;
+                  
+                  // Remove from choices array
+                  const newChoices = choices.filter(choice => choice !== result);
+                  setChoices(newChoices);
+                  choicesRef.current = newChoices;
+                  setInput(newChoices.join('\n'));
+                  
+                  // Update display choices - filter out all removed items
+                  const activeChoices = newChoices.filter(choice => !newRemovedChoices.includes(choice));
+                  if (activeChoices.length > 0) {
+                    setDisplayChoices(activeChoices);
+                  } else {
+                    // No more active choices, clear display
+                    setDisplayChoices([]);
+                    setResult("Enter a list to randomise!");
+                  }
+                  
+                  // Reset to normal state after removing
+                  setButtonSettings("normal");
                 }
               }}
-              disabled={removed.includes(result)}
+              disabled={removedChoices.includes(result)}
             >
-              {removed.includes(result) ? "Already removed" : "Remove option"}
+              {removedChoices.includes(result) ? "Already removed" : "Remove option"}
             </button>
             <button
               disabled={loading}
@@ -323,59 +339,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
           </div>
         ) : null}
       </div>
-
-      {/* <Modal
-              initialFocusRef={initialResultFocus}
-              onClose={onresultClose}
-              isOpen={isresultOpen}
-              isCentered
-            >
-              <ModalOverlay />
-              <ModalContent>
-                <ModalHeader>Result:</ModalHeader>
-                <ModalCloseButton />
-                <ModalBody maxHeight="300px" overflowY="auto">
-                  <Card align="center">
-                    <CardBody>
-                      <Text
-                        whiteSpace="normal"
-                        wordBreak="break-word"
-                        fontSize="6xl"
-                      >
-                        {result}
-                      </Text>
-                    </CardBody>
-                  </Card>
-                </ModalBody>
-                <ModalFooter>
-                  <HStack>
-                    <Button
-                      isDisabled={remember}
-                      onClick={() => {
-                        setSelected([...selected, result]);
-                        onresultClose();
-                      }}
-                    >
-                      {remember ? "Option removed" : "Remove option"}
-                    </Button>
-                    <Button
-                      ref={initialResultFocus}
-                      colorScheme="teal"
-                      onClick={() => {
-                        onresultClose();
-                        handlerandomise();
-                      }}
-                    >
-                      Again!
-                    </Button>
-                    <Button onClick={onresultClose} colorScheme="red">
-                      Close
-                    </Button>
-                  </HStack>
-                </ModalFooter>
-              </ModalContent>
-            </Modal> */}
-      {/* </Rnd> */}
     </>
   );
 }

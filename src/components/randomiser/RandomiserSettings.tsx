@@ -1,45 +1,51 @@
 import React, { useState, useEffect } from 'react';
 
 interface RandomiserSettingsProps {
-  input: string;
-  setInput: (value: string) => void;
-  setChoices: (choices: string[]) => void;
-  removed: string[];
-  setRemoved: (removed: string[]) => void;
-  onClose?: () => void;
+  choices: string[];
+  removedChoices: string[];
+  onUpdateChoices: (choices: string[]) => void;
+  onUpdateRemovedChoices: (removedChoices: string[]) => void;
 }
 
 const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
-  input,
-  setInput,
-  setChoices,
-  removed,
-  setRemoved,
-  onClose
+  choices,
+  removedChoices,
+  onUpdateChoices,
+  onUpdateRemovedChoices
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [localInput, setLocalInput] = useState(input);
-
-  // Sync local state when parent input changes (e.g., when modal reopens)
-  useEffect(() => {
-    setLocalInput(input);
-  }, [input]);
+  const [input, setInput] = useState(choices.join('\n'));
+  const [removedInput, setRemovedInput] = useState(removedChoices.join('\n'));
 
   const handleRestoreAll = () => {
-    if (removed.length > 0) {
+    if (removedInput.trim()) {
       // Add removed items back to input
-      const currentItems = localInput.trim() ? localInput + '\n' : '';
-      const newInput = currentItems + removed.join('\n');
-      setLocalInput(newInput);
+      const currentItems = input.trim() ? input + '\n' : '';
+      const newInput = currentItems + removedInput;
       setInput(newInput);
-      setRemoved([]);
+      setRemovedInput('');
     }
   };
 
-  const handleBlur = () => {
-    // Update parent state when textarea loses focus
-    setInput(localInput);
-  };
+  // Process and update choices whenever input changes
+  useEffect(() => {
+    let processedChoices = input.split('\n');
+    processedChoices = processedChoices.map(value => value.trim());
+    processedChoices = processedChoices.filter((value, index, array) => {
+      if (value === '') return false;
+      if (array.indexOf(value) !== index) return false;
+      return true;
+    });
+    onUpdateChoices(processedChoices);
+  }, [input, onUpdateChoices]);
+
+  // Update removed choices whenever removedInput changes
+  useEffect(() => {
+    let processedRemoved = removedInput.split('\n');
+    processedRemoved = processedRemoved.map(value => value.trim());
+    processedRemoved = processedRemoved.filter(value => value !== '');
+    onUpdateRemovedChoices(processedRemoved);
+  }, [removedInput, onUpdateRemovedChoices]);
 
   return (
     <div className="w-[700px] max-w-full">
@@ -64,7 +70,6 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                       className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                       onClick={() => {
                         const numbers = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30";
-                        setLocalInput(numbers);
                         setInput(numbers);
                         setMenuOpen(false);
                       }}
@@ -75,7 +80,6 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                       className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                       onClick={() => {
                         const alphabet = "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ";
-                        setLocalInput(alphabet);
                         setInput(alphabet);
                         setMenuOpen(false);
                       }}
@@ -88,10 +92,8 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
               <button
                 className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200"
                 onClick={() => {
-                  setLocalInput("");
                   setInput("");
-                  setChoices([]);
-                  setRemoved([]);
+                  setRemovedInput("");
                 }}
               >
                 Clear all
@@ -105,9 +107,8 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                 Active Items
               </label>
               <textarea
-                onChange={(e) => setLocalInput(e.target.value)}
-                onBlur={handleBlur}
-                value={localInput}
+                onChange={(e) => setInput(e.target.value)}
+                value={input}
                 id="textarea"
                 placeholder="Start typing a list to randomise..."
                 className="w-full h-[300px] px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 text-sm placeholder-warm-gray-500 dark:placeholder-warm-gray-400"
@@ -117,7 +118,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
             <div className="flex flex-col justify-center">
               <button
                 onClick={handleRestoreAll}
-                disabled={removed.length === 0}
+                disabled={!removedInput.trim()}
                 className="px-3 py-2 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Restore all removed items"
               >
@@ -132,10 +133,10 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                 Removed Items
               </label>
               <textarea
-                value={removed.join('\n')}
-                readOnly
+                value={removedInput}
+                onChange={(e) => setRemovedInput(e.target.value)}
                 placeholder="Removed items will appear here..."
-                className="w-full h-[300px] px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md resize-none bg-warm-gray-50 dark:bg-warm-gray-900 text-warm-gray-800 dark:text-warm-gray-200 text-sm placeholder-warm-gray-500 dark:placeholder-warm-gray-400 cursor-not-allowed"
+                className="w-full h-[300px] px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 text-sm placeholder-warm-gray-500 dark:placeholder-warm-gray-400"
               />
             </div>
           </div>
