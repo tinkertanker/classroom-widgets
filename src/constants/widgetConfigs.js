@@ -97,7 +97,7 @@ export const WIDGET_CONFIGS = {
     lockAspectRatio: false
   },
   [WIDGET_TYPES.QRCODE]: {
-    defaultWidth: 300,
+    defaultWidth: 350,
     defaultHeight: 400,
     minWidth: 250,
     minHeight: 300,
