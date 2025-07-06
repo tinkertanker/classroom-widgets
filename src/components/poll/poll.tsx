@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
+import { useModal } from '../../contexts/ModalContext';
+import PollSettings from './PollSettings';
 
 interface PollProps {
   savedState?: any;
@@ -32,9 +34,9 @@ function Poll({ savedState, onStateChange }: PollProps) {
     participantCount: 0
   });
   const [participantCount, setParticipantCount] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
   
   const socketRef = useRef<Socket | null>(null);
+  const { showModal, hideModal } = useModal();
 
   // Initialize socket connection
   useEffect(() => {
@@ -85,16 +87,6 @@ function Poll({ savedState, onStateChange }: PollProps) {
     }
   };
 
-  // Update poll data on server
-  const updatePoll = () => {
-    if (roomCode && socketRef.current) {
-      socketRef.current.emit('poll:update', {
-        code: roomCode,
-        pollData: pollData
-      });
-    }
-  };
-
   // Toggle poll active state
   const togglePoll = () => {
     const newState = !pollData.isActive;
@@ -116,108 +108,30 @@ function Poll({ savedState, onStateChange }: PollProps) {
     }
   };
 
-  // Add option
-  const addOption = () => {
-    setPollData({
-      ...pollData,
-      options: [...pollData.options, '']
+  // Open settings modal
+  const openSettings = () => {
+    showModal({
+      title: 'Poll Settings',
+      content: (
+        <PollSettings
+          question={pollData.question}
+          options={pollData.options}
+          onSave={(question, options) => {
+            setPollData({ ...pollData, question, options });
+            // Update poll on server
+            if (roomCode && socketRef.current) {
+              socketRef.current.emit('poll:update', {
+                code: roomCode,
+                pollData: { ...pollData, question, options }
+              });
+            }
+            hideModal();
+          }}
+        />
+      ),
+      className: 'bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl'
     });
   };
-
-  // Remove option
-  const removeOption = (index: number) => {
-    if (pollData.options.length > 2) {
-      setPollData({
-        ...pollData,
-        options: pollData.options.filter((_, i) => i !== index)
-      });
-    }
-  };
-
-  // Update option text
-  const updateOption = (index: number, value: string) => {
-    const newOptions = [...pollData.options];
-    newOptions[index] = value;
-    setPollData({
-      ...pollData,
-      options: newOptions
-    });
-  };
-
-  // Settings modal content
-  const renderSettings = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold text-warm-gray-800 dark:text-warm-gray-200 mb-4">
-          Poll Settings
-        </h3>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
-              Question
-            </label>
-            <input
-              type="text"
-              value={pollData.question}
-              onChange={(e) => setPollData({ ...pollData, question: e.target.value })}
-              className="w-full px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="What's your poll question?"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
-              Options
-            </label>
-            {pollData.options.map((option, index) => (
-              <div key={index} className="flex gap-2 mb-2">
-                <input
-                  type="text"
-                  value={option}
-                  onChange={(e) => updateOption(index, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={`Option ${index + 1}`}
-                />
-                {pollData.options.length > 2 && (
-                  <button
-                    onClick={() => removeOption(index)}
-                    className="px-3 py-2 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white rounded-md text-sm"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              onClick={addOption}
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
-            >
-              Add Option
-            </button>
-          </div>
-        </div>
-        
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={() => setShowSettings(false)}
-            className="px-3 py-1.5 bg-warm-gray-300 hover:bg-warm-gray-400 text-warm-gray-700 text-sm rounded transition-colors duration-200"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => {
-              updatePoll();
-              setShowSettings(false);
-            }}
-            className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
-          >
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   const getVotePercentage = (index: number) => {
     const votes = results.votes[index] || 0;
@@ -257,7 +171,7 @@ function Poll({ savedState, onStateChange }: PollProps) {
               </div>
             </div>
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={openSettings}
               className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
             >
               Settings
@@ -317,8 +231,6 @@ function Poll({ savedState, onStateChange }: PollProps) {
           </div>
         </>
       )}
-      
-      {showSettings && renderSettings()}
     </div>
   );
 }

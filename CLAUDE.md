@@ -14,6 +14,8 @@ This is a React-based classroom widgets application that provides interactive to
 - React-RND for drag-and-drop and resizing functionality
 - Face-api.js for face recognition features
 - React-Confetti for celebration effects
+- Socket.io for real-time communication (Poll widget)
+- Express.js for server-side functionality
 
 ## Essential Commands
 
@@ -42,34 +44,60 @@ The application uses a dynamic widget system where widgets are:
 4. Removable by dragging to the trash icon
 
 ### Available Widgets
-- **Randomiser** (`src/components/randomiser/`) - Random selection with confetti
+- **Randomiser** (`src/components/randomiser/`) - Random selection with confetti, dual textarea for active/removed items
 - **Timer** (`src/components/timer/`) - Countdown/timing functionality
 - **List** (`src/components/list/`) - Task list with confetti trigger
 - **Work Symbols** (`src/components/work/`) - Visual work mode indicators
 - **Traffic Light** (`src/components/trafficLight/`) - Status indicators
 - **Volume Level Monitor** (`src/components/volumeLevel/`) - Audio level visualization
 - **Link Shortener** (`src/components/shortenLink/`) - URL shortening (requires API key)
+- **Poll** (`src/components/poll/`) - Real-time polling with student participation via room codes
+- **Text Banner** (`src/components/textBanner/`) - Customizable text display
+- **Image Display** (`src/components/imageDisplay/`) - Image viewer widget
+- **Sound Effects** (`src/components/soundEffects/`) - Sound effect player
+- **Sticker** (`src/components/sticker/`) - Decorative stickers for the workspace
 
 ### Toolbar Features
-- Widget creation buttons
-- Integrated clock display (shows current time in 12-hour format)
+- Widget creation buttons (customizable selection)
+- "More" button for accessing all widgets
+- Sticker mode for placing decorative elements
+- Menu with:
+  - Reset workspace
+  - Background selection (geometric, gradient, lines, dots)
+  - Toolbar customization
+  - Dark/light mode toggle
+- Integrated clock display (shows current time in 12-hour format with blinking colon)
 - Trash icon for widget deletion
 
 ### State Management
 - Widget instances stored in `componentList` array with `{id, index}` structure
 - `activeIndex` tracks currently selected widget for z-index management
 - Uses React hooks for local state (no global state management)
+- Workspace persistence via localStorage
+- Widget-specific state saved in `widgetStates` Map
+- Global modal system via ModalContext
 
 ### File Structure
 ```
 src/
-├── App.js                    # Main application with widget management logic
+├── App.tsx                  # Main application with widget management logic
 ├── components/              # Individual widget components
-│   └── [widget-name]/      # Each widget in its own folder
-│       ├── index.tsx       # Component implementation
-│       └── [assets]        # Widget-specific assets
+│   ├── [widget-name]/      # Each widget in its own folder
+│   │   ├── index.tsx       # Component export
+│   │   └── [widget].tsx    # Component implementation
+│   ├── backgrounds/        # Background pattern components
+│   ├── toolbar/           # Toolbar and customization components
+│   └── Widget/            # Widget container and renderer
+├── constants/              # Widget types and configurations
+├── contexts/               # React contexts (Modal)
+├── hooks/                  # Custom React hooks
+├── utils/                  # Helper functions
 ├── secrets/                # API key configuration
-└── toolbar.js              # Toolbar component for adding widgets
+server/                      # Backend server for real-time features
+├── src/                    # Server source code
+│   └── index.js           # Express/Socket.io server
+└── public/                 # Student web interface
+    └── index.html         # Student participation page
 ```
 
 ## Important Implementation Details
@@ -81,6 +109,10 @@ src/
 5. **Size Constraints**: 
    - Default size: 350x350px
    - Randomiser widget: 350x250px (landscape orientation)
+   - Poll widget: 400x450px
+   - Timer widget: 350x415px (maintains specific aspect ratio)
+   - Traffic Light: 300x175px
+   - Sound Effects: 80x420px (tall narrow layout)
 6. **Cleanup**: Remove widgets by implementing drag-to-trash functionality
 
 ## Known Issues
@@ -88,6 +120,7 @@ src/
 - Link Shortener doesn't work when deployed due to CORS restrictions with Short.io API
 - The default test file (App.test.js) is outdated and doesn't test actual functionality
 - Mixed file extensions (.js/.tsx) without proper TypeScript configuration
+- Server must be running separately for Poll widget functionality
 
 ## Styling Guidelines
 
@@ -137,3 +170,44 @@ src/
 - No TypeScript config file despite using .tsx files
 - Face detection models are stored in the public folder
 - Audio files for sound effects are in component folders
+
+## Server Features (for Poll Widget)
+
+### Running the Server
+```bash
+# Start server and React app together
+./start-with-server.sh
+
+# Or run separately:
+cd server && npm start  # Server on port 3001
+npm start              # React app on port 3000
+```
+
+### Real-time Features
+- Room-based sessions with 4-digit codes
+- WebSocket communication via Socket.io
+- Live vote tracking and result broadcasting
+- Participant count monitoring
+- Automatic room cleanup after 12 hours
+
+### Student Participation
+- Students visit `http://[server-ip]:3001`
+- Enter room code to join poll
+- Vote on questions in real-time
+- See results after voting
+
+## Recent Updates
+
+### Randomiser Widget
+- Refactored to use internal state management in settings
+- Dual textarea interface for active and removed items
+- Real-time processing as user types
+- Colorful gradient slot machine animation
+- Adaptive spin speed based on number of items
+
+### Poll Widget
+- Full-stack implementation with Express/Socket.io server
+- Real-time voting and result display
+- Room management with unique codes
+- Fixed synchronization issues for late-joining students
+- Responsive student interface for any device
