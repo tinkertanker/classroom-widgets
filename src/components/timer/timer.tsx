@@ -1,7 +1,5 @@
-import * as React from "react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
-// Removed Chakra UI imports
 
 import ReusableButton from "../main/reusableButton.tsx";
 
@@ -116,7 +114,6 @@ const Timer = () => {
     if (time <= 0 && isRunning) {
       setIsRunning(false);
       setShowPauseResume(false);
-      console.log("Done!");
       // Play the timer end sound
       timerEndAudio.play().catch(error => {
         console.error("Error playing timer end sound:", error);

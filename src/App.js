@@ -22,11 +22,11 @@ import { WIDGET_TYPES } from "./constants/widgetTypes";
 import { getWidgetConfig } from "./constants/widgetConfigs";
 
 // Audio import for trash sound
-const trashSound = require("./sounds/trash-crumple.mp3");
+import trashSound from "./sounds/trash-crumple.mp3";
 const trashAudio = new Audio(trashSound);
 
 function App() {
-  const [useconfetti, setUseconfetti] = useState(false);
+  const [useConfetti, setUseConfetti] = useState(false);
   const [componentList, setComponentList] = useState([]);
   const [activeIndex, setActiveIndex] = useState(null);
   const [generatedComponents, setGeneratedComponents] = useState([]);
@@ -249,7 +249,7 @@ function App() {
         switch(index) {
           case WIDGET_TYPES.RANDOMISER:
             return <Randomiser 
-              toggleConfetti={setUseconfetti} 
+              toggleConfetti={setUseConfetti} 
               savedState={savedState}
               onStateChange={(state) => updateWidgetState(id, state)}
             />;
@@ -322,17 +322,13 @@ function App() {
         lockAspectRatio={widgetConfig.lockAspectRatio}
         enableUserSelectHack={true}
         bounds="#widget-board"
-        // dragGrid={[100, 100]} // can implement grid if future interns want
-        // resizeGrid={[1, 1]}
         style={{
           zIndex: index === WIDGET_TYPES.STAMP 
             ? (activeIndex === id ? 999 : 900) // Stickers always 900+
             : (activeIndex === id ? 500 : "auto"), // Other widgets max 500
           opacity: hoveringTrashId === id ? 0.2 : 1,
           transition: "opacity 0.2s ease",
-          cursor: hoveringTrashId === id ? "not-allowed" : "auto",
-          // borderWidth: activeIndex === id ? "2px":"0px",
-          // borderColor:"skyblue" // for future interns to implement
+          cursor: hoveringTrashId === id ? "not-allowed" : "auto"
         }}
         onDragStart={() => {
           setActiveIndex(id);
@@ -578,7 +574,7 @@ function App() {
           </div>
         )}
       </div>
-      {useconfetti && (
+      {useConfetti && (
         <Confetti
           width={window.innerWidth}
           height={window.innerHeight}
