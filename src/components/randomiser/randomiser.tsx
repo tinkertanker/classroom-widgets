@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Rnd } from "react-rnd";
-import SlotMachine from "./slotMachine.tsx";
+import SlotMachine from "./slotMachine";
 import Confetti from "react-confetti";
 // import  sound from './yay.mp3';
 
@@ -206,7 +206,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
 
   return (
     <>
-      {/* {useconfetti && (
+      {/* {useConfetti && (
         <Confetti
           width={window.innerWidth}
           height={window.innerHeight}

@@ -1,6 +1,5 @@
 // Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import ContextMenus from "../obselete_dont_delete/contextMenu.tsx";
 
 function TrafficLight() {
   const [state, setState] = useState({

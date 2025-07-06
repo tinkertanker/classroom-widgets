@@ -1,5 +1,6 @@
 // Removed Chakra UI imports
 import React, { useEffect, useRef, useState } from 'react';
+// @ts-ignore
 import { FaBell, FaMicrophone } from 'react-icons/fa6';
 
 const AudioVolumeMonitor: React.FC = () => {
@@ -261,7 +262,7 @@ const AudioVolumeMonitor: React.FC = () => {
                     <div className={`flex items-center space-x-2 ${
                         isCooldownRef.current ? 'opacity-40' : 'opacity-100'
                     } transition-opacity duration-300`}>
-                        <FaBell className="w-5 h-5 text-warm-gray-600 dark:text-warm-gray-400" />
+                        {React.createElement(FaBell as any, { className: "w-5 h-5 text-warm-gray-600 dark:text-warm-gray-400" })}
                         {isCooldownRef.current && (
                             <span className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
                                 {cooldownTime}s
@@ -271,9 +272,9 @@ const AudioVolumeMonitor: React.FC = () => {
                     
                     {/* Microphone and toggle - right aligned */}
                     <div className="flex items-center space-x-3">
-                        <FaMicrophone className={`w-5 h-5 ${
+                        {React.createElement(FaMicrophone as any, { className: `w-5 h-5 ${
                             isEnabled ? 'text-warm-gray-600 dark:text-warm-gray-400' : 'text-warm-gray-400 dark:text-warm-gray-600'
-                        } transition-colors duration-300`} />
+                        } transition-colors duration-300`})}
                         
                         <button
                             onClick={() => setIsEnabled(!isEnabled)}

@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
+// @ts-ignore
 import { 
   FaDice,           // Randomiser
   FaClock,          // Timer
@@ -155,7 +156,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             className="px-2.5 py-1.5 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
             title="More widgets"
           >
-            <FaTableCells className="w-4 h-4" />
+            {React.createElement(FaTableCells as any, { className: "w-4 h-4" })}
             <span>More</span>
           </button>
           
@@ -169,7 +170,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             }`}
             title="Stickers"
           >
-            <FaStamp className="w-4 h-4" />
+            {React.createElement(FaStamp as any, { className: "w-4 h-4" })}
             <span>Sticker</span>
           </button>
           
@@ -190,7 +191,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
               title="Menu"
             >
-              <FaBars className="w-4 h-4" />
+              {React.createElement(FaBars as any, { className: "w-4 h-4" })}
             </button>
           </div>
           
@@ -216,13 +217,13 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
               >
-                <FaArrowRotateLeft className="w-4 h-4" />
+                {React.createElement(FaArrowRotateLeft as any, { className: "w-4 h-4" })}
                 <span>Reset Workspace</span>
               </button>
               <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
               <div className="px-4 py-2">
                 <div className="flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 mb-2">
-                  <FaPalette className="w-4 h-4" />
+                  {React.createElement(FaPalette as any, { className: "w-4 h-4" })}
                   <span className="font-medium">Background</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -288,7 +289,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
               >
-                <FaWrench className="w-4 h-4" />
+                {React.createElement(FaWrench as any, { className: "w-4 h-4" })}
                 <span>Customize Toolbar</span>
               </button>
               <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
@@ -299,7 +300,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
               >
-                {darkMode ? <FaSun className="w-4 h-4" /> : <FaMoon className="w-4 h-4" />}
+                {darkMode ? React.createElement(FaSun as any, { className: "w-4 h-4" }) : React.createElement(FaMoon as any, { className: "w-4 h-4" })}
                 <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </button>
             </div>,
@@ -449,7 +450,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                       'bg-sage-600'
                     ) : 'bg-warm-gray-300 dark:bg-warm-gray-600'
                   }`}>
-                    <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}`} />
+                    {React.createElement(Icon as any, { className: `w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}` })}
                   </div>
                   <span className={`text-xs ${isSelected ? 'text-sage-700 dark:text-sage-300 font-medium' : 'text-warm-gray-700 dark:text-warm-gray-200'}`}>
                     {component.name}
@@ -545,7 +546,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }`}
                 title={label}
               >
-                <Icon className="w-8 h-8 text-warm-gray-700 dark:text-warm-gray-300" />
+                {React.createElement(Icon as any, { className: "w-8 h-8 text-warm-gray-700 dark:text-warm-gray-300" })}
                 <span className="text-xs text-warm-gray-600 dark:text-warm-gray-400">{label}</span>
               </button>
             ))}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
 
-import ReusableButton from "../main/reusableButton.tsx";
+import ReusableButton from "../main/reusableButton";
 
 // Audio import
 const timerEndSound = require("./timer-end.mp3");

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+// @ts-ignore
 import { 
   FaTrophy,        // Victory
   FaXmark,         // Wrong (X icon)
@@ -140,7 +141,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
     <div className="w-full h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 p-2 overflow-y-auto">
       <div className="flex flex-col gap-1 h-full">
         {soundButtons.map((sound, index) => {
-          const Icon = sound.icon;
+          const Icon = sound.icon as React.ComponentType<{ className?: string }>;
           const keyNumber = index < 9 ? (index + 1).toString() : '0';
           return (
             <button

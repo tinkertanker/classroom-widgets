@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as React from 'react'
+// @ts-ignore
 import { 
   FaVolumeXmark,     // Silence
   FaVolumeLow,       // Whisper
@@ -57,7 +58,7 @@ function Work() {
         <div className="bg-transparent rounded-lg w-full h-full flex flex-col" id="widget1">
             <div className="flex-1 flex flex-col justify-center items-center p-4">
                 <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
-                    {React.createElement(workModes[state.index].icon, {
+                    {React.createElement(workModes[state.index].icon as any, {
                         className: `w-2/3 h-2/3 ${workModes[state.index].color}`,
                         style: { maxWidth: '200px', maxHeight: '200px' }
                     })}
@@ -81,7 +82,7 @@ function Work() {
                                             : 'bg-warm-gray-100 dark:bg-warm-gray-800 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700'
                                     }`}
                                 >
-                                    <Icon className="w-6 h-6 text-warm-gray-700 dark:text-warm-gray-300" />
+                                    {React.createElement(Icon as any, { className: "w-6 h-6 text-warm-gray-700 dark:text-warm-gray-300" })}
                                 </button>
                             );
                         })}

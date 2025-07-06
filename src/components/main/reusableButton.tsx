@@ -1,6 +1,15 @@
 import React from 'react';
 
-const ReusableButton = ({ colorScheme, size, width, height, children, ...props }) => {
+interface ReusableButtonProps {
+  colorScheme: string;
+  size: string;
+  width?: string;
+  height?: string;
+  children: React.ReactNode;
+  [key: string]: any;
+}
+
+const ReusableButton: React.FC<ReusableButtonProps> = ({ colorScheme, size, width, height, children, ...props }) => {
   // Map colorScheme to Tailwind classes
   const colorClasses = {
     teal: 'bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white',

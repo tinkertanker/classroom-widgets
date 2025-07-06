@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+// @ts-ignore
 import { 
   FaThumbsUp, 
   FaHeart, 
@@ -99,23 +100,23 @@ const Sticker: React.FC<StickerProps> = ({ stickerType, savedState, onStateChang
     const renderIconWithBorder = () => {
       switch (stickerType) {
         case 'thumbsup':
-          return <FaThumbsUp className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaThumbsUp as any, { className: iconClass, style: dropShadowStyle });
         case 'heart':
-          return <FaHeart className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaHeart as any, { className: iconClass, style: dropShadowStyle });
         case 'star':
-          return <FaStar className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaStar as any, { className: iconClass, style: dropShadowStyle });
         case 'smile':
-          return <FaFaceSmile className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaFaceSmile as any, { className: iconClass, style: dropShadowStyle });
         case 'shocked':
-          return <FaFaceSurprise className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaFaceSurprise as any, { className: iconClass, style: dropShadowStyle });
         case 'exclamation':
-          return <FaExclamation className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaExclamation as any, { className: iconClass, style: dropShadowStyle });
         case 'fire':
-          return <FaFire className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaFire as any, { className: iconClass, style: dropShadowStyle });
         case 'check':
-          return <FaCheck className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaCheck as any, { className: iconClass, style: dropShadowStyle });
         default:
-          return <FaStar className={iconClass} style={dropShadowStyle} />;
+          return React.createElement(FaStar as any, { className: iconClass, style: dropShadowStyle });
       }
     };
 
