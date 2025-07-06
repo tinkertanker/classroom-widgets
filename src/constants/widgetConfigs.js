@@ -33,9 +33,9 @@ export const WIDGET_CONFIGS = {
     lockAspectRatio: true
   },
   [WIDGET_TYPES.TRAFFIC_LIGHT]: {
-    defaultWidth: 300,
-    defaultHeight: 175,
-    minWidth: 250,
+    defaultWidth: 400,
+    defaultHeight: 180,
+    minWidth: 350,
     minHeight: 150,
     lockAspectRatio: false
   },

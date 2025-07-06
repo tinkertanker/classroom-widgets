@@ -125,13 +125,12 @@ function TrafficLight() {
           </div>
           <div
             id="balls"
-            className="flex flex-col w-full justify-center items-center px-4"
-            style={{ height: '75px' }}
+            className="flex flex-col w-full flex-1 justify-center items-center px-4 py-3"
           >
-          <h1 className="text-warm-gray-800 dark:text-warm-gray-200 text-center text-lg font-medium">
-            {state.activeLight === "#ff0000" && "Teacher's turn to speak. Be attentive and quiet."}
-            {state.activeLight === "#ffa500" && "Work on your own quietly."}
-            {state.activeLight === "#008000" && "Discuss with your partners using your inside voice."}
+          <h1 className="text-warm-gray-800 dark:text-warm-gray-200 text-center text-base font-medium leading-relaxed">
+            {state.activeLight === "#ff0000" && "Teacher's turn. Listen carefully and stay silent."}
+            {state.activeLight === "#ffa500" && "Work quietly on your own. Stay focused and respectful of others’ space"}
+            {state.activeLight === "#008000" && "Discuss. Talk with your partner using inside voices. Stay on task and share ideas."}
           </h1>
           </div>
         </div>
