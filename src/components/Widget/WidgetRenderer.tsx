@@ -10,6 +10,7 @@ import TextBanner from "../textBanner/textBanner";
 import ImageDisplay from "../imageDisplay/imageDisplay";
 import SoundEffects from "../soundEffects/soundEffects";
 import Sticker from "../sticker/sticker";
+import Poll from "../poll/poll";
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
 
 const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateChange, toggleConfetti }) => {
@@ -50,6 +51,11 @@ const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateCha
     case WIDGET_TYPES.STAMP:
       return <Sticker
         stickerType={savedState?.stickerType || savedState?.stampType || 'heart'}
+        savedState={savedState}
+        onStateChange={onStateChange}
+      />;
+    case WIDGET_TYPES.POLL:
+      return <Poll
         savedState={savedState}
         onStateChange={onStateChange}
       />;

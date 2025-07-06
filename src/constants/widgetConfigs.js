@@ -88,6 +88,13 @@ export const WIDGET_CONFIGS = {
         lockAspectRatio: 45 / 80
       }
     }
+  },
+  [WIDGET_TYPES.POLL]: {
+    defaultWidth: 400,
+    defaultHeight: 450,
+    minWidth: 300,
+    minHeight: 350,
+    lockAspectRatio: false
   }
 };
 

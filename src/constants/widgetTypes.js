@@ -10,5 +10,6 @@ export const WIDGET_TYPES = {
   TEXT_BANNER: 7,
   IMAGE_DISPLAY: 8,
   SOUND_EFFECTS: 9,
-  STAMP: 10
+  STAMP: 10,
+  POLL: 11
 };
