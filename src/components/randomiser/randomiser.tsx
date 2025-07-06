@@ -230,90 +230,90 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
         lockAspectRatio={true}
       > */}
       <div
-        className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full p-1"
+        className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col"
         id="jason"
       >
-        <div className="w-full h-full p-0">
-          <div className="flex flex-col w-full h-full items-center">
-            <button
-              className="w-[87.5%] h-[75%] mt-[5%] mb-[2%] p-0 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors duration-200"
-              onDoubleClick={() => {
-                if (loading === false) {
-                  onOpen();
-                }
+        <div className="flex-1 overflow-hidden p-4">
+          <button
+            className="w-full h-full p-0 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors duration-200"
+            onDoubleClick={() => {
+              if (loading === false) {
+                onOpen();
+              }
+            }}
+            title="Double-click to open settings"
+          >
+            {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
+            <div
+              ref={boxRef}
+              className="h-full w-full overflow-y-auto flex justify-center"
+              style={{
+                alignItems: textheight > boxheight ? "start" : "center"
               }}
-              title="Double-click to open settings"
             >
-              {/* Super duper cool functionality here, if the height of the text is greater than box height then the text will align top, if not the text will align center, this is for use cases when the text is super long or when the box is resized */}
-              <div
-                ref={boxRef}
-                className="h-full w-full overflow-y-auto flex justify-center"
-                style={{
-                  alignItems: textheight > boxheight ? "start" : "center"
-                }}
-              >
-                {choices.length > 0 ? (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <SlotMachine
-                      items={choices}
-                      selectedIndex={selectedItemIndex}
-                      isSpinning={isSpinning}
-                      duration={animation ? (animationspeed * 1000 * 90) : 1500}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex justify-center items-center w-[95%]">
-                    <p
-                      className="whitespace-normal break-words text-2xl text-center text-warm-gray-800 dark:text-warm-gray-200"
-                      ref={textRef}
-                    >
-                      {result}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {choices.length > 0 ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  <SlotMachine
+                    items={choices}
+                    selectedIndex={selectedItemIndex}
+                    isSpinning={isSpinning}
+                    duration={animation ? (animationspeed * 1000 * 90) : 1500}
+                  />
+                </div>
+              ) : (
+                <div className="flex justify-center items-center w-[95%]">
+                  <p
+                    className="whitespace-normal break-words text-2xl text-center text-warm-gray-800 dark:text-warm-gray-200"
+                    ref={textRef}
+                  >
+                    {result}
+                  </p>
+                </div>
+              )}
+            </div>
+          </button>
+        </div>
+        {buttonsettings === "normal" ? (
+          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center">
+            <button
+              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={()=>handlerandomise()}
+              disabled={loading}
+            >
+              Randomise!!
             </button>
-            {buttonsettings === "normal" ? (
-              <div className="flex w-full justify-center mt-2 pb-3">
-                <button
-                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={()=>handlerandomise()}
-                  disabled={loading}
-                >
-                  Randomise!!
-                </button>
-              </div>
-            ) : buttonsettings === "result" ? (
-              <div className="flex flex-row w-full justify-center gap-2 mt-2 pb-3">
-                <button
-                  className={`px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
-                  disabled={remember ? true : pressedDisable}
-                  onClick={() => {
-                    setSelected([...selected, result]);
-                    setpressedDisable(true);
-                  }}
-                >
-                  {remember
-                    ? "Option removed"
-                    : pressedDisable
-                    ? "Option removed"
-                    : "Remove option"}
-                </button>
-                <button
-                  disabled={loading}
-                  ref={initialResultFocus}
-                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => {
-                    handlerandomise();
-                  }}
-                >
-                  Again!
-                </button>
-              </div>
-            ) : null}
           </div>
+        ) : buttonsettings === "result" ? (
+          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center gap-2">
+            <button
+              className={`px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
+              disabled={remember ? true : pressedDisable}
+              onClick={() => {
+                setSelected([...selected, result]);
+                setpressedDisable(true);
+              }}
+            >
+              {remember
+                ? "Option removed"
+                : pressedDisable
+                ? "Option removed"
+                : "Remove option"}
+            </button>
+            <button
+              disabled={loading}
+              ref={initialResultFocus}
+              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => {
+                handlerandomise();
+              }}
+            >
+              Again!
+            </button>
+          </div>
+        ) : null}
+      </div>
 
-          {/* <Modal
+      {/* <Modal
               initialFocusRef={initialResultFocus}
               onClose={onresultClose}
               isOpen={isresultOpen}
@@ -573,8 +573,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
               </div>
             </>
           )}
-        </div>
-      </div>
       {/* </Rnd> */}
     </>
   );

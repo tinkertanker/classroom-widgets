@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 
-
-import ReusableButton from "../main/reusableButton";
-
 // Audio import
 const timerEndSound = require("./timer-end.mp3");
 const timerEndAudio = new Audio(timerEndSound);
@@ -244,11 +241,8 @@ const Timer = () => {
   return (
     <>
       <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full overflow-hidden flex flex-col" style={{ containerType: 'size' }}>
-        <div className="flex-1 py-1">
-          <div className="w-full h-full py-1 relative">
-            {/* Custom Circular Progress */}
-            <div className="relative w-full h-full flex items-center justify-center">
-              <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
+        <div className="flex-1 relative flex items-center justify-center p-4">
+          <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
                 {/* Background circle (gray) */}
                 <circle
                   cx="50"
@@ -358,27 +352,42 @@ const Timer = () => {
                   </div>
                 )}
               </div>
-            </div>
-          </div>
         </div>
-        <div className="px-3 pb-3" style={{ height: '56px' }}>
-          <div className="flex flex-row w-full gap-[5%] h-full">
-            {showStart ? (
-              <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={startTimer}>Start {'\u25B6'}</ReusableButton>
-            ) : (
-              <>
-                {showPauseResume ?
-                  (showResume ? (
-                    <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={resumeTimer}>Resume {'\u25B6'}</ReusableButton>
-                  ) : (
-                    <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={pauseTimer}>Pause {'\u2590'} {'\u258C'}</ReusableButton>
-                  )) : (
-                    <></>
-                  )}
-                <ReusableButton size="sm" colorScheme="sage" height="32px" onClick={restartTimer}>Restart {'\u21BB'}</ReusableButton>
-              </>
-            )}
-          </div>
+        <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center gap-2">
+          {showStart ? (
+            <button
+              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+              onClick={() => startTimer()}
+            >
+              Start {'\u25B6'}
+            </button>
+          ) : (
+            <>
+              {showPauseResume && (
+                showResume ? (
+                  <button
+                    className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                    onClick={resumeTimer}
+                  >
+                    Resume {'\u25B6'}
+                  </button>
+                ) : (
+                  <button
+                    className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                    onClick={pauseTimer}
+                  >
+                    Pause {'\u2590'} {'\u258C'}
+                  </button>
+                )
+              )}
+              <button
+                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                onClick={restartTimer}
+              >
+                Restart {'\u21BB'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>

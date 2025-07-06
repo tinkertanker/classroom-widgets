@@ -176,7 +176,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
             </div>
           </div>
         </div>
-        <div className="p-4 border-t dark:border-warm-gray-700 flex items-center">
+        <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center">
           <button
             className={`px-3 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200 ${
               isLarge ? "text-base py-2" : "text-sm py-1.5"

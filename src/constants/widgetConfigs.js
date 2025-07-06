@@ -11,10 +11,10 @@ export const WIDGET_CONFIGS = {
   },
   [WIDGET_TYPES.TIMER]: {
     defaultWidth: 350,
-    defaultHeight: 406,
+    defaultHeight: 415,
     minWidth: 250,
     minHeight: 306,
-    lockAspectRatio: 350 / 406
+    lockAspectRatio: 350 / 415
   },
   [WIDGET_TYPES.LIST]: {
     defaultWidth: 350,
