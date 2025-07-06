@@ -151,11 +151,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
     return temporarychoices;
   };
 
-  useEffect(() => {
-    if (buttonsettings === "result") {
-      setButtonSettings("normal");
-    }
-  }, [buttonsettings]);
+  // Removed the effect that was resetting buttonsettings to normal
 
   // Update result message when choices change
   useEffect(() => {
