@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
 import { useModal } from '../../contexts/ModalContext';
-import CustomizeToolbar from './CustomizeToolbar';
+import CustomizeToolbarWrapper from './CustomizeToolbarWrapper';
 import StickerPalette from './StickerPalette';
 // @ts-ignore
 import { 
@@ -14,7 +14,6 @@ import {
   FaTrafficLight,   // Traffic Light
   FaVolumeHigh,     // Sound Monitor
   FaLink,           // Link Shortener
-  FaBars,           // Menu icon
   FaArrowRotateLeft,// Reset icon
   FaTableCells,     // Grid icon for more widgets
   FaTextWidth,      // Text Banner
@@ -124,10 +123,47 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
 
   return (
     <>
-      <div className="w-[90%] h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700">
-        <div className="w-full h-full px-2 py-1.5">
-        <div className="flex items-center justify-center w-full h-full overflow-x-auto overflow-y-visible space-x-1.5">
-          {ToolbarComponentData.map((component, toolbarIndex) => {
+      <div className="w-[90%] flex items-end">
+        {/* Bump section for trash and more button - taller */}
+        <div className="bg-soft-white dark:bg-warm-gray-800 rounded-l-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 border-r-0 px-2 py-3 flex items-center gap-2" style={{ height: '60px' }}>
+            {/* Trash can - doubled in size */}
+            <div className="flex items-center justify-center p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded-lg transition-colors duration-200">
+              <svg
+                id="trash"
+                className={`w-10 h-10 cursor-pointer transition-all duration-200 flex-shrink-0 ${
+                  hoveringTrash 
+                    ? 'text-dusty-rose-500 transform scale-110' 
+                    : 'text-warm-gray-500 dark:text-warm-gray-400'
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </div>
+            
+            {/* More widgets button - doubled in size */}
+            <button
+              onClick={() => setLaunchpadOpen(true)}
+              className="px-4 py-3 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-sm flex-shrink-0 inline-flex items-center gap-2"
+              title="More widgets"
+            >
+              {React.createElement(FaTableCells as any, { className: "w-6 h-6" })}
+              <span className="font-medium">More</span>
+            </button>
+        </div>
+        
+        {/* Regular buttons section - shorter height */}
+        <div className="bg-soft-white dark:bg-warm-gray-800 rounded-r-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 border-l-0 flex-1 px-2 py-1.5 flex items-center" style={{ height: '40px' }}>
+          <div className="flex items-center gap-1.5 overflow-x-auto flex-1">
+            {ToolbarComponentData.map((component, toolbarIndex) => {
             const Icon = component.icon;
             // Find the actual index in AllComponentData
             const actualIndex = AllComponentData.findIndex(c => c.name === component.name);
@@ -146,7 +182,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   setComponentList((e) => [...e, { id: newId, index: actualIndex }]);
                   setActiveIndex(newId); // Set the new widget as active
                 }}
-                className="px-3 py-2 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
+                className="px-2 py-1 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
               >
                 <div className="relative inline-flex items-center">
                   <Icon className="w-4 h-4" />
@@ -160,16 +196,6 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
               </button>
             );
           })}
-          
-          {/* More widgets button */}
-          <button
-            onClick={() => setLaunchpadOpen(true)}
-            className="px-3 py-2 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
-            title="More widgets"
-          >
-            {React.createElement(FaTableCells as any, { className: "w-4 h-4" })}
-            <span>More</span>
-          </button>
           
           {/* Sticker button */}
           <button
@@ -185,7 +211,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 />
               )
             })}
-            className={`px-3 py-2 rounded-md transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5 ${
+            className={`px-2 py-1 rounded-md transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5 ${
               stickerMode 
                 ? 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700' 
                 : 'bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700'
@@ -195,9 +221,10 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             {React.createElement(FaStamp as any, { className: "w-4 h-4" })}
             <span>Sticker</span>
           </button>
+          </div>
           
           {/* Menu button */}
-          <div className="relative ml-2 menu-container">
+          <div className="relative ml-2 mr-4 menu-container">
             <button
               ref={menuButtonRef}
               onClick={() => {
@@ -205,15 +232,22 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   const rect = menuButtonRef.current.getBoundingClientRect();
                   setMenuPosition({
                     top: rect.top - 8, // 8px gap
-                    left: rect.left
+                    left: rect.right - 200 // Align to right edge minus menu width
                   });
                 }
                 setMenuOpen(!menuOpen);
               }}
-              className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
+              className="p-1 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
               title="Menu"
             >
-              {React.createElement(FaBars as any, { className: "w-4 h-4" })}
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <line x1="4" y1="6" x2="20" y2="6" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="10" cy="6" r="2" fill="currentColor" />
+                <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="16" cy="12" r="2" fill="currentColor" />
+                <line x1="4" y1="18" x2="20" y2="18" strokeWidth="2" strokeLinecap="round" />
+                <circle cx="7" cy="18" r="2" fill="currentColor" />
+              </svg>
             </button>
           </div>
           
@@ -309,14 +343,11 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   showModal({
                     title: 'Customize Toolbar',
                     content: (
-                      <CustomizeToolbar
+                      <CustomizeToolbarWrapper
                         selectedToolbarWidgets={selectedToolbarWidgets}
                         setSelectedToolbarWidgets={setSelectedToolbarWidgets}
                         AllComponentData={AllComponentData}
-                        onSave={() => {
-                          localStorage.setItem('toolbarWidgets', JSON.stringify(selectedToolbarWidgets));
-                          hideModal();
-                        }}
+                        onClose={hideModal}
                       />
                     )
                   });
@@ -342,8 +373,8 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
             document.body
           )}
           
-          <div className="flex items-center space-x-4 ml-auto">
-            <div className="bg-warm-gray-200 dark:bg-warm-gray-900 text-terracotta-600 dark:text-sage-400 px-2.5 py-0.5 rounded font-mono text-sm tracking-wider whitespace-nowrap">
+          <div className="flex items-center ml-auto">
+            <div className="bg-warm-gray-200 dark:bg-warm-gray-900 text-terracotta-600 dark:text-sage-400 px-2 py-0.5 rounded font-mono text-xs tracking-wider whitespace-nowrap">
               {formattedTime.split(':').map((part, index) => (
                 <React.Fragment key={index}>
                   {index > 0 && (
@@ -355,25 +386,6 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 </React.Fragment>
               ))}
             </div>
-            <svg
-              id="trash"
-              className={`w-5 h-5 cursor-pointer transition-all duration-200 ${
-                hoveringTrash 
-                  ? 'text-dusty-rose-500 transform scale-125' 
-                  : 'text-warm-gray-500 dark:text-warm-gray-400'
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
           </div>
         </div>
       </div>
@@ -434,7 +446,6 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
       </div>,
       document.body
     )}
-    </div>
     </>
   );
 
