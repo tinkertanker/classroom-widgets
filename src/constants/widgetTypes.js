@@ -11,5 +11,6 @@ export const WIDGET_TYPES = {
   IMAGE_DISPLAY: 8,
   SOUND_EFFECTS: 9,
   STAMP: 10,
-  POLL: 11
+  POLL: 11,
+  QRCODE: 12
 };

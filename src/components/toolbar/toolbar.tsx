@@ -26,7 +26,8 @@ import {
   FaSun,            // Light mode
   FaStamp,          // Stamp icon
   FaChartColumn,    // Poll icon
-  FaWifi            // Network indicator
+  FaWifi,           // Network indicator
+  FaQrcode          // QR Code icon
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}) {
@@ -110,7 +111,9 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   AllComponentData[WIDGET_TYPES.TEXT_BANNER] = { name: "Text Banner", icon: FaTextWidth };
   AllComponentData[WIDGET_TYPES.IMAGE_DISPLAY] = { name: "Image", icon: FaImage };
   AllComponentData[WIDGET_TYPES.SOUND_EFFECTS] = { name: "Sound Effects", icon: FaMusic };
+  AllComponentData[WIDGET_TYPES.STAMP] = { name: "Stamp", icon: FaStamp };
   AllComponentData[WIDGET_TYPES.POLL] = { name: "Poll", icon: FaChartColumn, requiresServer: true };
+  AllComponentData[WIDGET_TYPES.QRCODE] = { name: "QR Code", icon: FaQrcode };
   
   // Use customized toolbar widget selection
   const ToolbarComponentData = selectedToolbarWidgets.map(index => AllComponentData[index]).filter(Boolean);
