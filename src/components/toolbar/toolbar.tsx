@@ -25,7 +25,8 @@ import {
   FaMoon,           // Dark mode
   FaSun,            // Light mode
   FaStamp,          // Stamp icon
-  FaChartColumn     // Poll icon
+  FaChartColumn,    // Poll icon
+  FaWifi            // Network indicator
 } from 'react-icons/fa6';
 
 export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}) {
@@ -109,7 +110,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   AllComponentData[WIDGET_TYPES.TEXT_BANNER] = { name: "Text Banner", icon: FaTextWidth };
   AllComponentData[WIDGET_TYPES.IMAGE_DISPLAY] = { name: "Image", icon: FaImage };
   AllComponentData[WIDGET_TYPES.SOUND_EFFECTS] = { name: "Sound Effects", icon: FaMusic };
-  AllComponentData[WIDGET_TYPES.POLL] = { name: "Poll", icon: FaChartColumn };
+  AllComponentData[WIDGET_TYPES.POLL] = { name: "Poll", icon: FaChartColumn, requiresServer: true };
   
   // Use customized toolbar widget selection
   const ToolbarComponentData = selectedToolbarWidgets.map(index => AllComponentData[index]).filter(Boolean);
@@ -140,7 +141,14 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 }}
                 className="px-2.5 py-1.5 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs sm:text-sm md:text-base lg:text-lg xl:text-lg flex-shrink-0 inline-flex items-center gap-2"
               >
-                <Icon className="w-4 h-4" />
+                <div className="relative inline-flex items-center">
+                  <Icon className="w-4 h-4" />
+                  {component.requiresServer && (
+                    React.createElement(FaWifi as any, { 
+                      className: "w-2 h-2 absolute -top-1 -right-1 text-amber-300" 
+                    })
+                  )}
+                </div>
                 <span>{component.name}</span>
               </button>
             );
@@ -398,12 +406,17 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                   }}
                   className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group"
                 >
-                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-200 ${
+                  <div className={`relative w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-200 ${
                     [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500 group-hover:bg-dusty-rose-600' :
                     [WIDGET_TYPES.TIMER, WIDGET_TYPES.WORK_SYMBOLS, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500 group-hover:bg-terracotta-600' :
                     'bg-sage-600 group-hover:bg-sage-700'
                   }`}>
                     <Icon className="w-8 h-8 text-white" />
+                    {component.requiresServer && (
+                      React.createElement(FaWifi as any, { 
+                        className: "w-3 h-3 absolute top-1 right-1 text-amber-300" 
+                      })
+                    )}
                   </div>
                   <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200">{component.name}</span>
                 </button>

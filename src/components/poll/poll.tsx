@@ -34,16 +34,27 @@ function Poll({ savedState, onStateChange }: PollProps) {
     participantCount: 0
   });
   const [participantCount, setParticipantCount] = useState(0);
+  const [connectionError, setConnectionError] = useState<string>('');
+  const [isConnecting, setIsConnecting] = useState(false);
   
   const socketRef = useRef<Socket | null>(null);
   const { showModal, hideModal } = useModal();
 
   // Initialize socket connection
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001');
+    socketRef.current = io('http://localhost:3001', {
+      autoConnect: false // Don't connect until user creates a room
+    });
     
     socketRef.current.on('connect', () => {
       console.log('Connected to server');
+      setConnectionError('');
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      setConnectionError('Unable to connect to server. Make sure the server is running on port 3001.');
+      setIsConnecting(false);
     });
 
     socketRef.current.on('host:joined', (data) => {
@@ -70,20 +81,38 @@ function Poll({ savedState, onStateChange }: PollProps) {
 
   // Create room and get code
   const createRoom = async () => {
+    setIsConnecting(true);
+    setConnectionError('');
+    
     try {
+      // First connect the socket
+      socketRef.current?.connect();
+      
+      // Wait a bit for connection
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const response = await fetch('http://localhost:3001/api/rooms/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
+      
+      if (!response.ok) {
+        throw new Error('Server request failed');
+      }
+      
       const data = await response.json();
       
       if (data.success) {
         setRoomCode(data.code);
         // Join room as host
         socketRef.current?.emit('host:join', data.code);
+        setIsConnecting(false);
       }
     } catch (error) {
       console.error('Failed to create room:', error);
+      setConnectionError('Cannot connect to server. Please ensure the server is running (cd server && npm start).');
+      setIsConnecting(false);
+      socketRef.current?.disconnect();
     }
   };
 
@@ -148,10 +177,21 @@ function Poll({ savedState, onStateChange }: PollProps) {
           </p>
           <button
             onClick={createRoom}
-            className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200"
+            disabled={isConnecting}
+            className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Poll Room
+            {isConnecting ? 'Connecting...' : 'Create Poll Room'}
           </button>
+          {connectionError && (
+            <div className="mt-4 p-3 bg-dusty-rose-100 dark:bg-dusty-rose-900 border border-dusty-rose-300 dark:border-dusty-rose-700 rounded-md max-w-sm">
+              <p className="text-sm text-dusty-rose-700 dark:text-dusty-rose-300">
+                {connectionError}
+              </p>
+              <p className="text-xs text-dusty-rose-600 dark:text-dusty-rose-400 mt-2">
+                Start the server with: <code className="bg-dusty-rose-200 dark:bg-dusty-rose-800 px-1 rounded">cd server && npm start</code>
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <>
