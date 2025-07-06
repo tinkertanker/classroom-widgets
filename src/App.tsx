@@ -7,7 +7,7 @@ import Confetti from "react-confetti";
 import Toolbar from "./components/toolbar/toolbar";
 import Board from "./components/Board/Board";
 import WidgetContainer from "./components/Widget/WidgetContainer";
-import Background from "./components/backgrounds/backgrounds";
+import Background, { BackgroundType } from "./components/backgrounds/backgrounds";
 
 // Hooks
 import { useDarkMode } from "./hooks/useDarkMode";
@@ -28,7 +28,7 @@ function App() {
   const [useConfetti, setUseConfetti] = useState(false);
   const [darkMode, setDarkMode] = useDarkMode();
   const { isFullscreen, toggleFullscreen } = useFullscreen();
-  const [backgroundType, setBackgroundType] = useState('geometric');
+  const [backgroundType, setBackgroundType] = useState<BackgroundType>('geometric');
   
   // Widget State
   const [componentList, setComponentList] = useState([]);
@@ -178,7 +178,7 @@ function App() {
 
   return (
     <>
-      <meta charset="UTF-8" />
+      <meta charSet="UTF-8" />
       <div className="App dark:bg-warm-gray-900">
         {/* Fixed UI elements */}
         <div className="fixed-ui">
