@@ -10,8 +10,8 @@ interface ListProps {
 }
 
 const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
-  const [inputs, setInputs] = useState<string[]>(savedState?.inputs || []);
-  const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || []); // 0: none, 1: green, 2: yellow, 3: red, 4: faded
+  const [inputs, setInputs] = useState<string[]>(savedState?.inputs || [""]);
+  const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || [0]); // 0: none, 1: green, 2: yellow, 3: red, 4: faded
   const [isLarge, setIsLarge] = useState(false);
 
   const inputRefs = useRef<HTMLInputElement[]>([]);

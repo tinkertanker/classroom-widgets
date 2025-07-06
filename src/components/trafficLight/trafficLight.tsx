@@ -10,6 +10,7 @@ function TrafficLight() {
   });
 
   const boxRef = useRef<HTMLDivElement>(null);
+  const actionClickSound = require('../../sounds/action_click.mp3');
 
   useEffect(() => {
     if (boxRef.current) {
@@ -71,11 +72,12 @@ function TrafficLight() {
   }, []);
 
   const handleLightClick = useCallback((color) => {
+    new Audio(actionClickSound).play();
     setState((prevState) => ({
       ...prevState,
       activeLight: color,
     }));
-  }, []);
+  }, [actionClickSound]);
 
   const toggleInputButtons = useCallback(() => {
     setState((prevState) => ({
