@@ -26,8 +26,10 @@ export const WIDGET_CONFIGS = {
   [WIDGET_TYPES.WORK_SYMBOLS]: {
     defaultWidth: 350,
     defaultHeight: 350,
-    minWidth: 200,
-    minHeight: 200,
+    minWidth: 350,
+    minHeight: 350,
+    maxWidth: 350,
+    maxHeight: 350,
     lockAspectRatio: true
   },
   [WIDGET_TYPES.TRAFFIC_LIGHT]: {

@@ -4,8 +4,11 @@ import * as React from 'react'
 import { 
   FaVolumeXmark,     // Silence
   FaVolumeLow,       // Whisper
-  FaComments,        // Ask Neighbour
-  FaPeopleGroup      // Work Together
+  FaComments,        // Discuss with neighbour
+  FaUser,            // Work alone
+  FaPeopleGroup,     // Work together
+  FaMugHot,          // Break time
+  FaBroom            // Clean up
 } from 'react-icons/fa6';
 
 function Work() {
@@ -18,15 +21,18 @@ function Work() {
     const workModes = [
         { icon: FaVolumeXmark, label: 'Silence', color: 'text-dusty-rose-500' },
         { icon: FaVolumeLow, label: 'Whisper', color: 'text-terracotta-500' },
-        { icon: FaComments, label: 'Ask Neighbour', color: 'text-sage-600' },
-        { icon: FaPeopleGroup, label: 'Work Together', color: 'text-warm-gray-600' },
+        { icon: FaComments, label: 'Discuss with neighbour', color: 'text-sage-600' },
+        { icon: FaUser, label: 'Work alone', color: 'text-warm-gray-700' },
+        { icon: FaPeopleGroup, label: 'Work together', color: 'text-terracotta-600' },
+        { icon: FaMugHot, label: 'Break time', color: 'text-sage-500' },
+        { icon: FaBroom, label: 'Clean up', color: 'text-dusty-rose-600' },
     ];
 
-    const actionClickSound = require('../../sounds/action_click.mp3');
+    const changeSound = require('./change.wav');
 
     const plaey = useCallback(() => {
-        new Audio(actionClickSound).play();
-    }, [actionClickSound]);
+        new Audio(changeSound).play();
+    }, [changeSound]);
 
     const handleClick = useCallback((e) => {
         if (e.target.closest("#widget1")) {
@@ -47,6 +53,14 @@ function Work() {
         }));
     }, []);
 
+    const handleNextState = useCallback(() => {
+        setState(prev => ({
+            ...prev,
+            index: (prev.index + 1) % workModes.length,
+        }));
+        plaey();
+    }, [workModes.length, plaey]);
+
     useEffect(() => {
         window.addEventListener("click", handleClick);
         return () => {
@@ -56,8 +70,12 @@ function Work() {
 
     return (
         <div className="bg-transparent rounded-lg w-full h-full flex flex-col" id="widget1">
-            <div className="flex-1 flex flex-col justify-center items-center p-4">
-                <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
+            <div className="flex-1 flex flex-col justify-center items-center px-3 pt-3">
+                <div 
+                    className="w-full h-full flex flex-col items-center justify-center space-y-4 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={handleNextState}
+                    title="Click to cycle to next state"
+                >
                     {React.createElement(workModes[state.index].icon as any, {
                         className: `w-2/3 h-2/3 ${workModes[state.index].color}`,
                         style: { maxWidth: '200px', maxHeight: '200px' }
@@ -68,21 +86,22 @@ function Work() {
                 </div>
             </div>
             {state.clicked && (
-                <div className="p-4">
-                    <div id="widget1inside" className="flex justify-center gap-1">
+                <div className="px-3 pb-3">
+                    <div id="widget1inside" className="flex flex-wrap justify-center gap-1">
                         {workModes.map((mode, i) => {
                             const Icon = mode.icon;
                             return (
                                 <button
                                     key={i}
                                     onClick={() => handleChangeImage(i)}
-                                    className={`p-3 rounded-lg transition-all duration-200 ${
+                                    className={`p-2 rounded-lg transition-all duration-200 ${
                                         state.index === i 
                                             ? 'bg-warm-gray-200 dark:bg-warm-gray-700 shadow-inner' 
                                             : 'bg-warm-gray-100 dark:bg-warm-gray-800 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700'
                                     }`}
+                                    title={mode.label}
                                 >
-                                    {React.createElement(Icon as any, { className: "w-6 h-6 text-warm-gray-700 dark:text-warm-gray-300" })}
+                                    {React.createElement(Icon as any, { className: "w-5 h-5 text-warm-gray-700 dark:text-warm-gray-300" })}
                                 </button>
                             );
                         })}

@@ -47,7 +47,7 @@ The application uses a dynamic widget system where widgets are:
 - **Randomiser** (`src/components/randomiser/`) - Random selection with confetti, dual textarea for active/removed items
 - **Timer** (`src/components/timer/`) - Countdown/timing functionality
 - **List** (`src/components/list/`) - Task list with confetti trigger
-- **Work Symbols** (`src/components/work/`) - Visual work mode indicators
+- **Task Cue** (`src/components/work/`) - Visual work mode indicators
 - **Traffic Light** (`src/components/trafficLight/`) - Status indicators
 - **Volume Level Monitor** (`src/components/volumeLevel/`) - Audio level visualization
 - **Link Shortener** (`src/components/shortenLink/`) - URL shortening (requires API key)
@@ -56,6 +56,7 @@ The application uses a dynamic widget system where widgets are:
 - **Image Display** (`src/components/imageDisplay/`) - Image viewer widget
 - **Sound Effects** (`src/components/soundEffects/`) - Sound effect player
 - **Sticker** (`src/components/sticker/`) - Decorative stickers for the workspace
+- **QR Code** (`src/components/qrcode/`) - QR code generator for sharing links with students
 
 ### Toolbar Features
 - Widget creation buttons (customizable selection)

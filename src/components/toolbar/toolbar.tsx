@@ -104,7 +104,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   AllComponentData[WIDGET_TYPES.RANDOMISER] = { name: "Randomiser", icon: FaDice };
   AllComponentData[WIDGET_TYPES.TIMER] = { name: "Timer", icon: FaClock };
   AllComponentData[WIDGET_TYPES.LIST] = { name: "List", icon: FaListCheck };
-  AllComponentData[WIDGET_TYPES.WORK_SYMBOLS] = { name: "Work Symbols", icon: FaUserGroup };
+  AllComponentData[WIDGET_TYPES.WORK_SYMBOLS] = { name: "Task Cue", icon: FaUserGroup };
   AllComponentData[WIDGET_TYPES.TRAFFIC_LIGHT] = { name: "Traffic Light", icon: FaTrafficLight };
   AllComponentData[WIDGET_TYPES.SOUND_MONITOR] = { name: "Sound Monitor", icon: FaVolumeHigh };
   AllComponentData[WIDGET_TYPES.LINK_SHORTENER] = { name: "Link Shortener", icon: FaLink };
