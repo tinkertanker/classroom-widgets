@@ -242,7 +242,11 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       >
         <div className="flex-1 overflow-hidden p-4">
           <button
-            className="w-full h-full p-0 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors duration-200"
+            className={`w-full h-full p-0 rounded transition-colors duration-200 ${
+              displayChoices.length > 0 
+                ? 'bg-transparent hover:bg-white/10' 
+                : 'bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
+            }`}
             onDoubleClick={() => {
               if (loading === false) {
                 openSettings();

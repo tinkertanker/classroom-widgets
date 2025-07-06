@@ -34,7 +34,9 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
       startIndexRef.current = displayIndex;
       
       // Calculate how many steps to take to reach selectedIndex
-      const rotations = 8 + Math.random() * 4; // 8-12 rotations
+      // Adjust rotations based on number of items - fewer rotations for more items
+      const baseRotations = items.length <= 10 ? 8 : items.length <= 20 ? 6 : 4;
+      const rotations = baseRotations + Math.random() * 2; // Add some randomness
       const fullRotationSteps = Math.floor(rotations) * items.length;
       
       // Calculate shortest path to selected index
@@ -51,8 +53,18 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
         const elapsed = currentTime - startTimeRef.current;
         const progress = Math.min(elapsed / duration, 1);
         
-        // Use easing function for smooth deceleration
-        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        // Use a more aggressive easing function for smoother deceleration
+        // This creates a longer deceleration phase at the end
+        let easedProgress;
+        if (progress < 0.7) {
+          // First 70% - maintain good speed
+          easedProgress = progress / 0.7 * 0.85;
+        } else {
+          // Last 30% - strong deceleration
+          const slowPhase = (progress - 0.7) / 0.3;
+          const eased = 1 - Math.pow(1 - slowPhase, 4);
+          easedProgress = 0.85 + eased * 0.15;
+        }
         
         // Calculate current position
         const totalProgress = easedProgress * targetStepsRef.current;
@@ -112,11 +124,14 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
   const itemHeight = 50; // Height of each item slot - reduced for tighter spacing
   
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-400 via-pink-400 to-yellow-400 dark:from-purple-600 dark:via-pink-600 dark:to-yellow-600 rounded-lg">
+      {/* Colorful background overlay for slot machine effect */}
+      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent animate-pulse" />
+      
       {/* Gradient masks for fade effect */}
       <div className="absolute inset-0 pointer-events-none z-10">
-        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-warm-gray-100 dark:from-warm-gray-700 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-warm-gray-100 dark:from-warm-gray-700 to-transparent" />
+        <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-white/40 dark:from-black/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-white/40 dark:from-black/40 to-transparent" />
       </div>
       
       
@@ -142,7 +157,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
                   width: '100%',
                 }}
               >
-                <div className="text-3xl px-4 py-2 text-warm-gray-800 dark:text-warm-gray-200 font-medium">
+                <div className="text-3xl px-4 py-2 text-gray-900 font-bold bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
                   {getItemAtPosition(position)}
                 </div>
               </div>
