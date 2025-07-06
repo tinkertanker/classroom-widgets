@@ -3,13 +3,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import SlotMachine from "./slotMachine";
 import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../contexts/ModalContext";
-// import  sound from './yay.mp3';
+// import  sound from './celebrate.mp3';
 
 // Removed Chakra UI imports
 
 let actual_choices: any[];
 
-const sound = require("./yay.mp3");
+const sound = require("./celebrate.mp3");
 let yay = new Audio(sound);
 
 interface RandomiserProps {
