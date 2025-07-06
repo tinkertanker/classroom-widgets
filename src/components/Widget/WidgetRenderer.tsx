@@ -13,6 +13,7 @@ import Sticker from "../sticker/sticker";
 import Poll from "../poll/poll";
 import QRCodeWidget from "../qrcode/qrcode";
 import DataShare from "../dataShare/dataShare";
+import Visualiser from "../visualiser/visualiser";
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
 
 const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateChange, toggleConfetti }) => {
@@ -68,6 +69,11 @@ const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateCha
       />;
     case WIDGET_TYPES.DATA_SHARE:
       return <DataShare
+        savedState={savedState}
+        onStateChange={onStateChange}
+      />;
+    case WIDGET_TYPES.VISUALISER:
+      return <Visualiser
         savedState={savedState}
         onStateChange={onStateChange}
       />;

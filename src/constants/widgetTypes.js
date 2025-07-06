@@ -13,5 +13,6 @@ export const WIDGET_TYPES = {
   STAMP: 10,
   POLL: 11,
   QRCODE: 12,
-  DATA_SHARE: 13
+  DATA_SHARE: 13,
+  VISUALISER: 14
 };

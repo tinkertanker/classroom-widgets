@@ -111,6 +111,13 @@ export const WIDGET_CONFIGS = {
     minWidth: 350,
     minHeight: 400,
     lockAspectRatio: false
+  },
+  [WIDGET_TYPES.VISUALISER]: {
+    defaultWidth: 600,
+    defaultHeight: 450,
+    minWidth: 300,
+    minHeight: 225,
+    lockAspectRatio: false
   }
 };
 
