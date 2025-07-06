@@ -27,9 +27,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   const [input, setInput] = useState(savedState?.input || "");
   const [choices, setChoices] = useState<any[]>(savedState?.choices || []);
 
-  const [remember, setRemember] = useState(false);
-  const [pressedDisable, setpressedDisable] = useState(false);
-  const [selected, setSelected] = useState<any[]>([]);
+  const [removed, setRemoved] = useState<string[]>([]);
 
   const [buttonsettings, setButtonSettings] = useState("normal");
 
@@ -47,17 +45,14 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
           input={input}
           setInput={setInput}
           setChoices={setChoices}
-          setSelected={setSelected}
-          remember={remember}
-          setRemember={setRemember}
-          selected={selected}
-          animation={animation}
-          setAnimation={setAnimation}
-          animationspeed={animationspeed}
-          setAnimationspeed={setAnimationspeed}
+          removed={removed}
+          setRemoved={setRemoved}
         />
       ),
-      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl"
+      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl",
+      onClose: () => {
+        // Choices are automatically synced via useEffect when input changes
+      }
     });
   };
   // const {
@@ -66,8 +61,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   //   onClose: onresultClose,
   // } = useDisclosure();
 
-  const [animation, setAnimation] = useState(true);
-  const [animationspeed, setAnimationspeed] = useState(0.04);
   const [selectedItemIndex, setSelectedItemIndex] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
 
@@ -96,30 +89,28 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   const handlerandomise = () => {
     console.log("what");
 
-    setpressedDisable(false);
     toggleConfetti(false);
     yay.pause();
     yay.currentTime = 0;
 
-    if (choices.length !== 0) {
+    const processedChoices = processChoices();
+    setChoices(processedChoices); // Update choices when randomizing
+
+    if (processedChoices.length !== 0) {
       setLoading(true);
       // localStorage.setItem("input", input);
-      actual_choices = choices;
+      // Filter out removed items
+      actual_choices = processedChoices.filter(choice => !removed.includes(choice));
 
-      actual_choices = actual_choices.filter((choice) => {
-        if (!!~selected.indexOf(choice)) {
-          return;
-        } else {
-          return choice;
-        }
-      });
       if (actual_choices.length === 0) {
         setLoading(false);
-        alert(
-          "All entries in the list have been chosen once! Please edit the list or your settings! "
-        );
+        alert("All items have been removed! Please restore some items or add new ones.");
         openSettings();
+        return;
       }
+
+      // Clean up removed items that are no longer in the choices
+      setRemoved(prev => prev.filter(item => processedChoices.includes(item)));
 
       // Randomize the order of elements in actual_choices using Fisher-Yates shuffle algorithm
       for (let i = actual_choices.length - 1; i > 0; i--) {
@@ -142,34 +133,46 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
 
   
 
-  useEffect(() => {
-    if (input === "") {
-      // This is on initialisation thus no modification should happen
-      return;
-    }
-    if (selected.length != 0) {
-      setSelected([]);
-    }
-    if (buttonsettings === "result") {
-      setButtonSettings("normal");
-    }
+  // Process choices only when needed (before randomizing)
+  const processChoices = () => {
     let temporarychoices = input.split("\n");
     temporarychoices = temporarychoices.map((value) => value.trim()); // remove leading and trailing spaces
     temporarychoices = temporarychoices.filter((value, index, array) => {
       if (value === "") {
-        // there are only spaces in that line, dont return
-        // console.log(value);
+        return false;
       } else {
         if (array.indexOf(value) !== index) {
-          // prevents duplicates, dont return if value exists in array
-          // console.log(value);
+          return false;
         } else {
-          return value;
+          return true;
         }
       }
     });
-    setChoices(temporarychoices);
-  }, [input]);
+    return temporarychoices;
+  };
+
+  useEffect(() => {
+    if (buttonsettings === "result") {
+      setButtonSettings("normal");
+    }
+  }, [buttonsettings]);
+
+  // Update result message when choices change
+  useEffect(() => {
+    if (choices.length > 0 && result === "Enter a list to randomise!") {
+      setResult("Ready to randomise!");
+    } else if (choices.length === 0 && result === "Ready to randomise!") {
+      setResult("Enter a list to randomise!");
+    }
+  }, [choices, result]);
+
+  // Keep choices in sync with input
+  useEffect(() => {
+    const processedChoices = processChoices();
+    if (JSON.stringify(processedChoices) !== JSON.stringify(choices)) {
+      setChoices(processedChoices);
+    }
+  }, [input]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Slot machine animation effect
   useEffect(() => {
@@ -179,16 +182,13 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       setSelectedItemIndex(randomIndex);
       setIsSpinning(true);
       
-      // Duration based on animation settings - increased 3x
-      const spinDuration = animation ? (animationspeed * 1000 * 90) : 1500;
+      // Fixed spin duration
+      const spinDuration = 3600; // 3.6 seconds
       
       // Set result after spinning completes
       setTimeout(() => {
         const selectedItem = actual_choices[randomIndex];
         setResult(selectedItem);
-        if (remember) {
-          setSelected([...selected, selectedItem]);
-        }
         actual_choices = [];
         setButtonSettings("result");
         setLoading(false);
@@ -271,10 +271,11 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
               {choices.length > 0 ? (
                 <div className="w-full h-full flex items-center justify-center">
                   <SlotMachine
+                    key={choices.join(',')}
                     items={choices}
                     selectedIndex={selectedItemIndex}
                     isSpinning={isSpinning}
-                    duration={animation ? (animationspeed * 1000 * 90) : 1500}
+                    duration={3600}
                   />
                 </div>
               ) : (
@@ -303,18 +304,15 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
         ) : buttonsettings === "result" ? (
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center gap-2">
             <button
-              className={`px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${loading ? 'hidden' : ''}`}
-              disabled={remember ? true : pressedDisable}
+              className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => {
-                setSelected([...selected, result]);
-                setpressedDisable(true);
+                if (result && !removed.includes(result)) {
+                  setRemoved([...removed, result]);
+                }
               }}
+              disabled={removed.includes(result)}
             >
-              {remember
-                ? "Option removed"
-                : pressedDisable
-                ? "Option removed"
-                : "Remove option"}
+              {removed.includes(result) ? "Already removed" : "Remove option"}
             </button>
             <button
               disabled={loading}
