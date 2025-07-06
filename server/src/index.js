@@ -17,9 +17,23 @@ const io = new Server(server, {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve share page for data share rooms
+app.get('/share', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/share.html'));
+});
+
+app.get('/share/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/share.html'));
+});
 
 // Store active rooms/sessions
 const rooms = new Map();
@@ -87,6 +101,40 @@ class PollRoom {
       totalVotes: Object.values(this.pollData.votes).reduce((a, b) => a + b, 0),
       participantCount: this.participants.size
     };
+  }
+}
+
+// Room class to manage data share sessions
+class DataShareRoom {
+  constructor(code) {
+    this.code = code;
+    this.hostSocketId = null;
+    this.submissions = [];
+    this.createdAt = Date.now();
+  }
+
+  addSubmission(studentName, link) {
+    const submission = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      studentName,
+      link,
+      timestamp: Date.now()
+    };
+    this.submissions.push(submission);
+    return submission;
+  }
+
+  deleteSubmission(submissionId) {
+    const index = this.submissions.findIndex(s => s.id === submissionId);
+    if (index > -1) {
+      this.submissions.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  clearAllSubmissions() {
+    this.submissions = [];
   }
 }
 
@@ -159,7 +207,7 @@ io.on('connection', (socket) => {
     const { code, name } = data;
     const room = rooms.get(code);
     
-    if (room) {
+    if (room && room instanceof PollRoom) {
       room.participants.set(socket.id, {
         id: socket.id,
         name: name || `Student ${room.participants.size + 1}`,
@@ -195,7 +243,7 @@ io.on('connection', (socket) => {
     const { code, optionIndex } = data;
     const room = rooms.get(code);
     
-    if (room && room.vote(socket.id, optionIndex)) {
+    if (room && room instanceof PollRoom && room.vote(socket.id, optionIndex)) {
       // Send confirmation to voter
       socket.emit('vote:confirmed', { success: true });
       
@@ -212,6 +260,62 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Data Share handlers
+  socket.on('host:createDataShareRoom', () => {
+    const code = generateRoomCode();
+    const room = new DataShareRoom(code);
+    room.hostSocketId = socket.id;
+    rooms.set(code, room);
+    
+    socket.join(code);
+    socket.emit('room:created', code);
+    console.log(`Data share room created: ${code}`);
+  });
+
+  socket.on('dataShare:submit', (data) => {
+    const { code, studentName, link } = data;
+    const room = rooms.get(code);
+    
+    if (room && room instanceof DataShareRoom) {
+      const submission = room.addSubmission(studentName, link);
+      
+      // Notify host
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('dataShare:newSubmission', submission);
+      }
+      
+      socket.emit('dataShare:submitted', { success: true });
+      console.log(`New submission in room ${code}`);
+    } else {
+      socket.emit('dataShare:submitted', { 
+        success: false, 
+        error: 'Room not found' 
+      });
+    }
+  });
+
+  socket.on('host:deleteSubmission', (data) => {
+    const { roomCode, submissionId } = data;
+    const room = rooms.get(roomCode);
+    
+    if (room && room instanceof DataShareRoom && room.hostSocketId === socket.id) {
+      if (room.deleteSubmission(submissionId)) {
+        io.to(roomCode).emit('dataShare:submissionDeleted', submissionId);
+        console.log(`Submission deleted in room ${roomCode}`);
+      }
+    }
+  });
+
+  socket.on('host:clearAllSubmissions', (roomCode) => {
+    const room = rooms.get(roomCode);
+    
+    if (room && room instanceof DataShareRoom && room.hostSocketId === socket.id) {
+      room.clearAllSubmissions();
+      io.to(roomCode).emit('dataShare:allCleared');
+      console.log(`All submissions cleared in room ${roomCode}`);
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
@@ -221,7 +325,7 @@ io.on('connection', (socket) => {
       if (room.hostSocketId === socket.id) {
         console.log(`Host disconnected from room ${code}`);
         // Keep room alive for reconnection
-      } else if (room.participants.has(socket.id)) {
+      } else if (room.participants && room.participants.has(socket.id)) {
         room.participants.delete(socket.id);
         // Notify host of updated count
         if (room.hostSocketId) {

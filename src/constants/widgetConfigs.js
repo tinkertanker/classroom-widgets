@@ -104,6 +104,13 @@ export const WIDGET_CONFIGS = {
     minWidth: 250,
     minHeight: 300,
     lockAspectRatio: false
+  },
+  [WIDGET_TYPES.DATA_SHARE]: {
+    defaultWidth: 450,
+    defaultHeight: 500,
+    minWidth: 350,
+    minHeight: 400,
+    lockAspectRatio: false
   }
 };
 
