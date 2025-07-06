@@ -75,19 +75,19 @@ export const WIDGET_CONFIGS = {
     lockAspectRatio: false
   },
   [WIDGET_TYPES.STAMP]: {
-    defaultWidth: 60,
-    defaultHeight: 60,
-    minWidth: 30,
-    minHeight: 30,
+    defaultWidth: 120,
+    defaultHeight: 120,
+    minWidth: 60,
+    minHeight: 60,
     lockAspectRatio: true,
     // Sticker-specific configurations for tall shapes
     stickerConfigs: {
       exclamation: {
-        defaultWidth: 45,
-        defaultHeight: 80,
-        minWidth: 25,
-        minHeight: 45,
-        lockAspectRatio: 45 / 80
+        defaultWidth: 90,
+        defaultHeight: 160,
+        minWidth: 50,
+        minHeight: 90,
+        lockAspectRatio: 90 / 160
       }
     }
   },
