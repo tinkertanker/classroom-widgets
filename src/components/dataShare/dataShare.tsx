@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
-import QRCode from 'qrcode';
 
 interface DataShareProps {
   savedState?: {
@@ -25,7 +24,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Update parent state
   useEffect(() => {
@@ -34,22 +32,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
     }
   }, [roomCode, submissions, onStateChange]);
 
-  // Generate QR code
-  useEffect(() => {
-    if (roomCode && canvasRef.current) {
-      const url = `http://localhost:3001/share/${roomCode}`;
-      QRCode.toCanvas(canvasRef.current, url, {
-        width: 150,
-        margin: 1,
-        color: {
-          dark: '#1f2937',
-          light: '#ffffff'
-        }
-      }, (error) => {
-        if (error) console.error('Error generating QR code:', error);
-      });
-    }
-  }, [roomCode]);
 
   const createRoom = async () => {
     setIsConnecting(true);
@@ -99,15 +81,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
     }
   };
 
-  const closeRoom = () => {
-    if (socket) {
-      socket.disconnect();
-      setSocket(null);
-    }
-    setRoomCode('');
-    setSubmissions([]);
-    setSelectedSubmission(null);
-  };
 
   const deleteSubmission = (submissionId: string) => {
     if (socket && roomCode) {
@@ -159,32 +132,26 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
       ) : (
         // Active room state
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-white p-2 rounded-lg shadow-inner">
-                <canvas ref={canvasRef} className="block" />
-              </div>
-              <div>
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                  Share Room Code:
-                </p>
-                <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
-                  {roomCode}
-                </p>
-                <p className="text-xs text-warm-gray-500 dark:text-warm-gray-500 mt-1">
-                  {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+          <div className="mb-4">
+            <div className="text-center">
+              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-1">
+                Students can share links at:
+              </p>
+              <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-3 mb-2">
+                <p className="text-lg font-mono text-warm-gray-800 dark:text-warm-gray-200">
+                  localhost:3001/share
                 </p>
               </div>
+              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-2">
+                Room Code:
+              </p>
+              <p className="text-3xl font-bold text-warm-gray-800 dark:text-warm-gray-200 mb-2">
+                {roomCode}
+              </p>
+              <p className="text-xs text-warm-gray-500 dark:text-warm-gray-500">
+                {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+              </p>
             </div>
-            <button
-              onClick={closeRoom}
-              className="p-2 text-dusty-rose-500 hover:text-dusty-rose-600 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300"
-              title="Close room"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* Submissions list */}
