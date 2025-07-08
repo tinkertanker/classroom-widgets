@@ -136,8 +136,8 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
       
       
       {/* Items container */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative" style={{ height: `${itemHeight * 2.5}px` }}>
+      <div className="absolute inset-0 flex items-center justify-center px-4">
+        <div className="relative w-full" style={{ height: `${itemHeight * 2.5}px` }}>
           {[-2, -1, 0, 1, 2].map((position) => {
             const yOffset = (position - displayOffset) * itemHeight;
             const yPosition = (position - displayOffset) / 1.5; // Normalize to -1 to 1 range for center item
@@ -147,17 +147,17 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
             return (
               <div
                 key={position}
-                className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center"
+                className="absolute flex items-center justify-center w-full"
                 style={{
-                  transform: `translate(-50%, ${yOffset}px) scale(${scale})`,
+                  transform: `translateY(${yOffset}px) scale(${scale})`,
                   opacity: opacity,
                   top: '50%',
                   marginTop: '-25px', // Half of itemHeight (50px)
                   height: `${itemHeight}px`,
-                  width: '100%',
+                  left: 0,
                 }}
               >
-                <div className="text-3xl px-4 py-2 text-gray-900 font-bold bg-white/80 backdrop-blur-sm rounded-lg shadow-md">
+                <div className="text-3xl px-4 py-2 text-gray-900 font-bold bg-white/80 backdrop-blur-sm rounded-lg shadow-md whitespace-nowrap overflow-hidden text-ellipsis max-w-[80%] text-center">
                   {getItemAtPosition(position)}
                 </div>
               </div>
