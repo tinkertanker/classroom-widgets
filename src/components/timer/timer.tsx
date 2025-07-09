@@ -255,6 +255,7 @@ const Timer = () => {
                   stroke="rgb(229, 231, 235)"
                   strokeWidth="5"
                   fill="none"
+                  className="dark:stroke-warm-gray-700"
                 />
                 {/* Progress arc (sage) */}
                 <path
@@ -284,9 +285,9 @@ const Timer = () => {
                     </defs>
                     
                     <g transform={`rotate(${pulseAngle} 50 50)`}>
-                      {/* Meteor tail - longer curved path */}
+                      {/* Meteor tail - longer curved path (inside the circle) */}
                       <path
-                        d="M 50 2.5 Q 40 2.5 30 3.5 Q 20 4.5 10 6.5 Q 0 8.5 -10 11 Q -20 13.5 -30 17"
+                        d="M 50 7.5 Q 40 7.5 30 8.5 Q 20 9.5 10 11.5 Q 0 13.5 -10 16 Q -20 18.5 -30 22"
                         stroke="url(#meteorGradient)"
                         strokeWidth="3"
                         fill="none"
@@ -294,10 +295,10 @@ const Timer = () => {
                         opacity="0.8"
                       />
                       
-                      {/* Meteor head with glow */}
+                      {/* Meteor head with glow (inside the circle) */}
                       <circle
                         cx="50"
-                        cy="2.5"
+                        cy="7.5"
                         r="2.5"
                         fill="var(--timer-arc)"
                         filter="url(#glow)"
