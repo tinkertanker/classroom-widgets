@@ -6,6 +6,7 @@ interface ListItem {
   id: string;
   text: string;
   status: number;
+  isEditing?: boolean;
 }
 
 interface ListProps {
@@ -122,6 +123,22 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
     setItems(prevItems => prevItems.filter(item => item.id !== id));
   };
 
+  const startEditing = (id: string) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === id ? { ...item, isEditing: true } : { ...item, isEditing: false }
+      )
+    );
+  };
+
+  const stopEditing = (id: string) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === id ? { ...item, isEditing: false } : item
+      )
+    );
+  };
+
 
   // // LOCAL STORAGE
   // useEffect(() => {
@@ -167,25 +184,77 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                       >
                       </button>
                     <div className="relative flex-1">
-                      <input
-                        ref={(el) => (inputRefs.current[index] = el!)}
-                        value={item.text}
-                        onChange={(e) => handleInputChange(item.id, e.target.value)}
-                        onMouseDown={(e) => {
-                          // Prevent the widget from becoming active when clicking input
-                          e.stopPropagation();
-                        }}
-                        placeholder="Type away!"
-                        className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 dark:placeholder-warm-gray-400 transition-colors duration-200 ${
-                          item.status === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                          item.status === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                          item.status === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                          item.status === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
-                          "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
-                        } ${
-                          isLarge ? "text-2xl py-3" : "text-sm py-2"
-                        }`}
-                      />
+                      {item.isEditing ? (
+                        <textarea
+                          ref={(el) => {
+                            if (el) {
+                              inputRefs.current[index] = el as any;
+                              el.focus();
+                              el.select();
+                            }
+                          }}
+                          value={item.text}
+                          onChange={(e) => handleInputChange(item.id, e.target.value)}
+                          onBlur={() => stopEditing(item.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              stopEditing(item.id);
+                            } else if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              stopEditing(item.id);
+                              // If this is the last item and it has text, add a new item
+                              if (index === items.length - 1 && item.text.trim()) {
+                                handleAddInput();
+                              }
+                            }
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                          }}
+                          placeholder="Type away!"
+                          className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 dark:placeholder-warm-gray-400 transition-colors duration-200 resize-none overflow-hidden ${
+                            item.status === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                            item.status === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                            item.status === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                            item.status === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
+                            "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
+                          } ${
+                            isLarge ? "text-2xl py-3" : "text-sm py-2"
+                          }`}
+                          rows={1}
+                          style={{
+                            height: 'auto',
+                            minHeight: isLarge ? '3rem' : '2rem'
+                          }}
+                          onInput={(e) => {
+                            const target = e.target as HTMLTextAreaElement;
+                            target.style.height = 'auto';
+                            target.style.height = target.scrollHeight + 'px';
+                          }}
+                          onFocus={(e) => {
+                            // Ensure proper height on focus
+                            const target = e.target as HTMLTextAreaElement;
+                            target.style.height = 'auto';
+                            target.style.height = target.scrollHeight + 'px';
+                          }}
+                        />
+                      ) : (
+                        <div
+                          onClick={() => startEditing(item.id)}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          className={`w-full px-3 pr-10 rounded cursor-text break-words transition-colors duration-200 ${
+                            item.status === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                            item.status === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                            item.status === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                            item.status === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
+                            "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
+                          } ${
+                            isLarge ? "text-2xl py-3 min-h-[3rem]" : "text-sm py-2 min-h-[2rem]"
+                          }`}
+                        >
+                          {item.text || <span className="text-warm-gray-500 dark:text-warm-gray-400">Type away!</span>}
+                        </div>
+                      )}
                       <button
                         className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-dusty-rose-600 hover:text-white transition-colors duration-200 ${
                           item.status === 4 ? "text-warm-gray-300 dark:text-warm-gray-500" : "text-warm-gray-800 dark:text-warm-gray-200"
