@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
 // Audio import
-const timerEndSound = require("./timer-end.mp3");
+import timerEndSound from "./timer-end.mp3";
 const timerEndAudio = new Audio(timerEndSound);
 
 const Timer = () => {
@@ -262,18 +262,61 @@ const Timer = () => {
                   fill="var(--timer-arc)"
                 />
                 
-                {/* Animated dash indicator */}
+                {/* Animated meteor-like pulse with tail */}
                 {isRunning && time > 0 && (
-                  <g transform={`rotate(${pulseAngle} 50 50)`}>
-                    {/* Small dash on the outside of the arc */}
-                    <rect
-                      x="48"
-                      y="1"
-                      width="4"
-                      height="2"
-                      fill="var(--timer-arc)"
-                    />
-                  </g>
+                  <>
+                    {/* Gradient definition for the meteor tail */}
+                    <defs>
+                      <linearGradient id="meteorGradient" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="var(--timer-arc)" stopOpacity="0" />
+                        <stop offset="70%" stopColor="var(--timer-arc)" stopOpacity="0.3" />
+                        <stop offset="90%" stopColor="var(--timer-arc)" stopOpacity="0.6" />
+                        <stop offset="100%" stopColor="var(--timer-arc)" stopOpacity="1" />
+                      </linearGradient>
+                      <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                          <feMergeNode in="coloredBlur"/>
+                          <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    
+                    <g transform={`rotate(${pulseAngle} 50 50)`}>
+                      {/* Meteor tail - curved path */}
+                      <path
+                        d="M 50 2.5 Q 45 2.5 40 3 Q 35 3.5 30 4.5 Q 25 5.5 20 7"
+                        stroke="url(#meteorGradient)"
+                        strokeWidth="3"
+                        fill="none"
+                        strokeLinecap="round"
+                        opacity="0.8"
+                      />
+                      
+                      {/* Meteor head with glow */}
+                      <circle
+                        cx="50"
+                        cy="2.5"
+                        r="2.5"
+                        fill="var(--timer-arc)"
+                        filter="url(#glow)"
+                      >
+                        {/* Pulsing animation */}
+                        <animate
+                          attributeName="r"
+                          values="2.5;3.5;2.5"
+                          dur="0.6s"
+                          repeatCount="indefinite"
+                        />
+                        <animate
+                          attributeName="opacity"
+                          values="0.8;1;0.8"
+                          dur="0.6s"
+                          repeatCount="indefinite"
+                        />
+                      </circle>
+                    </g>
+                  </>
                 )}
               </svg>
               <div
