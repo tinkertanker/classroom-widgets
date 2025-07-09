@@ -11,11 +11,14 @@ import {
   FaBroom            // Clean up
 } from 'react-icons/fa6';
 
-function TaskCue() {
+interface TaskCueProps {
+    isActive?: boolean;
+}
+
+function TaskCue({ isActive = false }: TaskCueProps) {
     const [state, setState] = useState({
         borderW: "2px",
         index: 0,
-        clicked: true,
     });
 
     const taskModes = [
@@ -35,14 +38,8 @@ function TaskCue() {
     }, [changeSound]);
 
     const handleClick = useCallback((e) => {
-        if (e.target.closest("#widget1")) {
-            setState(prev => ({
-                ...prev,
-                clicked: true,
-            }));
-            if (e.target.closest("#widget1inside")) {
-                plaey();
-            }
+        if (e.target.closest("#widget1inside")) {
+            plaey();
         }
     }, [plaey]);
 
@@ -85,7 +82,7 @@ function TaskCue() {
                     </h2>
                 </div>
             </div>
-            {state.clicked && (
+            {isActive && (
                 <div className="px-3 pb-3">
                     <div id="widget1inside" className="flex flex-wrap justify-center gap-1">
                         {taskModes.map((mode, i) => {

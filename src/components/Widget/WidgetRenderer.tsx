@@ -34,7 +34,7 @@ const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateCha
         onStateChange={onStateChange}
       />;
     case WIDGET_TYPES.TASK_CUE:
-      return <TaskCue />;
+      return <TaskCue isActive={isActive} />;
     case WIDGET_TYPES.TRAFFIC_LIGHT:
       return <TrafficLight />;
     case WIDGET_TYPES.SOUND_MONITOR:
