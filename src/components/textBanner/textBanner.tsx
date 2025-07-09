@@ -23,6 +23,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const [fontSize, setFontSize] = useState(24);
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Calculate optimal font size to fill container
   useEffect(() => {
@@ -109,6 +110,13 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     setEditText(text);
   };
 
+  // Select all text when entering edit mode
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
+
   // Update state and notify parent
   const updateState = (newText?: string, newColorIndex?: number) => {
     const finalText = newText !== undefined ? (newText || 'Double-click to edit') : text;
@@ -153,6 +161,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     >
       {isEditing ? (
         <textarea
+          ref={textareaRef}
           value={editText}
           onChange={(e) => setEditText(e.target.value)}
           onKeyDown={handleKeyDown}
