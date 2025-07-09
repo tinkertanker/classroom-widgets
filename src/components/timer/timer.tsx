@@ -269,6 +269,7 @@ const Timer = () => {
                     <defs>
                       <linearGradient id="meteorGradient" gradientUnits="userSpaceOnUse">
                         <stop offset="0%" stopColor="var(--timer-arc)" stopOpacity="0" />
+                        <stop offset="40%" stopColor="var(--timer-arc)" stopOpacity="0.1" />
                         <stop offset="70%" stopColor="var(--timer-arc)" stopOpacity="0.3" />
                         <stop offset="90%" stopColor="var(--timer-arc)" stopOpacity="0.6" />
                         <stop offset="100%" stopColor="var(--timer-arc)" stopOpacity="1" />
@@ -283,9 +284,9 @@ const Timer = () => {
                     </defs>
                     
                     <g transform={`rotate(${pulseAngle} 50 50)`}>
-                      {/* Meteor tail - curved path */}
+                      {/* Meteor tail - longer curved path */}
                       <path
-                        d="M 50 2.5 Q 45 2.5 40 3 Q 35 3.5 30 4.5 Q 25 5.5 20 7"
+                        d="M 50 2.5 Q 40 2.5 30 3.5 Q 20 4.5 10 6.5 Q 0 8.5 -10 11 Q -20 13.5 -30 17"
                         stroke="url(#meteorGradient)"
                         strokeWidth="3"
                         fill="none"
