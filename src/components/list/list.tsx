@@ -1,17 +1,38 @@
 import { useState, useRef, useEffect } from "react";
 import * as React from "react";
+import { v4 as uuidv4 } from 'uuid';
+
+interface ListItem {
+  id: string;
+  text: string;
+  status: number;
+}
 
 interface ListProps {
   savedState?: {
     inputs: string[];
     statuses: number[];
+    items?: ListItem[];
   };
   onStateChange?: (state: any) => void;
 }
 
 const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
-  const [inputs, setInputs] = useState<string[]>(savedState?.inputs || [""]);
-  const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || [0]); // 0: none, 1: green, 2: yellow, 3: red, 4: faded
+  // Initialize items with stable IDs
+  const [items, setItems] = useState<ListItem[]>(() => {
+    if (savedState?.items) {
+      return savedState.items;
+    }
+    // Convert legacy format to new format with IDs
+    if (savedState?.inputs) {
+      return savedState.inputs.map((text, index) => ({
+        id: uuidv4(),
+        text,
+        status: savedState.statuses?.[index] || 0
+      }));
+    }
+    return [{ id: uuidv4(), text: "", status: 0 }];
+  });
   const [isLarge, setIsLarge] = useState(false);
 
   const inputRefs = useRef<HTMLInputElement[]>([]);
@@ -21,8 +42,10 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   const updateState = () => {
     if (onStateChange) {
       onStateChange({
-        inputs: inputs,
-        statuses: statuses
+        items: items,
+        // Keep backward compatibility
+        inputs: items.map(item => item.text),
+        statuses: items.map(item => item.status)
       });
     }
   };
@@ -35,7 +58,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
       return;
     }
     updateState();
-  }, [inputs, statuses]);
+  }, [items]);
 
   // Detect widget size
   useEffect(() => {
@@ -57,26 +80,30 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   }, []);
 
   const handleAddInput = () => {
-    setInputs((prevInputs) => {
-      const newInputs = [...prevInputs, ""];
+    const newItem = { id: uuidv4(), text: "", status: 0 };
+    setItems(prevItems => {
+      const newItems = [...prevItems, newItem];
       setTimeout(() => {
-        inputRefs.current[newInputs.length - 1]?.focus(); // Focus the last added input after updating state
+        inputRefs.current[newItems.length - 1]?.focus(); // Focus the last added input after updating state
       }, 0);
-      return newInputs;
+      return newItems;
     });
-    setStatuses([...statuses, 0]);
   };
 
-  const handleInputChange = (index: number, value: string) => {
-    const newInputs = [...inputs];
-    newInputs[index] = value;
-    setInputs(newInputs);
+  const handleInputChange = (id: string, value: string) => {
+    setItems(prevItems => 
+      prevItems.map(item => 
+        item.id === id ? { ...item, text: value } : item
+      )
+    );
   };
 
-  const cycleStatus = (index: number) => {
-    const updatedStatuses = [...statuses];
-    updatedStatuses[index] = (updatedStatuses[index] + 1) % 5; // Cycle through 0, 1, 2, 3, 4
-    setStatuses(updatedStatuses);
+  const cycleStatus = (id: string) => {
+    setItems(prevItems =>
+      prevItems.map(item =>
+        item.id === id ? { ...item, status: (item.status + 1) % 5 } : item
+      )
+    );
   };
   // useEffect(() => {
   //   const savedInputs =       JSON.parse(localStorage.getItem('inputs') || '[]');
@@ -91,11 +118,8 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   // }, []);
 
 
-  const handleDeleteInput = (index: number) => {
-    const newInputs = inputs.filter((_, i) => i !== index);
-    const newStatuses = statuses.filter((_, i) => i !== index);
-    setInputs(newInputs);
-    setStatuses(newStatuses);
+  const handleDeleteInput = (id: string) => {
+    setItems(prevItems => prevItems.filter(item => item.id !== id));
   };
 
 
@@ -126,16 +150,16 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
         <div className="flex-1 overflow-y-auto px-4 pt-4">
           <div className="pt-0">
             <div className={`flex flex-col pt-0 ${isLarge ? "space-y-2" : "space-y-1"}`}>
-              {inputs.map((input, index) => (
-                  <div className="flex flex-row items-center gap-1" key={index}>
+              {items.map((item, index) => (
+                  <div className="flex flex-row items-center gap-1" key={item.id}>
                     <button
-                        onClick={() => cycleStatus(index)}
+                        onClick={() => cycleStatus(item.id)}
                         aria-label="Cycle status"
                         className={`rounded-full flex-shrink-0 transition-colors duration-200 ${
-                          statuses[index] === 1 ? "bg-green-500 hover:bg-green-600" :
-                          statuses[index] === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
-                          statuses[index] === 3 ? "bg-red-500 hover:bg-red-600" :
-                          statuses[index] === 4 ? "bg-warm-gray-400 hover:bg-warm-gray-500" :
+                          item.status === 1 ? "bg-green-500 hover:bg-green-600" :
+                          item.status === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
+                          item.status === 3 ? "bg-red-500 hover:bg-red-600" :
+                          item.status === 4 ? "bg-warm-gray-400 hover:bg-warm-gray-500" :
                           "bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-500"
                         } ${
                           isLarge ? "w-12 h-12" : "w-8 h-8"
@@ -145,14 +169,18 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                     <div className="relative flex-1">
                       <input
                         ref={(el) => (inputRefs.current[index] = el!)}
-                        value={input}
-                        onChange={(e) => handleInputChange(index, e.target.value)}
+                        value={item.text}
+                        onChange={(e) => handleInputChange(item.id, e.target.value)}
+                        onMouseDown={(e) => {
+                          // Prevent the widget from becoming active when clicking input
+                          e.stopPropagation();
+                        }}
                         placeholder="Type away!"
                         className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 dark:placeholder-warm-gray-400 transition-colors duration-200 ${
-                          statuses[index] === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                          statuses[index] === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                          statuses[index] === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                          statuses[index] === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
+                          item.status === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                          item.status === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                          item.status === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
+                          item.status === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
                           "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
                         } ${
                           isLarge ? "text-2xl py-3" : "text-sm py-2"
@@ -160,10 +188,10 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                       />
                       <button
                         className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded hover:bg-dusty-rose-600 hover:text-white transition-colors duration-200 ${
-                          statuses[index] === 4 ? "text-warm-gray-300 dark:text-warm-gray-500" : "text-warm-gray-800 dark:text-warm-gray-200"
+                          item.status === 4 ? "text-warm-gray-300 dark:text-warm-gray-500" : "text-warm-gray-800 dark:text-warm-gray-200"
                         }`}
                         aria-label="Delete Task"
-                        onClick={() => handleDeleteInput(index)}
+                        onClick={() => handleDeleteInput(item.id)}
                         tabIndex={-1}
                       >
                         <svg className={isLarge ? "w-5 h-5" : "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">

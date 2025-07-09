@@ -51,11 +51,11 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     }
     // Default toolbar widgets
     return [
-      WIDGET_TYPES.RANDOMISER, 
-      WIDGET_TYPES.TIMER, 
-      WIDGET_TYPES.LIST, 
-      WIDGET_TYPES.WORK_SYMBOLS, 
-      WIDGET_TYPES.SOUND_MONITOR
+      WIDGET_TYPES.TIMER,
+      WIDGET_TYPES.RANDOMISER,
+      WIDGET_TYPES.TEXT_BANNER,
+      WIDGET_TYPES.IMAGE_DISPLAY,
+      WIDGET_TYPES.TASK_CUE
     ];
   });
 

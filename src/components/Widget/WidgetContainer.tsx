@@ -73,7 +73,6 @@ const WidgetContainer = ({
       key={widget.id}
       id={widget.id}
       lockAspectRatio={config.lockAspectRatio}
-      enableUserSelectHack={true}
       bounds="#widget-board"
       style={{
         zIndex: widget.index === WIDGET_TYPES.STAMP 

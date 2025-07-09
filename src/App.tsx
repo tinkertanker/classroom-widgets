@@ -137,6 +137,13 @@ function App() {
   const handleBoardClick = (e) => {
     if (!stickerMode) return;
     
+    // Don't place stickers when clicking on inputs, textareas, or buttons
+    const target = e.target;
+    if (target.matches('input, textarea, button, select') || 
+        target.closest('input, textarea, button, select')) {
+      return;
+    }
+    
     const boardElement = document.getElementById('widget-board');
     const rect = boardElement.getBoundingClientRect();
     const scrollContainer = document.querySelector('.board-scroll-container');
