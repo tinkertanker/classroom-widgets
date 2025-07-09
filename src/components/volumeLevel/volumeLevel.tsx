@@ -3,7 +3,12 @@ import React, { useEffect, useRef, useState } from 'react';
 // @ts-ignore
 import { FaBell, FaMicrophone } from 'react-icons/fa6';
 
-const AudioVolumeMonitor: React.FC = () => {
+interface AudioVolumeMonitorProps {
+  isDragging?: boolean;
+  hasDragged?: boolean;
+}
+
+const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ isDragging: _isDragging, hasDragged }) => {
     const [volume, setVolume] = useState<number>(0);
     const [threshold, setThreshold] = useState<number>(20); // Default threshold
     const [cooldownTime, setCooldownTime] = useState<number>(0); // Cooldown time in seconds
@@ -277,7 +282,10 @@ const AudioVolumeMonitor: React.FC = () => {
                         } transition-colors duration-300`})}
                         
                         <button
-                            onClick={() => setIsEnabled(!isEnabled)}
+                            onClick={(_e) => {
+                                if (hasDragged) return;
+                                setIsEnabled(!isEnabled);
+                            }}
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
                             className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none"

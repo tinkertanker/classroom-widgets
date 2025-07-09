@@ -5,9 +5,11 @@ interface VisualiserProps {
     deviceId?: string;
   };
   onStateChange?: (state: any) => void;
+  isDragging?: boolean;
+  hasDragged?: boolean;
 }
 
-const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) => {
+const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange, isDragging: _isDragging, hasDragged }) => {
   const [hasPermission, setHasPermission] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -127,7 +129,10 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
               {error}
             </p>
             <button
-              onClick={retryPermission}
+              onClick={(_e) => {
+                if (hasDragged) return;
+                retryPermission();
+              }}
               className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
             >
               Try Again
@@ -151,7 +156,10 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
           {devices.length > 1 && (
             <div className="absolute top-2 right-2">
               <button
-                onClick={() => setShowDeviceMenu(!showDeviceMenu)}
+                onClick={(_e) => {
+                  if (hasDragged) return;
+                  setShowDeviceMenu(!showDeviceMenu);
+                }}
                 className="p-2 bg-warm-gray-800/80 hover:bg-warm-gray-800/90 text-white rounded-lg transition-colors duration-200"
                 title="Change camera"
               >
@@ -167,7 +175,10 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
                   {devices.map(device => (
                     <button
                       key={device.deviceId}
-                      onClick={() => handleDeviceChange(device.deviceId)}
+                      onClick={(_e) => {
+                        if (hasDragged) return;
+                        handleDeviceChange(device.deviceId);
+                      }}
                       className={`w-full px-4 py-2 text-left text-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-150 ${
                         device.deviceId === selectedDeviceId 
                           ? 'bg-sage-50 dark:bg-sage-900/20 text-sage-700 dark:text-sage-300' 

@@ -7,6 +7,8 @@ interface DataShareProps {
     submissions?: Submission[];
   };
   onStateChange?: (state: any) => void;
+  isDragging?: boolean;
+  hasDragged?: boolean;
 }
 
 interface Submission {
@@ -16,7 +18,7 @@ interface Submission {
   timestamp: number;
 }
 
-const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
+const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDragging: _isDragging, hasDragged }) => {
   const [roomCode, setRoomCode] = useState<string>(savedState?.roomCode || '');
   const [submissions, setSubmissions] = useState<Submission[]>(savedState?.submissions || []);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -121,7 +123,10 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
               </p>
             )}
             <button
-              onClick={createRoom}
+              onClick={(_e) => {
+                if (hasDragged) return;
+                createRoom();
+              }}
               disabled={isConnecting}
               className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -168,7 +173,10 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
                     className={`p-3 hover:bg-warm-gray-50 dark:hover:bg-warm-gray-700/50 cursor-pointer transition-colors ${
                       selectedSubmission === submission.id ? 'bg-sage-50 dark:bg-sage-900/20' : ''
                     }`}
-                    onClick={() => setSelectedSubmission(submission.id === selectedSubmission ? null : submission.id)}
+                    onClick={() => {
+                      if (hasDragged) return;
+                      setSelectedSubmission(submission.id === selectedSubmission ? null : submission.id);
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
@@ -186,6 +194,7 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (hasDragged) return;
                             window.open(submission.link, '_blank');
                           }}
                           className="p-1.5 text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300"
@@ -198,6 +207,7 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (hasDragged) return;
                             copyToClipboard(submission.link, submission.id);
                           }}
                           className={`p-1.5 transition-colors ${
@@ -220,6 +230,7 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (hasDragged) return;
                             deleteSubmission(submission.id);
                           }}
                           className="p-1.5 text-dusty-rose-500 hover:text-dusty-rose-600 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300"
@@ -241,7 +252,10 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
           {submissions.length > 0 && (
             <div className="mt-3 flex justify-end">
               <button
-                onClick={clearAllSubmissions}
+                onClick={(_e) => {
+                  if (hasDragged) return;
+                  clearAllSubmissions();
+                }}
                 className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white text-sm rounded transition-colors duration-200"
               >
                 Clear All

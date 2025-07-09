@@ -19,9 +19,11 @@ interface RandomiserProps {
     choices: any[];
   };
   onStateChange?: (state: any) => void;
+  isDragging?: boolean;
+  hasDragged?: boolean;
 }
 
-function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserProps) {
+function Randomiser({ toggleConfetti, savedState, onStateChange, isDragging, hasDragged }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
   const [input, setInput] = useState(savedState?.input || "");
@@ -40,6 +42,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   const { showModal } = useModal();
 
   const openSettings = () => {
+    if (hasDragged) return; // Don't handle click if we just dragged
     showModal({
       title: "Randomiser Settings",
       content: (
@@ -105,6 +108,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   }, [input, choices]);
 
   const handlerandomise = () => {
+    if (hasDragged) return; // Don't handle click if we just dragged
     toggleConfetti(false);
     yay.pause();
     yay.currentTime = 0;

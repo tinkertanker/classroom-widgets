@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Rnd } from "react-rnd";
 import WidgetRenderer from './WidgetRenderer';
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
@@ -21,6 +21,44 @@ const WidgetContainer = ({
 }) => {
   const actualWidth = position.width || config.defaultWidth;
   const actualHeight = position.height || config.defaultHeight;
+  
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPosRef = useRef({ x: 0, y: 0 });
+  const hasDraggedRef = useRef(false);
+
+  // Reset hasDragged flag after drag ends
+  useEffect(() => {
+    if (!isDragging && hasDraggedRef.current) {
+      const timer = setTimeout(() => {
+        hasDraggedRef.current = false;
+      }, 100); // Small delay to ensure click events are blocked
+      return () => clearTimeout(timer);
+    }
+  }, [isDragging]);
+
+  const handleDragStart = (e, data) => {
+    setIsDragging(true);
+    dragStartPosRef.current = { x: data.x, y: data.y };
+    hasDraggedRef.current = false;
+    onDragStart(e, data);
+  };
+
+  const handleDrag = (e, data) => {
+    // Check if actually dragged more than a threshold
+    const distance = Math.sqrt(
+      Math.pow(data.x - dragStartPosRef.current.x, 2) + 
+      Math.pow(data.y - dragStartPosRef.current.y, 2)
+    );
+    if (distance > 5) {
+      hasDraggedRef.current = true;
+    }
+    onDrag(e, data);
+  };
+
+  const handleDragStop = (e, data) => {
+    setIsDragging(false);
+    onDragStop(e, data);
+  };
 
   return (
     <Rnd
@@ -45,9 +83,9 @@ const WidgetContainer = ({
         transition: "opacity 0.2s ease",
         cursor: isHoveringTrash ? "not-allowed" : "auto"
       }}
-      onDragStart={onDragStart}
-      onDrag={onDrag}
-      onDragStop={onDragStop}
+      onDragStart={handleDragStart}
+      onDrag={handleDrag}
+      onDragStop={handleDragStop}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}
       onTouchStart={onTouchStart}
@@ -59,6 +97,8 @@ const WidgetContainer = ({
         isActive={isActive}
         onStateChange={onStateChange}
         toggleConfetti={toggleConfetti}
+        isDragging={isDragging}
+        hasDragged={hasDraggedRef.current}
       />
     </Rnd>
   );

@@ -7,9 +7,11 @@ interface QRCodeWidgetProps {
     title: string;
   };
   onStateChange?: (state: any) => void;
+  isDragging?: boolean;
+  hasDragged?: boolean;
 }
 
-function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
+function QRCodeWidget({ savedState, onStateChange, isDragging: _isDragging, hasDragged }: QRCodeWidgetProps) {
   const [url, setUrl] = useState(savedState?.url || '');
   const [title, setTitle] = useState(savedState?.title || '');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -123,7 +125,8 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
               ) : (
                 <p 
                   className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300 cursor-pointer hover:text-sage-600 dark:hover:text-sage-400 inline-block"
-                  onClick={() => {
+                  onClick={(_e) => {
+                    if (hasDragged) return;
                     setTempTitle(title);
                     setIsEditingTitle(true);
                   }}
@@ -137,7 +140,8 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
             {/* QR Code */}
             <div 
               className="bg-white p-2 rounded-lg shadow-inner cursor-pointer flex-1 flex items-center justify-center"
-              onDoubleClick={() => {
+              onDoubleClick={(_e) => {
+                if (hasDragged) return;
                 setUrl('');
                 setTitle('');
               }}

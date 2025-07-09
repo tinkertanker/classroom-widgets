@@ -3,9 +3,11 @@ import React, { useState, useRef, useEffect } from 'react';
 interface ImageDisplayProps {
   savedState?: { imageUrl: string | null };
   onStateChange?: (state: { imageUrl: string | null }) => void;
+  isDragging?: boolean;
+  hasDragged?: boolean;
 }
 
-const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }) => {
+const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange, isDragging: _isDragging, hasDragged }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(savedState?.imageUrl || null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -32,6 +34,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
 
   // Handle click to open file dialog
   const handleClick = () => {
+    if (hasDragged) return;
     if (!imageUrl) {
       fileInputRef.current?.click();
     }
@@ -99,6 +102,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
 
   // Handle double-click to change image
   const handleDoubleClick = () => {
+    if (hasDragged) return;
     if (imageUrl) {
       fileInputRef.current?.click();
     }

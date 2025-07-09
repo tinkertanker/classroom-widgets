@@ -1,7 +1,7 @@
 // Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
 
-function TrafficLight() {
+function TrafficLight({ isDragging, hasDragged }) {
   const [state, setState] = useState({
     activeLight: "#ff0000",
     boxHeight: 100,
@@ -72,12 +72,13 @@ function TrafficLight() {
   }, []);
 
   const handleLightClick = useCallback((color) => {
+    if (hasDragged) return; // Don't handle click if we just dragged
     new Audio(actionClickSound).play();
     setState((prevState) => ({
       ...prevState,
       activeLight: color,
     }));
-  }, [actionClickSound]);
+  }, [actionClickSound, hasDragged]);
 
   const toggleInputButtons = useCallback(() => {
     setState((prevState) => ({
