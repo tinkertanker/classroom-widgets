@@ -13,6 +13,7 @@ const Timer = () => {
   const [showStart, setShowStart] = useState(true);
   const [showResume, setShowResume] = useState(false);
   const [showPauseResume, setShowPauseResume] = useState(true);
+  const [timerFinished, setTimerFinished] = useState(false);
 
   // Initialize values based on initialTime (10 seconds)
   const [values, setValues] = useState(['00', '00', '10']);
@@ -111,6 +112,7 @@ const Timer = () => {
     if (time <= 0 && isRunning) {
       setIsRunning(false);
       setShowPauseResume(false);
+      setTimerFinished(true);
       // Play the timer end sound
       timerEndAudio.play().catch(error => {
         console.error("Error playing timer end sound:", error);
@@ -148,6 +150,7 @@ const Timer = () => {
     setInEditMode(false);
     setShowStart(false);
     setShowPauseResume(true);
+    setTimerFinished(false);
   };
   const pauseTimer = () => {
     setIsRunning(false);
@@ -164,6 +167,7 @@ const Timer = () => {
     setShowStart(true);
     setShowResume(false);
     setTime(initialTime);
+    setTimerFinished(false);
 
     let actualValues = [0, 0, 0];
     actualValues[0] = Math.floor(initialTime/3600);
@@ -275,7 +279,26 @@ const Timer = () => {
               <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] flex items-center justify-center"
               >
-                {isRunning && !inEditMode ? (
+                {timerFinished ? (
+                  /* TIME'S UP DISPLAY */
+                  <div className="flex flex-col items-center justify-center">
+                    <svg 
+                      style={{ width: 'clamp(3rem, 25cqmin, 6rem)', height: 'clamp(3rem, 25cqmin, 6rem)' }} 
+                      className="mb-2 text-dusty-rose-500" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span 
+                      style={{ fontSize: 'clamp(1.25rem, 10cqmin, 3rem)' }} 
+                      className="font-bold text-dusty-rose-500"
+                    >
+                      Time's Up!
+                    </span>
+                  </div>
+                ) : isRunning && !inEditMode ? (
                   /* DISPLAY MODE */
                   <div className="flex items-center justify-center w-full h-full cursor-pointer" onClick={pauseTimer}>
                     {time >= 3600 ? (
@@ -354,7 +377,14 @@ const Timer = () => {
               </div>
         </div>
         <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center gap-2">
-          {showStart ? (
+          {timerFinished ? (
+            <button
+              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+              onClick={restartTimer}
+            >
+              Restart {'\u21BB'}
+            </button>
+          ) : showStart ? (
             <button
               className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
               onClick={() => startTimer()}
