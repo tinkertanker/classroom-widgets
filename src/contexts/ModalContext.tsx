@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 interface ModalOptions {
@@ -29,6 +29,7 @@ export const useModal = () => {
 export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [modalOptions, setModalOptions] = useState<ModalOptions | null>(null);
+  const modalContentRef = useRef<HTMLDivElement>(null);
 
   const showModal = useCallback((options: ModalOptions) => {
     setModalOptions(options);
@@ -50,15 +51,31 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // Global click handler to close modal when clicking outside
+  useEffect(() => {
+    const handleGlobalClick = (event: MouseEvent) => {
+      if (isOpen && modalContentRef.current && !modalContentRef.current.contains(event.target as Node)) {
+        hideModal();
+      }
+    };
+
+    if (isOpen) {
+      // Use capture phase to catch clicks before they're stopped
+      document.addEventListener('mousedown', handleGlobalClick, true);
+      return () => document.removeEventListener('mousedown', handleGlobalClick, true);
+    }
+  }, [isOpen, hideModal]);
+
   return (
     <ModalContext.Provider value={{ showModal, hideModal, isOpen }}>
       {children}
       {isOpen && modalOptions && ReactDOM.createPortal(
         <div 
-          className={modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"}
+          className={modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}
           onClick={handleOverlayClick}
         >
           <div 
+            ref={modalContentRef}
             className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[80vh] overflow-auto"}
             onClick={(e) => e.stopPropagation()}
           >

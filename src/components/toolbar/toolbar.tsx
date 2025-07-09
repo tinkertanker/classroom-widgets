@@ -38,6 +38,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   const menuButtonRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
+  const launchpadContentRef = useRef(null);
   const { showModal, hideModal } = useModal();
   const [selectedToolbarWidgets, setSelectedToolbarWidgets] = useState(() => {
     // Load saved toolbar configuration from localStorage
@@ -103,16 +104,18 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   // Close launchpad when clicking outside, including toolbar area
   useEffect(() => {
     const handleLaunchpadClose = (event) => {
-      if (launchpadOpen && !event.target.closest('.launchpad-content')) {
+      if (launchpadOpen && launchpadContentRef.current && !launchpadContentRef.current.contains(event.target)) {
         setLaunchpadOpen(false);
       }
     };
 
     if (launchpadOpen) {
+      // Use capture phase to catch clicks before they're stopped
       document.addEventListener('mousedown', handleLaunchpadClose, true);
       return () => document.removeEventListener('mousedown', handleLaunchpadClose, true);
     }
   }, [launchpadOpen]);
+
 
   // Component data indexed by widget type
   const AllComponentData = [];
@@ -409,15 +412,10 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
       <div 
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"
         onClick={() => setLaunchpadOpen(false)}
-        onMouseDown={(e) => {
-          // Ensure clicking anywhere including toolbar area closes the modal
-          if (e.target === e.currentTarget) {
-            setLaunchpadOpen(false);
-          }
-        }}
       >
         <div 
-          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto launchpad-content"
+          ref={launchpadContentRef}
+          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-end mb-4">
