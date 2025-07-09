@@ -190,7 +190,8 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                             if (el) {
                               inputRefs.current[index] = el as any;
                               el.focus();
-                              el.select();
+                              // Place cursor at the end instead of selecting all
+                              el.setSelectionRange(el.value.length, el.value.length);
                             }
                           }}
                           value={item.text}
