@@ -7,8 +7,6 @@ interface DataShareProps {
     submissions?: Submission[];
   };
   onStateChange?: (state: any) => void;
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
 interface Submission {
@@ -18,7 +16,7 @@ interface Submission {
   timestamp: number;
 }
 
-const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDragging: _isDragging, hasDragged }) => {
+const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
   const [roomCode, setRoomCode] = useState<string>(savedState?.roomCode || '');
   const [submissions, setSubmissions] = useState<Submission[]>(savedState?.submissions || []);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -124,7 +122,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDrag
             )}
             <button
               onClick={(_e) => {
-                if (hasDragged) return;
                 createRoom();
               }}
               disabled={isConnecting}
@@ -174,7 +171,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDrag
                       selectedSubmission === submission.id ? 'bg-sage-50 dark:bg-sage-900/20' : ''
                     }`}
                     onClick={() => {
-                      if (hasDragged) return;
                       setSelectedSubmission(submission.id === selectedSubmission ? null : submission.id);
                     }}
                   >
@@ -194,7 +190,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDrag
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (hasDragged) return;
                             window.open(submission.link, '_blank');
                           }}
                           className="p-1.5 text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300"
@@ -207,7 +202,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDrag
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (hasDragged) return;
                             copyToClipboard(submission.link, submission.id);
                           }}
                           className={`p-1.5 transition-colors ${
@@ -230,7 +224,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDrag
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (hasDragged) return;
                             deleteSubmission(submission.id);
                           }}
                           className="p-1.5 text-dusty-rose-500 hover:text-dusty-rose-600 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300"
@@ -253,7 +246,6 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange, isDrag
             <div className="mt-3 flex justify-end">
               <button
                 onClick={(_e) => {
-                  if (hasDragged) return;
                   clearAllSubmissions();
                 }}
                 className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white text-sm rounded transition-colors duration-200"

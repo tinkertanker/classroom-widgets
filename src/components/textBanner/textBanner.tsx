@@ -3,8 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 interface TextBannerProps {
   savedState?: { text: string; colorIndex?: number };
   onStateChange?: (state: { text: string; colorIndex: number }) => void;
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
 // Define color combinations with high contrast
@@ -17,7 +15,7 @@ const colorCombinations = [
   { bg: 'bg-blue-600 dark:bg-blue-700', text: 'text-soft-white dark:text-white' }
 ];
 
-const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isDragging: _isDragging, hasDragged }) => {
+const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
   const [text, setText] = useState(savedState?.text || 'Double-click to edit');
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex ?? 0);
   const [isEditing, setIsEditing] = useState(false);
@@ -107,7 +105,6 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isDr
   }, [text]);
 
   const handleDoubleClick = () => {
-    if (hasDragged) return;
     setIsEditing(true);
     setEditText(text);
   };
@@ -139,7 +136,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isDr
 
   const handleClick = (e: React.MouseEvent) => {
     // Only cycle colors on single click when not editing
-    if (!isEditing && e.detail === 1 && !hasDragged) {
+    if (!isEditing && e.detail === 1) {
       const nextIndex = (colorIndex + 1) % colorCombinations.length;
       updateState(undefined, nextIndex);
     }

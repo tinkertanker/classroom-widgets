@@ -35,11 +35,9 @@ interface SoundButton {
 
 interface SoundEffectsProps {
   isActive?: boolean;
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
-const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false, isDragging: _isDragging, hasDragged }) => {
+const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   const [audioElements, setAudioElements] = useState<Map<string, HTMLAudioElement>>(new Map());
 
   // Sound effect definitions with our color palette
@@ -150,7 +148,6 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false, isDraggin
               key={sound.name}
               id={`sound-${sound.name}`}
               onClick={(_e) => {
-                if (hasDragged) return;
                 playSound(sound.name);
               }}
               className={`${sound.color} text-white rounded-md py-2 px-1.5 flex items-center justify-center gap-1.5 transition-all duration-150 transform active:scale-95 shadow-sm`}

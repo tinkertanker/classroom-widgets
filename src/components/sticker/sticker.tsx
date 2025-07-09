@@ -20,11 +20,9 @@ interface StickerProps {
     rotation?: number;
   };
   onStateChange?: (state: any) => void;
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
-const Sticker: React.FC<StickerProps> = ({ stickerType, savedState, onStateChange, isDragging: _isDragging, hasDragged }) => {
+const Sticker: React.FC<StickerProps> = ({ stickerType, savedState, onStateChange }) => {
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex || 0);
   const [rotation, setRotation] = useState(savedState?.rotation || 0);
 
@@ -61,7 +59,6 @@ const Sticker: React.FC<StickerProps> = ({ stickerType, savedState, onStateChang
   // Handle click to cycle colors and rotation
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent widget selection
-    if (hasDragged) return;
     const newColorIndex = (colorIndex + 1) % colorSchemes.length;
     const newRotation = getRandomRotation();
     

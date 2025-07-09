@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 const timerEndSound = require("./timer-end.mp3");
 const timerEndAudio = new Audio(timerEndSound);
 
-const Timer = ({ isDragging, hasDragged }) => {
+const Timer = () => {
   const [initialTime, setInitialTime] = useState(10);
   const [time, setTime] = useState(10);
   const [changeTime, setChangeTime] = useState(-1);
@@ -59,7 +59,6 @@ const Timer = ({ isDragging, hasDragged }) => {
   };
 
   const handleSegmentClick = (index: number) => {
-    if (hasDragged) return; // Don't handle click if we just dragged
     if (!isRunning) {
       setEditingSegment(index);
       setTempValue(values[index]);
@@ -151,7 +150,6 @@ const Timer = ({ isDragging, hasDragged }) => {
     setShowPauseResume(true);
   };
   const pauseTimer = () => {
-    if (hasDragged) return; // Don't handle click if we just dragged
     setIsRunning(false);
     setInEditMode(true);
     setShowResume(true);

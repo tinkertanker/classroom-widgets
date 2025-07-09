@@ -11,7 +11,7 @@ import {
   FaBroom            // Clean up
 } from 'react-icons/fa6';
 
-function Work({ isDragging, hasDragged }) {
+function Work() {
     const [state, setState] = useState({
         borderW: "2px",
         index: 0,
@@ -54,13 +54,12 @@ function Work({ isDragging, hasDragged }) {
     }, []);
 
     const handleNextState = useCallback(() => {
-        if (hasDragged) return; // Don't handle click if we just dragged
         setState(prev => ({
             ...prev,
             index: (prev.index + 1) % workModes.length,
         }));
         plaey();
-    }, [workModes.length, plaey, hasDragged]);
+    }, [workModes.length, plaey]);
 
     useEffect(() => {
         window.addEventListener("click", handleClick);

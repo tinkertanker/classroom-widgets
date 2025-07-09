@@ -4,11 +4,9 @@ import QRCode from 'react-qr-code';
 import { API_KEY, BASE_URL } from '../../secrets/shortioKey.js';
 
 interface ShortenLinkProps {
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
-const ShortenLink: React.FC<ShortenLinkProps> = ({ isDragging: _isDragging, hasDragged }) => {
+const ShortenLink: React.FC<ShortenLinkProps> = () => {
   const [link, setLink] = useState<string>('');
   const [shortenedLink, setShortenedLink] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +140,6 @@ const ShortenLink: React.FC<ShortenLinkProps> = ({ isDragging: _isDragging, hasD
                 </a>
                 <button
                   onClick={(_e) => {
-                    if (hasDragged) return;
                     copyToClipboard();
                   }}
                   className="p-1 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200"
@@ -164,7 +161,6 @@ const ShortenLink: React.FC<ShortenLinkProps> = ({ isDragging: _isDragging, hasD
           
           <button
             onClick={(e) => {
-              if (hasDragged) return;
               resetForm();
             }}
             className="w-full px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"

@@ -6,8 +6,6 @@ import PollSettings from './PollSettings';
 interface PollProps {
   savedState?: any;
   onStateChange?: (state: any) => void;
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
 interface PollData {
@@ -22,7 +20,7 @@ interface PollResults {
   participantCount: number;
 }
 
-function Poll({ savedState, onStateChange, isDragging: _isDragging, hasDragged }: PollProps) {
+function Poll({ savedState, onStateChange }: PollProps) {
   const [roomCode, setRoomCode] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
   const [pollData, setPollData] = useState<PollData>({
@@ -179,7 +177,6 @@ function Poll({ savedState, onStateChange, isDragging: _isDragging, hasDragged }
           </p>
           <button
             onClick={(_e) => {
-              if (hasDragged) return;
               createRoom();
             }}
             disabled={isConnecting}
@@ -217,7 +214,6 @@ function Poll({ savedState, onStateChange, isDragging: _isDragging, hasDragged }
             </div>
             <button
               onClick={(_e) => {
-                if (hasDragged) return;
                 openSettings();
               }}
               className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
@@ -263,7 +259,6 @@ function Poll({ savedState, onStateChange, isDragging: _isDragging, hasDragged }
           <div className="mt-4 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700">
             <button
               onClick={(_e) => {
-                if (hasDragged) return;
                 togglePoll();
               }}
               className={`w-full px-4 py-2 text-white rounded transition-colors duration-200 ${

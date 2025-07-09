@@ -7,11 +7,9 @@ interface ListProps {
     statuses: number[];
   };
   onStateChange?: (state: any) => void;
-  isDragging?: boolean;
-  hasDragged?: boolean;
 }
 
-const List: React.FC<ListProps> = ({ savedState, onStateChange, isDragging, hasDragged }) => {
+const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   const [inputs, setInputs] = useState<string[]>(savedState?.inputs || [""]);
   const [statuses, setStatuses] = useState<number[]>(savedState?.statuses || [0]); // 0: none, 1: green, 2: yellow, 3: red, 4: faded
   const [isLarge, setIsLarge] = useState(false);
@@ -59,7 +57,6 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange, isDragging, hasD
   }, []);
 
   const handleAddInput = () => {
-    if (hasDragged) return; // Don't handle click if we just dragged
     setInputs((prevInputs) => {
       const newInputs = [...prevInputs, ""];
       setTimeout(() => {
@@ -77,7 +74,6 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange, isDragging, hasD
   };
 
   const cycleStatus = (index: number) => {
-    if (hasDragged) return; // Don't handle click if we just dragged
     const updatedStatuses = [...statuses];
     updatedStatuses[index] = (updatedStatuses[index] + 1) % 5; // Cycle through 0, 1, 2, 3, 4
     setStatuses(updatedStatuses);
@@ -96,7 +92,6 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange, isDragging, hasD
 
 
   const handleDeleteInput = (index: number) => {
-    if (hasDragged) return; // Don't handle click if we just dragged
     const newInputs = inputs.filter((_, i) => i !== index);
     const newStatuses = statuses.filter((_, i) => i !== index);
     setInputs(newInputs);
