@@ -100,6 +100,20 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  // Close launchpad when clicking outside, including toolbar area
+  useEffect(() => {
+    const handleLaunchpadClose = (event) => {
+      if (launchpadOpen && !event.target.closest('.launchpad-content')) {
+        setLaunchpadOpen(false);
+      }
+    };
+
+    if (launchpadOpen) {
+      document.addEventListener('mousedown', handleLaunchpadClose, true);
+      return () => document.removeEventListener('mousedown', handleLaunchpadClose, true);
+    }
+  }, [launchpadOpen]);
+
   // Component data indexed by widget type
   const AllComponentData = [];
   AllComponentData[WIDGET_TYPES.RANDOMISER] = { name: "Randomiser", icon: FaDice };
@@ -393,11 +407,17 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
       {/* Launchpad Dialog */}
       {launchpadOpen && ReactDOM.createPortal(
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999]"
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"
         onClick={() => setLaunchpadOpen(false)}
+        onMouseDown={(e) => {
+          // Ensure clicking anywhere including toolbar area closes the modal
+          if (e.target === e.currentTarget) {
+            setLaunchpadOpen(false);
+          }
+        }}
       >
         <div 
-          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto"
+          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto launchpad-content"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-end mb-4">
