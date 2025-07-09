@@ -11,14 +11,14 @@ import {
   FaBroom            // Clean up
 } from 'react-icons/fa6';
 
-function Work() {
+function TaskCue() {
     const [state, setState] = useState({
         borderW: "2px",
         index: 0,
         clicked: true,
     });
 
-    const workModes = [
+    const taskModes = [
         { icon: FaVolumeXmark, label: 'Silence', color: 'text-dusty-rose-500' },
         { icon: FaVolumeLow, label: 'Whisper', color: 'text-terracotta-500' },
         { icon: FaComments, label: 'Discuss with neighbour', color: 'text-sage-600' },
@@ -56,10 +56,10 @@ function Work() {
     const handleNextState = useCallback(() => {
         setState(prev => ({
             ...prev,
-            index: (prev.index + 1) % workModes.length,
+            index: (prev.index + 1) % taskModes.length,
         }));
         plaey();
-    }, [workModes.length, plaey]);
+    }, [taskModes.length, plaey]);
 
     useEffect(() => {
         window.addEventListener("click", handleClick);
@@ -76,19 +76,19 @@ function Work() {
                     onClick={handleNextState}
                     title="Click to cycle to next state"
                 >
-                    {React.createElement(workModes[state.index].icon as any, {
-                        className: `w-2/3 h-2/3 ${workModes[state.index].color}`,
+                    {React.createElement(taskModes[state.index].icon as any, {
+                        className: `w-2/3 h-2/3 ${taskModes[state.index].color}`,
                         style: { maxWidth: '200px', maxHeight: '200px' }
                     })}
-                    <h2 className={`text-2xl font-bold ${workModes[state.index].color}`}>
-                        {workModes[state.index].label}
+                    <h2 className={`text-2xl font-bold ${taskModes[state.index].color}`}>
+                        {taskModes[state.index].label}
                     </h2>
                 </div>
             </div>
             {state.clicked && (
                 <div className="px-3 pb-3">
                     <div id="widget1inside" className="flex flex-wrap justify-center gap-1">
-                        {workModes.map((mode, i) => {
+                        {taskModes.map((mode, i) => {
                             const Icon = mode.icon;
                             return (
                                 <button
@@ -112,4 +112,4 @@ function Work() {
     );
 }
 
-export default Work;
+export default TaskCue;

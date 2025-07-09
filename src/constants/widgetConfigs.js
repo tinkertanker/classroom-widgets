@@ -23,7 +23,7 @@ export const WIDGET_CONFIGS = {
     minHeight: 200,
     lockAspectRatio: false
   },
-  [WIDGET_TYPES.WORK_SYMBOLS]: {
+  [WIDGET_TYPES.TASK_CUE]: {
     defaultWidth: 350,
     defaultHeight: 350,
     minWidth: 350,

@@ -47,7 +47,7 @@ The application uses a dynamic widget system where widgets are:
 - **Randomiser** (`src/components/randomiser/`) - Random selection with confetti, dual textarea for active/removed items
 - **Timer** (`src/components/timer/`) - Countdown/timing functionality
 - **List** (`src/components/list/`) - Task list with confetti trigger
-- **Task Cue** (`src/components/work/`) - Visual work mode indicators
+- **Task Cue** (`src/components/taskCue/`) - Visual work mode indicators
 - **Traffic Light** (`src/components/trafficLight/`) - Status indicators
 - **Volume Level Monitor** (`src/components/volumeLevel/`) - Audio level visualization
 - **Link Shortener** (`src/components/shortenLink/`) - URL shortening (requires API key)

@@ -2,7 +2,7 @@ import React from 'react';
 import Randomiser from "../randomiser/randomiser";
 import Timer from "../timer/timer";
 import List from "../list/list";
-import Work from "../work/work";
+import TaskCue from "../taskCue/taskCue";
 import TrafficLight from "../trafficLight/trafficLight";
 import AudioVolumeMonitor from "../volumeLevel/volumeLevel";
 import ShortenLink from "../shortenLink/shortenLink";
@@ -33,8 +33,8 @@ const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateCha
         savedState={savedState}
         onStateChange={onStateChange}
       />;
-    case WIDGET_TYPES.WORK_SYMBOLS:
-      return <Work />;
+    case WIDGET_TYPES.TASK_CUE:
+      return <TaskCue />;
     case WIDGET_TYPES.TRAFFIC_LIGHT:
       return <TrafficLight />;
     case WIDGET_TYPES.SOUND_MONITOR:
