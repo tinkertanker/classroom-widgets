@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - REACT_APP_SERVER_URL=http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - classroom-widgets
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - CORS_ORIGINS=http://localhost:3000,http://localhost
+    networks:
+      - classroom-widgets
+
+networks:
+  classroom-widgets:
+    driver: bridge
