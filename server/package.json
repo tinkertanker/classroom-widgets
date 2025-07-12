@@ -5,8 +5,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "build:student": "cd ../student-app && npm install && npm run build",
-    "dev:student": "cd ../student-app && ./dev.sh",
+    "build:student": "cd student-app && npm install && npm run build",
+    "dev:student": "cd student-app && ./dev.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

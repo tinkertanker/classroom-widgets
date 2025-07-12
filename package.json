@@ -35,9 +35,9 @@
     "eject": "react-scripts eject",
     "server": "cd server && npm start",
     "server:dev": "cd server && npm run dev",
-    "student": "cd student-app && npm run dev",
-    "student:build": "cd student-app && npm run build",
-    "dev:all": "cd student-app && ./dev.sh"
+    "student": "cd server/student-app && npm run dev",
+    "student:build": "cd server/student-app && npm run build",
+    "dev:all": "cd server/student-app && ./dev.sh"
   },
   "eslintConfig": {
     "extends": [

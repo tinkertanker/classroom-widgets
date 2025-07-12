@@ -7,12 +7,12 @@ Interactive classroom management tools with real-time student engagement feature
 ```
 classroom-widgets/
 ├── src/                    # Main React app (teacher interface)
-├── server/                 # Express backend server
-│   ├── src/               # Server source code
+├── server/                 # Backend + Student interface
+│   ├── src/               # Express server code
+│   ├── student-app/       # Student React app
+│   │   ├── src/          # Student app source
+│   │   └── dev.sh        # Development script
 │   └── public/            # Built student app (generated)
-├── student-app/           # Student React app
-│   ├── src/               # Student app source
-│   └── dev.sh            # Development script
 └── nginx.conf            # Production nginx config
 ```
 
@@ -23,7 +23,7 @@ classroom-widgets/
    ```bash
    npm install                    # Main app
    cd server && npm install       # Server
-   cd ../student-app && npm install  # Student app
+   cd student-app && npm install  # Student app
    ```
 3. Copy `src/secrets/shortioKey.example.js` to `src/secrets/shortioKey.js` and enter the Short.io API key
 
