@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactDOM from 'react-dom';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
 import { useModal } from '../../contexts/ModalContext';
 import { useWorkspace } from '../../store/WorkspaceContext';
@@ -219,8 +218,27 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   };
 
   const handleToggleStickerMode = () => {
-    setStickerMode(!state.stickerMode);
-    setShowMenu(false);
+    if (!state.stickerMode) {
+      // Show sticker palette modal
+      setShowMenu(false);
+      showModal({
+        title: 'Sticker Palette',
+        content: (
+          <StickerPalette
+            selectedStickerType={state.selectedStickerType}
+            setSelectedStickerType={(type: string) => setStickerMode(true, type)}
+            setStickerMode={setStickerMode}
+            stickerMode={state.stickerMode}
+            onClose={hideModal}
+          />
+        ),
+        className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl"
+      });
+    } else {
+      // Exit sticker mode
+      setStickerMode(false);
+      setShowMenu(false);
+    }
   };
 
   const allWidgets = [
@@ -249,7 +267,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
         {/* Trash icon - prominent on left with large hit area */}
         <div
           id="trash"
-          className={`w-24 h-16 cursor-pointer transition-all duration-200 p-4 rounded-lg flex items-center justify-center ${
+          className={`w-24 h-20 cursor-pointer transition-all duration-200 p-3 rounded-lg flex flex-col items-center justify-center gap-1 ${
             hoveringTrash 
               ? 'bg-dusty-rose-500 transform scale-105' 
               : 'bg-warm-gray-200 dark:bg-warm-gray-700 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-600'
@@ -257,7 +275,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           title="Drag widgets here to delete"
         >
           <svg
-            className={`w-12 h-12 transition-all duration-200 ${
+            className={`w-10 h-10 transition-all duration-200 ${
               hoveringTrash 
                 ? 'text-white' 
                 : 'text-warm-gray-600 dark:text-warm-gray-300'
@@ -274,6 +292,13 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
             />
           </svg>
+          <span className={`text-xs font-medium transition-all duration-200 ${
+            hoveringTrash 
+              ? 'text-white' 
+              : 'text-warm-gray-600 dark:text-warm-gray-300'
+          }`}>
+            Delete
+          </span>
         </div>
 
         {/* More widgets button - prominent on left */}
@@ -282,13 +307,14 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`p-4 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 border-2 border-warm-gray-300 dark:border-warm-gray-600 ${
+              className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 border-2 border-warm-gray-300 dark:border-warm-gray-600 flex flex-col items-center gap-1 min-w-[80px] ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={state.stickerMode}
               title="More widgets"
             >
-              <FaTableCells className="text-2xl" />
+              <FaTableCells className="text-xl" />
+              <span className="text-xs font-medium">More</span>
             </button>
 
             {showAllWidgets && (
@@ -331,16 +357,19 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           <button
             key={widgetType}
             onClick={() => handleAddWidget(widgetType)}
-            className={`p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative ${
+            className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative flex flex-col items-center gap-1 min-w-[80px] ${
               hoveringTrash ? 'scale-95 opacity-50' : ''
             } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={state.stickerMode || (widgetType === WIDGET_TYPES.POLL && !pollServerConnected)}
             title={widgetNames[widgetType]}
           >
-            <div className="text-xl">{getWidgetIcon(widgetType)}</div>
-            {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
-            )}
+            <div className="text-lg relative">
+              {getWidgetIcon(widgetType)}
+              {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
+              )}
+            </div>
+            <span className="text-xs text-center leading-tight">{widgetNames[widgetType]}</span>
           </button>
         ))}
 
@@ -452,17 +481,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
         )}
       </div>
 
-      {/* Sticker Palette */}
-      {state.stickerMode && ReactDOM.createPortal(
-        <StickerPalette
-          selectedStickerType={state.selectedStickerType}
-          setSelectedStickerType={(type: string) => setStickerMode(true, type)}
-          setStickerMode={setStickerMode}
-          stickerMode={state.stickerMode}
-          onClose={() => setStickerMode(false)}
-        />,
-        document.body
-      )}
     </div>
   );
 }

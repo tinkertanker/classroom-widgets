@@ -102,43 +102,19 @@ function AppContent() {
     const x = e.clientX - rect.left + scrollContainer.scrollLeft;
     const y = e.clientY - rect.top + scrollContainer.scrollTop;
     
-    // Add sticker at clicked position
-    addWidget(WIDGET_TYPES.STAMP, state.selectedStickerType);
+    // Calculate sticker position and size
+    const stickerConfig = getWidgetConfig(WIDGET_TYPES.STAMP, state.selectedStickerType);
+    const sizeVariation = 0.9 + Math.random() * 0.2;
+    const randomWidth = Math.round(stickerConfig.defaultWidth * sizeVariation);
+    const randomHeight = Math.round(stickerConfig.defaultHeight * sizeVariation);
     
-    // Update position to clicked location
-    const widgets = state.widgets;
-    const newWidget = widgets[widgets.length - 1];
-    if (newWidget) {
-      const stickerConfig = getWidgetConfig(WIDGET_TYPES.STAMP, state.selectedStickerType);
-      const sizeVariation = 0.9 + Math.random() * 0.2;
-      const randomWidth = Math.round(stickerConfig.defaultWidth * sizeVariation);
-      const randomHeight = Math.round(stickerConfig.defaultHeight * sizeVariation);
-      
-      updateWidgetPosition(newWidget.id, {
-        x: x - randomWidth / 2,
-        y: y - randomHeight / 2,
-        width: randomWidth,
-        height: randomHeight
-      });
-      
-      // Generate random variations
-      const getRandomRotation = () => {
-        const steps = [];
-        for (let i = -40; i <= 40; i += 5) {
-          steps.push(i);
-        }
-        return steps[Math.floor(Math.random() * steps.length)];
-      };
-      
-      const getRandomColorIndex = () => Math.floor(Math.random() * 6);
-      
-      updateWidgetState(newWidget.id, {
-        stickerType: state.selectedStickerType,
-        rotation: getRandomRotation(),
-        colorIndex: getRandomColorIndex(),
-        scale: sizeVariation
-      });
-    }
+    // Add sticker at clicked position
+    addWidget(WIDGET_TYPES.STAMP, state.selectedStickerType, {
+      x: x - randomWidth / 2,
+      y: y - randomHeight / 2,
+      width: randomWidth,
+      height: randomHeight
+    });
   };
 
   // Add widget handler for toolbar

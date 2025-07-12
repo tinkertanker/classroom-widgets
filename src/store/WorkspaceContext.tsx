@@ -3,6 +3,7 @@ import { WidgetInstance, WidgetPosition, BackgroundType } from '../types/app.typ
 import { v4 as uuidv4 } from 'uuid';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { getWidgetConfig } from '../constants/widgetConfigs';
+import { WIDGET_TYPES } from '../constants/widgetTypes';
 
 // State types
 interface WorkspaceState {
@@ -17,7 +18,7 @@ interface WorkspaceState {
 
 // Action types
 type WorkspaceAction =
-  | { type: 'ADD_WIDGET'; payload: { widgetType: number; stickerType?: string } }
+  | { type: 'ADD_WIDGET'; payload: { widgetType: number; stickerType?: string; position?: WidgetPosition } }
   | { type: 'REMOVE_WIDGET'; payload: { widgetId: string } }
   | { type: 'UPDATE_WIDGET_POSITION'; payload: { widgetId: string; position: WidgetPosition } }
   | { type: 'UPDATE_WIDGET_STATE'; payload: { widgetId: string; state: any } }
@@ -42,24 +43,35 @@ const initialState: WorkspaceState = {
 function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case 'ADD_WIDGET': {
-      const { widgetType, stickerType } = action.payload;
+      const { widgetType, stickerType, position: customPosition } = action.payload;
       const newId = uuidv4();
       const config = getWidgetConfig(widgetType, stickerType || null);
       
-      const position = findAvailablePosition(
+      const position = customPosition || findAvailablePosition(
         config.defaultWidth,
         config.defaultHeight,
         state.widgetPositions
       );
+
+      // Set initial widget state for stickers
+      const newWidgetStates = new Map(state.widgetStates);
+      if (widgetType === WIDGET_TYPES.STAMP && stickerType) {
+        newWidgetStates.set(newId, {
+          stickerType: stickerType,
+          rotation: 0,
+          colorIndex: 0
+        });
+      }
 
       return {
         ...state,
         widgets: [...state.widgets, { id: newId, index: widgetType }],
         widgetPositions: new Map(state.widgetPositions).set(newId, {
           ...position,
-          width: config.defaultWidth,
-          height: config.defaultHeight
+          width: customPosition?.width || config.defaultWidth,
+          height: customPosition?.height || config.defaultHeight
         }),
+        widgetStates: newWidgetStates,
         activeWidgetId: newId
       };
     }
@@ -140,7 +152,7 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
 // Context
 interface WorkspaceContextValue {
   state: WorkspaceState;
-  addWidget: (widgetType: number, stickerType?: string) => void;
+  addWidget: (widgetType: number, stickerType?: string, position?: WidgetPosition) => void;
   removeWidget: (widgetId: string) => void;
   updateWidgetPosition: (widgetId: string, position: WidgetPosition) => void;
   updateWidgetState: (widgetId: string, state: any) => void;
@@ -158,8 +170,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [state, dispatch] = useReducer(workspaceReducer, initialState);
 
   // Action creators
-  const addWidget = useCallback((widgetType: number, stickerType?: string) => {
-    dispatch({ type: 'ADD_WIDGET', payload: { widgetType, stickerType } });
+  const addWidget = useCallback((widgetType: number, stickerType?: string, position?: WidgetPosition) => {
+    dispatch({ type: 'ADD_WIDGET', payload: { widgetType, stickerType, position } });
   }, []);
 
   const removeWidget = useCallback((widgetId: string) => {
