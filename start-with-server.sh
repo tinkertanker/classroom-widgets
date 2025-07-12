@@ -10,7 +10,7 @@ sleep 2
 
 # Start the React app
 echo "Starting React app on port 3000..."
-cd .. && npm start
+cd . && npm start
 
 # When React app is closed, kill the server
 kill $SERVER_PID
