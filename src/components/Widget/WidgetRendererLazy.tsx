@@ -57,7 +57,7 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
       
     case WIDGET_TYPES.TASK_CUE:
       const TaskCue = LazyWidgets.TaskCue;
-      return <TaskCue />;
+      return <TaskCue isActive={isActive} />;
       
     case WIDGET_TYPES.TRAFFIC_LIGHT:
       const TrafficLight = LazyWidgets.TrafficLight;
@@ -81,7 +81,7 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
       
     case WIDGET_TYPES.SOUND_EFFECTS:
       const SoundEffects = LazyWidgets.SoundEffects;
-      return <SoundEffects />;
+      return <SoundEffects isActive={isActive} />;
       
     case WIDGET_TYPES.STAMP:
       const Sticker = LazyWidgets.Sticker;

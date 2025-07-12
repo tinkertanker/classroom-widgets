@@ -27,6 +27,7 @@ interface WidgetContainerProps {
   onTouchStart: () => void;
   onStateChange: (state: any) => void;
   toggleConfetti: (value: boolean) => void;
+  onClick?: () => void;
 }
 
 const WidgetContainer: React.FC<WidgetContainerProps> = ({ 
@@ -43,7 +44,8 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
   onResizeStop,
   onTouchStart,
   onStateChange,
-  toggleConfetti
+  toggleConfetti,
+  onClick
 }) => {
   const actualWidth = position.width || config.defaultWidth;
   const actualHeight = position.height || config.defaultHeight;
@@ -115,16 +117,27 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
       onResizeStop={onResizeStop}
       onTouchStart={onTouchStart}
     >
-      <WidgetRendererLazy
-        widgetType={widget.index}
-        widgetId={widget.id}
-        savedState={savedState}
-        isActive={isActive}
-        onStateChange={onStateChange}
-        toggleConfetti={toggleConfetti}
-        isDragging={isDragging}
-        hasDragged={hasDraggedRef.current}
-      />
+      <div 
+        className="w-full h-full"
+        onClick={(e) => {
+          // Only trigger if we haven't dragged
+          if (!hasDraggedRef.current && onClick) {
+            e.stopPropagation();
+            onClick();
+          }
+        }}
+      >
+        <WidgetRendererLazy
+          widgetType={widget.index}
+          widgetId={widget.id}
+          savedState={savedState}
+          isActive={isActive}
+          onStateChange={onStateChange}
+          toggleConfetti={toggleConfetti}
+          isDragging={isDragging}
+          hasDragged={hasDraggedRef.current}
+        />
+      </div>
     </Rnd>
   );
 };

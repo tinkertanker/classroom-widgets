@@ -231,6 +231,7 @@ function AppContent() {
                   onTouchStart={() => setActiveWidget(widget.id)}
                   onStateChange={(state: any) => updateWidgetState(widget.id, state)}
                   toggleConfetti={setUseConfetti}
+                  onClick={() => setActiveWidget(widget.id)}
                 />
               );
             })}
