@@ -6,14 +6,13 @@ Interactive classroom management tools with real-time student engagement feature
 
 ```
 classroom-widgets/
-├── src/                    # Main React app (teacher interface)
+├── src/                    # Teacher interface (main React app)
 ├── server/                 # Backend + Student interface
-│   ├── src/               # Express server code
-│   ├── student-app/       # Student React app
-│   │   ├── src/          # Student app source
-│   │   └── dev.sh        # Development script
-│   └── public/            # Built student app (generated)
-└── nginx.conf            # Production nginx config
+│   ├── src/               # Express server code and Student React app
+│   │   ├── index.js      # Express server
+│   │   └── student/      # Student app source code
+│   └── public/            # Built student app files
+└── nginx.conf            # Production deployment
 ```
 
 ## Setting up Development Environment
@@ -21,13 +20,18 @@ classroom-widgets/
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   npm install                    # Main app
-   cd server && npm install       # Server
-   cd student-app && npm install  # Student app
+   npm install                          # Main app
+   cd server && npm install             # Server
+   cd src/student && npm install        # Student app
    ```
 3. Copy `src/secrets/shortioKey.example.js` to `src/secrets/shortioKey.js` and enter the Short.io API key
 
 ## Quick Start
+
+### First Time Setup:
+```bash
+npm run install:all
+```
 
 ### Run everything for development:
 ```bash
@@ -37,6 +41,8 @@ This starts:
 - Teacher app: http://localhost:3000
 - Student app: http://localhost:3002/student
 - Server: http://localhost:3001
+
+See [SCRIPTS.md](./SCRIPTS.md) for all available npm scripts.
 
 
 

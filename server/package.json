@@ -5,8 +5,9 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "build:student": "cd student-app && npm install && npm run build",
-    "dev:student": "cd student-app && ./dev.sh",
+    "dev:with-student": "./dev.sh",
+    "build:student": "cd src/student && npm install && npm run build",
+    "clean:student": "rm -rf public/*",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -16,7 +17,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",
-    "express": "^5.1.0",
+    "express": "^4.21.2",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

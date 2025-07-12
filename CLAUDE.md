@@ -96,9 +96,11 @@ src/
 ├── secrets/                # API key configuration
 server/                      # Backend server for real-time features
 ├── src/                    # Server source code
-│   └── index.js           # Express/Socket.io server
-└── public/                 # Student web interface
-    └── index.html         # Student participation page
+│   ├── index.js           # Express/Socket.io server
+│   └── student/           # Student React app source
+│       ├── components/    # Student app components
+│       └── *.tsx/css     # Student app files
+└── public/                 # Built student app files
 ```
 
 ## Important Implementation Details

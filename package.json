@@ -29,15 +29,28 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "cross-env PORT=3000 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
+    "// Development Scripts": "",
+    "dev": "cross-env PORT=3000 react-scripts start",
+    "dev:server": "cd server && npm run dev",
+    "dev:student": "cd server/src/student && npm run dev",
+    "dev:all": "cd server && ./dev.sh",
+    "dev:concurrent": "concurrently -n \"teacher,server,student\" -c \"blue,green,magenta\" \"npm run dev\" \"npm run dev:server\" \"npm run dev:student\"",
+    "// Production Scripts": "",
     "server": "cd server && npm start",
-    "server:dev": "cd server && npm run dev",
-    "student": "cd server/student-app && npm run dev",
-    "student:build": "cd server/student-app && npm run build",
-    "dev:all": "cd server/student-app && ./dev.sh"
+    "build:student": "cd server/src/student && npm install && npm run build",
+    "build:all": "npm run build && npm run build:student",
+    "// Setup Scripts": "",
+    "check": "node check-setup.js",
+    "install:all": "npm install && cd server && npm install && cd src/student && npm install",
+    "clean": "rm -rf build server/public node_modules server/node_modules server/src/student/node_modules",
+    "clean:install": "npm run clean && npm run install:all",
+    "// Deployment Scripts": "",
+    "deploy:prepare": "npm run build:all",
+    "serve:production": "cd server && NODE_ENV=production npm start"
   },
   "eslintConfig": {
     "extends": [
@@ -63,6 +76,8 @@
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.0",
+    "cross-env": "^7.0.3",
     "npm-watch": "^0.13.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
