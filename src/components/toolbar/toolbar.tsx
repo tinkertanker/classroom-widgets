@@ -261,16 +261,16 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const otherWidgets = allWidgets.filter(widget => !customWidgets.includes(widget));
 
   return (
-    <div className={`flex flex-col space-y-4 p-4 bg-warm-white dark:bg-warm-gray-900 shadow-sm ${state.activeWidgetId ? 'z-50' : 'z-50'} relative transition-colors duration-200`}>
+    <div className={`flex flex-col space-y-4 px-4 pt-4 pb-0 bg-warm-white dark:bg-warm-gray-900 shadow-sm ${state.activeWidgetId ? 'z-50' : 'z-50'} relative transition-colors duration-200`}>
       {/* Main widget buttons */}
-      <div className="flex space-x-3 items-center">
+      <div className="flex space-x-3 items-end">
         {/* Trash icon - prominent on left with large hit area */}
         <div
           id="trash"
-          className={`w-24 h-20 cursor-pointer transition-all duration-200 p-3 rounded-lg flex flex-col items-center justify-center gap-1 ${
+          className={`w-16 h-16 cursor-pointer transition-all duration-200 p-3 rounded-lg flex items-center justify-center ${
             hoveringTrash 
               ? 'bg-dusty-rose-500 transform scale-105' 
-              : 'bg-warm-gray-200 dark:bg-warm-gray-700 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-600'
+              : 'bg-transparent'
           }`}
           title="Drag widgets here to delete"
         >
@@ -292,13 +292,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
               d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
             />
           </svg>
-          <span className={`text-xs font-medium transition-all duration-200 ${
-            hoveringTrash 
-              ? 'text-white' 
-              : 'text-warm-gray-600 dark:text-warm-gray-300'
-          }`}>
-            Delete
-          </span>
         </div>
 
         {/* More widgets button - prominent on left */}
@@ -379,14 +372,15 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
         {/* Sticker Mode Toggle */}
         <button
           onClick={handleToggleStickerMode}
-          className={`p-3 rounded-lg transition-all duration-200 ${
+          className={`px-3 py-2 rounded-lg transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px] ${
             state.stickerMode 
               ? 'bg-terracotta-500 text-white hover:bg-terracotta-600' 
-              : 'text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700'
+              : 'text-warm-gray-700 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800/40'
           }`}
           title={state.stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
         >
-          <FaStamp className="text-xl" />
+          <FaStamp className="text-lg" />
+          <span className="text-xs text-center leading-tight">Stickers</span>
         </button>
 
         {/* Clock */}
