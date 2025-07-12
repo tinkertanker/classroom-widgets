@@ -26,13 +26,18 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve share page for data share rooms
+// Serve unified student interface at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Legacy share routes redirect to root with code parameter
 app.get('/share', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/share.html'));
+  res.redirect('/');
 });
 
 app.get('/share/:code', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/share.html'));
+  res.redirect(`/?code=${req.params.code}`);
 });
 
 // Store active rooms/sessions
@@ -270,6 +275,19 @@ io.on('connection', (socket) => {
     socket.join(code);
     socket.emit('room:created', code);
     console.log(`Data share room created: ${code}`);
+  });
+
+  // Handle room type checking for unified interface
+  socket.on('dataShare:checkRoom', (data) => {
+    const { code } = data;
+    const room = rooms.get(code);
+    
+    if (room && room instanceof DataShareRoom) {
+      socket.emit('dataShare:roomValid', { code });
+      console.log(`Data share room ${code} validated for student`);
+    } else {
+      socket.emit('dataShare:checkRoom', { code: null });
+    }
   });
 
   socket.on('dataShare:submit', (data) => {

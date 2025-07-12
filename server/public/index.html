@@ -3,9 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Join Classroom Poll</title>
+  <title>Join Classroom Activity</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
+    :root {
+      --warm-gray-50: #fdfcfb;
+      --warm-gray-100: #faf9f7;
+      --warm-gray-200: #f2f0ed;
+      --warm-gray-300: #e8e5e0;
+      --warm-gray-400: #d9d5ce;
+      --warm-gray-500: #b9b3a8;
+      --warm-gray-600: #928c81;
+      --warm-gray-700: #6b655d;
+      --warm-gray-800: #4a453f;
+      --warm-gray-900: #2e2a26;
+      
+      --sage-50: #f6f7f4;
+      --sage-100: #ecefe7;
+      --sage-200: #d9dfd0;
+      --sage-300: #b8c4a6;
+      --sage-400: #97a77d;
+      --sage-500: #758b54;
+      --sage-600: #5d6f43;
+      --sage-700: #475334;
+      --sage-800: #3a442b;
+      --sage-900: #2f3623;
+      
+      --dusty-rose-500: #b08080;
+      --dusty-rose-600: #8d6666;
+      
+      --soft-white: #fdfcfb;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -20,22 +49,30 @@
       align-items: center;
       justify-content: center;
       padding: 20px;
+      color: var(--warm-gray-800);
     }
 
     .container {
-      background: white;
+      background: var(--soft-white);
       border-radius: 16px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       padding: 32px;
-      max-width: 400px;
+      max-width: 450px;
       width: 100%;
     }
 
     h1 {
-      color: #1f2937;
-      margin-bottom: 24px;
+      color: var(--warm-gray-800);
+      margin-bottom: 8px;
       text-align: center;
       font-size: 28px;
+    }
+
+    .subtitle {
+      color: var(--warm-gray-600);
+      margin-bottom: 24px;
+      text-align: center;
+      font-size: 14px;
     }
 
     .form-group {
@@ -44,7 +81,7 @@
 
     label {
       display: block;
-      color: #4b5563;
+      color: var(--warm-gray-700);
       font-size: 14px;
       font-weight: 500;
       margin-bottom: 8px;
@@ -53,15 +90,17 @@
     input {
       width: 100%;
       padding: 12px 16px;
-      border: 2px solid #e5e7eb;
+      border: 2px solid var(--warm-gray-300);
       border-radius: 8px;
       font-size: 16px;
       transition: border-color 0.2s;
+      background: white;
     }
 
     input:focus {
       outline: none;
-      border-color: #10b981;
+      border-color: var(--sage-500);
+      box-shadow: 0 0 0 3px rgba(117, 139, 84, 0.1);
     }
 
     .code-input {
@@ -74,7 +113,7 @@
     button {
       width: 100%;
       padding: 14px;
-      background: #10b981;
+      background: var(--sage-500);
       color: white;
       border: none;
       border-radius: 8px;
@@ -84,31 +123,81 @@
       transition: background 0.2s;
     }
 
-    button:hover {
-      background: #059669;
+    button:hover:not(:disabled) {
+      background: var(--sage-600);
     }
 
     button:disabled {
-      background: #9ca3af;
+      background: var(--warm-gray-400);
       cursor: not-allowed;
     }
 
     .error {
-      color: #ef4444;
+      color: var(--dusty-rose-600);
       font-size: 14px;
       margin-top: 8px;
       text-align: center;
     }
 
-    .poll-container {
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Activity content styles */
+    .activity-container {
       display: none;
     }
 
+    .activity-header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--warm-gray-200);
+    }
+
+    .room-code {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--warm-gray-600);
+      margin-bottom: 8px;
+    }
+
+    .activity-type {
+      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+
+    .activity-type.poll {
+      background: var(--sage-100);
+      color: var(--sage-700);
+    }
+
+    .activity-type.data-share {
+      background: var(--warm-gray-200);
+      color: var(--warm-gray-700);
+    }
+
+    /* Poll-specific styles */
     .poll-question {
       font-size: 20px;
       font-weight: 600;
-      color: #1f2937;
+      color: var(--warm-gray-800);
       margin-bottom: 24px;
+      text-align: center;
     }
 
     .poll-options {
@@ -119,7 +208,7 @@
 
     .poll-option {
       padding: 16px;
-      border: 2px solid #e5e7eb;
+      border: 2px solid var(--warm-gray-300);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
@@ -127,14 +216,14 @@
       overflow: hidden;
     }
 
-    .poll-option:hover {
-      border-color: #10b981;
-      background: #f0fdf4;
+    .poll-option:hover:not(.voted) {
+      border-color: var(--sage-500);
+      background: var(--sage-50);
     }
 
     .poll-option.selected {
-      border-color: #10b981;
-      background: #10b981;
+      border-color: var(--sage-500);
+      background: var(--sage-500);
       color: white;
     }
 
@@ -147,7 +236,7 @@
       top: 0;
       left: 0;
       height: 100%;
-      background: rgba(16, 185, 129, 0.2);
+      background: rgba(117, 139, 84, 0.2);
       transition: width 0.3s ease;
     }
 
@@ -159,12 +248,6 @@
       align-items: center;
     }
 
-    .waiting {
-      text-align: center;
-      color: #6b7280;
-      font-size: 16px;
-    }
-
     .status {
       text-align: center;
       padding: 8px 16px;
@@ -174,30 +257,62 @@
     }
 
     .status.active {
-      background: #d1fae5;
-      color: #065f46;
+      background: var(--sage-100);
+      color: var(--sage-700);
     }
 
     .status.inactive {
-      background: #fee2e2;
-      color: #991b1b;
+      background: var(--warm-gray-200);
+      color: var(--warm-gray-700);
+    }
+
+    .waiting {
+      text-align: center;
+      color: var(--warm-gray-600);
+      font-size: 16px;
+      padding: 40px 20px;
     }
 
     .thank-you {
       text-align: center;
-      color: #10b981;
+      color: var(--sage-600);
       font-size: 18px;
       font-weight: 600;
+      padding: 40px 20px;
+    }
+
+    .success {
+      background-color: var(--sage-50);
+      border: 1px solid var(--sage-200);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      color: var(--sage-700);
+      font-weight: 500;
+    }
+
+    .change-room {
+      margin-top: 20px;
+      background: var(--warm-gray-200);
+      color: var(--warm-gray-700);
+      font-size: 14px;
+      padding: 8px 16px;
+    }
+
+    .change-room:hover {
+      background: var(--warm-gray-300);
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Room entry form -->
     <div id="joinForm">
-      <h1>Join Poll</h1>
+      <h1>Join Classroom Activity</h1>
+      <p class="subtitle">Enter your room code to participate</p>
       <form id="codeForm">
         <div class="form-group">
-          <label for="code">Enter Room Code</label>
+          <label for="code">Room Code</label>
           <input 
             type="text" 
             id="code" 
@@ -216,29 +331,82 @@
             placeholder="Student"
           >
         </div>
-        <button type="submit">Join Poll</button>
+        <button type="submit" id="joinBtn">Join Activity</button>
         <div id="error" class="error"></div>
       </form>
     </div>
 
-    <div id="pollContainer" class="poll-container">
-      <div id="pollStatus" class="status"></div>
-      <div id="pollContent"></div>
+    <!-- Activity container -->
+    <div id="activityContainer" class="activity-container">
+      <div class="activity-header">
+        <div class="room-code">Room: <span id="displayCode"></span></div>
+        <div id="activityType" class="activity-type"></div>
+      </div>
+      
+      <!-- Poll content -->
+      <div id="pollContent" style="display: none;">
+        <div id="pollStatus" class="status"></div>
+        <div id="pollBody"></div>
+      </div>
+      
+      <!-- Data share content -->
+      <div id="dataShareContent" style="display: none;">
+        <form id="dataShareForm">
+          <div class="form-group">
+            <label for="studentName">Your Name</label>
+            <input 
+              type="text" 
+              id="studentName" 
+              placeholder="Enter your name" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="shareLink">Presentation Link</label>
+            <input 
+              type="url" 
+              id="shareLink" 
+              placeholder="https://example.com/presentation" 
+              required
+            >
+          </div>
+          <button type="submit" id="shareBtn">Share Link</button>
+          <div id="shareError" class="error"></div>
+        </form>
+        
+        <div id="shareSuccess" class="success" style="display: none;">
+          Link shared successfully!
+        </div>
+      </div>
+      
+      <button class="change-room" onclick="changeRoom()">Change Room</button>
     </div>
   </div>
 
   <script>
     const socket = io();
     let roomCode = '';
+    let roomType = '';
     let hasVoted = false;
     let currentPollData = {};
 
     const joinForm = document.getElementById('joinForm');
-    const pollContainer = document.getElementById('pollContainer');
+    const activityContainer = document.getElementById('activityContainer');
     const codeForm = document.getElementById('codeForm');
     const errorDiv = document.getElementById('error');
+    const joinBtn = document.getElementById('joinBtn');
+
+    // Poll elements
     const pollContent = document.getElementById('pollContent');
+    const pollBody = document.getElementById('pollBody');
     const pollStatus = document.getElementById('pollStatus');
+
+    // Data share elements
+    const dataShareContent = document.getElementById('dataShareContent');
+    const dataShareForm = document.getElementById('dataShareForm');
+    const shareBtn = document.getElementById('shareBtn');
+    const shareError = document.getElementById('shareError');
+    const shareSuccess = document.getElementById('shareSuccess');
 
     // Handle form submission
     codeForm.addEventListener('submit', async (e) => {
@@ -248,20 +416,49 @@
       const code = document.getElementById('code').value;
       const name = document.getElementById('name').value;
 
-      // Check if room exists
+      joinBtn.disabled = true;
+      joinBtn.innerHTML = '<span class="loading"></span>Checking...';
+
       try {
         const response = await fetch(`/api/rooms/${code}/exists`);
         const data = await response.json();
         
         if (data.exists) {
           roomCode = code;
+          // Try to determine room type by attempting to join as poll participant
           socket.emit('participant:join', { code, name });
         } else {
           errorDiv.textContent = 'Invalid room code';
         }
       } catch (err) {
         errorDiv.textContent = 'Connection error';
+      } finally {
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Join Activity';
       }
+    });
+
+    // Data share form submission
+    dataShareForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const studentName = document.getElementById('studentName').value.trim();
+      const shareLink = document.getElementById('shareLink').value.trim();
+      
+      if (!studentName || !shareLink) {
+        shareError.textContent = 'Please fill in all fields';
+        return;
+      }
+      
+      shareBtn.disabled = true;
+      shareBtn.innerHTML = '<span class="loading"></span>Sharing...';
+      shareError.textContent = '';
+      
+      socket.emit('dataShare:submit', {
+        code: roomCode,
+        studentName,
+        link: shareLink
+      });
     });
 
     // Format code input
@@ -269,27 +466,21 @@
       e.target.value = e.target.value.replace(/[^0-9]/g, '');
     });
 
-    // Socket event handlers
+    // Socket event handlers for polls
     socket.on('participant:joined', (data) => {
       if (data.success) {
-        joinForm.style.display = 'none';
-        pollContainer.style.display = 'block';
+        roomType = 'poll';
+        showActivity('poll');
         currentPollData = data.pollData || {};
         updatePollDisplay(currentPollData);
       } else {
-        errorDiv.textContent = data.error || 'Failed to join';
+        // If poll join failed, try as data share room
+        socket.emit('dataShare:checkRoom', { code: roomCode });
       }
     });
 
     socket.on('poll:updated', (pollData) => {
-      // Merge the update with existing data
       currentPollData = { ...currentPollData, ...pollData };
-      updatePollDisplay(currentPollData);
-    });
-
-    socket.on('poll:status', (data) => {
-      // This event is now deprecated but kept for compatibility
-      currentPollData.isActive = data.isActive;
       updatePollDisplay(currentPollData);
     });
 
@@ -304,13 +495,73 @@
       }
     });
 
+    // Socket event handlers for data sharing
+    socket.on('dataShare:submitted', (response) => {
+      shareBtn.disabled = false;
+      shareBtn.textContent = 'Share Link';
+      
+      if (response.success) {
+        dataShareForm.style.display = 'none';
+        shareSuccess.style.display = 'block';
+      } else {
+        shareError.textContent = response.error || 'Failed to share link. Please try again.';
+      }
+    });
+
+    // Custom event for data share room validation
+    socket.on('dataShare:roomValid', () => {
+      roomType = 'data-share';
+      showActivity('data-share');
+      // Pre-fill name if provided
+      const nameInput = document.getElementById('name').value;
+      if (nameInput) {
+        document.getElementById('studentName').value = nameInput;
+      }
+    });
+
+    socket.on('dataShare:checkRoom', (data) => {
+      if (data.code === roomCode) {
+        // Room exists as data share room
+        roomType = 'data-share';
+        showActivity('data-share');
+        const nameInput = document.getElementById('name').value;
+        if (nameInput) {
+          document.getElementById('studentName').value = nameInput;
+        }
+      } else {
+        errorDiv.textContent = 'Room not found or invalid';
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Join Activity';
+      }
+    });
+
+    function showActivity(type) {
+      joinForm.style.display = 'none';
+      activityContainer.style.display = 'block';
+      document.getElementById('displayCode').textContent = roomCode;
+      
+      const activityTypeEl = document.getElementById('activityType');
+      
+      if (type === 'poll') {
+        activityTypeEl.textContent = 'Poll';
+        activityTypeEl.className = 'activity-type poll';
+        pollContent.style.display = 'block';
+        dataShareContent.style.display = 'none';
+      } else if (type === 'data-share') {
+        activityTypeEl.textContent = 'Share Link';
+        activityTypeEl.className = 'activity-type data-share';
+        pollContent.style.display = 'none';
+        dataShareContent.style.display = 'block';
+        document.getElementById('studentName').focus();
+      }
+    }
+
     function updatePollDisplay(pollData) {
-      // Update status
       pollStatus.textContent = pollData.isActive ? 'Poll Active' : 'Poll Closed';
       pollStatus.className = `status ${pollData.isActive ? 'active' : 'inactive'}`;
 
       if (!pollData.question || !pollData.options || pollData.options.length === 0) {
-        pollContent.innerHTML = '<div class="waiting">Waiting for poll to start...</div>';
+        pollBody.innerHTML = '<div class="waiting">Waiting for poll to start...</div>';
         return;
       }
 
@@ -331,9 +582,8 @@
       });
       
       html += '</div>';
-      pollContent.innerHTML = html;
+      pollBody.innerHTML = html;
 
-      // Add click handlers
       if (pollData.isActive && !hasVoted) {
         document.querySelectorAll('.poll-option').forEach(option => {
           option.addEventListener('click', () => {
@@ -347,13 +597,11 @@
     function submitVote(optionIndex) {
       if (hasVoted) return;
       
-      // Visual feedback
       document.querySelectorAll('.poll-option').forEach(option => {
         option.classList.remove('selected');
       });
       document.querySelector(`[data-index="${optionIndex}"]`).classList.add('selected');
       
-      // Submit vote
       socket.emit('vote:submit', { code: roomCode, optionIndex });
     }
 
@@ -378,7 +626,18 @@
     }
 
     function showThankYou() {
-      pollContent.innerHTML = '<div class="thank-you">Thank you for voting!</div>';
+      pollBody.innerHTML = '<div class="thank-you">Thank you for voting!</div>';
+    }
+
+    function changeRoom() {
+      location.reload();
+    }
+
+    // Check for room code in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlCode = urlParams.get('code');
+    if (urlCode && /^\d{4}$/.test(urlCode)) {
+      document.getElementById('code').value = urlCode;
     }
   </script>
 </body>

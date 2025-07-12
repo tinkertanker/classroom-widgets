@@ -45,7 +45,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   } = useWorkspace();
 
   const { showModal, hideModal } = useModal();
-  const [isConnected, setIsConnected] = useState(true);
   const [customWidgets, setCustomWidgets] = useState<number[]>(() => {
     const saved = localStorage.getItem('customToolbarWidgets');
     if (saved) {
@@ -97,20 +96,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const checkConnection = () => {
-      setIsConnected(navigator.onLine);
-    };
-
-    checkConnection();
-    window.addEventListener('online', checkConnection);
-    window.addEventListener('offline', checkConnection);
-
-    return () => {
-      window.removeEventListener('online', checkConnection);
-      window.removeEventListener('offline', checkConnection);
-    };
-  }, []);
 
   // Handle clicks outside the menus
   useEffect(() => {
@@ -391,29 +376,37 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           </span>
         </div>
 
-        {/* Connection indicator */}
-        <div className={`p-3 rounded-lg ${isConnected ? 'text-sage-600 dark:text-sage-400' : 'text-dusty-rose-600 dark:text-dusty-rose-400'}`}>
+        {/* Server connection indicator */}
+        <div 
+          className={`p-3 rounded-lg transition-all duration-200 ${
+            serverConnected 
+              ? 'text-sage-600 dark:text-sage-400' 
+              : 'text-warm-gray-400 dark:text-warm-gray-500'
+          }`}
+          title={serverConnected ? 'Server connected' : 'Server offline'}
+        >
           <FaWifi className="text-xl" />
         </div>
 
         {/* Menu button */}
-        <button
-          ref={menuButtonRef}
-          onClick={() => setShowMenu(!showMenu)}
-          className="p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors relative"
-          title="Menu"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-          </svg>
-        </button>
-
-        {/* Menu dropdown */}
-        {showMenu && (
-          <div
-            ref={menuRef}
-            className="absolute right-4 bottom-full mb-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 z-[100] min-w-[200px]"
+        <div className="relative">
+          <button
+            ref={menuButtonRef}
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
+            title="Menu"
           >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+            </svg>
+          </button>
+
+          {/* Menu dropdown */}
+          {showMenu && (
+            <div
+              ref={menuRef}
+              className="absolute right-0 bottom-full mb-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 z-[100] min-w-[200px]"
+            >
             <button
               onClick={handleResetWorkspace}
               className="w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center space-x-2"
@@ -472,6 +465,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             </button>
           </div>
         )}
+        </div>
       </div>
 
     </div>
