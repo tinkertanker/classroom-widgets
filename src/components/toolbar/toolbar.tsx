@@ -300,7 +300,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 border-2 border-warm-gray-300 dark:border-warm-gray-600 flex flex-col items-center gap-1 min-w-[80px] ${
+              className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-800/40 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px] ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={state.stickerMode}

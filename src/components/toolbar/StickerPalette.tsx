@@ -69,7 +69,7 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
         <div className="flex items-center justify-between">
           <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
             {stickerMode ? (
-              <span>Sticker mode is active. Press ESC to exit.</span>
+              <span>Sticker mode is active. Press S to exit.</span>
             ) : (
               <span>Click a sticker to start stamping.</span>
             )}
