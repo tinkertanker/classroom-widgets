@@ -24,7 +24,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+// Only serve static files if they exist
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../public')));
+}
 
 // Serve student interface
 if (process.env.NODE_ENV === 'production') {
@@ -36,7 +39,12 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   // In development, proxy to Vite dev server
   app.get('/student*', (req, res) => {
-    res.redirect('http://localhost:3002' + req.path);
+    // For the exact /student path, redirect to /student/ to ensure Vite handles it
+    if (req.path === '/student') {
+      res.redirect('http://localhost:3002/student/');
+    } else {
+      res.redirect('http://localhost:3002' + req.path);
+    }
   });
 }
 
