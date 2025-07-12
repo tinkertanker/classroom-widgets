@@ -1,38 +1,71 @@
-/* Mobile-first responsive design */
+/* Student App - Teacher App Design System */
 .app-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: #f7f5f2; /* Same as teacher app main background */
   padding: 1rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
+
 
 /* Join Form Section - Always visible at top */
 .join-section {
-  background: white;
-  border-radius: 16px;
+  background: #fdfcfb; /* bg-soft-white */
+  border-radius: 8px; /* Consistent with teacher app widgets */
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
+  border: 1px solid #e8e5e0; /* warm-gray-200 */
 }
 
 .join-form-container {
   max-width: 100%;
 }
 
-.join-form-header h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2d3748;
+.join-form-header .header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.join-form-header .header-text {
+  flex: 1;
+}
+
+.join-form-header .header-text h1 {
+  font-size: 1.5rem; /* text-2xl for student-facing content */
+  font-weight: 600;
+  color: #514b44; /* warm-gray-700 */
   margin: 0 0 0.5rem 0;
   text-align: center;
 }
 
-.join-form-header .subtitle {
-  color: #718096;
-  font-size: 0.9rem;
-  margin: 0 0 1.5rem 0;
+.join-form-header .header-text .subtitle {
+  color: #6b635a; /* warm-gray-600 */
+  font-size: 1rem; /* text-base */
+  margin: 0;
   text-align: center;
+}
+
+.dark-mode-toggle {
+  background: #fdfcfb; /* bg-soft-white */
+  border: 1px solid #e8e5e0; /* warm-gray-200 */
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
+  flex-shrink: 0;
+}
+
+.dark-mode-toggle:hover {
+  background: #f5f3f0; /* warm-gray-100 */
+  transform: scale(1.05);
 }
 
 .join-form {
@@ -50,18 +83,23 @@
   .form-row {
     flex-direction: row;
     align-items: end;
-  }
-  
-  .code-group {
-    flex: 0 0 140px;
+    justify-content: center;
   }
   
   .name-group {
-    flex: 1;
+    flex: 0 0 180px;
+    order: 1;
+  }
+  
+  .code-group {
+    flex: 0 0 160px;
+    order: 2;
+    margin: 0 1rem;
   }
   
   .join-button {
     flex: 0 0 120px;
+    order: 3;
   }
 }
 
@@ -71,83 +109,86 @@
 }
 
 .form-group label {
-  font-size: 0.875rem;
+  font-size: 0.875rem; /* text-sm for UI controls */
   font-weight: 600;
-  color: #4a5568;
+  color: #514b44; /* warm-gray-700 */
   margin-bottom: 0.5rem;
+}
+
+.form-group label .optional {
+  font-weight: 400;
+  color: #6b635a; /* warm-gray-600 */
+  font-size: 0.75rem; /* text-xs */
 }
 
 .code-input,
 .name-input {
-  padding: 0.75rem 1rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
+  padding: 0.625rem 1rem; /* Reduced from 0.75rem to match button height */
+  border: 1px solid #d6d2cc; /* warm-gray-300 */
+  border-radius: 6px;
   font-size: 1rem;
-  font-weight: 600;
-  background: #fafafa;
+  font-weight: 500;
+  background: white;
   transition: all 0.2s ease;
   outline: none;
+  color: #3d3835; /* warm-gray-800 */
 }
 
 .code-input {
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: 700;
+  font-size: 1.125rem; /* Slightly larger */
+  background: #fafafa; /* Subtle background highlight */
 }
 
 .code-input:focus,
 .name-input:focus {
-  border-color: #4299e1;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  border-color: #5e8b5e; /* sage-500 */
+  box-shadow: 0 0 0 2px rgba(94, 139, 94, 0.2);
 }
 
 .join-button {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0.625rem 1rem; /* Match input field padding for consistent 45px height */
+  background: #5e8b5e; /* bg-sage-500 */
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem; /* text-sm for UI controls */
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   outline: none;
+  height: auto; /* Height matches input fields through matching padding */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .join-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  background: #4a724a; /* hover:bg-sage-600 */
 }
 
 .join-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
+  opacity: 0.5; /* opacity-50 */
+  cursor: not-allowed; /* cursor-not-allowed */
 }
 
 .error-message {
-  background: #fed7d7;
-  color: #c53030;
+  background: #f9e8e8; /* dusty-rose-100 */
+  color: #853b3b; /* dusty-rose-700 */
   padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 6px;
+  font-size: 0.875rem; /* text-sm */
   margin-top: 1rem;
-  border: 1px solid #feb2b2;
+  border: 1px solid #f2d0d0; /* dusty-rose-200 */
 }
 
 /* Rooms Section */
 .rooms-section {
   margin-top: 1.5rem;
-}
-
-.rooms-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 1rem 0;
-  text-align: center;
 }
 
 .rooms-list {
@@ -157,11 +198,11 @@
 }
 
 .room-container {
-  background: white;
-  border-radius: 16px;
+  background: #fdfcfb; /* bg-soft-white */
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
+  border: 1px solid #e8e5e0; /* warm-gray-200 */
 }
 
 .room-header {
@@ -169,8 +210,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-  border-bottom: 1px solid #e2e8f0;
+  background: #f5f3f0; /* warm-gray-100 */
+  border-bottom: 1px solid #e8e5e0; /* warm-gray-200 */
 }
 
 .room-info {
@@ -180,72 +221,124 @@
 }
 
 .room-code-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #5e8b5e; /* sage-500 */
   color: white;
-  padding: 0.375rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem; /* text-xs */
   font-weight: 700;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   letter-spacing: 0.05em;
 }
 
 .room-type-badge {
-  background: #e6fffa;
-  color: #234e52;
-  padding: 0.375rem 0.75rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
+  background: #e8ede8; /* sage-100 */
+  color: #3b5a3b; /* sage-700 */
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem; /* text-xs */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .leave-button {
-  background: #fed7d7;
-  color: #c53030;
+  background: #c25e5e; /* dusty-rose-500 */
+  color: white;
   border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  font-size: 1rem;
+  width: 24px; /* Consistent with teacher app button height */
+  height: 24px;
+  border-radius: 4px;
+  font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .leave-button:hover {
-  background: #fc8181;
-  color: white;
-  transform: scale(1.1);
+  background: #a84a4a; /* hover:bg-dusty-rose-600 */
 }
 
 .room-content {
-  padding: 0;
+  padding: 1rem; /* p-4 consistent padding */
 }
 
 /* Empty State */
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
-  color: #718096;
+  color: #6b635a; /* warm-gray-600 */
 }
 
 .empty-state p {
-  font-size: 1.125rem;
+  font-size: 1rem; /* text-base */
   margin: 0;
 }
 
-/* Activity Components - Remove their own padding since we handle it in room-content */
+/* Activity Components - Override their styles to match design system */
 .room-content .container {
-  padding: 1.5rem;
+  padding: 0;
   background: transparent;
   border-radius: 0;
   box-shadow: none;
   border: none;
+  margin: 0;
+}
+
+/* Update activity component styling to match teacher app */
+.room-content .poll-header,
+.room-content .data-share-header {
+  margin-bottom: 1rem;
+}
+
+.room-content .room-code {
+  display: none; /* Hide since we show it in the header */
+}
+
+.room-content h2,
+.room-content h3 {
+  color: #514b44; /* warm-gray-700 */
+  font-weight: 600;
+}
+
+.room-content p {
+  color: #6b635a; /* warm-gray-600 */
+}
+
+.room-content button:not(.leave-button) {
+  background: #cc7d4a; /* terracotta-500 for secondary actions */
+  color: white;
+  border: none;
+  padding: 0.375rem 0.75rem; /* px-3 py-1.5 */
+  border-radius: 6px;
+  font-size: 0.875rem; /* text-sm */
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.room-content button:not(.leave-button):hover {
+  background: #b86538; /* hover:bg-terracotta-600 */
+}
+
+.room-content input,
+.room-content textarea {
+  border: 1px solid #d6d2cc; /* warm-gray-300 */
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem; /* text-sm */
+  background: white;
+  color: #3d3835; /* warm-gray-800 */
+}
+
+.room-content input:focus,
+.room-content textarea:focus {
+  outline: none;
+  border-color: #5e8b5e; /* sage-500 */
+  box-shadow: 0 0 0 2px rgba(94, 139, 94, 0.2);
 }
 
 /* Mobile optimizations */
@@ -259,8 +352,20 @@
     margin-bottom: 1rem;
   }
   
-  .join-form-header h1 {
-    font-size: 1.25rem;
+  .join-form-header .header-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+  
+  .join-form-header .header-text h1 {
+    font-size: 1.25rem; /* text-xl */
+  }
+  
+  .dark-mode-toggle {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
   }
   
   .room-header {
@@ -273,61 +378,75 @@
   
   .room-code-badge,
   .room-type-badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    font-size: 0.625rem; /* text-xs on mobile */
+    padding: 0.125rem 0.375rem;
   }
   
   .leave-button {
-    width: 28px;
-    height: 28px;
-    font-size: 0.875rem;
+    width: 20px;
+    height: 20px;
+    font-size: 0.625rem;
   }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .app-container {
-    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-  }
-  
-  .join-section,
-  .room-container {
-    background: #2d3748;
-    border-color: #4a5568;
-  }
-  
-  .join-form-header h1,
-  .rooms-title {
-    color: #f7fafc;
-  }
-  
-  .join-form-header .subtitle {
-    color: #a0aec0;
-  }
-  
-  .form-group label {
-    color: #e2e8f0;
-  }
-  
-  .code-input,
-  .name-input {
-    background: #4a5568;
-    border-color: #718096;
-    color: #f7fafc;
-  }
-  
-  .code-input:focus,
-  .name-input:focus {
-    background: #2d3748;
-    border-color: #63b3ed;
-  }
-  
-  .room-header {
-    background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-    border-bottom-color: #718096;
-  }
-  
-  .empty-state {
-    color: #a0aec0;
-  }
+/* Dark mode support - class-based with manual toggle */
+html.dark .app-container {
+  background: #2d2926; /* warm-gray-900 */
+}
+
+html.dark .join-section,
+html.dark .room-container {
+  background: #3d3835; /* warm-gray-800 */
+  border-color: #514b44; /* warm-gray-700 */
+}
+
+html.dark .dark-mode-toggle {
+  background: #3d3835; /* warm-gray-800 */
+  border-color: #514b44; /* warm-gray-700 */
+}
+
+html.dark .dark-mode-toggle:hover {
+  background: #514b44; /* warm-gray-700 */
+}
+
+html.dark .join-form-header .header-text h1,
+html.dark .room-content h2,
+html.dark .room-content h3 {
+  color: #f5f3f0; /* warm-gray-100 */
+}
+
+html.dark .join-form-header .header-text .subtitle,
+html.dark .room-content p,
+html.dark .empty-state {
+  color: #b8b2a8; /* warm-gray-400 */
+}
+
+html.dark .form-group label {
+  color: #e8e5e0; /* warm-gray-200 */
+}
+
+html.dark .form-group label .optional {
+  color: #b8b2a8; /* warm-gray-400 */
+}
+
+html.dark .code-input,
+html.dark .name-input,
+html.dark .room-content input,
+html.dark .room-content textarea {
+  background: #514b44; /* warm-gray-700 */
+  border-color: #6b635a; /* warm-gray-600 */
+  color: #f5f3f0; /* warm-gray-100 */
+}
+
+html.dark .code-input:focus,
+html.dark .name-input:focus,
+html.dark .room-content input:focus,
+html.dark .room-content textarea:focus {
+  background: #3d3835; /* warm-gray-800 */
+  border-color: #7fa57f; /* sage-400 */
+}
+
+html.dark .room-header {
+  background: #514b44; /* warm-gray-700 */
+  border-bottom-color: #6b635a; /* warm-gray-600 */
 }

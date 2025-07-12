@@ -51,7 +51,7 @@ The application uses a dynamic widget system where widgets are:
 - **Traffic Light** (`src/components/trafficLight/`) - Status indicators
 - **Volume Level Monitor** (`src/components/volumeLevel/`) - Audio level visualization
 - **Link Shortener** (`src/components/shortenLink/`) - URL shortening (requires API key)
-- **Poll** (`src/components/poll/`) - Real-time polling with student participation via room codes
+- **Poll** (`src/components/poll/`) - Real-time polling with student participation via activity codes
 - **Text Banner** (`src/components/textBanner/`) - Customizable text display
 - **Image Display** (`src/components/imageDisplay/`) - Image viewer widget
 - **Sound Effects** (`src/components/soundEffects/`) - Sound effect player
@@ -187,7 +187,7 @@ npm start              # React app on port 3000
 ```
 
 ### Real-time Features
-- Room-based sessions with 4-digit codes
+- Activity-based sessions with 5-character codes
 - WebSocket communication via Socket.io
 - Live vote tracking and result broadcasting
 - Participant count monitoring
@@ -195,7 +195,7 @@ npm start              # React app on port 3000
 
 ### Student Participation
 - Students visit `http://[server-ip]:3001`
-- Enter room code to join poll
+- Enter activity code to join poll
 - Vote on questions in real-time
 - See results after voting
 
@@ -211,6 +211,6 @@ npm start              # React app on port 3000
 ### Poll Widget
 - Full-stack implementation with Express/Socket.io server
 - Real-time voting and result display
-- Room management with unique codes
+- Activity management with unique codes
 - Fixed synchronization issues for late-joining students
 - Responsive student interface for any device

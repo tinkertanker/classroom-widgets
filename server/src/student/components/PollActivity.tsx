@@ -134,7 +134,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
   return (
     <div className="activity-container">
       <div className="activity-header">
-        <div className="room-code">Room: <span>{roomCode}</span></div>
+        <div className="room-code">Activity: <span>{roomCode}</span></div>
         <div className="activity-type poll">Poll</div>
       </div>
       

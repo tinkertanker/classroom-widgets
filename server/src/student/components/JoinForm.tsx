@@ -4,9 +4,11 @@ interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
   defaultName?: string;
   onNameChange?: (name: string) => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
-const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameChange }) => {
+const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode }) => {
   const [code, setCode] = useState('');
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState('');
@@ -22,23 +24,21 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
     setError('');
     
     if (!/^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code)) {
-      setError('Please enter a valid 5-character code');
+      setError('Please enter a valid 5-character activity code');
       return;
     }
 
-    if (!name.trim()) {
-      setError('Please enter your name');
-      return;
-    }
+    // Name is now optional, use default if empty
+    const finalName = name.trim() || 'Anonymous';
 
     setIsLoading(true);
     try {
-      await onJoin(code, name.trim());
+      await onJoin(code, finalName);
       // Clear the code field on success but keep the name
       setCode('');
       // Update parent's name state
       if (onNameChange) {
-        onNameChange(name.trim());
+        onNameChange(finalName);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection error');
@@ -69,21 +69,49 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
   return (
     <div className="join-form-container">
       <div className="join-form-header">
-        <h1>Join Classroom Activity</h1>
-        <p className="subtitle">Enter a room code to participate</p>
+        <div className="header-content">
+          <div className="header-text">
+            <h1>Join Classroom Activity</h1>
+            <p className="subtitle">Enter an activity code to participate</p>
+          </div>
+          {onToggleDarkMode && (
+            <button 
+              onClick={onToggleDarkMode}
+              className="dark-mode-toggle"
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+          )}
+        </div>
       </div>
       
       <form onSubmit={handleSubmit} className="join-form">
         <div className="form-row">
+          <div className="form-group name-group">
+            <label htmlFor="name">Your Name <span className="optional">(optional)</span></label>
+            <input
+              type="text"
+              id="name"
+              className="name-input"
+              placeholder="Enter your name"
+              value={name}
+              onChange={handleNameChange}
+              autoComplete="name"
+              maxLength={50}
+            />
+          </div>
+          
           <div className="form-group code-group">
-            <label htmlFor="code">Room Code</label>
+            <label htmlFor="code">Activity Code</label>
             <input
               type="text"
               id="code"
               className="code-input"
               maxLength={5}
               pattern="[23456789ACDEFHJKMNPQRTUWXY]{5}"
-              placeholder="ABCDE"
+              placeholder="123AB"
               value={code}
               onChange={handleCodeChange}
               required
@@ -92,27 +120,12 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
             />
           </div>
           
-          <div className="form-group name-group">
-            <label htmlFor="name">Your Name</label>
-            <input
-              type="text"
-              id="name"
-              className="name-input"
-              placeholder="Enter your name"
-              value={name}
-              onChange={handleNameChange}
-              required
-              autoComplete="name"
-              maxLength={50}
-            />
-          </div>
-          
           <button 
             type="submit" 
             className="join-button"
-            disabled={isLoading || !code || !name.trim()}
+            disabled={isLoading || !code}
           >
-            {isLoading ? 'Joining...' : 'Join Room'}
+            {isLoading ? 'Joining...' : 'Join Activity'}
           </button>
         </div>
         

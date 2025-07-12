@@ -200,7 +200,7 @@ function Poll({ savedState, onStateChange }: PollProps) {
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400">Room Code</p>
+                <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400">Activity Code</p>
                 <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
                   {roomCode}
                 </p>

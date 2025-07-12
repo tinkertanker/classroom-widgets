@@ -58,7 +58,7 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
     return (
       <div className="activity-container">
         <div className="activity-header">
-          <div className="room-code">Room: <span>{roomCode}</span></div>
+          <div className="room-code">Activity: <span>{roomCode}</span></div>
           <div className="activity-type data-share">Share Link</div>
         </div>
         
@@ -73,7 +73,7 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
   return (
     <div className="activity-container">
       <div className="activity-header">
-        <div className="room-code">Room: <span>{roomCode}</span></div>
+        <div className="room-code">Activity: <span>{roomCode}</span></div>
         <div className="activity-type data-share">Share Link</div>
       </div>
       

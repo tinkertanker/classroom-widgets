@@ -145,7 +145,7 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
                 </p>
               </div>
               <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-2">
-                Room Code:
+                Activity Code:
               </p>
               <p className="text-3xl font-bold text-warm-gray-800 dark:text-warm-gray-200 mb-2">
                 {roomCode}

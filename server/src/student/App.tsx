@@ -22,6 +22,14 @@ const App: React.FC = () => {
     // Try to get saved name from localStorage
     return localStorage.getItem('studentName') || '';
   });
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage first, then system preference
+    const saved = localStorage.getItem('darkMode');
+    if (saved !== null) {
+      return JSON.parse(saved);
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const socketRefs = useRef<Map<string, Socket>>(new Map());
 
   // Save student name to localStorage when it changes
@@ -30,6 +38,20 @@ const App: React.FC = () => {
       localStorage.setItem('studentName', studentName);
     }
   }, [studentName]);
+
+  // Manage dark mode
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(prev => !prev);
+  };
 
   // Cleanup sockets on unmount
   useEffect(() => {
@@ -42,7 +64,7 @@ const App: React.FC = () => {
     try {
       // Check if already joined this room
       if (joinedRooms.some(room => room.code === code)) {
-        throw new Error('Already joined this room');
+        throw new Error('Already joined this activity');
       }
 
       // Update student name if provided
@@ -57,7 +79,7 @@ const App: React.FC = () => {
       console.log('Room exists API response:', data);
       
       if (!data.exists) {
-        throw new Error('Invalid room code');
+        throw new Error('Invalid activity code');
       }
 
       if (!data.roomType) {
@@ -127,13 +149,14 @@ const App: React.FC = () => {
           onJoin={handleJoin} 
           defaultName={studentName}
           onNameChange={setStudentName}
+          isDarkMode={isDarkMode}
+          onToggleDarkMode={toggleDarkMode}
         />
       </div>
 
       {/* Joined rooms list */}
       {joinedRooms.length > 0 && (
         <div className="rooms-section">
-          <h2 className="rooms-title">Active Rooms ({joinedRooms.length})</h2>
           <div className="rooms-list">
             {joinedRooms.map((room) => (
               <div key={room.id} className="room-container">
@@ -145,7 +168,7 @@ const App: React.FC = () => {
                   <button 
                     className="leave-button"
                     onClick={() => handleLeaveRoom(room.id)}
-                    aria-label={`Leave room ${room.code}`}
+                    aria-label={`Leave activity ${room.code}`}
                   >
                     ✕
                   </button>
@@ -175,7 +198,7 @@ const App: React.FC = () => {
       {/* Empty state */}
       {joinedRooms.length === 0 && (
         <div className="empty-state">
-          <p>No active rooms. Enter a room code above to get started!</p>
+          <p>No active activities. Enter an activity code above to get started!</p>
         </div>
       )}
     </div>
