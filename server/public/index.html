@@ -430,13 +430,19 @@
         // DEBUG: Log API response
         console.log('Room exists API response:', data);
         
-        if (data.exists && data.roomType) {
-          roomCode = code;
-          roomType = data.roomType;
-          // DEBUG: Log room type from API
-          console.log(`Room exists with type: ${data.roomType}, joining...`);
-          // Join with the correct room type
-          socket.emit('room:join', { code, name, type: data.roomType });
+        if (data.exists) {
+          if (data.roomType) {
+            roomCode = code;
+            roomType = data.roomType;
+            // DEBUG: Log room type from API
+            console.log(`Room exists with type: ${data.roomType}, joining...`);
+            // Join with the correct room type
+            socket.emit('room:join', { code, name, type: data.roomType });
+          } else {
+            // DEBUG: Log room exists but type unknown
+            console.log('Room exists but type is unknown:', data);
+            errorDiv.textContent = 'Room configuration error';
+          }
         } else {
           // DEBUG: Log room not found
           console.log('Room does not exist according to API');

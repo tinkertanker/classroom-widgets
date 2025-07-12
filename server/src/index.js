@@ -156,6 +156,12 @@ app.get('/api/rooms/:code/exists', (req, res) => {
   let roomType = null;
   
   if (room) {
+    // DEBUG: Log detailed room info
+    console.log(`API: Room object found:`, room);
+    console.log(`API: Room constructor name:`, room.constructor.name);
+    console.log(`API: Is PollRoom?`, room instanceof PollRoom);
+    console.log(`API: Is DataShareRoom?`, room instanceof DataShareRoom);
+    
     if (room instanceof PollRoom) {
       roomType = 'poll';
     } else if (room instanceof DataShareRoom) {
