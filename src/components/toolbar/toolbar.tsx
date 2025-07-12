@@ -357,7 +357,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
         {showMenu && (
           <div
             ref={menuRef}
-            className="absolute right-4 top-full mt-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 z-[100] min-w-[200px]"
+            className="absolute right-4 bottom-full mb-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 z-[100] min-w-[200px]"
           >
             <button
               onClick={handleResetWorkspace}

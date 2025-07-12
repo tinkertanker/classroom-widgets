@@ -20,14 +20,15 @@ const CustomizeToolbarWrapper: React.FC<CustomizeToolbarWrapperProps> = ({
   const [localSelectedWidgets, setLocalSelectedWidgets] = useState<number[]>(customWidgets);
 
   // Create AllComponentData from the provided names and icons
-  const AllComponentData = Object.keys(widgetNames).map(key => {
+  const AllComponentData = Object.keys(widgetNames).reduce((acc, key) => {
     const widgetType = Number(key);
-    return {
+    acc[widgetType] = {
       index: widgetType,
       name: widgetNames[widgetType],
       icon: getWidgetIcon(widgetType)
     };
-  });
+    return acc;
+  }, {} as Record<number, any>);
 
   // Handle save - update parent state and close
   const handleSave = () => {

@@ -65,7 +65,7 @@ const CustomizeToolbar: React.FC<CustomizeToolbarProps> = ({
                   'bg-sage-600'
                 ) : 'bg-warm-gray-300 dark:bg-warm-gray-600'
               }`}>
-                {React.createElement(Icon as any, { className: `w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}` })}
+                {React.cloneElement(Icon, { className: `w-6 h-6 ${isSelected ? 'text-white' : 'text-warm-gray-600'}` })}
               </div>
               <span className={`text-xs ${isSelected ? 'text-sage-700 dark:text-sage-300 font-medium' : 'text-warm-gray-700 dark:text-warm-gray-200'}`}>
                 {component.name}
