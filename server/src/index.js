@@ -26,10 +26,19 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve unified student interface at /student
-app.get('/student', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
-});
+// Serve student interface
+if (process.env.NODE_ENV === 'production') {
+  // In production, serve the built React app
+  app.use('/student', express.static(path.join(__dirname, '../public')));
+  app.get('/student/*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+  });
+} else {
+  // In development, proxy to Vite dev server
+  app.get('/student*', (req, res) => {
+    res.redirect('http://localhost:3002' + req.path);
+  });
+}
 
 // Redirect root to /student for backwards compatibility
 app.get('/', (req, res) => {

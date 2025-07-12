@@ -1,0 +1,59 @@
+.activity-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-container {
+  background: var(--soft-white);
+  border-radius: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  max-width: 450px;
+  width: 100%;
+}
+
+.activity-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--warm-gray-200);
+}
+
+.room-code {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--warm-gray-600);
+  margin-bottom: 8px;
+}
+
+.activity-type {
+  font-size: 14px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 16px;
+}
+
+.activity-type.poll {
+  background: var(--sage-100);
+  color: var(--sage-700);
+}
+
+.activity-type.data-share {
+  background: var(--warm-gray-200);
+  color: var(--warm-gray-700);
+}
+
+.change-room {
+  margin-top: 20px;
+  background: var(--warm-gray-200);
+  color: var(--warm-gray-700);
+  font-size: 14px;
+  padding: 8px 16px;
+}
+
+.change-room:hover {
+  background: var(--warm-gray-300);
+}
