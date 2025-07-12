@@ -2,23 +2,30 @@ import * as React from "react";
 import { Rnd } from "react-rnd";
 import { useState } from "react";
 
-function Widget({ width, height, children }) {
+interface WidgetProps {
+  width: number;
+  height: number;
+  children: React.ReactNode;
+}
+
+function Widget({ width, height, children }: WidgetProps) {
   const [borderW, setBorder] = useState("2px");
 
-  window.onclick = function (e) {
+  window.onclick = function (e: MouseEvent) {
+    const target = e.target as HTMLElement;
     if (
-      e.target === document.getElementById("widget1") ||
-      e.target === document.getElementById("widget1big")
+      target === document.getElementById("widget1") ||
+      target === document.getElementById("widget1big")
     ) {
       setBorder("2px");
     } else if (
-      e.target.parentNode === document.getElementById("widget1inside")
+      target.parentNode === document.getElementById("widget1inside")
     ) {
       setBorder("2px");
     } else {
       setBorder("0px");
     }
-    console.log(e.target);
+    console.log(target);
   };
 
   return (

@@ -5,6 +5,7 @@ import { WIDGET_TYPES } from '../../constants/widgetTypes';
 import { useModal } from '../../contexts/ModalContext';
 import CustomizeToolbarWrapper from './CustomizeToolbarWrapper';
 import StickerPalette from './StickerPalette';
+import { WidgetInstance, BackgroundType } from '../../types/app.types';
 // @ts-ignore
 import { 
   FaDice,           // Randomiser
@@ -31,14 +32,29 @@ import {
   FaVideo           // Visualiser icon
 } from 'react-icons/fa6';
 
-export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}) {
+interface ToolbarProps {
+  setComponentList: React.Dispatch<React.SetStateAction<WidgetInstance[]>>;
+  activeIndex: string | null;
+  setActiveIndex: React.Dispatch<React.SetStateAction<string | null>>;
+  hoveringTrash: string | null;
+  backgroundType: BackgroundType;
+  setBackgroundType: React.Dispatch<React.SetStateAction<BackgroundType>>;
+  darkMode: boolean;
+  setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
+  stickerMode: boolean;
+  setStickerMode: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedStickerType: string;
+  setSelectedStickerType: React.Dispatch<React.SetStateAction<string>>;
+}
+
+export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}: ToolbarProps) {
   const [formattedTime, setFormattedTime] = useState("");
   const [colonVisible, setColonVisible] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuButtonRef = useRef(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [launchpadOpen, setLaunchpadOpen] = useState(false);
-  const launchpadContentRef = useRef(null);
+  const launchpadContentRef = useRef<HTMLDivElement>(null);
   const { showModal, hideModal } = useModal();
   const [selectedToolbarWidgets, setSelectedToolbarWidgets] = useState(() => {
     // Load saved toolbar configuration from localStorage
@@ -91,8 +107,8 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
 
   // Close menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuOpen && !event.target.closest('.menu-container')) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuOpen && !(event.target as HTMLElement).closest('.menu-container')) {
         setMenuOpen(false);
       }
     };
@@ -103,8 +119,8 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
 
   // Close launchpad when clicking outside, including toolbar area
   useEffect(() => {
-    const handleLaunchpadClose = (event) => {
-      if (launchpadOpen && launchpadContentRef.current && !launchpadContentRef.current.contains(event.target)) {
+    const handleLaunchpadClose = (event: MouseEvent) => {
+      if (launchpadOpen && launchpadContentRef.current && !launchpadContentRef.current.contains(event.target as Node)) {
         setLaunchpadOpen(false);
       }
     };
@@ -118,7 +134,12 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
 
 
   // Component data indexed by widget type
-  const AllComponentData = [];
+  interface ComponentData {
+    name: string;
+    icon: any; // React Icons type
+    requiresServer?: boolean;
+  }
+  const AllComponentData: ComponentData[] = [];
   AllComponentData[WIDGET_TYPES.RANDOMISER] = { name: "Randomiser", icon: FaDice };
   AllComponentData[WIDGET_TYPES.TIMER] = { name: "Timer", icon: FaClock };
   AllComponentData[WIDGET_TYPES.LIST] = { name: "List", icon: FaListCheck };
@@ -136,7 +157,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
   AllComponentData[WIDGET_TYPES.VISUALISER] = { name: "Visualiser", icon: FaVideo };
   
   // Use customized toolbar widget selection
-  const ToolbarComponentData = selectedToolbarWidgets.map(index => AllComponentData[index]).filter(Boolean);
+  const ToolbarComponentData = selectedToolbarWidgets.map((index: number) => AllComponentData[index]).filter(Boolean);
 
   return (
     <>
@@ -180,7 +201,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
         {/* Regular buttons section - shorter height */}
         <div className="bg-soft-white dark:bg-warm-gray-800 rounded-r-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 border-l-0 flex-1 px-2 py-1.5 flex items-center" style={{ height: '40px' }}>
           <div className="flex items-center gap-1.5 overflow-x-auto flex-1">
-            {ToolbarComponentData.map((component, toolbarIndex) => {
+            {ToolbarComponentData.map((component: ComponentData) => {
             const Icon = component.icon;
             // Find the actual index in AllComponentData
             const actualIndex = AllComponentData.findIndex(c => c.name === component.name);
@@ -445,7 +466,7 @@ export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hov
                 >
                   <div className={`relative w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-200 ${
                     [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500 group-hover:bg-dusty-rose-600' :
-                    [WIDGET_TYPES.TIMER, WIDGET_TYPES.WORK_SYMBOLS, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500 group-hover:bg-terracotta-600' :
+                    [WIDGET_TYPES.TIMER, WIDGET_TYPES.TASK_CUE, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500 group-hover:bg-terracotta-600' :
                     'bg-sage-600 group-hover:bg-sage-700'
                   }`}>
                     <Icon className="w-8 h-8 text-white" />

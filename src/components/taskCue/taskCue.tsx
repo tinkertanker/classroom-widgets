@@ -37,8 +37,9 @@ function TaskCue({ isActive = false }: TaskCueProps) {
         new Audio(changeSound).play();
     }, [changeSound]);
 
-    const handleClick = useCallback((e) => {
-        if (e.target.closest("#widget1inside")) {
+    const handleClick = useCallback((e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.closest("#widget1inside")) {
             plaey();
         }
     }, [plaey]);

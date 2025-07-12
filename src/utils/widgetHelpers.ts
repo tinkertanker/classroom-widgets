@@ -1,5 +1,7 @@
+import { WidgetPosition, WidgetPositionsMap } from '../types/app.types';
+
 // Find a non-overlapping position for a new widget
-export const findAvailablePosition = (widgetWidth, widgetHeight, widgetPositions) => {
+export const findAvailablePosition = (widgetWidth: number, widgetHeight: number, widgetPositions: WidgetPositionsMap): WidgetPosition => {
   const padding = 20; // Minimum space between widgets
   const scrollContainer = document.querySelector('.board-scroll-container');
   
@@ -38,17 +40,20 @@ export const findAvailablePosition = (widgetWidth, widgetHeight, widgetPositions
     
     // Check if this position overlaps with any existing widget
     let overlaps = false;
-    for (const [id, pos] of widgetPositions) {
-      if (
-        x < pos.x + pos.width + padding &&
-        x + widgetWidth + padding > pos.x &&
-        y < pos.y + pos.height + padding &&
-        y + widgetHeight + padding > pos.y
-      ) {
-        overlaps = true;
-        break;
+    widgetPositions.forEach((pos, id) => {
+      if (!overlaps) {
+        const posWidth = pos.width || widgetWidth;
+        const posHeight = pos.height || widgetHeight;
+        if (
+          x < pos.x + posWidth + padding &&
+          x + widgetWidth + padding > pos.x &&
+          y < pos.y + posHeight + padding &&
+          y + widgetHeight + padding > pos.y
+        ) {
+          overlaps = true;
+        }
       }
-    }
+    });
     
     if (!overlaps) {
       return { x: Math.round(x), y: Math.round(y) };
@@ -63,7 +68,7 @@ export const findAvailablePosition = (widgetWidth, widgetHeight, widgetPositions
 };
 
 // Check if position is over trash
-export const isOverTrash = (x, y) => {
+export const isOverTrash = (x: number, y: number): boolean => {
   const trashElement = document.getElementById("trash");
   if (!trashElement) return false;
   

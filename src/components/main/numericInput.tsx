@@ -1,17 +1,25 @@
 import React, { useRef } from 'react';
 
-const NumericInput = ({ value, onChange, onKeyUp, refToNext, refToPrev }) => {
-  const handleChange = (e) => {
+interface NumericInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onKeyUp?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  refToNext?: React.RefObject<HTMLInputElement>;
+  refToPrev?: React.RefObject<HTMLInputElement>;
+}
+
+const NumericInput: React.FC<NumericInputProps> = ({ value, onChange, onKeyUp, refToNext, refToPrev }) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (/^\d{0,2}$/.test(val)) {
       onChange(val);
     }
   };
 
-  const handleKeyUp = (e) => {
-    if (e.key === 'Backspace' && value === '' && refToPrev) {
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && value === '' && refToPrev?.current) {
       refToPrev.current.focus();
-    } else if (value.length === 2 && refToNext) {
+    } else if (value.length === 2 && refToNext?.current) {
       refToNext.current.focus();
     }
 

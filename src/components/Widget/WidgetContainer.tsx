@@ -1,9 +1,35 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Rnd } from "react-rnd";
-import WidgetRenderer from './WidgetRenderer';
+import WidgetRendererLazy from './WidgetRendererLazy';
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
+import { WidgetInstance, WidgetPosition } from "../../types/app.types";
 
-const WidgetContainer = ({ 
+interface WidgetConfig {
+  defaultWidth: number;
+  defaultHeight: number;
+  minWidth: number;
+  minHeight: number;
+  lockAspectRatio: boolean | number;
+}
+
+interface WidgetContainerProps {
+  widget: WidgetInstance;
+  position: WidgetPosition;
+  config: WidgetConfig;
+  isActive: boolean;
+  isHoveringTrash: boolean;
+  savedState: any;
+  onDragStart: (e: any, data: any) => void;
+  onDrag: (e: any, data: any) => void;
+  onDragStop: (e: any, data: any) => void;
+  onResizeStart: () => void;
+  onResizeStop: (e: any, direction: any, ref: any, delta: any, position: any) => void;
+  onTouchStart: () => void;
+  onStateChange: (state: any) => void;
+  toggleConfetti: (value: boolean) => void;
+}
+
+const WidgetContainer: React.FC<WidgetContainerProps> = ({ 
   widget, 
   position, 
   config,
@@ -36,14 +62,14 @@ const WidgetContainer = ({
     }
   }, [isDragging]);
 
-  const handleDragStart = (e, data) => {
+  const handleDragStart = (e: any, data: any) => {
     setIsDragging(true);
     dragStartPosRef.current = { x: data.x, y: data.y };
     hasDraggedRef.current = false;
     onDragStart(e, data);
   };
 
-  const handleDrag = (e, data) => {
+  const handleDrag = (e: any, data: any) => {
     // Check if actually dragged more than a threshold
     const distance = Math.sqrt(
       Math.pow(data.x - dragStartPosRef.current.x, 2) + 
@@ -55,7 +81,7 @@ const WidgetContainer = ({
     onDrag(e, data);
   };
 
-  const handleDragStop = (e, data) => {
+  const handleDragStop = (e: any, data: any) => {
     setIsDragging(false);
     onDragStop(e, data);
   };
@@ -89,7 +115,7 @@ const WidgetContainer = ({
       onResizeStop={onResizeStop}
       onTouchStart={onTouchStart}
     >
-      <WidgetRenderer
+      <WidgetRendererLazy
         widgetType={widget.index}
         widgetId={widget.id}
         savedState={savedState}

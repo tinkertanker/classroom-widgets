@@ -3,29 +3,20 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import SlotMachine from "./slotMachine";
 import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../contexts/ModalContext";
-// import  sound from './celebrate.mp3';
+import { RandomiserProps, RandomiserState } from "./types";
 
 // Removed Chakra UI imports
 
-let actual_choices: any[];
+let actual_choices: string[];
 
 const sound = require("./celebrate.mp3");
 let yay = new Audio(sound);
-
-interface RandomiserProps {
-  toggleConfetti: (value: boolean) => void;
-  savedState?: {
-    input: string;
-    choices: any[];
-  };
-  onStateChange?: (state: any) => void;
-}
 
 function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
   const [input, setInput] = useState(savedState?.input || "");
-  const [choices, setChoices] = useState<any[]>(savedState?.choices || []);
+  const [choices, setChoices] = useState<string[]>(savedState?.choices || []);
   const choicesRef = useRef(choices);
 
   const [removedChoices, setRemovedChoices] = useState<string[]>([]);
@@ -89,7 +80,8 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
     if (onStateChange) {
       onStateChange({
         input: input,
-        choices: choices
+        choices: choices,
+        removedChoices: removedChoices
       });
     }
   };
@@ -213,7 +205,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
     }
   }, [loading]);
 
-  const textRef = useCallback((node) => {
+  const textRef = useCallback((node: HTMLElement | null) => {
     if (node !== null) {
       setTextheight(node.getBoundingClientRect().height);
       const resizeObserver = new ResizeObserver(() => {
@@ -224,7 +216,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
     }
   }, []);
 
-  const boxRef = useCallback((node) => {
+  const boxRef = useCallback((node: HTMLElement | null) => {
     if (node !== null) {
       setBoxheight(node.getBoundingClientRect().height);
       const resizeObserver2 = new ResizeObserver(() => {

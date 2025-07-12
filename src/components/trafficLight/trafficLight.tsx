@@ -5,7 +5,6 @@ function TrafficLight() {
   const [state, setState] = useState({
     activeLight: "#ff0000",
     boxHeight: 100,
-    contextMenu: { show: false, x: 0, y: 0 },
     num: 0,
   });
 
@@ -44,34 +43,8 @@ function TrafficLight() {
     }
   }, []); // Empty dependency array ensures this runs only once when the component mounts
 
-  const handleContextMenu = useCallback((e) => {
-    const target = e.target.closest("#baller");
-    if (target) {
-      const { pageX, pageY } = e;
-      // e.preventDefault(); this is supposed to disable right click but can be explored in future
-      setState((prevState) => ({
-        ...prevState,
-        contextMenu: { show: true, x: pageX, y: pageY },
-      }));
-    }
-  }, []);
 
-  useEffect(() => {
-    window.addEventListener("contextmenu", handleContextMenu);
-
-    return () => {
-      window.removeEventListener("contextmenu", handleContextMenu);
-    };
-  }, [handleContextMenu]);
-
-  const closeContextMenu = useCallback(() => {
-    setState((prevState) => ({
-      ...prevState,
-      contextMenu: { show: false, x: 0, y: 0 },
-    }));
-  }, []);
-
-  const handleLightClick = useCallback((color) => {
+  const handleLightClick = useCallback((color: string) => {
     new Audio(actionClickSound).play();
     setState((prevState) => ({
       ...prevState,

@@ -3,11 +3,20 @@ import { useEffect, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import Confetti from "react-confetti";
 
+// Types
+import { 
+  WidgetInstance, 
+  WidgetPosition, 
+  WidgetStatesMap, 
+  WidgetPositionsMap,
+  BackgroundType 
+} from "./types/app.types";
+
 // Components
 import Toolbar from "./components/toolbar/toolbar";
 import Board from "./components/Board/Board";
 import WidgetContainer from "./components/Widget/WidgetContainer";
-import Background, { BackgroundType } from "./components/backgrounds/backgrounds";
+import Background from "./components/backgrounds/backgrounds";
 
 // Contexts
 import { ModalProvider } from "./contexts/ModalContext";
@@ -34,11 +43,11 @@ function App() {
   const [backgroundType, setBackgroundType] = useState<BackgroundType>('geometric');
   
   // Widget State
-  const [componentList, setComponentList] = useState([]);
-  const [activeIndex, setActiveIndex] = useState(null);
-  const [widgetPositions, setWidgetPositions] = useState(new Map());
-  const [widgetStates, setWidgetStates] = useState(new Map());
-  const [hoveringTrashId, setHoveringTrashId] = useState(null);
+  const [componentList, setComponentList] = useState<WidgetInstance[]>([]);
+  const [activeIndex, setActiveIndex] = useState<string | null>(null);
+  const [widgetPositions, setWidgetPositions] = useState<WidgetPositionsMap>(new Map());
+  const [widgetStates, setWidgetStates] = useState<WidgetStatesMap>(new Map());
+  const [hoveringTrashId, setHoveringTrashId] = useState<string | null>(null);
   
   // Sticker Mode
   const [stickerMode, setStickerMode] = useState(false);
@@ -48,7 +57,7 @@ function App() {
   const { saveWorkspaceState, loadWorkspaceState, isInitialized, setIsInitialized } = useWorkspacePersistence();
 
   // Update individual widget state
-  const updateWidgetState = (widgetId, state) => {
+  const updateWidgetState = (widgetId: string, state: any) => {
     setWidgetStates(prev => {
       const newMap = new Map(prev);
       newMap.set(widgetId, state);
@@ -88,7 +97,7 @@ function App() {
   // Prevent swipe navigation
   useEffect(() => {
     window.history.pushState(null, '', window.location.href);
-    const handlePopState = (e) => {
+    const handlePopState = (e: PopStateEvent) => {
       window.history.pushState(null, '', window.location.href);
     };
     window.addEventListener('popstate', handlePopState);
@@ -97,7 +106,7 @@ function App() {
 
   // Handle ESC key to exit sticker mode
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && stickerMode) {
         setStickerMode(false);
       }
@@ -107,7 +116,7 @@ function App() {
   }, [stickerMode]);
 
   // Handle trash deletion
-  const trashHandler = (mouseEvent, _, id) => {
+  const trashHandler = (mouseEvent: any, _: any, id: string) => {
     if (isOverTrash(mouseEvent.x, mouseEvent.y)) {
       trashAudio.play().catch(error => {
         console.error("Error playing trash sound:", error);
@@ -134,19 +143,21 @@ function App() {
   };
 
   // Handle sticker placement
-  const handleBoardClick = (e) => {
+  const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!stickerMode) return;
     
     // Don't place stickers when clicking on inputs, textareas, or buttons
-    const target = e.target;
+    const target = e.target as HTMLElement;
     if (target.matches('input, textarea, button, select') || 
         target.closest('input, textarea, button, select')) {
       return;
     }
     
     const boardElement = document.getElementById('widget-board');
+    if (!boardElement) return;
     const rect = boardElement.getBoundingClientRect();
     const scrollContainer = document.querySelector('.board-scroll-container');
+    if (!scrollContainer) return;
     
     const x = e.clientX - rect.left + scrollContainer.scrollLeft;
     const y = e.clientY - rect.top + scrollContainer.scrollTop;
@@ -213,7 +224,7 @@ function App() {
               setComponentList={setComponentList} 
               activeIndex={activeIndex} 
               setActiveIndex={setActiveIndex} 
-              hoveringTrash={hoveringTrashId !== null}
+              hoveringTrash={hoveringTrashId}
               backgroundType={backgroundType}
               setBackgroundType={setBackgroundType}
               darkMode={darkMode}
@@ -237,10 +248,11 @@ function App() {
             
             let position = widgetPositions.get(widget.id);
             if (!position) {
-              position = findAvailablePosition(widgetConfig.defaultWidth, widgetConfig.defaultHeight, widgetPositions);
+              const newPosition = findAvailablePosition(widgetConfig.defaultWidth, widgetConfig.defaultHeight, widgetPositions);
+              position = newPosition;
               setWidgetPositions(prev => new Map(prev).set(widget.id, { 
-                x: position.x, 
-                y: position.y, 
+                x: newPosition.x, 
+                y: newPosition.y, 
                 width: widgetConfig.defaultWidth, 
                 height: widgetConfig.defaultHeight 
               }));
@@ -256,14 +268,14 @@ function App() {
                 isHoveringTrash={hoveringTrashId === widget.id}
                 savedState={savedState}
                 onDragStart={() => setActiveIndex(widget.id)}
-                onDrag={(e) => {
+                onDrag={(e: any) => {
                   if (isOverTrash(e.clientX, e.clientY)) {
                     setHoveringTrashId(widget.id);
                   } else {
                     setHoveringTrashId(null);
                   }
                 }}
-                onDragStop={(e, data) => {
+                onDragStop={(e: any, data: any) => {
                   trashHandler(e, data, widget.id);
                   if (hoveringTrashId === widget.id) {
                     setHoveringTrashId(null);
@@ -278,7 +290,7 @@ function App() {
                   });
                 }}
                 onResizeStart={() => setActiveIndex(widget.id)}
-                onResizeStop={(_, __, ref, ___, position) => {
+                onResizeStop={(_: any, __: any, ref: any, ___: any, position: any) => {
                   setWidgetPositions(prev => {
                     const newMap = new Map(prev);
                     newMap.set(widget.id, {
@@ -291,7 +303,7 @@ function App() {
                   });
                 }}
                 onTouchStart={() => setActiveIndex(widget.id)}
-                onStateChange={(state) => updateWidgetState(widget.id, state)}
+                onStateChange={(state: any) => updateWidgetState(widget.id, state)}
                 toggleConfetti={setUseConfetti}
               />
             );

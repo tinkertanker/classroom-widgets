@@ -1,8 +1,11 @@
 import React from 'react';
 
+type ColorScheme = 'teal' | 'sage' | 'red' | 'yellow' | 'green' | 'blue';
+type ButtonSize = 'sm' | 'md' | 'lg';
+
 interface ReusableButtonProps {
-  colorScheme: string;
-  size: string;
+  colorScheme: ColorScheme;
+  size: ButtonSize;
   width?: string;
   height?: string;
   children: React.ReactNode;

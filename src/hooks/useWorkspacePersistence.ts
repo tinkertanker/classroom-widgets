@@ -1,10 +1,26 @@
 import { useEffect, useState } from 'react';
+import { WidgetInstance, WidgetPositionsMap, WidgetStatesMap, BackgroundType } from '../types/app.types';
 
-export const useWorkspacePersistence = () => {
+interface WorkspaceData {
+  componentList: WidgetInstance[];
+  widgetPositions: WidgetPositionsMap;
+  widgetStates: WidgetStatesMap;
+  activeIndex: string | null;
+  backgroundType: BackgroundType;
+}
+
+interface UseWorkspacePersistenceReturn {
+  saveWorkspaceState: (data: WorkspaceData) => void;
+  loadWorkspaceState: () => WorkspaceData | null;
+  isInitialized: boolean;
+  setIsInitialized: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export const useWorkspacePersistence = (): UseWorkspacePersistenceReturn => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Save workspace state to localStorage
-  const saveWorkspaceState = (data) => {
+  const saveWorkspaceState = (data: WorkspaceData) => {
     const workspaceData = {
       componentList: data.componentList,
       widgetPositions: Array.from(data.widgetPositions.entries()),
@@ -16,17 +32,17 @@ export const useWorkspacePersistence = () => {
   };
 
   // Load workspace state from localStorage
-  const loadWorkspaceState = () => {
+  const loadWorkspaceState = (): WorkspaceData | null => {
     const savedState = localStorage.getItem('workspaceState');
     if (savedState) {
       try {
         const workspaceData = JSON.parse(savedState);
         return {
           componentList: workspaceData.componentList || [],
-          widgetPositions: new Map(workspaceData.widgetPositions || []),
-          widgetStates: new Map(workspaceData.widgetStates || []),
+          widgetPositions: new Map(workspaceData.widgetPositions || []) as WidgetPositionsMap,
+          widgetStates: new Map(workspaceData.widgetStates || []) as WidgetStatesMap,
           activeIndex: workspaceData.activeIndex || null,
-          backgroundType: workspaceData.backgroundType || 'geometric'
+          backgroundType: workspaceData.backgroundType || 'geometric' as BackgroundType
         };
       } catch (error) {
         console.error('Error loading workspace state:', error);

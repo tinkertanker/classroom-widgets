@@ -61,7 +61,7 @@ const CustomizeToolbar: React.FC<CustomizeToolbarProps> = ({
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                 isSelected ? (
                   [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500' :
-                  [WIDGET_TYPES.TIMER, WIDGET_TYPES.WORK_SYMBOLS, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500' :
+                  [WIDGET_TYPES.TIMER, WIDGET_TYPES.TASK_CUE, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500' :
                   'bg-sage-600'
                 ) : 'bg-warm-gray-300 dark:bg-warm-gray-600'
               }`}>

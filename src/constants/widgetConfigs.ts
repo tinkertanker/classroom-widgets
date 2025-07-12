@@ -1,7 +1,20 @@
 import { WIDGET_TYPES } from './widgetTypes';
 
+interface WidgetConfig {
+  defaultWidth: number;
+  defaultHeight: number;
+  minWidth: number;
+  minHeight: number;
+  maxWidth?: number;
+  maxHeight?: number;
+  lockAspectRatio: boolean | number;
+  stickerConfigs?: {
+    [key: string]: Partial<WidgetConfig>;
+  };
+}
+
 // Widget configuration definitions
-export const WIDGET_CONFIGS = {
+export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
   [WIDGET_TYPES.RANDOMISER]: {
     defaultWidth: 350,
     defaultHeight: 250,
@@ -122,7 +135,7 @@ export const WIDGET_CONFIGS = {
 };
 
 // Helper function to get widget config
-export function getWidgetConfig(widgetType, stickerType = null) {
+export function getWidgetConfig(widgetType: number, stickerType: string | null = null): WidgetConfig {
   const baseConfig = WIDGET_CONFIGS[widgetType] || {
     defaultWidth: 350,
     defaultHeight: 350,

@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import QRCode from 'react-qr-code';
-import { API_KEY, BASE_URL } from '../../secrets/shortioKey.js';
+
+// Use environment variables for API configuration
+const API_KEY = process.env.REACT_APP_SHORTIO_API_KEY || '';
+const BASE_URL = process.env.REACT_APP_SHORTIO_BASE_URL || 'https://api.short.io/links';
 
 interface ShortenLinkProps {
 }
@@ -18,6 +21,11 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
     
     if (!link.trim()) {
       setError('Please enter a URL');
+      return;
+    }
+
+    if (!API_KEY) {
+      setError('Short.io API key not configured. Please set REACT_APP_SHORTIO_API_KEY in your environment.');
       return;
     }
     

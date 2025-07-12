@@ -16,8 +16,20 @@ import DataShare from "../dataShare/dataShare";
 import Visualiser from "../visualiser/visualiser";
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
 import { DragAwareWrapper } from "../common/DragAwareWrapper";
+import ErrorBoundary from "../common/ErrorBoundary";
 
-const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateChange, toggleConfetti, isDragging, hasDragged }) => {
+interface WidgetRendererProps {
+  widgetType: number;
+  widgetId: string;
+  savedState: any;
+  isActive: boolean;
+  onStateChange: (state: any) => void;
+  toggleConfetti: (value: boolean) => void;
+  isDragging: boolean;
+  hasDragged: boolean;
+}
+
+const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetType, widgetId, savedState, isActive, onStateChange, toggleConfetti, isDragging, hasDragged }) => {
   const renderWidget = () => {
     switch(widgetType) {
     case WIDGET_TYPES.RANDOMISER:
@@ -84,10 +96,18 @@ const WidgetRenderer = ({ widgetType, widgetId, savedState, isActive, onStateCha
     }
   };
 
+  // Get widget name for error boundary
+  const getWidgetName = () => {
+    const widgetEntry = Object.entries(WIDGET_TYPES).find(([_, value]) => value === widgetType);
+    return widgetEntry ? widgetEntry[0].replace(/_/g, ' ').toLowerCase() : 'widget';
+  };
+
   return (
-    <DragAwareWrapper isDragging={isDragging} hasDragged={hasDragged}>
-      {renderWidget()}
-    </DragAwareWrapper>
+    <ErrorBoundary widgetName={getWidgetName()}>
+      <DragAwareWrapper isDragging={isDragging} hasDragged={hasDragged}>
+        {renderWidget()}
+      </DragAwareWrapper>
+    </ErrorBoundary>
   );
 };
 

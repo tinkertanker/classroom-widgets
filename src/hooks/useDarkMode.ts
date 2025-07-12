@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export const useDarkMode = () => {
+export const useDarkMode = (): [boolean, React.Dispatch<React.SetStateAction<boolean>>] => {
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage for saved preference
     const saved = localStorage.getItem('darkMode');

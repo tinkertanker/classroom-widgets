@@ -1,6 +1,12 @@
 import React from 'react';
 
-const Board = ({ children, onBoardClick, stickerMode }) => {
+interface BoardProps {
+  children: React.ReactNode;
+  onBoardClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  stickerMode: boolean;
+}
+
+const Board: React.FC<BoardProps> = ({ children, onBoardClick, stickerMode }) => {
   return (
     <div className="board-scroll-container">
       <div 
