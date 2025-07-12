@@ -427,14 +427,14 @@ const Timer = () => {
               className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
               onClick={restartTimer}
             >
-              Restart {'\u21BB'}
+              {'\u21BB'} Restart
             </button>
           ) : showStart ? (
             <button
               className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
               onClick={() => startTimer()}
             >
-              Start {'\u25B6'}
+              {'\u25B6'} Start
             </button>
           ) : (
             <>
@@ -444,14 +444,14 @@ const Timer = () => {
                     className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
                     onClick={resumeTimer}
                   >
-                    Resume {'\u25B6'}
+                    {'\u25B6'} Resume
                   </button>
                 ) : (
                   <button
                     className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
                     onClick={pauseTimer}
                   >
-                    Pause {'\u2590'} {'\u258C'}
+                    {'\u23F8'} Pause
                   </button>
                 )
               )}
@@ -459,7 +459,7 @@ const Timer = () => {
                 className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
                 onClick={restartTimer}
               >
-                Restart {'\u21BB'}
+                {'\u21BB'} Restart
               </button>
             </>
           )}

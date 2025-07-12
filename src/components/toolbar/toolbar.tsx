@@ -246,7 +246,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const otherWidgets = allWidgets.filter(widget => !customWidgets.includes(widget));
 
   return (
-    <div className={`flex flex-col space-y-4 px-4 pt-4 pb-0 bg-warm-white dark:bg-warm-gray-900 shadow-sm ${state.activeWidgetId ? 'z-50' : 'z-50'} relative transition-colors duration-200`}>
+    <div className={`flex flex-col space-y-4 px-4 pt-4 pb-0 bg-warm-white shadow-sm ${state.activeWidgetId ? 'z-50' : 'z-50'} relative transition-colors duration-200`}>
       {/* Main widget buttons */}
       <div className="flex space-x-3 items-end">
         {/* Trash icon - prominent on left with large hit area */}

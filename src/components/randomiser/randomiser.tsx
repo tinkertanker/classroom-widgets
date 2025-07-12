@@ -4,6 +4,7 @@ import SlotMachine from "./slotMachine";
 import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../contexts/ModalContext";
 import { RandomiserProps, RandomiserState } from "./types";
+import { FaDice, FaRotate } from 'react-icons/fa6';
 
 // Removed Chakra UI imports
 
@@ -280,10 +281,11 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
         {buttonsettings === "normal" ? (
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center">
             <button
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               onClick={()=>handlerandomise()}
               disabled={loading}
             >
+              <FaDice className="text-xs" />
               Randomise!!
             </button>
           </div>
@@ -325,11 +327,12 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
             <button
               disabled={loading}
               ref={initialResultFocus}
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               onClick={() => {
                 handlerandomise();
               }}
             >
+              <FaRotate className="text-xs" />
               Again!
             </button>
           </div>

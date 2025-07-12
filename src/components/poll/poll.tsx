@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { useModal } from '../../contexts/ModalContext';
 import PollSettings from './PollSettings';
+import { FaPlay, FaStop } from 'react-icons/fa6';
 
 interface PollProps {
   savedState?: any;
@@ -212,35 +213,81 @@ function Poll({ savedState, onStateChange }: PollProps) {
                 </p>
               </div>
             </div>
-            <button
-              onClick={(_e) => {
-                openSettings();
-              }}
-              className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
-            >
-              Settings
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(_e) => {
+                  togglePoll();
+                }}
+                className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
+                  pollData.isActive
+                    ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
+                    : 'bg-sage-500 hover:bg-sage-600'
+                }`}
+                disabled={!pollData.question || pollData.options.some(o => !o)}
+                title={pollData.isActive ? 'Stop Poll' : 'Start Poll'}
+              >
+                {pollData.isActive ? (
+                  <>
+                    <FaStop className="text-xs" />
+                    Stop
+                  </>
+                ) : (
+                  <>
+                    <FaPlay className="text-xs" />
+                    Start
+                  </>
+                )}
+              </button>
+              <button
+                onClick={(_e) => {
+                  openSettings();
+                }}
+                className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
+              >
+                Settings
+              </button>
+            </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className={`flex-1 overflow-y-auto ${!pollData.isActive ? 'opacity-50' : ''}`}>
             {pollData.question ? (
               <>
-                <h3 className="text-lg font-semibold text-warm-gray-800 dark:text-warm-gray-200 mb-4">
+                <h3 className={`text-lg font-semibold mb-4 ${
+                  pollData.isActive 
+                    ? 'text-warm-gray-800 dark:text-warm-gray-200' 
+                    : 'text-warm-gray-500 dark:text-warm-gray-500'
+                }`}>
                   {pollData.question}
                 </h3>
                 <div className="space-y-3">
                   {pollData.options.map((option, index) => (
                     <div key={index} className="relative">
-                      <div className="relative bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg p-3 overflow-hidden">
+                      <div className={`relative rounded-lg p-3 overflow-hidden ${
+                        pollData.isActive
+                          ? 'bg-warm-gray-100 dark:bg-warm-gray-700'
+                          : 'bg-warm-gray-50 dark:bg-warm-gray-800'
+                      }`}>
                         <div
-                          className="absolute inset-0 bg-sage-200 dark:bg-sage-600 transition-all duration-300"
+                          className={`absolute inset-0 transition-all duration-300 ${
+                            pollData.isActive
+                              ? 'bg-sage-200 dark:bg-sage-600'
+                              : 'bg-warm-gray-200 dark:bg-warm-gray-700'
+                          }`}
                           style={{ width: `${getVotePercentage(index)}%` }}
                         />
                         <div className="relative flex justify-between items-center">
-                          <span className="text-warm-gray-800 dark:text-warm-gray-200">
+                          <span className={`${
+                            pollData.isActive
+                              ? 'text-warm-gray-800 dark:text-warm-gray-200'
+                              : 'text-warm-gray-500 dark:text-warm-gray-500'
+                          }`}>
                             {option}
                           </span>
-                          <span className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                          <span className={`text-sm ${
+                            pollData.isActive
+                              ? 'text-warm-gray-600 dark:text-warm-gray-400'
+                              : 'text-warm-gray-400 dark:text-warm-gray-600'
+                          }`}>
                             {results.votes[index] || 0} ({getVotePercentage(index)}%)
                           </span>
                         </div>
@@ -256,23 +303,7 @@ function Poll({ savedState, onStateChange }: PollProps) {
             )}
           </div>
           
-          <div className="mt-4 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700">
-            <button
-              onClick={(_e) => {
-                togglePoll();
-              }}
-              className={`w-full px-4 py-2 text-white rounded transition-colors duration-200 ${
-                pollData.isActive
-                  ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
-                  : 'bg-sage-500 hover:bg-sage-600'
-              }`}
-              disabled={!pollData.question || pollData.options.some(o => !o)}
-            >
-              {pollData.isActive ? 'Stop Poll' : 'Start Poll'}
-            </button>
-          </div>
-          
-          <div className="mt-2 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400">
+          <div className="mt-4 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400">
             Students visit: localhost/student
           </div>
         </>
