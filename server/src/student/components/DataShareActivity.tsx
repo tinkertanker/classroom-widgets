@@ -6,14 +6,12 @@ interface DataShareActivityProps {
   socket: Socket;
   roomCode: string;
   studentName: string;
-  onChangeRoom: () => void;
 }
 
 const DataShareActivity: React.FC<DataShareActivityProps> = ({ 
   socket, 
   roomCode, 
-  studentName: initialName,
-  onChangeRoom 
+  studentName: initialName
 }) => {
   const [studentName, setStudentName] = useState(initialName);
   const [shareLink, setShareLink] = useState('');
@@ -68,9 +66,6 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
           Link shared successfully!
         </div>
         
-        <button className="change-room" onClick={onChangeRoom}>
-          Share Another Link
-        </button>
       </div>
     );
   }
@@ -118,9 +113,6 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
         {error && <div className="error">{error}</div>}
       </form>
       
-      <button className="change-room" onClick={onChangeRoom}>
-        Change Room
-      </button>
     </div>
   );
 };

@@ -5,7 +5,6 @@ import './PollActivity.css';
 interface PollActivityProps {
   socket: Socket;
   roomCode: string;
-  onChangeRoom: () => void;
 }
 
 interface PollData {
@@ -22,7 +21,7 @@ interface Results {
   totalVotes: number;
 }
 
-const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, onChangeRoom }) => {
+const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
   const [pollData, setPollData] = useState<PollData>({
     question: '',
     options: [],
@@ -147,9 +146,6 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, onChangeR
         {renderContent()}
       </div>
       
-      <button className="change-room" onClick={onChangeRoom}>
-        Change Room
-      </button>
     </div>
   );
 };

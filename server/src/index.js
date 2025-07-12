@@ -56,11 +56,17 @@ app.get('/', (req, res) => {
 // Store active rooms/sessions
 const rooms = new Map();
 
-// Generate random 4-digit room code
+// Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U)
+const SAFE_CHARACTERS = '23456789ACDEFHJKMNPQRTUWXY';
+
+// Generate random 5-character room code
 function generateRoomCode() {
   let code;
   do {
-    code = Math.floor(1000 + Math.random() * 9000).toString();
+    code = '';
+    for (let i = 0; i < 5; i++) {
+      code += SAFE_CHARACTERS[Math.floor(Math.random() * SAFE_CHARACTERS.length)];
+    }
   } while (rooms.has(code));
   return code;
 }
