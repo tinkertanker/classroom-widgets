@@ -300,14 +300,13 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-800/40 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px] ${
+              className={`w-16 h-16 p-3 rounded-lg text-warm-gray-700 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-800/40 transition-all duration-200 flex items-center justify-center ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={state.stickerMode}
               title="More widgets"
             >
-              <FaTableCells className="text-xl" />
-              <span className="text-xs font-medium">More</span>
+              <FaTableCells className="text-2xl" />
             </button>
 
             {showAllWidgets && (
