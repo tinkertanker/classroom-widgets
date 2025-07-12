@@ -416,21 +416,28 @@
       const code = document.getElementById('code').value;
       const name = document.getElementById('name').value;
 
+      console.log('Form submitted with code:', code, 'name:', name);
+
       joinBtn.disabled = true;
       joinBtn.innerHTML = '<span class="loading"></span>Checking...';
 
       try {
+        console.log('Checking if room exists via API...');
         const response = await fetch(`/api/rooms/${code}/exists`);
         const data = await response.json();
+        console.log('Room exists API response:', data);
         
         if (data.exists) {
           roomCode = code;
+          console.log('Room exists, trying to join as poll participant first...');
           // Try to determine room type by attempting to join as poll participant
           socket.emit('participant:join', { code, name });
         } else {
+          console.log('Room does not exist according to API');
           errorDiv.textContent = 'Invalid room code';
         }
       } catch (err) {
+        console.error('Error checking room:', err);
         errorDiv.textContent = 'Connection error';
       } finally {
         joinBtn.disabled = false;
@@ -468,12 +475,15 @@
 
     // Socket event handlers for polls
     socket.on('participant:joined', (data) => {
+      console.log('Received participant:joined event:', data);
       if (data.success) {
+        console.log('Successfully joined as poll participant');
         roomType = 'poll';
         showActivity('poll');
         currentPollData = data.pollData || {};
         updatePollDisplay(currentPollData);
       } else {
+        console.log('Poll join failed, trying as data share room...');
         // If poll join failed, try as data share room
         socket.emit('dataShare:checkRoom', { code: roomCode });
       }
@@ -510,7 +520,9 @@
 
     // Handle data share room validation
     socket.on('dataShare:roomValid', (data) => {
+      console.log('Received dataShare:roomValid event:', data);
       if (data.code === roomCode) {
+        console.log('Data share room validated, showing data share interface');
         roomType = 'data-share';
         showActivity('data-share');
         // Pre-fill name if provided
@@ -518,11 +530,15 @@
         if (nameInput) {
           document.getElementById('studentName').value = nameInput;
         }
+      } else {
+        console.log('Room code mismatch in dataShare:roomValid:', data.code, 'vs', roomCode);
       }
     });
 
     socket.on('dataShare:checkRoom', (data) => {
+      console.log('Received dataShare:checkRoom response:', data);
       if (data.code === null) {
+        console.log('Room not found as data share room either');
         // Room not found as data share room either
         errorDiv.textContent = 'Room not found or invalid';
         joinBtn.disabled = false;
