@@ -273,7 +273,7 @@ function Poll({ savedState, onStateChange }: PollProps) {
           </div>
           
           <div className="mt-2 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            Students visit: http://localhost:3001
+            Students visit: localhost/student
           </div>
         </>
       )}

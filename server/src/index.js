@@ -26,9 +26,14 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve unified student interface at root
-app.get('/', (req, res) => {
+// Serve unified student interface at /student
+app.get('/student', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Redirect root to /student for backwards compatibility
+app.get('/', (req, res) => {
+  res.redirect('/student');
 });
 
 // Store active rooms/sessions
