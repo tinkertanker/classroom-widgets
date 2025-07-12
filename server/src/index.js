@@ -148,21 +148,96 @@ app.post('/api/rooms/create', (req, res) => {
   res.json({ code, success: true });
 });
 
-// Check if room exists (called by students)
+// Check if room exists and get type (called by students)
 app.get('/api/rooms/:code/exists', (req, res) => {
   const { code } = req.params;
   const exists = rooms.has(code);
   const room = rooms.get(code);
+  let roomType = null;
+  
+  if (room) {
+    if (room instanceof PollRoom) {
+      roomType = 'poll';
+    } else if (room instanceof DataShareRoom) {
+      roomType = 'dataShare';
+    }
+  }
+  
   // DEBUG: Log room existence check
   console.log(`API: Checking if room ${code} exists: ${exists}`);
-  console.log(`API: Room type: ${room ? room.constructor.name : 'N/A'}`);
+  console.log(`API: Room type: ${roomType}`);
   console.log(`API: All rooms: ${Array.from(rooms.keys())}`);
-  res.json({ exists });
+  res.json({ exists, roomType });
 });
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+
+  // Unified room join handler
+  socket.on('room:join', (data) => {
+    // DEBUG: Log unified join attempt
+    console.log('Received room:join request:', data);
+    const { code, name, type } = data;
+    const room = rooms.get(code);
+    
+    if (!room) {
+      // DEBUG: Room not found
+      console.log(`Room ${code} not found`);
+      socket.emit('room:joined', {
+        success: false,
+        error: 'Room not found'
+      });
+      return;
+    }
+
+    // Handle based on room type
+    if (room instanceof PollRoom && type === 'poll') {
+      // Join as poll participant
+      room.participants.set(socket.id, {
+        id: socket.id,
+        name: name || `Student ${room.participants.size + 1}`,
+        hasVoted: false,
+        joinedAt: Date.now()
+      });
+      
+      socket.join(code);
+      socket.emit('room:joined', {
+        success: true,
+        type: 'poll',
+        pollData: room.pollData,
+        participantId: socket.id
+      });
+      
+      // Notify host of new participant
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('participant:count', {
+          count: room.participants.size
+        });
+      }
+      
+      // DEBUG: Log successful poll join
+      console.log(`Participant joined poll room ${code}`);
+    } else if (room instanceof DataShareRoom && type === 'dataShare') {
+      // Join data share room
+      socket.join(code);
+      socket.emit('room:joined', {
+        success: true,
+        type: 'dataShare'
+      });
+      
+      // DEBUG: Log successful data share join
+      console.log(`Student joined data share room ${code}`);
+    } else {
+      // Type mismatch
+      // DEBUG: Log type mismatch
+      console.log(`Room type mismatch: requested ${type} but room is ${room.constructor.name}`);
+      socket.emit('room:joined', {
+        success: false,
+        error: 'Room type mismatch'
+      });
+    }
+  });
 
   // Host joins room (widget)
   socket.on('host:join', (code) => {
@@ -203,50 +278,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Participant joins room
-  socket.on('participant:join', (data) => {
-    // DEBUG: Log poll join attempt
-    console.log('Received participant:join request:', data);
-    const { code, name } = data;
-    const room = rooms.get(code);
-    // DEBUG: Log room lookup results
-    console.log('Poll join - Room lookup result:', room ? 'found' : 'not found');
-    console.log('Poll join - Room type:', room ? room.constructor.name : 'N/A');
-    
-    if (room && room instanceof PollRoom) {
-      // DEBUG: Log successful poll join
-      console.log(`Participant successfully joining poll room ${code}`);
-      room.participants.set(socket.id, {
-        id: socket.id,
-        name: name || `Student ${room.participants.size + 1}`,
-        hasVoted: false,
-        joinedAt: Date.now()
-      });
-      
-      socket.join(code);
-      socket.emit('participant:joined', {
-        success: true,
-        pollData: room.pollData,
-        participantId: socket.id
-      });
-      
-      // Notify host of new participant
-      if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('participant:count', {
-          count: room.participants.size
-        });
-      }
-      
-      console.log(`Participant joined room ${code}`);
-    } else {
-      // DEBUG: Log poll join failure
-      console.log(`Poll join failed for room ${code}, sending failure response`);
-      socket.emit('participant:joined', {
-        success: false,
-        error: 'Room not found'
-      });
-    }
-  });
 
   // Participant votes
   socket.on('vote:submit', (data) => {
@@ -282,28 +313,6 @@ io.on('connection', (socket) => {
     console.log(`Data share room created: ${code}`);
   });
 
-  // Handle room type checking for unified interface
-  socket.on('dataShare:checkRoom', (data) => {
-    // DEBUG: Log data share room check request
-    console.log('Received dataShare:checkRoom request:', data);
-    const { code } = data;
-    const room = rooms.get(code);
-    // DEBUG: Log room lookup details
-    console.log('Room lookup result:', room ? 'found' : 'not found');
-    console.log('Room type:', room ? room.constructor.name : 'N/A');
-    console.log('All rooms:', Array.from(rooms.keys()));
-    
-    if (room && room instanceof DataShareRoom) {
-      // DEBUG: Log successful data share validation
-      console.log(`Sending dataShare:roomValid for room ${code}`);
-      socket.emit('dataShare:roomValid', { code });
-      console.log(`Data share room ${code} validated for student`);
-    } else {
-      // DEBUG: Log data share room not found
-      console.log(`Room ${code} not found as DataShareRoom, sending null response`);
-      socket.emit('dataShare:checkRoom', { code: null });
-    }
-  });
 
   socket.on('dataShare:submit', (data) => {
     const { code, studentName, link } = data;

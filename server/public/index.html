@@ -430,12 +430,13 @@
         // DEBUG: Log API response
         console.log('Room exists API response:', data);
         
-        if (data.exists) {
+        if (data.exists && data.roomType) {
           roomCode = code;
-          // DEBUG: Log room type detection
-          console.log('Room exists, trying to join as poll participant first...');
-          // Try to determine room type by attempting to join as poll participant
-          socket.emit('participant:join', { code, name });
+          roomType = data.roomType;
+          // DEBUG: Log room type from API
+          console.log(`Room exists with type: ${data.roomType}, joining...`);
+          // Join with the correct room type
+          socket.emit('room:join', { code, name, type: data.roomType });
         } else {
           // DEBUG: Log room not found
           console.log('Room does not exist according to API');
@@ -479,22 +480,38 @@
       e.target.value = e.target.value.replace(/[^0-9]/g, '');
     });
 
-    // Socket event handlers for polls
-    socket.on('participant:joined', (data) => {
-      // DEBUG: Log poll join response
-      console.log('Received participant:joined event:', data);
+    // Unified room join response handler
+    socket.on('room:joined', (data) => {
+      // DEBUG: Log room join response
+      console.log('Received room:joined event:', data);
+      
       if (data.success) {
-        // DEBUG: Log successful poll join
-        console.log('Successfully joined as poll participant');
-        roomType = 'poll';
-        showActivity('poll');
-        currentPollData = data.pollData || {};
-        updatePollDisplay(currentPollData);
+        // Successfully joined room
+        roomType = data.type;
+        
+        if (data.type === 'poll') {
+          // DEBUG: Log successful poll join
+          console.log('Successfully joined as poll participant');
+          showActivity('poll');
+          currentPollData = data.pollData || {};
+          updatePollDisplay(currentPollData);
+        } else if (data.type === 'dataShare') {
+          // DEBUG: Log successful data share join
+          console.log('Successfully joined data share room');
+          showActivity('data-share');
+          // Pre-fill name if provided
+          const nameInput = document.getElementById('name').value;
+          if (nameInput) {
+            document.getElementById('studentName').value = nameInput;
+          }
+        }
       } else {
-        // DEBUG: Log fallback to data share
-        console.log('Poll join failed, trying as data share room...');
-        // If poll join failed, try as data share room
-        socket.emit('dataShare:checkRoom', { code: roomCode });
+        // Join failed
+        // DEBUG: Log join failure
+        console.log('Room join failed:', data.error);
+        errorDiv.textContent = data.error || 'Failed to join room';
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Join Activity';
       }
     });
 
@@ -527,38 +544,6 @@
       }
     });
 
-    // Handle data share room validation
-    socket.on('dataShare:roomValid', (data) => {
-      // DEBUG: Log data share validation response
-      console.log('Received dataShare:roomValid event:', data);
-      if (data.code === roomCode) {
-        // DEBUG: Log successful data share validation
-        console.log('Data share room validated, showing data share interface');
-        roomType = 'data-share';
-        showActivity('data-share');
-        // Pre-fill name if provided
-        const nameInput = document.getElementById('name').value;
-        if (nameInput) {
-          document.getElementById('studentName').value = nameInput;
-        }
-      } else {
-        // DEBUG: Log room code mismatch
-        console.log('Room code mismatch in dataShare:roomValid:', data.code, 'vs', roomCode);
-      }
-    });
-
-    socket.on('dataShare:checkRoom', (data) => {
-      // DEBUG: Log data share check response
-      console.log('Received dataShare:checkRoom response:', data);
-      if (data.code === null) {
-        // DEBUG: Log room not found
-        console.log('Room not found as data share room either');
-        // Room not found as data share room either
-        errorDiv.textContent = 'Room not found or invalid';
-        joinBtn.disabled = false;
-        joinBtn.textContent = 'Join Activity';
-      }
-    });
 
     function showActivity(type) {
       joinForm.style.display = 'none';
