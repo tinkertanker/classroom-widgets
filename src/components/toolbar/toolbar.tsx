@@ -246,36 +246,49 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     <div className={`flex flex-col space-y-4 p-4 bg-warm-white dark:bg-warm-gray-900 shadow-sm ${state.activeWidgetId ? 'z-50' : 'z-50'} relative transition-colors duration-200`}>
       {/* Main widget buttons */}
       <div className="flex space-x-3 items-center">
-        {customWidgets.map((widgetType) => (
-          <button
-            key={widgetType}
-            onClick={() => handleAddWidget(widgetType)}
-            className={`p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative ${
-              hoveringTrash ? 'scale-95 opacity-50' : ''
-            } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={state.stickerMode || (widgetType === WIDGET_TYPES.POLL && !pollServerConnected)}
-            title={widgetNames[widgetType]}
+        {/* Trash icon - prominent on left with large hit area */}
+        <div
+          id="trash"
+          className={`w-24 h-16 cursor-pointer transition-all duration-200 p-4 rounded-lg flex items-center justify-center ${
+            hoveringTrash 
+              ? 'bg-dusty-rose-500 transform scale-105' 
+              : 'bg-warm-gray-200 dark:bg-warm-gray-700 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-600'
+          }`}
+          title="Drag widgets here to delete"
+        >
+          <svg
+            className={`w-12 h-12 transition-all duration-200 ${
+              hoveringTrash 
+                ? 'text-white' 
+                : 'text-warm-gray-600 dark:text-warm-gray-300'
+            }`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            <div className="text-xl">{getWidgetIcon(widgetType)}</div>
-            {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
-            )}
-          </button>
-        ))}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </div>
 
-        {/* More widgets button */}
+        {/* More widgets button - prominent on left */}
         {otherWidgets.length > 0 && (
           <div className="relative">
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 ${
+              className={`p-4 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 border-2 border-warm-gray-300 dark:border-warm-gray-600 ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               disabled={state.stickerMode}
               title="More widgets"
             >
-              <FaTableCells className="text-xl" />
+              <FaTableCells className="text-2xl" />
             </button>
 
             {showAllWidgets && (
@@ -311,6 +324,26 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           </div>
         )}
 
+        {/* Separator */}
+        <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600"></div>
+
+        {customWidgets.map((widgetType) => (
+          <button
+            key={widgetType}
+            onClick={() => handleAddWidget(widgetType)}
+            className={`p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative ${
+              hoveringTrash ? 'scale-95 opacity-50' : ''
+            } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={state.stickerMode || (widgetType === WIDGET_TYPES.POLL && !pollServerConnected)}
+            title={widgetNames[widgetType]}
+          >
+            <div className="text-xl">{getWidgetIcon(widgetType)}</div>
+            {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
+            )}
+          </button>
+        ))}
+
         {/* Spacer */}
         <div className="flex-1" />
 
@@ -335,27 +368,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             {minutes} {ampm}
           </span>
         </div>
-
-        {/* Trash icon */}
-        <svg
-          id="trash"
-          className={`w-6 h-6 cursor-pointer transition-all duration-200 ${
-            hoveringTrash 
-              ? 'text-dusty-rose-500 transform scale-125' 
-              : 'text-warm-gray-500 dark:text-warm-gray-400'
-          }`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-          />
-        </svg>
 
         {/* Connection indicator */}
         <div className={`p-3 rounded-lg ${isConnected ? 'text-sage-600 dark:text-sage-400' : 'text-dusty-rose-600 dark:text-dusty-rose-400'}`}>
