@@ -76,7 +76,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const response = await fetch('http://localhost:3001/health');
+        const response = await fetch('http://localhost:3001/api/health');
         setServerConnected(response.ok);
       } catch (error) {
         setServerConnected(false);
