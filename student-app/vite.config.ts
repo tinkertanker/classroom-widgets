@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   base: '/student/',
   build: {
-    outDir: '../public',
+    outDir: '../server/public',
     emptyOutDir: true,
   },
   server: {

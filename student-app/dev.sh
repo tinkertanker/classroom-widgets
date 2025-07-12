@@ -8,7 +8,7 @@ fi
 
 # Start the Express server in one terminal
 echo "Starting Express server..."
-cd .. && npm start &
+cd ../server && npm start &
 SERVER_PID=$!
 
 # Wait a moment for server to start

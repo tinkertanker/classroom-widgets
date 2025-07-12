@@ -1,15 +1,42 @@
-# Introduction
+# Classroom Widgets
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Interactive classroom management tools with real-time student engagement features.
+
+## Project Structure
+
+```
+classroom-widgets/
+├── src/                    # Main React app (teacher interface)
+├── server/                 # Express backend server
+│   ├── src/               # Server source code
+│   └── public/            # Built student app (generated)
+├── student-app/           # Student React app
+│   ├── src/               # Student app source
+│   └── dev.sh            # Development script
+└── nginx.conf            # Production nginx config
+```
 
 ## Setting up Development Environment
 
-Clone the github repository
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install                    # Main app
+   cd server && npm install       # Server
+   cd ../student-app && npm install  # Student app
+   ```
+3. Copy `src/secrets/shortioKey.example.js` to `src/secrets/shortioKey.js` and enter the Short.io API key
 
-Run `npm install`
+## Quick Start
 
-Copy `src/secrets/shortioKey.example.js` to `src/secrets/shortioKey.js` and
-enter the Short.io API key from our account.
+### Run everything for development:
+```bash
+npm run dev:all
+```
+This starts:
+- Teacher app: http://localhost:3000
+- Student app: http://localhost:3002/student
+- Server: http://localhost:3001
 
 
 

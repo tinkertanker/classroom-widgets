@@ -15,7 +15,7 @@ npm install
 ```
 
 Or run them separately:
-- Terminal 1: `cd .. && npm start` (Express server on port 3001)
+- Terminal 1: `cd ../server && npm start` (Express server on port 3001)
 - Terminal 2: `npm run dev` (Vite dev server on port 3002)
 
 3. Access the app at: `http://localhost:3002/student`
@@ -27,7 +27,7 @@ Or run them separately:
 npm run build
 ```
 
-This creates optimized production files in `../public/`
+This creates optimized production files in `../server/public/`
 
 2. The Express server will automatically serve the built files when `NODE_ENV=production`
 
