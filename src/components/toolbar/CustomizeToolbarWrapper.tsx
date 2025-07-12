@@ -2,25 +2,37 @@ import React, { useState } from 'react';
 import CustomizeToolbar from './CustomizeToolbar';
 
 interface CustomizeToolbarWrapperProps {
-  selectedToolbarWidgets: number[];
-  setSelectedToolbarWidgets: (widgets: number[]) => void;
-  AllComponentData: any;
+  customWidgets: number[];
+  setCustomWidgets: (widgets: number[]) => void;
+  widgetNames: Record<number, string>;
+  getWidgetIcon: (widgetType: number) => React.ReactElement;
   onClose: () => void;
 }
 
 const CustomizeToolbarWrapper: React.FC<CustomizeToolbarWrapperProps> = ({
-  selectedToolbarWidgets,
-  setSelectedToolbarWidgets,
-  AllComponentData,
+  customWidgets,
+  setCustomWidgets,
+  widgetNames,
+  getWidgetIcon,
   onClose
 }) => {
   // Local state for managing changes within the dialog
-  const [localSelectedWidgets, setLocalSelectedWidgets] = useState<number[]>(selectedToolbarWidgets);
+  const [localSelectedWidgets, setLocalSelectedWidgets] = useState<number[]>(customWidgets);
+
+  // Create AllComponentData from the provided names and icons
+  const AllComponentData = Object.keys(widgetNames).map(key => {
+    const widgetType = Number(key);
+    return {
+      index: widgetType,
+      name: widgetNames[widgetType],
+      icon: getWidgetIcon(widgetType)
+    };
+  });
 
   // Handle save - update parent state and close
   const handleSave = () => {
-    setSelectedToolbarWidgets(localSelectedWidgets);
-    localStorage.setItem('toolbarWidgets', JSON.stringify(localSelectedWidgets));
+    setCustomWidgets(localSelectedWidgets);
+    localStorage.setItem('customToolbarWidgets', JSON.stringify(localSelectedWidgets));
     onClose();
   };
 

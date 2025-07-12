@@ -1,17 +1,15 @@
-import { v4 as uuidv4 } from 'uuid'; // Import UUID package
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
 import { useModal } from '../../contexts/ModalContext';
+import { useWorkspace } from '../../store/WorkspaceContext';
 import CustomizeToolbarWrapper from './CustomizeToolbarWrapper';
 import StickerPalette from './StickerPalette';
-import { WidgetInstance, BackgroundType } from '../../types/app.types';
-// @ts-ignore
 import { 
   FaDice,           // Randomiser
   FaClock,          // Timer
   FaListCheck,      // List
-  FaUserGroup,      // Work Symbols
+  FaUserGroup,      // Task Cue icon
   FaTrafficLight,   // Traffic Light
   FaVolumeHigh,     // Sound Monitor
   FaLink,           // Link Shortener
@@ -33,459 +31,405 @@ import {
 } from 'react-icons/fa6';
 
 interface ToolbarProps {
-  setComponentList: React.Dispatch<React.SetStateAction<WidgetInstance[]>>;
-  activeIndex: string | null;
-  setActiveIndex: React.Dispatch<React.SetStateAction<string | null>>;
-  hoveringTrash: string | null;
-  backgroundType: BackgroundType;
-  setBackgroundType: React.Dispatch<React.SetStateAction<BackgroundType>>;
   darkMode: boolean;
   setDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
-  stickerMode: boolean;
-  setStickerMode: React.Dispatch<React.SetStateAction<boolean>>;
-  selectedStickerType: string;
-  setSelectedStickerType: React.Dispatch<React.SetStateAction<string>>;
+  hoveringTrash: string | null;
 }
 
-export default function Toolbar({setComponentList,activeIndex,setActiveIndex,hoveringTrash,backgroundType,setBackgroundType,darkMode,setDarkMode,stickerMode,setStickerMode,selectedStickerType,setSelectedStickerType}: ToolbarProps) {
-  const [formattedTime, setFormattedTime] = useState("");
-  const [colonVisible, setColonVisible] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-  const [launchpadOpen, setLaunchpadOpen] = useState(false);
-  const launchpadContentRef = useRef<HTMLDivElement>(null);
+export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: ToolbarProps) {
+  const { 
+    state, 
+    addWidget, 
+    setBackground, 
+    setStickerMode, 
+    resetWorkspace 
+  } = useWorkspace();
+
   const { showModal, hideModal } = useModal();
-  const [selectedToolbarWidgets, setSelectedToolbarWidgets] = useState(() => {
-    // Load saved toolbar configuration from localStorage
-    const saved = localStorage.getItem('toolbarWidgets');
+  const [isConnected, setIsConnected] = useState(true);
+  const [customWidgets, setCustomWidgets] = useState<number[]>(() => {
+    const saved = localStorage.getItem('customToolbarWidgets');
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // If parsing fails, return default
-      }
+      return JSON.parse(saved);
     }
-    // Default toolbar widgets
     return [
-      WIDGET_TYPES.TIMER,
       WIDGET_TYPES.RANDOMISER,
-      WIDGET_TYPES.TEXT_BANNER,
-      WIDGET_TYPES.IMAGE_DISPLAY,
-      WIDGET_TYPES.TASK_CUE
+      WIDGET_TYPES.TIMER,
+      WIDGET_TYPES.LIST,
+      WIDGET_TYPES.TRAFFIC_LIGHT,
+      WIDGET_TYPES.POLL,
+      WIDGET_TYPES.TEXT_BANNER
     ];
   });
 
+  const backgroundOptions = ['geometric', 'gradient', 'lines', 'dots'] as const;
+  const [showMenu, setShowMenu] = useState(false);
+  const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+  const [showAllWidgets, setShowAllWidgets] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const menuRef = useRef<HTMLDivElement>(null);
+  const moreWidgetsRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [pollServerConnected, setPollServerConnected] = useState(false);
+
+  // Check poll server connection
   useEffect(() => {
-    const updateTime = () => {
-      const date = new Date();
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-
-      const formattedHours = hours % 12 || 12;
-      const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
-
-      setFormattedTime(
-        `${formattedHours}:${formattedMinutes}`
-      );
+    const checkConnection = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/health');
+        setPollServerConnected(response.ok);
+      } catch (error) {
+        setPollServerConnected(false);
+      }
     };
-
-    updateTime(); // Initial update
-    const interval = setInterval(updateTime, 500);
-
+    
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000); // Check every 30 seconds
+    
     return () => clearInterval(interval);
   }, []);
 
-  // Separate effect for blinking colon
   useEffect(() => {
-    const interval = setInterval(() => {
-      setColonVisible(prev => !prev);
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(timer);
   }, []);
 
-  // Close menu when clicking outside
+  useEffect(() => {
+    const checkConnection = () => {
+      setIsConnected(navigator.onLine);
+    };
+
+    checkConnection();
+    window.addEventListener('online', checkConnection);
+    window.addEventListener('offline', checkConnection);
+
+    return () => {
+      window.removeEventListener('online', checkConnection);
+      window.removeEventListener('offline', checkConnection);
+    };
+  }, []);
+
+  // Handle clicks outside the menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuOpen && !(event.target as HTMLElement).closest('.menu-container')) {
-        setMenuOpen(false);
+      if (showMenu && menuRef.current && menuButtonRef.current &&
+          !menuRef.current.contains(event.target as Node) &&
+          !menuButtonRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+      
+      if (showAllWidgets && moreWidgetsRef.current && moreButtonRef.current &&
+          !moreWidgetsRef.current.contains(event.target as Node) &&
+          !moreButtonRef.current.contains(event.target as Node)) {
+        setShowAllWidgets(false);
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuOpen]);
-
-  // Close launchpad when clicking outside, including toolbar area
-  useEffect(() => {
-    const handleLaunchpadClose = (event: MouseEvent) => {
-      if (launchpadOpen && launchpadContentRef.current && !launchpadContentRef.current.contains(event.target as Node)) {
-        setLaunchpadOpen(false);
-      }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
     };
+  }, [showMenu, showAllWidgets]);
 
-    if (launchpadOpen) {
-      // Use capture phase to catch clicks before they're stopped
-      document.addEventListener('mousedown', handleLaunchpadClose, true);
-      return () => document.removeEventListener('mousedown', handleLaunchpadClose, true);
+  const getWidgetIcon = (widgetType: number): React.ReactElement => {
+    switch (widgetType) {
+      case WIDGET_TYPES.RANDOMISER: return <FaDice /> as React.ReactElement;
+      case WIDGET_TYPES.TIMER: return <FaClock /> as React.ReactElement;
+      case WIDGET_TYPES.LIST: return <FaListCheck /> as React.ReactElement;
+      case WIDGET_TYPES.TASK_CUE: return <FaUserGroup /> as React.ReactElement;
+      case WIDGET_TYPES.TRAFFIC_LIGHT: return <FaTrafficLight /> as React.ReactElement;
+      case WIDGET_TYPES.SOUND_MONITOR: return <FaVolumeHigh /> as React.ReactElement;
+      case WIDGET_TYPES.LINK_SHORTENER: return <FaLink /> as React.ReactElement;
+      case WIDGET_TYPES.TEXT_BANNER: return <FaTextWidth /> as React.ReactElement;
+      case WIDGET_TYPES.IMAGE_DISPLAY: return <FaImage /> as React.ReactElement;
+      case WIDGET_TYPES.SOUND_EFFECTS: return <FaMusic /> as React.ReactElement;
+      case WIDGET_TYPES.POLL: return <FaChartColumn /> as React.ReactElement;
+      case WIDGET_TYPES.QRCODE: return <FaQrcode /> as React.ReactElement;
+      case WIDGET_TYPES.DATA_SHARE: return <FaPaperclip /> as React.ReactElement;
+      case WIDGET_TYPES.VISUALISER: return <FaVideo /> as React.ReactElement;
+      default: return <FaDice /> as React.ReactElement;
     }
-  }, [launchpadOpen]);
+  };
 
+  const widgetNames: Record<number, string> = {
+    [WIDGET_TYPES.RANDOMISER]: "Randomiser",
+    [WIDGET_TYPES.TIMER]: "Timer",
+    [WIDGET_TYPES.LIST]: "List",
+    [WIDGET_TYPES.TASK_CUE]: "Task Cue",
+    [WIDGET_TYPES.TRAFFIC_LIGHT]: "Traffic Light",
+    [WIDGET_TYPES.SOUND_MONITOR]: "Volume Level",
+    [WIDGET_TYPES.LINK_SHORTENER]: "Shorten Link",
+    [WIDGET_TYPES.TEXT_BANNER]: "Text Banner",
+    [WIDGET_TYPES.IMAGE_DISPLAY]: "Image Display",
+    [WIDGET_TYPES.SOUND_EFFECTS]: "Sound Effects",
+    [WIDGET_TYPES.POLL]: "Poll",
+    [WIDGET_TYPES.QRCODE]: "QR Code",
+    [WIDGET_TYPES.DATA_SHARE]: "Data Share",
+    [WIDGET_TYPES.VISUALISER]: "Visualiser"
+  };
 
-  // Component data indexed by widget type
-  interface ComponentData {
-    name: string;
-    icon: any; // React Icons type
-    requiresServer?: boolean;
-  }
-  const AllComponentData: ComponentData[] = [];
-  AllComponentData[WIDGET_TYPES.RANDOMISER] = { name: "Randomiser", icon: FaDice };
-  AllComponentData[WIDGET_TYPES.TIMER] = { name: "Timer", icon: FaClock };
-  AllComponentData[WIDGET_TYPES.LIST] = { name: "List", icon: FaListCheck };
-  AllComponentData[WIDGET_TYPES.TASK_CUE] = { name: "Task Cue", icon: FaUserGroup };
-  AllComponentData[WIDGET_TYPES.TRAFFIC_LIGHT] = { name: "Traffic Light", icon: FaTrafficLight };
-  AllComponentData[WIDGET_TYPES.SOUND_MONITOR] = { name: "Sound Monitor", icon: FaVolumeHigh };
-  AllComponentData[WIDGET_TYPES.LINK_SHORTENER] = { name: "Link Shortener", icon: FaLink };
-  AllComponentData[WIDGET_TYPES.TEXT_BANNER] = { name: "Text Banner", icon: FaTextWidth };
-  AllComponentData[WIDGET_TYPES.IMAGE_DISPLAY] = { name: "Image", icon: FaImage };
-  AllComponentData[WIDGET_TYPES.SOUND_EFFECTS] = { name: "Sound Effects", icon: FaMusic };
-  AllComponentData[WIDGET_TYPES.STAMP] = { name: "Stamp", icon: FaStamp };
-  AllComponentData[WIDGET_TYPES.POLL] = { name: "Poll", icon: FaChartColumn, requiresServer: true };
-  AllComponentData[WIDGET_TYPES.QRCODE] = { name: "QR Code", icon: FaQrcode };
-  AllComponentData[WIDGET_TYPES.DATA_SHARE] = { name: "Data Share", icon: FaPaperclip, requiresServer: true };
-  AllComponentData[WIDGET_TYPES.VISUALISER] = { name: "Visualiser", icon: FaVideo };
-  
-  // Use customized toolbar widget selection
-  const ToolbarComponentData = selectedToolbarWidgets.map((index: number) => AllComponentData[index]).filter(Boolean);
+  const formatTime = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return { displayHours, minutes, ampm };
+  };
+
+  const { displayHours, minutes, ampm } = formatTime(currentTime);
+  const showColon = currentTime.getSeconds() % 2 === 0;
+
+  const handleAddWidget = (widgetType: number) => {
+    if (!state.stickerMode) {
+      addWidget(widgetType);
+      setShowAllWidgets(false);
+    }
+  };
+
+  const handleResetWorkspace = () => {
+    resetWorkspace();
+    setShowMenu(false);
+  };
+
+  const handleBackgroundChange = (type: typeof backgroundOptions[number]) => {
+    setBackground(type);
+    setShowBackgroundMenu(false);
+    setShowMenu(false);
+  };
+
+  const handleCustomizeToolbar = () => {
+    setShowMenu(false);
+    showModal({
+      title: 'Customize Toolbar',
+      content: (
+        <CustomizeToolbarWrapper
+          customWidgets={customWidgets}
+          setCustomWidgets={setCustomWidgets}
+          widgetNames={widgetNames}
+          getWidgetIcon={getWidgetIcon}
+          onClose={hideModal}
+        />
+      ),
+      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl"
+    });
+  };
+
+  const handleToggleStickerMode = () => {
+    setStickerMode(!state.stickerMode);
+    setShowMenu(false);
+  };
+
+  const allWidgets = [
+    WIDGET_TYPES.RANDOMISER,
+    WIDGET_TYPES.TIMER,
+    WIDGET_TYPES.LIST,
+    WIDGET_TYPES.TASK_CUE,
+    WIDGET_TYPES.TRAFFIC_LIGHT,
+    WIDGET_TYPES.SOUND_MONITOR,
+    WIDGET_TYPES.LINK_SHORTENER,
+    WIDGET_TYPES.TEXT_BANNER,
+    WIDGET_TYPES.IMAGE_DISPLAY,
+    WIDGET_TYPES.SOUND_EFFECTS,
+    WIDGET_TYPES.POLL,
+    WIDGET_TYPES.QRCODE,
+    WIDGET_TYPES.DATA_SHARE,
+    WIDGET_TYPES.VISUALISER
+  ];
+
+  const otherWidgets = allWidgets.filter(widget => !customWidgets.includes(widget));
 
   return (
-    <>
-      <div className="w-[90%] flex items-end">
-        {/* Bump section for trash and more button - taller */}
-        <div className="bg-soft-white dark:bg-warm-gray-800 rounded-l-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 border-r-0 px-2 py-3 flex items-center gap-2" style={{ height: '60px' }}>
-            {/* Trash can - doubled in size */}
-            <div className="flex items-center justify-center p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded-lg transition-colors duration-200">
-              <svg
-                id="trash"
-                className={`w-10 h-10 cursor-pointer transition-all duration-200 flex-shrink-0 ${
-                  hoveringTrash 
-                    ? 'text-dusty-rose-500 transform scale-110' 
-                    : 'text-warm-gray-500 dark:text-warm-gray-400'
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </div>
-            
-            {/* More widgets button - doubled in size */}
+    <div className={`flex flex-col space-y-4 p-4 bg-warm-white dark:bg-warm-gray-900 shadow-sm ${state.activeWidgetId ? 'z-50' : 'z-50'} relative transition-colors duration-200`}>
+      {/* Main widget buttons */}
+      <div className="flex space-x-3 items-center">
+        {customWidgets.map((widgetType) => (
+          <button
+            key={widgetType}
+            onClick={() => handleAddWidget(widgetType)}
+            className={`p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative ${
+              hoveringTrash ? 'scale-95 opacity-50' : ''
+            } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={state.stickerMode || (widgetType === WIDGET_TYPES.POLL && !pollServerConnected)}
+            title={widgetNames[widgetType]}
+          >
+            <div className="text-xl">{getWidgetIcon(widgetType)}</div>
+            {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
+              <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
+            )}
+          </button>
+        ))}
+
+        {/* More widgets button */}
+        {otherWidgets.length > 0 && (
+          <div className="relative">
             <button
-              onClick={() => setLaunchpadOpen(true)}
-              className="px-4 py-3 bg-dusty-rose-500 text-white rounded-md hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 transition-colors duration-200 text-sm flex-shrink-0 inline-flex items-center gap-2"
+              ref={moreButtonRef}
+              onClick={() => setShowAllWidgets(!showAllWidgets)}
+              className={`p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 ${
+                state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              disabled={state.stickerMode}
               title="More widgets"
             >
-              {React.createElement(FaTableCells as any, { className: "w-6 h-6" })}
-              <span className="font-medium">More</span>
+              <FaTableCells className="text-xl" />
             </button>
-        </div>
-        
-        {/* Regular buttons section - shorter height */}
-        <div className="bg-soft-white dark:bg-warm-gray-800 rounded-r-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 border-l-0 flex-1 px-2 py-1.5 flex items-center" style={{ height: '40px' }}>
-          <div className="flex items-center gap-1.5 overflow-x-auto flex-1">
-            {ToolbarComponentData.map((component: ComponentData) => {
-            const Icon = component.icon;
-            // Find the actual index in AllComponentData
-            const actualIndex = AllComponentData.findIndex(c => c.name === component.name);
-            return (
-              <button
-                key={component.name}
-                onClick={() => {
-                  const element = document.getElementById(activeIndex!);
-                  if (element) {
-                    const { x, y } = element.getBoundingClientRect();
-                    if (x === 10 && y === 10) {
-                      setActiveIndex(null);
-                    }
-                  }
-                  const newId = uuidv4();
-                  setComponentList((e) => [...e, { id: newId, index: actualIndex }]);
-                  setActiveIndex(newId); // Set the new widget as active
-                }}
-                className="px-2 py-1 bg-sage-500 text-white rounded-md hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5"
+
+            {showAllWidgets && (
+              <div 
+                ref={moreWidgetsRef}
+                className="absolute top-full left-0 mt-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg p-4 z-50"
               >
-                <div className="relative inline-flex items-center">
-                  <Icon className="w-4 h-4" />
-                  {component.requiresServer && (
-                    React.createElement(FaWifi as any, { 
-                      className: "w-2 h-2 absolute -top-1 -right-1 text-amber-300" 
-                    })
-                  )}
-                </div>
-                <span>{component.name}</span>
-              </button>
-            );
-          })}
-          
-          {/* Sticker button */}
-          <button
-            onClick={() => showModal({
-              title: 'Sticker Palette',
-              content: (
-                <StickerPalette
-                  selectedStickerType={selectedStickerType}
-                  setSelectedStickerType={setSelectedStickerType}
-                  setStickerMode={setStickerMode}
-                  stickerMode={stickerMode}
-                  onClose={hideModal}
-                />
-              )
-            })}
-            className={`px-2 py-1 rounded-md transition-colors duration-200 text-xs flex-shrink-0 inline-flex items-center gap-1.5 ${
-              stickerMode 
-                ? 'bg-amber-500 text-white hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700' 
-                : 'bg-purple-500 text-white hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700'
-            }`}
-            title="Stickers"
-          >
-            {React.createElement(FaStamp as any, { className: "w-4 h-4" })}
-            <span>Sticker</span>
-          </button>
-          </div>
-          
-          {/* Menu button */}
-          <div className="relative ml-2 mr-4 menu-container">
-            <button
-              ref={menuButtonRef}
-              onClick={() => {
-                if (!menuOpen && menuButtonRef.current) {
-                  const rect = menuButtonRef.current.getBoundingClientRect();
-                  setMenuPosition({
-                    top: rect.top - 8, // 8px gap
-                    left: rect.right - 200 // Align to right edge minus menu width
-                  });
-                }
-                setMenuOpen(!menuOpen);
-              }}
-              className="p-1 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
-              title="Menu"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <line x1="4" y1="6" x2="20" y2="6" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="10" cy="6" r="2" fill="currentColor" />
-                <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="16" cy="12" r="2" fill="currentColor" />
-                <line x1="4" y1="18" x2="20" y2="18" strokeWidth="2" strokeLinecap="round" />
-                <circle cx="7" cy="18" r="2" fill="currentColor" />
-              </svg>
-            </button>
-          </div>
-          
-          {/* Popup menu - rendered as portal */}
-          {menuOpen && ReactDOM.createPortal(
-            <div 
-              className="fixed bg-soft-white dark:bg-warm-gray-800 border border-warm-gray-200 dark:border-warm-gray-700 rounded-lg shadow-lg py-2 min-w-[200px] menu-container"
-              style={{
-                top: `${menuPosition.top}px`,
-                left: `${menuPosition.left}px`,
-                transform: 'translateY(-100%)',
-                zIndex: 1000
-              }}
-            >
-              <button
-                onClick={() => {
-                  if (window.confirm('Are you sure you want to reset the workspace? This will remove all widgets.')) {
-                    setComponentList([]);
-                    setActiveIndex(null);
-                    setMenuOpen(false);
-                    localStorage.removeItem('workspaceState');
-                  }
-                }}
-                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
-              >
-                {React.createElement(FaArrowRotateLeft as any, { className: "w-4 h-4" })}
-                <span>Reset Workspace</span>
-              </button>
-              <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
-              <div className="px-4 py-2">
-                <div className="flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 mb-2">
-                  {React.createElement(FaPalette as any, { className: "w-4 h-4" })}
-                  <span className="font-medium">Background</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => {
-                      setBackgroundType('geometric');
-                      setMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
-                      backgroundType === 'geometric' 
-                        ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                    }`}
-                  >
-                    Geometric
-                  </button>
-                  <button
-                    onClick={() => {
-                      setBackgroundType('gradient');
-                      setMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
-                      backgroundType === 'gradient' 
-                        ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                    }`}
-                  >
-                    Gradient
-                  </button>
-                  <button
-                    onClick={() => {
-                      setBackgroundType('lines');
-                      setMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
-                      backgroundType === 'lines' 
-                        ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                    }`}
-                  >
-                    Lines
-                  </button>
-                  <button
-                    onClick={() => {
-                      setBackgroundType('dots');
-                      setMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-sm rounded-md border transition-colors duration-150 ${
-                      backgroundType === 'dots' 
-                        ? 'bg-sage-500 text-white border-sage-600' 
-                        : 'bg-white dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-200 border-warm-gray-300 dark:border-warm-gray-600 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                    }`}
-                  >
-                    Dots
-                  </button>
+                <div className="grid grid-cols-3 gap-2 min-w-[200px]">
+                  {otherWidgets.map((widgetType) => (
+                    <button
+                      key={widgetType}
+                      onClick={() => handleAddWidget(widgetType)}
+                      className={`flex flex-col items-center p-3 rounded hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors ${
+                        widgetType === WIDGET_TYPES.POLL && !pollServerConnected ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                      disabled={widgetType === WIDGET_TYPES.POLL && !pollServerConnected}
+                      title={widgetNames[widgetType]}
+                    >
+                      <div className="text-2xl mb-1 text-warm-gray-700 dark:text-warm-gray-300 relative">
+                        {getWidgetIcon(widgetType)}
+                        {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
+                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-xs text-warm-gray-600 dark:text-warm-gray-400 text-center">
+                        {widgetNames[widgetType]}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
-              <button
-                onClick={() => {
-                  showModal({
-                    title: 'Customize Toolbar',
-                    content: (
-                      <CustomizeToolbarWrapper
-                        selectedToolbarWidgets={selectedToolbarWidgets}
-                        setSelectedToolbarWidgets={setSelectedToolbarWidgets}
-                        AllComponentData={AllComponentData}
-                        onClose={hideModal}
-                      />
-                    )
-                  });
-                  setMenuOpen(false);
-                }}
-                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
-              >
-                {React.createElement(FaWrench as any, { className: "w-4 h-4" })}
-                <span>Customize Toolbar</span>
-              </button>
-              <div className="border-t border-warm-gray-200 dark:border-warm-gray-600 my-2"></div>
-              <button
-                onClick={() => {
-                  setDarkMode(!darkMode);
-                  setMenuOpen(false);
-                }}
-                className="w-full px-4 py-2 text-left hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center gap-3 text-warm-gray-700 dark:text-warm-gray-200 transition-colors duration-150"
-              >
-                {darkMode ? React.createElement(FaSun as any, { className: "w-4 h-4" }) : React.createElement(FaMoon as any, { className: "w-4 h-4" })}
-                <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
-              </button>
-            </div>,
-            document.body
-          )}
-          
-          <div className="flex items-center ml-auto">
-            <div className="bg-warm-gray-200 dark:bg-warm-gray-900 text-terracotta-600 dark:text-sage-400 px-2 py-0.5 rounded font-mono text-xs tracking-wider whitespace-nowrap">
-              {formattedTime.split(':').map((part, index) => (
-                <React.Fragment key={index}>
-                  {index > 0 && (
-                    <span className={`${colonVisible ? 'opacity-100' : 'opacity-0'} transition-opacity duration-100`}>
-                      :
-                    </span>
-                  )}
-                  <span>{part}</span>
-                </React.Fragment>
-              ))}
-            </div>
+            )}
           </div>
-        </div>
-      </div>
-      
-      {/* Launchpad Dialog */}
-      {launchpadOpen && ReactDOM.createPortal(
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"
-        onClick={() => setLaunchpadOpen(false)}
-      >
-        <div 
-          ref={launchpadContentRef}
-          className="bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-6 max-w-3xl max-h-[80vh] overflow-auto"
-          onClick={(e) => e.stopPropagation()}
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Sticker Mode Toggle */}
+        <button
+          onClick={handleToggleStickerMode}
+          className={`p-3 rounded-lg transition-all duration-200 ${
+            state.stickerMode 
+              ? 'bg-terracotta-500 text-white hover:bg-terracotta-600' 
+              : 'text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700'
+          }`}
+          title={state.stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
         >
-          <div className="flex justify-end mb-4">
+          <FaStamp className="text-xl" />
+        </button>
+
+        {/* Clock */}
+        <div className="flex items-center px-4 py-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm">
+          <span className="font-mono text-lg text-warm-gray-700 dark:text-warm-gray-300">
+            {displayHours}
+            <span className={`${showColon ? 'opacity-100' : 'opacity-0'} transition-opacity duration-100`}>:</span>
+            {minutes} {ampm}
+          </span>
+        </div>
+
+        {/* Connection indicator */}
+        <div className={`p-3 rounded-lg ${isConnected ? 'text-sage-600 dark:text-sage-400' : 'text-dusty-rose-600 dark:text-dusty-rose-400'}`}>
+          <FaWifi className="text-xl" />
+        </div>
+
+        {/* Menu button */}
+        <button
+          ref={menuButtonRef}
+          onClick={() => setShowMenu(!showMenu)}
+          className="p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors relative"
+          title="Menu"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+          </svg>
+        </button>
+
+        {/* Menu dropdown */}
+        {showMenu && (
+          <div
+            ref={menuRef}
+            className="absolute right-4 top-full mt-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 z-[100] min-w-[200px]"
+          >
             <button
-              onClick={() => setLaunchpadOpen(false)}
-              className="text-warm-gray-500 hover:text-warm-gray-700 text-2xl"
+              onClick={handleResetWorkspace}
+              className="w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center space-x-2"
             >
-              ×
+              <FaArrowRotateLeft className="text-sm" />
+              <span>Reset Workspace</span>
+            </button>
+            
+            <div className="relative">
+              <button
+                onClick={() => setShowBackgroundMenu(!showBackgroundMenu)}
+                className="w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center space-x-2"
+              >
+                <FaPalette className="text-sm" />
+                <span>Background</span>
+                <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {showBackgroundMenu && (
+                <div className="absolute left-full top-0 ml-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 min-w-[150px]">
+                  {backgroundOptions.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleBackgroundChange(option)}
+                      className={`w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 capitalize ${
+                        state.backgroundType === option ? 'bg-warm-gray-100 dark:bg-warm-gray-700' : ''
+                      }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={handleCustomizeToolbar}
+              className="w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center space-x-2"
+            >
+              <FaWrench className="text-sm" />
+              <span>Customize Toolbar</span>
+            </button>
+            
+            <div className="border-t border-warm-gray-200 dark:border-warm-gray-700 my-2" />
+            
+            <button
+              onClick={() => {
+                setDarkMode(!darkMode);
+                setShowMenu(false);
+              }}
+              className="w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center space-x-2"
+            >
+              {darkMode ? <FaSun className="text-sm" /> : <FaMoon className="text-sm" />}
+              <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
             </button>
           </div>
-          
-          <div className="grid grid-cols-4 gap-2">
-            {Object.entries(WIDGET_TYPES).map(([key, widgetType]) => {
-              const component = AllComponentData[widgetType];
-              if (!component) return null;
-              const Icon = component.icon;
-              return (
-                <button
-                  key={widgetType}
-                  onClick={() => {
-                    const newId = uuidv4();
-                    setComponentList((e) => [...e, { id: newId, index: widgetType }]);
-                    setActiveIndex(newId);
-                    setLaunchpadOpen(false);
-                  }}
-                  className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group"
-                >
-                  <div className={`relative w-16 h-16 rounded-xl flex items-center justify-center transition-colors duration-200 ${
-                    [WIDGET_TYPES.RANDOMISER, WIDGET_TYPES.TRAFFIC_LIGHT, WIDGET_TYPES.TEXT_BANNER].includes(widgetType) ? 'bg-dusty-rose-500 group-hover:bg-dusty-rose-600' :
-                    [WIDGET_TYPES.TIMER, WIDGET_TYPES.TASK_CUE, WIDGET_TYPES.IMAGE_DISPLAY].includes(widgetType) ? 'bg-terracotta-500 group-hover:bg-terracotta-600' :
-                    'bg-sage-600 group-hover:bg-sage-700'
-                  }`}>
-                    <Icon className="w-8 h-8 text-white" />
-                    {component.requiresServer && (
-                      React.createElement(FaWifi as any, { 
-                        className: "w-3 h-3 absolute top-1 right-1 text-amber-300" 
-                      })
-                    )}
-                  </div>
-                  <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200">{component.name}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>,
-      document.body
-    )}
-    </>
-  );
+        )}
+      </div>
 
+      {/* Sticker Palette */}
+      {state.stickerMode && ReactDOM.createPortal(
+        <StickerPalette
+          selectedStickerType={state.selectedStickerType}
+          setSelectedStickerType={(type: string) => setStickerMode(true, type)}
+          setStickerMode={setStickerMode}
+          stickerMode={state.stickerMode}
+          onClose={() => setStickerMode(false)}
+        />,
+        document.body
+      )}
+    </div>
+  );
 }

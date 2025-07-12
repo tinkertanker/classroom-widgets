@@ -6,7 +6,7 @@ import Confetti from "react-confetti";
 import { BackgroundType } from "./types/app.types";
 
 // Components
-import ToolbarAdapter from "./components/toolbar/ToolbarAdapter";
+import Toolbar from "./components/toolbar/toolbar";
 import Board from "./components/Board/Board";
 import WidgetContainer from "./components/Widget/WidgetContainer";
 import Background from "./components/backgrounds/backgrounds";
@@ -227,7 +227,7 @@ function AppContent() {
           
           {/* Fixed toolbar */}
           <div className="toolbar-container">
-            <ToolbarAdapter
+            <Toolbar
               darkMode={darkMode}
               setDarkMode={setDarkMode}
               hoveringTrash={hoveringTrashId}
