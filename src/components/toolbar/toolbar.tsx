@@ -70,16 +70,16 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const moreWidgetsRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const [pollServerConnected, setPollServerConnected] = useState(false);
+  const [serverConnected, setServerConnected] = useState(false);
 
-  // Check poll server connection
+  // Check server connection (used by Poll and Data Share widgets)
   useEffect(() => {
     const checkConnection = async () => {
       try {
         const response = await fetch('http://localhost:3001/health');
-        setPollServerConnected(response.ok);
+        setServerConnected(response.ok);
       } catch (error) {
-        setPollServerConnected(false);
+        setServerConnected(false);
       }
     };
     
@@ -320,14 +320,14 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
                       key={widgetType}
                       onClick={() => handleAddWidget(widgetType)}
                       className={`flex flex-col items-center p-3 rounded hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors ${
-                        widgetType === WIDGET_TYPES.POLL && !pollServerConnected ? 'opacity-50 cursor-not-allowed' : ''
+                        (widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
-                      disabled={widgetType === WIDGET_TYPES.POLL && !pollServerConnected}
+                      disabled={(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected}
                       title={widgetNames[widgetType]}
                     >
                       <div className="text-2xl mb-1 text-warm-gray-700 dark:text-warm-gray-300 relative">
                         {getWidgetIcon(widgetType)}
-                        {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
+                        {(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected && (
                           <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" />
                         )}
                       </div>
@@ -352,12 +352,12 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative flex flex-col items-center gap-1 min-w-[80px] ${
               hoveringTrash ? 'scale-95 opacity-50' : ''
             } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={state.stickerMode || (widgetType === WIDGET_TYPES.POLL && !pollServerConnected)}
+            disabled={state.stickerMode || ((widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected)}
             title={widgetNames[widgetType]}
           >
             <div className="text-lg relative">
               {getWidgetIcon(widgetType)}
-              {widgetType === WIDGET_TYPES.POLL && !pollServerConnected && (
+              {(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected && (
                 <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
               )}
             </div>
