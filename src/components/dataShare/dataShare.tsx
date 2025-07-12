@@ -141,7 +141,7 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
               </p>
               <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-3 mb-2">
                 <p className="text-lg font-mono text-warm-gray-800 dark:text-warm-gray-200">
-                  localhost:3001/share
+                  localhost:3001
                 </p>
               </div>
               <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-2">

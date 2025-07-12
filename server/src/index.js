@@ -31,15 +31,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// Legacy share routes redirect to root with code parameter
-app.get('/share', (req, res) => {
-  res.redirect('/');
-});
-
-app.get('/share/:code', (req, res) => {
-  res.redirect(`/?code=${req.params.code}`);
-});
-
 // Store active rooms/sessions
 const rooms = new Map();
 
