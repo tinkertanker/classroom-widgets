@@ -508,27 +508,22 @@
       }
     });
 
-    // Custom event for data share room validation
-    socket.on('dataShare:roomValid', () => {
-      roomType = 'data-share';
-      showActivity('data-share');
-      // Pre-fill name if provided
-      const nameInput = document.getElementById('name').value;
-      if (nameInput) {
-        document.getElementById('studentName').value = nameInput;
-      }
-    });
-
-    socket.on('dataShare:checkRoom', (data) => {
+    // Handle data share room validation
+    socket.on('dataShare:roomValid', (data) => {
       if (data.code === roomCode) {
-        // Room exists as data share room
         roomType = 'data-share';
         showActivity('data-share');
+        // Pre-fill name if provided
         const nameInput = document.getElementById('name').value;
         if (nameInput) {
           document.getElementById('studentName').value = nameInput;
         }
-      } else {
+      }
+    });
+
+    socket.on('dataShare:checkRoom', (data) => {
+      if (data.code === null) {
+        // Room not found as data share room either
         errorDiv.textContent = 'Room not found or invalid';
         joinBtn.disabled = false;
         joinBtn.textContent = 'Join Activity';
