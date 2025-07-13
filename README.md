@@ -24,7 +24,7 @@ classroom-widgets/
    cd server && npm install             # Server
    cd src/student && npm install        # Student app
    ```
-3. Copy `src/secrets/shortioKey.example.js` to `src/secrets/shortioKey.js` and enter the Short.io API key
+3. (Optional) Copy `.env.example` to `.env` and set `VITE_SHORTIO_API_KEY` for link shortening
 
 ## Quick Start
 

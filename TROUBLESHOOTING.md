@@ -51,9 +51,9 @@ node --version
 echo -n "NPM Version: "
 npm --version
 
-# Check for required files
-echo -n "Short.io Key: "
-if [ -f "src/secrets/shortioKey.js" ]; then
+# Check for configuration files
+echo -n "Environment config: "
+if [ -f ".env" ]; then
     echo "✓ Found"
 else
     echo "✗ Missing"
@@ -290,10 +290,9 @@ fi
 **Solutions:**
 
 1. **Verify API key**:
-   ```javascript
-   // src/secrets/shortioKey.js
-   const shortioKey = 'your-actual-key';
-   export default shortioKey;
+   ```bash
+   # Check .env file has your Short.io API key
+   VITE_SHORTIO_API_KEY=your-actual-key
    ```
 
 2. **CORS issues** (production only):

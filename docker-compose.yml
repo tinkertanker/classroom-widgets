@@ -21,6 +21,7 @@ services:
     ports:
       - "3001:3001"
     environment:
+      - NODE_ENV=production
       - PORT=3001
       - CORS_ORIGINS=http://localhost:3000,http://localhost
     networks:

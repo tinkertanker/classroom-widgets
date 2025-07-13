@@ -26,9 +26,9 @@ cd classroom-widgets
 cp .env.production.example .env.production
 cp server/.env.production.example server/.env.production
 
-# Add Short.io API key
-cp src/secrets/shortioKey.example.js src/secrets/shortioKey.js
-# Edit and add your API key
+# Add Short.io API key (optional - for Link Shortener widget)
+cp .env.example .env
+# Edit .env and set VITE_SHORTIO_API_KEY to your API key
 ```
 
 ### 2. Deploy
@@ -152,7 +152,7 @@ tar -czf $BACKUP_DIR/backup_$DATE.tar.gz \
   docker-compose*.yml \
   .env.production \
   server/.env.production \
-  src/secrets/shortioKey.js
+  .env
 
 find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 ```

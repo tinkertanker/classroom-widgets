@@ -23,8 +23,8 @@ const checks = [
     required: true
   },
   {
-    name: 'Short.io API key',
-    path: './src/secrets/shortioKey.js',
+    name: 'Environment configuration',
+    path: './.env',
     required: false
   },
   {

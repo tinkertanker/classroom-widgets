@@ -1,8 +1,22 @@
 # Frontend Dockerfile
-FROM node:18-alpine as build
+FROM node:20-alpine as build
 
 # Build arguments for environment variables
 ARG VITE_SERVER_URL=http://localhost:3001
+
+# Install build dependencies for canvas and other native modules
+RUN apk add --no-cache \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    python3 \
+    make \
+    g++
 
 # Set working directory
 WORKDIR /app
@@ -11,7 +25,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install all dependencies (including dev dependencies for build)
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .

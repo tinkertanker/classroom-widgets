@@ -29,9 +29,10 @@ npm test           # Run tests in watch mode (Jest + React Testing Library)
 # Building
 npm build          # Create production build in ./build folder
 
-# Setup (required before first run)
-cp src/secrets/shortioKey.example.js src/secrets/shortioKey.js
-# Then add your Short.io API key to shortioKey.js
+# Setup (optional - for Link Shortener widget)
+# Copy .env.example to .env and add your Short.io API key
+cp .env.example .env
+# Then edit .env and set VITE_SHORTIO_API_KEY to your API key
 ```
 
 ## Architecture

@@ -72,10 +72,11 @@ PORT=3001
 CORS_ORIGINS=https://widgets.tk.sg
 ```
 
-### 3. Configure Short.io API Key
+### 3. Configure Short.io API Key (Optional)
 ```bash
-cp src/secrets/shortioKey.example.js src/secrets/shortioKey.js
-# Edit the file and add your API key
+# Copy environment template
+cp .env.example .env
+# Edit .env and set VITE_SHORTIO_API_KEY to your API key
 ```
 
 ### 4. Deploy with Docker Compose
