@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import io, { Socket } from 'socket.io-client';
+import React, { useState } from 'react';
 import { useModal } from '../../contexts/ModalContext';
+import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
+import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
+import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import PollSettings from './PollSettings';
 import { FaPlay, FaStop } from 'react-icons/fa6';
 
@@ -23,8 +25,6 @@ interface PollResults {
 }
 
 function Poll({ widgetId, savedState, onStateChange }: PollProps) {
-  const [roomCode, setRoomCode] = useState<string>('');
-  const [isConnected, setIsConnected] = useState(false);
   const [pollData, setPollData] = useState<PollData>({
     question: '',
     options: ['', ''],
@@ -36,80 +36,21 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     participantCount: 0
   });
   const [participantCount, setParticipantCount] = useState(0);
-  const [connectionError, setConnectionError] = useState<string>('');
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
   
   const { showModal, hideModal } = useModal();
-
-  // Cleanup socket on unmount
-  useEffect(() => {
-    return () => {
-      if (socket && roomCode) {
-        if (socket.connected) {
-          socket.emit('host:closeRoom', { code: roomCode, type: 'poll' });
-        }
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
-      }
-    };
-  }, [socket, roomCode]);
   
-  // Handle widget deletion cleanup
-  useEffect(() => {
-    const handleWidgetCleanup = (event: CustomEvent) => {
-      if (event.detail.widgetId === widgetId && socket && roomCode) {
-        console.log('Poll widget cleanup triggered for room:', roomCode);
-        
-        // If socket is connected, send the close event
-        if (socket.connected) {
-          socket.emit('host:closeRoom', { code: roomCode, type: 'poll' });
-          console.log('Sent host:closeRoom event');
-        }
-        
-        // Give it a moment to send, then disconnect
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
-      }
-    };
-    
-    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
-    
-    return () => {
-      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
-    };
-  }, [widgetId, socket, roomCode]);
-
-  // Create room and get code
-  const createRoom = async () => {
-    setIsConnecting(true);
-    setConnectionError('');
-    
-    try {
-      const newSocket = io('http://localhost:3001', {
-        transports: ['websocket', 'polling']
-      });
-
-      newSocket.on('connect', () => {
-        console.log('Connected to server');
-        setConnectionError('');
-      });
-
-      newSocket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        setConnectionError('Unable to connect to server. Make sure the server is running on port 3001.');
-        setIsConnecting(false);
-      });
-
-      newSocket.on('host:joined', (data) => {
-        if (data.success) {
-          setIsConnected(true);
-          console.log('Joined room:', data.code);
-        }
-      });
-
+  const {
+    socket,
+    roomCode,
+    isConnecting,
+    connectionError,
+    isConnected,
+    createRoom
+  } = useNetworkedWidget({
+    widgetId,
+    roomType: 'poll',
+    onSocketConnected: (newSocket) => {
+      // Set up poll-specific socket listeners
       newSocket.on('participant:count', (data) => {
         setParticipantCount(data.count);
       });
@@ -117,46 +58,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       newSocket.on('results:update', (data) => {
         setResults(data);
       });
-
-      newSocket.on('disconnect', () => {
-        console.log('Disconnected from server');
-      });
-
-      setSocket(newSocket);
-      
-      // Wait for connection before creating room
-      newSocket.once('connect', async () => {
-        try {
-          const response = await fetch('http://localhost:3001/api/rooms/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          if (!response.ok) {
-            throw new Error('Server request failed');
-          }
-          
-          const data = await response.json();
-          
-          if (data.success) {
-            setRoomCode(data.code);
-            // Join room as host
-            newSocket.emit('host:join', data.code);
-            setIsConnecting(false);
-          }
-        } catch (error) {
-          console.error('Failed to create room:', error);
-          setConnectionError('Cannot connect to server. Please ensure the server is running (cd server && npm start).');
-          setIsConnecting(false);
-          newSocket.disconnect();
-        }
-      });
-    } catch (error) {
-      console.error('Error creating socket:', error);
-      setConnectionError('Failed to connect to server');
-      setIsConnecting(false);
     }
-  };
+  });
+
 
   // Toggle poll active state
   const togglePoll = () => {
@@ -213,42 +117,19 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
       {!roomCode ? (
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <p className="text-warm-gray-600 dark:text-warm-gray-400 mb-4">
-            Create a room to start a poll
-          </p>
-          <button
-            onClick={(_e) => {
-              createRoom();
-            }}
-            disabled={isConnecting}
-            className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isConnecting ? 'Connecting...' : 'Create Poll Room'}
-          </button>
-          {connectionError && (
-            <div className="mt-4 p-3 bg-dusty-rose-100 dark:bg-dusty-rose-900 border border-dusty-rose-300 dark:border-dusty-rose-700 rounded-md max-w-sm">
-              <p className="text-sm text-dusty-rose-700 dark:text-dusty-rose-300">
-                {connectionError}
-              </p>
-              <p className="text-xs text-dusty-rose-600 dark:text-dusty-rose-400 mt-2">
-                Start the server with: <code className="bg-dusty-rose-200 dark:bg-dusty-rose-800 px-1 rounded">cd server && npm start</code>
-              </p>
-            </div>
-          )}
-        </div>
+        <NetworkedWidgetEmpty
+          title="Poll"
+          description="Create real-time polls for your students"
+          icon="📊"
+          connectionError={connectionError}
+          isConnecting={isConnecting}
+          onCreateRoom={createRoom}
+          createButtonText="Create Poll Room"
+        />
       ) : (
         <>
-          {/* Header Section */}
-          <div className="mb-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Activity Code</p>
-                <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
-                  {roomCode}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
+          <NetworkedWidgetHeader roomCode={roomCode}>
+            <div className="flex items-center gap-2">
                 <button
                   onClick={(_e) => {
                     togglePoll();
@@ -281,14 +162,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                 >
                   Settings
                 </button>
-              </div>
             </div>
-            <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-2 text-center">
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">localhost/student</span>
-              </p>
-            </div>
-          </div>
+          </NetworkedWidgetHeader>
           
           {/* Content Section */}
           <div className={`flex-1 overflow-y-auto ${!pollData.isActive ? 'opacity-50' : ''}`}>

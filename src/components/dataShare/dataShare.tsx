@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import io, { Socket } from 'socket.io-client';
+import React, { useState, useEffect } from 'react';
+import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
+import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
+import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 
 interface DataShareProps {
   widgetId?: string;
@@ -18,13 +20,31 @@ interface Submission {
 }
 
 const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChange }) => {
-  const [roomCode, setRoomCode] = useState<string>(savedState?.roomCode || '');
   const [submissions, setSubmissions] = useState<Submission[]>(savedState?.submissions || []);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [connectionError, setConnectionError] = useState<string>('');
-  const [isConnecting, setIsConnecting] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  
+  const {
+    socket,
+    roomCode,
+    isConnecting,
+    connectionError,
+    createRoom
+  } = useNetworkedWidget({
+    widgetId,
+    roomType: 'dataShare',
+    onSocketConnected: (newSocket) => {
+      // Set up dataShare-specific socket listeners
+      newSocket.on('dataShare:newSubmission', (submission: Submission) => {
+        console.log('New submission received:', submission);
+        setSubmissions(prev => [...prev, submission]);
+      });
+
+      newSocket.on('dataShare:submissionDeleted', (submissionId: string) => {
+        setSubmissions(prev => prev.filter(s => s.id !== submissionId));
+      });
+    }
+  });
 
   // Update parent state
   useEffect(() => {
@@ -34,53 +54,6 @@ const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChan
   }, [roomCode, submissions, onStateChange]);
 
 
-  const createRoom = async () => {
-    setIsConnecting(true);
-    setConnectionError('');
-    
-    try {
-      const newSocket = io('http://localhost:3001', {
-        transports: ['websocket', 'polling']
-      });
-
-      newSocket.on('connect', () => {
-        console.log('Connected to server');
-        newSocket.emit('host:createDataShareRoom');
-      });
-
-      newSocket.on('room:created', (code: string) => {
-        console.log('Data share room created:', code);
-        setRoomCode(code);
-        setConnectionError('');
-      });
-
-      newSocket.on('dataShare:newSubmission', (submission: Submission) => {
-        console.log('New submission received:', submission);
-        setSubmissions(prev => [...prev, submission]);
-      });
-
-      newSocket.on('dataShare:submissionDeleted', (submissionId: string) => {
-        setSubmissions(prev => prev.filter(s => s.id !== submissionId));
-      });
-
-      newSocket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        setConnectionError('Unable to connect to server. Make sure the server is running on port 3001.');
-        setIsConnecting(false);
-      });
-
-      newSocket.on('disconnect', () => {
-        console.log('Disconnected from server');
-      });
-
-      setSocket(newSocket);
-    } catch (error) {
-      console.error('Error creating socket:', error);
-      setConnectionError('Failed to connect to server');
-    } finally {
-      setIsConnecting(false);
-    }
-  };
 
 
   const deleteSubmission = (submissionId: string) => {
@@ -103,83 +76,24 @@ const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChan
     setTimeout(() => setCopiedId(null), 2000);
   };
   
-  // Handle widget deletion cleanup
-  useEffect(() => {
-    const handleWidgetCleanup = (event: CustomEvent) => {
-      if (event.detail.widgetId === widgetId && socket && roomCode) {
-        console.log('DataShare widget cleanup triggered for room:', roomCode);
-        
-        // If socket is connected, send the close event
-        if (socket.connected) {
-          socket.emit('host:closeRoom', { code: roomCode, type: 'dataShare' });
-          console.log('Sent host:closeRoom event');
-        }
-        
-        // Give it a moment to send, then disconnect
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
-      }
-    };
-    
-    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
-    
-    return () => {
-      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
-      // Also cleanup on unmount
-      if (socket && roomCode) {
-        if (socket.connected) {
-          socket.emit('host:closeRoom', { code: roomCode, type: 'dataShare' });
-        }
-        setTimeout(() => {
-          socket.disconnect();
-        }, 100);
-      }
-    };
-  }, [widgetId, socket, roomCode]);
 
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
       {!roomCode ? (
-        // No room state
-        <div className="flex flex-col h-full justify-center items-center">
-          <div className="text-center space-y-4">
-            <div className="text-6xl mb-4">📎</div>
-            <h2 className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300">
-              Data Share
-            </h2>
-            <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-              Students can share links with you
-            </p>
-            {connectionError && (
-              <p className="text-dusty-rose-500 dark:text-dusty-rose-400 text-xs">
-                {connectionError}
-              </p>
-            )}
-            <button
-              onClick={(_e) => {
-                createRoom();
-              }}
-              disabled={isConnecting}
-              className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isConnecting ? 'Connecting...' : 'Create Share Room'}
-            </button>
-          </div>
-        </div>
+        <NetworkedWidgetEmpty
+          title="Data Share"
+          description="Students can share links with you"
+          icon="📎"
+          connectionError={connectionError}
+          isConnecting={isConnecting}
+          onCreateRoom={createRoom}
+          createButtonText="Create Share Room"
+        />
       ) : (
         // Active room state
         <div className="flex flex-col h-full">
-          {/* Header Section */}
-          <div className="mb-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Activity Code</p>
-                <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
-                  {roomCode}
-                </p>
-              </div>
-              {submissions.length > 0 && (
+          <NetworkedWidgetHeader roomCode={roomCode}>
+            {submissions.length > 0 && (
                 <button
                   onClick={(_e) => {
                     clearAllSubmissions();
@@ -188,14 +102,8 @@ const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChan
                 >
                   Clear All
                 </button>
-              )}
-            </div>
-            <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-2 text-center">
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">localhost/student</span>
-              </p>
-            </div>
-          </div>
+            )}
+          </NetworkedWidgetHeader>
 
           {/* Content Section */}
           <div className="flex-1 overflow-y-auto border border-warm-gray-200 dark:border-warm-gray-700 rounded-lg">
