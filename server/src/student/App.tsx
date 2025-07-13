@@ -17,6 +17,8 @@ interface JoinedRoom {
 
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
+  const [leavingRooms, setLeavingRooms] = useState<Set<string>>(new Set());
+  const [enteringRooms, setEnteringRooms] = useState<Set<string>>(new Set());
   const [studentName, setStudentName] = useState(() => {
     // Try to get saved name from localStorage
     return localStorage.getItem('studentName') || '';
@@ -32,7 +34,12 @@ const App: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
   const headerRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(180);
+  
+  // Constants for header behavior
+  const SCROLL_THRESHOLD_ENTER = 100; // pixels before header becomes compact
+  const SCROLL_THRESHOLD_EXIT = 50; // pixels before header exits compact mode (hysteresis)
+  const COMPACT_HEADER_HEIGHT_MOBILE = 56; // height in pixels for mobile compact mode
+  const DEFAULT_HEADER_HEIGHT = 180; // default height estimate
 
   // Save student name to localStorage when it changes
   useEffect(() => {
@@ -55,45 +62,75 @@ const App: React.FC = () => {
     setIsDarkMode(prev => !prev);
   };
 
-  // Handle scroll detection
+
+  // Handle scroll state updates with throttling and hysteresis
   useEffect(() => {
+    let rafId: number | null = null;
+    
     const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      setIsScrolled(scrollPosition > 100); // Trigger after 100px of scrolling
+      if (rafId) return; // Throttle updates
+      
+      rafId = requestAnimationFrame(() => {
+        const scrollPosition = window.scrollY;
+        
+        setIsScrolled(prevIsScrolled => {
+          // Hysteresis: different thresholds for entering and exiting compact mode
+          if (!prevIsScrolled && scrollPosition > SCROLL_THRESHOLD_ENTER) {
+            return true; // Enter compact mode
+          } else if (prevIsScrolled && scrollPosition < SCROLL_THRESHOLD_EXIT) {
+            return false; // Exit compact mode
+          }
+          return prevIsScrolled; // No change
+        });
+        
+        rafId = null;
+      });
     };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Check initial scroll position
-
+    
+    // Initial check
+    handleScroll();
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
     return () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
-
-  // Measure header height
+  
+  // Handle header height measurements with ResizeObserver
   useEffect(() => {
-    const measureHeader = () => {
-      if (headerRef.current) {
-        const height = headerRef.current.offsetHeight;
-        setHeaderHeight(height);
-        // Set CSS variable for spacer
-        document.documentElement.style.setProperty('--header-height', `${height}px`);
+    if (!headerRef.current) return;
+    
+    const updateHeaderHeight = () => {
+      if (!headerRef.current) return;
+      
+      const height = headerRef.current.offsetHeight;
+      const isMobile = window.innerWidth <= 640;
+      
+      // Apply different heights based on state and device
+      const finalHeight = (isMobile && isScrolled) 
+        ? COMPACT_HEADER_HEIGHT_MOBILE 
+        : height;
         
-        // Special handling for mobile compact mode
-        const isMobile = window.innerWidth <= 640;
-        if (isMobile && isScrolled) {
-          document.documentElement.style.setProperty('--header-height', '42px');
-        }
-      }
+      document.documentElement.style.setProperty('--header-height', `${finalHeight}px`);
     };
-
-    measureHeader();
-    window.addEventListener('resize', measureHeader);
-
+    
+    // Use ResizeObserver for accurate measurements
+    const resizeObserver = new ResizeObserver(updateHeaderHeight);
+    resizeObserver.observe(headerRef.current);
+    
+    // Also update on window resize for responsive changes
+    window.addEventListener('resize', updateHeaderHeight);
+    updateHeaderHeight(); // Initial measurement
+    
     return () => {
-      window.removeEventListener('resize', measureHeader);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateHeaderHeight);
     };
-  }, [isScrolled]); // Re-measure when compact state changes
+  }, [isScrolled]); // Re-measure when scroll state changes
 
   // Cleanup sockets on unmount
   useEffect(() => {
@@ -156,6 +193,18 @@ const App: React.FC = () => {
           
           // Add to beginning of array (newest first)
           setJoinedRooms(prev => [newRoom, ...prev]);
+          
+          // Add to entering set for animation
+          setEnteringRooms(prev => new Set(prev).add(roomId));
+          
+          // Remove from entering set after animation
+          setTimeout(() => {
+            setEnteringRooms(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(roomId);
+              return newSet;
+            });
+          }, 50); // Short delay to trigger animation
         } else {
           // Clean up on failure
           newSocket.close();
@@ -174,19 +223,42 @@ const App: React.FC = () => {
   };
 
   const handleLeaveRoom = (roomId: string) => {
+    // Add room to leaving set to trigger animation
+    setLeavingRooms(prev => new Set(prev).add(roomId));
+    
+    // Close socket connection
     const socket = socketRefs.current.get(roomId);
     if (socket) {
       socket.close();
       socketRefs.current.delete(roomId);
     }
     
-    setJoinedRooms(prev => prev.filter(room => room.id !== roomId));
+    // Remove room after animation completes
+    setTimeout(() => {
+      setJoinedRooms(prev => prev.filter(room => room.id !== roomId));
+      setLeavingRooms(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(roomId);
+        return newSet;
+      });
+    }, 300); // Match animation duration
   };
 
   return (
     <div className="min-h-screen bg-[#f7f5f2] font-sans">
       {/* Sticky header with join form */}
-      <div ref={headerRef} className={`fixed top-0 left-0 right-0 z-[100] bg-soft-white rounded-b-lg shadow-sm border border-warm-gray-200 border-t-0 transition-all duration-300 ${isScrolled ? 'p-3 md:px-6 shadow-md' : 'p-6'}`}>
+      <div 
+        ref={headerRef} 
+        className={`
+          fixed top-0 left-0 right-0 z-[100] 
+          bg-soft-white rounded-b-lg border border-warm-gray-200 border-t-0
+          transition-all duration-300 ease-in-out
+          ${isScrolled 
+            ? 'p-3 md:px-6 shadow-md' 
+            : 'p-6 shadow-sm'
+          }
+        `}
+      >
         <JoinForm 
           onJoin={handleJoin} 
           defaultName={studentName}
@@ -197,15 +269,39 @@ const App: React.FC = () => {
         />
       </div>
       
-      {/* Spacer to prevent content from going under fixed header */}
-      <div style={{ height: `${headerHeight}px` }} className="transition-[height] duration-300" />
+      {/* Main content wrapper with minimum height */}
+      <div className="min-h-screen flex flex-col">
+        {/* Spacer to prevent content from going under fixed header */}
+        <div 
+          style={{ height: 'var(--header-height, 180px)' }} 
+          className="transition-[height] duration-300 ease-in-out flex-shrink-0" 
+        />
 
-      {/* Joined rooms list */}
-      {joinedRooms.length > 0 && (
-        <div className="mt-8 px-4">
-          <div className="flex flex-col gap-4 max-w-[800px] mx-auto">
+        {/* Content area with flex-grow and minimum height to ensure scrollability */}
+        <div 
+          className="flex-grow" 
+          style={{ 
+            minHeight: isScrolled 
+              ? `calc(100vh - var(--header-height) + ${SCROLL_THRESHOLD_ENTER + 20}px)` 
+              : 'auto'
+          }}
+        >
+          {/* Joined rooms list */}
+          {joinedRooms.length > 0 && (
+            <div className="mt-8 px-4 pb-8">
+              <div className="flex flex-col gap-4 max-w-[800px] mx-auto">
             {joinedRooms.map((room) => (
-              <div key={room.id} className="bg-soft-white rounded-lg overflow-hidden shadow-sm border border-warm-gray-200" data-room-type={room.type}>
+              <div 
+                key={room.id} 
+                className={`bg-soft-white rounded-lg overflow-hidden shadow-sm border border-warm-gray-200 transition-all duration-300 transform-gpu ${
+                  leavingRooms.has(room.id) 
+                    ? 'opacity-0 scale-95 -translate-x-full' 
+                    : enteringRooms.has(room.id)
+                    ? 'opacity-0 scale-95'
+                    : 'opacity-100 scale-100 translate-x-0'
+                }`} 
+                data-room-type={room.type}
+              >
                 <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : 'bg-terracotta-100 border-b-terracotta-200'}`}>
                   <div className="flex gap-3 items-center">
                     <span className="bg-warm-gray-200 text-warm-gray-700 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
@@ -239,14 +335,16 @@ const App: React.FC = () => {
             ))}
           </div>
         </div>
-      )}
+        )}
 
-      {/* Empty state */}
-      {joinedRooms.length === 0 && (
-        <div className="text-center py-12 px-4 mt-4 text-warm-gray-600">
-          <p className="text-base">No active activities. Enter an activity code above to get started!</p>
+        {/* Empty state */}
+        {joinedRooms.length === 0 && (
+          <div className="text-center py-12 px-4 mt-4 text-warm-gray-600">
+            <p className="text-base">No active activities. Enter an activity code above to get started!</p>
+          </div>
+        )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
