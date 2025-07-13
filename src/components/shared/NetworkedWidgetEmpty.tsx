@@ -22,7 +22,7 @@ export const NetworkedWidgetEmpty: React.FC<NetworkedWidgetEmptyProps> = ({
   return (
     <div className="flex-1 flex flex-col items-center justify-center">
       <div className="text-center space-y-4">
-        <div className="mb-4">
+        <div className="mb-4 flex justify-center">
           {typeof icon === 'string' ? (
             <div className="text-6xl">{icon}</div>
           ) : (
