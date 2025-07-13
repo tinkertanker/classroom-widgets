@@ -69,12 +69,12 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
   };
 
   return (
-    <div className={`join-form-container ${isCompact ? 'join-form-compact' : ''}`}>
+    <div className={`max-w-full relative ${isCompact ? 'join-form-compact' : ''}`}>
       {/* Dark mode toggle - always visible in top right */}
       {onToggleDarkMode && (
         <button 
           onClick={onToggleDarkMode}
-          className="dark-mode-toggle absolute-toggle"
+          className={`bg-soft-white border border-warm-gray-200 rounded-full w-9 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 shadow-sm flex-shrink-0 text-warm-gray-700 hover:bg-warm-gray-100 hover:scale-105 absolute z-10 top-3 right-0`}
           aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
         >
@@ -83,24 +83,23 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
       )}
       
       {!isCompact && (
-        <div className="join-form-header">
-          <div className="header-content">
-            <div className="header-text">
-              <h1>Join Classroom Activity</h1>
-              <p className="subtitle">Enter an activity code to participate</p>
+        <div className="animate-fadeIn">
+          <div className="flex justify-between items-start mb-6">
+            <div className="flex-1">
+              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 m-0 text-center pr-12">Join Classroom Activity</h1>
             </div>
           </div>
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="join-form">
-        <div className="form-row">
-          <div className="form-group name-group">
-            <label htmlFor="name">Your Name <span className="optional">(optional)</span></label>
+      <form onSubmit={handleSubmit} className={`w-full ${isCompact ? 'pr-12' : ''}`}>
+        <div className={`flex gap-4 ${isCompact ? 'items-center flex-col sm:flex-row' : 'flex-col sm:flex-row sm:items-end sm:justify-center'}`}>
+          <div className={`flex flex-col ${isCompact ? 'hidden sm:flex sm:flex-[0_0_180px] sm:order-1' : 'sm:flex-[0_0_180px] sm:order-1'}`}>
+            <label htmlFor="name" className={`text-sm font-semibold text-warm-gray-700 mb-2 ${isCompact ? 'hidden' : ''}`}>Your Name <span className="font-normal text-warm-gray-600 text-xs">(optional)</span></label>
             <input
               type="text"
               id="name"
-              className="name-input"
+              className={`border border-warm-gray-300 rounded-md text-base font-medium bg-white transition-all duration-200 outline-none text-warm-gray-800 focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 sm:py-2.5 sm:px-4' : 'py-2.5 px-4'}`}
               placeholder="Enter your name"
               value={name}
               onChange={handleNameChange}
@@ -109,12 +108,12 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
             />
           </div>
           
-          <div className="form-group code-group">
-            <label htmlFor="code">Activity Code</label>
+          <div className={`flex flex-col ${isCompact ? 'flex-1 sm:flex-[0_0_160px] sm:order-2 sm:mx-4' : 'sm:flex-[0_0_160px] sm:order-2 sm:mx-4'}`}>
+            <label htmlFor="code" className={`text-sm font-semibold text-warm-gray-700 mb-2 ${isCompact ? 'hidden' : ''}`}>Activity Code</label>
             <input
               type="text"
               id="code"
-              className="code-input"
+              className={`border border-warm-gray-300 rounded-md font-bold bg-[#fafafa] transition-all duration-200 outline-none text-warm-gray-800 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
               maxLength={5}
               pattern="[23456789ACDEFHJKMNPQRTUWXY]{5}"
               placeholder="123AB"
@@ -128,7 +127,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
           
           <button 
             type="submit" 
-            className="join-button"
+            className={`py-2.5 px-4 bg-sage-500 text-white border-0 rounded-md text-sm font-semibold cursor-pointer transition-colors duration-200 outline-none h-auto flex items-center justify-center hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed ${isCompact ? 'w-full sm:w-auto py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_120px] sm:order-3' : 'sm:flex-[0_0_120px] sm:order-3'}`}
             disabled={isLoading || !code}
           >
             {isLoading ? 'Joining...' : 'Join Activity'}
@@ -136,7 +135,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
         </div>
         
         {error && (
-          <div id="error-message" className="error-message" role="alert">
+          <div id="error-message" className="bg-dusty-rose-50 text-dusty-rose-700 py-3 px-4 rounded-md text-sm mt-4 border border-dusty-rose-200" role="alert">
             {error}
           </div>
         )}

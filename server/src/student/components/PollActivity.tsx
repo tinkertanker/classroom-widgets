@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import './PollActivity.css';
 
 interface PollActivityProps {
   socket: Socket;
@@ -76,27 +75,27 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
 
   const renderContent = () => {
     if (!pollData.question || pollData.options.length === 0) {
-      return <div className="waiting">Waiting for poll to start...</div>;
+      return <div className="text-center text-warm-gray-600 text-base py-10 px-5">Waiting for poll to start...</div>;
     }
 
     if (hasVoted) {
       if (results) {
         return renderResults();
       }
-      return <div className="thank-you">Thank you for voting!</div>;
+      return <div className="text-center text-sage-600 text-lg font-semibold py-10 px-5">Thank you for voting!</div>;
     }
 
     return (
       <>
-        <div className="poll-question">{pollData.question}</div>
-        <div className="poll-options">
+        <div className="text-2xl font-semibold text-warm-gray-800 mb-6 text-center">{pollData.question}</div>
+        <div className="flex flex-col gap-3">
           {pollData.options.map((option, index) => (
             <div
               key={index}
-              className={`poll-option ${selectedOption === index ? 'selected' : ''}`}
+              className={`p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 relative overflow-hidden ${selectedOption === index ? 'border-sage-500 bg-sage-500 text-white' : 'border-warm-gray-300 hover:border-sage-500 hover:bg-sage-50'}`}
               onClick={() => handleVote(index)}
             >
-              <div className="vote-content">{option}</div>
+              <div className="relative z-[1]">{option}</div>
             </div>
           ))}
         </div>
@@ -110,16 +109,16 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
 
     return (
       <>
-        <div className="poll-question">{results.question}</div>
-        <div className="poll-options">
+        <div className="text-2xl font-semibold text-warm-gray-800 mb-6 text-center">{results.question}</div>
+        <div className="flex flex-col gap-3">
           {results.options.map((option, index) => {
             const votes = results.votes[index] || 0;
             const percentage = Math.round((votes / totalVotes) * 100);
             
             return (
-              <div key={index} className="poll-option voted">
-                <div className="vote-bar" style={{ width: `${percentage}%` }}></div>
-                <div className="vote-content">
+              <div key={index} className="p-4 border-2 border-warm-gray-300 rounded-lg cursor-default relative overflow-hidden">
+                <div className="absolute top-0 left-0 h-full bg-sage-500/20 transition-[width] duration-300" style={{ width: `${percentage}%` }}></div>
+                <div className="relative z-[1] flex justify-between items-center">
                   <span>{option}</span>
                   <span>{votes} ({percentage}%)</span>
                 </div>
@@ -132,12 +131,12 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
   };
 
   return (
-    <div className="activity-container">
-      <div className={`status ${pollData.isActive ? 'active' : 'inactive'}`}>
+    <div>
+      <div className={`text-center py-2 px-4 rounded-lg text-sm mb-4 ${pollData.isActive ? 'bg-sage-100 text-sage-700' : 'bg-warm-gray-200 text-warm-gray-700'}`}>
         {pollData.isActive ? 'Poll Active' : 'Poll Closed'}
       </div>
       
-      <div className="poll-body">
+      <div className="min-h-[200px] flex flex-col justify-center">
         {renderContent()}
       </div>
       

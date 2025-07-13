@@ -3,7 +3,6 @@ import io, { Socket } from 'socket.io-client';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import DataShareActivity from './components/DataShareActivity';
-import './App.css';
 
 export type RoomType = 'poll' | 'dataShare';
 
@@ -60,7 +59,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      setIsScrolled(scrollPosition > 20); // Trigger after 20px of scrolling
+      setIsScrolled(scrollPosition > 100); // Trigger after 100px of scrolling
     };
 
     window.addEventListener('scroll', handleScroll);
@@ -185,9 +184,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="app-container">
+    <div className="min-h-screen bg-[#f7f5f2] font-sans">
       {/* Sticky header with join form */}
-      <div ref={headerRef} className={`join-section ${isScrolled ? 'join-section-compact' : ''}`}>
+      <div ref={headerRef} className={`fixed top-0 left-0 right-0 z-[100] bg-soft-white rounded-b-lg shadow-sm border border-warm-gray-200 border-t-0 transition-all duration-300 ${isScrolled ? 'p-3 md:px-6 shadow-md' : 'p-6'}`}>
         <JoinForm 
           onJoin={handleJoin} 
           defaultName={studentName}
@@ -199,21 +198,21 @@ const App: React.FC = () => {
       </div>
       
       {/* Spacer to prevent content from going under fixed header */}
-      <div className="header-spacer" />
+      <div style={{ height: `${headerHeight}px` }} className="transition-[height] duration-300" />
 
       {/* Joined rooms list */}
       {joinedRooms.length > 0 && (
-        <div className="rooms-section">
-          <div className="rooms-list">
+        <div className="mt-8 px-4">
+          <div className="flex flex-col gap-4 max-w-[800px] mx-auto">
             {joinedRooms.map((room) => (
-              <div key={room.id} className="room-container" data-room-type={room.type}>
-                <div className="room-header">
-                  <div className="room-info">
-                    <span className="room-code-badge">{room.code}</span>
-                    <span className="room-type-badge">{room.type === 'poll' ? 'Poll' : 'Data Share'}</span>
+              <div key={room.id} className="bg-soft-white rounded-lg overflow-hidden shadow-sm border border-warm-gray-200" data-room-type={room.type}>
+                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : 'bg-terracotta-100 border-b-terracotta-200'}`}>
+                  <div className="flex gap-3 items-center">
+                    <span className="bg-warm-gray-200 text-warm-gray-700 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
+                    <span className="text-sage-700 text-base md:text-lg font-semibold">{room.type === 'poll' ? 'Poll' : 'Data Share'}</span>
                   </div>
                   <button 
-                    className="leave-button"
+                    className="bg-dusty-rose-500 text-white w-6 h-6 rounded text-xs font-bold cursor-pointer transition-colors duration-200 flex items-center justify-center hover:bg-dusty-rose-600"
                     onClick={() => handleLeaveRoom(room.id)}
                     aria-label={`Leave activity ${room.code}`}
                   >
@@ -221,7 +220,7 @@ const App: React.FC = () => {
                   </button>
                 </div>
                 
-                <div className="room-content">
+                <div className="p-4">
                   {room.type === 'poll' && (
                     <PollActivity 
                       socket={room.socket} 
@@ -244,8 +243,8 @@ const App: React.FC = () => {
 
       {/* Empty state */}
       {joinedRooms.length === 0 && (
-        <div className="empty-state">
-          <p>No active activities. Enter an activity code above to get started!</p>
+        <div className="text-center py-12 px-4 mt-4 text-warm-gray-600">
+          <p className="text-base">No active activities. Enter an activity code above to get started!</p>
         </div>
       )}
     </div>

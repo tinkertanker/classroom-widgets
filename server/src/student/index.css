@@ -1,7 +1,12 @@
-/* Student App Base Styles - Matching Teacher App Design System */
-
 /* Import Poppins font from Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Student App Base Styles - Matching Teacher App Design System */
+
+/* Import Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* CSS Custom Properties for Teacher App Color Palette */
 :root {
