@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
+import { FaPaperclip } from 'react-icons/fa6';
 
 interface DataShareProps {
   widgetId?: string;
@@ -78,12 +79,12 @@ const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChan
   
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
       {!roomCode ? (
         <NetworkedWidgetEmpty
           title="Data Share"
           description="Students can share links with you"
-          icon="📎"
+          icon={<FaPaperclip className="text-5xl text-warm-gray-400 dark:text-warm-gray-500" />}
           connectionError={connectionError}
           isConnecting={isConnecting}
           onCreateRoom={createRoom}
@@ -193,7 +194,10 @@ const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChan
           {/* Footer Section */}
           <div className="mt-4 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex justify-between items-center text-xs text-warm-gray-500 dark:text-warm-gray-400">
             <span>{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</span>
-            <span>Data Share Active</span>
+            <div className="flex items-center gap-2">
+              <span>Data Share Active</span>
+              <FaPaperclip className="text-sm" />
+            </div>
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import React from 'react';
 interface NetworkedWidgetEmptyProps {
   title: string;
   description: string;
-  icon: string;
+  icon: React.ReactElement | string;
   connectionError: string;
   isConnecting: boolean;
   onCreateRoom: () => void;
@@ -22,7 +22,13 @@ export const NetworkedWidgetEmpty: React.FC<NetworkedWidgetEmptyProps> = ({
   return (
     <div className="flex-1 flex flex-col items-center justify-center">
       <div className="text-center space-y-4">
-        <div className="text-6xl mb-4">{icon}</div>
+        <div className="mb-4">
+          {typeof icon === 'string' ? (
+            <div className="text-6xl">{icon}</div>
+          ) : (
+            icon
+          )}
+        </div>
         <h2 className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300">
           {title}
         </h2>

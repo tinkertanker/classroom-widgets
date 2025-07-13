@@ -4,7 +4,7 @@ import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import PollSettings from './PollSettings';
-import { FaPlay, FaStop } from 'react-icons/fa6';
+import { FaPlay, FaStop, FaChartColumn } from 'react-icons/fa6';
 
 interface PollProps {
   widgetId?: string;
@@ -115,12 +115,12 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
       {!roomCode ? (
         <NetworkedWidgetEmpty
           title="Poll"
           description="Create real-time polls for your students"
-          icon="📊"
+          icon={<FaChartColumn className="text-5xl text-warm-gray-400 dark:text-warm-gray-500" />}
           connectionError={connectionError}
           isConnecting={isConnecting}
           onCreateRoom={createRoom}
@@ -223,7 +223,10 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           {/* Footer Section */}
           <div className="mt-4 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex justify-between items-center text-xs text-warm-gray-500 dark:text-warm-gray-400">
             <span>{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
-            <span>{pollData.isActive ? 'Poll Active' : 'Poll Inactive'}</span>
+            <div className="flex items-center gap-2">
+              <span>{pollData.isActive ? 'Poll Active' : 'Poll Inactive'}</span>
+              <FaChartColumn className="text-sm" />
+            </div>
           </div>
         </>
       )}
