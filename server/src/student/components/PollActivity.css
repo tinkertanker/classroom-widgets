@@ -1,5 +1,5 @@
 .poll-question {
-  font-size: 20px;
+  font-size: 1.5rem; /* text-2xl - increased from 20px */
   font-weight: 600;
   color: var(--warm-gray-800);
   margin-bottom: 24px;

@@ -206,7 +206,7 @@ const App: React.FC = () => {
         <div className="rooms-section">
           <div className="rooms-list">
             {joinedRooms.map((room) => (
-              <div key={room.id} className="room-container">
+              <div key={room.id} className="room-container" data-room-type={room.type}>
                 <div className="room-header">
                   <div className="room-info">
                     <span className="room-code-badge">{room.code}</span>
@@ -232,7 +232,7 @@ const App: React.FC = () => {
                     <DataShareActivity 
                       socket={room.socket} 
                       roomCode={room.code}
-                      studentName={room.studentName}
+                      studentName={studentName}
                     />
                   )}
                 </div>

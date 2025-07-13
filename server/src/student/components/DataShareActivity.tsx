@@ -11,9 +11,8 @@ interface DataShareActivityProps {
 const DataShareActivity: React.FC<DataShareActivityProps> = ({ 
   socket, 
   roomCode, 
-  studentName: initialName
+  studentName
 }) => {
-  const [studentName, setStudentName] = useState(initialName);
   const [shareLink, setShareLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -22,8 +21,8 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!studentName.trim() || !shareLink.trim()) {
-      setError('Please fill in all fields');
+    if (!shareLink.trim()) {
+      setError('Please enter a link to share');
       return;
     }
     
@@ -32,7 +31,7 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
     
     socket.emit('dataShare:submit', {
       code: roomCode,
-      studentName: studentName.trim(),
+      studentName: studentName || 'Anonymous',
       link: shareLink.trim()
     });
 
@@ -57,10 +56,6 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
   if (isSuccess) {
     return (
       <div className="activity-container">
-        <div className="activity-header">
-          <div className="room-code">Activity: <span>{roomCode}</span></div>
-          <div className="activity-type data-share">Share Link</div>
-        </div>
         
         <div className="success">
           Link shared successfully!
@@ -72,23 +67,8 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
 
   return (
     <div className="activity-container">
-      <div className="activity-header">
-        <div className="room-code">Activity: <span>{roomCode}</span></div>
-        <div className="activity-type data-share">Share Link</div>
-      </div>
       
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="studentName">Your Name</label>
-          <input
-            type="text"
-            id="studentName"
-            placeholder="Enter your name"
-            value={studentName}
-            onChange={(e) => setStudentName(e.target.value)}
-            required
-          />
-        </div>
         <div className="form-group">
           <label htmlFor="shareLink">Presentation Link</label>
           <input
@@ -100,7 +80,7 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
             required
           />
         </div>
-        <button type="submit" disabled={isSubmitting}>
+        <button type="submit" disabled={isSubmitting} style={{ marginTop: '1rem' }}>
           {isSubmitting ? (
             <>
               <span className="loading"></span>
