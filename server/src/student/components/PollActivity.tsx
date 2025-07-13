@@ -4,6 +4,7 @@ import { Socket } from 'socket.io-client';
 interface PollActivityProps {
   socket: Socket;
   roomCode: string;
+  initialPollData?: PollData;
 }
 
 interface PollData {
@@ -20,8 +21,8 @@ interface Results {
   totalVotes: number;
 }
 
-const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
-  const [pollData, setPollData] = useState<PollData>({
+const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData }) => {
+  const [pollData, setPollData] = useState<PollData>(initialPollData || {
     question: '',
     options: [],
     isActive: false
@@ -52,19 +53,17 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
       }
     });
 
-    // Handle initial join data
-    socket.on('room:joined', (data: any) => {
-      if (data.success && data.type === 'poll' && data.pollData) {
-        setPollData(data.pollData);
-      }
-    });
+    // Only request poll state if we don't have initial data
+    if (!initialPollData) {
+      socket.emit('poll:request-state', { code: roomCode });
+    }
 
     return () => {
       socket.off('poll:updated');
       socket.off('results:update');
       socket.off('vote:confirmed');
     };
-  }, [socket]);
+  }, [socket, roomCode]);
 
   const handleVote = (optionIndex: number) => {
     if (hasVoted || !pollData.isActive) return;
@@ -78,13 +77,40 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
       return <div className="text-center text-warm-gray-600 text-base py-10 px-5">Waiting for poll to start...</div>;
     }
 
-    if (hasVoted) {
-      if (results) {
-        return renderResults();
-      }
-      return <div className="text-center text-sage-600 text-lg font-semibold py-10 px-5">Thank you for voting!</div>;
+    // Poll is not active and student hasn't voted
+    if (!pollData.isActive && !hasVoted) {
+      return <div className="text-center text-warm-gray-600 text-base py-10 px-5">Waiting for poll to start...</div>;
     }
 
+    // Show results if available
+    if (hasVoted && results) {
+      return renderResults();
+    }
+
+    // If student has voted (but no results yet) or has selected an option, show grayed out poll
+    if (hasVoted || selectedOption !== null) {
+      return (
+        <>
+          <div className="text-2xl font-semibold text-warm-gray-400 mb-6 text-center">{pollData.question}</div>
+          <div className="flex flex-col gap-3 opacity-50">
+            {pollData.options.map((option, index) => (
+              <div
+                key={index}
+                className={`p-4 border-2 rounded-lg cursor-not-allowed transition-all duration-200 relative overflow-hidden ${
+                  selectedOption === index 
+                    ? 'border-warm-gray-400 bg-warm-gray-400 text-white' 
+                    : 'border-warm-gray-300 bg-warm-gray-50'
+                }`}
+              >
+                <div className="relative z-[1]">{option}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      );
+    }
+
+    // Poll is active and student hasn't voted yet
     return (
       <>
         <div className="text-2xl font-semibold text-warm-gray-800 mb-6 text-center">{pollData.question}</div>
@@ -131,15 +157,8 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode }) => {
   };
 
   return (
-    <div>
-      <div className={`text-center py-2 px-4 rounded-lg text-sm mb-4 ${pollData.isActive ? 'bg-sage-100 text-sage-700' : 'bg-warm-gray-200 text-warm-gray-700'}`}>
-        {pollData.isActive ? 'Poll Active' : 'Poll Closed'}
-      </div>
-      
-      <div className="min-h-[200px] flex flex-col justify-center">
-        {renderContent()}
-      </div>
-      
+    <div className="min-h-[200px] flex flex-col justify-center">
+      {renderContent()}
     </div>
   );
 };

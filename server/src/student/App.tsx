@@ -13,6 +13,7 @@ interface JoinedRoom {
   studentName: string;
   socket: Socket;
   joinedAt: number;
+  initialData?: any; // Store initial poll/activity data
 }
 
 const App: React.FC = () => {
@@ -188,7 +189,8 @@ const App: React.FC = () => {
             type: data.roomType,
             studentName: name || studentName,
             socket: newSocket,
-            joinedAt: Date.now()
+            joinedAt: Date.now(),
+            initialData: joinData.pollData || joinData.data // Store any initial data
           };
           
           // Add to beginning of array (newest first)
@@ -320,7 +322,8 @@ const App: React.FC = () => {
                   {room.type === 'poll' && (
                     <PollActivity 
                       socket={room.socket} 
-                      roomCode={room.code} 
+                      roomCode={room.code}
+                      initialPollData={room.initialData}
                     />
                   )}
                   {room.type === 'dataShare' && (
