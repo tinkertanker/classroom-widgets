@@ -5,13 +5,13 @@ import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../contexts/ModalContext";
 import { RandomiserProps, RandomiserState } from "./types";
 import { FaDice, FaRotate } from 'react-icons/fa6';
+import celebrateSoundFile from "./celebrate.mp3";
 
 // Removed Chakra UI imports
 
 let actual_choices: string[];
 
-const sound = require("./celebrate.mp3");
-let yay = new Audio(sound);
+let yay = new Audio(celebrateSoundFile);
 
 function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);

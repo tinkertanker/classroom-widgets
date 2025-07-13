@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 // @ts-ignore
 import { FaBell, FaMicrophone } from 'react-icons/fa6';
+import ramBellSoundFile from './Ram-Bell-Sound.mp3';
 
 interface AudioVolumeMonitorProps {
 }
@@ -129,7 +130,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
 
     const playAlertSound = () => {
         if (!sound.current) {
-            sound.current = new Audio(require('./Ram-Bell-Sound.mp3'));
+            sound.current = new Audio(ramBellSoundFile);
             sound.current.volume = 0.3;
         }
         sound.current.play();

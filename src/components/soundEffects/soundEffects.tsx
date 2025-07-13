@@ -14,17 +14,17 @@ import {
 } from 'react-icons/fa6';
 import { IconType } from 'react-icons';
 
-// Sound file imports - uncomment when files are added
-const victorySound = require("./sounds/victory.mp3");
-const wrongSound = require("./sounds/wrong.mp3");
-const attentionSound = require("./sounds/attention.mp3");
-const questionSound = require("./sounds/question.mp3");
-const timesUpSound = require("./sounds/times-up.mp3");
-const goodTrySound = require("./sounds/good-try.mp3");
-const quietSound = require("./sounds/quiet.mp3");
-const transitionSound = require("./sounds/transition.mp3");
-const drumrollSound = require("./sounds/drumroll.mp3");
-const applauseSound = require("./sounds/applause.mp3");
+// Sound file imports
+import victorySoundFile from "./sounds/victory.mp3";
+import wrongSoundFile from "./sounds/wrong.mp3";
+import attentionSoundFile from "./sounds/attention.mp3";
+import questionSoundFile from "./sounds/question.mp3";
+import timesUpSoundFile from "./sounds/times-up.mp3";
+import goodTrySoundFile from "./sounds/good-try.mp3";
+import quietSoundFile from "./sounds/quiet.mp3";
+import transitionSoundFile from "./sounds/transition.mp3";
+import drumrollSoundFile from "./sounds/drumroll.mp3";
+import applauseSoundFile from "./sounds/applause.mp3";
 
 interface SoundButton {
   name: string;
@@ -42,16 +42,16 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
 
   // Sound effect definitions with our color palette
   const soundButtons: SoundButton[] = [
-    { name: 'Victory', icon: FaTrophy, color: 'bg-sage-500 hover:bg-sage-600', soundFile: victorySound },
-    { name: 'Wrong', icon: FaXmark, color: 'bg-dusty-rose-500 hover:bg-dusty-rose-600', soundFile: wrongSound },
-    { name: 'Attention', icon: FaBell, color: 'bg-terracotta-500 hover:bg-terracotta-600', soundFile: attentionSound  },
-    { name: 'Question', icon: FaQuestion, color: 'bg-sage-600 hover:bg-sage-700', soundFile: questionSound },
-    { name: "Time's Up", icon: FaClock, color: 'bg-terracotta-600 hover:bg-terracotta-700', soundFile: timesUpSound },
-    { name: 'Good Try', icon: FaThumbsUp, color: 'bg-sage-400 hover:bg-sage-500', soundFile: goodTrySound },
-    { name: 'Quiet', icon: FaVolumeXmark, color: 'bg-warm-gray-600 hover:bg-warm-gray-700', soundFile: quietSound },
-    { name: 'Transition', icon: FaArrowRightArrowLeft, color: 'bg-terracotta-400 hover:bg-terracotta-500', soundFile: transitionSound },
-    { name: 'Drumroll', icon: FaDrum, color: 'bg-terracotta-500 hover:bg-terracotta-600', soundFile: drumrollSound },
-    { name: 'Applause', icon: FaHandsClapping, color: 'bg-sage-500 hover:bg-sage-600', soundFile: applauseSound },
+    { name: 'Victory', icon: FaTrophy, color: 'bg-sage-500 hover:bg-sage-600', soundFile: victorySoundFile },
+    { name: 'Wrong', icon: FaXmark, color: 'bg-dusty-rose-500 hover:bg-dusty-rose-600', soundFile: wrongSoundFile },
+    { name: 'Attention', icon: FaBell, color: 'bg-terracotta-500 hover:bg-terracotta-600', soundFile: attentionSoundFile  },
+    { name: 'Question', icon: FaQuestion, color: 'bg-sage-600 hover:bg-sage-700', soundFile: questionSoundFile },
+    { name: "Time's Up", icon: FaClock, color: 'bg-terracotta-600 hover:bg-terracotta-700', soundFile: timesUpSoundFile },
+    { name: 'Good Try', icon: FaThumbsUp, color: 'bg-sage-400 hover:bg-sage-500', soundFile: goodTrySoundFile },
+    { name: 'Quiet', icon: FaVolumeXmark, color: 'bg-warm-gray-600 hover:bg-warm-gray-700', soundFile: quietSoundFile },
+    { name: 'Transition', icon: FaArrowRightArrowLeft, color: 'bg-terracotta-400 hover:bg-terracotta-500', soundFile: transitionSoundFile },
+    { name: 'Drumroll', icon: FaDrum, color: 'bg-terracotta-500 hover:bg-terracotta-600', soundFile: drumrollSoundFile },
+    { name: 'Applause', icon: FaHandsClapping, color: 'bg-sage-500 hover:bg-sage-600', soundFile: applauseSoundFile },
   ];
 
   // Initialize audio elements when sound files are available

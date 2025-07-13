@@ -1,10 +1,10 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import WidgetRendererLazy from './WidgetRendererLazy';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
 
 // Mock the lazy widgets
 jest.mock('../Widget/LazyWidgets', () => {
-  const React = require('react');
   return {
     LazyWidgets: {
       Timer: React.lazy(() => Promise.resolve({

@@ -6,6 +6,10 @@ interface NetworkedWidgetHeaderProps {
 }
 
 export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({ roomCode, children }) => {
+  // Get the server URL and format it for student access
+  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+  const studentUrl = `${serverUrl}/student`;
+
   return (
     <div className="mb-4">
       <div className="flex justify-between items-start mb-3">
@@ -19,7 +23,7 @@ export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({ ro
       </div>
       <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-2 text-center">
         <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-          Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">localhost/student</span>
+          Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">{studentUrl}</span>
         </p>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
   FaMugHot,          // Break time
   FaBroom            // Clean up
 } from 'react-icons/fa6';
+import changeSoundFile from './change.wav';
 
 interface TaskCueProps {
     isActive?: boolean;
@@ -31,11 +32,9 @@ function TaskCue({ isActive = false }: TaskCueProps) {
         { icon: FaBroom, label: 'Clean up', color: 'text-dusty-rose-600' },
     ];
 
-    const changeSound = require('./change.wav');
-
     const plaey = useCallback(() => {
-        new Audio(changeSound).play();
-    }, [changeSound]);
+        new Audio(changeSoundFile).play();
+    }, []);
 
     const handleClick = useCallback((e: MouseEvent) => {
         const target = e.target as HTMLElement;

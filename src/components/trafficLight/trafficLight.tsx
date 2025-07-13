@@ -1,5 +1,6 @@
 // Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import actionClickSoundFile from '../../sounds/action_click.mp3';
 
 function TrafficLight() {
   const [state, setState] = useState({
@@ -9,7 +10,6 @@ function TrafficLight() {
   });
 
   const boxRef = useRef<HTMLDivElement>(null);
-  const actionClickSound = require('../../sounds/action_click.mp3');
 
   useEffect(() => {
     if (boxRef.current) {
@@ -45,12 +45,12 @@ function TrafficLight() {
 
 
   const handleLightClick = useCallback((color: string) => {
-    new Audio(actionClickSound).play();
+    new Audio(actionClickSoundFile).play();
     setState((prevState) => ({
       ...prevState,
       activeLight: color,
     }));
-  }, [actionClickSound]);
+  }, []);
 
   const toggleInputButtons = useCallback(() => {
     setState((prevState) => ({
