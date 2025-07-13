@@ -30,7 +30,10 @@ const App: React.FC = () => {
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  const [isScrolled, setIsScrolled] = useState(false);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(180);
 
   // Save student name to localStorage when it changes
   useEffect(() => {
@@ -52,6 +55,46 @@ const App: React.FC = () => {
   const toggleDarkMode = () => {
     setIsDarkMode(prev => !prev);
   };
+
+  // Handle scroll detection
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      setIsScrolled(scrollPosition > 20); // Trigger after 20px of scrolling
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check initial scroll position
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // Measure header height
+  useEffect(() => {
+    const measureHeader = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        setHeaderHeight(height);
+        // Set CSS variable for spacer
+        document.documentElement.style.setProperty('--header-height', `${height}px`);
+        
+        // Special handling for mobile compact mode
+        const isMobile = window.innerWidth <= 640;
+        if (isMobile && isScrolled) {
+          document.documentElement.style.setProperty('--header-height', '42px');
+        }
+      }
+    };
+
+    measureHeader();
+    window.addEventListener('resize', measureHeader);
+
+    return () => {
+      window.removeEventListener('resize', measureHeader);
+    };
+  }, [isScrolled]); // Re-measure when compact state changes
 
   // Cleanup sockets on unmount
   useEffect(() => {
@@ -143,16 +186,20 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* Always visible join form */}
-      <div className="join-section">
+      {/* Sticky header with join form */}
+      <div ref={headerRef} className={`join-section ${isScrolled ? 'join-section-compact' : ''}`}>
         <JoinForm 
           onJoin={handleJoin} 
           defaultName={studentName}
           onNameChange={setStudentName}
           isDarkMode={isDarkMode}
           onToggleDarkMode={toggleDarkMode}
+          isCompact={isScrolled}
         />
       </div>
+      
+      {/* Spacer to prevent content from going under fixed header */}
+      <div className="header-spacer" />
 
       {/* Joined rooms list */}
       {joinedRooms.length > 0 && (

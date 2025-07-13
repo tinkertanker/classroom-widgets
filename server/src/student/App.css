@@ -2,23 +2,66 @@
 .app-container {
   min-height: 100vh;
   background: #f7f5f2; /* Same as teacher app main background */
-  padding: 1rem;
   font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 
-/* Join Form Section - Always visible at top */
+/* Join Form Section - Sticky header */
 .join-section {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   background: #fdfcfb; /* bg-soft-white */
-  border-radius: 8px; /* Consistent with teacher app widgets */
+  border-radius: 0 0 8px 8px; /* Rounded only at bottom */
   padding: 1.5rem;
-  margin-bottom: 1.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
   border: 1px solid #e8e5e0; /* warm-gray-200 */
+  border-top: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Compact state for scrolled position */
+.join-section.join-section-compact {
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Header spacer to prevent content jump */
+.header-spacer {
+  height: var(--header-height, 180px); /* Default height, will be set dynamically */
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .join-form-container {
   max-width: 100%;
+  position: relative;
+}
+
+/* Compact form adjustments */
+.join-form-container.join-form-compact .join-form {
+  margin: 0;
+  padding-right: 3rem; /* Space for dark mode toggle */
+}
+
+.join-form-container.join-form-compact .form-group label {
+  display: none; /* Hide labels in compact mode */
+}
+
+.join-form-header {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .join-form-header .header-content {
@@ -38,6 +81,7 @@
   color: #514b44; /* warm-gray-700 */
   margin: 0 0 0.5rem 0;
   text-align: center;
+  padding-right: 3rem; /* Space for dark mode toggle */
 }
 
 .join-form-header .header-text .subtitle {
@@ -56,15 +100,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.125rem;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); /* shadow-sm */
   flex-shrink: 0;
+  color: #514b44; /* warm-gray-700 */
 }
 
 .dark-mode-toggle:hover {
   background: #f5f3f0; /* warm-gray-100 */
+  transform: scale(1.05);
+}
+
+/* Absolutely positioned dark mode toggle */
+.dark-mode-toggle.absolute-toggle {
+  position: absolute;
+  top: 0.75rem;
+  right: 0;
+  z-index: 10;
+}
+
+/* Adjust position in compact mode */
+.join-form-container.join-form-compact .dark-mode-toggle.absolute-toggle {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.dark-mode-toggle.absolute-toggle:hover {
+  transform: translateY(-50%) scale(1.05);
+}
+
+.join-form-container:not(.join-form-compact) .dark-mode-toggle.absolute-toggle:hover {
   transform: scale(1.05);
 }
 
@@ -100,6 +166,11 @@
   .join-button {
     flex: 0 0 120px;
     order: 3;
+  }
+  
+  /* Compact mode adjustments */
+  .join-form-compact .form-row {
+    align-items: center; /* Center align in compact mode since no labels */
   }
 }
 
@@ -188,7 +259,8 @@
 
 /* Rooms Section */
 .rooms-section {
-  margin-top: 1.5rem;
+  margin-top: 2rem; /* Increased margin to create larger gap after header */
+  padding: 0 1rem; /* Add horizontal padding to match app container */
 }
 
 .rooms-list {
@@ -270,6 +342,7 @@
 .empty-state {
   text-align: center;
   padding: 3rem 1rem;
+  margin-top: 1rem;
   color: #6b635a; /* warm-gray-600 */
 }
 
@@ -352,6 +425,15 @@
     margin-bottom: 1rem;
   }
   
+  .join-section.join-section-compact {
+    padding: 0.25rem 1rem; /* Minimal padding on mobile */
+  }
+  
+  /* Reduce header spacer height in compact mode on mobile */
+  .header-spacer {
+    --compact-mobile-height: 42px;
+  }
+  
   .join-form-header .header-content {
     flex-direction: column;
     align-items: center;
@@ -366,6 +448,51 @@
     width: 32px;
     height: 32px;
     font-size: 1rem;
+  }
+  
+  /* Hide name field and dark mode toggle in compact mode on mobile */
+  .join-form-container.join-form-compact .name-group {
+    display: none;
+  }
+  
+  .join-form-container.join-form-compact .dark-mode-toggle.absolute-toggle {
+    display: none;
+  }
+  
+  /* Adjust form layout in compact mode on mobile */
+  .join-form-container.join-form-compact .form-row {
+    gap: 0.5rem;
+    align-items: stretch; /* Back to stretch for proper layout */
+  }
+  
+  .join-form-container.join-form-compact .code-group {
+    flex: 1 1 auto; /* Take available space */
+    margin: 0;
+  }
+  
+  .join-form-container.join-form-compact .join-button {
+    flex: 1 1 100%; /* Take full width */
+    align-self: stretch; /* Stretch to full height */
+    max-width: none; /* Remove any max-width constraints */
+    width: 100%; /* Ensure full width */
+  }
+  
+  .join-form-container.join-form-compact .join-form {
+    padding-right: 0; /* Remove padding since toggle is hidden */
+  }
+  
+  /* Smaller inputs in compact mode on mobile */
+  .join-form-container.join-form-compact .code-input {
+    padding: 0.25rem 0.5rem; /* Even smaller padding */
+    font-size: 0.875rem; /* Slightly smaller */
+    height: 32px; /* Smaller explicit height */
+  }
+  
+  .join-form-container.join-form-compact .join-button {
+    padding: 0.5rem 1rem; /* More generous padding */
+    font-size: 0.875rem; /* Slightly larger text */
+    height: auto; /* Let padding determine height */
+    line-height: 1.4; /* Better line height */
   }
   
   .room-header {
@@ -387,6 +514,11 @@
     height: 20px;
     font-size: 0.625rem;
   }
+  
+  /* Additional spacing for rooms section on mobile */
+  .rooms-section {
+    margin-top: 1.5rem; /* Slightly less margin on mobile but still adequate */
+  }
 }
 
 /* Dark mode support - class-based with manual toggle */
@@ -394,7 +526,11 @@ html.dark .app-container {
   background: #2d2926; /* warm-gray-900 */
 }
 
-html.dark .join-section,
+html.dark .join-section {
+  background: #3d3835; /* warm-gray-800 */
+  border-color: #514b44; /* warm-gray-700 */
+}
+
 html.dark .room-container {
   background: #3d3835; /* warm-gray-800 */
   border-color: #514b44; /* warm-gray-700 */
@@ -403,6 +539,7 @@ html.dark .room-container {
 html.dark .dark-mode-toggle {
   background: #3d3835; /* warm-gray-800 */
   border-color: #514b44; /* warm-gray-700 */
+  color: #e8e5e0; /* warm-gray-200 */
 }
 
 html.dark .dark-mode-toggle:hover {

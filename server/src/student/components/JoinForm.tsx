@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FaSun, FaMoon } from 'react-icons/fa6';
 
 interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
@@ -6,9 +7,10 @@ interface JoinFormProps {
   onNameChange?: (name: string) => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  isCompact?: boolean;
 }
 
-const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode }) => {
+const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode, isCompact = false }) => {
   const [code, setCode] = useState('');
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState('');
@@ -67,25 +69,29 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
   };
 
   return (
-    <div className="join-form-container">
-      <div className="join-form-header">
-        <div className="header-content">
-          <div className="header-text">
-            <h1>Join Classroom Activity</h1>
-            <p className="subtitle">Enter an activity code to participate</p>
+    <div className={`join-form-container ${isCompact ? 'join-form-compact' : ''}`}>
+      {/* Dark mode toggle - always visible in top right */}
+      {onToggleDarkMode && (
+        <button 
+          onClick={onToggleDarkMode}
+          className="dark-mode-toggle absolute-toggle"
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {isDarkMode ? <FaSun className="w-4 h-4" /> : <FaMoon className="w-4 h-4" />}
+        </button>
+      )}
+      
+      {!isCompact && (
+        <div className="join-form-header">
+          <div className="header-content">
+            <div className="header-text">
+              <h1>Join Classroom Activity</h1>
+              <p className="subtitle">Enter an activity code to participate</p>
+            </div>
           </div>
-          {onToggleDarkMode && (
-            <button 
-              onClick={onToggleDarkMode}
-              className="dark-mode-toggle"
-              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
-          )}
         </div>
-      </div>
+      )}
       
       <form onSubmit={handleSubmit} className="join-form">
         <div className="form-row">
