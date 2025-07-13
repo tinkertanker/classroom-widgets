@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { useModal } from '../../contexts/ModalContext';
 import PollSettings from './PollSettings';
 import { FaPlay, FaStop } from 'react-icons/fa6';
 
 interface PollProps {
+  widgetId?: string;
   savedState?: any;
   onStateChange?: (state: any) => void;
 }
@@ -21,7 +22,7 @@ interface PollResults {
   participantCount: number;
 }
 
-function Poll({ savedState, onStateChange }: PollProps) {
+function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   const [roomCode, setRoomCode] = useState<string>('');
   const [isConnected, setIsConnected] = useState(false);
   const [pollData, setPollData] = useState<PollData>({
@@ -37,48 +38,49 @@ function Poll({ savedState, onStateChange }: PollProps) {
   const [participantCount, setParticipantCount] = useState(0);
   const [connectionError, setConnectionError] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
   
-  const socketRef = useRef<Socket | null>(null);
   const { showModal, hideModal } = useModal();
 
-  // Initialize socket connection
+  // Cleanup socket on unmount
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001', {
-      autoConnect: false // Don't connect until user creates a room
-    });
-    
-    socketRef.current.on('connect', () => {
-      console.log('Connected to server');
-      setConnectionError('');
-    });
-
-    socketRef.current.on('connect_error', (error) => {
-      console.error('Connection error:', error);
-      setConnectionError('Unable to connect to server. Make sure the server is running on port 3001.');
-      setIsConnecting(false);
-    });
-
-    socketRef.current.on('host:joined', (data) => {
-      if (data.success) {
-        setIsConnected(true);
-        console.log('Joined room:', data.code);
-      }
-    });
-
-    socketRef.current.on('participant:count', (data) => {
-      setParticipantCount(data.count);
-    });
-
-    socketRef.current.on('results:update', (data) => {
-      setResults(data);
-    });
-
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+      if (socket && roomCode) {
+        if (socket.connected) {
+          socket.emit('host:closeRoom', { code: roomCode, type: 'poll' });
+        }
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
       }
     };
-  }, []);
+  }, [socket, roomCode]);
+  
+  // Handle widget deletion cleanup
+  useEffect(() => {
+    const handleWidgetCleanup = (event: CustomEvent) => {
+      if (event.detail.widgetId === widgetId && socket && roomCode) {
+        console.log('Poll widget cleanup triggered for room:', roomCode);
+        
+        // If socket is connected, send the close event
+        if (socket.connected) {
+          socket.emit('host:closeRoom', { code: roomCode, type: 'poll' });
+          console.log('Sent host:closeRoom event');
+        }
+        
+        // Give it a moment to send, then disconnect
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
+      }
+    };
+    
+    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    
+    return () => {
+      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    };
+  }, [widgetId, socket, roomCode]);
 
   // Create room and get code
   const createRoom = async () => {
@@ -86,34 +88,73 @@ function Poll({ savedState, onStateChange }: PollProps) {
     setConnectionError('');
     
     try {
-      // First connect the socket
-      socketRef.current?.connect();
-      
-      // Wait a bit for connection
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const response = await fetch('http://localhost:3001/api/rooms/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+      const newSocket = io('http://localhost:3001', {
+        transports: ['websocket', 'polling']
       });
-      
-      if (!response.ok) {
-        throw new Error('Server request failed');
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setRoomCode(data.code);
-        // Join room as host
-        socketRef.current?.emit('host:join', data.code);
+
+      newSocket.on('connect', () => {
+        console.log('Connected to server');
+        setConnectionError('');
+      });
+
+      newSocket.on('connect_error', (error) => {
+        console.error('Connection error:', error);
+        setConnectionError('Unable to connect to server. Make sure the server is running on port 3001.');
         setIsConnecting(false);
-      }
+      });
+
+      newSocket.on('host:joined', (data) => {
+        if (data.success) {
+          setIsConnected(true);
+          console.log('Joined room:', data.code);
+        }
+      });
+
+      newSocket.on('participant:count', (data) => {
+        setParticipantCount(data.count);
+      });
+
+      newSocket.on('results:update', (data) => {
+        setResults(data);
+      });
+
+      newSocket.on('disconnect', () => {
+        console.log('Disconnected from server');
+      });
+
+      setSocket(newSocket);
+      
+      // Wait for connection before creating room
+      newSocket.once('connect', async () => {
+        try {
+          const response = await fetch('http://localhost:3001/api/rooms/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (!response.ok) {
+            throw new Error('Server request failed');
+          }
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            setRoomCode(data.code);
+            // Join room as host
+            newSocket.emit('host:join', data.code);
+            setIsConnecting(false);
+          }
+        } catch (error) {
+          console.error('Failed to create room:', error);
+          setConnectionError('Cannot connect to server. Please ensure the server is running (cd server && npm start).');
+          setIsConnecting(false);
+          newSocket.disconnect();
+        }
+      });
     } catch (error) {
-      console.error('Failed to create room:', error);
-      setConnectionError('Cannot connect to server. Please ensure the server is running (cd server && npm start).');
+      console.error('Error creating socket:', error);
+      setConnectionError('Failed to connect to server');
       setIsConnecting(false);
-      socketRef.current?.disconnect();
     }
   };
 
@@ -123,15 +164,15 @@ function Poll({ savedState, onStateChange }: PollProps) {
     const updatedPollData = { ...pollData, isActive: newState };
     setPollData(updatedPollData);
     
-    if (roomCode && socketRef.current) {
+    if (roomCode && socket) {
       // First update the poll data
-      socketRef.current.emit('poll:update', {
+      socket.emit('poll:update', {
         code: roomCode,
         pollData: updatedPollData
       });
       
       // Then toggle the state
-      socketRef.current.emit('poll:toggle', {
+      socket.emit('poll:toggle', {
         code: roomCode,
         isActive: newState
       });
@@ -149,8 +190,8 @@ function Poll({ savedState, onStateChange }: PollProps) {
           onSave={(question, options) => {
             setPollData({ ...pollData, question, options });
             // Update poll on server
-            if (roomCode && socketRef.current) {
-              socketRef.current.emit('poll:update', {
+            if (roomCode && socket) {
+              socket.emit('poll:update', {
                 code: roomCode,
                 pollData: { ...pollData, question, options }
               });

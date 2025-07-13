@@ -78,6 +78,22 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
 
     case 'REMOVE_WIDGET': {
       const { widgetId } = action.payload;
+      
+      // Get widget info before removal for cleanup
+      const widget = state.widgets.find(w => w.id === widgetId);
+      const widgetState = state.widgetStates.get(widgetId);
+      
+      // Dispatch cleanup event for networked widgets
+      if (widget && (widget.index === WIDGET_TYPES.POLL || widget.index === WIDGET_TYPES.DATA_SHARE)) {
+        window.dispatchEvent(new CustomEvent('widget-cleanup', {
+          detail: {
+            widgetId,
+            widgetType: widget.index,
+            roomCode: widgetState?.roomCode
+          }
+        }));
+      }
+      
       const newPositions = new Map(state.widgetPositions);
       const newStates = new Map(state.widgetStates);
       newPositions.delete(widgetId);

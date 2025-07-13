@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 
 interface DataShareProps {
+  widgetId?: string;
   savedState?: {
     roomCode?: string;
     submissions?: Submission[];
@@ -16,7 +17,7 @@ interface Submission {
   timestamp: number;
 }
 
-const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
+const DataShare: React.FC<DataShareProps> = ({ widgetId, savedState, onStateChange }) => {
   const [roomCode, setRoomCode] = useState<string>(savedState?.roomCode || '');
   const [submissions, setSubmissions] = useState<Submission[]>(savedState?.submissions || []);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -101,6 +102,41 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
     setCopiedId(submissionId);
     setTimeout(() => setCopiedId(null), 2000);
   };
+  
+  // Handle widget deletion cleanup
+  useEffect(() => {
+    const handleWidgetCleanup = (event: CustomEvent) => {
+      if (event.detail.widgetId === widgetId && socket && roomCode) {
+        console.log('DataShare widget cleanup triggered for room:', roomCode);
+        
+        // If socket is connected, send the close event
+        if (socket.connected) {
+          socket.emit('host:closeRoom', { code: roomCode, type: 'dataShare' });
+          console.log('Sent host:closeRoom event');
+        }
+        
+        // Give it a moment to send, then disconnect
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
+      }
+    };
+    
+    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    
+    return () => {
+      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
+      // Also cleanup on unmount
+      if (socket && roomCode) {
+        if (socket.connected) {
+          socket.emit('host:closeRoom', { code: roomCode, type: 'dataShare' });
+        }
+        setTimeout(() => {
+          socket.disconnect();
+        }, 100);
+      }
+    };
+  }, [widgetId, socket, roomCode]);
 
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">

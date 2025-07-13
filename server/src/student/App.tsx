@@ -215,6 +215,14 @@ const App: React.FC = () => {
         }
       });
 
+      newSocket.on('room:closed', (data) => {
+        console.log(`Room ${code} closed by host:`, data);
+        console.log('Received room:closed event with data:', data);
+        console.log('Current room code:', code, 'Event code:', data.code);
+        // Remove the room from the UI
+        handleLeaveRoom(roomId);
+      });
+
       newSocket.on('disconnect', () => {
         console.log(`Disconnected from room ${code}`);
       });

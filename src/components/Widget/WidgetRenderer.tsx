@@ -73,6 +73,7 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetType, widgetId, s
       />;
     case WIDGET_TYPES.POLL:
       return <Poll
+        widgetId={widgetId}
         savedState={savedState}
         onStateChange={onStateChange}
       />;
@@ -83,6 +84,7 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetType, widgetId, s
       />;
     case WIDGET_TYPES.DATA_SHARE:
       return <DataShare
+        widgetId={widgetId}
         savedState={savedState}
         onStateChange={onStateChange}
       />;

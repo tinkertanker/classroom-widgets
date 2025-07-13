@@ -392,6 +392,48 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle host closing room (widget deleted)
+  socket.on('host:closeRoom', (data) => {
+    const { code, type } = data;
+    console.log(`Received host:closeRoom for room ${code}, type: ${type} from socket ${socket.id}`);
+    const room = rooms.get(code);
+    
+    if (room && room.hostSocketId === socket.id) {
+      console.log(`Host verified for room ${code}, sending room:closed to participants`);
+      console.log(`Participants in room ${code}:`, room.participants);
+      
+      // Get all sockets in the room before cleanup
+      const socketsInRoom = io.sockets.adapter.rooms.get(code);
+      console.log(`Sockets in room ${code}:`, socketsInRoom ? Array.from(socketsInRoom) : 'none');
+      
+      // Notify all participants that the room is closing
+      socket.to(code).emit('room:closed', { 
+        code, 
+        type,
+        message: 'The host has closed this activity' 
+      });
+      
+      // Leave all participants from the room
+      if (socketsInRoom) {
+        socketsInRoom.forEach(socketId => {
+          const participantSocket = io.sockets.sockets.get(socketId);
+          if (participantSocket) {
+            participantSocket.leave(code);
+          }
+        });
+      }
+      
+      // Remove the room
+      rooms.delete(code);
+      console.log(`Host closed room ${code} (${type}) - room deleted`);
+    } else {
+      console.log(`Failed to close room ${code} - room not found or socket ${socket.id} is not host`);
+      if (room) {
+        console.log(`Room host is ${room.hostSocketId}, requesting socket is ${socket.id}`);
+      }
+    }
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
