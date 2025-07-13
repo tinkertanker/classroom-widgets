@@ -91,7 +91,7 @@ export function useNetworkedWidget({
     setConnectionError('');
     
     try {
-      const newSocket = io('http://localhost:3001', {
+      const newSocket = io(import.meta.env.VITE_SERVER_URL || 'http://localhost:3001', {
         transports: ['websocket', 'polling']
       });
 
@@ -129,7 +129,7 @@ export function useNetworkedWidget({
 
         newSocket.once('connect', async () => {
           try {
-            const response = await fetch('http://localhost:3001/api/rooms/create', {
+            const response = await fetch(`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'}/api/rooms/create`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             });

@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - REACT_APP_SERVER_URL=https://go.tk.sg
+        - VITE_SERVER_URL=https://go.tk.sg
     image: classroom-widgets-frontend:latest
     ports:
       - "80:80"

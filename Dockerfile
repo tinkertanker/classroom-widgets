@@ -2,7 +2,7 @@
 FROM node:18-alpine as build
 
 # Build arguments for environment variables
-ARG REACT_APP_SERVER_URL=http://localhost:3001
+ARG VITE_SERVER_URL=http://localhost:3001
 
 # Set working directory
 WORKDIR /app
@@ -17,7 +17,7 @@ RUN npm ci
 COPY . .
 
 # Set environment variables for build
-ENV REACT_APP_SERVER_URL=$REACT_APP_SERVER_URL
+ENV VITE_SERVER_URL=$VITE_SERVER_URL
 
 # Build the app
 RUN npm run build

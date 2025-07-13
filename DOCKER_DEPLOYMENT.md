@@ -1,202 +1,163 @@
-# Docker Deployment Guide
+# Docker Deployment Quick Reference
 
-This guide covers deploying the Classroom Widgets application using Docker containers.
+This is a quick reference guide for deploying Classroom Widgets with Docker.
 
-## Architecture
+## Development Setup
 
-The application consists of two Docker containers:
-1. **Frontend Container** (widgets.tk.sg) - Nginx serving the React build
-2. **Backend Container** (go.tk.sg) - Node.js server with Socket.io
-
-## Local Development with Docker
-
-### Build and run both containers:
 ```bash
+# Start both frontend and backend
 docker-compose up --build
-```
 
-This will:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001
-
-### Stop containers:
-```bash
-docker-compose down
+# Access:
+# - Frontend: http://localhost:3000
+# - Backend: http://localhost:3001
 ```
 
 ## Production Deployment
 
-### Option 1: Using Docker Compose (Recommended for single server)
+### 1. Initial Setup
 
-1. **Build production images**:
-   ```bash
-   docker-compose -f docker-compose.prod.yml build
-   ```
-
-2. **Run in production**:
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-### Option 2: Separate Deployments
-
-#### Frontend (widgets.tk.sg)
-
-1. **Build the image**:
-   ```bash
-   docker build \
-     --build-arg REACT_APP_SERVER_URL=https://go.tk.sg \
-     -t classroom-widgets-frontend:latest \
-     .
-   ```
-
-2. **Run the container**:
-   ```bash
-   docker run -d \
-     --name classroom-widgets-frontend \
-     -p 80:80 \
-     --restart unless-stopped \
-     classroom-widgets-frontend:latest
-   ```
-
-#### Backend (go.tk.sg)
-
-1. **Build the image**:
-   ```bash
-   cd server
-   docker build -t classroom-widgets-backend:latest .
-   ```
-
-2. **Run the container**:
-   ```bash
-   docker run -d \
-     --name classroom-widgets-backend \
-     -p 3001:3001 \
-     -e NODE_ENV=production \
-     -e PORT=3001 \
-     -e CORS_ORIGINS=https://widgets.tk.sg \
-     --restart unless-stopped \
-     classroom-widgets-backend:latest
-   ```
-
-## Docker Hub Deployment
-
-### Push images to Docker Hub:
-
-1. **Tag images**:
-   ```bash
-   docker tag classroom-widgets-frontend:latest yourusername/classroom-widgets-frontend:latest
-   docker tag classroom-widgets-backend:latest yourusername/classroom-widgets-backend:latest
-   ```
-
-2. **Push to Docker Hub**:
-   ```bash
-   docker push yourusername/classroom-widgets-frontend:latest
-   docker push yourusername/classroom-widgets-backend:latest
-   ```
-
-3. **Deploy on target servers**:
-   ```bash
-   # On widgets.tk.sg server
-   docker pull yourusername/classroom-widgets-frontend:latest
-   docker run -d --name frontend -p 80:80 yourusername/classroom-widgets-frontend:latest
-
-   # On go.tk.sg server
-   docker pull yourusername/classroom-widgets-backend:latest
-   docker run -d --name backend -p 80:3001 \
-     -e NODE_ENV=production \
-     -e CORS_ORIGINS=https://widgets.tk.sg \
-     yourusername/classroom-widgets-backend:latest
-   ```
-
-## Health Checks
-
-### Frontend health check:
 ```bash
-curl http://widgets.tk.sg
+# Clone repository on your server
+git clone https://github.com/yourusername/classroom-widgets.git
+cd classroom-widgets
+
+# Configure environment
+cp .env.production.example .env.production
+cp server/.env.production.example server/.env.production
+
+# Add Short.io API key
+cp src/secrets/shortioKey.example.js src/secrets/shortioKey.js
+# Edit and add your API key
 ```
 
-### Backend health check:
+### 2. Deploy
+
 ```bash
-curl http://go.tk.sg/share
-```
+# Build and start in detached mode
+docker-compose -f docker-compose.prod.yml up -d --build
 
-## Updating Containers
-
-1. **Pull latest code**
-2. **Rebuild images**:
-   ```bash
-   docker-compose -f docker-compose.prod.yml build
-   ```
-3. **Restart containers**:
-   ```bash
-   docker-compose -f docker-compose.prod.yml down
-   docker-compose -f docker-compose.prod.yml up -d
-   ```
-
-## Monitoring
-
-### View logs:
-```bash
-# All containers
-docker-compose -f docker-compose.prod.yml logs -f
-
-# Specific container
-docker logs -f classroom-widgets-frontend
-docker logs -f classroom-widgets-backend
-```
-
-### Check container status:
-```bash
+# Verify containers are running
 docker ps
 ```
 
-## SSL/TLS Configuration
+### 3. Container Management
 
-For production, you'll need to add SSL certificates. Options:
+```bash
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
 
-1. **Using a reverse proxy** (Recommended):
-   - Deploy Nginx/Traefik as a reverse proxy
-   - Configure SSL certificates (Let's Encrypt)
-   - Proxy requests to Docker containers
+# Stop containers
+docker-compose -f docker-compose.prod.yml down
 
-2. **Modify Nginx config in frontend**:
-   - Mount SSL certificates as volumes
-   - Update nginx.conf for HTTPS
+# Restart containers
+docker-compose -f docker-compose.prod.yml restart
 
-Example with reverse proxy:
+# Update deployment
+git pull
+docker-compose -f docker-compose.prod.yml down
+docker-compose -f docker-compose.prod.yml up -d --build
+```
+
+## SSL Configuration
+
+### Using Nginx Reverse Proxy
+
+1. Install Nginx on host:
+```bash
+sudo apt update
+sudo apt install nginx certbot python3-certbot-nginx
+```
+
+2. Create Nginx config for frontend (`/etc/nginx/sites-available/widgets.tk.sg`):
 ```nginx
 server {
-    listen 443 ssl;
     server_name widgets.tk.sg;
     
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:80;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
 ```
 
+3. Create Nginx config for backend (`/etc/nginx/sites-available/go.tk.sg`):
+```nginx
+server {
+    server_name go.tk.sg;
+    
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+    }
+}
+```
+
+4. Enable sites and get SSL certificates:
+```bash
+sudo ln -s /etc/nginx/sites-available/widgets.tk.sg /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/go.tk.sg /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+sudo certbot --nginx -d widgets.tk.sg -d go.tk.sg
+```
+
+## Health Checks
+
+```bash
+# Check frontend
+curl -I http://localhost:80
+
+# Check backend
+curl http://localhost:3001/health
+
+# Check container status
+docker-compose -f docker-compose.prod.yml ps
+```
+
 ## Troubleshooting
 
-### Container won't start:
 ```bash
-docker logs container-name
+# View container logs
+docker logs classroom-widgets-frontend
+docker logs classroom-widgets-backend
+
+# Enter container for debugging
+docker exec -it classroom-widgets-backend sh
+
+# Check resource usage
+docker stats
+
+# Clean rebuild
+docker-compose -f docker-compose.prod.yml down -v
+docker system prune -a
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-### Network issues between containers:
+## Backup Script
+
+Create `/opt/backup-classroom-widgets.sh`:
 ```bash
-docker network ls
-docker network inspect classroom-widgets
+#!/bin/bash
+DATE=$(date +%Y%m%d_%H%M%S)
+BACKUP_DIR="/backups/classroom-widgets"
+mkdir -p $BACKUP_DIR
+
+cd /path/to/classroom-widgets
+tar -czf $BACKUP_DIR/backup_$DATE.tar.gz \
+  docker-compose*.yml \
+  .env.production \
+  server/.env.production \
+  src/secrets/shortioKey.js
+
+find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 ```
 
-### Rebuild from scratch:
+Add to crontab:
 ```bash
-docker-compose down -v
-docker-compose build --no-cache
-docker-compose up
+0 2 * * * /opt/backup-classroom-widgets.sh
 ```

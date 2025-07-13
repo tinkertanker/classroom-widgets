@@ -36,6 +36,42 @@ cp src/secrets/shortioKey.example.js src/secrets/shortioKey.js
 
 ## Architecture
 
+### System Architecture: 2 Servers
+
+This application uses a **2-server architecture**:
+
+1. **Frontend Server (Teacher App)**
+   - React application for the main classroom widgets interface
+   - Development: Webpack dev server on port 3000
+   - Production: Nginx container on port 80
+   - Deployed at: widgets.tk.sg
+
+2. **Backend Server (Express with dual purpose)**
+   - **API & WebSocket Server**: Handles real-time features for Poll and DataShare widgets
+   - **Student App Server**: Serves the student React app at `/student` path
+   - Runs on port 3001
+   - Deployed at: go.tk.sg
+
+### Student App Architecture
+
+The student app is **embedded within the Express server**:
+- Source location: `/server/src/student/` (separate React app built with Vite)
+- Build output: `/server/public/`
+- Served at: `http://[server]:3001/student`
+- **Not a separate server** - served by the same Express instance
+
+### Request Flow
+- Teacher accesses main app → `https://widgets.tk.sg` → Nginx serves React app
+- Teacher creates activity → React app calls → `https://go.tk.sg/api/*` → Express API
+- Student joins activity → `https://go.tk.sg/student` → Express serves student React app
+- Student WebSocket connection → `wss://go.tk.sg/socket.io` → Same Express server
+
+This design is efficient because it:
+- Reduces the number of services to manage (only 2 containers)
+- Eliminates CORS issues between student app and API
+- Simplifies SSL configuration and deployment
+- Shares resources between API and student app serving
+
 ### Widget System
 The application uses a dynamic widget system where widgets are:
 1. Added via toolbar buttons - each creates a new widget instance with unique UUID
