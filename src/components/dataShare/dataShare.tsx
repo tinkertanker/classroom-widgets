@@ -134,29 +134,34 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
       ) : (
         // Active room state
         <div className="flex flex-col h-full">
+          {/* Header Section */}
           <div className="mb-4">
-            <div className="text-center">
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-1">
-                Students can share links at:
-              </p>
-              <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-3 mb-2">
-                <p className="text-lg font-mono text-warm-gray-800 dark:text-warm-gray-200">
-                  localhost/student
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Activity Code</p>
+                <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
+                  {roomCode}
                 </p>
               </div>
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-2">
-                Activity Code:
-              </p>
-              <p className="text-3xl font-bold text-warm-gray-800 dark:text-warm-gray-200 mb-2">
-                {roomCode}
-              </p>
-              <p className="text-xs text-warm-gray-500 dark:text-warm-gray-500">
-                {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+              {submissions.length > 0 && (
+                <button
+                  onClick={(_e) => {
+                    clearAllSubmissions();
+                  }}
+                  className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white text-sm rounded transition-colors duration-200"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
+            <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-2 text-center">
+              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">localhost/student</span>
               </p>
             </div>
           </div>
 
-          {/* Submissions list */}
+          {/* Content Section */}
           <div className="flex-1 overflow-y-auto border border-warm-gray-200 dark:border-warm-gray-700 rounded-lg">
             {submissions.length === 0 ? (
               <div className="flex items-center justify-center h-full text-warm-gray-500 dark:text-warm-gray-400 text-sm">
@@ -240,20 +245,12 @@ const DataShare: React.FC<DataShareProps> = ({ savedState, onStateChange }) => {
               </div>
             )}
           </div>
-
-          {/* Actions */}
-          {submissions.length > 0 && (
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={(_e) => {
-                  clearAllSubmissions();
-                }}
-                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white text-sm rounded transition-colors duration-200"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
+          
+          {/* Footer Section */}
+          <div className="mt-4 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex justify-between items-center text-xs text-warm-gray-500 dark:text-warm-gray-400">
+            <span>{submissions.length} submission{submissions.length !== 1 ? 's' : ''}</span>
+            <span>Data Share Active</span>
+          </div>
         </div>
       )}
     </div>

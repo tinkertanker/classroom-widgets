@@ -198,57 +198,58 @@ function Poll({ savedState, onStateChange }: PollProps) {
         </div>
       ) : (
         <>
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-4">
-              <div className="text-center">
-                <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400">Activity Code</p>
+          {/* Header Section */}
+          <div className="mb-4">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Activity Code</p>
                 <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
                   {roomCode}
                 </p>
               </div>
-              <div className="text-center">
-                <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400">Participants</p>
-                <p className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-200">
-                  {participantCount}
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(_e) => {
+                    togglePoll();
+                  }}
+                  className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
+                    pollData.isActive
+                      ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
+                      : 'bg-sage-500 hover:bg-sage-600'
+                  }`}
+                  disabled={!pollData.question || pollData.options.some(o => !o)}
+                  title={pollData.isActive ? 'Stop Poll' : 'Start Poll'}
+                >
+                  {pollData.isActive ? (
+                    <>
+                      <FaStop className="text-xs" />
+                      Stop
+                    </>
+                  ) : (
+                    <>
+                      <FaPlay className="text-xs" />
+                      Start
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={(_e) => {
+                    openSettings();
+                  }}
+                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
+                >
+                  Settings
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(_e) => {
-                  togglePoll();
-                }}
-                className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
-                  pollData.isActive
-                    ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
-                    : 'bg-sage-500 hover:bg-sage-600'
-                }`}
-                disabled={!pollData.question || pollData.options.some(o => !o)}
-                title={pollData.isActive ? 'Stop Poll' : 'Start Poll'}
-              >
-                {pollData.isActive ? (
-                  <>
-                    <FaStop className="text-xs" />
-                    Stop
-                  </>
-                ) : (
-                  <>
-                    <FaPlay className="text-xs" />
-                    Start
-                  </>
-                )}
-              </button>
-              <button
-                onClick={(_e) => {
-                  openSettings();
-                }}
-                className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
-              >
-                Settings
-              </button>
+            <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-2 text-center">
+              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">localhost/student</span>
+              </p>
             </div>
           </div>
           
+          {/* Content Section */}
           <div className={`flex-1 overflow-y-auto ${!pollData.isActive ? 'opacity-50' : ''}`}>
             {pollData.question ? (
               <>
@@ -303,8 +304,10 @@ function Poll({ savedState, onStateChange }: PollProps) {
             )}
           </div>
           
-          <div className="mt-4 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            Students visit: localhost/student
+          {/* Footer Section */}
+          <div className="mt-4 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex justify-between items-center text-xs text-warm-gray-500 dark:text-warm-gray-400">
+            <span>{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
+            <span>{pollData.isActive ? 'Poll Active' : 'Poll Inactive'}</span>
           </div>
         </>
       )}
