@@ -1,7 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import * as React from "react";
 import { v4 as uuidv4 } from 'uuid';
-import { FaPlus } from 'react-icons/fa6';
+import { 
+  FaPlus,
+  FaBullseye,      // Focus/target icon for green state
+  FaTriangleExclamation, // Warning icon for yellow state  
+  FaBan,           // Ban/stop icon for red state
+  FaCheck,         // Checkmark for completed/faded state
+  FaClock          // Clock for waiting/neutral state
+} from 'react-icons/fa6';
 
 interface ListItem {
   id: string;
@@ -173,7 +180,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                     <button
                         onClick={() => cycleStatus(item.id)}
                         aria-label="Cycle status"
-                        className={`rounded-full flex-shrink-0 transition-colors duration-200 ${
+                        className={`rounded-full flex-shrink-0 transition-colors duration-200 flex items-center justify-center ${
                           item.status === 1 ? "bg-green-500 hover:bg-green-600" :
                           item.status === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
                           item.status === 3 ? "bg-red-500 hover:bg-red-600" :
@@ -183,6 +190,11 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                           isLarge ? "w-12 h-12" : "w-8 h-8"
                         }`}
                       >
+                        {item.status === 1 && <FaBullseye className={`text-white ${isLarge ? "text-xl" : "text-sm"}`} />}
+                        {item.status === 2 && <FaTriangleExclamation className={`text-white ${isLarge ? "text-xl" : "text-sm"}`} />}
+                        {item.status === 3 && <FaBan className={`text-white ${isLarge ? "text-xl" : "text-sm"}`} />}
+                        {item.status === 4 && <FaCheck className={`text-white ${isLarge ? "text-xl" : "text-sm"}`} />}
+                        {item.status === 0 && <FaClock className={`text-warm-gray-600 dark:text-warm-gray-300 ${isLarge ? "text-lg" : "text-xs"}`} />}
                       </button>
                     <div className="relative flex-1">
                       {item.isEditing ? (
