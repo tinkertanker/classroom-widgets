@@ -4,7 +4,7 @@ import SlotMachine from "./slotMachine";
 import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../contexts/ModalContext";
 import { RandomiserProps, RandomiserState } from "./types";
-import { FaDice, FaRotate } from 'react-icons/fa6';
+import { FaDice, FaRotate, FaGear } from 'react-icons/fa6';
 import celebrateSoundFile from "./celebrate.mp3";
 
 // Removed Chakra UI imports
@@ -230,7 +230,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   return (
     <>
       <div
-        className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col"
+        className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative"
         id="jason"
       >
         <div className="flex-1 overflow-hidden p-4">
@@ -266,20 +266,29 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                   />
                 </div>
               ) : (
-                <div className="flex justify-center items-center w-[95%]">
+                <div className="flex flex-col justify-center items-center w-[95%] gap-3">
                   <p
                     className="whitespace-normal break-words text-2xl text-center text-warm-gray-800 dark:text-warm-gray-200"
                     ref={textRef}
                   >
                     {result}
                   </p>
+                  {result === "Enter a list to randomise!" && (
+                    <button
+                      className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5"
+                      onClick={openSettings}
+                    >
+                      <FaGear className="text-xs" />
+                      Settings
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           </button>
         </div>
         {buttonsettings === "normal" ? (
-          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center">
+          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
             <button
               className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               onClick={()=>handlerandomise()}
@@ -288,52 +297,68 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
               <FaDice className="text-xs" />
               Randomise!!
             </button>
+            <button
+              className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
+              onClick={openSettings}
+              title="Settings"
+            >
+              <FaGear className="text-terracotta-500 hover:text-terracotta-600 text-sm" />
+            </button>
           </div>
         ) : buttonsettings === "result" ? (
-          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center gap-2">
-            <button
-              className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => {
-                if (result && !removedChoices.includes(result)) {
-                  // Add to removed list
-                  const newRemovedChoices = [...removedChoices, result];
-                  setRemovedChoices(newRemovedChoices);
-                  removedChoicesRef.current = newRemovedChoices;
-                  
-                  // Remove from choices array
-                  const newChoices = choices.filter(choice => choice !== result);
-                  setChoices(newChoices);
-                  choicesRef.current = newChoices;
-                  setInput(newChoices.join('\n'));
-                  
-                  // Update display choices - filter out all removed items
-                  const activeChoices = newChoices.filter(choice => !newRemovedChoices.includes(choice));
-                  if (activeChoices.length > 0) {
-                    setDisplayChoices(activeChoices);
-                  } else {
-                    // No more active choices, clear display
-                    setDisplayChoices([]);
-                    setResult("Enter a list to randomise!");
+          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (result && !removedChoices.includes(result)) {
+                    // Add to removed list
+                    const newRemovedChoices = [...removedChoices, result];
+                    setRemovedChoices(newRemovedChoices);
+                    removedChoicesRef.current = newRemovedChoices;
+                    
+                    // Remove from choices array
+                    const newChoices = choices.filter(choice => choice !== result);
+                    setChoices(newChoices);
+                    choicesRef.current = newChoices;
+                    setInput(newChoices.join('\n'));
+                    
+                    // Update display choices - filter out all removed items
+                    const activeChoices = newChoices.filter(choice => !newRemovedChoices.includes(choice));
+                    if (activeChoices.length > 0) {
+                      setDisplayChoices(activeChoices);
+                    } else {
+                      // No more active choices, clear display
+                      setDisplayChoices([]);
+                      setResult("Enter a list to randomise!");
+                    }
+                    
+                    // Reset to normal state after removing
+                    setButtonSettings("normal");
                   }
-                  
-                  // Reset to normal state after removing
-                  setButtonSettings("normal");
-                }
-              }}
-              disabled={removedChoices.includes(result)}
-            >
-              {removedChoices.includes(result) ? "Already removed" : "Remove option"}
-            </button>
+                }}
+                disabled={removedChoices.includes(result)}
+              >
+                {removedChoices.includes(result) ? "Already removed" : "Remove option"}
+              </button>
+              <button
+                disabled={loading}
+                ref={initialResultFocus}
+                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                onClick={() => {
+                  handlerandomise();
+                }}
+              >
+                <FaRotate className="text-xs" />
+                Again!
+              </button>
+            </div>
             <button
-              disabled={loading}
-              ref={initialResultFocus}
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-              onClick={() => {
-                handlerandomise();
-              }}
+              className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
+              onClick={openSettings}
+              title="Settings"
             >
-              <FaRotate className="text-xs" />
-              Again!
+              <FaGear className="text-terracotta-500 hover:text-terracotta-600 text-sm" />
             </button>
           </div>
         ) : null}

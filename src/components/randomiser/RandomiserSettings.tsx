@@ -86,6 +86,16 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                     >
                       Generate the alphabet
                     </button>
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
+                      onClick={() => {
+                        const fruits = "Apple\nBanana\nOrange\nMango\nStrawberry\nGrapes\nWatermelon\nPineapple\nPeach\nCherry";
+                        setInput(fruits);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Generate fruits
+                    </button>
                   </div>
                 )}
               </div>
