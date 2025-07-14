@@ -26,7 +26,9 @@ import {
   FaWifi,           // Network indicator
   FaQrcode,         // QR Code icon
   FaPaperclip,      // Data Share icon
-  FaVideo           // Visualiser icon
+  FaVideo,          // Visualiser icon
+  FaPlus,           // Plus icon for more widgets
+  FaCaretUp         // Upward caret for popup indicator
 } from 'react-icons/fa6';
 
 interface ToolbarProps {
@@ -285,13 +287,19 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`w-16 h-16 p-3 rounded-lg text-warm-gray-700 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-800/40 transition-all duration-200 flex items-center justify-center ${
+              className={`w-16 h-16 p-2 rounded-lg text-white bg-terracotta-500 hover:bg-terracotta-600 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-0.5 relative ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
+              } ${
+                showAllWidgets ? 'ring-2 ring-terracotta-600 ring-offset-2 ring-offset-warm-white dark:ring-offset-warm-gray-900' : ''
               }`}
               disabled={state.stickerMode}
               title="More widgets"
             >
-              <FaTableCells className="text-2xl" />
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
+                <FaCaretUp className="text-sm" />
+              </div>
+              <FaPlus className="text-xl" />
+              <span className="text-[10px] font-medium">MORE</span>
             </button>
 
             {showAllWidgets && (
