@@ -4,7 +4,7 @@ import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import PollSettings from './PollSettings';
-import { FaPlay, FaStop, FaChartColumn } from 'react-icons/fa6';
+import { FaPlay, FaStop, FaChartColumn, FaGear } from 'react-icons/fa6';
 
 interface PollProps {
   widgetId?: string;
@@ -135,11 +135,13 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                     togglePoll();
                   }}
                   className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
-                    pollData.isActive
-                      ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
-                      : 'bg-sage-500 hover:bg-sage-600'
+                    (!pollData.question || pollData.options.filter(o => o.trim()).length < 2)
+                      ? 'bg-warm-gray-400 dark:bg-warm-gray-600 opacity-50 cursor-not-allowed'
+                      : pollData.isActive
+                        ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
+                        : 'bg-sage-500 hover:bg-sage-600'
                   }`}
-                  disabled={!pollData.question || pollData.options.some(o => !o)}
+                  disabled={!pollData.question || pollData.options.filter(o => o.trim()).length < 2}
                   title={pollData.isActive ? 'Stop Poll' : 'Start Poll'}
                 >
                   {pollData.isActive ? (
@@ -158,17 +160,18 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                   onClick={(_e) => {
                     openSettings();
                   }}
-                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200"
+                  className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
+                  title="Settings"
                 >
-                  Settings
+                  <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
                 </button>
             </div>
           </NetworkedWidgetHeader>
           
           {/* Content Section */}
-          <div className={`flex-1 overflow-y-auto ${!pollData.isActive ? 'opacity-50' : ''}`}>
+          <div className="flex-1 overflow-y-auto">
             {pollData.question ? (
-              <>
+              <div className={!pollData.isActive ? 'opacity-50' : ''}>
                 <h3 className={`text-lg font-semibold mb-4 ${
                   pollData.isActive 
                     ? 'text-warm-gray-800 dark:text-warm-gray-200' 
@@ -212,10 +215,19 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-warm-gray-500 dark:text-warm-gray-400">
-                Click Settings to create your poll
+              <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                <p className="text-warm-gray-500 dark:text-warm-gray-400">
+                  Click Settings to create your poll
+                </p>
+                <button
+                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5"
+                  onClick={openSettings}
+                >
+                  <FaGear className="text-xs" />
+                  Settings
+                </button>
               </div>
             )}
           </div>

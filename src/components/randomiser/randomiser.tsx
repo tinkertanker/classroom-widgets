@@ -302,7 +302,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
               onClick={openSettings}
               title="Settings"
             >
-              <FaGear className="text-terracotta-500 hover:text-terracotta-600 text-sm" />
+              <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
             </button>
           </div>
         ) : buttonsettings === "result" ? (
@@ -358,7 +358,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
               onClick={openSettings}
               title="Settings"
             >
-              <FaGear className="text-terracotta-500 hover:text-terracotta-600 text-sm" />
+              <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
             </button>
           </div>
         ) : null}
