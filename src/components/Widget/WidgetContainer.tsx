@@ -108,7 +108,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
           : (isActive ? 500 : "auto"), // Other widgets max 500
         opacity: isHoveringTrash ? 0.2 : 1,
         transition: "opacity 0.2s ease",
-        cursor: isHoveringTrash ? "not-allowed" : "auto"
+        cursor: isHoveringTrash ? "not-allowed" : "move"
       }}
       onDragStart={handleDragStart}
       onDrag={handleDrag}

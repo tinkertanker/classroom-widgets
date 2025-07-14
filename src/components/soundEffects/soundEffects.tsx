@@ -138,9 +138,29 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   };
 
   return (
-    <div className="w-full h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 p-2 overflow-y-auto">
-      <div className="flex flex-col gap-1 h-full">
-        {soundButtons.map((sound, index) => {
+    <div className="w-full h-full bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 flex flex-col">
+      {/* Drag handle area */}
+      <div className="sound-effects-drag-handle px-2 py-2 border-b border-warm-gray-200 dark:border-warm-gray-700 cursor-move hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group">
+        <div className="flex justify-center">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex gap-1.5 group-hover:gap-2 transition-all duration-200">
+              <div className="w-1 h-1 bg-warm-gray-400 dark:bg-warm-gray-500 rounded-full group-hover:bg-warm-gray-500 dark:group-hover:bg-warm-gray-400"></div>
+              <div className="w-1 h-1 bg-warm-gray-400 dark:bg-warm-gray-500 rounded-full group-hover:bg-warm-gray-500 dark:group-hover:bg-warm-gray-400"></div>
+              <div className="w-1 h-1 bg-warm-gray-400 dark:bg-warm-gray-500 rounded-full group-hover:bg-warm-gray-500 dark:group-hover:bg-warm-gray-400"></div>
+            </div>
+            <div className="flex gap-1.5 group-hover:gap-2 transition-all duration-200">
+              <div className="w-1 h-1 bg-warm-gray-400 dark:bg-warm-gray-500 rounded-full group-hover:bg-warm-gray-500 dark:group-hover:bg-warm-gray-400"></div>
+              <div className="w-1 h-1 bg-warm-gray-400 dark:bg-warm-gray-500 rounded-full group-hover:bg-warm-gray-500 dark:group-hover:bg-warm-gray-400"></div>
+              <div className="w-1 h-1 bg-warm-gray-400 dark:bg-warm-gray-500 rounded-full group-hover:bg-warm-gray-500 dark:group-hover:bg-warm-gray-400"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Sound buttons */}
+      <div className="flex-1 p-2 overflow-y-auto min-h-0">
+        <div className="flex flex-col gap-1">
+          {soundButtons.map((sound, index) => {
           const Icon = sound.icon as React.ComponentType<{ className?: string }>;
           const keyNumber = index < 9 ? (index + 1).toString() : '0';
           return (
@@ -153,7 +173,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
               className={`${sound.color} text-white rounded-md py-2 px-1.5 flex items-center justify-center gap-1.5 transition-all duration-150 transform active:scale-95 shadow-sm`}
               title={`${sound.name} (Press ${keyNumber})`}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
               {isActive && (
                 <span className="text-xs opacity-70 font-mono">
                   {keyNumber}
@@ -161,7 +181,8 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
               )}
             </button>
           );
-        })}
+          })}
+        </div>
       </div>
     </div>
   );
