@@ -7,8 +7,10 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:80"
+    env_file:
+      - .env.production
     environment:
-      - VITE_SERVER_URL=http://localhost:3001
+      - VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:3001}
     depends_on:
       - backend
     networks:
@@ -20,10 +22,12 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3001:3001"
+    env_file:
+      - .env.production
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - CORS_ORIGINS=http://localhost:3000,http://localhost
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost}
     networks:
       - classroom-widgets
 

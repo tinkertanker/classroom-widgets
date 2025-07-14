@@ -29,29 +29,36 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../public')));
 }
 
-// Serve student interface
+// Serve student interface from root
 if (process.env.NODE_ENV === 'production') {
-  // In production, serve the built React app
-  app.use('/student', express.static(path.join(__dirname, '../public')));
-  app.get('/student/*', (req, res) => {
+  // In production, serve the built React app from root
+  app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
+  });
+  
+  // Serve static files for any path not starting with /api
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    // Try to serve the static file, fall back to index.html for client-side routing
+    const filePath = path.join(__dirname, '../public', req.path);
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        res.sendFile(path.join(__dirname, '../public/index.html'));
+      }
+    });
   });
 } else {
   // In development, proxy to Vite dev server
-  app.get('/student*', (req, res) => {
-    // For the exact /student path, redirect to /student/ to ensure Vite handles it
-    if (req.path === '/student') {
-      res.redirect('http://localhost:3002/student/');
-    } else {
-      res.redirect('http://localhost:3002' + req.path);
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
     }
+    // Proxy all non-API requests to Vite dev server
+    res.redirect('http://localhost:3002' + req.path);
   });
 }
-
-// Redirect root to /student for backwards compatibility
-app.get('/', (req, res) => {
-  res.redirect('/student');
-});
 
 // Store active rooms/sessions
 const rooms = new Map();
