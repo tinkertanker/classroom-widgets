@@ -263,60 +263,35 @@ const Timer = () => {
                   fill="var(--timer-arc)"
                 />
                 
-                {/* Animated meteor-like pulse with tail */}
+                {/* Animated pulse arc */}
                 {isRunning && time > 0 && (
                   <>
-                    {/* Gradient definition for the meteor tail */}
+                    {/* Gradient definition for the pulse arc */}
                     <defs>
-                      <linearGradient id="meteorGradient" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stopColor="var(--timer-arc)" stopOpacity="0" />
-                        <stop offset="40%" stopColor="var(--timer-arc)" stopOpacity="0.1" />
-                        <stop offset="70%" stopColor="var(--timer-arc)" stopOpacity="0.3" />
-                        <stop offset="90%" stopColor="var(--timer-arc)" stopOpacity="0.6" />
-                        <stop offset="100%" stopColor="var(--timer-arc)" stopOpacity="1" />
+                      <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="var(--timer-arc)" stopOpacity="1" />
+                        <stop offset="50%" stopColor="var(--timer-arc)" stopOpacity="0.8" />
+                        <stop offset="100%" stopColor="var(--timer-arc)" stopOpacity="0" />
                       </linearGradient>
-                      <filter id="glow">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                        <feMerge>
-                          <feMergeNode in="coloredBlur"/>
-                          <feMergeNode in="SourceGraphic"/>
-                        </feMerge>
-                      </filter>
                     </defs>
                     
                     <g transform={`rotate(${pulseAngle} 50 50)`}>
-                      {/* Meteor tail - longer curved path (inside the circle) */}
+                      {/* Thin arc pulse - 2px inside the main arc */}
                       <path
-                        d="M 50 7.5 Q 40 7.5 30 8.5 Q 20 9.5 10 11.5 Q 0 13.5 -10 16 Q -20 18.5 -30 22"
-                        stroke="url(#meteorGradient)"
-                        strokeWidth="3"
+                        d="M 50 7 A 43 43 0 0 1 64 10.5"
+                        stroke="url(#pulseGradient)"
+                        strokeWidth="2"
                         fill="none"
                         strokeLinecap="round"
-                        opacity="0.8"
-                      />
-                      
-                      {/* Meteor head with glow (inside the circle) */}
-                      <circle
-                        cx="50"
-                        cy="7.5"
-                        r="2.5"
-                        fill="var(--timer-arc)"
-                        filter="url(#glow)"
                       >
-                        {/* Pulsing animation */}
-                        <animate
-                          attributeName="r"
-                          values="2.5;3.5;2.5"
-                          dur="0.6s"
-                          repeatCount="indefinite"
-                        />
+                        {/* Pulsing opacity animation */}
                         <animate
                           attributeName="opacity"
-                          values="0.8;1;0.8"
-                          dur="0.6s"
+                          values="0.6;1;0.6"
+                          dur="0.8s"
                           repeatCount="indefinite"
                         />
-                      </circle>
+                      </path>
                     </g>
                   </>
                 )}
@@ -326,19 +301,10 @@ const Timer = () => {
               >
                 {timerFinished ? (
                   /* TIME'S UP DISPLAY */
-                  <div className="flex flex-col items-center justify-center">
-                    <svg 
-                      style={{ width: 'clamp(3rem, 25cqmin, 6rem)', height: 'clamp(3rem, 25cqmin, 6rem)' }} 
-                      className="mb-2 text-dusty-rose-500" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div className="flex items-center justify-center w-full h-full">
                     <span 
-                      style={{ fontSize: 'clamp(1.25rem, 10cqmin, 3rem)' }} 
-                      className="font-bold text-dusty-rose-500"
+                      style={{ fontSize: 'clamp(1.5rem, 15cqmin, 4rem)' }} 
+                      className="font-bold text-dusty-rose-500 text-center"
                     >
                       Time's Up!
                     </span>
