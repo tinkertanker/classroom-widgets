@@ -60,7 +60,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     ];
   });
 
-  const backgroundOptions = ['geometric', 'gradient', 'lines', 'dots'] as const;
+  const backgroundOptions = ['geometric', 'gradient', 'lines', 'dots', 'lowpoly', 'seawave'] as const;
   const [showMenu, setShowMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
   const [showAllWidgets, setShowAllWidgets] = useState(false);
@@ -423,14 +423,14 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
                 onClick={() => setShowBackgroundMenu(!showBackgroundMenu)}
                 className="w-full px-4 py-2 text-left text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 flex items-center space-x-2"
               >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
                 <FaPalette className="text-sm" />
                 <span>Background</span>
-                <svg className="w-4 h-4 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                </svg>
               </button>
               {showBackgroundMenu && (
-                <div className="absolute left-full top-0 ml-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 min-w-[150px]">
+                <div className="absolute right-full bottom-0 mr-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg py-2 min-w-[150px]">
                   {backgroundOptions.map((option) => (
                     <button
                       key={option}
@@ -439,7 +439,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
                         state.backgroundType === option ? 'bg-warm-gray-100 dark:bg-warm-gray-700' : ''
                       }`}
                     >
-                      {option}
+                      {option === 'lowpoly' ? 'Low Poly' : option === 'seawave' ? 'Sea Wave' : option}
                     </button>
                   ))}
                 </div>

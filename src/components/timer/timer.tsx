@@ -26,7 +26,7 @@ const Timer = () => {
   // Calculate SVG path for the arc
   const getArcPath = (percentage: number) => {
     const centerRadius = 45;
-    const strokeWidth = 5; // Thinner stroke
+    const strokeWidth = 3; // Thinner stroke
     const outerRadius = centerRadius + strokeWidth / 2;
     const innerRadius = centerRadius - strokeWidth / 2;
     const startAngle = -90; // Start at top
@@ -202,7 +202,7 @@ const Timer = () => {
         setTimeout(() => setChangeTime(changeTime+1), 1000);
       }
     } else {
-      !showResume && setTime(initialTime);
+      !showResume && !timerFinished && setTime(initialTime);
     }
   }, [changeTime]);
 
@@ -253,15 +253,38 @@ const Timer = () => {
                   cy="50"
                   r="45"
                   stroke="rgb(229, 231, 235)"
-                  strokeWidth="5"
+                  strokeWidth="3"
                   fill="none"
                   className="dark:stroke-warm-gray-700"
                 />
-                {/* Progress arc (sage) */}
-                <path
-                  d={getArcPath(time / initialTime)}
-                  fill="var(--timer-arc)"
-                />
+                {/* Gradient definition for rainbow arc */}
+                <defs>
+                  <linearGradient id="rainbowGradient" gradientUnits="userSpaceOnUse" x1="50" y1="5" x2="50" y2="95">
+                    <stop offset="0%" stopColor="#ff6b6b" />
+                    <stop offset="16.66%" stopColor="#ff9a44" />
+                    <stop offset="33.33%" stopColor="#ffd93d" />
+                    <stop offset="50%" stopColor="#6bcf7f" />
+                    <stop offset="66.66%" stopColor="#4ecdc4" />
+                    <stop offset="83.33%" stopColor="#5c7cfa" />
+                    <stop offset="100%" stopColor="#a864fd" />
+                  </linearGradient>
+                  {/* Mask to show only the active portion */}
+                  <mask id="progressMask">
+                    <rect x="0" y="0" width="100" height="100" fill="black" />
+                    <path
+                      d={getArcPath(time / initialTime)}
+                      fill="white"
+                    />
+                  </mask>
+                </defs>
+                
+                {/* Full rainbow circle (always present but masked) */}
+                <g mask="url(#progressMask)">
+                  <path
+                    d={getArcPath(1)}
+                    fill="url(#rainbowGradient)"
+                  />
+                </g>
                 
                 {/* Animated pulse arc */}
                 {isRunning && time > 0 && (
@@ -269,26 +292,29 @@ const Timer = () => {
                     {/* Gradient definition for the pulse arc */}
                     <defs>
                       <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="var(--timer-arc)" stopOpacity="1" />
-                        <stop offset="50%" stopColor="var(--timer-arc)" stopOpacity="0.8" />
-                        <stop offset="100%" stopColor="var(--timer-arc)" stopOpacity="0" />
+                        <stop offset="0%" stopColor="#ff6b6b" stopOpacity="1" />
+                        <stop offset="20%" stopColor="#ffd93d" stopOpacity="0.9" />
+                        <stop offset="40%" stopColor="#6bcf7f" stopOpacity="0.8" />
+                        <stop offset="60%" stopColor="#4ecdc4" stopOpacity="0.7" />
+                        <stop offset="80%" stopColor="#5c7cfa" stopOpacity="0.5" />
+                        <stop offset="100%" stopColor="#a864fd" stopOpacity="0" />
                       </linearGradient>
                     </defs>
                     
                     <g transform={`rotate(${pulseAngle} 50 50)`}>
-                      {/* Thin arc pulse - 2px inside the main arc */}
+                      {/* Thin arc pulse - very subtle */}
                       <path
-                        d="M 50 7 A 43 43 0 0 1 64 10.5"
+                        d="M 50 7 A 43 43 0 0 1 65 11"
                         stroke="url(#pulseGradient)"
-                        strokeWidth="2"
+                        strokeWidth="1.5"
                         fill="none"
                         strokeLinecap="round"
                       >
-                        {/* Pulsing opacity animation */}
+                        {/* Pulsing opacity animation - subtle */}
                         <animate
                           attributeName="opacity"
-                          values="0.6;1;0.6"
-                          dur="0.8s"
+                          values="0.4;0.7;0.4"
+                          dur="1s"
                           repeatCount="indefinite"
                         />
                       </path>
@@ -304,7 +330,7 @@ const Timer = () => {
                   <div className="flex items-center justify-center w-full h-full">
                     <span 
                       style={{ fontSize: 'clamp(1.5rem, 15cqmin, 4rem)' }} 
-                      className="font-bold text-dusty-rose-500 text-center"
+                      className="font-bold text-warm-gray-900 dark:text-warm-gray-100 text-center"
                     >
                       Time's Up!
                     </span>

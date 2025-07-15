@@ -190,23 +190,20 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
         </div>
         
         {/* Per-widget trash icon */}
-        {showTrash && (
-          <button
-            onClick={handleDeleteClick}
-            className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 
-                       w-8 h-8 bg-dusty-rose-100 hover:bg-dusty-rose-200 
-                       rounded-full flex items-center justify-center 
-                       shadow-md hover:shadow-lg transition-all duration-200 
-                       opacity-90 hover:opacity-100 hover:scale-110"
-            style={{
-              transition: 'opacity 0.3s ease, transform 0.2s ease',
-              opacity: showTrash ? 0.9 : 0,
-              pointerEvents: showTrash ? 'auto' : 'none'
-            }}
-          >
-            <FaTrash className="text-dusty-rose-600 text-sm" />
-          </button>
-        )}
+        <button
+          onClick={handleDeleteClick}
+          className={`absolute -bottom-10 left-1/2 transform -translate-x-1/2 
+                     w-8 h-8 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600
+                     rounded-full flex items-center justify-center 
+                     shadow-md hover:shadow-lg
+                     transition-all duration-500 ease-in-out
+                     ${showTrash ? 'opacity-90 scale-100 hover:opacity-100 hover:scale-110' : 'opacity-0 scale-95'}`}
+          style={{
+            pointerEvents: showTrash ? 'auto' : 'none'
+          }}
+        >
+          <FaTrash className="text-warm-gray-600 dark:text-warm-gray-300 text-sm" />
+        </button>
       </div>
     </Rnd>
   );

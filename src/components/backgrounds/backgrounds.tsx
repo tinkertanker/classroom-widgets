@@ -1,6 +1,8 @@
 import React from 'react';
+import lowpolyBg from './lowpoly-bg.jpg';
+import seawaveBg from './seawave-bg.jpg';
 
-export type BackgroundType = 'geometric' | 'gradient' | 'lines' | 'dots';
+export type BackgroundType = 'geometric' | 'gradient' | 'lines' | 'dots' | 'lowpoly' | 'seawave';
 
 interface BackgroundProps {
   type: BackgroundType;
@@ -178,6 +180,44 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
             <rect width="100%" height="100%" fill="var(--bg-main)" />
             <rect width="100%" height="100%" fill="url(#dots)" />
           </svg>
+        </div>
+      );
+
+    case 'lowpoly':
+      return (
+        <div className="absolute inset-0" style={{ zIndex: 0 }}>
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+            style={{ 
+              backgroundImage: `url(${lowpolyBg})`,
+              filter: isDarkMode ? 'brightness(0.7)' : 'brightness(1)'
+            }} 
+          />
+          <div 
+            className="absolute inset-0" 
+            style={{ 
+              backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.1)' 
+            }} 
+          />
+        </div>
+      );
+
+    case 'seawave':
+      return (
+        <div className="absolute inset-0" style={{ zIndex: 0 }}>
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat" 
+            style={{ 
+              backgroundImage: `url(${seawaveBg})`,
+              filter: isDarkMode ? 'brightness(0.6) contrast(0.9)' : 'brightness(1)'
+            }} 
+          />
+          <div 
+            className="absolute inset-0" 
+            style={{ 
+              backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.05)' 
+            }} 
+          />
         </div>
       );
 
