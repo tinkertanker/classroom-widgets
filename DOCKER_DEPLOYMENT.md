@@ -6,7 +6,7 @@ This is a quick reference guide for deploying Classroom Widgets with Docker.
 
 ```bash
 # Start both frontend and backend
-docker-compose up --build
+docker compose up --build
 
 # Access:
 # - Frontend: http://localhost:3000
@@ -35,7 +35,7 @@ cp .env.example .env
 
 ```bash
 # Build and start in detached mode
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker compose.prod.yml up -d --build
 
 # Verify containers are running
 docker ps
@@ -45,18 +45,18 @@ docker ps
 
 ```bash
 # View logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker compose.prod.yml logs -f
 
 # Stop containers
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker compose.prod.yml down
 
 # Restart containers
-docker-compose -f docker-compose.prod.yml restart
+docker compose -f docker compose.prod.yml restart
 
 # Update deployment
 git pull
-docker-compose -f docker-compose.prod.yml down
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker compose.prod.yml down
+docker compose -f docker compose.prod.yml up -d --build
 ```
 
 ## SSL Configuration
@@ -116,7 +116,7 @@ curl -I http://localhost:80
 curl http://localhost:3001/health
 
 # Check container status
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 ```
 
 ## Troubleshooting
@@ -133,9 +133,9 @@ docker exec -it classroom-widgets-backend sh
 docker stats
 
 # Clean rebuild
-docker-compose -f docker-compose.prod.yml down -v
+docker compose -f docker compose.prod.yml down -v
 docker system prune -a
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker compose.prod.yml up -d --build
 ```
 
 ## Backup Script
@@ -149,7 +149,7 @@ mkdir -p $BACKUP_DIR
 
 cd /path/to/classroom-widgets
 tar -czf $BACKUP_DIR/backup_$DATE.tar.gz \
-  docker-compose*.yml \
+  docker compose*.yml \
   .env.production \
   server/.env.production \
   .env
