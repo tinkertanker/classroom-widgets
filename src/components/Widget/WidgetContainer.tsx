@@ -4,6 +4,7 @@ import WidgetRendererLazy from './WidgetRendererLazy';
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
 import { WidgetInstance, WidgetPosition } from "../../types/app.types";
 import { FaTrash } from 'react-icons/fa6';
+import trashSound from "../../sounds/trash-crumple.mp3";
 
 interface WidgetConfig {
   defaultWidth: number;
@@ -125,8 +126,8 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Play crumple sound if available
-    const audio = new Audio('/audio/crumple.mp3');
+    // Play crumple sound
+    const audio = new Audio(trashSound);
     audio.play().catch(() => {});
     if (onDelete) {
       onDelete();

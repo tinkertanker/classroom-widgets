@@ -16,7 +16,7 @@ function TrafficLight() {
       const node = boxRef.current;
       const resizeObserver = new ResizeObserver(() => {
         const newHeight = Math.min(
-          Math.round(node.getBoundingClientRect().width / 3),
+          Math.round(node.getBoundingClientRect().width / 4.5),
           Math.round(node.getBoundingClientRect().height * 0.4)
         );
         setState((prevState) => ({
@@ -27,7 +27,7 @@ function TrafficLight() {
 
       // Set initial box height
       const initialHeight = Math.min(
-        Math.round(node.getBoundingClientRect().width / 3),
+        Math.round(node.getBoundingClientRect().width / 4.5),
         Math.round(node.getBoundingClientRect().height * 0.4)
       );
       setState((prevState) => ({
@@ -63,50 +63,85 @@ function TrafficLight() {
 
   return (
     <>
-      <div className="w-full h-full" id="baller">
+      <div className="w-full h-full p-2" id="baller">
         <div
-          className="rounded-md flex flex-col w-full h-full"
+          className="rounded-xl flex flex-col w-full h-full"
           ref={boxRef}
         >
-          <div
-            className="flex rounded-md bg-black w-full"
-            id="boxlol"
-            style={{
-              height: `${state.boxHeight}px`
-            }}
-          >
+          <div className="relative flex justify-center px-12">
             <div
-              className="flex flex-row items-center justify-center w-full h-full"
+              className="relative flex rounded-xl bg-gradient-to-br from-gray-800 to-gray-900 shadow-2xl overflow-visible"
+              id="boxlol"
+              style={{
+                height: `${state.boxHeight}px`,
+                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.1)'
+              }}
             >
+              <div
+                className="flex flex-row items-center justify-center h-full px-4 py-2"
+              >
               {["#ff0000", "#ffa500", "#008000"].map((color, index) => (
                 <div
                   key={color}
-                  className="rounded-full cursor-pointer mx-2"
+                  className="relative rounded-full cursor-pointer mx-1 transition-all duration-300 hover:scale-105"
                   style={{
-                    width: `${state.boxHeight * 0.6}px`,
-                    height: `${state.boxHeight * 0.6}px`,
-                    boxShadow: state.activeLight === color ? `0px 0px 20px 10px ${
-                      color === "#ffa500" ? "#ff8c00" : 
-                      color === "#008000" ? "#006400" : 
-                      color
-                    }` : "none",
-                    backgroundColor: color,
-                    filter: state.activeLight === color ? "brightness(200%)" : "brightness(30%)"
+                    width: `${state.boxHeight * 0.7}px`,
+                    height: `${state.boxHeight * 0.7}px`,
+                    background: state.activeLight === color 
+                      ? `radial-gradient(circle at 30% 30%, ${
+                          color === "#ff0000" ? "#ff6666" :
+                          color === "#ffa500" ? "#ffcc66" :
+                          "#66cc66"
+                        }, ${color})`
+                      : `radial-gradient(circle at 30% 30%, ${
+                          color === "#ff0000" ? "#660000" :
+                          color === "#ffa500" ? "#663300" :
+                          "#003300"
+                        }, ${
+                          color === "#ff0000" ? "#330000" :
+                          color === "#ffa500" ? "#331a00" :
+                          "#001a00"
+                        })`,
+                    boxShadow: state.activeLight === color 
+                      ? `0 0 20px 5px ${
+                          color === "#ffa500" ? "rgba(255, 165, 0, 0.5)" : 
+                          color === "#008000" ? "rgba(34, 139, 34, 0.5)" : 
+                          "rgba(220, 20, 20, 0.5)"
+                        }, inset -2px -2px 8px rgba(0, 0, 0, 0.3), inset 2px 2px 8px rgba(255, 255, 255, 0.2)`
+                      : "inset -2px -2px 8px rgba(0, 0, 0, 0.5), inset 1px 1px 4px rgba(255, 255, 255, 0.1)",
+                    border: "2px solid rgba(0, 0, 0, 0.3)",
+                    transform: state.activeLight === color ? "translateZ(10px)" : "translateZ(0)"
                   }}
                   onClick={() => handleLightClick(color)}
-                />
+                >
+                  {/* Glass reflection effect */}
+                  <div 
+                    className="absolute rounded-full pointer-events-none"
+                    style={{
+                      top: '10%',
+                      left: '15%',
+                      width: '40%',
+                      height: '35%',
+                      background: 'radial-gradient(ellipse at center, rgba(255, 255, 255, 0.4) 0%, transparent 70%)',
+                      filter: 'blur(2px)'
+                    }}
+                  />
+                </div>
               ))}
+              </div>
             </div>
           </div>
           <div
             id="balls"
             className="flex flex-col w-full flex-1 justify-center items-center px-4 py-3"
           >
-          <h1 className="text-warm-gray-800 dark:text-warm-gray-200 text-center text-base font-medium leading-relaxed">
-            {state.activeLight === "#ff0000" && "Teacher's turn. Listen carefully and stay silent."}
-            {state.activeLight === "#ffa500" && "Work quietly on your own. Stay focused and respectful of others’ space"}
-            {state.activeLight === "#008000" && "Discuss. Talk with your partner using inside voices. Stay on task and share ideas."}
-          </h1>
+            <div className="bg-warm-gray-100/90 dark:bg-warm-gray-800/90 backdrop-blur-sm rounded-xl px-5 py-4 max-w-full shadow-lg border border-warm-gray-200/50 dark:border-warm-gray-700/50">
+              <h1 className="text-warm-gray-800 dark:text-warm-gray-200 text-center text-base font-medium leading-relaxed">
+                {state.activeLight === "#ff0000" && "Teacher's turn. Listen carefully and stay silent."}
+                {state.activeLight === "#ffa500" && "Work quietly on your own. Stay focused and respectful of others' space"}
+                {state.activeLight === "#008000" && "Discuss. Talk with your partner using inside voices. Stay on task and share ideas."}
+              </h1>
+            </div>
           </div>
         </div>
       </div>
