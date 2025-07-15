@@ -24,6 +24,7 @@ import { useWorkspaceSync } from "./hooks/useWorkspaceSync";
 import { WIDGET_TYPES } from "./constants/widgetTypes";
 import { getWidgetConfig } from "./constants/widgetConfigs";
 import { isOverTrash } from "./utils/widgetHelpers";
+import { APP_VERSION } from "./version";
 
 // Audio import for trash sound
 import trashSound from "./sounds/trash-crumple.mp3";
@@ -273,6 +274,11 @@ function AppContent() {
               onConfettiComplete={() => setUseConfetti(false)}
             />
           )}
+          
+          {/* Version label */}
+          <div className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 pointer-events-none select-none">
+            v{APP_VERSION}
+          </div>
         </div>
       </ModalProvider>
     </div>
