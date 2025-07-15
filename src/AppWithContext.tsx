@@ -232,6 +232,7 @@ function AppContent() {
                   onStateChange={(state: any) => updateWidgetState(widget.id, state)}
                   toggleConfetti={setUseConfetti}
                   onClick={() => setActiveWidget(widget.id)}
+                  onDelete={() => removeWidget(widget.id)}
                 />
               );
             })}

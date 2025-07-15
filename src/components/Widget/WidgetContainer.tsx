@@ -3,6 +3,7 @@ import { Rnd } from "react-rnd";
 import WidgetRendererLazy from './WidgetRendererLazy';
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
 import { WidgetInstance, WidgetPosition } from "../../types/app.types";
+import { FaTrash } from 'react-icons/fa6';
 
 interface WidgetConfig {
   defaultWidth: number;
@@ -28,6 +29,7 @@ interface WidgetContainerProps {
   onStateChange: (state: any) => void;
   toggleConfetti: (value: boolean) => void;
   onClick?: () => void;
+  onDelete?: () => void;
 }
 
 const WidgetContainer: React.FC<WidgetContainerProps> = ({ 
@@ -45,14 +47,18 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
   onTouchStart,
   onStateChange,
   toggleConfetti,
-  onClick
+  onClick,
+  onDelete
 }) => {
   const actualWidth = position.width || config.defaultWidth;
   const actualHeight = position.height || config.defaultHeight;
   
   const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const dragStartPosRef = useRef({ x: 0, y: 0 });
   const hasDraggedRef = useRef(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Reset hasDragged flag after drag ends
   useEffect(() => {
@@ -63,6 +69,35 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
       return () => clearTimeout(timer);
     }
   }, [isDragging]);
+
+  // Show/hide trash icon based on interaction
+  useEffect(() => {
+    const shouldShow = isActive || isDragging || isHovered;
+    
+    if (shouldShow) {
+      setShowTrash(true);
+      // Clear any existing timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+      // Set new timeout to hide after 5 seconds
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowTrash(false);
+      }, 5000);
+    } else {
+      // Immediately hide if no interaction
+      setShowTrash(false);
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    }
+
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [isActive, isDragging, isHovered]);
 
   const handleDragStart = (e: any, data: any) => {
     setIsDragging(true);
@@ -86,6 +121,16 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
   const handleDragStop = (e: any, data: any) => {
     setIsDragging(false);
     onDragStop(e, data);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Play crumple sound if available
+    const audio = new Audio('/audio/crumple.mp3');
+    audio.play().catch(() => {});
+    if (onDelete) {
+      onDelete();
+    }
   };
 
   return (
@@ -118,7 +163,12 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
       onTouchStart={onTouchStart}
     >
       <div 
-        className="w-full h-full"
+        className="relative w-full h-full"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div 
+          className="w-full h-full"
         onClick={(e) => {
           // Only trigger if we haven't dragged
           if (!hasDraggedRef.current && onClick) {
@@ -137,6 +187,26 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
           isDragging={isDragging}
           hasDragged={hasDraggedRef.current}
         />
+        </div>
+        
+        {/* Per-widget trash icon */}
+        {showTrash && (
+          <button
+            onClick={handleDeleteClick}
+            className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 
+                       w-8 h-8 bg-dusty-rose-100 hover:bg-dusty-rose-200 
+                       rounded-full flex items-center justify-center 
+                       shadow-md hover:shadow-lg transition-all duration-200 
+                       opacity-90 hover:opacity-100 hover:scale-110"
+            style={{
+              transition: 'opacity 0.3s ease, transform 0.2s ease',
+              opacity: showTrash ? 0.9 : 0,
+              pointerEvents: showTrash ? 'auto' : 'none'
+            }}
+          >
+            <FaTrash className="text-dusty-rose-600 text-sm" />
+          </button>
+        )}
       </div>
     </Rnd>
   );
