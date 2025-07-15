@@ -4,6 +4,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { useWorkspace } from '../../store/WorkspaceContext';
 import CustomizeToolbarWrapper from './CustomizeToolbarWrapper';
 import StickerPalette from './StickerPalette';
+import LaunchpadIcon from './LaunchpadIcon';
 import { 
   FaDice,           // Randomiser
   FaClock,          // Timer
@@ -13,7 +14,6 @@ import {
   FaVolumeHigh,     // Sound Monitor
   FaLink,           // Link Shortener
   FaArrowRotateLeft,// Reset icon
-  FaTableCells,     // Grid icon for more widgets
   FaTextWidth,      // Text Banner
   FaImage,          // Image Display
   FaMusic,          // Sound Effects
@@ -26,9 +26,7 @@ import {
   FaWifi,           // Network indicator
   FaQrcode,         // QR Code icon
   FaPaperclip,      // Data Share icon
-  FaVideo,          // Visualiser icon
-  FaPlus,           // Plus icon for more widgets
-  FaCaretUp         // Upward caret for popup indicator
+  FaVideo           // Visualiser icon
 } from 'react-icons/fa6';
 
 interface ToolbarProps {
@@ -287,18 +285,15 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`w-16 h-16 p-2 rounded-lg text-white bg-terracotta-500 hover:bg-terracotta-600 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-0.5 relative ${
+              className={`w-16 h-16 p-2 rounded-lg text-warm-gray-700 dark:text-warm-gray-200 bg-soft-white dark:bg-warm-gray-800 hover:bg-warm-white dark:hover:bg-warm-gray-700 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-1 relative ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
               } ${
-                showAllWidgets ? 'ring-2 ring-terracotta-600 ring-offset-2 ring-offset-warm-white dark:ring-offset-warm-gray-900' : ''
+                showAllWidgets ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-warm-white dark:ring-offset-warm-gray-900' : ''
               }`}
               disabled={state.stickerMode}
               title="More widgets"
             >
-              <div className="absolute top-0 left-1/2 transform -translate-x-1/2">
-                <FaCaretUp className="text-sm" />
-              </div>
-              <FaPlus className="text-xl" />
+              <LaunchpadIcon size={32} />
               <span className="text-[10px] font-medium">MORE</span>
             </button>
 
