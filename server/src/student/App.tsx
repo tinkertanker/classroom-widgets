@@ -3,8 +3,9 @@ import io, { Socket } from 'socket.io-client';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import DataShareActivity from './components/DataShareActivity';
+import UnderstandingActivity from './components/UnderstandingActivity';
 
-export type RoomType = 'poll' | 'dataShare';
+export type RoomType = 'poll' | 'dataShare' | 'understanding';
 
 interface JoinedRoom {
   id: string;
@@ -312,10 +313,12 @@ const App: React.FC = () => {
                 }`} 
                 data-room-type={room.type}
               >
-                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : 'bg-terracotta-100 border-b-terracotta-200'}`}>
+                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : room.type === 'dataShare' ? 'bg-terracotta-100 border-b-terracotta-200' : 'bg-amber-100 border-b-amber-200'}`}>
                   <div className="flex gap-3 items-center">
                     <span className="bg-warm-gray-200 text-warm-gray-700 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
-                    <span className="text-sage-700 text-base md:text-lg font-semibold">{room.type === 'poll' ? 'Poll' : 'Data Share'}</span>
+                    <span className="text-sage-700 text-base md:text-lg font-semibold">
+                      {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : 'Understanding Feedback'}
+                    </span>
                   </div>
                   <button 
                     className="bg-dusty-rose-500 text-white w-6 h-6 rounded text-xs font-bold cursor-pointer transition-colors duration-200 flex items-center justify-center hover:bg-dusty-rose-600"
@@ -336,6 +339,13 @@ const App: React.FC = () => {
                   )}
                   {room.type === 'dataShare' && (
                     <DataShareActivity 
+                      socket={room.socket} 
+                      roomCode={room.code}
+                      studentName={studentName}
+                    />
+                  )}
+                  {room.type === 'understanding' && (
+                    <UnderstandingActivity 
                       socket={room.socket} 
                       roomCode={room.code}
                       studentName={studentName}

@@ -46,19 +46,34 @@
   right: 0;
   bottom: 0;
   overflow: auto;
-  scroll-behavior: smooth;
+  /* Remove smooth scrolling for instant response */
+  scroll-behavior: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-x pan-y;
   will-change: scroll-position;
 }
 
+.board-scale-wrapper {
+  position: relative;
+  will-change: transform;
+  transform-origin: 0 0;
+  /* Enable hardware acceleration */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Smooth transitions for zoom control clicks */
+.board-scale-wrapper.smooth-zoom {
+  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
 .board {
   position: relative;
   width: 3000px;
   height: 2000px;
-  min-width: 100vw;
-  min-height: 100vh;
 }
 
 .toolbar-container {
@@ -81,4 +96,67 @@ input[type="range"] {
 
 .dark input[type="range"] {
   accent-color: #e39b93;
+}
+
+/* Vertical range slider */
+input[type="range"].vertical-slider {
+  writing-mode: bt-lr; /* IE */
+  -webkit-appearance: slider-vertical; /* WebKit */
+  width: 4px;
+  height: 80px;
+  background: transparent;
+  outline: none;
+}
+
+/* For Firefox */
+input[type="range"].vertical-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d4847a;
+  cursor: pointer;
+  border: none;
+}
+
+input[type="range"].vertical-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #d4847a;
+  cursor: pointer;
+  border: none;
+}
+
+input[type="range"].vertical-slider::-moz-range-track {
+  width: 4px;
+  height: 100%;
+  cursor: pointer;
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+input[type="range"].vertical-slider::-webkit-slider-runnable-track {
+  width: 4px;
+  height: 100%;
+  cursor: pointer;
+  background: #e5e7eb;
+  border-radius: 2px;
+}
+
+.dark input[type="range"].vertical-slider::-moz-range-track {
+  background: #374151;
+}
+
+.dark input[type="range"].vertical-slider::-webkit-slider-runnable-track {
+  background: #374151;
+}
+
+.dark input[type="range"].vertical-slider::-moz-range-thumb {
+  background: #e39b93;
+}
+
+.dark input[type="range"].vertical-slider::-webkit-slider-thumb {
+  background: #e39b93;
 }

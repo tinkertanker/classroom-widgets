@@ -22,7 +22,8 @@ export const useWorkspaceSync = () => {
             widgetPositions: new Map(workspaceData.widgetPositions || []),
             widgetStates: new Map(workspaceData.widgetStates || []),
             activeWidgetId: workspaceData.activeIndex || null,
-            backgroundType: workspaceData.backgroundType || 'geometric'
+            backgroundType: workspaceData.backgroundType || 'geometric',
+            scale: workspaceData.scale || 1
           });
         } catch (error) {
           console.error('Error loading workspace state:', error);
@@ -48,7 +49,8 @@ export const useWorkspaceSync = () => {
         widgetPositions: Array.from(state.widgetPositions.entries()),
         widgetStates: Array.from(state.widgetStates.entries()),
         activeIndex: state.activeWidgetId,
-        backgroundType: state.backgroundType
+        backgroundType: state.backgroundType,
+        scale: state.scale
       };
       localStorage.setItem('workspaceState', JSON.stringify(workspaceData));
     }, 500);

@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Confetti from "react-confetti";
 
 // Types
@@ -7,9 +7,11 @@ import { BackgroundType } from "./types/app.types";
 
 // Components
 import Toolbar from "./components/toolbar/toolbar";
-import Board from "./components/Board/Board";
+import Board, { BoardRef } from "./components/Board/Board";
 import WidgetContainer from "./components/Widget/WidgetContainer";
 import Background from "./components/backgrounds/backgrounds";
+import ZoomControl from "./components/ZoomControl/ZoomControl";
+import ResponsiveCheck from "./components/ResponsiveCheck/ResponsiveCheck";
 
 // Contexts
 import { ModalProvider } from "./contexts/ModalContext";
@@ -48,6 +50,7 @@ function AppContent() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const [hoveringTrashId, setHoveringTrashId] = useState<string | null>(null);
+  const boardRef = useRef<BoardRef>(null);
   
   // Sync with localStorage
   const { isInitialized } = useWorkspaceSync();
@@ -117,8 +120,10 @@ function AppContent() {
     const scrollContainer = document.querySelector('.board-scroll-container');
     if (!scrollContainer) return;
     
-    const x = e.clientX - rect.left + scrollContainer.scrollLeft;
-    const y = e.clientY - rect.top + scrollContainer.scrollTop;
+    // Account for scale when calculating position
+    const scale = state.scale;
+    const x = (e.clientX - rect.left) / scale + scrollContainer.scrollLeft / scale;
+    const y = (e.clientY - rect.top) / scale + scrollContainer.scrollTop / scale;
     
     // Calculate sticker position and size
     const stickerConfig = getWidgetConfig(WIDGET_TYPES.STAMP, state.selectedStickerType);
@@ -142,12 +147,16 @@ function AppContent() {
 
   return (
     <div className={`App ${darkMode ? 'dark' : ''}`}>
+      <ResponsiveCheck />
       <ModalProvider>
         <div className="h-screen relative overflow-hidden bg-app-background" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          {/* Zoom control - vertical layout below fullscreen button */}
+          <ZoomControl className="absolute top-16 right-4 z-[999]" boardRef={boardRef} />
+          
           {/* Fullscreen button */}
           <button
             onClick={toggleFullscreen}
-            className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors duration-200"
+            className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200/80 hover:bg-warm-gray-300/80 dark:bg-warm-gray-700/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors duration-200 backdrop-blur-sm"
             title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
           >
             <svg
@@ -181,7 +190,7 @@ function AppContent() {
           <Background type={state.backgroundType} />
           
           {/* Main content area */}
-          <Board onBoardClick={handleBoardClick} stickerMode={state.stickerMode}>
+          <Board ref={boardRef} onBoardClick={handleBoardClick} stickerMode={state.stickerMode}>
             {state.widgets.map((widget) => {
               const position = state.widgetPositions.get(widget.id);
               const savedState = state.widgetStates.get(widget.id);
@@ -200,6 +209,7 @@ function AppContent() {
                   isActive={state.activeWidgetId === widget.id}
                   isHoveringTrash={hoveringTrashId === widget.id}
                   savedState={savedState}
+                  scale={state.scale}
                   onDragStart={(e: any, data: any) => setActiveWidget(widget.id)}
                   onDrag={(e: any, data: any) => {
                     if (isOverTrash(e.clientX, e.clientY)) {

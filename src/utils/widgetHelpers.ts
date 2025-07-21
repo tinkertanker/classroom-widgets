@@ -1,15 +1,15 @@
 import { WidgetPosition, WidgetPositionsMap } from '../types/app.types';
 
 // Find a non-overlapping position for a new widget
-export const findAvailablePosition = (widgetWidth: number, widgetHeight: number, widgetPositions: WidgetPositionsMap): WidgetPosition => {
+export const findAvailablePosition = (widgetWidth: number, widgetHeight: number, widgetPositions: WidgetPositionsMap, scale: number = 1): WidgetPosition => {
   const padding = 20; // Minimum space between widgets
   const scrollContainer = document.querySelector('.board-scroll-container');
   
-  // Get current viewport bounds
-  const scrollLeft = scrollContainer ? scrollContainer.scrollLeft : 0;
-  const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
+  // Get current viewport bounds (accounting for scale)
+  const scrollLeft = scrollContainer ? scrollContainer.scrollLeft / scale : 0;
+  const scrollTop = scrollContainer ? scrollContainer.scrollTop / scale : 0;
+  const viewportWidth = window.innerWidth / scale;
+  const viewportHeight = window.innerHeight / scale;
   
   // Define the bounds for placing new widgets (within current viewport)
   const minX = scrollLeft + padding;

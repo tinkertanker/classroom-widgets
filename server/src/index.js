@@ -169,6 +169,40 @@ class DataShareRoom {
   }
 }
 
+// Room class to manage understanding feedback sessions
+class UnderstandingFeedbackRoom {
+  constructor(code) {
+    this.code = code;
+    this.hostSocketId = null;
+    this.participants = new Map();
+    this.feedbackData = new Map(); // Map of studentId -> feedback value (1-5)
+    this.createdAt = Date.now();
+  }
+
+  updateFeedback(studentId, value) {
+    this.feedbackData.set(studentId, {
+      value: value,
+      timestamp: Date.now()
+    });
+  }
+
+  removeFeedback(studentId) {
+    this.feedbackData.delete(studentId);
+  }
+
+  getAllFeedback() {
+    const feedback = [];
+    this.feedbackData.forEach((data, studentId) => {
+      feedback.push({
+        studentId,
+        value: data.value,
+        timestamp: data.timestamp
+      });
+    });
+    return feedback;
+  }
+}
+
 // REST API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
@@ -196,11 +230,14 @@ app.get('/api/rooms/:code/exists', (req, res) => {
     console.log(`API: Room constructor name:`, room.constructor.name);
     console.log(`API: Is PollRoom?`, room instanceof PollRoom);
     console.log(`API: Is DataShareRoom?`, room instanceof DataShareRoom);
+    console.log(`API: Is UnderstandingFeedbackRoom?`, room instanceof UnderstandingFeedbackRoom);
     
     if (room instanceof PollRoom) {
       roomType = 'poll';
     } else if (room instanceof DataShareRoom) {
       roomType = 'dataShare';
+    } else if (room instanceof UnderstandingFeedbackRoom) {
+      roomType = 'understanding';
     }
   }
   
@@ -269,6 +306,30 @@ io.on('connection', (socket) => {
       
       // DEBUG: Log successful data share join
       console.log(`Student joined data share room ${code}`);
+    } else if (room instanceof UnderstandingFeedbackRoom && type === 'understanding') {
+      // Join understanding feedback room
+      socket.join(code);
+      room.participants.set(socket.id, {
+        id: socket.id,
+        name: name || 'Student',
+        joinedAt: Date.now()
+      });
+      
+      socket.emit('room:joined', {
+        success: true,
+        type: 'understanding',
+        studentId: socket.id
+      });
+      
+      // Notify host of new participant
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('participant:joined', {
+          studentId: socket.id,
+          count: room.participants.size
+        });
+      }
+      
+      console.log(`Student joined understanding feedback room ${code}`);
     } else {
       // Type mismatch
       // DEBUG: Log type mismatch
@@ -441,6 +502,35 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Understanding Feedback handlers
+  socket.on('understanding:update', (data) => {
+    const { code, value } = data;
+    const room = rooms.get(code);
+    
+    if (room && room instanceof UnderstandingFeedbackRoom) {
+      // Update feedback value
+      room.updateFeedback(socket.id, value);
+      
+      // Notify host of updated feedback
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('feedback', {
+          studentId: socket.id,
+          value: value
+        });
+      }
+    }
+  });
+
+  // Host creates understanding feedback room
+  socket.on('understanding:create', () => {
+    const code = generateRoomCode();
+    const room = new UnderstandingFeedbackRoom(code);
+    rooms.set(code, room);
+    
+    socket.emit('understanding:created', { code, success: true });
+    console.log(`Created understanding feedback room ${code}`);
+  });
+
   // Handle disconnection
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
@@ -452,6 +542,18 @@ io.on('connection', (socket) => {
         // Keep room alive for reconnection
       } else if (room.participants && room.participants.has(socket.id)) {
         room.participants.delete(socket.id);
+        
+        // For understanding feedback rooms, also remove feedback data
+        if (room instanceof UnderstandingFeedbackRoom) {
+          room.removeFeedback(socket.id);
+          // Notify host of student disconnect
+          if (room.hostSocketId) {
+            io.to(room.hostSocketId).emit('studentDisconnected', {
+              studentId: socket.id
+            });
+          }
+        }
+        
         // Notify host of updated count
         if (room.hostSocketId) {
           io.to(room.hostSocketId).emit('participant:count', {

@@ -21,6 +21,7 @@ interface WidgetContainerProps {
   isActive: boolean;
   isHoveringTrash: boolean;
   savedState: any;
+  scale: number;
   onDragStart: (e: any, data: any) => void;
   onDrag: (e: any, data: any) => void;
   onDragStop: (e: any, data: any) => void;
@@ -40,6 +41,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
   isActive,
   isHoveringTrash,
   savedState,
+  scale,
   onDragStart,
   onDrag,
   onDragStop,
@@ -136,12 +138,15 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
 
   return (
     <Rnd
-      default={{
+      position={{
         x: position.x,
-        y: position.y,
-        width: `${actualWidth}px`,
-        height: `${actualHeight}px`,
+        y: position.y
       }}
+      size={{
+        width: actualWidth,
+        height: actualHeight
+      }}
+      scale={scale}
       minWidth={`${config.minWidth}px`}
       minHeight={`${config.minHeight}px`}
       key={widget.id}

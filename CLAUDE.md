@@ -251,3 +251,50 @@ npm start              # React app on port 3000
 - Activity management with unique codes
 - Fixed synchronization issues for late-joining students
 - Responsive student interface for any device
+
+### Zoom/Scale Implementation
+- Pinch-to-zoom support for trackpad and touch devices
+- Zoom maintains the point under the cursor/finger in the same viewport position
+- Scale range: 0.5x to 2x
+- Uses CSS transform scale with transform-origin at (0, 0)
+- Board dimensions: 3000x2000 logical pixels
+- Visual size = board size × scale
+- Scroll-based zoom to handle browser coordinate system constraints
+
+#### Zoom Algorithm
+The zoom implementation uses a three-coordinate system approach:
+
+1. **Board Coordinates**: Fixed logical coordinates (0-3000, 0-2000) used by widgets
+2. **Visual Coordinates**: Board coordinates × scale (what's actually rendered)
+3. **Viewport Coordinates**: Visual coordinates - scroll offset (what user sees)
+
+**Key Formula**: To keep a point stationary during zoom:
+```
+newScroll = boardPoint × newScale - viewportPoint
+```
+
+Where:
+- `boardPoint` = The board coordinate at the zoom origin (mouse/finger position)
+- `newScale` = The target zoom scale
+- `viewportPoint` = The viewport position where we want to keep the board point
+- `newScroll` = The scroll position needed to maintain the point's viewport position
+
+**Implementation Details**:
+1. Transform-origin fixed at (0, 0) to simplify coordinate calculations
+2. Size wrapper div scales with zoom to provide correct scroll boundaries
+3. Event batching for smooth zoom on rapid wheel events
+4. Hardware acceleration with CSS transforms
+5. Synchronous scroll updates after scale changes to prevent jitter
+
+**Board Structure**:
+```jsx
+<div className="board-scroll-container">  // Scrollable container
+  <div style={{ width: 3000*scale, height: 2000*scale }}>  // Size wrapper
+    <div style={{ transform: `scale(${scale})` }}>  // Scale wrapper
+      <div className="board">  // Actual board (3000x2000)
+        {widgets}
+      </div>
+    </div>
+  </div>
+</div>
+```

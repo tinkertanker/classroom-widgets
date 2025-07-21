@@ -14,6 +14,7 @@ import Poll from "../poll/poll";
 import QRCodeWidget from "../qrcode/qrcode";
 import DataShare from "../dataShare/dataShare";
 import Visualiser from "../visualiser/visualiser";
+import UnderstandingFeedback from "../understandingFeedback/understandingFeedback";
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
 import { DragAwareWrapper } from "../common/DragAwareWrapper";
 import ErrorBoundary from "../common/ErrorBoundary";
@@ -90,6 +91,11 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetType, widgetId, s
       />;
     case WIDGET_TYPES.VISUALISER:
       return <Visualiser
+        savedState={savedState}
+        onStateChange={onStateChange}
+      />;
+    case WIDGET_TYPES.UNDERSTANDING_FEEDBACK:
+      return <UnderstandingFeedback
         savedState={savedState}
         onStateChange={onStateChange}
       />;

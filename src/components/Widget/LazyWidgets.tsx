@@ -18,5 +18,6 @@ export const LazyWidgets = {
   Poll: lazy(() => import('../poll/poll')),
   QRCodeWidget: lazy(() => import('../qrcode/qrcode')),
   DataShare: lazy(() => import('../dataShare/dataShare')),
-  Visualiser: lazy(() => import('../visualiser/visualiser'))
+  Visualiser: lazy(() => import('../visualiser/visualiser')),
+  UnderstandingFeedback: lazy(() => import('../understandingFeedback/understandingFeedback'))
 };
