@@ -146,13 +146,15 @@ export function useSession({
   // Create a room within the session
   const createRoom = useCallback((roomType: RoomType): Promise<boolean> => {
     return new Promise((resolve, reject) => {
-      if (!socket || !isConnected || !sessionCode) {
+      const currentSessionCode = sessionCodeRef.current || sessionCode;
+      
+      if (!socket || !isConnected || !currentSessionCode) {
         reject(new Error('Not connected or no session'));
         return;
       }
 
       socket.emit('session:createRoom', { 
-        sessionCode: sessionCodeRef.current || sessionCode, 
+        sessionCode: currentSessionCode, 
         roomType 
       }, (response: any) => {
         if (response.success) {
