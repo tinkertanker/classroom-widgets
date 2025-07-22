@@ -88,11 +88,14 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
         setShowTrash(false);
       }, 5000);
     } else {
-      // Immediately hide if no interaction
-      setShowTrash(false);
+      // Add a delay before hiding when hovering out
       if (hideTimeoutRef.current) {
         clearTimeout(hideTimeoutRef.current);
       }
+      // Wait 1.5 seconds before hiding the trash icon
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowTrash(false);
+      }, 1500);
     }
 
     return () => {

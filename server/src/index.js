@@ -177,6 +177,7 @@ class UnderstandingFeedbackRoom {
     this.participants = new Map();
     this.feedbackData = new Map(); // Map of studentId -> feedback value (1-5)
     this.createdAt = Date.now();
+    this.isActive = true; // Start active by default
   }
 
   updateFeedback(studentId, value) {
@@ -320,6 +321,9 @@ io.on('connection', (socket) => {
         type: 'understanding',
         studentId: socket.id
       });
+      
+      // Send current state to the joining student
+      socket.emit('understanding:stateChanged', { isActive: room.isActive });
       
       // Notify host of new participant
       if (room.hostSocketId) {
@@ -507,8 +511,8 @@ io.on('connection', (socket) => {
     const { code, value } = data;
     const room = rooms.get(code);
     
-    if (room && room instanceof UnderstandingFeedbackRoom) {
-      // Update feedback value
+    if (room && room instanceof UnderstandingFeedbackRoom && room.isActive) {
+      // Update feedback value only if room is active
       room.updateFeedback(socket.id, value);
       
       // Notify host of updated feedback
@@ -521,11 +525,33 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Host starts/stops understanding feedback
+  socket.on('understanding:toggle', (data) => {
+    const { code, isActive } = data;
+    const room = rooms.get(code);
+    
+    if (room && room instanceof UnderstandingFeedbackRoom && room.hostSocketId === socket.id) {
+      room.isActive = isActive;
+      
+      // Broadcast state change to all participants
+      io.to(code).emit('understanding:stateChanged', { isActive });
+      
+      console.log(`Understanding feedback ${isActive ? 'started' : 'stopped'} in room ${code}`);
+      
+      // If stopping, optionally clear feedback data
+      if (!isActive) {
+        room.feedbackData.clear();
+      }
+    }
+  });
+
   // Host creates understanding feedback room
   socket.on('understanding:create', () => {
     const code = generateRoomCode();
     const room = new UnderstandingFeedbackRoom(code);
+    room.hostSocketId = socket.id;
     rooms.set(code, room);
+    socket.join(code);
     
     socket.emit('understanding:created', { code, success: true });
     console.log(`Created understanding feedback room ${code}`);

@@ -204,6 +204,34 @@ server/                      # Backend server for real-time features
 - **Control area**: ~10-15% height
 - **Padding**: Use consistent padding (p-4, px-6 py-4 for modals)
 
+### Networked Widget Pattern
+Networked widgets (Poll, Data Share, Understanding Feedback) follow a consistent UI structure:
+
+1. **Container Structure**:
+   ```jsx
+   <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
+   ```
+
+2. **Empty State**: Use `NetworkedWidgetEmpty` component
+   - Title and description
+   - Large icon (5xl size, warm-gray-400/500)
+   - "Create Room" button (sage-500 background)
+   - Connection error display with server start instructions
+
+3. **Active State**: 
+   - `NetworkedWidgetHeader` at top showing:
+     - Activity code (large, bold)
+     - Student URL
+     - Action buttons in header children
+   - Main content area with `flex-1 overflow-y-auto`
+
+4. **Common Patterns**:
+   - Start/Stop button toggles between sage-500 (start) and dusty-rose-500 (stop)
+   - Settings gear icon in top right
+   - Status indicators (connection, participant count)
+   - Real-time updates via Socket.io
+   - useNetworkedWidget hook for connection management
+
 ## Development Notes
 
 - No custom linting beyond Create React App defaults

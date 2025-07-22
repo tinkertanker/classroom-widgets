@@ -38,6 +38,7 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
   const renderWidget = () => {
     // Common props for all widgets
     const commonProps = {
+      widgetId,
       savedState,
       onStateChange
     };
@@ -105,6 +106,10 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
     case WIDGET_TYPES.VISUALISER:
       const Visualiser = LazyWidgets.Visualiser;
       return <Visualiser {...commonProps} />;
+      
+    case WIDGET_TYPES.UNDERSTANDING_FEEDBACK:
+      const UnderstandingFeedback = LazyWidgets.UnderstandingFeedback;
+      return <UnderstandingFeedback {...commonProps} />;
       
     default:
       return null;

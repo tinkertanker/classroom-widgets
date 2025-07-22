@@ -259,7 +259,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           className={`w-16 h-16 cursor-pointer transition-all duration-200 p-3 rounded-lg flex items-center justify-center ${
             hoveringTrash 
               ? 'bg-dusty-rose-500 transform scale-105' 
-              : 'bg-transparent'
+              : 'bg-soft-white/80 dark:bg-warm-gray-800/80'
           }`}
           title="Drag widgets here to delete"
         >
@@ -289,7 +289,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             <button
               ref={moreButtonRef}
               onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`w-16 h-16 p-2 rounded-lg text-warm-gray-700 dark:text-warm-gray-200 bg-soft-white dark:bg-warm-gray-800 hover:bg-warm-white dark:hover:bg-warm-gray-700 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-1 relative ${
+              className={`w-16 h-16 p-2 rounded-lg text-warm-gray-700 dark:text-warm-gray-200 bg-soft-white/80 dark:bg-warm-gray-800/80 hover:bg-warm-white/80 dark:hover:bg-warm-gray-700/80 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-1 relative ${
                 state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
               } ${
                 showAllWidgets ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-warm-white dark:ring-offset-warm-gray-900' : ''
@@ -341,7 +341,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           <button
             key={widgetType}
             onClick={() => handleAddWidget(widgetType)}
-            className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-all duration-200 group relative flex flex-col items-center gap-1 min-w-[80px] ${
+            className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80 transition-all duration-200 group relative flex flex-col items-center gap-1 min-w-[80px] ${
               hoveringTrash ? 'scale-95 opacity-50' : ''
             } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={state.stickerMode || ((widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.UNDERSTANDING_FEEDBACK) && !serverConnected)}
@@ -366,7 +366,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           className={`px-3 py-2 rounded-lg transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px] ${
             state.stickerMode 
               ? 'bg-terracotta-500 text-white hover:bg-terracotta-600' 
-              : 'text-warm-gray-700 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-800/40'
+              : 'text-warm-gray-700 bg-amber-100/80 dark:bg-amber-900/30 hover:bg-amber-200/80 dark:hover:bg-amber-800/40'
           }`}
           title={state.stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
         >
@@ -375,7 +375,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
         </button>
 
         {/* Clock */}
-        <div className="flex items-center px-4 py-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm">
+        <div className="flex items-center px-4 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm">
           <span className="font-mono text-lg text-warm-gray-700 dark:text-warm-gray-300">
             {displayHours}
             <span className={`${showColon ? 'opacity-100' : 'opacity-0'} transition-opacity duration-100`}>:</span>
@@ -383,24 +383,12 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           </span>
         </div>
 
-        {/* Server connection indicator */}
-        <div 
-          className={`p-3 rounded-lg transition-all duration-200 ${
-            serverConnected 
-              ? 'text-sage-600 dark:text-sage-400' 
-              : 'text-warm-gray-400 dark:text-warm-gray-500'
-          }`}
-          title={serverConnected ? 'Server connected' : 'Server offline'}
-        >
-          <FaWifi className="text-xl" />
-        </div>
-
         {/* Menu button */}
         <div className="relative">
           <button
             ref={menuButtonRef}
             onClick={() => setShowMenu(!showMenu)}
-            className="p-3 rounded-lg text-warm-gray-700 bg-soft-white dark:bg-warm-gray-800 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
+            className="p-3 rounded-lg text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80 transition-colors"
             title="Menu"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -472,6 +460,18 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             </button>
           </div>
         )}
+        </div>
+        
+        {/* Server connection indicator - moved to the right */}
+        <div 
+          className={`p-3 rounded-lg transition-all duration-200 bg-soft-white/80 dark:bg-warm-gray-800/80 ${
+            serverConnected 
+              ? 'text-sage-600 dark:text-sage-400' 
+              : 'text-warm-gray-400 dark:text-warm-gray-500'
+          }`}
+          title={serverConnected ? 'Server connected' : 'Server offline'}
+        >
+          <FaWifi className="text-xl" />
         </div>
       </div>
 

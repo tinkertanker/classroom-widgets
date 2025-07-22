@@ -234,8 +234,8 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
         id="jason"
       >
         <div className="flex-1 overflow-hidden p-4">
-          <button
-            className={`w-full h-full p-0 rounded transition-colors duration-200 ${
+          <div
+            className={`w-full h-full p-0 rounded transition-colors duration-200 cursor-pointer ${
               displayChoices.length > 0 
                 ? 'bg-transparent hover:bg-white/10' 
                 : 'bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
@@ -285,7 +285,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
                 </div>
               )}
             </div>
-          </button>
+          </div>
         </div>
         {buttonsettings === "normal" ? (
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">

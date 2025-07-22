@@ -11,10 +11,11 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
   const [currentValue, setCurrentValue] = useState(3); // Default to middle (Just Right)
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
+  const [isActive, setIsActive] = useState(true); // Assume active by default
 
-  // Send feedback when value changes
+  // Send feedback when value changes (only when active)
   useEffect(() => {
-    if (currentValue !== lastSentValue && !isSending) {
+    if (currentValue !== lastSentValue && !isSending && isActive) {
       setIsSending(true);
       
       // Send the updated value
@@ -30,25 +31,40 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
         setIsSending(false);
       }, 100);
     }
-  }, [currentValue, lastSentValue, socket, roomCode, isSending]);
+  }, [currentValue, lastSentValue, socket, roomCode, isSending, isActive]);
 
-  // Handle room closed
+  // Handle room closed and state changes
   useEffect(() => {
     const handleRoomClosed = (data: any) => {
       if (data.code === roomCode) {
         console.log('Understanding feedback room closed');
       }
     };
+    
+    const handleStateChanged = (data: { isActive: boolean }) => {
+      console.log('Understanding feedback state changed:', data.isActive);
+      setIsActive(data.isActive);
+      
+      // Reset to middle value when restarted
+      if (data.isActive) {
+        setCurrentValue(3);
+        setLastSentValue(3);
+      }
+    };
 
     socket.on('room:closed', handleRoomClosed);
+    socket.on('understanding:stateChanged', handleStateChanged);
 
     return () => {
       socket.off('room:closed', handleRoomClosed);
+      socket.off('understanding:stateChanged', handleStateChanged);
     };
   }, [socket, roomCode]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentValue(Number(e.target.value));
+    if (isActive) {
+      setCurrentValue(Number(e.target.value));
+    }
   };
 
   const getLabelForValue = (value: number) => {
@@ -74,16 +90,36 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
 
   return (
     <div className="p-6">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold text-warm-gray-800 mb-2">
-          How well are you understanding?
-        </h2>
-        <p className="text-warm-gray-600">
-          Adjust the slider to let your teacher know
-        </p>
-      </div>
+      {!isActive ? (
+        // Waiting state when teacher has stopped feedback
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-semibold text-warm-gray-600 mb-4">
+              Feedback Paused
+            </h2>
+            <p className="text-warm-gray-500">
+              Waiting for teacher to start feedback collection...
+            </p>
+            <div className="mt-8">
+              <span className="inline-flex items-center text-sm text-warm-gray-500">
+                <span className="inline-block w-2 h-2 bg-warm-gray-400 rounded-full mr-2 animate-pulse"></span>
+                Connected to room {roomCode}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-semibold text-warm-gray-800 mb-2">
+              How well are you understanding?
+            </h2>
+            <p className="text-warm-gray-600">
+              Adjust the slider to let your teacher know
+            </p>
+          </div>
 
-      <div className="max-w-md mx-auto">
+          <div className="max-w-md mx-auto">
         {/* Current value display */}
         <div className="text-center mb-8">
           <div className={`text-5xl font-bold ${getColorForValue(currentValue)} transition-colors duration-300`}>
@@ -103,6 +139,7 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
             step="0.1"
             value={currentValue}
             onChange={handleSliderChange}
+            disabled={!isActive}
             className={`w-full h-3 rounded-lg appearance-none cursor-pointer ${getSliderColorClass(currentValue)} transition-all duration-300`}
             style={{
               background: `linear-gradient(to right, 
@@ -140,6 +177,8 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
           )}
         </div>
       </div>
+        </>
+      )}
 
       <style jsx>{`
         input[type="range"]::-webkit-slider-thumb {
