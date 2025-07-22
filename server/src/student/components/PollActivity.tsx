@@ -38,6 +38,14 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     socket.on('poll:updated', (data: PollData) => {
       // DEBUG: Log poll update
       console.log('Poll updated:', data);
+      
+      // If poll is restarted (was inactive, now active), reset vote state
+      if (!pollData.isActive && data.isActive) {
+        setHasVoted(false);
+        setSelectedOption(null);
+        setResults(null);
+      }
+      
       setPollData(data);
     });
 

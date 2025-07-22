@@ -545,6 +545,23 @@ io.on('connection', (socket) => {
     const room = session.getRoom('poll');
     if (!room || !(room instanceof PollRoom)) return;
     
+    // Check if poll is being restarted (was inactive, now active)
+    const wasInactive = !room.pollData.isActive;
+    const nowActive = data.pollData.isActive;
+    
+    if (wasInactive && nowActive) {
+      // Clear all votes when poll is restarted
+      room.participants.forEach((participant, id) => {
+        participant.hasVoted = false;
+      });
+      // Reset vote counts
+      if (data.pollData.options) {
+        data.pollData.options.forEach((_, index) => {
+          room.pollData.votes[index] = 0;
+        });
+      }
+    }
+    
     room.pollData = data.pollData;
     io.to(`${session.code}:poll`).emit('poll:updated', data.pollData);
     session.updateActivity();

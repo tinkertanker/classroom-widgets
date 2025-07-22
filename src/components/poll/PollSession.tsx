@@ -118,9 +118,7 @@ function PollSession({ widgetId, savedState, onStateChange }: PollProps) {
   };
 
   const handleStop = () => {
-    session.closeRoom('poll');
-    setIsRoomActive(false);
-    setPollData(prev => ({ ...prev, isActive: false }));
+    updatePoll({ isActive: false });
   };
 
   const updatePoll = (data: Partial<PollData>) => {
