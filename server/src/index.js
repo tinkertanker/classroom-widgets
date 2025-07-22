@@ -170,14 +170,14 @@ class DataShareRoom {
 }
 
 // Room class to manage understanding feedback sessions
-class UnderstandingFeedbackRoom {
+class RTFeedbackRoom {
   constructor(code) {
     this.code = code;
     this.hostSocketId = null;
     this.participants = new Map();
     this.feedbackData = new Map(); // Map of studentId -> feedback value (1-5)
     this.createdAt = Date.now();
-    this.isActive = true; // Start active by default
+    this.isActive = false; // Start inactive until teacher starts it
   }
 
   updateFeedback(studentId, value) {
@@ -231,14 +231,14 @@ app.get('/api/rooms/:code/exists', (req, res) => {
     console.log(`API: Room constructor name:`, room.constructor.name);
     console.log(`API: Is PollRoom?`, room instanceof PollRoom);
     console.log(`API: Is DataShareRoom?`, room instanceof DataShareRoom);
-    console.log(`API: Is UnderstandingFeedbackRoom?`, room instanceof UnderstandingFeedbackRoom);
+    console.log(`API: Is RTFeedbackRoom?`, room instanceof RTFeedbackRoom);
     
     if (room instanceof PollRoom) {
       roomType = 'poll';
     } else if (room instanceof DataShareRoom) {
       roomType = 'dataShare';
-    } else if (room instanceof UnderstandingFeedbackRoom) {
-      roomType = 'understanding';
+    } else if (room instanceof RTFeedbackRoom) {
+      roomType = 'rtfeedback';
     }
   }
   
@@ -307,8 +307,8 @@ io.on('connection', (socket) => {
       
       // DEBUG: Log successful data share join
       console.log(`Student joined data share room ${code}`);
-    } else if (room instanceof UnderstandingFeedbackRoom && type === 'understanding') {
-      // Join understanding feedback room
+    } else if (room instanceof RTFeedbackRoom && type === 'rtfeedback') {
+      // Join RT feedback room
       socket.join(code);
       room.participants.set(socket.id, {
         id: socket.id,
@@ -318,12 +318,10 @@ io.on('connection', (socket) => {
       
       socket.emit('room:joined', {
         success: true,
-        type: 'understanding',
-        studentId: socket.id
+        type: 'rtfeedback',
+        studentId: socket.id,
+        isActive: room.isActive  // Include current state in join response
       });
-      
-      // Send current state to the joining student
-      socket.emit('understanding:stateChanged', { isActive: room.isActive });
       
       // Notify host of new participant
       if (room.hostSocketId) {
@@ -333,7 +331,7 @@ io.on('connection', (socket) => {
         });
       }
       
-      console.log(`Student joined understanding feedback room ${code}`);
+      console.log(`Student joined RT feedback room ${code}`);
     } else {
       // Type mismatch
       // DEBUG: Log type mismatch
@@ -506,12 +504,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Understanding Feedback handlers
-  socket.on('understanding:update', (data) => {
+  // RT Feedback handlers
+  socket.on('rtfeedback:update', (data) => {
     const { code, value } = data;
     const room = rooms.get(code);
     
-    if (room && room instanceof UnderstandingFeedbackRoom && room.isActive) {
+    if (room && room instanceof RTFeedbackRoom && room.isActive) {
       // Update feedback value only if room is active
       room.updateFeedback(socket.id, value);
       
@@ -526,15 +524,15 @@ io.on('connection', (socket) => {
   });
 
   // Host starts/stops understanding feedback
-  socket.on('understanding:toggle', (data) => {
+  socket.on('rtfeedback:toggle', (data) => {
     const { code, isActive } = data;
     const room = rooms.get(code);
     
-    if (room && room instanceof UnderstandingFeedbackRoom && room.hostSocketId === socket.id) {
+    if (room && room instanceof RTFeedbackRoom && room.hostSocketId === socket.id) {
       room.isActive = isActive;
       
       // Broadcast state change to all participants
-      io.to(code).emit('understanding:stateChanged', { isActive });
+      io.to(code).emit('rtfeedback:stateChanged', { isActive });
       
       console.log(`Understanding feedback ${isActive ? 'started' : 'stopped'} in room ${code}`);
       
@@ -545,16 +543,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Host creates understanding feedback room
-  socket.on('understanding:create', () => {
+  // Host creates RT feedback room
+  socket.on('rtfeedback:create', () => {
     const code = generateRoomCode();
-    const room = new UnderstandingFeedbackRoom(code);
+    const room = new RTFeedbackRoom(code);
     room.hostSocketId = socket.id;
     rooms.set(code, room);
     socket.join(code);
     
-    socket.emit('understanding:created', { code, success: true });
-    console.log(`Created understanding feedback room ${code}`);
+    socket.emit('rtfeedback:created', { code, success: true });
+    console.log(`Created RT feedback room ${code}`);
   });
 
   // Handle disconnection
@@ -569,8 +567,8 @@ io.on('connection', (socket) => {
       } else if (room.participants && room.participants.has(socket.id)) {
         room.participants.delete(socket.id);
         
-        // For understanding feedback rooms, also remove feedback data
-        if (room instanceof UnderstandingFeedbackRoom) {
+        // For RT feedback rooms, also remove feedback data
+        if (room instanceof RTFeedbackRoom) {
           room.removeFeedback(socket.id);
           // Notify host of student disconnect
           if (room.hostSocketId) {

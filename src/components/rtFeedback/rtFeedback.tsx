@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useModal } from '../../contexts/ModalContext';
 import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import UnderstandingFeedbackSettings from './UnderstandingFeedbackSettings';
-import { FaGauge, FaPlay, FaStop, FaGear } from 'react-icons/fa6';
+import { FaGauge, FaPlay, FaStop } from 'react-icons/fa6';
 
-interface UnderstandingFeedbackProps {
+interface RTFeedbackProps {
   widgetId?: string;
   savedState?: any;
   onStateChange?: (state: any) => void;
@@ -18,14 +16,13 @@ interface StudentFeedback {
   timestamp: number;
 }
 
-const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
+const RTFeedback: React.FC<RTFeedbackProps> = ({
   widgetId,
   savedState,
   onStateChange
 }) => {
   const [isActive, setIsActive] = useState(savedState?.isActive || false);
   const [feedbackData, setFeedbackData] = useState<StudentFeedback[]>(savedState?.feedbackData || []);
-  const { showModal, hideModal } = useModal();
   const isFirstRender = useRef(true);
   
   const {
@@ -37,9 +34,9 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
     createRoom
   } = useNetworkedWidget({
     widgetId: widgetId || savedState?.widgetId || Math.random().toString(36).substr(2, 9),
-    roomType: 'understanding',
+    roomType: 'rtfeedback',
     onSocketConnected: (newSocket) => {
-      // Set up understanding-specific socket listeners
+      // Set up rtfeedback-specific socket listeners
       setupSocketListeners(newSocket);
     }
   });
@@ -124,16 +121,13 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
     });
   };
 
-  const handleStart = async () => {
-    if (!roomCode) {
-      await createRoom();
-    }
+  const handleStart = () => {
     setIsActive(true);
     setFeedbackData([]);
     
     // Notify server to start feedback collection
     if (socket && socket.connected && roomCode) {
-      socket.emit('understanding:toggle', { code: roomCode, isActive: true });
+      socket.emit('rtfeedback:toggle', { code: roomCode, isActive: true });
     }
   };
 
@@ -142,7 +136,7 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
     
     // Notify server to stop feedback collection
     if (socket && socket.connected && roomCode) {
-      socket.emit('understanding:toggle', { code: roomCode, isActive: false });
+      socket.emit('rtfeedback:toggle', { code: roomCode, isActive: false });
     }
   };
 
@@ -150,20 +144,6 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
     setFeedbackData([]);
   };
 
-  const openSettings = () => {
-    showModal({
-      title: 'Understanding Feedback Settings',
-      content: (
-        <UnderstandingFeedbackSettings
-          roomCode={roomCode}
-          onRoomCodeChange={() => {}}
-          onGenerateCode={() => {}}
-          onClose={hideModal}
-        />
-      ),
-      className: 'bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-md'
-    });
-  };
 
   const getBarColor = (index: number) => {
     const colors = [
@@ -182,8 +162,8 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
       {!roomCode ? (
         <NetworkedWidgetEmpty
-          title="Understanding Feedback"
-          description="Collect real-time understanding feedback from students"
+          title="RT Feedback"
+          description="Collect real-time feedback from students"
           icon={<FaGauge className="text-5xl text-warm-gray-400 dark:text-warm-gray-500" />}
           connectionError={connectionError}
           isConnecting={isConnecting}
@@ -214,13 +194,6 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
                     Start
                   </>
                 )}
-              </button>
-              <button
-                onClick={openSettings}
-                className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
-                title="Settings"
-              >
-                <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
               </button>
             </div>
           </NetworkedWidgetHeader>
@@ -265,7 +238,7 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
                     {averageUnderstanding.toFixed(1)}
                   </div>
                   <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                    Average Understanding
+                    Average Feedback
                   </div>
                 </div>
 
@@ -316,4 +289,4 @@ const UnderstandingFeedback: React.FC<UnderstandingFeedbackProps> = ({
   );
 };
 
-export default UnderstandingFeedback;
+export default RTFeedback;

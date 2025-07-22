@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 
-interface UnderstandingActivityProps {
+interface RTFeedbackActivityProps {
   socket: Socket;
   roomCode: string;
   studentName: string;
+  initialIsActive?: boolean;
 }
 
-const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, roomCode, studentName }) => {
+const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, studentName, initialIsActive }) => {
   const [currentValue, setCurrentValue] = useState(3); // Default to middle (Just Right)
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
-  const [isActive, setIsActive] = useState(true); // Assume active by default
+  const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
 
   // Send feedback when value changes (only when active)
   useEffect(() => {
@@ -19,7 +20,7 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
       setIsSending(true);
       
       // Send the updated value
-      socket.emit('understanding:update', {
+      socket.emit('rtfeedback:update', {
         code: roomCode,
         value: currentValue
       });
@@ -37,29 +38,30 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
   useEffect(() => {
     const handleRoomClosed = (data: any) => {
       if (data.code === roomCode) {
-        console.log('Understanding feedback room closed');
+        console.log('RT feedback room closed');
       }
     };
     
     const handleStateChanged = (data: { isActive: boolean }) => {
-      console.log('Understanding feedback state changed:', data.isActive);
+      console.log('RT feedback state changed:', data.isActive);
+      const wasInactive = !isActive;
       setIsActive(data.isActive);
       
-      // Reset to middle value when restarted
-      if (data.isActive) {
+      // Reset to middle value when restarted from inactive state
+      if (data.isActive && wasInactive) {
         setCurrentValue(3);
         setLastSentValue(3);
       }
     };
 
     socket.on('room:closed', handleRoomClosed);
-    socket.on('understanding:stateChanged', handleStateChanged);
+    socket.on('rtfeedback:stateChanged', handleStateChanged);
 
     return () => {
       socket.off('room:closed', handleRoomClosed);
-      socket.off('understanding:stateChanged', handleStateChanged);
+      socket.off('rtfeedback:stateChanged', handleStateChanged);
     };
-  }, [socket, roomCode]);
+  }, [socket, roomCode, isActive]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isActive) {
@@ -112,7 +114,7 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
         <>
           <div className="text-center mb-8">
             <h2 className="text-2xl font-semibold text-warm-gray-800 mb-2">
-              How well are you understanding?
+              Real-Time Feedback
             </h2>
             <p className="text-warm-gray-600">
               Adjust the slider to let your teacher know
@@ -180,7 +182,7 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
         </>
       )}
 
-      <style jsx>{`
+      <style>{`
         input[type="range"]::-webkit-slider-thumb {
           appearance: none;
           width: 24px;
@@ -224,4 +226,4 @@ const UnderstandingActivity: React.FC<UnderstandingActivityProps> = ({ socket, r
   );
 };
 
-export default UnderstandingActivity;
+export default RTFeedbackActivity;

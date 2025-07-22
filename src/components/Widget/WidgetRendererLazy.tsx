@@ -107,9 +107,9 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
       const Visualiser = LazyWidgets.Visualiser;
       return <Visualiser {...commonProps} />;
       
-    case WIDGET_TYPES.UNDERSTANDING_FEEDBACK:
-      const UnderstandingFeedback = LazyWidgets.UnderstandingFeedback;
-      return <UnderstandingFeedback {...commonProps} />;
+    case WIDGET_TYPES.RT_FEEDBACK:
+      const RTFeedback = LazyWidgets.RTFeedback;
+      return <RTFeedback {...commonProps} />;
       
     default:
       return null;

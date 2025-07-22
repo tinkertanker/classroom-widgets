@@ -88,7 +88,7 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
       const widgetState = state.widgetStates.get(widgetId);
       
       // Dispatch cleanup event for networked widgets
-      if (widget && (widget.index === WIDGET_TYPES.POLL || widget.index === WIDGET_TYPES.DATA_SHARE || widget.index === WIDGET_TYPES.UNDERSTANDING_FEEDBACK)) {
+      if (widget && (widget.index === WIDGET_TYPES.POLL || widget.index === WIDGET_TYPES.DATA_SHARE || widget.index === WIDGET_TYPES.RT_FEEDBACK)) {
         window.dispatchEvent(new CustomEvent('widget-cleanup', {
           detail: {
             widgetId,

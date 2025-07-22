@@ -19,5 +19,5 @@ export const LazyWidgets = {
   QRCodeWidget: lazy(() => import('../qrcode/qrcode')),
   DataShare: lazy(() => import('../dataShare/dataShare')),
   Visualiser: lazy(() => import('../visualiser/visualiser')),
-  UnderstandingFeedback: lazy(() => import('../understandingFeedback/understandingFeedback'))
+  RTFeedback: lazy(() => import('../rtFeedback/rtFeedback'))
 };

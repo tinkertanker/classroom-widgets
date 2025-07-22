@@ -27,7 +27,7 @@ import {
   FaQrcode,         // QR Code icon
   FaPaperclip,      // Data Share icon
   FaVideo,          // Visualiser icon
-  FaGauge           // Understanding Feedback icon
+  FaGauge           // RT Feedback icon
 } from 'react-icons/fa6';
 
 interface ToolbarProps {
@@ -136,7 +136,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
       case WIDGET_TYPES.QRCODE: return <FaQrcode /> as React.ReactElement;
       case WIDGET_TYPES.DATA_SHARE: return <FaPaperclip /> as React.ReactElement;
       case WIDGET_TYPES.VISUALISER: return <FaVideo /> as React.ReactElement;
-      case WIDGET_TYPES.UNDERSTANDING_FEEDBACK: return <FaGauge /> as React.ReactElement;
+      case WIDGET_TYPES.RT_FEEDBACK: return <FaGauge /> as React.ReactElement;
       default: return <FaDice /> as React.ReactElement;
     }
   };
@@ -156,7 +156,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     [WIDGET_TYPES.QRCODE]: "QR Code",
     [WIDGET_TYPES.DATA_SHARE]: "Data Share",
     [WIDGET_TYPES.VISUALISER]: "Visualiser",
-    [WIDGET_TYPES.UNDERSTANDING_FEEDBACK]: "Understanding"
+    [WIDGET_TYPES.RT_FEEDBACK]: "RT Feedback"
   };
 
   const formatTime = (date: Date) => {
@@ -244,7 +244,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     WIDGET_TYPES.QRCODE,
     WIDGET_TYPES.DATA_SHARE,
     WIDGET_TYPES.VISUALISER,
-    WIDGET_TYPES.UNDERSTANDING_FEEDBACK
+    WIDGET_TYPES.RT_FEEDBACK
   ];
 
   const otherWidgets = allWidgets.filter(widget => !customWidgets.includes(widget));
@@ -314,12 +314,12 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
                       className={`flex flex-col items-center p-3 rounded hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors ${
                         (widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected ? 'opacity-50 cursor-not-allowed' : ''
                       }`}
-                      disabled={(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.UNDERSTANDING_FEEDBACK) && !serverConnected}
+                      disabled={(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.RT_FEEDBACK) && !serverConnected}
                       title={widgetNames[widgetType]}
                     >
                       <div className="text-2xl mb-1 text-warm-gray-700 dark:text-warm-gray-300 relative">
                         {getWidgetIcon(widgetType)}
-                        {(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.UNDERSTANDING_FEEDBACK) && !serverConnected && (
+                        {(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.RT_FEEDBACK) && !serverConnected && (
                           <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" />
                         )}
                       </div>
@@ -344,7 +344,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80 transition-all duration-200 group relative flex flex-col items-center gap-1 min-w-[80px] ${
               hoveringTrash ? 'scale-95 opacity-50' : ''
             } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={state.stickerMode || ((widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.UNDERSTANDING_FEEDBACK) && !serverConnected)}
+            disabled={state.stickerMode || ((widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.RT_FEEDBACK) && !serverConnected)}
             title={widgetNames[widgetType]}
           >
             <div className="text-lg relative">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import io, { Socket } from 'socket.io-client';
 
-export type RoomType = 'poll' | 'dataShare' | 'understanding';
+export type RoomType = 'poll' | 'dataShare' | 'rtfeedback';
 
 interface UseNetworkedWidgetProps {
   widgetId?: string;
@@ -175,11 +175,11 @@ export function useNetworkedWidget({
             newSocket.emit('host:createDataShareRoom');
           }, 100);
         });
-      } else if (roomType === 'understanding') {
-        // For understanding, emit creation event after connection
-        newSocket.on('understanding:created', (data: { code: string; success: boolean }) => {
+      } else if (roomType === 'rtfeedback') {
+        // For rtfeedback, emit creation event after connection
+        newSocket.on('rtfeedback:created', (data: { code: string; success: boolean }) => {
           if (data.success) {
-            console.log('Understanding room created:', data.code);
+            console.log('RT Feedback room created:', data.code);
             setRoomCode(data.code);
             setIsConnecting(false);
             
@@ -192,7 +192,7 @@ export function useNetworkedWidget({
         newSocket.on('connect', () => {
           // Emit create room when connected
           setTimeout(() => {
-            newSocket.emit('understanding:create');
+            newSocket.emit('rtfeedback:create');
           }, 100);
         });
       }

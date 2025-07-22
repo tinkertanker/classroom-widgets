@@ -132,7 +132,7 @@ export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
     minHeight: 225,
     lockAspectRatio: false
   },
-  [WIDGET_TYPES.UNDERSTANDING_FEEDBACK]: {
+  [WIDGET_TYPES.RT_FEEDBACK]: {
     defaultWidth: 400,
     defaultHeight: 500,
     minWidth: 300,

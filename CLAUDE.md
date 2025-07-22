@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a React-based classroom widgets application that provides interactive tools for classroom management and student engagement. The app allows users to add, position, resize, and remove various widget components on a shared workspace.
+This is a React-based classroom widgets application that provides interactive tools for classroom management and student engagement. The app allows users to add, position, resize, and remove various widget components on a shared workspace. The system includes both a teacher application and a student participation app for real-time interaction.
 
 ## Key Technologies
 
@@ -94,9 +94,11 @@ The application uses a dynamic widget system where widgets are:
 - **Sound Effects** (`src/components/soundEffects/`) - Sound effect player
 - **Sticker** (`src/components/sticker/`) - Decorative stickers for the workspace
 - **QR Code** (`src/components/qrcode/`) - QR code generator for sharing links with students
+- **Data Share** (`src/components/dataShare/`) - Collect text submissions from students
+- **RT Feedback** (`src/components/rtFeedback/`) - Real-time feedback slider (1-5 scale) for gauging student understanding
 
 ### Toolbar Features
-- Widget creation buttons (customizable selection)
+- Widget creation buttons (customizable selection with transparent backgrounds)
 - "More" button for accessing all widgets
 - Sticker mode for placing decorative elements
 - Menu with:
@@ -104,8 +106,9 @@ The application uses a dynamic widget system where widgets are:
   - Background selection (geometric, gradient, lines, dots)
   - Toolbar customization
   - Dark/light mode toggle
+- Server connection indicator (WiFi icon - green when connected, gray when offline)
 - Integrated clock display (shows current time in 12-hour format with blinking colon)
-- Trash icon for widget deletion
+- Trash icon for widget deletion (appears on hover with 1.5s delay before hiding)
 
 ### State Management
 - Widget instances stored in `componentList` array with `{id, index}` structure
@@ -205,7 +208,7 @@ server/                      # Backend server for real-time features
 - **Padding**: Use consistent padding (p-4, px-6 py-4 for modals)
 
 ### Networked Widget Pattern
-Networked widgets (Poll, Data Share, Understanding Feedback) follow a consistent UI structure:
+Networked widgets (Poll, Data Share, RT Feedback) follow a consistent UI structure:
 
 1. **Container Structure**:
    ```jsx
@@ -218,7 +221,22 @@ Networked widgets (Poll, Data Share, Understanding Feedback) follow a consistent
    - "Create Room" button (sage-500 background)
    - Connection error display with server start instructions
 
-3. **Active State**: 
+3. **Active State**: Use `NetworkedWidgetHeader` with room code display
+   - Activity code display (large text)
+   - Student URL information
+   - Control buttons in header
+
+4. **Common Patterns**: 
+   - Start/Stop toggle button (single button that changes color/icon)
+   - Settings gear icon (optional - RT Feedback doesn't use it)
+   - Status indicators for connection state
+   - Participant count display
+   - Widget cleanup on deletion notifies connected students
+
+5. **Socket Management**: Use `useNetworkedWidget` hook for:
+   - Room creation and connection
+   - Socket event handling
+   - Cleanup on unmount
    - `NetworkedWidgetHeader` at top showing:
      - Activity code (large, bold)
      - Student URL
@@ -258,13 +276,36 @@ npm start              # React app on port 3000
 - Participant count monitoring
 - Automatic room cleanup after 12 hours
 
-### Student Participation
-- Students visit `http://[server-ip]:3001`
-- Enter activity code to join poll
-- Vote on questions in real-time
-- See results after voting
+### Student App Features
+- **URL**: Students visit `http://[server-ip]:3001` or production URL
+- **Join Activities**: Enter 5-character activity codes to join
+- **Supported Activities**:
+  - **Poll**: Vote on multiple choice questions, see live results
+  - **Data Share**: Submit text responses to teacher prompts
+  - **RT Feedback**: Adjust feedback slider (1-5 scale) in real-time
+- **Multiple Sessions**: Can join multiple activities simultaneously
+- **Responsive Design**: Works on phones, tablets, and computers
+- **Dark Mode**: Toggle between light and dark themes
+- **Connection Status**: Visual indicators for connection state
+- **Auto-sync**: Receives room state updates (active/paused) from teacher
 
 ## Recent Updates
+
+### RT Feedback Widget (formerly Understanding Feedback)
+- Renamed from "Understanding Feedback" to "RT Feedback" throughout codebase
+- Implements real-time feedback collection on a 1-5 scale
+- Features pause/resume functionality that syncs with students
+- No settings dialog - simplified interface with just Start/Stop
+- Students see appropriate UI based on room state when joining
+- Visual feedback scale from "Too Easy" to "Too Hard"
+- Live average calculation and distribution chart
+
+### UI Improvements
+- Toolbar buttons now have transparent backgrounds (opacity 80)
+- WiFi connection indicator moved to right of settings menu
+- Trash icon appears on widget hover with 1.5s delay before hiding
+- Fixed nested button warning in Randomiser widget
+- All networked widgets now receive widgetId prop for state management
 
 ### Randomiser Widget
 - Refactored to use internal state management in settings

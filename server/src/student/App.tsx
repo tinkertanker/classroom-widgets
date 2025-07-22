@@ -3,9 +3,9 @@ import io, { Socket } from 'socket.io-client';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import DataShareActivity from './components/DataShareActivity';
-import UnderstandingActivity from './components/UnderstandingActivity';
+import RTFeedbackActivity from './components/RTFeedbackActivity';
 
-export type RoomType = 'poll' | 'dataShare' | 'understanding';
+export type RoomType = 'poll' | 'dataShare' | 'rtfeedback';
 
 interface JoinedRoom {
   id: string;
@@ -191,7 +191,7 @@ const App: React.FC = () => {
             studentName: name || studentName,
             socket: newSocket,
             joinedAt: Date.now(),
-            initialData: joinData.pollData || joinData.data // Store any initial data
+            initialData: joinData.pollData || joinData.data || joinData // Store any initial data (including isActive for rtfeedback)
           };
           
           // Add to beginning of array (newest first)
@@ -317,7 +317,7 @@ const App: React.FC = () => {
                   <div className="flex gap-3 items-center">
                     <span className="bg-warm-gray-200 text-warm-gray-700 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
                     <span className="text-sage-700 text-base md:text-lg font-semibold">
-                      {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : 'Understanding Feedback'}
+                      {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : 'RT Feedback'}
                     </span>
                   </div>
                   <button 
@@ -344,11 +344,12 @@ const App: React.FC = () => {
                       studentName={studentName}
                     />
                   )}
-                  {room.type === 'understanding' && (
-                    <UnderstandingActivity 
+                  {room.type === 'rtfeedback' && (
+                    <RTFeedbackActivity 
                       socket={room.socket} 
                       roomCode={room.code}
                       studentName={studentName}
+                      initialIsActive={room.initialData?.isActive}
                     />
                   )}
                 </div>
