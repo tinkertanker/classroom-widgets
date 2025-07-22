@@ -26,7 +26,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
     setError('');
     
     if (!/^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code)) {
-      setError('Please enter a valid 5-character activity code');
+      setError('Please enter a valid 5-character session code');
       return;
     }
 
@@ -86,7 +86,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
         <div className="animate-fadeIn">
           <div className="flex justify-between items-start mb-6">
             <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 m-0 text-center pr-12">Join Classroom Activity</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 m-0 text-center pr-12">Join Classroom Session</h1>
             </div>
           </div>
         </div>
@@ -109,7 +109,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
           </div>
           
           <div className={`flex flex-col ${isCompact ? 'flex-1 sm:flex-[0_0_160px] sm:order-2 sm:mx-4' : 'sm:flex-[0_0_160px] sm:order-2 sm:mx-4'}`}>
-            <label htmlFor="code" className={`text-sm font-semibold text-warm-gray-700 mb-2 ${isCompact ? 'hidden' : ''}`}>Activity Code</label>
+            <label htmlFor="code" className={`text-sm font-semibold text-warm-gray-700 mb-2 ${isCompact ? 'hidden' : ''}`}>Session Code</label>
             <input
               type="text"
               id="code"
@@ -130,7 +130,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
             className={`py-2.5 px-4 bg-sage-500 text-white border-0 rounded-md text-sm font-semibold cursor-pointer transition-colors duration-200 outline-none h-auto flex items-center justify-center hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed ${isCompact ? 'w-full sm:w-auto py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_120px] sm:order-3' : 'sm:flex-[0_0_120px] sm:order-3'}`}
             disabled={isLoading || !code}
           >
-            {isLoading ? 'Joining...' : 'Join Activity'}
+            {isLoading ? 'Joining...' : 'Join Session'}
           </button>
         </div>
         

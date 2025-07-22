@@ -143,9 +143,9 @@ const App: React.FC = () => {
 
   const handleJoin = async (code: string, name: string) => {
     try {
-      // Check if already joined this room
+      // Check if already joined this session
       if (joinedRooms.some(room => room.code === code)) {
-        throw new Error('Already joined this activity');
+        throw new Error('Already joined this session');
       }
 
       // Update student name if provided
@@ -153,75 +153,122 @@ const App: React.FC = () => {
         setStudentName(name);
       }
 
-      // Check if room exists
-      console.log('Checking if room exists via API...');
-      const response = await fetch(`/api/rooms/${code}/exists`);
+      // Check if session exists
+      console.log('Checking if session exists via API...');
+      const response = await fetch(`/api/sessions/${code}/exists`);
       const data = await response.json();
-      console.log('Room exists API response:', data);
+      console.log('Session exists API response:', data);
       
       if (!data.exists) {
-        throw new Error('Invalid activity code');
+        throw new Error('Invalid session code');
       }
 
-      if (!data.roomType) {
-        throw new Error('Room configuration error');
-      }
-
-      // Create new socket connection for this room
+      // Create new socket connection for this session
       const newSocket = io();
-      const roomId = `${code}-${Date.now()}`;
+      const sessionId = `${code}-${Date.now()}`;
       
       // Store socket reference
-      socketRefs.current.set(roomId, newSocket);
+      socketRefs.current.set(sessionId, newSocket);
 
       // Set up socket event handlers
       newSocket.on('connect', () => {
-        console.log(`Connected to server for room ${code}`);
-        newSocket.emit('room:join', { code, name: name || studentName, type: data.roomType });
+        console.log(`Connected to server for session ${code}`);
+        newSocket.emit('session:join', { code, name: name || studentName, studentId: newSocket.id });
       });
 
-      newSocket.on('room:joined', (joinData) => {
-        console.log('Received room:joined event:', joinData);
+      newSocket.on('session:joined', (joinData) => {
+        console.log('Received session:joined event:', joinData);
         
-        if (joinData.success) {
-          const newRoom: JoinedRoom = {
-            id: roomId,
-            code,
-            type: data.roomType,
-            studentName: name || studentName,
-            socket: newSocket,
-            joinedAt: Date.now(),
-            initialData: joinData.pollData || joinData.data || joinData // Store any initial data (including isActive for rtfeedback)
-          };
-          
-          // Add to beginning of array (newest first)
-          setJoinedRooms(prev => [newRoom, ...prev]);
-          
-          // Add to entering set for animation
-          setEnteringRooms(prev => new Set(prev).add(roomId));
-          
-          // Remove from entering set after animation
-          setTimeout(() => {
-            setEnteringRooms(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(roomId);
-              return newSet;
-            });
-          }, 50); // Short delay to trigger animation
+        if (joinData.success && joinData.activeRooms) {
+          // Join all active rooms in the session
+          joinData.activeRooms.forEach((roomType: RoomType) => {
+            const roomId = `${code}-${roomType}-${Date.now()}`;
+            
+            const newRoom: JoinedRoom = {
+              id: roomId,
+              code,
+              type: roomType,
+              studentName: name || studentName,
+              socket: newSocket,
+              joinedAt: Date.now(),
+              initialData: {}
+            };
+            
+            // Add to beginning of array (newest first)
+            setJoinedRooms(prev => [newRoom, ...prev]);
+            
+            // Add to entering set for animation
+            setEnteringRooms(prev => new Set(prev).add(roomId));
+            
+            // Remove from entering set after animation
+            setTimeout(() => {
+              setEnteringRooms(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(roomId);
+                return newSet;
+              });
+            }, 50); // Short delay to trigger animation
+          });
         } else {
           // Clean up on failure
           newSocket.close();
-          socketRefs.current.delete(roomId);
-          throw new Error('Failed to join room');
+          socketRefs.current.delete(sessionId);
+          throw new Error('Failed to join session');
         }
       });
 
-      newSocket.on('room:closed', (data) => {
-        console.log(`Room ${code} closed by host:`, data);
-        console.log('Received room:closed event with data:', data);
-        console.log('Current room code:', code, 'Event code:', data.code);
-        // Remove the room from the UI
-        handleLeaveRoom(roomId);
+      // Handle new rooms being created in the session
+      newSocket.on('session:roomCreated', (data) => {
+        console.log('New room created in session:', data);
+        const roomId = `${code}-${data.roomType}-${Date.now()}`;
+        
+        const newRoom: JoinedRoom = {
+          id: roomId,
+          code,
+          type: data.roomType,
+          studentName: name || studentName,
+          socket: newSocket,
+          joinedAt: Date.now(),
+          initialData: data.roomData || {}
+        };
+        
+        // Add room if not already exists
+        setJoinedRooms(prev => {
+          if (prev.some(r => r.code === code && r.type === data.roomType)) {
+            return prev;
+          }
+          return [newRoom, ...prev];
+        });
+        
+        setEnteringRooms(prev => new Set(prev).add(roomId));
+        setTimeout(() => {
+          setEnteringRooms(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(roomId);
+            return newSet;
+          });
+        }, 50);
+      });
+
+      // Handle rooms being closed in the session
+      newSocket.on('session:roomClosed', (data) => {
+        console.log('Room closed in session:', data);
+        // Find and remove the room of this type for this session
+        setJoinedRooms(prev => {
+          const roomToRemove = prev.find(r => r.code === code && r.type === data.roomType);
+          if (roomToRemove) {
+            setLeavingRooms(leaving => new Set(leaving).add(roomToRemove.id));
+            setTimeout(() => {
+              setJoinedRooms(rooms => rooms.filter(r => r.id !== roomToRemove.id));
+              setLeavingRooms(leaving => {
+                const newSet = new Set(leaving);
+                newSet.delete(roomToRemove.id);
+                return newSet;
+              });
+            }, 300);
+          }
+          return prev;
+        });
       });
 
       newSocket.on('disconnect', () => {
@@ -335,6 +382,7 @@ const App: React.FC = () => {
                       socket={room.socket} 
                       roomCode={room.code}
                       initialPollData={room.initialData}
+                      isSession={true}
                     />
                   )}
                   {room.type === 'dataShare' && (
@@ -342,6 +390,7 @@ const App: React.FC = () => {
                       socket={room.socket} 
                       roomCode={room.code}
                       studentName={studentName}
+                      isSession={true}
                     />
                   )}
                   {room.type === 'rtfeedback' && (
@@ -350,6 +399,7 @@ const App: React.FC = () => {
                       roomCode={room.code}
                       studentName={studentName}
                       initialIsActive={room.initialData?.isActive}
+                      isSession={true}
                     />
                   )}
                 </div>
@@ -362,7 +412,7 @@ const App: React.FC = () => {
         {/* Empty state */}
         {joinedRooms.length === 0 && (
           <div className="text-center py-12 px-4 mt-4 text-warm-gray-600">
-            <p className="text-base">No active activities. Enter an activity code above to get started!</p>
+            <p className="text-base">No active sessions. Enter a session code above to get started!</p>
           </div>
         )}
         </div>
