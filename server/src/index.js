@@ -148,6 +148,14 @@ class PollRoom {
       participantCount: this.participants.size
     };
   }
+  
+  getVoteCounts() {
+    return this.pollData.votes || {};
+  }
+  
+  getTotalVotes() {
+    return Object.values(this.pollData.votes || {}).reduce((a, b) => a + b, 0);
+  }
 }
 
 // Room class to manage data share sessions
@@ -216,6 +224,25 @@ class RTFeedbackRoom {
       });
     });
     return feedback;
+  }
+  
+  getAggregatedFeedback() {
+    // Count how many students are at each level (1-5)
+    const understanding = [0, 0, 0, 0, 0];
+    let totalResponses = 0;
+    
+    this.feedbackData.forEach((data) => {
+      const value = data.value;
+      if (value >= 1 && value <= 5) {
+        understanding[value - 1]++;
+        totalResponses++;
+      }
+    });
+    
+    return {
+      understanding,
+      totalResponses
+    };
   }
 }
 
