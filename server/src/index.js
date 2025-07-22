@@ -425,10 +425,20 @@ io.on('connection', (socket) => {
     // Join session room
     socket.join(`session:${code}`);
     
-    // Join all active room types
+    // Join all active room types and send initial data
     const activeRooms = session.getActiveRoomTypes();
     activeRooms.forEach(roomType => {
       socket.join(`${code}:${roomType}`);
+      
+      // Send initial room data
+      const room = session.getRoom(roomType);
+      if (room) {
+        if (roomType === 'poll' && room instanceof PollRoom) {
+          socket.emit('poll:updated', room.pollData);
+        } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
+          socket.emit('rtfeedback:update', room.getAggregatedFeedback());
+        }
+      }
     });
     
     socket.emit('session:joined', {
@@ -468,10 +478,18 @@ io.on('connection', (socket) => {
     const room = session.createRoom(roomType);
     socket.join(`${session.code}:${roomType}`);
     
+    // Prepare room data based on type
+    let roomData = {};
+    if (roomType === 'poll' && room instanceof PollRoom) {
+      roomData = room.pollData;
+    } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
+      roomData = { isActive: room.isActive };
+    }
+    
     // Notify all session participants about new room
     io.to(`session:${session.code}`).emit('session:roomCreated', {
       roomType,
-      roomData: roomType === 'poll' ? room.pollData : {}
+      roomData
     });
     
     callback({ success: true, isExisting: false });
@@ -592,14 +610,11 @@ io.on('connection', (socket) => {
     
     room.updateFeedback(socket.id, data.value);
     
-    // Notify host
-    if (session.hostSocketId) {
-      io.to(session.hostSocketId).emit('feedbackUpdate', {
-        studentId: socket.id,
-        studentName: participant.name,
-        value: data.value
-      });
-    }
+    // Calculate aggregate feedback
+    const feedbackData = room.getAggregatedFeedback();
+    
+    // Notify all in the room (including host)
+    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', feedbackData);
     
     session.updateActivity();
   });
