@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
+import { FaSun, FaMoon } from 'react-icons/fa6';
 import JoinForm from './components/JoinForm';
 import SessionDashboard from './components/SessionDashboard';
 
