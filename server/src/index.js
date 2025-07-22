@@ -1015,7 +1015,7 @@ setInterval(() => {
 }, 60 * 60 * 1000); // Check every hour
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = 3001; // Always use port 3001 for this server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
