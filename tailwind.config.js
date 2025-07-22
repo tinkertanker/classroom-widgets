@@ -12,6 +12,7 @@ module.exports = {
       colors: {
         // Soft cream/off-white colors
         'soft-white': '#fdfcfb',
+        'soft-white-90': 'rgba(253, 252, 251, 0.9)',
         'cream': '#faf9f7',
         
         // Warm grays
@@ -25,6 +26,7 @@ module.exports = {
           600: '#6b635a',
           700: '#514b44',
           800: '#3d3835',
+          '800-90': 'rgba(61, 56, 53, 0.9)',
           900: '#2d2926',
         },
         

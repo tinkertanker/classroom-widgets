@@ -13,7 +13,7 @@ const ZoomControl: React.FC<ZoomControlProps> = ({ className = '', boardRef }) =
   const zoomLevels = [0.5, 0.75, 1, 1.25, 1.5, 2];
   
   const setZoomFromCenter = (newScale: number) => {
-    // If we have a board ref, adjust scroll to keep center point fixed
+    // Revert to the original approach - changing transform-origin dynamically causes jumps
     if (boardRef?.current) {
       const container = boardRef.current.containerRef.current;
       if (container) {

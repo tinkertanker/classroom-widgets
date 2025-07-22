@@ -94,8 +94,8 @@ function AppContent() {
   }, [state.stickerMode, setStickerMode]);
 
   // Handle trash deletion
-  const trashHandler = (mouseEvent: any, _: any, id: string) => {
-    if (isOverTrash(mouseEvent.x, mouseEvent.y)) {
+  const trashHandler = (mouseEvent: any, data: any, id: string) => {
+    if (isOverTrash(mouseEvent.clientX || mouseEvent.x, mouseEvent.clientY || mouseEvent.y)) {
       trashAudio.play().catch(error => {
         console.error("Error playing trash sound:", error);
       });

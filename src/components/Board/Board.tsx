@@ -13,11 +13,13 @@ export interface BoardRef {
   setDebugMarker: (marker: { x: number; y: number; visible: boolean; viewportX?: number; viewportY?: number }) => void;
   setViewportRect: (rect: { x: number; y: number; visible: boolean }) => void;
   setIsAnimatingZoom: (isAnimating: boolean) => void;
+  setTransformOrigin: (origin: string) => void;
 }
 
 const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, stickerMode }, ref) => {
   const { state } = useWorkspace();
   const { scale } = state;
+  
   
   const boardContainerRef = useRef<HTMLDivElement>(null);
   const boardScaleRef = useRef<HTMLDivElement>(null);
@@ -51,14 +53,15 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
     containerRef: boardContainerRef,
     setDebugMarker,
     setViewportRect,
-    setIsAnimatingZoom
-  }), [setDebugMarker, setViewportRect, setIsAnimatingZoom]);
+    setIsAnimatingZoom,
+    setTransformOrigin
+  }), [setDebugMarker, setViewportRect, setIsAnimatingZoom, setTransformOrigin]);
   
   // Enable pinch zoom on the board container
   useZoomWithScroll(boardContainerRef, boardScaleRef, setDebugMarker, setViewportRect, {
     minScale: 0.5,
     maxScale: 2,
-    scaleSensitivity: 0.01
+    scaleSensitivity: 1  // Increased from 0.01 for more responsive pinch
   });
 
   return (
@@ -75,7 +78,7 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
           ref={boardScaleRef}
           style={{ 
             transform: `scale(${scale})`,
-            transformOrigin: '0 0',
+            transformOrigin: transformOrigin,
             width: '3000px',
             height: '2000px',
             position: 'absolute',

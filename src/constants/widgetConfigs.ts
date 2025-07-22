@@ -54,7 +54,7 @@ export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
   },
   [WIDGET_TYPES.SOUND_MONITOR]: {
     defaultWidth: 280,
-    defaultHeight: 250,
+    defaultHeight: 200,
     minWidth: 200,
     minHeight: 200,
     lockAspectRatio: false
