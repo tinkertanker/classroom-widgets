@@ -700,18 +700,37 @@ io.on('connection', (socket) => {
   // RT Feedback handlers for sessions
   socket.on('session:rtfeedback:update', (data) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
-    if (!session) return;
+    if (!session) {
+      console.log('RTFeedback: Session not found for', data.sessionCode);
+      return;
+    }
     
     const room = session.getRoom('rtfeedback');
-    if (!room || !(room instanceof RTFeedbackRoom)) return;
+    if (!room || !(room instanceof RTFeedbackRoom)) {
+      console.log('RTFeedback: Room not found or wrong type');
+      return;
+    }
     
     const participant = session.participants.get(socket.id);
-    if (!participant) return;
+    if (!participant) {
+      console.log('RTFeedback: Participant not found for', socket.id);
+      return;
+    }
+    
+    // Debug: Log the received value
+    console.log('RTFeedback: Received value', data.value, 'from', participant.name, 'room active:', room.isActive);
+    
+    // Only update if room is active
+    if (!room.isActive) {
+      console.log('RTFeedback: Room is not active, ignoring feedback');
+      return;
+    }
     
     room.updateFeedback(socket.id, data.value);
     
     // Calculate aggregate feedback
     const feedbackData = room.getAggregatedFeedback();
+    console.log('RTFeedback: Aggregated data:', feedbackData);
     
     // Notify all in the room (including host)
     io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', feedbackData);
