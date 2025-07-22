@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 
-interface PollSettingsProps {
+interface PollData {
   question: string;
   options: string[];
-  onSave: (question: string, options: string[]) => void;
+  isActive: boolean;
+}
+
+interface PollSettingsProps {
+  pollData: PollData;
+  onSave: (data: Partial<PollData>) => void;
+  onClose: () => void;
 }
 
 const PollSettings: React.FC<PollSettingsProps> = ({
-  question: initialQuestion,
-  options: initialOptions,
-  onSave
+  pollData,
+  onSave,
+  onClose
 }) => {
-  const [question, setQuestion] = useState(initialQuestion);
-  const [options, setOptions] = useState(initialOptions);
+  const [question, setQuestion] = useState(pollData.question || '');
+  const [options, setOptions] = useState(pollData.options?.length > 0 ? pollData.options : ['', '']);
 
   const updateOption = (index: number, value: string) => {
     const newOptions = [...options];
@@ -84,7 +90,7 @@ const PollSettings: React.FC<PollSettingsProps> = ({
       </div>
       <div className="px-6 pb-4 flex justify-center">
         <button
-          onClick={() => onSave(question, options)}
+          onClick={() => onSave({ question, options })}
           className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
         >
           Save Changes
