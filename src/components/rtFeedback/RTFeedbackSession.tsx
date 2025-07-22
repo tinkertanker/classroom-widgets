@@ -90,6 +90,14 @@ function RTFeedbackSession({ widgetId }: RTFeedbackProps) {
       
       // Create feedback room
       await session.createRoom('rtfeedback');
+      
+      // Activate the feedback room
+      if (session.socket) {
+        session.socket.emit('session:rtfeedback:start', {
+          sessionCode: sessionCode
+        });
+      }
+      
       setIsRoomActive(true);
     } catch (error) {
       console.error('Failed to start feedback:', error);
@@ -97,8 +105,10 @@ function RTFeedbackSession({ widgetId }: RTFeedbackProps) {
   };
 
   const handleStop = () => {
-    if (isRoomActive) {
-      session.closeRoom('rtfeedback');
+    if (isRoomActive && session.socket) {
+      session.socket.emit('session:rtfeedback:stop', {
+        sessionCode: session.sessionCode
+      });
     }
   };
 

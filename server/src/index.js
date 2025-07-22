@@ -478,6 +478,7 @@ io.on('connection', (socket) => {
           socket.emit('poll:updated', room.pollData);
         } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
           socket.emit('rtfeedback:update', room.getAggregatedFeedback());
+          socket.emit('rtfeedback:stateChanged', { isActive: room.isActive });
         }
       }
     });
@@ -730,6 +731,36 @@ io.on('connection', (socket) => {
     
     // Send updated (empty) feedback to all participants
     io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', room.getAggregatedFeedback());
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:rtfeedback:start', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('rtfeedback');
+    if (!room || !(room instanceof RTFeedbackRoom)) return;
+    
+    room.isActive = true;
+    
+    // Notify all participants that feedback is now active
+    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:stateChanged', { isActive: true });
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:rtfeedback:stop', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('rtfeedback');
+    if (!room || !(room instanceof RTFeedbackRoom)) return;
+    
+    room.isActive = false;
+    
+    // Notify all participants that feedback is now inactive
+    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:stateChanged', { isActive: false });
     
     session.updateActivity();
   });
