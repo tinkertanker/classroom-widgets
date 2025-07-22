@@ -551,18 +551,31 @@ io.on('connection', (socket) => {
   // Data Share handlers for sessions
   socket.on('session:dataShare:submit', (data) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
-    if (!session) return;
+    if (!session) {
+      socket.emit('session:dataShare:submitted', { success: false, error: 'Session not found' });
+      return;
+    }
     
     const room = session.getRoom('dataShare');
-    if (!room || !(room instanceof DataShareRoom)) return;
+    if (!room || !(room instanceof DataShareRoom)) {
+      socket.emit('session:dataShare:submitted', { success: false, error: 'Data share room not found' });
+      return;
+    }
     
     const participant = session.participants.get(socket.id);
-    if (!participant) return;
+    if (!participant) {
+      socket.emit('session:dataShare:submitted', { success: false, error: 'Not joined to session' });
+      return;
+    }
     
-    const submission = room.addSubmission(participant.name, data.link);
+    const submission = room.addSubmission(participant.name || data.studentName, data.link);
     
     // Notify all in the room
     io.to(`${session.code}:dataShare`).emit('dataShare:newSubmission', submission);
+    
+    // Send confirmation to submitter
+    socket.emit('session:dataShare:submitted', { success: true });
+    
     session.updateActivity();
   });
   

@@ -6,9 +6,10 @@ interface RTFeedbackActivityProps {
   roomCode: string;
   studentName: string;
   initialIsActive?: boolean;
+  isSession?: boolean;
 }
 
-const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, studentName, initialIsActive }) => {
+const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, studentName, initialIsActive, isSession = false }) => {
   const [currentValue, setCurrentValue] = useState(3); // Default to middle (Just Right)
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
@@ -20,10 +21,17 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       setIsSending(true);
       
       // Send the updated value
-      socket.emit('rtfeedback:update', {
-        code: roomCode,
-        value: currentValue
-      });
+      if (isSession) {
+        socket.emit('session:rtfeedback:update', {
+          sessionCode: roomCode,
+          value: currentValue
+        });
+      } else {
+        socket.emit('rtfeedback:update', {
+          code: roomCode,
+          value: currentValue
+        });
+      }
       
       setLastSentValue(currentValue);
       

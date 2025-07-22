@@ -5,12 +5,14 @@ interface DataShareActivityProps {
   socket: Socket;
   roomCode: string;
   studentName: string;
+  isSession?: boolean;
 }
 
 const DataShareActivity: React.FC<DataShareActivityProps> = ({ 
   socket, 
   roomCode, 
-  studentName
+  studentName,
+  isSession = false
 }) => {
   const [shareLink, setShareLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,14 +30,23 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
     setIsSubmitting(true);
     setError('');
     
-    socket.emit('dataShare:submit', {
-      code: roomCode,
-      studentName: studentName || 'Anonymous',
-      link: shareLink.trim()
-    });
+    if (isSession) {
+      socket.emit('session:dataShare:submit', {
+        sessionCode: roomCode,
+        studentName: studentName || 'Anonymous',
+        link: shareLink.trim()
+      });
+    } else {
+      socket.emit('dataShare:submit', {
+        code: roomCode,
+        studentName: studentName || 'Anonymous',
+        link: shareLink.trim()
+      });
+    }
 
     // Listen for response
-    socket.once('dataShare:submitted', (response: { success: boolean; error?: string }) => {
+    const responseEvent = isSession ? 'session:dataShare:submitted' : 'dataShare:submitted';
+    socket.once(responseEvent, (response: { success: boolean; error?: string }) => {
       setIsSubmitting(false);
       
       if (response.success) {
