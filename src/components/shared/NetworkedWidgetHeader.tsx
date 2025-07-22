@@ -1,30 +1,53 @@
 import React from 'react';
+import { FaGear } from 'react-icons/fa6';
 
 interface NetworkedWidgetHeaderProps {
-  roomCode: string;
+  title: string;
+  code: string;
+  participantCount: number;
+  onSettings?: () => void;
   children?: React.ReactNode;
 }
 
-export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({ roomCode, children }) => {
+export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({ 
+  title, 
+  code, 
+  participantCount, 
+  onSettings,
+  children 
+}) => {
   // Get the server URL and format it for student access
   const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
   const studentUrl = serverUrl;
 
   return (
     <div className="mb-4">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Activity Code</p>
-          <p className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
-            {roomCode}
-          </p>
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-medium text-warm-gray-800 dark:text-warm-gray-200">
+            {title}
+          </h3>
+          <div className="flex items-center gap-2 bg-warm-gray-100 dark:bg-warm-gray-700 px-3 py-1 rounded-full">
+            <span className="text-sm font-mono font-bold text-warm-gray-700 dark:text-warm-gray-300">
+              {code}
+            </span>
+            <span className="text-xs text-warm-gray-500 dark:text-warm-gray-400">
+              • {participantCount} {participantCount === 1 ? 'student' : 'students'}
+            </span>
+          </div>
         </div>
-        {children}
-      </div>
-      <div className="bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg px-4 py-2 text-center">
-        <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-          Students visit: <span className="font-mono font-medium text-warm-gray-800 dark:text-warm-gray-200">{studentUrl}</span>
-        </p>
+        <div className="flex items-center gap-2">
+          {onSettings && (
+            <button
+              onClick={onSettings}
+              className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+              title="Settings"
+            >
+              <FaGear className="text-base" />
+            </button>
+          )}
+          {children}
+        </div>
       </div>
     </div>
   );
