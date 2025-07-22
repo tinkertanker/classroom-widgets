@@ -63,6 +63,9 @@ if (process.env.NODE_ENV === 'production') {
 // Store active rooms/sessions
 const rooms = new Map();
 
+// Store active sessions (new session-based architecture)
+const sessions = new Map();
+
 // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U)
 const SAFE_CHARACTERS = '23456789ACDEFHJKMNPQRTUWXY';
 
@@ -204,9 +207,126 @@ class RTFeedbackRoom {
   }
 }
 
+// Session class to manage multiple room types under one code
+class Session {
+  constructor(code) {
+    this.code = code;
+    this.hostSocketId = null;
+    this.createdAt = Date.now();
+    this.lastActivity = Date.now();
+    this.activeRooms = new Map(); // roomType -> room instance
+    this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
+  }
+
+  updateActivity() {
+    this.lastActivity = Date.now();
+  }
+
+  addParticipant(socketId, name, studentId) {
+    this.participants.set(socketId, {
+      name,
+      studentId,
+      joinedAt: Date.now(),
+      socketId
+    });
+    this.updateActivity();
+  }
+
+  removeParticipant(socketId) {
+    this.participants.delete(socketId);
+    // Also remove from all active rooms
+    this.activeRooms.forEach(room => {
+      if (room.participants && room.participants.has) {
+        room.participants.delete(socketId);
+      }
+    });
+    this.updateActivity();
+  }
+
+  createRoom(roomType) {
+    let room;
+    switch (roomType) {
+      case 'poll':
+        room = new PollRoom(this.code);
+        break;
+      case 'dataShare':
+        room = new DataShareRoom(this.code);
+        break;
+      case 'rtfeedback':
+        room = new RTFeedbackRoom(this.code);
+        break;
+      default:
+        throw new Error(`Unknown room type: ${roomType}`);
+    }
+    
+    room.hostSocketId = this.hostSocketId;
+    this.activeRooms.set(roomType, room);
+    this.updateActivity();
+    return room;
+  }
+
+  getRoom(roomType) {
+    return this.activeRooms.get(roomType);
+  }
+
+  closeRoom(roomType) {
+    this.activeRooms.delete(roomType);
+    this.updateActivity();
+  }
+
+  hasActiveRooms() {
+    return this.activeRooms.size > 0;
+  }
+
+  getParticipantCount() {
+    return this.participants.size;
+  }
+
+  getActiveRoomTypes() {
+    return Array.from(this.activeRooms.keys());
+  }
+}
+
+// Generate session code (same as room code generation)
+function generateSessionCode() {
+  let code;
+  do {
+    code = '';
+    for (let i = 0; i < 5; i++) {
+      code += SAFE_CHARACTERS[Math.floor(Math.random() * SAFE_CHARACTERS.length)];
+    }
+  } while (sessions.has(code) || rooms.has(code)); // Check both to avoid conflicts
+  return code;
+}
+
 // REST API Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
+});
+
+// Session Management APIs
+app.post('/api/sessions/create', (req, res) => {
+  const code = generateSessionCode();
+  const session = new Session(code);
+  sessions.set(code, session);
+  
+  res.json({ code, success: true });
+});
+
+// Check if session exists and get active rooms
+app.get('/api/sessions/:code/exists', (req, res) => {
+  const { code } = req.params;
+  const session = sessions.get(code);
+  
+  if (session) {
+    res.json({ 
+      exists: true, 
+      activeRooms: session.getActiveRoomTypes(),
+      participantCount: session.getParticipantCount()
+    });
+  } else {
+    res.json({ exists: false });
+  }
 });
 
 // Create new room (called by widget)
@@ -252,8 +372,226 @@ app.get('/api/rooms/:code/exists', (req, res) => {
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
+  
+  // Track which session this socket belongs to
+  let currentSessionCode = null;
 
-  // Unified room join handler
+  // SESSION-BASED HANDLERS
+  
+  // Host creates or gets existing session
+  socket.on('session:create', (callback) => {
+    // Check if host already has a session
+    let existingSession = null;
+    for (const [code, session] of sessions) {
+      if (session.hostSocketId === socket.id) {
+        existingSession = session;
+        break;
+      }
+    }
+    
+    if (existingSession) {
+      currentSessionCode = existingSession.code;
+      callback({ success: true, code: existingSession.code, isExisting: true });
+    } else {
+      const code = generateSessionCode();
+      const session = new Session(code);
+      session.hostSocketId = socket.id;
+      sessions.set(code, session);
+      currentSessionCode = code;
+      
+      socket.join(`session:${code}`);
+      callback({ success: true, code, isExisting: false });
+      console.log(`Created new session: ${code}`);
+    }
+  });
+  
+  // Student joins session
+  socket.on('session:join', (data) => {
+    const { code, name, studentId } = data;
+    const session = sessions.get(code);
+    
+    if (!session) {
+      socket.emit('session:joined', { 
+        success: false, 
+        error: 'Session not found' 
+      });
+      return;
+    }
+    
+    // Add participant to session
+    session.addParticipant(socket.id, name, studentId || socket.id);
+    currentSessionCode = code;
+    
+    // Join session room
+    socket.join(`session:${code}`);
+    
+    // Join all active room types
+    const activeRooms = session.getActiveRoomTypes();
+    activeRooms.forEach(roomType => {
+      socket.join(`${code}:${roomType}`);
+    });
+    
+    socket.emit('session:joined', {
+      success: true,
+      activeRooms,
+      participantId: socket.id
+    });
+    
+    // Notify host of participant count
+    if (session.hostSocketId) {
+      io.to(session.hostSocketId).emit('session:participantUpdate', {
+        count: session.getParticipantCount(),
+        participants: Array.from(session.participants.values())
+      });
+    }
+    
+    console.log(`Student ${name} joined session ${code}`);
+  });
+  
+  // Host creates a room within session
+  socket.on('session:createRoom', (data, callback) => {
+    const { sessionCode, roomType } = data;
+    const session = sessions.get(sessionCode || currentSessionCode);
+    
+    if (!session || session.hostSocketId !== socket.id) {
+      callback({ success: false, error: 'Invalid session or not host' });
+      return;
+    }
+    
+    // Check if room already exists
+    if (session.getRoom(roomType)) {
+      callback({ success: true, isExisting: true });
+      return;
+    }
+    
+    // Create new room
+    const room = session.createRoom(roomType);
+    socket.join(`${session.code}:${roomType}`);
+    
+    // Notify all session participants about new room
+    io.to(`session:${session.code}`).emit('session:roomCreated', {
+      roomType,
+      roomData: roomType === 'poll' ? room.pollData : {}
+    });
+    
+    callback({ success: true, isExisting: false });
+    console.log(`Created ${roomType} room in session ${session.code}`);
+  });
+  
+  // Host closes a room within session
+  socket.on('session:closeRoom', (data) => {
+    const { sessionCode, roomType } = data;
+    const session = sessions.get(sessionCode || currentSessionCode);
+    
+    if (!session || session.hostSocketId !== socket.id) {
+      return;
+    }
+    
+    session.closeRoom(roomType);
+    
+    // Notify all participants
+    io.to(`session:${session.code}`).emit('session:roomClosed', { roomType });
+    
+    // Clear the room namespace
+    const roomNamespace = `${session.code}:${roomType}`;
+    const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
+    if (socketsInRoom) {
+      socketsInRoom.forEach(socketId => {
+        const s = io.sockets.sockets.get(socketId);
+        if (s) s.leave(roomNamespace);
+      });
+    }
+    
+    console.log(`Closed ${roomType} room in session ${session.code}`);
+  });
+  
+  // SESSION-BASED ROOM HANDLERS
+  
+  // Poll handlers for sessions
+  socket.on('session:poll:update', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session) return;
+    
+    const room = session.getRoom('poll');
+    if (!room || !(room instanceof PollRoom)) return;
+    
+    room.pollData = data.pollData;
+    io.to(`${session.code}:poll`).emit('poll:updated', data.pollData);
+    session.updateActivity();
+  });
+  
+  socket.on('session:poll:vote', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session) return;
+    
+    const room = session.getRoom('poll');
+    if (!room || !(room instanceof PollRoom)) return;
+    
+    const participant = session.participants.get(socket.id);
+    if (!participant || room.participants.get(socket.id)?.hasVoted) {
+      socket.emit('vote:result', { success: false, error: 'Already voted or not a participant' });
+      return;
+    }
+    
+    // Record vote
+    room.recordVote(socket.id, data.option);
+    socket.emit('vote:result', { success: true });
+    
+    // Notify host
+    if (session.hostSocketId) {
+      io.to(session.hostSocketId).emit('poll:voteUpdate', {
+        votes: room.getVoteCounts(),
+        totalVotes: room.getTotalVotes()
+      });
+    }
+    
+    session.updateActivity();
+  });
+  
+  // Data Share handlers for sessions
+  socket.on('session:dataShare:submit', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session) return;
+    
+    const room = session.getRoom('dataShare');
+    if (!room || !(room instanceof DataShareRoom)) return;
+    
+    const participant = session.participants.get(socket.id);
+    if (!participant) return;
+    
+    const submission = room.addSubmission(participant.name, data.link);
+    
+    // Notify all in the room
+    io.to(`${session.code}:dataShare`).emit('dataShare:newSubmission', submission);
+    session.updateActivity();
+  });
+  
+  // RT Feedback handlers for sessions
+  socket.on('session:rtfeedback:update', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session) return;
+    
+    const room = session.getRoom('rtfeedback');
+    if (!room || !(room instanceof RTFeedbackRoom)) return;
+    
+    const participant = session.participants.get(socket.id);
+    if (!participant) return;
+    
+    room.updateFeedback(socket.id, data.value);
+    
+    // Notify host
+    if (session.hostSocketId) {
+      io.to(session.hostSocketId).emit('feedbackUpdate', {
+        studentId: socket.id,
+        studentName: participant.name,
+        value: data.value
+      });
+    }
+    
+    session.updateActivity();
+  });
+
+  // Unified room join handler (legacy support)
   socket.on('room:join', (data) => {
     // DEBUG: Log unified join attempt
     console.log('Received room:join request:', data);
@@ -559,7 +897,29 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     
-    // Check if disconnected client was a host
+    // Handle session disconnect
+    if (currentSessionCode) {
+      const session = sessions.get(currentSessionCode);
+      if (session) {
+        if (session.hostSocketId === socket.id) {
+          console.log(`Host disconnected from session ${currentSessionCode}`);
+          // Keep session alive for reconnection
+        } else {
+          // Remove participant from session
+          session.removeParticipant(socket.id);
+          
+          // Notify host of participant disconnect
+          if (session.hostSocketId) {
+            io.to(session.hostSocketId).emit('session:participantUpdate', {
+              count: session.getParticipantCount(),
+              participants: Array.from(session.participants.values())
+            });
+          }
+        }
+      }
+    }
+    
+    // Check if disconnected client was a host (legacy room support)
     rooms.forEach((room, code) => {
       if (room.hostSocketId === socket.id) {
         console.log(`Host disconnected from room ${code}`);
@@ -589,11 +949,23 @@ io.on('connection', (socket) => {
   });
 });
 
-// Clean up old rooms (12 hours)
+// Clean up old rooms and sessions
 setInterval(() => {
   const now = Date.now();
   const maxAge = 12 * 60 * 60 * 1000; // 12 hours
+  const inactivityTimeout = 2 * 60 * 60 * 1000; // 2 hours of inactivity
   
+  // Clean up old sessions
+  sessions.forEach((session, code) => {
+    // Remove if too old OR inactive with no participants
+    if (now - session.createdAt > maxAge || 
+        (now - session.lastActivity > inactivityTimeout && session.getParticipantCount() === 0)) {
+      sessions.delete(code);
+      console.log(`Cleaned up old session ${code}`);
+    }
+  });
+  
+  // Clean up old rooms (legacy support)
   rooms.forEach((room, code) => {
     if (now - room.createdAt > maxAge) {
       rooms.delete(code);

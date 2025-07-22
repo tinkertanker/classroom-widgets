@@ -12,10 +12,12 @@ import WidgetContainer from "./components/Widget/WidgetContainer";
 import Background from "./components/backgrounds/backgrounds";
 import ZoomControl from "./components/ZoomControl/ZoomControl";
 import ResponsiveCheck from "./components/ResponsiveCheck/ResponsiveCheck";
+import SessionStatus from "./components/SessionStatus";
 
 // Contexts
 import { ModalProvider } from "./contexts/ModalContext";
 import { WorkspaceProvider, useWorkspace } from "./store/WorkspaceContext";
+import { SessionProvider, useSessionContext } from "./contexts/SessionContext";
 
 // Hooks
 import { useDarkMode } from "./hooks/useDarkMode";
@@ -32,7 +34,8 @@ import { APP_VERSION } from "./version";
 import trashSound from "./sounds/trash-crumple.mp3";
 const trashAudio = new Audio(trashSound);
 
-function AppContent() {
+function AppContentInner() {
+  const session = useSessionContext();
   const { 
     state, 
     addWidget, 
@@ -159,6 +162,15 @@ function AppContent() {
       <ResponsiveCheck />
       <ModalProvider>
         <div className="h-screen relative overflow-hidden bg-app-background" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          {/* Session status display */}
+          {session.sessionCode && (
+            <SessionStatus
+              sessionCode={session.sessionCode}
+              participantCount={session.participantCount}
+              isConnected={session.isConnected}
+              className="absolute top-4 left-4 z-[999]"
+            />
+          )}
           {/* Zoom control - vertical layout below fullscreen button */}
           <ZoomControl className="absolute top-16 right-4 z-[999]" boardRef={boardRef} />
           
@@ -301,6 +313,14 @@ function AppContent() {
         </div>
       </ModalProvider>
     </div>
+  );
+}
+
+function AppContent() {
+  return (
+    <SessionProvider>
+      <AppContentInner />
+    </SessionProvider>
   );
 }
 

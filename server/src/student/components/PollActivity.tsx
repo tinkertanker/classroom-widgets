@@ -5,6 +5,8 @@ interface PollActivityProps {
   socket: Socket;
   roomCode: string;
   initialPollData?: PollData;
+  studentName?: string;
+  isSession?: boolean;
 }
 
 interface PollData {
@@ -21,7 +23,7 @@ interface Results {
   totalVotes: number;
 }
 
-const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData }) => {
+const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, studentName, isSession = false }) => {
   const [pollData, setPollData] = useState<PollData>(initialPollData || {
     question: '',
     options: [],
@@ -69,7 +71,15 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     if (hasVoted || !pollData.isActive) return;
     
     setSelectedOption(optionIndex);
-    socket.emit('vote:submit', { code: roomCode, optionIndex });
+    
+    if (isSession) {
+      socket.emit('session:poll:vote', { 
+        sessionCode: roomCode, 
+        option: optionIndex 
+      });
+    } else {
+      socket.emit('vote:submit', { code: roomCode, optionIndex });
+    }
   };
 
   const renderContent = () => {
