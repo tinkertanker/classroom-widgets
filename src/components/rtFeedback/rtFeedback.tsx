@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
+import React, { useState, useEffect } from 'react';
+import { useSessionContext } from '../../contexts/SessionContext';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { FaGauge, FaPlay, FaStop } from 'react-icons/fa6';
+import { FaChartLine } from 'react-icons/fa6';
 
 interface RTFeedbackProps {
   widgetId?: string;
@@ -10,283 +10,219 @@ interface RTFeedbackProps {
   onStateChange?: (state: any) => void;
 }
 
-interface StudentFeedback {
-  studentId: string;
-  value: number;
-  timestamp: number;
+interface FeedbackData {
+  understanding: number[]; // Array of 9 values for levels 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5
+  totalResponses: number;
 }
 
-const RTFeedback: React.FC<RTFeedbackProps> = ({
-  widgetId,
-  savedState,
-  onStateChange
-}) => {
-  const [isActive, setIsActive] = useState(savedState?.isActive || false);
-  const [feedbackData, setFeedbackData] = useState<StudentFeedback[]>(savedState?.feedbackData || []);
-  const isFirstRender = useRef(true);
+function RTFeedback({ widgetId }: RTFeedbackProps) {
+  const [feedbackData, setFeedbackData] = useState<FeedbackData>({
+    understanding: [0, 0, 0, 0, 0, 0, 0, 0, 0], // 9 values for 0.5 increments
+    totalResponses: 0
+  });
+  const [isRoomActive, setIsRoomActive] = useState(false);
+  const [showResults, setShowResults] = useState(true);
   
-  const {
-    socket,
-    roomCode,
-    isConnecting,
-    connectionError,
-    isConnected,
-    createRoom
-  } = useNetworkedWidget({
-    widgetId: widgetId || savedState?.widgetId || Math.random().toString(36).substr(2, 9),
-    roomType: 'rtfeedback',
-    onSocketConnected: (newSocket) => {
-      // Set up rtfeedback-specific socket listeners
-      setupSocketListeners(newSocket);
-    }
-  });
+  const session = useSessionContext();
 
-  // Calculate average understanding level
-  const averageUnderstanding = feedbackData.length > 0
-    ? feedbackData.reduce((sum, fb) => sum + fb.value, 0) / feedbackData.length
-    : 0;
+  // Don't auto-start - let user click start button
+  // This prevents multiple widgets from fighting over session creation
 
-  // Get feedback distribution
-  const distribution = [0, 0, 0, 0, 0]; // Index 0 = Too Easy (1), Index 4 = Too Hard (5)
-  feedbackData.forEach(fb => {
-    const index = Math.floor(fb.value) - 1;
-    if (index >= 0 && index < 5) distribution[index]++;
-  });
-
-  const maxCount = Math.max(...distribution, 1);
-
-  // Save state whenever it changes (skip initial render)
+  // Setup socket listeners
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    
-    if (onStateChange) {
-      onStateChange({
-        widgetId,
-        isActive,
-        roomCode,
-        feedbackData
-      });
-    }
-  }, [isActive, roomCode, feedbackData]); // Remove onStateChange from deps to prevent infinite loop
+    if (!session.socket) return;
 
-  // Set up socket listeners
-  const setupSocketListeners = (socket: any) => {
-    socket.on('feedback', (data: any) => {
-      // Update or add student feedback
-      setFeedbackData((prev: StudentFeedback[]) => {
-        const existing = prev.findIndex(fb => fb.studentId === data.studentId);
-        if (existing >= 0) {
-          const updated = [...prev];
-          updated[existing] = {
-            studentId: data.studentId,
-            value: data.value,
-            timestamp: Date.now()
-          };
-          return updated;
-        } else {
-          return [...prev, {
-            studentId: data.studentId,
-            value: data.value,
-            timestamp: Date.now()
-          }];
-        }
-      });
-    });
-    
-    socket.on('participant:joined', (data: any) => {
-      console.log('New participant joined:', data);
-      // Add new participant with default middle value (3)
-      setFeedbackData((prev: StudentFeedback[]) => {
-        // Check if student already exists (shouldn't happen, but be safe)
-        const exists = prev.some(fb => fb.studentId === data.studentId);
-        if (!exists) {
-          return [...prev, {
-            studentId: data.studentId,
-            value: 3, // Default to "Just Right"
-            timestamp: Date.now()
-          }];
-        }
-        return prev;
-      });
-    });
-    
-    socket.on('studentDisconnected', (data: any) => {
-      // Remove disconnected student's feedback
-      setFeedbackData((prev: StudentFeedback[]) => 
-        prev.filter(fb => fb.studentId !== data.studentId)
-      );
-    });
-  };
+    const handleFeedbackUpdate = (data: FeedbackData) => {
+      setFeedbackData(data);
+    };
 
-  const handleStart = () => {
-    setIsActive(true);
-    setFeedbackData([]);
+    const handleRoomCreated = (data: any) => {
+      if (data.roomType === 'rtfeedback') {
+        setIsRoomActive(true);
+      }
+    };
+
+    const handleRoomClosed = (data: any) => {
+      if (data.roomType === 'rtfeedback') {
+        setIsRoomActive(false);
+        // Reset data when room closes
+        setFeedbackData({
+          understanding: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+          totalResponses: 0
+        });
+      }
+    };
+
+    session.socket.on('rtfeedback:update', handleFeedbackUpdate);
+    session.socket.on('session:roomCreated', handleRoomCreated);
+    session.socket.on('session:roomClosed', handleRoomClosed);
+
+    return () => {
+      session.socket.off('rtfeedback:update', handleFeedbackUpdate);
+      session.socket.off('session:roomCreated', handleRoomCreated);
+      session.socket.off('session:roomClosed', handleRoomClosed);
+    };
+  }, [session.socket]);
+
+  // Handle widget cleanup
+  useEffect(() => {
+    const handleWidgetCleanup = (event: CustomEvent) => {
+      if (event.detail.widgetId === widgetId && isRoomActive) {
+        session.closeRoom('rtfeedback');
+      }
+    };
     
-    // Notify server to start feedback collection
-    if (socket && socket.connected && roomCode) {
-      socket.emit('rtfeedback:toggle', { code: roomCode, isActive: true });
+    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    
+    return () => {
+      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    };
+  }, [widgetId, isRoomActive, session]);
+
+  const handleStart = async () => {
+    try {
+      let sessionCode = session.sessionCode;
+      
+      // Create session if needed
+      if (!sessionCode) {
+        sessionCode = await session.createSession();
+      }
+      
+      // Create feedback room
+      await session.createRoom('rtfeedback');
+      
+      // Activate the feedback room
+      if (session.socket) {
+        session.socket.emit('session:rtfeedback:start', {
+          sessionCode: sessionCode
+        });
+      }
+      
+      setIsRoomActive(true);
+    } catch (error) {
+      console.error('Failed to start feedback:', error);
     }
   };
 
   const handleStop = () => {
-    setIsActive(false);
-    
-    // Notify server to stop feedback collection
-    if (socket && socket.connected && roomCode) {
-      socket.emit('rtfeedback:toggle', { code: roomCode, isActive: false });
+    if (isRoomActive && session.socket) {
+      session.socket.emit('session:rtfeedback:stop', {
+        sessionCode: session.sessionCode
+      });
     }
   };
 
-  const handleClear = () => {
-    setFeedbackData([]);
+  const handleReset = () => {
+    if (session.socket && isRoomActive) {
+      session.socket.emit('session:rtfeedback:reset', {
+        sessionCode: session.sessionCode
+      });
+    }
   };
 
+  // Empty state
+  if (!isRoomActive || !session.sessionCode) {
+    return (
+      <NetworkedWidgetEmpty
+        icon={FaChartLine}
+        title="Understanding Feedback"
+        description="Real-time student understanding levels"
+        buttonText={session.isConnecting ? "Connecting..." : "Start Feedback"}
+        onStart={handleStart}
+        disabled={session.isConnecting || !session.isConnected}
+        error={session.connectionError}
+      />
+    );
+  }
 
-  const getBarColor = (index: number) => {
-    const colors = [
-      'bg-sage-500', // Too Easy
-      'bg-sage-400',
-      'bg-warm-gray-400', // Just Right
-      'bg-terracotta-400',
-      'bg-dusty-rose-500' // Too Hard
-    ];
-    return colors[index];
-  };
-
-  const labels = ['Too Easy', 'Easy', 'Just Right', 'Hard', 'Too Hard'];
+  const labels = ['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
+  const barColors = [
+    'from-red-700 to-red-600',         // 1 - Too Easy (dark red)
+    'from-amber-700 to-amber-600',     // 1.5 - (dark amber)
+    'from-yellow-700 to-yellow-600',   // 2 - Easy (dark yellow)
+    'from-lime-700 to-lime-600',       // 2.5 - (dark lime)
+    'from-emerald-700 to-emerald-600', // 3 - Just Right (dark emerald)
+    'from-lime-700 to-lime-600',       // 3.5 - (dark lime)
+    'from-yellow-700 to-yellow-600',   // 4 - Hard (dark yellow)
+    'from-amber-700 to-amber-600',     // 4.5 - (dark amber)
+    'from-red-700 to-red-600'          // 5 - Too Hard (dark red)
+  ];
 
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-      {!roomCode ? (
-        <NetworkedWidgetEmpty
-          title="RT Feedback"
-          description="Collect real-time feedback from students"
-          icon={<FaGauge className="text-5xl text-warm-gray-400 dark:text-warm-gray-500" />}
-          connectionError={connectionError}
-          isConnecting={isConnecting}
-          onCreateRoom={createRoom}
-          createButtonText="Create Feedback Room"
-        />
-      ) : (
-        <>
-          <NetworkedWidgetHeader roomCode={roomCode}>
-            <div className="flex items-center gap-2">
+      <NetworkedWidgetHeader
+        title="Understanding Levels"
+        code={session.sessionCode}
+        participantCount={session.participantCount}
+      />
+
+      <div className="flex-1 flex flex-col mt-4">
+        {showResults ? (
+          <>
+            <div className="flex justify-between items-center mb-2">
+              <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                {feedbackData.totalResponses} responses
+              </div>
               <button
-                onClick={isActive ? handleStop : handleStart}
-                className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
-                  isActive
-                    ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
-                    : 'bg-sage-500 hover:bg-sage-600'
-                }`}
-                title={isActive ? 'Stop Feedback' : 'Start Feedback'}
+                onClick={handleReset}
+                className="text-sm px-3 py-1 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors"
               >
-                {isActive ? (
-                  <>
-                    <FaStop className="text-xs" />
-                    Stop
-                  </>
-                ) : (
-                  <>
-                    <FaPlay className="text-xs" />
-                    Start
-                  </>
-                )}
+                Reset
               </button>
             </div>
-          </NetworkedWidgetHeader>
 
-          {/* Status Bar */}
-          {isActive && (
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  isConnected ? 'bg-sage-500' : 
-                  isConnecting ? 'bg-warm-gray-400 animate-pulse' : 
-                  'bg-dusty-rose-500'
-                }`} />
-                <span className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                  {feedbackData.length} student{feedbackData.length !== 1 ? 's' : ''} connected
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Main Display */}
-          <div className="flex-1 overflow-y-auto">
-            {!isActive ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-4">
-                  <FaGauge className="text-6xl text-warm-gray-300 dark:text-warm-gray-600 mx-auto" />
-                  <p className="text-warm-gray-500 dark:text-warm-gray-400">
-                    Click Start to begin collecting feedback
-                  </p>
-                </div>
-              </div>
-            ) : feedbackData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-warm-gray-500 dark:text-warm-gray-400">
-                <p className="text-lg mb-2">Waiting for students to join...</p>
-                <p className="text-sm">Students should visit the URL above and enter the code</p>
-              </div>
-            ) : (
-              <>
-                {/* Average Display */}
-                <div className="text-center mb-6">
-                  <div className="text-4xl font-bold text-warm-gray-800 dark:text-warm-gray-200">
-                    {averageUnderstanding.toFixed(1)}
-                  </div>
-                  <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                    Average Feedback
-                  </div>
-                </div>
-
-                {/* Distribution Chart */}
-                <div className="flex items-end space-x-2 mb-4" style={{ height: '150px' }}>
-                  {distribution.map((count, index) => (
-                    <div key={index} className="flex-1 flex flex-col items-center justify-end">
-                      <span className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-1">
-                        {count}
-                      </span>
+            <div className="flex-1 flex items-end justify-around gap-1 pb-2">
+              {feedbackData.understanding.map((count, index) => {
+                const maxCount = Math.max(...feedbackData.understanding, 1);
+                const percentage = (count / maxCount) * 100 || 0;
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <div className="relative w-full h-32 flex items-end">
                       <div 
-                        className={`w-full ${getBarColor(index)} rounded-t transition-all duration-300`}
-                        style={{ 
-                          height: `${Math.max((count / maxCount) * 120, 4)}px`,
-                          minHeight: '4px'
-                        }}
+                        className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
+                        style={{ height: `${percentage}%`, minHeight: '4px' }}
                       />
                     </div>
-                  ))}
-                </div>
-
-                {/* Labels */}
-                <div className="flex space-x-2 text-xs text-warm-gray-600 dark:text-warm-gray-400">
-                  {labels.map((label, index) => (
-                    <div key={index} className="flex-1 text-center">
-                      {label}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Clear button */}
-          {isActive && feedbackData.length > 0 && (
-            <div className="mt-4">
-              <button
-                onClick={handleClear}
-                className="w-full px-3 py-1.5 bg-warm-gray-400 hover:bg-warm-gray-500 text-white text-sm rounded transition-colors duration-200"
-              >
-                Clear Data
-              </button>
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </>
-      )}
+            {/* Descriptive labels */}
+            <div className="flex justify-between px-4 text-xs text-warm-gray-500">
+              <span>Too Easy</span>
+              <span>Easy</span>
+              <span>Just Right</span>
+              <span>Hard</span>
+              <span>Too Hard</span>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-warm-gray-600 dark:text-warm-gray-400">
+                Results hidden
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-between gap-2 mt-2">
+        <button
+          onClick={() => setShowResults(!showResults)}
+          className="flex-1 px-3 py-1.5 text-sm bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors"
+        >
+          {showResults ? 'Hide' : 'Show'} Results
+        </button>
+        <button
+          onClick={handleStop}
+          className="flex-1 px-3 py-1.5 text-sm bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white rounded transition-colors"
+        >
+          Stop
+        </button>
+      </div>
     </div>
   );
-};
+}
 
 export default RTFeedback;

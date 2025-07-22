@@ -15,9 +15,9 @@ export const LazyWidgets = {
   ImageDisplay: lazy(() => import('../imageDisplay/imageDisplay')),
   SoundEffects: lazy(() => import('../soundEffects/soundEffects')),
   Sticker: lazy(() => import('../sticker/sticker')),
-  Poll: lazy(() => import('../poll/PollSession')),
+  Poll: lazy(() => import('../poll/Poll')),
   QRCodeWidget: lazy(() => import('../qrcode/qrcode')),
-  DataShare: lazy(() => import('../dataShare/DataShareSession')),
+  DataShare: lazy(() => import('../dataShare/DataShare')),
   Visualiser: lazy(() => import('../visualiser/visualiser')),
-  RTFeedback: lazy(() => import('../rtFeedback/RTFeedbackSession'))
+  RTFeedback: lazy(() => import('../rtFeedback/RTFeedback'))
 };

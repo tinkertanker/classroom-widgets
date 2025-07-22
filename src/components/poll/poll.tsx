@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useModal } from '../../contexts/ModalContext';
-import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
+import { useSessionContext } from '../../contexts/SessionContext';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import PollSettings from './PollSettings';
@@ -26,8 +26,8 @@ interface PollResults {
 
 function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   const [pollData, setPollData] = useState<PollData>({
-    question: '',
-    options: ['', ''],
+    question: 'What is the question?',
+    options: ['A', 'B'],
     isActive: false
   });
   const [results, setResults] = useState<PollResults>({
@@ -35,213 +35,211 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     totalVotes: 0,
     participantCount: 0
   });
-  const [participantCount, setParticipantCount] = useState(0);
+  const [isRoomActive, setIsRoomActive] = useState(false);
   
   const { showModal, hideModal } = useModal();
-  
-  const {
-    socket,
-    roomCode,
-    isConnecting,
-    connectionError,
-    isConnected,
-    createRoom
-  } = useNetworkedWidget({
-    widgetId,
-    roomType: 'poll',
-    onSocketConnected: (newSocket) => {
-      // Set up poll-specific socket listeners
-      newSocket.on('participant:count', (data) => {
-        setParticipantCount(data.count);
+  const session = useSessionContext();
+
+  // Don't auto-start - let user click start button
+  // This prevents multiple widgets from fighting over session creation
+
+  // Setup socket listeners
+  useEffect(() => {
+    if (!session.socket) return;
+
+    const handlePollUpdate = (data: any) => {
+      setPollData(data);
+    };
+
+    const handleVoteUpdate = (data: any) => {
+      setResults({
+        votes: data.votes,
+        totalVotes: data.totalVotes,
+        participantCount: session.participantCount
       });
+    };
 
-      newSocket.on('results:update', (data) => {
-        setResults(data);
-      });
-    }
-  });
+    const handleRoomCreated = (data: any) => {
+      if (data.roomType === 'poll') {
+        setIsRoomActive(true);
+      }
+    };
 
+    const handleRoomClosed = (data: any) => {
+      if (data.roomType === 'poll') {
+        setIsRoomActive(false);
+        setPollData(prev => ({ ...prev, isActive: false }));
+      }
+    };
 
-  // Toggle poll active state
-  const togglePoll = () => {
-    const newState = !pollData.isActive;
-    const updatedPollData = { ...pollData, isActive: newState };
-    setPollData(updatedPollData);
+    session.socket.on('poll:updated', handlePollUpdate);
+    session.socket.on('poll:voteUpdate', handleVoteUpdate);
+    session.socket.on('session:roomCreated', handleRoomCreated);
+    session.socket.on('session:roomClosed', handleRoomClosed);
+
+    return () => {
+      session.socket.off('poll:updated', handlePollUpdate);
+      session.socket.off('poll:voteUpdate', handleVoteUpdate);
+      session.socket.off('session:roomCreated', handleRoomCreated);
+      session.socket.off('session:roomClosed', handleRoomClosed);
+    };
+  }, [session.socket, session.participantCount]);
+
+  // Handle widget cleanup
+  useEffect(() => {
+    const handleWidgetCleanup = (event: CustomEvent) => {
+      if (event.detail.widgetId === widgetId && isRoomActive) {
+        session.closeRoom('poll');
+      }
+    };
     
-    if (roomCode && socket) {
-      // First update the poll data
-      socket.emit('poll:update', {
-        code: roomCode,
-        pollData: updatedPollData
-      });
+    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    
+    return () => {
+      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    };
+  }, [widgetId, isRoomActive, session]);
+
+  const handleStart = async () => {
+    try {
+      let sessionCode = session.sessionCode;
       
-      // Then toggle the state
-      socket.emit('poll:toggle', {
-        code: roomCode,
-        isActive: newState
+      // Create session if needed
+      if (!sessionCode) {
+        sessionCode = await session.createSession();
+      }
+      
+      // Create poll room
+      await session.createRoom('poll');
+      setIsRoomActive(true);
+    } catch (error) {
+      console.error('Failed to start poll:', error);
+    }
+  };
+
+  const handleStop = () => {
+    updatePoll({ isActive: false });
+  };
+
+  const updatePoll = (data: Partial<PollData>) => {
+    const newPollData = { ...pollData, ...data };
+    setPollData(newPollData);
+    
+    if (session.socket && isRoomActive) {
+      session.socket.emit('session:poll:update', {
+        sessionCode: session.sessionCode,
+        pollData: newPollData
       });
     }
   };
 
-  // Open settings modal
   const openSettings = () => {
     showModal({
       title: 'Poll Settings',
       content: (
-        <PollSettings
-          question={pollData.question}
-          options={pollData.options}
-          onSave={(question, options) => {
-            setPollData({ ...pollData, question, options });
-            // Update poll on server
-            if (roomCode && socket) {
-              socket.emit('poll:update', {
-                code: roomCode,
-                pollData: { ...pollData, question, options }
-              });
-            }
+        <PollSettings 
+          pollData={pollData}
+          onSave={(data) => {
+            updatePoll(data);
             hideModal();
           }}
+          onClose={hideModal}
         />
       ),
       className: 'bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl'
     });
   };
 
-  const getVotePercentage = (index: number) => {
-    const votes = results.votes[index] || 0;
-    const total = results.totalVotes || 1;
-    return Math.round((votes / total) * 100);
-  };
+  // Empty state
+  if (!isRoomActive || !session.sessionCode) {
+    return (
+      <NetworkedWidgetEmpty
+        icon={FaChartColumn}
+        title="Poll"
+        description="Create interactive polls for your students"
+        buttonText={session.isConnecting ? "Connecting..." : "Start Poll"}
+        onStart={handleStart}
+        disabled={session.isConnecting || !session.isConnected}
+        error={session.connectionError}
+      />
+    );
+  }
 
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-      {!roomCode ? (
-        <NetworkedWidgetEmpty
-          title="Poll"
-          description="Create real-time polls for your students"
-          icon={<FaChartColumn className="text-5xl text-warm-gray-400 dark:text-warm-gray-500" />}
-          connectionError={connectionError}
-          isConnecting={isConnecting}
-          onCreateRoom={createRoom}
-          createButtonText="Create Poll Room"
-        />
-      ) : (
-        <>
-          <NetworkedWidgetHeader roomCode={roomCode}>
-            <div className="flex items-center gap-2">
-                <button
-                  onClick={(_e) => {
-                    togglePoll();
-                  }}
-                  className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
-                    (!pollData.question || pollData.options.filter(o => o.trim()).length < 2)
-                      ? 'bg-warm-gray-400 dark:bg-warm-gray-600 opacity-50 cursor-not-allowed'
-                      : pollData.isActive
-                        ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
-                        : 'bg-sage-500 hover:bg-sage-600'
-                  }`}
-                  disabled={!pollData.question || pollData.options.filter(o => o.trim()).length < 2}
-                  title={pollData.isActive ? 'Stop Poll' : 'Start Poll'}
-                >
-                  {pollData.isActive ? (
-                    <>
-                      <FaStop className="text-xs" />
-                      Stop
-                    </>
-                  ) : (
-                    <>
-                      <FaPlay className="text-xs" />
-                      Start
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={(_e) => {
-                    openSettings();
-                  }}
-                  className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
-                  title="Settings"
-                >
-                  <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
-                </button>
-            </div>
-          </NetworkedWidgetHeader>
-          
-          {/* Content Section */}
-          <div className="flex-1 overflow-y-auto">
-            {pollData.question ? (
-              <div className={!pollData.isActive ? 'opacity-50' : ''}>
-                <h3 className={`text-lg font-semibold mb-4 ${
-                  pollData.isActive 
-                    ? 'text-warm-gray-800 dark:text-warm-gray-200' 
-                    : 'text-warm-gray-500 dark:text-warm-gray-500'
-                }`}>
-                  {pollData.question}
-                </h3>
-                <div className="space-y-3">
-                  {pollData.options.map((option, index) => (
-                    <div key={index} className="relative">
-                      <div className={`relative rounded-lg p-3 overflow-hidden ${
-                        pollData.isActive
-                          ? 'bg-warm-gray-100 dark:bg-warm-gray-700'
-                          : 'bg-warm-gray-50 dark:bg-warm-gray-800'
-                      }`}>
-                        <div
-                          className={`absolute inset-0 transition-all duration-300 ${
-                            pollData.isActive
-                              ? 'bg-sage-200 dark:bg-sage-600'
-                              : 'bg-warm-gray-200 dark:bg-warm-gray-700'
-                          }`}
-                          style={{ width: `${getVotePercentage(index)}%` }}
-                        />
-                        <div className="relative flex justify-between items-center">
-                          <span className={`${
-                            pollData.isActive
-                              ? 'text-warm-gray-800 dark:text-warm-gray-200'
-                              : 'text-warm-gray-500 dark:text-warm-gray-500'
-                          }`}>
-                            {option}
-                          </span>
-                          <span className={`text-sm ${
-                            pollData.isActive
-                              ? 'text-warm-gray-600 dark:text-warm-gray-400'
-                              : 'text-warm-gray-400 dark:text-warm-gray-600'
-                          }`}>
-                            {results.votes[index] || 0} ({getVotePercentage(index)}%)
-                          </span>
-                        </div>
-                      </div>
+      <NetworkedWidgetHeader
+        title="Poll"
+        code={session.sessionCode}
+        participantCount={session.participantCount}
+        onSettings={openSettings}
+      />
+
+      {/* Poll content */}
+      <div className="flex-1 flex flex-col">
+        {pollData.question ? (
+          <div className="mt-4">
+            <h3 className="text-lg font-medium text-warm-gray-800 dark:text-warm-gray-200 mb-4">
+              {pollData.question}
+            </h3>
+            
+            <div className="space-y-3">
+              {pollData.options.map((option, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-warm-gray-700 dark:text-warm-gray-300">{option}</span>
+                      <span className="text-warm-gray-500 dark:text-warm-gray-400">
+                        {results.votes[index] || 0} votes
+                      </span>
                     </div>
-                  ))}
+                    <div className="h-6 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-sage-500 transition-all duration-300"
+                        style={{
+                          width: `${results.totalVotes > 0 ? ((results.votes[index] || 0) / results.totalVotes) * 100 : 0}%`
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                <p className="text-warm-gray-500 dark:text-warm-gray-400">
-                  Click Settings to create your poll
-                </p>
-                <button
-                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5"
-                  onClick={openSettings}
-                >
-                  <FaGear className="text-xs" />
-                  Settings
-                </button>
-              </div>
-            )}
-          </div>
-          
-          {/* Footer Section */}
-          <div className="mt-4 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex justify-between items-center text-xs text-warm-gray-500 dark:text-warm-gray-400">
-            <span>{participantCount} participant{participantCount !== 1 ? 's' : ''}</span>
-            <div className="flex items-center gap-2">
-              <span>{pollData.isActive ? 'Poll Active' : 'Poll Inactive'}</span>
-              <FaChartColumn className="text-sm" />
+              ))}
+            </div>
+            
+            <div className="mt-4 text-sm text-warm-gray-600 dark:text-warm-gray-400">
+              Total votes: {results.totalVotes}
             </div>
           </div>
-        </>
-      )}
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-warm-gray-500 dark:text-warm-gray-400">
+            Click settings to create your poll
+          </div>
+        )}
+      </div>
+
+      {/* Control button */}
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={pollData.isActive ? handleStop : () => updatePoll({ isActive: true })}
+          disabled={!pollData.question || pollData.options.filter(o => o).length < 2}
+          className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
+            pollData.isActive
+              ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
+              : 'bg-sage-500 hover:bg-sage-600 disabled:bg-warm-gray-400 disabled:cursor-not-allowed'
+          }`}
+        >
+          {pollData.isActive ? (
+            <>
+              <FaStop className="text-xs" />
+              Stop Poll
+            </>
+          ) : (
+            <>
+              <FaPlay className="text-xs" />
+              Start Poll
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

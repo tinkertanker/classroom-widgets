@@ -109,16 +109,23 @@ class PollRoom {
   }
 
   setPollData(data) {
+    // Only reset votes if options changed or if votes don't exist
+    const shouldResetVotes = !this.pollData.votes || 
+                           (data.options && JSON.stringify(data.options) !== JSON.stringify(this.pollData.options));
+    
     this.pollData = {
       ...this.pollData,
-      ...data,
-      votes: {}
+      ...data
     };
-    // Initialize vote counts
-    if (data.options) {
-      data.options.forEach((option, index) => {
-        this.pollData.votes[index] = 0;
-      });
+    
+    // Initialize or reset vote counts if needed
+    if (shouldResetVotes) {
+      this.pollData.votes = {};
+      if (this.pollData.options) {
+        this.pollData.options.forEach((_, index) => {
+          this.pollData.votes[index] = 0;
+        });
+      }
     }
   }
 
@@ -143,8 +150,8 @@ class PollRoom {
     return {
       question: this.pollData.question,
       options: this.pollData.options,
-      votes: this.pollData.votes,
-      totalVotes: Object.values(this.pollData.votes).reduce((a, b) => a + b, 0),
+      votes: this.pollData.votes || {},
+      totalVotes: Object.values(this.pollData.votes || {}).reduce((a, b) => a + b, 0),
       participantCount: this.participants.size
     };
   }
@@ -227,15 +234,21 @@ class RTFeedbackRoom {
   }
   
   getAggregatedFeedback() {
-    // Count how many students are at each level (1-5)
-    const understanding = [0, 0, 0, 0, 0];
+    // Count how many students are at each level (1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5)
+    const understanding = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // 9 buckets for 0.5 increments
     let totalResponses = 0;
     
     this.feedbackData.forEach((data) => {
       const value = data.value;
       if (value >= 1 && value <= 5) {
-        understanding[value - 1]++;
-        totalResponses++;
+        // Round to nearest 0.5: 1.2->1, 1.3->1.5, 1.7->1.5, 1.8->2, etc.
+        const roundedValue = Math.round(value * 2) / 2;
+        // Convert to index: 1->0, 1.5->1, 2->2, etc.
+        const index = (roundedValue - 1) * 2;
+        if (index >= 0 && index < 9) {
+          understanding[index]++;
+          totalResponses++;
+        }
       }
     });
     
@@ -416,6 +429,24 @@ io.on('connection', (socket) => {
   let currentSessionCode = null;
 
   // SESSION-BASED HANDLERS
+  /**
+   * SESSION-BASED ARCHITECTURE
+   * 
+   * The session architecture allows one code to support multiple widget types.
+   * A session contains:
+   * - One host (teacher)
+   * - Multiple participants (students)  
+   * - Multiple room types (poll, dataShare, rtfeedback)
+   * 
+   * Benefits:
+   * - Students enter one code and can access all activities
+   * - Teacher can run multiple widgets simultaneously
+   * - Simplified student experience
+   * 
+   * Room naming convention:
+   * - Session room: `session:${code}`
+   * - Activity rooms: `${code}:${roomType}` (e.g., "ABC123:poll")
+   */
   
   // Host creates or gets existing session
   socket.on('session:create', (callback) => {
@@ -475,10 +506,15 @@ io.on('connection', (socket) => {
       const room = session.getRoom(roomType);
       if (room) {
         if (roomType === 'poll' && room instanceof PollRoom) {
-          socket.emit('poll:updated', room.pollData);
+          // Send harmonized events for initial poll state
+          socket.emit('poll:dataUpdate', {
+            pollData: room.pollData,
+            results: room.getResults()
+          });
+          socket.emit('poll:stateChanged', { isActive: room.pollData.isActive });
         } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
           socket.emit('rtfeedback:update', room.getAggregatedFeedback());
-          socket.emit('rtfeedback:stateChanged', { isActive: room.isActive });
+          socket.emit('rtFeedback:stateChanged', { isActive: room.isActive });
         }
       }
     });
@@ -598,11 +634,56 @@ io.on('connection', (socket) => {
       }
     }
     
-    room.pollData = data.pollData;
-    io.to(`${session.code}:poll`).emit('poll:updated', data.pollData);
+    // Use setPollData to ensure proper initialization
+    room.setPollData(data.pollData);
+    
+    // Emit harmonized events instead of legacy poll:updated
+    io.to(`${session.code}:poll`).emit('poll:dataUpdate', {
+      pollData: room.pollData,
+      results: room.getResults()
+    });
+    
+    // If state changed, emit state change event
+    if (wasInactive !== nowActive) {
+      io.to(`${session.code}:poll`).emit('poll:stateChanged', { 
+        isActive: data.pollData.isActive 
+      });
+    }
+    
     session.updateActivity();
   });
   
+  // Handle poll state request from students
+  socket.on('poll:requestState', (data) => {
+    const { code } = data;
+    const session = sessions.get(code);
+    
+    if (session) {
+      const room = session.getRoom('poll');
+      if (room && room instanceof PollRoom) {
+        socket.emit('poll:dataUpdate', {
+          pollData: room.pollData,
+          results: room.getResults()
+        });
+        socket.emit('poll:stateChanged', { isActive: room.pollData.isActive });
+      }
+    }
+  });
+
+  // Handle rtfeedback state request from students
+  socket.on('rtfeedback:requestState', (data) => {
+    const { code } = data;
+    const session = sessions.get(code);
+    
+    if (session) {
+      const room = session.getRoom('rtfeedback');
+      if (room && room instanceof RTFeedbackRoom) {
+        socket.emit('rtFeedback:stateChanged', { isActive: room.isActive });
+        socket.emit('rtfeedback:update', room.getAggregatedFeedback());
+      }
+    }
+  });
+
   socket.on('session:poll:vote', (data) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) return;
@@ -880,43 +961,7 @@ io.on('connection', (socket) => {
   });
 
   // Host joins room (widget)
-  socket.on('host:join', (code) => {
-    const room = rooms.get(code);
-    if (room) {
-      room.hostSocketId = socket.id;
-      socket.join(code);
-      socket.emit('host:joined', { success: true, code });
-      console.log(`Host joined room ${code}`);
-    } else {
-      socket.emit('host:joined', { success: false, error: 'Room not found' });
-    }
-  });
 
-  // Host updates poll data
-  socket.on('poll:update', (data) => {
-    const { code, pollData } = data;
-    const room = rooms.get(code);
-    
-    if (room && room.hostSocketId === socket.id) {
-      room.setPollData(pollData);
-      // Notify all participants of the update
-      io.to(code).emit('poll:updated', room.pollData);
-      console.log(`Poll updated in room ${code}`);
-    }
-  });
-
-  // Host starts/stops poll
-  socket.on('poll:toggle', (data) => {
-    const { code, isActive } = data;
-    const room = rooms.get(code);
-    
-    if (room && room.hostSocketId === socket.id) {
-      room.pollData.isActive = isActive;
-      // Send full poll data when status changes
-      io.to(code).emit('poll:updated', room.pollData);
-      console.log(`Poll ${isActive ? 'started' : 'stopped'} in room ${code}`);
-    }
-  });
 
 
   // Participant votes
@@ -942,61 +987,7 @@ io.on('connection', (socket) => {
   });
 
   // Data Share handlers
-  socket.on('host:createDataShareRoom', () => {
-    const code = generateRoomCode();
-    const room = new DataShareRoom(code);
-    room.hostSocketId = socket.id;
-    rooms.set(code, room);
-    
-    socket.join(code);
-    socket.emit('room:created', code);
-    console.log(`Data share room created: ${code}`);
-  });
 
-
-  socket.on('dataShare:submit', (data) => {
-    const { code, studentName, link } = data;
-    const room = rooms.get(code);
-    
-    if (room && room instanceof DataShareRoom) {
-      const submission = room.addSubmission(studentName, link);
-      
-      // Notify host
-      if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('dataShare:newSubmission', submission);
-      }
-      
-      socket.emit('dataShare:submitted', { success: true });
-      console.log(`New submission in room ${code}`);
-    } else {
-      socket.emit('dataShare:submitted', { 
-        success: false, 
-        error: 'Room not found' 
-      });
-    }
-  });
-
-  socket.on('host:deleteSubmission', (data) => {
-    const { roomCode, submissionId } = data;
-    const room = rooms.get(roomCode);
-    
-    if (room && room instanceof DataShareRoom && room.hostSocketId === socket.id) {
-      if (room.deleteSubmission(submissionId)) {
-        io.to(roomCode).emit('dataShare:submissionDeleted', submissionId);
-        console.log(`Submission deleted in room ${roomCode}`);
-      }
-    }
-  });
-
-  socket.on('host:clearAllSubmissions', (roomCode) => {
-    const room = rooms.get(roomCode);
-    
-    if (room && room instanceof DataShareRoom && room.hostSocketId === socket.id) {
-      room.clearAllSubmissions();
-      io.to(roomCode).emit('dataShare:allCleared');
-      console.log(`All submissions cleared in room ${roomCode}`);
-    }
-  });
 
   // Handle host closing room (widget deleted)
   socket.on('host:closeRoom', (data) => {
@@ -1040,18 +1031,17 @@ io.on('connection', (socket) => {
     }
   });
 
-  // RT Feedback handlers
-  socket.on('rtfeedback:update', (data) => {
+
+  // Student feedback update - harmonized
+  socket.on('student:updateFeedback', (data) => {
     const { code, value } = data;
     const room = rooms.get(code);
     
     if (room && room instanceof RTFeedbackRoom && room.isActive) {
-      // Update feedback value only if room is active
       room.updateFeedback(socket.id, value);
       
-      // Notify host of updated feedback
       if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('feedback', {
+        io.to(room.hostSocketId).emit('rtFeedback:feedbackUpdate', {
           studentId: socket.id,
           value: value
         });
@@ -1059,37 +1049,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Host starts/stops understanding feedback
-  socket.on('rtfeedback:toggle', (data) => {
-    const { code, isActive } = data;
-    const room = rooms.get(code);
-    
-    if (room && room instanceof RTFeedbackRoom && room.hostSocketId === socket.id) {
-      room.isActive = isActive;
-      
-      // Broadcast state change to all participants
-      io.to(code).emit('rtfeedback:stateChanged', { isActive });
-      
-      console.log(`Understanding feedback ${isActive ? 'started' : 'stopped'} in room ${code}`);
-      
-      // If stopping, optionally clear feedback data
-      if (!isActive) {
-        room.feedbackData.clear();
-      }
-    }
-  });
 
-  // Host creates RT feedback room
-  socket.on('rtfeedback:create', () => {
-    const code = generateRoomCode();
-    const room = new RTFeedbackRoom(code);
-    room.hostSocketId = socket.id;
-    rooms.set(code, room);
-    socket.join(code);
-    
-    socket.emit('rtfeedback:created', { code, success: true });
-    console.log(`Created RT feedback room ${code}`);
-  });
+  /**
+   * HARMONIZED EVENT HANDLERS
+   * These handlers implement the standardized event architecture
+   * for all networked widgets (Poll, DataShare, RTFeedback)
+   */
 
   // Handle disconnection
   socket.on('disconnect', () => {
@@ -1126,21 +1091,33 @@ io.on('connection', (socket) => {
         room.participants.delete(socket.id);
         
         // For RT feedback rooms, also remove feedback data
-        if (room instanceof RTFeedbackRoom) {
-          room.removeFeedback(socket.id);
-          // Notify host of student disconnect
-          if (room.hostSocketId) {
-            io.to(room.hostSocketId).emit('studentDisconnected', {
+        // Emit harmonized participant left events based on room type
+        if (room.hostSocketId) {
+          const participantCount = room.participants.size;
+          
+          if (room instanceof PollRoom) {
+            io.to(room.hostSocketId).emit('poll:participantLeft', {
               studentId: socket.id
             });
+            io.to(room.hostSocketId).emit('poll:participantCount', {
+              count: participantCount
+            });
+          } else if (room instanceof DataShareRoom) {
+            io.to(room.hostSocketId).emit('dataShare:participantLeft', {
+              studentId: socket.id
+            });
+            io.to(room.hostSocketId).emit('dataShare:participantCount', {
+              count: participantCount
+            });
+          } else if (room instanceof RTFeedbackRoom) {
+            room.removeFeedback(socket.id);
+            io.to(room.hostSocketId).emit('rtFeedback:participantLeft', {
+              studentId: socket.id
+            });
+            io.to(room.hostSocketId).emit('rtFeedback:participantCount', {
+              count: participantCount
+            });
           }
-        }
-        
-        // Notify host of updated count
-        if (room.hostSocketId) {
-          io.to(room.hostSocketId).emit('participant:count', {
-            count: room.participants.size
-          });
         }
       }
     });

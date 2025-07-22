@@ -34,10 +34,8 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
   const [results, setResults] = useState<Results | null>(null);
 
   useEffect(() => {
-    // Listen for poll updates
-    socket.on('poll:updated', (data: PollData) => {
-      // DEBUG: Log poll update
-      console.log('Poll updated:', data);
+    // Listen for poll state changes (harmonized)
+    socket.on('poll:stateChanged', (data: { isActive: boolean }) => {
       
       // If poll is restarted (was inactive, now active), reset vote state
       if (!pollData.isActive && data.isActive) {
@@ -46,13 +44,22 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
         setResults(null);
       }
       
-      setPollData(data);
+      setPollData(prev => ({ ...prev, isActive: data.isActive }));
+    });
+    
+    // Listen for poll data updates (harmonized)
+    socket.on('poll:dataUpdate', (data: { pollData: PollData; results?: Results }) => {
+      
+      if (data.pollData) {
+        setPollData(data.pollData);
+      }
+      if (data.results) {
+        setResults(data.results);
+      }
     });
 
-    // Listen for results
-    socket.on('results:update', (data: Results) => {
-      // DEBUG: Log results update
-      console.log('Results update:', data);
+    // Listen for results updates (harmonized)
+    socket.on('poll:resultsUpdate', (data: Results) => {
       setResults(data);
     });
 
@@ -63,14 +70,21 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
       }
     });
 
-    // Only request poll state if we don't have initial data
-    if (!initialPollData) {
-      socket.emit('poll:request-state', { code: roomCode });
+    // Request current poll state if we don't have initial data or it's empty
+    let timer: NodeJS.Timeout | undefined;
+    const hasInitialData = initialPollData && initialPollData.question && initialPollData.options;
+    if (!hasInitialData) {
+      // Small delay to ensure component is fully mounted and server has processed join
+      timer = setTimeout(() => {
+        socket.emit('poll:requestState', { code: roomCode });
+      }, 100);
     }
 
     return () => {
-      socket.off('poll:updated');
-      socket.off('results:update');
+      if (timer) clearTimeout(timer);
+      socket.off('poll:stateChanged');
+      socket.off('poll:dataUpdate');
+      socket.off('poll:resultsUpdate');
       socket.off('vote:confirmed');
     };
   }, [socket, roomCode]);

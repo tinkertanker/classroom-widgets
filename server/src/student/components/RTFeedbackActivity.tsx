@@ -27,7 +27,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
           value: currentValue
         });
       } else {
-        socket.emit('rtfeedback:update', {
+        socket.emit('student:updateFeedback', {
           code: roomCode,
           value: currentValue
         });
@@ -46,12 +46,11 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   useEffect(() => {
     const handleRoomClosed = (data: any) => {
       if (data.code === roomCode) {
-        console.log('RT feedback room closed');
+        // Room closed
       }
     };
     
     const handleStateChanged = (data: { isActive: boolean }) => {
-      console.log('RT feedback state changed:', data.isActive);
       const wasInactive = !isActive;
       setIsActive(data.isActive);
       
@@ -63,11 +62,20 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     };
 
     socket.on('room:closed', handleRoomClosed);
-    socket.on('rtfeedback:stateChanged', handleStateChanged);
+    socket.on('rtFeedback:stateChanged', handleStateChanged);
+    
+    // Request current state if we don't have initial state
+    let timer: NodeJS.Timeout | undefined;
+    if (initialIsActive === undefined) {
+      timer = setTimeout(() => {
+        socket.emit('rtfeedback:requestState', { code: roomCode });
+      }, 100);
+    }
 
     return () => {
+      if (timer) clearTimeout(timer);
       socket.off('room:closed', handleRoomClosed);
-      socket.off('rtfeedback:stateChanged', handleStateChanged);
+      socket.off('rtFeedback:stateChanged', handleStateChanged);
     };
   }, [socket, roomCode, isActive]);
 
@@ -146,7 +154,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
             type="range"
             min="1"
             max="5"
-            step="0.1"
+            step="0.2"
             value={currentValue}
             onChange={handleSliderChange}
             disabled={!isActive}

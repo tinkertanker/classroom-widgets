@@ -120,64 +120,48 @@ export function useNetworkedWidget({
 
       // Handle room creation based on type
       if (roomType === 'poll') {
-        // For poll, we need to wait for connection then create room via API
-        newSocket.on('host:joined', (data) => {
+        // For poll, use harmonized event-based creation
+        newSocket.on('poll:created', (data: { code: string; success: boolean }) => {
           if (data.success) {
-            console.log('Joined room:', data.code);
-          }
-        });
-
-        newSocket.once('connect', async () => {
-          try {
-            const response = await fetch(`${import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'}/api/rooms/create`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (!response.ok) {
-              throw new Error('Server request failed');
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-              setRoomCode(data.code);
-              // Join room as host
-              newSocket.emit('host:join', data.code);
-              setIsConnecting(false);
-              
-              if (onRoomCreated) {
-                onRoomCreated(data.code);
-              }
-            }
-          } catch (error) {
-            console.error('Failed to create room:', error);
-            setConnectionError('Cannot connect to server. Please ensure the server is running (cd server && npm start).');
+            console.log('Poll room created:', data.code);
+            setRoomCode(data.code);
             setIsConnecting(false);
-            newSocket.disconnect();
-          }
-        });
-      } else if (roomType === 'dataShare') {
-        // For dataShare, emit creation event after connection
-        newSocket.on('room:created', (code: string) => {
-          console.log('Data share room created:', code);
-          setRoomCode(code);
-          setIsConnecting(false);
-          
-          if (onRoomCreated) {
-            onRoomCreated(code);
+            
+            if (onRoomCreated) {
+              onRoomCreated(data.code);
+            }
           }
         });
 
         newSocket.on('connect', () => {
           // Emit create room when connected
           setTimeout(() => {
-            newSocket.emit('host:createDataShareRoom');
+            newSocket.emit('poll:create');
+          }, 100);
+        });
+      } else if (roomType === 'dataShare') {
+        // For dataShare, use harmonized event names
+        newSocket.on('dataShare:created', (data: { code: string; success: boolean }) => {
+          if (data.success) {
+            console.log('Data share room created:', data.code);
+            setRoomCode(data.code);
+            setIsConnecting(false);
+            
+            if (onRoomCreated) {
+              onRoomCreated(data.code);
+            }
+          }
+        });
+
+        newSocket.on('connect', () => {
+          // Emit create room when connected
+          setTimeout(() => {
+            newSocket.emit('dataShare:create');
           }, 100);
         });
       } else if (roomType === 'rtfeedback') {
-        // For rtfeedback, emit creation event after connection
-        newSocket.on('rtfeedback:created', (data: { code: string; success: boolean }) => {
+        // For rtfeedback, use harmonized event names
+        newSocket.on('rtFeedback:created', (data: { code: string; success: boolean }) => {
           if (data.success) {
             console.log('RT Feedback room created:', data.code);
             setRoomCode(data.code);
@@ -192,7 +176,7 @@ export function useNetworkedWidget({
         newSocket.on('connect', () => {
           // Emit create room when connected
           setTimeout(() => {
-            newSocket.emit('rtfeedback:create');
+            newSocket.emit('rtFeedback:create');
           }, 100);
         });
       }
