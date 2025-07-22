@@ -564,16 +564,20 @@ io.on('connection', (socket) => {
     }
     
     // Record vote
-    room.recordVote(socket.id, data.option);
-    socket.emit('vote:result', { success: true });
+    const voteSuccess = room.vote(socket.id, data.option);
     
-    // Notify host
-    if (session.hostSocketId) {
-      io.to(session.hostSocketId).emit('poll:voteUpdate', {
-        votes: room.getVoteCounts(),
-        totalVotes: room.getTotalVotes()
-      });
+    if (voteSuccess) {
+      socket.emit('vote:confirmed', { success: true });
+    } else {
+      socket.emit('vote:confirmed', { success: false, error: 'Vote failed' });
+      return;
     }
+    
+    // Notify all participants about vote update
+    io.to(`${session.code}:poll`).emit('poll:voteUpdate', {
+      votes: room.getVoteCounts(),
+      totalVotes: room.getTotalVotes()
+    });
     
     session.updateActivity();
   });
