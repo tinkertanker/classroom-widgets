@@ -681,6 +681,21 @@ io.on('connection', (socket) => {
     session.updateActivity();
   });
   
+  socket.on('session:dataShare:delete', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('dataShare');
+    if (!room || !(room instanceof DataShareRoom)) return;
+    
+    const deleted = room.deleteSubmission(data.submissionId);
+    if (deleted) {
+      io.to(`${session.code}:dataShare`).emit('dataShare:submissionDeleted', data.submissionId);
+    }
+    
+    session.updateActivity();
+  });
+  
   // RT Feedback handlers for sessions
   socket.on('session:rtfeedback:update', (data) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
@@ -699,6 +714,22 @@ io.on('connection', (socket) => {
     
     // Notify all in the room (including host)
     io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', feedbackData);
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:rtfeedback:reset', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('rtfeedback');
+    if (!room || !(room instanceof RTFeedbackRoom)) return;
+    
+    // Clear all feedback data
+    room.feedbackData.clear();
+    
+    // Send updated (empty) feedback to all participants
+    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', room.getAggregatedFeedback());
     
     session.updateActivity();
   });
