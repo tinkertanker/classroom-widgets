@@ -726,7 +726,12 @@ io.on('connection', (socket) => {
       return;
     }
     
-    room.updateFeedback(socket.id, data.value);
+    // Round the value to the nearest integer (1-5)
+    const roundedValue = Math.round(data.value);
+    const clampedValue = Math.max(1, Math.min(5, roundedValue));
+    console.log('RTFeedback: Processed value', data.value, '->', clampedValue);
+    
+    room.updateFeedback(socket.id, clampedValue);
     
     // Calculate aggregate feedback
     const feedbackData = room.getAggregatedFeedback();
