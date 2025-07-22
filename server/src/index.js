@@ -430,6 +430,8 @@ io.on('connection', (socket) => {
     
     if (existingSession) {
       currentSessionCode = existingSession.code;
+      // Make sure host is in the session room
+      socket.join(`session:${existingSession.code}`);
       callback({ success: true, code: existingSession.code, isExisting: true });
     } else {
       const code = generateSessionCode();
@@ -509,6 +511,8 @@ io.on('connection', (socket) => {
     
     // Check if room already exists
     if (session.getRoom(roomType)) {
+      // Make sure host is in the room namespace
+      socket.join(`${session.code}:${roomType}`);
       callback({ success: true, isExisting: true });
       return;
     }
@@ -606,8 +610,24 @@ io.on('connection', (socket) => {
     if (!room || !(room instanceof PollRoom)) return;
     
     const participant = session.participants.get(socket.id);
-    if (!participant || room.participants.get(socket.id)?.hasVoted) {
-      socket.emit('vote:result', { success: false, error: 'Already voted or not a participant' });
+    if (!participant) {
+      socket.emit('vote:confirmed', { success: false, error: 'Not a participant' });
+      return;
+    }
+    
+    // Add participant to room if not already there
+    if (!room.participants.has(socket.id)) {
+      room.participants.set(socket.id, {
+        id: socket.id,
+        name: participant.name,
+        hasVoted: false,
+        joinedAt: Date.now()
+      });
+    }
+    
+    // Check if already voted
+    if (room.participants.get(socket.id)?.hasVoted) {
+      socket.emit('vote:confirmed', { success: false, error: 'Already voted' });
       return;
     }
     
