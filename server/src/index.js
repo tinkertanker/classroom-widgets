@@ -556,8 +556,12 @@ io.on('connection', (socket) => {
       });
       // Reset vote counts
       if (data.pollData.options) {
+        // Ensure votes object exists
+        if (!data.pollData.votes) {
+          data.pollData.votes = {};
+        }
         data.pollData.options.forEach((_, index) => {
-          room.pollData.votes[index] = 0;
+          data.pollData.votes[index] = 0;
         });
       }
     }
