@@ -12,6 +12,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
     const [threshold, setThreshold] = useState<number>(20); // Default threshold
     const [cooldownTime, setCooldownTime] = useState<number>(0); // Cooldown time in seconds
     const [isEnabled, setIsEnabled] = useState<boolean>(true); // Widget enabled state
+    const [animationTime, setAnimationTime] = useState<number>(0); // For wave animation
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const dataArrayRef = useRef<Uint8Array | null>(null);
@@ -20,11 +21,29 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
     const isCooldownRef = useRef<boolean>(false); // Use a ref to track cooldown status
     const thresholdRef = useRef<number>(threshold); // Use a ref to track threshold
     const volumeHistoryRef = useRef<number[]>([]); // Store volume history for smoothing
+    const animationFrameRef = useRef<number | null>(null);
     const SMOOTHING_SAMPLES = 10; // Number of samples to average
 
     const COOLDOWN_DURATION = 5; // 5 seconds cooldown
 
     useEffect(() => {
+        let intervalId: NodeJS.Timeout | null = null;
+        
+        if (!isEnabled) {
+            // Clean up when disabled
+            if (mediaStreamRef.current) {
+                mediaStreamRef.current.getTracks().forEach(track => track.stop());
+                mediaStreamRef.current = null;
+            }
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+                audioContextRef.current.close();
+                audioContextRef.current = null;
+            }
+            analyserRef.current = null;
+            dataArrayRef.current = null;
+            return;
+        }
+
         const setupAudio = async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -40,16 +59,9 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
 
                 mediaStreamRef.current = stream;
 
-                let intervalId: NodeJS.Timeout | null = null;
-                if (isEnabled) {
-                    intervalId = setInterval(() => {
-                        monitorVolume();
-                    }, 100); // Check volume every 0.1 seconds
-                }
-
-                return () => {
-                    if (intervalId) clearInterval(intervalId);
-                };
+                intervalId = setInterval(() => {
+                    monitorVolume();
+                }, 100); // Check volume every 0.1 seconds
             } catch (err) {
                 console.error('Error accessing the microphone', err);
             }
@@ -58,12 +70,17 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
         setupAudio();
 
         return () => {
+            if (intervalId) clearInterval(intervalId);
             if (mediaStreamRef.current) {
                 mediaStreamRef.current.getTracks().forEach(track => track.stop());
+                mediaStreamRef.current = null;
             }
-            if (audioContextRef.current) {
+            if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
                 audioContextRef.current.close();
+                audioContextRef.current = null;
             }
+            analyserRef.current = null;
+            dataArrayRef.current = null;
         };
     }, [isEnabled]);
 
@@ -73,6 +90,24 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
             setVolume(0);
             volumeHistoryRef.current = [];
         }
+    }, [isEnabled]);
+
+    // Animation loop for the wave
+    useEffect(() => {
+        const animate = () => {
+            setAnimationTime(prev => prev + 0.02);
+            animationFrameRef.current = requestAnimationFrame(animate);
+        };
+        
+        if (isEnabled) {
+            animationFrameRef.current = requestAnimationFrame(animate);
+        }
+        
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
     }, [isEnabled]);
 
     useEffect(() => {
@@ -141,114 +176,114 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
             className="w-full h-full border border-warm-gray-200 dark:border-warm-gray-700 rounded-md shadow-sm flex flex-col bg-soft-white dark:bg-warm-gray-800"
         >
             <div className="flex-1 p-4 flex flex-col items-center justify-center overflow-visible">
-                {/* Odometer-style meter */}
-                <div className={`relative w-64 h-36 ${!isEnabled ? 'opacity-50' : ''} transition-opacity duration-300`}>
-                    <svg viewBox="0 -10 200 120" className="w-full h-full overflow-visible">
-                        {/* Background arc */}
-                        <path
-                            d="M 20 80 A 80 80 0 0 1 180 80"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="20"
-                            className="text-warm-gray-200 dark:text-warm-gray-700"
-                        />
-                        
-                        {/* Calculate segment positions */}
+                {/* Oscilloscope-style waveform visualization */}
+                <div className={`relative w-64 h-24 ${!isEnabled ? 'opacity-50' : ''} transition-opacity duration-300`}>
+                    <svg viewBox="0 0 300 100" className="w-full h-full">
+                        {/* Generate oscilloscope waveform */}
                         {(() => {
-                            const centerX = 100;
-                            const centerY = 80;
-                            const radius = 80;
+                            const width = 300;
+                            const height = 100;
+                            const centerY = height / 2;
                             
-                            // Green segment (0-60 degrees of 180)
-                            const greenEndAngle = Math.PI * (180 - 60) / 180;
-                            const greenEndX = centerX + radius * Math.cos(greenEndAngle);
-                            const greenEndY = centerY - radius * Math.sin(greenEndAngle);
+                            // Calculate wave properties based on volume
+                            const normalizedVolume = threshold > 0 ? Math.min(volume / threshold, 1) : 0;
+                            const amplitude = normalizedVolume * 40; // Max amplitude
+                            const barCount = 60; // Number of vertical bars
+                            const barWidth = width / barCount;
+                            const barSpacing = barWidth * 0.8; // 80% bar, 20% gap
                             
-                            // Yellow segment (60-120 degrees of 180)
-                            const yellowEndAngle = Math.PI * (180 - 120) / 180;
-                            const yellowEndX = centerX + radius * Math.cos(yellowEndAngle);
-                            const yellowEndY = centerY - radius * Math.sin(yellowEndAngle);
+                            // Generate bars
+                            const bars = [];
+                            
+                            for (let i = 0; i < barCount; i++) {
+                                const x = i * barWidth + (barWidth - barSpacing) / 2;
+                                
+                                // Create oscillating pattern with multiple frequencies
+                                const phase = (i / barCount) * Math.PI * 4 + animationTime;
+                                const mainOscillation = Math.sin(phase) * amplitude;
+                                const highFreq = Math.sin(phase * 3.7) * amplitude * 0.3;
+                                const lowFreq = Math.sin(phase * 0.5) * amplitude * 0.2;
+                                
+                                // Add some randomness for realistic audio look
+                                const noise = (Math.random() - 0.5) * amplitude * 0.2 * normalizedVolume;
+                                
+                                // Combine all components
+                                const barHeight = Math.abs(mainOscillation + highFreq + lowFreq + noise);
+                                
+                                // Create symmetrical bars (up and down from center)
+                                const y1 = centerY - barHeight / 2;
+                                const y2 = centerY + barHeight / 2;
+                                
+                                bars.push({ x, y1, y2, barHeight });
+                            }
+                            
+                            // Determine color based on volume percentage
+                            const volumePercent = normalizedVolume * 100;
+                            let baseColor = { r: 34, g: 197, b: 94 }; // Green base
+                            
+                            if (volumePercent > 70) {
+                                baseColor = { r: 239, g: 68, b: 68 }; // Red
+                            } else if (volumePercent > 50) {
+                                baseColor = { r: 251, g: 146, b: 60 }; // Orange
+                            } else if (volumePercent > 20) {
+                                baseColor = { r: 234, g: 179, b: 8 }; // Yellow
+                            }
+                            
+                            // Darken the base color and brighten based on volume
+                            const brightness = 0.3 + (normalizedVolume * 0.7); // 30% to 100% brightness
+                            const r = Math.round(baseColor.r * brightness);
+                            const g = Math.round(baseColor.g * brightness);
+                            const b = Math.round(baseColor.b * brightness);
+                            
+                            const strokeColor = `rgb(${r}, ${g}, ${b})`;
                             
                             return (
                                 <>
-                                    {/* Green segment (0-33%) */}
-                                    <path
-                                        d={`M 20 80 A 80 80 0 0 1 ${greenEndX} ${greenEndY}`}
-                                        fill="none"
-                                        stroke="#22c55e"
-                                        strokeWidth="20"
+                                    {/* Background center line */}
+                                    <line
+                                        x1="0"
+                                        y1={centerY}
+                                        x2={width}
+                                        y2={centerY}
+                                        stroke="currentColor"
+                                        strokeWidth="1"
+                                        className="text-warm-gray-200 dark:text-warm-gray-700"
+                                        opacity="0.5"
                                     />
                                     
-                                    {/* Yellow segment (33-66%) */}
-                                    <path
-                                        d={`M ${greenEndX} ${greenEndY} A 80 80 0 0 1 ${yellowEndX} ${yellowEndY}`}
-                                        fill="none"
-                                        stroke="#eab308"
-                                        strokeWidth="20"
-                                    />
+                                    {/* Oscilloscope bars */}
+                                    {bars.map((bar, index) => (
+                                        <rect
+                                            key={index}
+                                            x={bar.x}
+                                            y={bar.y1}
+                                            width={barSpacing}
+                                            height={bar.barHeight || 1}
+                                            fill={strokeColor}
+                                            rx="1"
+                                            style={{
+                                                filter: bar.barHeight > 35 ? `drop-shadow(0 0 4px rgba(${r}, ${g}, ${b}, 0.6))` : 'none',
+                                                transition: 'fill 0.1s ease-out'
+                                            }}
+                                        />
+                                    ))}
                                     
-                                    {/* Red segment (66-100%) */}
-                                    <path
-                                        d={`M ${yellowEndX} ${yellowEndY} A 80 80 0 0 1 180 80`}
-                                        fill="none"
-                                        stroke="#ef4444"
-                                        strokeWidth="20"
-                                    />
                                 </>
                             );
                         })()}
-                        
-                        
-                        {/* Needle pointer - only show when enabled */}
-                        {isEnabled && (
-                            <g 
-                                transform={`rotate(${threshold > 0 ? Math.min((volume / threshold) * 180, 180) - 90 : -90} 100 80)`}
-                                style={{ transition: 'transform 0.3s ease-out' }}
-                            >
-                                {/* Needle shadow */}
-                                <line
-                                    x1="100"
-                                    y1="80"
-                                    x2="100"
-                                    y2="30"
-                                    stroke="rgba(0,0,0,0.2)"
-                                    strokeWidth="4"
-                                    strokeLinecap="round"
-                                    transform="translate(1, 1)"
-                                />
-                                {/* Needle */}
-                                <line
-                                    x1="100"
-                                    y1="80"
-                                    x2="100"
-                                    y2="30"
-                                    stroke="#dc2626"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                />
-                                <circle
-                                    cx="100"
-                                    cy="80"
-                                    r="8"
-                                    fill="#1f2937"
-                                    className="dark:fill-warm-gray-600"
-                                />
-                                <circle
-                                    cx="100"
-                                    cy="80"
-                                    r="4"
-                                    fill="#dc2626"
-                                />
-                            </g>
-                        )}
-                        
                     </svg>
+                    {/* Volume percentage display - overlapping */}
+                    {isEnabled && (
+                        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-sm text-warm-gray-400 dark:text-warm-gray-500">
+                            {Math.round((threshold > 0 ? Math.min(volume / threshold, 1) : 0) * 100)}%
+                        </div>
+                    )}
                 </div>
                 {/* Volume threshold control */}
-                <div className="mt-4 w-64">
-                    <p className="text-sm mb-2 text-warm-gray-700 dark:text-warm-gray-300 text-center">
-                        Sound level threshold
-                    </p>
+                <div className="mt-3 w-64 flex items-center gap-2">
+                    <span className="text-sm text-warm-gray-700 dark:text-warm-gray-300" title="Sound level threshold">
+                        Threshold:
+                    </span>
                     <input
                         type='range'
                         min='0'
@@ -258,7 +293,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         aria-label='Volume Threshold'
-                        className="w-full"
+                        className="flex-1"
                     />
                 </div>
                 <div className="flex flex-row mt-4 items-center justify-between w-64">

@@ -306,7 +306,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
                 ref={moreWidgetsRef}
                 className="absolute bottom-full left-0 mb-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg p-4 z-50"
               >
-                <div className="grid grid-cols-3 gap-2 min-w-[200px]">
+                <div className="grid grid-cols-4 gap-2 min-w-[280px]">
                   {otherWidgets.map((widgetType) => (
                     <button
                       key={widgetType}

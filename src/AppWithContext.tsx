@@ -116,14 +116,23 @@ function AppContent() {
     
     const boardElement = document.getElementById('widget-board');
     if (!boardElement) return;
-    const rect = boardElement.getBoundingClientRect();
-    const scrollContainer = document.querySelector('.board-scroll-container');
+    
+    const scrollContainer = document.querySelector('.board-scroll-container') as HTMLElement;
     if (!scrollContainer) return;
+    
+    const scaleWrapper = document.querySelector('.board-scale-wrapper') as HTMLElement;
+    if (!scaleWrapper) return;
+    
+    // Get the bounding rect of the scale wrapper (which is scaled)
+    const rect = scaleWrapper.getBoundingClientRect();
     
     // Account for scale when calculating position
     const scale = state.scale;
-    const x = (e.clientX - rect.left) / scale + scrollContainer.scrollLeft / scale;
-    const y = (e.clientY - rect.top) / scale + scrollContainer.scrollTop / scale;
+    
+    // Calculate the position relative to the scaled board
+    // The click position needs to account for the scroll position and scale
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
     
     // Calculate sticker position and size
     const stickerConfig = getWidgetConfig(WIDGET_TYPES.STAMP, state.selectedStickerType);
@@ -131,7 +140,7 @@ function AppContent() {
     const randomWidth = Math.round(stickerConfig.defaultWidth * sizeVariation);
     const randomHeight = Math.round(stickerConfig.defaultHeight * sizeVariation);
     
-    // Add sticker at clicked position
+    // Add sticker at clicked position (centered on click point)
     addWidget(WIDGET_TYPES.STAMP, state.selectedStickerType, {
       x: x - randomWidth / 2,
       y: y - randomHeight / 2,
