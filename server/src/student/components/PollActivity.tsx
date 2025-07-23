@@ -7,6 +7,7 @@ interface PollActivityProps {
   initialPollData?: PollData;
   studentName?: string;
   isSession?: boolean;
+  widgetId?: string;
 }
 
 interface PollData {
@@ -23,7 +24,7 @@ interface Results {
   totalVotes: number;
 }
 
-const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, studentName, isSession = false }) => {
+const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, studentName, isSession = false, widgetId }) => {
   const [pollData, setPollData] = useState<PollData>(initialPollData || {
     question: '',
     options: [],
@@ -76,7 +77,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     if (!hasInitialData) {
       // Small delay to ensure component is fully mounted and server has processed join
       timer = setTimeout(() => {
-        socket.emit('poll:requestState', { code: roomCode });
+        socket.emit('poll:requestState', { code: roomCode, widgetId });
       }, 100);
     }
 
@@ -97,7 +98,8 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     if (isSession) {
       socket.emit('session:poll:vote', { 
         sessionCode: roomCode, 
-        option: optionIndex 
+        option: optionIndex,
+        widgetId
       });
     } else {
       socket.emit('vote:submit', { code: roomCode, optionIndex });

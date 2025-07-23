@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaQuestion, FaPlay, FaStop, FaTrash, FaCheck } from 'react-icons/fa6';
 import { createWidgetEventNames } from '../../utils/networkedWidgetUtils';
@@ -17,11 +17,12 @@ interface QuestionsProps {
   onStateChange?: (state: any) => void;
 }
 
-const eventNames = createWidgetEventNames('questions');
+// Event names will be created dynamically based on widgetId
 
 function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isActive, setIsActive] = useState(false);
+  const eventNames = createWidgetEventNames('questions', widgetId);
 
   // Load saved state
   useEffect(() => {
@@ -31,17 +32,19 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     }
   }, [savedState]);
 
+  const handleStateChange = useCallback((state: any) => {
+    onStateChange?.({
+      ...state,
+      questions,
+      isActive
+    });
+  }, [onStateChange, questions, isActive]);
+
   return (
     <NetworkedWidgetWrapper
       widgetId={widgetId}
       savedState={savedState}
-      onStateChange={(state) => {
-        onStateChange?.({
-          ...state,
-          questions,
-          isActive
-        });
-      }}
+      onStateChange={handleStateChange}
       roomType="questions"
       title="Student Questions"
       description="Let students submit questions during your lesson"
@@ -57,6 +60,26 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       headerChildren={null}
     >
       {({ session, isRoomActive }) => {
+        // Join the widget-specific room
+        useEffect(() => {
+          if (!session.socket || !session.sessionCode || !isRoomActive) return;
+          
+          // Join the room for this specific widget instance
+          session.socket.emit('session:joinRoom', { 
+            sessionCode: session.sessionCode,
+            roomType: 'questions',
+            widgetId 
+          });
+          
+          return () => {
+            session.socket?.emit('session:leaveRoom', { 
+              sessionCode: session.sessionCode,
+              roomType: 'questions',
+              widgetId 
+            });
+          };
+        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
+
         // Setup socket listeners
         useEffect(() => {
           if (!session.socket) return;
@@ -107,7 +130,8 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
           
           const eventName = isActive ? eventNames.start : eventNames.stop;
           session.socket.emit(eventName, {
-            sessionCode: session.sessionCode
+            sessionCode: session.sessionCode,
+            widgetId
           });
         }, [isActive, session.socket, session.sessionCode, isRoomActive]);
 
@@ -116,6 +140,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
           
           session.socket.emit('session:questions:markAnswered', {
             sessionCode: session.sessionCode,
+            widgetId,
             questionId
           });
         };
@@ -125,6 +150,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
           
           session.socket.emit(eventNames.delete, {
             sessionCode: session.sessionCode,
+            widgetId,
             questionId
           });
         };
@@ -134,7 +160,8 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
           
           if (window.confirm('Are you sure you want to clear all questions?')) {
             session.socket.emit('session:questions:clearAll', {
-              sessionCode: session.sessionCode
+              sessionCode: session.sessionCode,
+              widgetId
             });
           }
         };

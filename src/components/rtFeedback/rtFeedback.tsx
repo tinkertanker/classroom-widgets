@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaGauge, FaPlay, FaPause } from 'react-icons/fa6';
 
@@ -15,16 +15,20 @@ interface FeedbackData {
 }
 
 const barColors = [
-  'from-sky-400 to-sky-500',
-  'from-sage-400 to-sage-500', 
-  'from-emerald-400 to-emerald-500',
-  'from-amber-400 to-amber-500',
-  'from-dusty-rose-400 to-dusty-rose-500'
+  'from-red-700 to-red-600',         // 1 - Too Easy (dark red)
+  'from-amber-700 to-amber-600',     // 1.5 - (dark amber)
+  'from-yellow-700 to-yellow-600',   // 2 - Easy (dark yellow)
+  'from-lime-700 to-lime-600',       // 2.5 - (dark lime)
+  'from-emerald-700 to-emerald-600', // 3 - Just Right (dark emerald)
+  'from-lime-700 to-lime-600',       // 3.5 - (dark lime)
+  'from-yellow-700 to-yellow-600',   // 4 - Hard (dark yellow)
+  'from-amber-700 to-amber-600',     // 4.5 - (dark amber)
+  'from-red-700 to-red-600'          // 5 - Too Hard (dark red)
 ];
 
 function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   const [feedbackData, setFeedbackData] = useState<FeedbackData>({
-    understanding: [0, 0, 0, 0, 0],
+    understanding: [0, 0, 0, 0, 0, 0, 0, 0, 0],
     totalResponses: 0,
     average: 0
   });
@@ -35,7 +39,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   useEffect(() => {
     if (savedState) {
       setFeedbackData(savedState.feedbackData || {
-        understanding: [0, 0, 0, 0, 0],
+        understanding: [0, 0, 0, 0, 0, 0, 0, 0, 0],
         totalResponses: 0,
         average: 0
       });
@@ -44,18 +48,20 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
     }
   }, [savedState]);
 
+  const handleStateChange = useCallback((state: any) => {
+    onStateChange?.({
+      ...state,
+      feedbackData,
+      isActive,
+      showResults
+    });
+  }, [onStateChange, feedbackData, isActive, showResults]);
+
   return (
     <NetworkedWidgetWrapper
       widgetId={widgetId}
       savedState={savedState}
-      onStateChange={(state) => {
-        onStateChange?.({
-          ...state,
-          feedbackData,
-          isActive,
-          showResults
-        });
-      }}
+      onStateChange={handleStateChange}
       roomType="rtfeedback"
       title="RT Feedback"
       description="Get real-time feedback on lesson difficulty"
@@ -66,27 +72,35 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
       }}
       onRoomClosed={() => {
         setFeedbackData({
-          understanding: [0, 0, 0, 0, 0],
+          understanding: [0, 0, 0, 0, 0, 0, 0, 0, 0],
           totalResponses: 0,
           average: 0
         });
         setIsActive(false);
       }}
-      headerChildren={
-        <button
-          onClick={() => setIsActive(!isActive)}
-          className={`p-1.5 rounded transition-colors duration-200 ${
-            isActive 
-              ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-              : 'bg-sage-500 hover:bg-sage-600 text-white'
-          }`}
-          title={isActive ? "Pause feedback" : "Resume feedback"}
-        >
-          {isActive ? <FaPause /> : <FaPlay />}
-        </button>
-      }
+      headerChildren={null}
     >
       {({ session, isRoomActive }) => {
+        // Join the widget-specific room
+        useEffect(() => {
+          if (!session.socket || !session.sessionCode || !isRoomActive) return;
+          
+          // Join the room for this specific widget instance
+          session.socket.emit('session:joinRoom', { 
+            sessionCode: session.sessionCode,
+            roomType: 'rtfeedback',
+            widgetId 
+          });
+          
+          return () => {
+            session.socket?.emit('session:leaveRoom', { 
+              sessionCode: session.sessionCode,
+              roomType: 'rtfeedback',
+              widgetId 
+            });
+          };
+        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
+
         // Setup socket listeners
         useEffect(() => {
           if (!session.socket) return;
@@ -95,22 +109,16 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
             setFeedbackData(data);
           };
 
-          const handleFeedbackStarted = () => {
-            setIsActive(true);
+          const handleStateChanged = (data: { isActive: boolean }) => {
+            setIsActive(data.isActive);
           };
 
-          const handleFeedbackStopped = () => {
-            setIsActive(false);
-          };
-
-          session.socket.on('rtfeedback:updated', handleFeedbackUpdate);
-          session.socket.on('rtfeedback:started', handleFeedbackStarted);
-          session.socket.on('rtfeedback:stopped', handleFeedbackStopped);
+          session.socket.on('rtfeedback:update', handleFeedbackUpdate);
+          session.socket.on('rtfeedback:stateChanged', handleStateChanged);
 
           return () => {
-            session.socket?.off('rtfeedback:updated', handleFeedbackUpdate);
-            session.socket?.off('rtfeedback:started', handleFeedbackStarted);
-            session.socket?.off('rtfeedback:stopped', handleFeedbackStopped);
+            session.socket?.off('rtfeedback:update', handleFeedbackUpdate);
+            session.socket?.off('rtfeedback:stateChanged', handleStateChanged);
           };
         }, [session.socket]);
 
@@ -118,10 +126,11 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         useEffect(() => {
           if (session.socket && isRoomActive && isActive) {
             session.socket.emit('session:rtfeedback:start', {
-              sessionCode: session.sessionCode
+              sessionCode: session.sessionCode,
+              widgetId
             });
           }
-        }, [session.socket, session.sessionCode, isRoomActive]);
+        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
 
         // Handle active state changes
         useEffect(() => {
@@ -129,76 +138,80 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
           
           const event = isActive ? 'session:rtfeedback:start' : 'session:rtfeedback:stop';
           session.socket.emit(event, {
-            sessionCode: session.sessionCode
+            sessionCode: session.sessionCode,
+            widgetId
           });
-        }, [isActive, session.socket, session.sessionCode, isRoomActive]);
+        }, [isActive, session.socket, session.sessionCode, isRoomActive, widgetId]);
 
         const handleReset = () => {
           if (session.socket && isRoomActive) {
             session.socket.emit('session:rtfeedback:reset', {
-              sessionCode: session.sessionCode
+              sessionCode: session.sessionCode,
+              widgetId
             });
           }
         };
 
         return (
           <>
-            <div className="flex-1 flex flex-col mt-2">
-              {/* Average display */}
-              <div className="text-center mb-2">
-                <span className="text-3xl font-bold text-warm-gray-700 dark:text-warm-gray-300">
-                  {feedbackData.average.toFixed(1)}
-                </span>
-                <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400 ml-2">
-                  avg
-                </span>
-              </div>
+            {/* Header controls */}
+            <div className="absolute top-4 right-4 z-10">
+              <button
+                onClick={() => setIsActive(!isActive)}
+                className={`p-1.5 rounded transition-colors duration-200 ${
+                  isActive 
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white' 
+                    : 'bg-sage-500 hover:bg-sage-600 text-white'
+                }`}
+                title={isActive ? "Pause feedback" : "Resume feedback"}
+              >
+                {isActive ? <FaPause /> : <FaPlay />}
+              </button>
+            </div>
 
-              {/* Chart */}
-              <div className="flex-1 flex flex-col">
-                {showResults ? (
-                  <>
-                    <div className="flex justify-between items-center mb-1">
-                      <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                        {feedbackData.totalResponses} responses
-                      </div>
-                    </div>
-
-                    <div className="flex-1 flex items-end justify-around gap-1 pb-1">
-                      {feedbackData.understanding.map((count, index) => {
-                        const maxCount = Math.max(...feedbackData.understanding, 1);
-                        const percentage = (count / maxCount) * 100 || 0;
-                        return (
-                          <div key={index} className="flex-1 flex flex-col items-center">
-                            <div className="relative w-full h-32 flex items-end">
-                              <div 
-                                className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
-                                style={{ height: `${percentage}%`, minHeight: '1px' }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {/* Descriptive labels */}
-                    <div className="flex justify-between px-4 text-xs text-warm-gray-500">
-                      <span>Too Easy</span>
-                      <span>Easy</span>
-                      <span>Just Right</span>
-                      <span>Hard</span>
-                      <span>Too Hard</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                      <p className="text-warm-gray-600 dark:text-warm-gray-400">
-                        Results hidden
-                      </p>
+            <div className="flex-1 flex flex-col">
+              {showResults ? (
+                <>
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                      {feedbackData.totalResponses} responses
                     </div>
                   </div>
-                )}
-              </div>
+
+                  <div className="flex-1 flex items-end justify-around gap-1 pb-1">
+                    {feedbackData.understanding.map((count, index) => {
+                      const maxCount = Math.max(...feedbackData.understanding, 1);
+                      const percentage = (count / maxCount) * 100 || 0;
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div className="relative w-full h-32 flex items-end">
+                            <div 
+                              className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
+                              style={{ height: `${percentage}%`, minHeight: '1px' }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Descriptive labels */}
+                  <div className="flex justify-between px-4 text-xs text-warm-gray-500">
+                    <span>Too Easy</span>
+                    <span>Easy</span>
+                    <span>Just Right</span>
+                    <span>Hard</span>
+                    <span>Too Hard</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-warm-gray-600 dark:text-warm-gray-400">
+                      Results hidden
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between gap-2 mt-1">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
+import { FaMinus, FaPlus } from 'react-icons/fa6';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import DataShareActivity from './components/DataShareActivity';
@@ -16,12 +17,14 @@ interface JoinedRoom {
   socket: Socket;
   joinedAt: number;
   initialData?: any; // Store initial poll/activity data
+  widgetId?: string; // Widget instance ID for multiple instances
 }
 
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
   const [leavingRooms, setLeavingRooms] = useState<Set<string>>(new Set());
   const [enteringRooms, setEnteringRooms] = useState<Set<string>>(new Set());
+  const [minimizedRooms, setMinimizedRooms] = useState<Set<string>>(new Set());
   const [studentName, setStudentName] = useState(() => {
     // Try to get saved name from localStorage
     return localStorage.getItem('studentName') || '';
@@ -182,17 +185,18 @@ const App: React.FC = () => {
         
         if (joinData.success && joinData.activeRooms) {
           // Join all active rooms in the session
-          joinData.activeRooms.forEach((roomType: RoomType) => {
-            const roomId = `${code}-${roomType}-${Date.now()}`;
+          joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
+            const roomId = `${code}-${roomData.roomId}-${Date.now()}`;
             
             const newRoom: JoinedRoom = {
               id: roomId,
               code,
-              type: roomType,
+              type: roomData.roomType,
               studentName: name || studentName,
               socket: newSocket,
               joinedAt: Date.now(),
-              initialData: {}
+              initialData: {},
+              widgetId: roomData.widgetId
             };
             
             // Add to beginning of array (newest first)
@@ -221,7 +225,7 @@ const App: React.FC = () => {
       // Handle new rooms being created in the session
       newSocket.on('session:roomCreated', (data) => {
         console.log('New room created in session:', data);
-        const roomId = `${code}-${data.roomType}-${Date.now()}`;
+        const roomId = `${code}-${data.roomId}-${Date.now()}`;
         
         const newRoom: JoinedRoom = {
           id: roomId,
@@ -230,12 +234,14 @@ const App: React.FC = () => {
           studentName: name || studentName,
           socket: newSocket,
           joinedAt: Date.now(),
-          initialData: data.roomData || {}
+          initialData: data.roomData || {},
+          widgetId: data.widgetId
         };
         
         // Add room if not already exists
         setJoinedRooms(prev => {
-          if (prev.some(r => r.code === code && r.type === data.roomType)) {
+          // Check if this specific widget instance already exists
+          if (prev.some(r => r.code === code && r.type === data.roomType && r.widgetId === data.widgetId)) {
             return prev;
           }
           return [newRoom, ...prev];
@@ -256,7 +262,11 @@ const App: React.FC = () => {
         console.log('Room closed in session:', data);
         // Find and remove the room of this type for this session
         setJoinedRooms(prev => {
-          const roomToRemove = prev.find(r => r.code === code && r.type === data.roomType);
+          const roomToRemove = prev.find(r => 
+            r.code === code && 
+            r.type === data.roomType && 
+            r.widgetId === data.widgetId
+          );
           if (roomToRemove) {
             setLeavingRooms(leaving => new Set(leaving).add(roomToRemove.id));
             setTimeout(() => {
@@ -303,14 +313,26 @@ const App: React.FC = () => {
     }, 300); // Match animation duration
   };
 
+  const toggleMinimizeRoom = (roomId: string) => {
+    setMinimizedRooms(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(roomId)) {
+        newSet.delete(roomId);
+      } else {
+        newSet.add(roomId);
+      }
+      return newSet;
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-[#f7f5f2] font-sans">
+    <div className="min-h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 font-sans">
       {/* Sticky header with join form */}
       <div 
         ref={headerRef} 
         className={`
           fixed top-0 left-0 right-0 z-[100] 
-          bg-soft-white rounded-b-lg border border-warm-gray-200 border-t-0
+          bg-soft-white dark:bg-warm-gray-800 rounded-b-lg border border-warm-gray-200 dark:border-warm-gray-700 border-t-0
           transition-all duration-300 ease-in-out
           ${isScrolled 
             ? 'p-3 md:px-6 shadow-md' 
@@ -352,7 +374,7 @@ const App: React.FC = () => {
             {joinedRooms.map((room) => (
               <div 
                 key={room.id} 
-                className={`bg-soft-white rounded-lg overflow-hidden shadow-sm border border-warm-gray-200 transition-all duration-300 transform-gpu ${
+                className={`bg-soft-white dark:bg-warm-gray-800 rounded-lg overflow-hidden shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 transition-all duration-300 transform-gpu ${
                   leavingRooms.has(room.id) 
                     ? 'opacity-0 scale-95 -translate-x-full' 
                     : enteringRooms.has(room.id)
@@ -361,57 +383,63 @@ const App: React.FC = () => {
                 }`} 
                 data-room-type={room.type}
               >
-                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : room.type === 'dataShare' ? 'bg-terracotta-100 border-b-terracotta-200' : room.type === 'rtfeedback' ? 'bg-amber-100 border-b-amber-200' : 'bg-sky-100 border-b-sky-200'}`}>
+                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700 ${room.type === 'poll' ? 'bg-sage-100 dark:bg-sage-900 border-b-sage-200 dark:border-b-sage-700' : room.type === 'dataShare' ? 'bg-terracotta-100 dark:bg-terracotta-900 border-b-terracotta-200 dark:border-b-terracotta-700' : room.type === 'rtfeedback' ? 'bg-amber-100 dark:bg-amber-900 border-b-amber-200 dark:border-b-amber-700' : 'bg-sky-100 dark:bg-sky-900 border-b-sky-200 dark:border-b-sky-700'}`}>
                   <div className="flex gap-3 items-center">
-                    <span className="bg-warm-gray-200 text-warm-gray-700 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
-                    <span className="text-sage-700 text-base md:text-lg font-semibold">
+                    <span className="bg-warm-gray-200 dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-300 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
+                    <span className="text-sage-700 dark:text-sage-300 text-base md:text-lg font-semibold">
                       {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : room.type === 'rtfeedback' ? 'RT Feedback' : 'Questions'}
                     </span>
                   </div>
                   <button 
-                    className="bg-dusty-rose-500 text-white w-6 h-6 rounded text-xs font-bold cursor-pointer transition-colors duration-200 flex items-center justify-center hover:bg-dusty-rose-600"
-                    onClick={() => handleLeaveRoom(room.id)}
-                    aria-label={`Leave activity ${room.code}`}
+                    className="bg-warm-gray-400 text-white w-6 h-6 rounded text-xs cursor-pointer transition-colors duration-200 flex items-center justify-center hover:bg-warm-gray-500"
+                    onClick={() => toggleMinimizeRoom(room.id)}
+                    aria-label={minimizedRooms.has(room.id) ? `Expand activity ${room.code}` : `Minimize activity ${room.code}`}
                   >
-                    ✕
+                    {minimizedRooms.has(room.id) ? <FaPlus className="w-3 h-3" /> : <FaMinus className="w-3 h-3" />}
                   </button>
                 </div>
                 
-                <div className="p-4">
-                  {room.type === 'poll' && (
-                    <PollActivity 
-                      socket={room.socket} 
-                      roomCode={room.code}
-                      initialPollData={room.initialData}
-                      isSession={true}
-                    />
-                  )}
-                  {room.type === 'dataShare' && (
-                    <DataShareActivity 
-                      socket={room.socket} 
-                      roomCode={room.code}
-                      studentName={studentName}
-                      isSession={true}
-                    />
-                  )}
-                  {room.type === 'rtfeedback' && (
-                    <RTFeedbackActivity 
-                      socket={room.socket} 
-                      roomCode={room.code}
-                      studentName={studentName}
-                      initialIsActive={room.initialData?.isActive}
-                      isSession={true}
-                    />
-                  )}
-                  {room.type === 'questions' && (
-                    <QuestionsActivity 
-                      socket={room.socket} 
-                      sessionCode={room.code}
-                      studentId={room.socket.id || ''}
-                      onBack={() => {}}
-                    />
-                  )}
-                </div>
+                {!minimizedRooms.has(room.id) && (
+                  <div className="p-4">
+                    {room.type === 'poll' && (
+                      <PollActivity 
+                        socket={room.socket} 
+                        roomCode={room.code}
+                        initialPollData={room.initialData}
+                        isSession={true}
+                        widgetId={room.widgetId}
+                      />
+                    )}
+                    {room.type === 'dataShare' && (
+                      <DataShareActivity 
+                        socket={room.socket} 
+                        roomCode={room.code}
+                        studentName={studentName}
+                        isSession={true}
+                        widgetId={room.widgetId}
+                      />
+                    )}
+                    {room.type === 'rtfeedback' && (
+                      <RTFeedbackActivity 
+                        socket={room.socket} 
+                        roomCode={room.code}
+                        studentName={studentName}
+                        initialIsActive={room.initialData?.isActive}
+                        isSession={true}
+                        widgetId={room.widgetId}
+                      />
+                    )}
+                    {room.type === 'questions' && (
+                      <QuestionsActivity 
+                        socket={room.socket} 
+                        sessionCode={room.code}
+                        studentId={room.socket.id || ''}
+                        onBack={() => {}}
+                        widgetId={room.widgetId}
+                      />
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -420,7 +448,7 @@ const App: React.FC = () => {
 
         {/* Empty state */}
         {joinedRooms.length === 0 && (
-          <div className="text-center py-12 px-4 mt-4 text-warm-gray-600">
+          <div className="text-center py-12 px-4 mt-4 text-warm-gray-600 dark:text-warm-gray-400">
             <p className="text-base">No active sessions. Enter a session code above to get started!</p>
           </div>
         )}

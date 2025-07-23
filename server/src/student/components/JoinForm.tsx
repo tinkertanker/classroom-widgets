@@ -70,11 +70,11 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
 
   return (
     <div className={`max-w-full relative ${isCompact ? 'join-form-compact' : ''}`}>
-      {/* Dark mode toggle - always visible in top right */}
-      {onToggleDarkMode && (
+      {/* Dark mode toggle - only visible when not in compact mode */}
+      {onToggleDarkMode && !isCompact && (
         <button 
           onClick={onToggleDarkMode}
-          className={`bg-soft-white border border-warm-gray-200 rounded-full w-9 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 shadow-sm flex-shrink-0 text-warm-gray-700 hover:bg-warm-gray-100 hover:scale-105 absolute z-10 top-3 right-0`}
+          className={`bg-soft-white dark:bg-warm-gray-700 border border-warm-gray-200 dark:border-warm-gray-600 rounded-full w-9 h-9 flex items-center justify-center cursor-pointer transition-all duration-200 shadow-sm flex-shrink-0 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:scale-105 absolute z-10 top-3 right-0`}
           aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           title={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
         >
@@ -86,7 +86,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
         <div className="animate-fadeIn">
           <div className="flex justify-between items-start mb-6">
             <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 m-0 text-center pr-12">Join Classroom Session</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 dark:text-warm-gray-300 m-0 text-center pr-12">Join Classroom Session</h1>
             </div>
           </div>
         </div>
@@ -94,12 +94,13 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
       
       <form onSubmit={handleSubmit} className={`w-full ${isCompact ? 'pr-12' : ''}`}>
         <div className={`flex gap-4 ${isCompact ? 'items-center flex-col sm:flex-row' : 'flex-col sm:flex-row sm:items-end sm:justify-center'}`}>
-          <div className={`flex flex-col ${isCompact ? 'hidden sm:flex sm:flex-[0_0_180px] sm:order-1' : 'sm:flex-[0_0_180px] sm:order-1'}`}>
-            <label htmlFor="name" className={`text-sm font-semibold text-warm-gray-700 mb-2 ${isCompact ? 'hidden' : ''}`}>Your Name <span className="font-normal text-warm-gray-600 text-xs">(optional)</span></label>
+          {/* Name field - visible in compact mode on mobile, always visible on desktop */}
+          <div className={`flex flex-col ${isCompact ? 'flex-1 sm:flex-[0_0_180px] sm:order-1' : 'sm:flex-[0_0_180px] sm:order-1'}`}>
+            <label htmlFor="name" className={`text-sm font-semibold text-warm-gray-700 dark:text-warm-gray-300 mb-2 ${isCompact ? 'hidden' : ''}`}>Your Name <span className="font-normal text-warm-gray-600 dark:text-warm-gray-400 text-xs">(optional)</span></label>
             <input
               type="text"
               id="name"
-              className={`border border-warm-gray-300 rounded-md text-base font-medium bg-white transition-all duration-200 outline-none text-warm-gray-800 focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 sm:py-2.5 sm:px-4' : 'py-2.5 px-4'}`}
+              className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md text-base font-medium bg-white dark:bg-warm-gray-700 transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 sm:py-2.5 sm:px-4' : 'py-2.5 px-4'}`}
               placeholder="Enter your name"
               value={name}
               onChange={handleNameChange}
@@ -108,12 +109,13 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
             />
           </div>
           
-          <div className={`flex flex-col ${isCompact ? 'flex-1 sm:flex-[0_0_160px] sm:order-2 sm:mx-4' : 'sm:flex-[0_0_160px] sm:order-2 sm:mx-4'}`}>
-            <label htmlFor="code" className={`text-sm font-semibold text-warm-gray-700 mb-2 ${isCompact ? 'hidden' : ''}`}>Session Code</label>
+          {/* Session code field - hidden in compact mode on mobile, visible on desktop */}
+          <div className={`flex flex-col ${isCompact ? 'hidden sm:flex sm:flex-[0_0_160px] sm:order-2 sm:mx-4' : 'sm:flex-[0_0_160px] sm:order-2 sm:mx-4'}`}>
+            <label htmlFor="code" className={`text-sm font-semibold text-warm-gray-700 dark:text-warm-gray-300 mb-2 ${isCompact ? 'hidden' : ''}`}>Session Code</label>
             <input
               type="text"
               id="code"
-              className={`border border-warm-gray-300 rounded-md font-bold bg-[#fafafa] transition-all duration-200 outline-none text-warm-gray-800 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
+              className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold bg-[#fafafa] dark:bg-warm-gray-700 transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
               maxLength={5}
               pattern="[23456789ACDEFHJKMNPQRTUWXY]{5}"
               placeholder="123AB"
@@ -125,9 +127,10 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
             />
           </div>
           
+          {/* Join button - hidden in compact mode on mobile since session code is hidden */}
           <button 
             type="submit" 
-            className={`py-2.5 px-4 bg-sage-500 text-white border-0 rounded-md text-sm font-semibold cursor-pointer transition-colors duration-200 outline-none h-auto flex items-center justify-center hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed ${isCompact ? 'w-full sm:w-auto py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_120px] sm:order-3' : 'sm:flex-[0_0_120px] sm:order-3'}`}
+            className={`py-2.5 px-4 bg-sage-500 text-white border-0 rounded-md text-sm font-semibold cursor-pointer transition-colors duration-200 outline-none h-auto flex items-center justify-center hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed ${isCompact ? 'hidden sm:flex py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_120px] sm:order-3' : 'sm:flex-[0_0_120px] sm:order-3'}`}
             disabled={isLoading || !code}
           >
             {isLoading ? 'Joining...' : 'Join Session'}

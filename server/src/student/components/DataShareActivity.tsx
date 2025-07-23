@@ -6,13 +6,15 @@ interface DataShareActivityProps {
   roomCode: string;
   studentName: string;
   isSession?: boolean;
+  widgetId?: string;
 }
 
 const DataShareActivity: React.FC<DataShareActivityProps> = ({ 
   socket, 
   roomCode, 
   studentName,
-  isSession = false
+  isSession = false,
+  widgetId
 }) => {
   const [shareLink, setShareLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,7 +36,8 @@ const DataShareActivity: React.FC<DataShareActivityProps> = ({
       socket.emit('session:dataShare:submit', {
         sessionCode: roomCode,
         studentName: studentName || 'Anonymous',
-        link: shareLink.trim()
+        link: shareLink.trim(),
+        widgetId
       });
     } else {
       socket.emit('dataShare:submit', {

@@ -344,7 +344,10 @@ class Session {
     this.updateActivity();
   }
 
-  createRoom(roomType) {
+  createRoom(roomType, widgetId) {
+    // Create room identifier
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    
     let room;
     switch (roomType) {
       case 'poll':
@@ -364,17 +367,20 @@ class Session {
     }
     
     room.hostSocketId = this.hostSocketId;
-    this.activeRooms.set(roomType, room);
+    room.widgetId = widgetId;
+    this.activeRooms.set(roomId, room);
     this.updateActivity();
     return room;
   }
 
-  getRoom(roomType) {
-    return this.activeRooms.get(roomType);
+  getRoom(roomType, widgetId) {
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    return this.activeRooms.get(roomId);
   }
 
-  closeRoom(roomType) {
-    this.activeRooms.delete(roomType);
+  closeRoom(roomType, widgetId) {
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    this.activeRooms.delete(roomId);
     this.updateActivity();
   }
 
@@ -551,11 +557,14 @@ io.on('connection', (socket) => {
     
     // Join all active room types and send initial data
     const activeRooms = session.getActiveRoomTypes();
-    activeRooms.forEach(roomType => {
-      socket.join(`${code}:${roomType}`);
+    activeRooms.forEach(roomId => {
+      socket.join(`${code}:${roomId}`);
+      
+      // Parse roomId to get roomType and widgetId
+      const [roomType, widgetId] = roomId.includes(':') ? roomId.split(':') : [roomId, undefined];
       
       // Send initial room data
-      const room = session.getRoom(roomType);
+      const room = session.getRoom(roomType, widgetId);
       if (room) {
         if (roomType === 'poll' && room instanceof PollRoom) {
           // Send harmonized events for initial poll state
@@ -566,14 +575,20 @@ io.on('connection', (socket) => {
           socket.emit('poll:stateChanged', { isActive: room.pollData.isActive });
         } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
           socket.emit('rtfeedback:update', room.getAggregatedFeedback());
-          socket.emit('rtFeedback:stateChanged', { isActive: room.isActive });
+          socket.emit('rtfeedback:stateChanged', { isActive: room.isActive });
         }
       }
     });
     
+    // Send active rooms with both roomType and widgetId
+    const activeRoomsData = activeRooms.map(roomId => {
+      const [roomType, widgetId] = roomId.includes(':') ? roomId.split(':') : [roomId, undefined];
+      return { roomType, widgetId, roomId };
+    });
+    
     socket.emit('session:joined', {
       success: true,
-      activeRooms,
+      activeRooms: activeRoomsData,
       participantId: socket.id
     });
     
@@ -590,7 +605,7 @@ io.on('connection', (socket) => {
   
   // Host creates a room within session
   socket.on('session:createRoom', (data, callback) => {
-    const { sessionCode, roomType } = data;
+    const { sessionCode, roomType, widgetId } = data;
     const session = sessions.get(sessionCode || currentSessionCode);
     
     if (!session || session.hostSocketId !== socket.id) {
@@ -598,17 +613,20 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Create room identifier (use widgetId if provided, otherwise just roomType)
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    
     // Check if room already exists
-    if (session.getRoom(roomType)) {
+    if (session.getRoom(roomType, widgetId)) {
       // Make sure host is in the room namespace
-      socket.join(`${session.code}:${roomType}`);
+      socket.join(`${session.code}:${roomId}`);
       callback({ success: true, isExisting: true });
       return;
     }
     
-    // Create new room
-    const room = session.createRoom(roomType);
-    socket.join(`${session.code}:${roomType}`);
+    // Create new room (pass base roomType to createRoom, not the composite roomId)
+    const room = session.createRoom(roomType, widgetId);
+    socket.join(`${session.code}:${roomId}`);
     
     // Prepare room data based on type
     let roomData = {};
@@ -621,29 +639,38 @@ io.on('connection', (socket) => {
     // Notify all session participants about new room
     io.to(`session:${session.code}`).emit('session:roomCreated', {
       roomType,
+      widgetId,
+      roomId,
       roomData
     });
     
     callback({ success: true, isExisting: false });
-    console.log(`Created ${roomType} room in session ${session.code}`);
+    console.log(`Created ${roomType} room (${roomId}) in session ${session.code}`);
   });
   
   // Host closes a room within session
   socket.on('session:closeRoom', (data) => {
-    const { sessionCode, roomType } = data;
+    const { sessionCode, roomType, widgetId } = data;
     const session = sessions.get(sessionCode || currentSessionCode);
     
     if (!session || session.hostSocketId !== socket.id) {
       return;
     }
     
-    session.closeRoom(roomType);
+    // Create room identifier
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    
+    session.closeRoom(roomType, widgetId);
     
     // Notify all participants
-    io.to(`session:${session.code}`).emit('session:roomClosed', { roomType });
+    io.to(`session:${session.code}`).emit('session:roomClosed', { 
+      roomType, 
+      widgetId,
+      roomId 
+    });
     
     // Clear the room namespace
-    const roomNamespace = `${session.code}:${roomType}`;
+    const roomNamespace = `${session.code}:${roomId}`;
     const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
     if (socketsInRoom) {
       socketsInRoom.forEach(socketId => {
@@ -655,6 +682,34 @@ io.on('connection', (socket) => {
     console.log(`Closed ${roomType} room in session ${session.code}`);
   });
   
+  // Join a specific room (for widget instances)
+  socket.on('session:joinRoom', (data) => {
+    const { sessionCode, roomType, widgetId } = data;
+    const session = sessions.get(sessionCode || currentSessionCode);
+    
+    if (!session) return;
+    
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    const roomNamespace = `${session.code}:${roomId}`;
+    
+    socket.join(roomNamespace);
+    console.log(`Socket ${socket.id} joined room ${roomNamespace}`);
+  });
+  
+  // Leave a specific room (for widget instances)
+  socket.on('session:leaveRoom', (data) => {
+    const { sessionCode, roomType, widgetId } = data;
+    const session = sessions.get(sessionCode || currentSessionCode);
+    
+    if (!session) return;
+    
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    const roomNamespace = `${session.code}:${roomId}`;
+    
+    socket.leave(roomNamespace);
+    console.log(`Socket ${socket.id} left room ${roomNamespace}`);
+  });
+  
   // SESSION-BASED ROOM HANDLERS
   
   // Poll handlers for sessions
@@ -662,7 +717,10 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) return;
     
-    const room = session.getRoom('poll');
+    // Create room identifier
+    const roomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
+    
+    const room = session.getRoom('poll', data.widgetId);
     if (!room || !(room instanceof PollRoom)) return;
     
     // Check if poll is being restarted (was inactive, now active)
@@ -690,14 +748,14 @@ io.on('connection', (socket) => {
     room.setPollData(data.pollData);
     
     // Emit harmonized events instead of legacy poll:updated
-    io.to(`${session.code}:poll`).emit('poll:dataUpdate', {
+    io.to(`${session.code}:${roomId}`).emit('poll:dataUpdate', {
       pollData: room.pollData,
       results: room.getResults()
     });
     
     // If state changed, emit state change event
     if (wasInactive !== nowActive) {
-      io.to(`${session.code}:poll`).emit('poll:stateChanged', { 
+      io.to(`${session.code}:${roomId}`).emit('poll:stateChanged', { 
         isActive: data.pollData.isActive 
       });
     }
@@ -711,7 +769,7 @@ io.on('connection', (socket) => {
     const session = sessions.get(code);
     
     if (session) {
-      const room = session.getRoom('poll');
+      const room = session.getRoom('poll', data.widgetId);
       if (room && room instanceof PollRoom) {
         socket.emit('poll:dataUpdate', {
           pollData: room.pollData,
@@ -728,7 +786,7 @@ io.on('connection', (socket) => {
     const session = sessions.get(code);
     
     if (session) {
-      const room = session.getRoom('questions');
+      const room = session.getRoom('questions', data.widgetId);
       if (room && room instanceof QuestionsRoom) {
         socket.emit('questions:stateChanged', { isActive: room.isActive });
         socket.emit('questions:list', room.getQuestions());
@@ -742,9 +800,9 @@ io.on('connection', (socket) => {
     const session = sessions.get(code);
     
     if (session) {
-      const room = session.getRoom('rtfeedback');
+      const room = session.getRoom('rtfeedback', data.widgetId);
       if (room && room instanceof RTFeedbackRoom) {
-        socket.emit('rtFeedback:stateChanged', { isActive: room.isActive });
+        socket.emit('rtfeedback:stateChanged', { isActive: room.isActive });
         socket.emit('rtfeedback:update', room.getAggregatedFeedback());
       }
     }
@@ -754,7 +812,7 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) return;
     
-    const room = session.getRoom('poll');
+    const room = session.getRoom('poll', data.widgetId);
     if (!room || !(room instanceof PollRoom)) return;
     
     const participant = session.participants.get(socket.id);
@@ -790,7 +848,8 @@ io.on('connection', (socket) => {
     }
     
     // Notify all participants about vote update
-    io.to(`${session.code}:poll`).emit('poll:voteUpdate', {
+    const pollRoomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
+    io.to(`${session.code}:${pollRoomId}`).emit('poll:voteUpdate', {
       votes: room.getVoteCounts(),
       totalVotes: room.getTotalVotes()
     });
@@ -806,7 +865,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const room = session.getRoom('dataShare');
+    const room = session.getRoom('dataShare', data.widgetId);
     if (!room || !(room instanceof DataShareRoom)) {
       socket.emit('session:dataShare:submitted', { success: false, error: 'Data share room not found' });
       return;
@@ -821,7 +880,8 @@ io.on('connection', (socket) => {
     const submission = room.addSubmission(participant.name || data.studentName, data.link);
     
     // Notify all in the room
-    io.to(`${session.code}:dataShare`).emit('dataShare:newSubmission', submission);
+    const dataShareRoomId = data.widgetId ? `dataShare:${data.widgetId}` : 'dataShare';
+    io.to(`${session.code}:${dataShareRoomId}`).emit('dataShare:newSubmission', submission);
     
     // Send confirmation to submitter
     socket.emit('session:dataShare:submitted', { success: true });
@@ -833,12 +893,13 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('dataShare');
+    const room = session.getRoom('dataShare', data.widgetId);
     if (!room || !(room instanceof DataShareRoom)) return;
     
     const deleted = room.deleteSubmission(data.submissionId);
     if (deleted) {
-      io.to(`${session.code}:dataShare`).emit('dataShare:submissionDeleted', data.submissionId);
+      const dataShareRoomId = data.widgetId ? `dataShare:${data.widgetId}` : 'dataShare';
+      io.to(`${session.code}:${dataShareRoomId}`).emit('dataShare:submissionDeleted', data.submissionId);
     }
     
     session.updateActivity();
@@ -852,7 +913,7 @@ io.on('connection', (socket) => {
       return;
     }
     
-    const room = session.getRoom('rtfeedback');
+    const room = session.getRoom('rtfeedback', data.widgetId);
     if (!room || !(room instanceof RTFeedbackRoom)) {
       console.log('RTFeedback: Room not found or wrong type');
       return;
@@ -885,7 +946,8 @@ io.on('connection', (socket) => {
     console.log('RTFeedback: Aggregated data:', feedbackData);
     
     // Notify all in the room (including host)
-    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', feedbackData);
+    const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:update', feedbackData);
     
     session.updateActivity();
   });
@@ -894,14 +956,15 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('rtfeedback');
+    const room = session.getRoom('rtfeedback', data.widgetId);
     if (!room || !(room instanceof RTFeedbackRoom)) return;
     
     // Clear all feedback data
     room.feedbackData.clear();
     
     // Send updated (empty) feedback to all participants
-    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:update', room.getAggregatedFeedback());
+    const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:update', room.getAggregatedFeedback());
     
     session.updateActivity();
   });
@@ -910,13 +973,14 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('rtfeedback');
+    const room = session.getRoom('rtfeedback', data.widgetId);
     if (!room || !(room instanceof RTFeedbackRoom)) return;
     
     room.isActive = true;
     
     // Notify all participants that feedback is now active
-    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:stateChanged', { isActive: true });
+    const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:stateChanged', { isActive: true });
     
     session.updateActivity();
   });
@@ -925,13 +989,14 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('rtfeedback');
+    const room = session.getRoom('rtfeedback', data.widgetId);
     if (!room || !(room instanceof RTFeedbackRoom)) return;
     
     room.isActive = false;
     
     // Notify all participants that feedback is now inactive
-    io.to(`${session.code}:rtfeedback`).emit('rtfeedback:stateChanged', { isActive: false });
+    const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:stateChanged', { isActive: false });
     
     session.updateActivity();
   });
@@ -941,7 +1006,7 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) return;
     
-    const room = session.getRoom('questions');
+    const room = session.getRoom('questions', data.widgetId);
     if (!room || !(room instanceof QuestionsRoom)) return;
     
     const participant = session.participants.get(socket.id);
@@ -973,12 +1038,13 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('questions');
+    const room = session.getRoom('questions', data.widgetId);
     if (!room || !(room instanceof QuestionsRoom)) return;
     
     if (room.markAnswered(data.questionId)) {
       // Notify students that question was answered
-      io.to(`${session.code}:questions`).emit('questionAnswered', {
+      const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
+      io.to(`${session.code}:${questionsRoomId}`).emit('questionAnswered', {
         roomCode: session.code,
         questionId: data.questionId
       });
@@ -991,12 +1057,13 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('questions');
+    const room = session.getRoom('questions', data.widgetId);
     if (!room || !(room instanceof QuestionsRoom)) return;
     
     if (room.deleteQuestion(data.questionId)) {
       // Notify students that question was deleted
-      io.to(`${session.code}:questions`).emit('questionDeleted', {
+      const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
+      io.to(`${session.code}:${questionsRoomId}`).emit('questionDeleted', {
         roomCode: session.code,
         questionId: data.questionId
       });
@@ -1009,13 +1076,14 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('questions');
+    const room = session.getRoom('questions', data.widgetId);
     if (!room || !(room instanceof QuestionsRoom)) return;
     
     room.clearAllQuestions();
     
     // Notify all participants
-    io.to(`${session.code}:questions`).emit('allQuestionsCleared', {
+    const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
+    io.to(`${session.code}:${questionsRoomId}`).emit('allQuestionsCleared', {
       roomCode: session.code
     });
     
@@ -1026,13 +1094,14 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('questions');
+    const room = session.getRoom('questions', data.widgetId);
     if (!room || !(room instanceof QuestionsRoom)) return;
     
     room.isActive = true;
     
     // Notify all participants
-    io.to(`${session.code}:questions`).emit('questions:stateChanged', { isActive: true });
+    const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
+    io.to(`${session.code}:${questionsRoomId}`).emit('questions:stateChanged', { isActive: true });
     
     session.updateActivity();
   });
@@ -1041,13 +1110,14 @@ io.on('connection', (socket) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session || session.hostSocketId !== socket.id) return;
     
-    const room = session.getRoom('questions');
+    const room = session.getRoom('questions', data.widgetId);
     if (!room || !(room instanceof QuestionsRoom)) return;
     
     room.isActive = false;
     
     // Notify all participants
-    io.to(`${session.code}:questions`).emit('questions:stateChanged', { isActive: false });
+    const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
+    io.to(`${session.code}:${questionsRoomId}`).emit('questions:stateChanged', { isActive: false });
     
     session.updateActivity();
   });
@@ -1223,7 +1293,7 @@ io.on('connection', (socket) => {
       room.updateFeedback(socket.id, value);
       
       if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('rtFeedback:feedbackUpdate', {
+        io.to(room.hostSocketId).emit('rtfeedback:feedbackUpdate', {
           studentId: socket.id,
           value: value
         });
@@ -1293,10 +1363,10 @@ io.on('connection', (socket) => {
             });
           } else if (room instanceof RTFeedbackRoom) {
             room.removeFeedback(socket.id);
-            io.to(room.hostSocketId).emit('rtFeedback:participantLeft', {
+            io.to(room.hostSocketId).emit('rtfeedback:participantLeft', {
               studentId: socket.id
             });
-            io.to(room.hostSocketId).emit('rtFeedback:participantCount', {
+            io.to(room.hostSocketId).emit('rtfeedback:participantCount', {
               count: participantCount
             });
           }

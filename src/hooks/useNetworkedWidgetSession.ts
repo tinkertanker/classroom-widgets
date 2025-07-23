@@ -38,15 +38,15 @@ export function useNetworkedWidgetSession({
   useEffect(() => {
     if (!session.socket) return;
 
-    const handleRoomCreated = (data: { roomType: string }) => {
-      if (data.roomType === roomType) {
+    const handleRoomCreated = (data: { roomType: string; widgetId?: string }) => {
+      if (data.roomType === roomType && data.widgetId === widgetId) {
         setIsRoomActive(true);
         onRoomCreated?.();
       }
     };
 
-    const handleRoomClosed = (data: { roomType: string }) => {
-      if (data.roomType === roomType) {
+    const handleRoomClosed = (data: { roomType: string; widgetId?: string }) => {
+      if (data.roomType === roomType && data.widgetId === widgetId) {
         setIsRoomActive(false);
         onRoomClosed?.();
       }
@@ -59,13 +59,13 @@ export function useNetworkedWidgetSession({
       session.socket?.off('session:roomCreated', handleRoomCreated);
       session.socket?.off('session:roomClosed', handleRoomClosed);
     };
-  }, [session.socket, roomType, onRoomCreated, onRoomClosed]);
+  }, [session.socket, roomType, widgetId, onRoomCreated, onRoomClosed]);
 
   // Handle widget cleanup
   useEffect(() => {
     const handleWidgetCleanup = (event: CustomEvent) => {
       if (event.detail.widgetId === widgetId && isRoomActive) {
-        session.closeRoom(roomType);
+        session.closeRoom(roomType, widgetId);
       }
     };
     
@@ -100,8 +100,8 @@ export function useNetworkedWidgetSession({
       // Ensure we have a session
       await session.ensureSession();
       
-      // Create the room
-      await session.createRoom(roomType);
+      // Create the room with widgetId
+      await session.createRoom(roomType, widgetId);
       
       // Room active state will be set by the roomCreated event
       
@@ -117,10 +117,10 @@ export function useNetworkedWidgetSession({
   // Handle stopping the widget
   const handleStop = useCallback(() => {
     if (session.socket && session.sessionCode) {
-      // Close the room
-      session.closeRoom(roomType);
+      // Close the room with widgetId
+      session.closeRoom(roomType, widgetId);
     }
-  }, [session, roomType]);
+  }, [session, roomType, widgetId]);
 
   return {
     isRoomActive,

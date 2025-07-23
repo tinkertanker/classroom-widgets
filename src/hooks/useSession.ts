@@ -145,7 +145,7 @@ export function useSession({
   }, [socket, isConnected, onSessionCreated]);
 
   // Create a room within the session
-  const createRoom = useCallback((roomType: RoomType): Promise<boolean> => {
+  const createRoom = useCallback((roomType: RoomType, widgetId?: string): Promise<boolean> => {
     return new Promise((resolve, reject) => {
       const currentSessionCode = sessionCodeRef.current || sessionCode;
       
@@ -156,7 +156,8 @@ export function useSession({
 
       socket.emit('session:createRoom', { 
         sessionCode: currentSessionCode, 
-        roomType 
+        roomType,
+        widgetId 
       }, (response: any) => {
         if (response.success) {
           if (!response.isExisting) {
@@ -171,12 +172,13 @@ export function useSession({
   }, [socket, isConnected, sessionCode]);
 
   // Close a room within the session
-  const closeRoom = useCallback((roomType: RoomType) => {
+  const closeRoom = useCallback((roomType: RoomType, widgetId?: string) => {
     if (!socket || !isConnected || !sessionCode) return;
 
     socket.emit('session:closeRoom', { 
       sessionCode: sessionCodeRef.current || sessionCode, 
-      roomType 
+      roomType,
+      widgetId 
     });
     
     setActiveRooms(prev => prev.filter(rt => rt !== roomType));

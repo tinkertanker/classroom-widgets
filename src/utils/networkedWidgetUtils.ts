@@ -3,24 +3,29 @@ import { RoomType } from '../hooks/useSession';
 /**
  * Generate standard event names for a networked widget
  */
-export const createWidgetEventNames = (roomType: RoomType) => ({
-  // Host events (teacher -> server)
-  start: `session:${roomType}:start`,
-  stop: `session:${roomType}:stop`,
-  update: `session:${roomType}:update`,
-  reset: `session:${roomType}:reset`,
-  delete: `session:${roomType}:delete`,
+export const createWidgetEventNames = (roomType: RoomType, widgetId?: string) => {
+  // Create room identifier
+  const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
   
-  // Broadcast events (server -> all participants)
-  started: `${roomType}:started`,
-  stopped: `${roomType}:stopped`,
-  updated: `${roomType}:updated`,
-  stateChanged: `${roomType}:stateChanged`,
-  
-  // Student events
-  submit: `session:${roomType}:submit`,
-  requestState: `${roomType}:requestState`,
-});
+  return {
+    // Host events (teacher -> server)
+    start: `session:${roomId}:start`,
+    stop: `session:${roomId}:stop`,
+    update: `session:${roomId}:update`,
+    reset: `session:${roomId}:reset`,
+    delete: `session:${roomId}:delete`,
+    
+    // Broadcast events (server -> all participants)
+    started: `${roomId}:started`,
+    stopped: `${roomId}:stopped`,
+    updated: `${roomId}:updated`,
+    stateChanged: `${roomId}:stateChanged`,
+    
+    // Student events
+    submit: `session:${roomId}:submit`,
+    requestState: `${roomId}:requestState`,
+  };
+};
 
 /**
  * Standard response handler for socket emissions

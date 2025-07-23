@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useModal } from '../../contexts/ModalContext';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import PollSettings from './PollSettings';
@@ -69,17 +69,19 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     });
   };
 
+  const handleStateChange = useCallback((state: any) => {
+    onStateChange?.({
+      ...state,
+      pollData,
+      results
+    });
+  }, [onStateChange, pollData, results]);
+
   return (
     <NetworkedWidgetWrapper
       widgetId={widgetId}
       savedState={savedState}
-      onStateChange={(state) => {
-        onStateChange?.({
-          ...state,
-          pollData,
-          results
-        });
-      }}
+      onStateChange={handleStateChange}
       roomType="poll"
       title="Poll"
       description="Create interactive polls for your students"
@@ -98,12 +100,47 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       }
     >
       {({ session, isRoomActive }) => {
+        // Join the widget-specific room
+        useEffect(() => {
+          if (!session.socket || !session.sessionCode || !isRoomActive) return;
+          
+          const roomId = widgetId ? `poll:${widgetId}` : 'poll';
+          
+          // Join the room for this specific widget instance
+          session.socket.emit('session:joinRoom', { 
+            sessionCode: session.sessionCode,
+            roomType: 'poll',
+            widgetId 
+          });
+          
+          return () => {
+            session.socket?.emit('session:leaveRoom', { 
+              sessionCode: session.sessionCode,
+              roomType: 'poll',
+              widgetId 
+            });
+          };
+        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
+
         // Setup socket listeners
         useEffect(() => {
           if (!session.socket) return;
 
           const handlePollUpdate = (data: any) => {
             setPollData(data);
+          };
+
+          const handlePollDataUpdate = (data: any) => {
+            if (data.pollData) {
+              setPollData(data.pollData);
+            }
+            if (data.results) {
+              setResults({
+                votes: data.results.votes || {},
+                totalVotes: data.results.totalVotes || 0,
+                participantCount: data.results.participantCount || 0
+              });
+            }
           };
 
           const handleVoteUpdate = (data: any) => {
@@ -114,11 +151,14 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
             });
           };
 
+          // Listen to both legacy and new event names
           session.socket.on('poll:updated', handlePollUpdate);
+          session.socket.on('poll:dataUpdate', handlePollDataUpdate);
           session.socket.on('poll:voteUpdate', handleVoteUpdate);
 
           return () => {
             session.socket?.off('poll:updated', handlePollUpdate);
+            session.socket?.off('poll:dataUpdate', handlePollDataUpdate);
             session.socket?.off('poll:voteUpdate', handleVoteUpdate);
           };
         }, [session.socket, session.participantCount]);
@@ -130,6 +170,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           if (session.socket && isRoomActive) {
             session.socket.emit('session:poll:update', {
               sessionCode: session.sessionCode,
+              widgetId,
               pollData: newPollData
             });
           }

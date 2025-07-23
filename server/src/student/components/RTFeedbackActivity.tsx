@@ -7,9 +7,10 @@ interface RTFeedbackActivityProps {
   studentName: string;
   initialIsActive?: boolean;
   isSession?: boolean;
+  widgetId?: string;
 }
 
-const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, studentName, initialIsActive, isSession = false }) => {
+const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, studentName, initialIsActive, isSession = false, widgetId }) => {
   const [currentValue, setCurrentValue] = useState(3); // Default to middle (Just Right)
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
@@ -24,6 +25,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       if (isSession) {
         socket.emit('session:rtfeedback:update', {
           sessionCode: roomCode,
+          widgetId,
           value: currentValue
         });
       } else {
@@ -62,20 +64,20 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     };
 
     socket.on('room:closed', handleRoomClosed);
-    socket.on('rtFeedback:stateChanged', handleStateChanged);
+    socket.on('rtfeedback:stateChanged', handleStateChanged);
     
     // Request current state if we don't have initial state
     let timer: NodeJS.Timeout | undefined;
     if (initialIsActive === undefined) {
       timer = setTimeout(() => {
-        socket.emit('rtfeedback:requestState', { code: roomCode });
+        socket.emit('rtfeedback:requestState', { code: roomCode, widgetId });
       }, 100);
     }
 
     return () => {
       if (timer) clearTimeout(timer);
       socket.off('room:closed', handleRoomClosed);
-      socket.off('rtFeedback:stateChanged', handleStateChanged);
+      socket.off('rtfeedback:stateChanged', handleStateChanged);
     };
   }, [socket, roomCode, isActive]);
 

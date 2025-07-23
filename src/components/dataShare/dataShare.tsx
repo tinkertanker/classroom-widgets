@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaLink, FaTrash } from 'react-icons/fa6';
 
@@ -25,16 +25,18 @@ function DataShare({ widgetId, savedState, onStateChange }: DataShareProps) {
     }
   }, [savedState]);
 
+  const handleStateChange = useCallback((state: any) => {
+    onStateChange?.({
+      ...state,
+      submissions
+    });
+  }, [onStateChange, submissions]);
+
   return (
     <NetworkedWidgetWrapper
       widgetId={widgetId}
       savedState={savedState}
-      onStateChange={(state) => {
-        onStateChange?.({
-          ...state,
-          submissions
-        });
-      }}
+      onStateChange={handleStateChange}
       roomType="dataShare"
       title="Link Sharing"
       description="Collect links and resources from students"
@@ -44,6 +46,26 @@ function DataShare({ widgetId, savedState, onStateChange }: DataShareProps) {
       }}
     >
       {({ session, isRoomActive }) => {
+        // Join the widget-specific room
+        useEffect(() => {
+          if (!session.socket || !session.sessionCode || !isRoomActive) return;
+          
+          // Join the room for this specific widget instance
+          session.socket.emit('session:joinRoom', { 
+            sessionCode: session.sessionCode,
+            roomType: 'dataShare',
+            widgetId 
+          });
+          
+          return () => {
+            session.socket?.emit('session:leaveRoom', { 
+              sessionCode: session.sessionCode,
+              roomType: 'dataShare',
+              widgetId 
+            });
+          };
+        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
+
         // Setup socket listeners
         useEffect(() => {
           if (!session.socket) return;
@@ -69,6 +91,7 @@ function DataShare({ widgetId, savedState, onStateChange }: DataShareProps) {
           if (session.socket && isRoomActive) {
             session.socket.emit('session:dataShare:delete', {
               sessionCode: session.sessionCode,
+              widgetId,
               submissionId
             });
           }

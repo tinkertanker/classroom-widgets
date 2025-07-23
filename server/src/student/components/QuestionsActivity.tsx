@@ -13,13 +13,15 @@ interface QuestionsActivityProps {
   sessionCode: string;
   studentId: string;
   onBack: () => void;
+  widgetId?: string;
 }
 
 const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   socket,
   sessionCode,
   studentId,
-  onBack
+  onBack,
+  widgetId
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionText, setQuestionText] = useState('');
@@ -31,7 +33,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   useEffect(() => {
 
     // Request current state when joining
-    socket.emit('questions:requestState', { code: sessionCode });
+    socket.emit('questions:requestState', { code: sessionCode, widgetId });
 
     // Handle state changes
     socket.on('questions:stateChanged', (data: { isActive: boolean }) => {
@@ -105,7 +107,8 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
 
     socket.emit('session:questions:submit', {
       sessionCode,
-      text: questionText.trim()
+      text: questionText.trim(),
+      widgetId
     });
   };
 
