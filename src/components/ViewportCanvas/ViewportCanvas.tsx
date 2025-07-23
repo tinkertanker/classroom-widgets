@@ -110,6 +110,40 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
 
   // Handle mouse wheel for zoom and trackpad pan
   const handleWheel = useCallback((e: WheelEvent) => {
+    // Check if the event target or any of its parents is scrollable
+    const isScrollableElement = (element: HTMLElement | null): boolean => {
+      while (element) {
+        const style = window.getComputedStyle(element);
+        const isScrollable = (
+          (element.scrollHeight > element.clientHeight && (style.overflowY === 'auto' || style.overflowY === 'scroll')) ||
+          (element.scrollWidth > element.clientWidth && (style.overflowX === 'auto' || style.overflowX === 'scroll'))
+        );
+        
+        if (isScrollable) {
+          // Additional check: only consider it scrollable if it actually has scroll content
+          const hasVerticalScroll = element.scrollHeight > element.clientHeight;
+          const hasHorizontalScroll = element.scrollWidth > element.clientWidth;
+          if ((hasVerticalScroll && Math.abs(e.deltaY) > Math.abs(e.deltaX)) ||
+              (hasHorizontalScroll && Math.abs(e.deltaX) > Math.abs(e.deltaY))) {
+            return true;
+          }
+        }
+        
+        // Stop at widget boundaries to prevent scrolling from affecting the canvas
+        if (element.classList.contains('widget-item')) {
+          break;
+        }
+        
+        element = element.parentElement;
+      }
+      return false;
+    };
+    
+    // If this is a two-finger scroll on a scrollable element, let it scroll naturally
+    if (!e.ctrlKey && isScrollableElement(e.target as HTMLElement)) {
+      return; // Don't prevent default, let the element scroll
+    }
+    
     e.preventDefault();
     
     // Check if this is a pinch zoom gesture (ctrl key is pressed on trackpad pinch)
