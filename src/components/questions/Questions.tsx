@@ -122,12 +122,8 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
 
   const handleStart = async () => {
     try {
-      let sessionCode = session.sessionCode;
-      
-      // Create session if needed
-      if (!sessionCode) {
-        sessionCode = await session.createSession();
-      }
+      // Ensure we have a session
+      await session.ensureSession();
       
       // Create questions room
       await session.createRoom('questions');

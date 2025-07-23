@@ -80,12 +80,8 @@ function DataShare({ widgetId }: DataShareProps) {
 
   const handleStart = async () => {
     try {
-      let sessionCode = session.sessionCode;
-      
-      // Create session if needed
-      if (!sessionCode) {
-        sessionCode = await session.createSession();
-      }
+      // Ensure we have a session
+      await session.ensureSession();
       
       // Create data share room
       await session.createRoom('dataShare');

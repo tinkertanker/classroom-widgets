@@ -30,6 +30,7 @@ interface UseSessionReturn {
   createRoom: (roomType: RoomType) => Promise<boolean>;
   closeRoom: (roomType: RoomType) => void;
   cleanup: () => void;
+  ensureSession: () => Promise<string>;
 }
 
 const SERVER_URL = process.env.NODE_ENV === 'production' 
@@ -198,6 +199,17 @@ export function useSession({
     setParticipantCount(0);
   }, [socket, sessionCode, activeRooms]);
 
+  // Ensure a session exists - create one if needed
+  const ensureSession = useCallback(async (): Promise<string> => {
+    // If we already have a session, return it
+    if (sessionCode) {
+      return sessionCode;
+    }
+    
+    // Otherwise create a new session
+    return createSession();
+  }, [sessionCode, createSession]);
+
   return {
     socket,
     sessionCode,
@@ -210,6 +222,7 @@ export function useSession({
     createSession,
     createRoom,
     closeRoom,
-    cleanup
+    cleanup,
+    ensureSession
   };
 }

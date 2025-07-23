@@ -78,12 +78,8 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
 
   const handleStart = async () => {
     try {
-      let sessionCode = session.sessionCode;
-      
-      // Create session if needed
-      if (!sessionCode) {
-        sessionCode = await session.createSession();
-      }
+      // Ensure we have a session
+      await session.ensureSession();
       
       // Create feedback room
       await session.createRoom('rtfeedback');
@@ -91,7 +87,7 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
       // Activate the feedback room
       if (session.socket) {
         session.socket.emit('session:rtfeedback:start', {
-          sessionCode: sessionCode
+          sessionCode: session.sessionCode
         });
       }
       

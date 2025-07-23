@@ -22,6 +22,7 @@ interface SessionContextType {
   createRoom: (roomType: RoomType) => Promise<boolean>;
   closeRoom: (roomType: RoomType) => void;
   cleanup: () => void;
+  ensureSession: () => Promise<string>;
 }
 
 const SessionContext = createContext<SessionContextType | null>(null);
