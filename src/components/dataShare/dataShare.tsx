@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSessionContext } from '../../contexts/SessionContext';
-import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
-import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
+import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaLink, FaTrash } from 'react-icons/fa6';
 
 interface DataShareProps {
@@ -12,155 +10,125 @@ interface DataShareProps {
 
 interface Submission {
   id: string;
-  studentName: string;
-  link: string;
+  studentId: string;
+  data: string;
   timestamp: number;
 }
 
-function DataShare({ widgetId }: DataShareProps) {
+function DataShare({ widgetId, savedState, onStateChange }: DataShareProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [isRoomActive, setIsRoomActive] = useState(false);
-  
-  const session = useSessionContext();
 
-  // Don't auto-start - let user click start button
-  // This prevents multiple widgets from fighting over session creation
-
-  // Setup socket listeners
+  // Load saved state
   useEffect(() => {
-    if (!session.socket) return;
-
-    const handleNewSubmission = (submission: Submission) => {
-      setSubmissions(prev => [...prev, submission]);
-    };
-
-    const handleSubmissionDeleted = (submissionId: string) => {
-      setSubmissions(prev => prev.filter(s => s.id !== submissionId));
-    };
-
-    const handleRoomCreated = (data: any) => {
-      if (data.roomType === 'dataShare') {
-        setIsRoomActive(true);
-      }
-    };
-
-    const handleRoomClosed = (data: any) => {
-      if (data.roomType === 'dataShare') {
-        setIsRoomActive(false);
-      }
-    };
-
-    session.socket.on('dataShare:newSubmission', handleNewSubmission);
-    session.socket.on('dataShare:submissionDeleted', handleSubmissionDeleted);
-    session.socket.on('session:roomCreated', handleRoomCreated);
-    session.socket.on('session:roomClosed', handleRoomClosed);
-
-    return () => {
-      session.socket.off('dataShare:newSubmission', handleNewSubmission);
-      session.socket.off('dataShare:submissionDeleted', handleSubmissionDeleted);
-      session.socket.off('session:roomCreated', handleRoomCreated);
-      session.socket.off('session:roomClosed', handleRoomClosed);
-    };
-  }, [session.socket]);
-
-  // Handle widget cleanup
-  useEffect(() => {
-    const handleWidgetCleanup = (event: CustomEvent) => {
-      if (event.detail.widgetId === widgetId && isRoomActive) {
-        session.closeRoom('dataShare');
-      }
-    };
-    
-    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
-    
-    return () => {
-      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
-    };
-  }, [widgetId, isRoomActive, session]);
-
-  const handleStart = async () => {
-    try {
-      // Ensure we have a session
-      await session.ensureSession();
-      
-      // Create data share room
-      await session.createRoom('dataShare');
-      setIsRoomActive(true);
-    } catch (error) {
-      console.error('Failed to start data share:', error);
+    if (savedState) {
+      setSubmissions(savedState.submissions || []);
     }
-  };
-
-  const handleDeleteSubmission = (submissionId: string) => {
-    if (session.socket && isRoomActive) {
-      session.socket.emit('session:dataShare:delete', {
-        sessionCode: session.sessionCode,
-        submissionId
-      });
-    }
-  };
-
-  // Empty state
-  if (!isRoomActive || !session.sessionCode) {
-    return (
-      <NetworkedWidgetEmpty
-        icon={FaLink}
-        title="Link Sharing"
-        description="Collect links and resources from students"
-        buttonText={session.isConnecting ? "Connecting..." : "Start Sharing"}
-        onStart={handleStart}
-        disabled={session.isConnecting || !session.isConnected}
-        error={session.connectionError}
-      />
-    );
-  }
+  }, [savedState]);
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-      <NetworkedWidgetHeader
-        title="Link Sharing"
-        code={session.sessionCode}
-        participantCount={session.participantCount}
-      />
+    <NetworkedWidgetWrapper
+      widgetId={widgetId}
+      savedState={savedState}
+      onStateChange={(state) => {
+        onStateChange?.({
+          ...state,
+          submissions
+        });
+      }}
+      roomType="dataShare"
+      title="Link Sharing"
+      description="Collect links and resources from students"
+      icon={FaLink}
+      onRoomClosed={() => {
+        setSubmissions([]);
+      }}
+    >
+      {({ session, isRoomActive }) => {
+        // Setup socket listeners
+        useEffect(() => {
+          if (!session.socket) return;
 
-      <div className="flex-1 overflow-y-auto mt-4">
-        {submissions.length === 0 ? (
-          <div className="text-center py-8 text-warm-gray-500 dark:text-warm-gray-400">
-            Waiting for student submissions...
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {submissions.map((submission) => (
-              <div
-                key={submission.id}
-                className="flex items-center justify-between p-3 bg-warm-gray-50 dark:bg-warm-gray-700 rounded-lg group"
-              >
-                <div className="flex-1 min-w-0 mr-3">
-                  <div className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
-                    {submission.studentName}
+          const handleNewSubmission = (data: Submission) => {
+            setSubmissions(prev => [...prev, data]);
+          };
+
+          const handleSubmissionDeleted = (data: { submissionId: string }) => {
+            setSubmissions(prev => prev.filter(s => s.id !== data.submissionId));
+          };
+
+          session.socket.on('dataShare:newSubmission', handleNewSubmission);
+          session.socket.on('dataShare:submissionDeleted', handleSubmissionDeleted);
+
+          return () => {
+            session.socket?.off('dataShare:newSubmission', handleNewSubmission);
+            session.socket?.off('dataShare:submissionDeleted', handleSubmissionDeleted);
+          };
+        }, [session.socket]);
+
+        const handleDeleteSubmission = (submissionId: string) => {
+          if (session.socket && isRoomActive) {
+            session.socket.emit('session:dataShare:delete', {
+              sessionCode: session.sessionCode,
+              submissionId
+            });
+          }
+        };
+
+        return (
+          <>
+            {/* Submissions list */}
+            <div className="flex-1 overflow-y-auto mt-4">
+              {submissions.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-warm-gray-500 dark:text-warm-gray-400">
+                    <FaLink className="text-4xl mx-auto mb-2" />
+                    <p className="text-sm">Waiting for student submissions...</p>
                   </div>
-                  <a
-                    href={submission.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-sage-600 dark:text-sage-400 hover:underline truncate block"
-                  >
-                    {submission.link}
-                  </a>
                 </div>
-                <button
-                  onClick={() => handleDeleteSubmission(submission.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-dusty-rose-500 hover:text-dusty-rose-600"
-                  title="Delete submission"
-                >
-                  <FaTrash className="text-sm" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+              ) : (
+                <div className="space-y-2">
+                  {submissions.map((submission) => (
+                    <div
+                      key={submission.id}
+                      className="group p-3 bg-white dark:bg-warm-gray-700 rounded-lg border border-warm-gray-200 dark:border-warm-gray-600 hover:border-warm-gray-300 dark:hover:border-warm-gray-500 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={submission.data.startsWith('http') ? submission.data : `https://${submission.data}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 break-all"
+                          >
+                            {submission.data}
+                          </a>
+                          <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
+                            Submitted {new Date(submission.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteSubmission(submission.id)}
+                          className="p-1.5 text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Delete submission"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 text-center">
+              <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400">
+                {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </>
+        );
+      }}
+    </NetworkedWidgetWrapper>
   );
 }
 
