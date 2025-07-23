@@ -114,9 +114,22 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
 
     case 'UPDATE_WIDGET_POSITION': {
       const { widgetId, position } = action.payload;
+      const newPositions = new Map(state.widgetPositions);
+      newPositions.set(widgetId, position);
+      
+      // Only update if position actually changed
+      const oldPosition = state.widgetPositions.get(widgetId);
+      if (oldPosition && 
+          oldPosition.x === position.x && 
+          oldPosition.y === position.y &&
+          oldPosition.width === position.width &&
+          oldPosition.height === position.height) {
+        return state;
+      }
+      
       return {
         ...state,
-        widgetPositions: new Map(state.widgetPositions).set(widgetId, position)
+        widgetPositions: newPositions
       };
     }
 

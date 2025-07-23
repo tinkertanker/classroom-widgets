@@ -1,5 +1,5 @@
 import "./App.css";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import Confetti from "react-confetti";
 
 // Types
@@ -7,10 +7,8 @@ import { BackgroundType } from "./types/app.types";
 
 // Components
 import Toolbar from "./components/toolbar/toolbar";
-import Board, { BoardRef } from "./components/Board/Board";
-import WidgetContainer from "./components/Widget/WidgetContainer";
+import { ViewportCanvas } from "./components/ViewportCanvas";
 import Background from "./components/backgrounds/backgrounds";
-import ZoomControl from "./components/ZoomControl/ZoomControl";
 import ResponsiveCheck from "./components/ResponsiveCheck/ResponsiveCheck";
 import SessionStatus from "./components/SessionStatus";
 
@@ -45,7 +43,8 @@ function AppContentInner() {
     setActiveWidget,
     setBackground,
     setStickerMode,
-    resetWorkspace
+    resetWorkspace,
+    setScale
   } = useWorkspace();
 
   // UI State
@@ -53,7 +52,6 @@ function AppContentInner() {
   const [darkMode, setDarkMode] = useDarkMode();
   const { isFullscreen, toggleFullscreen } = useFullscreen();
   const [hoveringTrashId, setHoveringTrashId] = useState<string | null>(null);
-  const boardRef = useRef<BoardRef>(null);
   
   // Sync with localStorage
   const { isInitialized } = useWorkspaceSync();
@@ -156,6 +154,40 @@ function AppContentInner() {
   const handleAddWidget = (widgetType: number) => {
     addWidget(widgetType);
   };
+  
+  // Memoized callbacks to prevent re-renders
+  const handleWidgetPositionChange = useCallback((id: string, pos: { x: number; y: number }) => {
+    const position = state.widgetPositions.get(id);
+    if (position) {
+      updateWidgetPosition(id, {
+        ...pos,
+        width: position.width,
+        height: position.height
+      });
+    }
+  }, [state.widgetPositions, updateWidgetPosition]);
+  
+  const handleWidgetSizeChange = useCallback((id: string, size: { width: number; height: number }) => {
+    const position = state.widgetPositions.get(id);
+    if (position) {
+      updateWidgetPosition(id, {
+        x: position.x,
+        y: position.y,
+        ...size
+      });
+    }
+  }, [state.widgetPositions, updateWidgetPosition]);
+  
+  const handleCanvasClick = useCallback((x: number, y: number) => {
+    if (state.stickerMode) {
+      addWidget(WIDGET_TYPES.STAMP, state.selectedStickerType, {
+        x: x - 60, // Center the sticker
+        y: y - 60,
+        width: 120,
+        height: 120
+      });
+    }
+  }, [state.stickerMode, state.selectedStickerType, addWidget]);
 
   return (
     <div className={`App ${darkMode ? 'dark' : ''}`}>
@@ -171,8 +203,6 @@ function AppContentInner() {
               className="absolute top-4 left-4 z-[999]"
             />
           )}
-          {/* Zoom control - vertical layout below fullscreen button */}
-          <ZoomControl className="absolute top-16 right-4 z-[999]" boardRef={boardRef} />
           
           {/* Fullscreen button */}
           <button
@@ -207,92 +237,59 @@ function AppContentInner() {
             </svg>
           </button>
 
-          {/* Background */}
-          <Background type={state.backgroundType} />
-          
           {/* Main content area */}
-          <Board ref={boardRef} onBoardClick={handleBoardClick} stickerMode={state.stickerMode}>
-            {state.widgets.map((widget) => {
-              const position = state.widgetPositions.get(widget.id);
-              const savedState = state.widgetStates.get(widget.id);
-              const widgetConfig = widget.index === WIDGET_TYPES.STAMP && savedState?.stickerType 
-                ? getWidgetConfig(widget.index, savedState.stickerType || savedState.stampType)
-                : getWidgetConfig(widget.index);
-              
-              if (!position) return null;
-              
-              return (
-                <WidgetContainer
-                  key={widget.id}
-                  widget={widget}
-                  position={position}
-                  config={widgetConfig}
-                  isActive={state.activeWidgetId === widget.id}
-                  isHoveringTrash={hoveringTrashId === widget.id}
-                  savedState={savedState}
-                  scale={state.scale}
-                  onDragStart={(e: any, data: any) => setActiveWidget(widget.id)}
-                  onDrag={(e: any, data: any) => {
-                    if (isOverTrash(e.clientX, e.clientY)) {
-                      setHoveringTrashId(widget.id);
-                    } else {
-                      setHoveringTrashId(null);
-                    }
-                  }}
-                  onDragStop={(e: any, data: any) => {
-                    trashHandler(e, data, widget.id);
-                    if (hoveringTrashId === widget.id) {
-                      setHoveringTrashId(null);
-                    }
-                    updateWidgetPosition(widget.id, {
-                      x: data.x,
-                      y: data.y,
-                      width: position.width,
-                      height: position.height
-                    });
-                  }}
-                  onResizeStart={() => setActiveWidget(widget.id)}
-                  onResizeStop={(_: any, __: any, ref: any, ___: any, position: any) => {
-                    updateWidgetPosition(widget.id, {
-                      x: position.x,
-                      y: position.y,
-                      width: parseInt(ref.style.width),
-                      height: parseInt(ref.style.height)
-                    });
-                  }}
-                  onTouchStart={() => setActiveWidget(widget.id)}
-                  onStateChange={(state: any) => updateWidgetState(widget.id, state)}
-                  toggleConfetti={setUseConfetti}
-                  onClick={() => setActiveWidget(widget.id)}
-                  onDelete={() => removeWidget(widget.id)}
-                />
-              );
-            })}
-          </Board>
-          
-          {/* Sticker mode indicator */}
-          {state.stickerMode && (
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] bg-soft-white dark:bg-warm-gray-800 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-3">
-              <span className="text-warm-gray-700 dark:text-warm-gray-200">
-                Sticker mode: Click to stamp {state.selectedStickerType}
-              </span>
-              <button
-                onClick={() => setStickerMode(false)}
-                className="px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
-              >
-                Exit (S)
-              </button>
+          <ViewportCanvas
+            scale={state.scale}
+            onScaleChange={setScale}
+            widgets={useMemo(() => 
+              state.widgets.map(widget => {
+                const position = state.widgetPositions.get(widget.id);
+                if (!position) return null;
+                
+                return {
+                  id: widget.id,
+                  type: widget.index,
+                  position: { x: position.x, y: position.y },
+                  size: { width: position.width, height: position.height }
+                };
+              }).filter(Boolean) as any[]
+            , [state.widgets, state.widgetPositions])}
+            activeWidgetId={state.activeWidgetId}
+            widgetStates={state.widgetStates}
+            stickerMode={state.stickerMode}
+            onCanvasClick={handleCanvasClick}
+            onToggleConfetti={setUseConfetti}
+            onWidgetStateChange={updateWidgetState}
+            onWidgetRemove={removeWidget}
+            onWidgetClick={setActiveWidget}
+            onWidgetPositionChange={handleWidgetPositionChange}
+            onWidgetSizeChange={handleWidgetSizeChange}
+            background={<Background type={state.backgroundType} />}
+          >
+            {/* Sticker mode indicator */}
+            {state.stickerMode && (
+              <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] bg-soft-white dark:bg-warm-gray-800 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-3">
+                <span className="text-warm-gray-700 dark:text-warm-gray-200">
+                  Sticker mode: Click to stamp {state.selectedStickerType}
+                </span>
+                <button
+                  onClick={() => setStickerMode(false)}
+                  className="px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
+                >
+                  Exit (S)
+                </button>
+              </div>
+            )}
+            
+            {/* Fixed toolbar */}
+            <div className="toolbar-container">
+              <Toolbar
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                hoveringTrash={hoveringTrashId}
+              />
             </div>
-          )}
-          
-          {/* Fixed toolbar */}
-          <div className="toolbar-container">
-            <Toolbar
-              darkMode={darkMode}
-              setDarkMode={setDarkMode}
-              hoveringTrash={hoveringTrashId}
-            />
-          </div>
+          </ViewportCanvas>
           
           {/* Confetti */}
           {useConfetti && (
