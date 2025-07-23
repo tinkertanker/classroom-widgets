@@ -21,8 +21,8 @@ export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({
   const studentUrl = serverUrl;
 
   return (
-    <div className="mb-4">
-      <div className="flex justify-between items-center mb-3">
+    <div className="mb-1">
+      <div className="flex justify-between items-center mb-1">
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-medium text-warm-gray-800 dark:text-warm-gray-200">
             {title}

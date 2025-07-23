@@ -25,9 +25,6 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
   
   const session = useSessionContext();
 
-  // Don't auto-start - let user click start button
-  // This prevents multiple widgets from fighting over session creation
-
   // Setup socket listeners
   useEffect(() => {
     if (!session.socket) return;
@@ -104,13 +101,6 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
     }
   };
 
-  const handleStop = () => {
-    if (isRoomActive && session.socket) {
-      session.socket.emit('session:rtfeedback:stop', {
-        sessionCode: session.sessionCode
-      });
-    }
-  };
 
   const handleReset = () => {
     if (session.socket && isRoomActive) {
@@ -135,7 +125,6 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
     );
   }
 
-  const labels = ['1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'];
   const barColors = [
     'from-red-700 to-red-600',         // 1 - Too Easy (dark red)
     'from-amber-700 to-amber-600',     // 1.5 - (dark amber)
@@ -151,27 +140,21 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
       <NetworkedWidgetHeader
-        title="Understanding Levels"
+        title="Level of Understanding"
         code={session.sessionCode}
         participantCount={session.participantCount}
       />
 
-      <div className="flex-1 flex flex-col mt-4">
+      <div className="flex-1 flex flex-col">
         {showResults ? (
           <>
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-1">
               <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
                 {feedbackData.totalResponses} responses
               </div>
-              <button
-                onClick={handleReset}
-                className="text-sm px-3 py-1 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors"
-              >
-                Reset
-              </button>
             </div>
 
-            <div className="flex-1 flex items-end justify-around gap-1 pb-2">
+            <div className="flex-1 flex items-end justify-around gap-1 pb-1">
               {feedbackData.understanding.map((count, index) => {
                 const maxCount = Math.max(...feedbackData.understanding, 1);
                 const percentage = (count / maxCount) * 100 || 0;
@@ -180,7 +163,7 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
                     <div className="relative w-full h-32 flex items-end">
                       <div 
                         className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
-                        style={{ height: `${percentage}%`, minHeight: '4px' }}
+                        style={{ height: `${percentage}%`, minHeight: '1px' }}
                       />
                     </div>
                   </div>
@@ -207,18 +190,18 @@ function RTFeedback({ widgetId }: RTFeedbackProps) {
         )}
       </div>
 
-      <div className="flex justify-between gap-2 mt-2">
+      <div className="flex justify-between gap-2 mt-1">
         <button
           onClick={() => setShowResults(!showResults)}
-          className="flex-1 px-3 py-1.5 text-sm bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 rounded transition-colors"
+          className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
         >
           {showResults ? 'Hide' : 'Show'} Results
         </button>
         <button
-          onClick={handleStop}
-          className="flex-1 px-3 py-1.5 text-sm bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white rounded transition-colors"
+          onClick={handleReset}
+          className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
         >
-          Stop
+          Reset
         </button>
       </div>
     </div>

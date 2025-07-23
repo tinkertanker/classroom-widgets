@@ -134,9 +134,9 @@ export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
   },
   [WIDGET_TYPES.RT_FEEDBACK]: {
     defaultWidth: 400,
-    defaultHeight: 500,
+    defaultHeight: 300,
     minWidth: 300,
-    minHeight: 400,
+    minHeight: 300,
     lockAspectRatio: false
   }
 };
