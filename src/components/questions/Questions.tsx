@@ -56,6 +56,12 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       setQuestions([]);
     };
 
+    const handleRoomCreated = (data: { roomType: string }) => {
+      if (data.roomType === 'questions') {
+        setIsRoomActive(true);
+      }
+    };
+
     const handleRoomClosed = (data: { roomType: string }) => {
       if (data.roomType === 'questions') {
         setIsRoomActive(false);
@@ -68,16 +74,33 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     session.socket.on('questionAnswered', handleQuestionAnswered);
     session.socket.on('questionDeleted', handleQuestionDeleted);
     session.socket.on('allQuestionsCleared', handleAllQuestionsCleared);
-    session.socket.on('session:room:closed', handleRoomClosed);
+    session.socket.on('session:roomCreated', handleRoomCreated);
+    session.socket.on('session:roomClosed', handleRoomClosed);
 
     return () => {
       session.socket?.off('newQuestion', handleNewQuestion);
       session.socket?.off('questionAnswered', handleQuestionAnswered);
       session.socket?.off('questionDeleted', handleQuestionDeleted);
       session.socket?.off('allQuestionsCleared', handleAllQuestionsCleared);
-      session.socket?.off('session:room:closed', handleRoomClosed);
+      session.socket?.off('session:roomCreated', handleRoomCreated);
+      session.socket?.off('session:roomClosed', handleRoomClosed);
     };
   }, [session.socket]);
+
+  // Handle widget cleanup
+  useEffect(() => {
+    const handleWidgetCleanup = (event: CustomEvent) => {
+      if (event.detail.widgetId === widgetId && isRoomActive) {
+        session.closeRoom('questions');
+      }
+    };
+    
+    window.addEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    
+    return () => {
+      window.removeEventListener('widget-cleanup' as any, handleWidgetCleanup);
+    };
+  }, [widgetId, isRoomActive, session]);
 
   // Load saved state
   useEffect(() => {
@@ -97,24 +120,27 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     });
   }, [questions, isActive, isRoomActive, onStateChange]);
 
-  const handleStart = () => {
-    if (!session.socket || !session.sessionCode) return;
-    
-    // Create questions room
-    session.socket.emit('session:room:create', {
-      sessionCode: session.sessionCode,
-      roomType: 'questions'
-    }, (response: any) => {
-      if (response.success) {
-        setIsRoomActive(true);
-        setIsActive(true);
-        
-        // Start accepting questions
-        session.socket?.emit('session:questions:start', {
-          sessionCode: session.sessionCode
-        });
+  const handleStart = async () => {
+    try {
+      let sessionCode = session.sessionCode;
+      
+      // Create session if needed
+      if (!sessionCode) {
+        sessionCode = await session.createSession();
       }
-    });
+      
+      // Create questions room
+      await session.createRoom('questions');
+      setIsRoomActive(true);
+      setIsActive(true);
+      
+      // Start accepting questions
+      session.socket?.emit('session:questions:start', {
+        sessionCode: session.sessionCode
+      });
+    } catch (error) {
+      console.error('Failed to start questions:', error);
+    }
   };
 
   const handleToggleActive = () => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 
-export type RoomType = 'poll' | 'dataShare' | 'rtfeedback';
+export type RoomType = 'poll' | 'dataShare' | 'rtfeedback' | 'questions';
 
 interface SessionParticipant {
   name: string;
