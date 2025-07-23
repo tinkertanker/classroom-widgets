@@ -20,5 +20,6 @@ export const LazyWidgets = {
   DataShare: lazy(() => import('../dataShare/DataShare')),
   Visualiser: lazy(() => import('../visualiser/visualiser')),
   RTFeedback: lazy(() => import('../rtFeedback/RTFeedback')),
-  TicTacToe: lazy(() => import('../ticTacToe/TicTacToe'))
+  TicTacToe: lazy(() => import('../ticTacToe/TicTacToe')),
+  Questions: lazy(() => import('../questions/Questions'))
 };

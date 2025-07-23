@@ -4,8 +4,9 @@ import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import DataShareActivity from './components/DataShareActivity';
 import RTFeedbackActivity from './components/RTFeedbackActivity';
+import QuestionsActivity from './components/QuestionsActivity';
 
-export type RoomType = 'poll' | 'dataShare' | 'rtfeedback';
+export type RoomType = 'poll' | 'dataShare' | 'rtfeedback' | 'questions';
 
 interface JoinedRoom {
   id: string;
@@ -360,11 +361,11 @@ const App: React.FC = () => {
                 }`} 
                 data-room-type={room.type}
               >
-                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : room.type === 'dataShare' ? 'bg-terracotta-100 border-b-terracotta-200' : 'bg-amber-100 border-b-amber-200'}`}>
+                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 ${room.type === 'poll' ? 'bg-sage-100 border-b-sage-200' : room.type === 'dataShare' ? 'bg-terracotta-100 border-b-terracotta-200' : room.type === 'rtfeedback' ? 'bg-amber-100 border-b-amber-200' : 'bg-sky-100 border-b-sky-200'}`}>
                   <div className="flex gap-3 items-center">
                     <span className="bg-warm-gray-200 text-warm-gray-700 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
                     <span className="text-sage-700 text-base md:text-lg font-semibold">
-                      {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : 'RT Feedback'}
+                      {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : room.type === 'rtfeedback' ? 'RT Feedback' : 'Questions'}
                     </span>
                   </div>
                   <button 
@@ -400,6 +401,14 @@ const App: React.FC = () => {
                       studentName={studentName}
                       initialIsActive={room.initialData?.isActive}
                       isSession={true}
+                    />
+                  )}
+                  {room.type === 'questions' && (
+                    <QuestionsActivity 
+                      socket={room.socket} 
+                      sessionCode={room.code}
+                      studentId={room.socket.id || ''}
+                      onBack={() => {}}
                     />
                   )}
                 </div>

@@ -147,6 +147,13 @@ export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
     maxWidth: 500,
     maxHeight: 550,
     lockAspectRatio: false
+  },
+  [WIDGET_TYPES.QUESTIONS]: {
+    defaultWidth: 450,
+    defaultHeight: 500,
+    minWidth: 350,
+    minHeight: 400,
+    lockAspectRatio: false
   }
 };
 

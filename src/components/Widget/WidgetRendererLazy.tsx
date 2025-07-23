@@ -115,6 +115,10 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
       const TicTacToe = LazyWidgets.TicTacToe;
       return <TicTacToe {...commonProps} />;
       
+    case WIDGET_TYPES.QUESTIONS:
+      const Questions = LazyWidgets.Questions;
+      return <Questions {...commonProps} />;
+      
     default:
       return null;
     }

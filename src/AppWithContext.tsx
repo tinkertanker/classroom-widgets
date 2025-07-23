@@ -293,23 +293,7 @@ function AppContentInner() {
           </div>
           
           {/* Zoom controls */}
-          <div className="fixed top-16 right-4 z-[999] flex items-center gap-1 bg-warm-gray-200/60 dark:bg-warm-gray-700/60 px-2 py-1 rounded-md backdrop-blur-sm">
-            <button
-              onClick={() => setScale(Math.max(0.5, state.scale - 0.1))}
-              className="p-1 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
-              title="Zoom out"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setScale(1)}
-              className="px-2 py-0.5 text-xs font-medium text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 rounded transition-colors duration-200 min-w-[3rem]"
-              title="Reset zoom to 100%"
-            >
-              {Math.round(state.scale * 100)}%
-            </button>
+          <div className="fixed top-16 right-4 z-[999] flex flex-col items-center gap-1 bg-warm-gray-200/60 dark:bg-warm-gray-700/60 px-1 py-2 rounded-md backdrop-blur-sm">
             <button
               onClick={() => setScale(Math.min(2, state.scale + 0.1))}
               className="p-1 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
@@ -317,6 +301,22 @@ function AppContentInner() {
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setScale(1)}
+              className="px-1.5 py-0.5 text-xs font-medium text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 rounded transition-colors duration-200 min-w-[2.5rem]"
+              title="Reset zoom to 100%"
+            >
+              {Math.round(state.scale * 100)}%
+            </button>
+            <button
+              onClick={() => setScale(Math.max(0.5, state.scale - 0.1))}
+              className="p-1 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
+              title="Zoom out"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
             </button>
           </div>

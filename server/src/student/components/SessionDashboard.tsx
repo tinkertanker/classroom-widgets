@@ -4,6 +4,7 @@ import { RoomType } from '../App';
 import PollActivity from './PollActivity';
 import DataShareActivity from './DataShareActivity';
 import RTFeedbackActivity from './RTFeedbackActivity';
+import QuestionsActivity from './QuestionsActivity';
 
 interface SessionDashboardProps {
   sessionCode: string;
@@ -32,6 +33,8 @@ const SessionDashboard: React.FC<SessionDashboardProps> = ({
         return '🔗';
       case 'rtfeedback':
         return '💭';
+      case 'questions':
+        return '❓';
       default:
         return '📋';
     }
@@ -45,6 +48,8 @@ const SessionDashboard: React.FC<SessionDashboardProps> = ({
         return 'Share Links';
       case 'rtfeedback':
         return 'Feedback';
+      case 'questions':
+        return 'Questions';
       default:
         return roomType;
     }
@@ -100,6 +105,14 @@ const SessionDashboard: React.FC<SessionDashboardProps> = ({
               socket={socket}
               studentName={studentName}
               isSession={true}
+            />
+          )}
+          {selectedRoom === 'questions' && (
+            <QuestionsActivity
+              socket={socket}
+              sessionCode={sessionCode}
+              studentId={socket.id || ''}
+              onBack={() => setSelectedRoom(null)}
             />
           )}
         </div>

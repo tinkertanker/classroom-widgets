@@ -199,6 +199,55 @@ class DataShareRoom {
   }
 }
 
+// Room class to manage questions submissions
+class QuestionsRoom {
+  constructor(code) {
+    this.code = code;
+    this.hostSocketId = null;
+    this.questions = [];
+    this.createdAt = Date.now();
+    this.isActive = false;
+  }
+
+  addQuestion(studentId, text) {
+    const question = {
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      studentId,
+      text,
+      timestamp: Date.now(),
+      answered: false
+    };
+    this.questions.push(question);
+    return question;
+  }
+
+  markAnswered(questionId) {
+    const question = this.questions.find(q => q.id === questionId);
+    if (question) {
+      question.answered = true;
+      return true;
+    }
+    return false;
+  }
+
+  deleteQuestion(questionId) {
+    const index = this.questions.findIndex(q => q.id === questionId);
+    if (index > -1) {
+      this.questions.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  clearAllQuestions() {
+    this.questions = [];
+  }
+
+  getQuestions() {
+    return this.questions;
+  }
+}
+
 // Room class to manage understanding feedback sessions
 class RTFeedbackRoom {
   constructor(code) {
@@ -306,6 +355,9 @@ class Session {
         break;
       case 'rtfeedback':
         room = new RTFeedbackRoom(this.code);
+        break;
+      case 'questions':
+        room = new QuestionsRoom(this.code);
         break;
       default:
         throw new Error(`Unknown room type: ${roomType}`);
@@ -670,6 +722,20 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle questions state request from students
+  socket.on('questions:requestState', (data) => {
+    const { code } = data;
+    const session = sessions.get(code);
+    
+    if (session) {
+      const room = session.getRoom('questions');
+      if (room && room instanceof QuestionsRoom) {
+        socket.emit('questions:stateChanged', { isActive: room.isActive });
+        socket.emit('questions:list', room.getQuestions());
+      }
+    }
+  });
+
   // Handle rtfeedback state request from students
   socket.on('rtfeedback:requestState', (data) => {
     const { code } = data;
@@ -866,6 +932,122 @@ io.on('connection', (socket) => {
     
     // Notify all participants that feedback is now inactive
     io.to(`${session.code}:rtfeedback`).emit('rtfeedback:stateChanged', { isActive: false });
+    
+    session.updateActivity();
+  });
+
+  // Questions handlers for sessions
+  socket.on('session:questions:submit', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session) return;
+    
+    const room = session.getRoom('questions');
+    if (!room || !(room instanceof QuestionsRoom)) return;
+    
+    const participant = session.participants.get(socket.id);
+    if (!participant) return;
+    
+    // Only accept questions if room is active
+    if (!room.isActive) {
+      socket.emit('questions:error', { error: 'Questions are not being accepted' });
+      return;
+    }
+    
+    // Add the question
+    const question = room.addQuestion(participant.studentId, data.text);
+    
+    // Notify host about new question
+    if (session.hostSocketId) {
+      io.to(session.hostSocketId).emit('newQuestion', {
+        questionId: question.id,
+        text: question.text,
+        studentId: participant.studentId
+      });
+    }
+    
+    socket.emit('questions:submitted', { success: true });
+    session.updateActivity();
+  });
+  
+  socket.on('session:questions:markAnswered', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('questions');
+    if (!room || !(room instanceof QuestionsRoom)) return;
+    
+    if (room.markAnswered(data.questionId)) {
+      // Notify students that question was answered
+      io.to(`${session.code}:questions`).emit('questionAnswered', {
+        roomCode: session.code,
+        questionId: data.questionId
+      });
+    }
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:questions:delete', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('questions');
+    if (!room || !(room instanceof QuestionsRoom)) return;
+    
+    if (room.deleteQuestion(data.questionId)) {
+      // Notify students that question was deleted
+      io.to(`${session.code}:questions`).emit('questionDeleted', {
+        roomCode: session.code,
+        questionId: data.questionId
+      });
+    }
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:questions:clearAll', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('questions');
+    if (!room || !(room instanceof QuestionsRoom)) return;
+    
+    room.clearAllQuestions();
+    
+    // Notify all participants
+    io.to(`${session.code}:questions`).emit('allQuestionsCleared', {
+      roomCode: session.code
+    });
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:questions:start', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('questions');
+    if (!room || !(room instanceof QuestionsRoom)) return;
+    
+    room.isActive = true;
+    
+    // Notify all participants
+    io.to(`${session.code}:questions`).emit('questions:stateChanged', { isActive: true });
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:questions:stop', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('questions');
+    if (!room || !(room instanceof QuestionsRoom)) return;
+    
+    room.isActive = false;
+    
+    // Notify all participants
+    io.to(`${session.code}:questions`).emit('questions:stateChanged', { isActive: false });
     
     session.updateActivity();
   });
