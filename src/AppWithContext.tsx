@@ -237,7 +237,7 @@ function AppContentInner() {
             </svg>
           </button>
 
-          {/* Main content area */}
+          {/* Main content area - Canvas */}
           <ViewportCanvas
             scale={state.scale}
             onScaleChange={setScale}
@@ -265,31 +265,66 @@ function AppContentInner() {
             onWidgetPositionChange={handleWidgetPositionChange}
             onWidgetSizeChange={handleWidgetSizeChange}
             background={<Background type={state.backgroundType} />}
-          >
-            {/* Sticker mode indicator */}
-            {state.stickerMode && (
-              <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] bg-soft-white dark:bg-warm-gray-800 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-3">
-                <span className="text-warm-gray-700 dark:text-warm-gray-200">
-                  Sticker mode: Click to stamp {state.selectedStickerType}
-                </span>
-                <button
-                  onClick={() => setStickerMode(false)}
-                  className="px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
-                >
-                  Exit (S)
-                </button>
-              </div>
-            )}
-            
-            {/* Fixed toolbar */}
-            <div className="toolbar-container">
-              <Toolbar
-                darkMode={darkMode}
-                setDarkMode={setDarkMode}
-                hoveringTrash={hoveringTrashId}
-              />
+          />
+          
+          {/* HUD Elements - Fixed overlay */}
+          {/* Sticker mode indicator */}
+          {state.stickerMode && (
+            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] bg-soft-white dark:bg-warm-gray-800 px-4 py-2 rounded-lg shadow-lg flex items-center space-x-3">
+              <span className="text-warm-gray-700 dark:text-warm-gray-200">
+                Sticker mode: Click to stamp {state.selectedStickerType}
+              </span>
+              <button
+                onClick={() => setStickerMode(false)}
+                className="px-3 py-1 bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded-md transition-colors duration-200"
+              >
+                Exit (S)
+              </button>
             </div>
-          </ViewportCanvas>
+          )}
+          
+          {/* Fixed toolbar */}
+          <div className="toolbar-container">
+            <Toolbar
+              darkMode={darkMode}
+              setDarkMode={setDarkMode}
+              hoveringTrash={hoveringTrashId}
+            />
+          </div>
+          
+          {/* Zoom controls */}
+          <div className="fixed bottom-20 right-4 z-[999] bg-soft-white/90 dark:bg-warm-gray-800/90 p-3 rounded-lg shadow-lg backdrop-blur-sm">
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setScale(Math.min(2, state.scale + 0.1))}
+                className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded transition-colors duration-200"
+                title="Zoom in"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                </svg>
+              </button>
+              <div className="text-center text-sm font-medium text-warm-gray-600 dark:text-warm-gray-400">
+                {Math.round(state.scale * 100)}%
+              </div>
+              <button
+                onClick={() => setScale(Math.max(0.5, state.scale - 0.1))}
+                className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded transition-colors duration-200"
+                title="Zoom out"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setScale(1)}
+                className="p-2 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-200 rounded text-xs transition-colors duration-200"
+                title="Reset zoom"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
           
           {/* Confetti */}
           {useConfetti && (

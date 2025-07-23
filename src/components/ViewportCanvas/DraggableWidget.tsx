@@ -20,7 +20,7 @@ interface DraggableWidgetProps {
   onSizeChange: (width: number, height: number) => void;
   onClick: () => void;
   onRemove?: () => void;
-  children: React.ReactNode | ((isDragging: boolean) => React.ReactNode);
+  children: React.ReactNode | ((isDragging: boolean, hasDragged: boolean) => React.ReactNode);
 }
 
 type ResizeHandle = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
@@ -81,6 +81,10 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
     widgetHeight: 0,
     aspectRatio: 1
   });
+  
+  // Track if mouse has moved (to distinguish click from drag)
+  const hasDraggedRef = useRef(false);
+  const DRAG_THRESHOLD = 3; // pixels
 
   // Handle drag start
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -94,6 +98,7 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
     e.stopPropagation();
     
     setIsDragging(true);
+    hasDraggedRef.current = false;
     dragStart.current = {
       x: e.clientX,
       y: e.clientY,
@@ -101,6 +106,7 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
       widgetY: y
     };
     
+    // Always make widget active when starting interaction (click or drag)
     onClick();
   }, [x, y, onClick]);
 
@@ -123,6 +129,7 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
       aspectRatio: width / height
     };
     
+    // Still call onClick to maintain active state when resizing
     onClick();
   }, [x, y, width, height, canResize, onClick]);
 
@@ -132,6 +139,12 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
     if (isDragging && widgetRef.current) {
       const deltaX = (e.clientX - dragStart.current.x) / scale;
       const deltaY = (e.clientY - dragStart.current.y) / scale;
+      
+      // Check if mouse has moved beyond threshold
+      if (!hasDraggedRef.current && 
+          (Math.abs(deltaX) > DRAG_THRESHOLD || Math.abs(deltaY) > DRAG_THRESHOLD)) {
+        hasDraggedRef.current = true;
+      }
       
       const newX = Math.max(0, Math.min(3000 - sizeRef.current.width, dragStart.current.widgetX + deltaX));
       const newY = Math.max(0, Math.min(2000 - sizeRef.current.height, dragStart.current.widgetY + deltaY));
@@ -261,12 +274,15 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
       trashElement.classList.add('bg-soft-white/80', 'dark:bg-warm-gray-800/80');
     }
     
+    // No need to handle click here since we already called onClick on mouse down
+    
     // Send final position/size to parent only when drag/resize ends
-    if (isDragging || isResizing) {
+    if (isDragging && hasDraggedRef.current) {
       onPositionChange(positionRef.current.x, positionRef.current.y);
-      if (isResizing) {
-        onSizeChange(sizeRef.current.width, sizeRef.current.height);
-      }
+    }
+    if (isResizing) {
+      onPositionChange(positionRef.current.x, positionRef.current.y);
+      onSizeChange(sizeRef.current.width, sizeRef.current.height);
     }
     
     setIsDragging(false);
@@ -308,7 +324,7 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
       }}
       onMouseDown={handleMouseDown}
     >
-      {typeof children === 'function' ? children(isDragging) : children}
+      {typeof children === 'function' ? children(isDragging, hasDraggedRef.current) : children}
       
       {/* Resize handles */}
       {isActive && canResize && (

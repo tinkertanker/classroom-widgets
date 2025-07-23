@@ -4,7 +4,6 @@ import WidgetRendererLazy from '../Widget/WidgetRendererLazy';
 import { getWidgetConfig } from '../../constants/widgetConfigs';
 
 interface ViewportCanvasProps {
-  children?: React.ReactNode;
   background?: React.ReactNode;
   scale: number;
   onScaleChange: (scale: number) => void;
@@ -39,7 +38,6 @@ const CANVAS_WIDTH = 3000;
 const CANVAS_HEIGHT = 2000;
 
 export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
-  children,
   background,
   scale,
   onScaleChange,
@@ -170,6 +168,12 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     // Check if clicking on canvas background (not on a widget)
     const target = e.target as HTMLElement;
     const isCanvasClick = target.closest('.viewport-canvas-content') && !target.closest('.widget-item');
+    const isOutsideCanvas = !target.closest('.viewport-canvas-content');
+    
+    // If clicking outside canvas content entirely, deselect widget
+    if (isOutsideCanvas && activeWidgetId) {
+      onWidgetClick(null);
+    }
     
     // Pan with left button on canvas, middle mouse button, or left button with space/cmd key
     if ((e.button === 0 && isCanvasClick) || e.button === 1 || (e.button === 0 && (e.metaKey || e.ctrlKey))) {
@@ -182,7 +186,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       };
       e.preventDefault();
     }
-  }, [viewport]);
+  }, [viewport, activeWidgetId, onWidgetClick]);
 
   // Handle pan move
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -229,12 +233,6 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       onMouseLeave={handleMouseUp}
       style={{ cursor: isPanning ? 'grabbing' : stickerMode ? 'crosshair' : 'default' }}
     >
-      {/* Viewport info for debugging */}
-      <div className="absolute top-4 left-4 bg-white/80 p-2 rounded text-xs z-50">
-        <div>Scale: {scale.toFixed(2)}x</div>
-        <div>Viewport: {Math.round(viewport.x)}, {Math.round(viewport.y)} ({Math.round(viewport.width)}×{Math.round(viewport.height)})</div>
-        <div>Visible widgets: {visibleWidgetCount}/{widgets.length}</div>
-      </div>
 
       {/* Canvas container */}
       <div
@@ -245,10 +243,17 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
           height: CANVAS_HEIGHT
         }}
         onClick={(e) => {
-          if (stickerMode && onCanvasClick) {
-            // Check if clicking on widget or background
-            const target = e.target as HTMLElement;
-            if (!target.closest('.widget-item')) {
+          const target = e.target as HTMLElement;
+          const isClickOnWidget = target.closest('.widget-item');
+          
+          if (!isClickOnWidget) {
+            // Clicking on background - deselect active widget
+            if (activeWidgetId) {
+              onWidgetClick(null);
+            }
+            
+            // Handle sticker mode
+            if (stickerMode && onCanvasClick) {
               // Convert click position to canvas coordinates
               const rect = containerRef.current?.getBoundingClientRect();
               if (rect) {
@@ -261,7 +266,15 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
         }}
       >
         {/* Background */}
-        <div className="absolute inset-0">
+        <div 
+          className="absolute inset-0"
+          onClick={(e) => {
+            // Only deselect if clicking directly on background, not bubbled from widget
+            if (e.target === e.currentTarget && activeWidgetId) {
+              onWidgetClick(null);
+            }
+          }}
+        >
           {background}
         </div>
 
@@ -304,7 +317,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
               onClick={() => onWidgetClick(widget.id)}
               onRemove={() => onWidgetRemove(widget.id)}
             >
-              {(isDragging: boolean) => (
+              {(isDragging: boolean, hasDragged: boolean) => (
                 <div className="w-full h-full">
                   <WidgetRendererLazy
                     widgetType={widget.type}
@@ -314,7 +327,7 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
                     onStateChange={(state) => onWidgetStateChange(widget.id, state)}
                     toggleConfetti={onToggleConfetti || (() => {})}
                     isDragging={isDragging}
-                    hasDragged={false}
+                    hasDragged={hasDragged}
                   />
                 </div>
               )}
@@ -322,8 +335,6 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
           );
         })}
 
-        {/* Other children (toolbar, trash, etc.) */}
-        {children}
       </div>
     </div>
   );
