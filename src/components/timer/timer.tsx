@@ -216,15 +216,16 @@ const Timer = () => {
 
   // Animate the pulse around the arc when timer is running
   useEffect(() => {
-    if (isRunning && time > 0) {
+    if (isRunning) {
       const startTime = Date.now();
       let animationFrameId: number;
       
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        // Complete one rotation per second counter-clockwise (-360 degrees/second)
-        const angle = -90 - (elapsed / 1000) * 360;
-        setPulseAngle(angle % 360);
+        // Complete one rotation every 3 seconds counter-clockwise (-120 degrees/second)
+        const angle = -90 - (elapsed / 1000) * 120;
+        console.log(`Elapsed: ${elapsed/1000}s, Angle: ${angle}`);
+        setPulseAngle(angle);
         
         animationFrameId = requestAnimationFrame(animate);
       };
@@ -240,7 +241,7 @@ const Timer = () => {
       // Reset to top when not running
       setPulseAngle(-90);
     }
-  }, [isRunning, time]);
+  }, [isRunning]);
 
   return (
     <>
@@ -286,40 +287,128 @@ const Timer = () => {
                   />
                 </g>
                 
-                {/* Animated pulse arc */}
+                {/* Animated hamster on wheel */}
                 {isRunning && time > 0 && (
-                  <>
-                    {/* Gradient definition for the pulse arc */}
-                    <defs>
-                      <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#ff6b6b" stopOpacity="1" />
-                        <stop offset="20%" stopColor="#ffd93d" stopOpacity="0.9" />
-                        <stop offset="40%" stopColor="#6bcf7f" stopOpacity="0.8" />
-                        <stop offset="60%" stopColor="#4ecdc4" stopOpacity="0.7" />
-                        <stop offset="80%" stopColor="#5c7cfa" stopOpacity="0.5" />
-                        <stop offset="100%" stopColor="#a864fd" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    
                     <g transform={`rotate(${pulseAngle} 50 50)`}>
-                      {/* Thin arc pulse - very subtle */}
-                      <path
-                        d="M 50 7 A 43 43 0 0 1 65 11"
-                        stroke="url(#pulseGradient)"
-                        strokeWidth="1.5"
+                      {/* Hamster running on smaller circle path inside the wheel */}
+                      <g transform="translate(50, 8) scale(0.9, -0.9)">
+                      {/* Hamster body */}
+                      <ellipse 
+                        cx="0" 
+                        cy="0" 
+                        rx="6" 
+                        ry="4.5" 
+                        fill="#D2691E" 
+                        stroke="#8B4513" 
+                        strokeWidth="0.8"
+                      />
+                      {/* Hamster head */}
+                      <circle 
+                        cx="-4" 
+                        cy="-1.5" 
+                        r="3.5" 
+                        fill="#DEB887" 
+                        stroke="#8B4513" 
+                        strokeWidth="0.8"
+                      />
+                      {/* Hamster ears */}
+                      <circle cx="-5.5" cy="-3.5" r="1.3" fill="#D2691E" />
+                      <circle cx="-2.5" cy="-3.5" r="1.3" fill="#D2691E" />
+                      {/* Hamster eyes */}
+                      <circle cx="-5" cy="-1.5" r="0.7" fill="#000" />
+                      <circle cx="-3" cy="-1.5" r="0.7" fill="#000" />
+                      {/* Eye sparkle */}
+                      <circle cx="-4.8" cy="-1.8" r="0.3" fill="#fff" />
+                      <circle cx="-2.8" cy="-1.8" r="0.3" fill="#fff" />
+                      {/* Hamster nose */}
+                      <circle cx="-6.5" cy="-0.5" r="0.4" fill="#8B4513" />
+                      {/* Hamster feet - animated running with better visibility */}
+                      <g>
+                        {/* Front feet - made more visible */}
+                        <ellipse 
+                          cx="-2.5" 
+                          cy="3.5" 
+                          rx="1" 
+                          ry="1.5" 
+                          fill="#654321"
+                          stroke="#3D2611"
+                          strokeWidth="0.3"
+                        >
+                          <animateTransform
+                            attributeName="transform"
+                            attributeType="XML"
+                            type="rotate"
+                            values="0 -2.5 3.5;-30 -2.5 3.5;30 -2.5 3.5;0 -2.5 3.5"
+                            dur="0.4s"
+                            repeatCount="indefinite"
+                          />
+                        </ellipse>
+                        <ellipse 
+                          cx="-4" 
+                          cy="3.5" 
+                          rx="1" 
+                          ry="1.5" 
+                          fill="#654321"
+                          stroke="#3D2611"
+                          strokeWidth="0.3"
+                        >
+                          <animateTransform
+                            attributeName="transform"
+                            attributeType="XML"
+                            type="rotate"
+                            values="0 -4 3.5;30 -4 3.5;-30 -4 3.5;0 -4 3.5"
+                            dur="0.4s"
+                            repeatCount="indefinite"
+                          />
+                        </ellipse>
+                        {/* Back feet - made more visible */}
+                        <ellipse 
+                          cx="1.5" 
+                          cy="3.5" 
+                          rx="1" 
+                          ry="1.5" 
+                          fill="#654321"
+                          stroke="#3D2611"
+                          strokeWidth="0.3"
+                        >
+                          <animateTransform
+                            attributeName="transform"
+                            attributeType="XML"
+                            type="rotate"
+                            values="0 1.5 3.5;30 1.5 3.5;-30 1.5 3.5;0 1.5 3.5"
+                            dur="0.4s"
+                            repeatCount="indefinite"
+                          />
+                        </ellipse>
+                        <ellipse 
+                          cx="3" 
+                          cy="3.5" 
+                          rx="1" 
+                          ry="1.5" 
+                          fill="#654321"
+                          stroke="#3D2611"
+                          strokeWidth="0.3"
+                        >
+                          <animateTransform
+                            attributeName="transform"
+                            attributeType="XML"
+                            type="rotate"
+                            values="0 3 3.5;-30 3 3.5;30 3 3.5;0 3 3.5"
+                            dur="0.4s"
+                            repeatCount="indefinite"
+                          />
+                        </ellipse>
+                      </g>
+                      {/* Hamster tail */}
+                      <path 
+                        d="M 4.5 0 Q 7 -1.5 8.5 1" 
+                        stroke="#8B4513" 
+                        strokeWidth="1.2" 
                         fill="none"
                         strokeLinecap="round"
-                      >
-                        {/* Pulsing opacity animation - subtle */}
-                        <animate
-                          attributeName="opacity"
-                          values="0.4;0.7;0.4"
-                          dur="1s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
+                      />
                     </g>
-                  </>
+                  </g>
                 )}
               </svg>
               <div
