@@ -51,6 +51,9 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
     onStateChange
   });
 
+  // Always render children to ensure hooks are called consistently
+  const content = children({ session, isRoomActive });
+
   // Empty state
   if (!isRoomActive || !session.sessionCode) {
     return (
@@ -80,7 +83,7 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
         {headerChildren}
       </NetworkedWidgetHeader>
       
-      {children({ session, isRoomActive })}
+      {content}
     </div>
   );
 };
