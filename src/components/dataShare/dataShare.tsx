@@ -10,8 +10,8 @@ interface DataShareProps {
 
 interface Submission {
   id: string;
-  studentId: string;
-  data: string;
+  studentName: string;
+  link: string;
   timestamp: number;
 }
 
@@ -87,21 +87,25 @@ function DataShare({ widgetId, savedState, onStateChange }: DataShareProps) {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {submissions.map((submission) => (
-                    <div
-                      key={submission.id}
-                      className="group p-3 bg-white dark:bg-warm-gray-700 rounded-lg border border-warm-gray-200 dark:border-warm-gray-600 hover:border-warm-gray-300 dark:hover:border-warm-gray-500 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <a
-                            href={submission.data.startsWith('http') ? submission.data : `https://${submission.data}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 break-all"
-                          >
-                            {submission.data}
-                          </a>
+                  {submissions.map((submission) => {
+                    // Skip submissions with no link
+                    if (!submission.link) return null;
+                    
+                    return (
+                      <div
+                        key={submission.id}
+                        className="group p-3 bg-white dark:bg-warm-gray-700 rounded-lg border border-warm-gray-200 dark:border-warm-gray-600 hover:border-warm-gray-300 dark:hover:border-warm-gray-500 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <a
+                              href={submission.link.startsWith('http') ? submission.link : `https://${submission.link}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 break-all"
+                            >
+                              {submission.link}
+                            </a>
                           <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
                             Submitted {new Date(submission.timestamp).toLocaleTimeString()}
                           </p>
@@ -115,7 +119,8 @@ function DataShare({ widgetId, savedState, onStateChange }: DataShareProps) {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
               )}
             </div>
