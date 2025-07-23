@@ -27,7 +27,8 @@ import {
   FaQrcode,         // QR Code icon
   FaPaperclip,      // Data Share icon
   FaVideo,          // Visualiser icon
-  FaGauge           // RT Feedback icon
+  FaGauge,          // RT Feedback icon
+  FaTableCells      // Tic-Tac-Toe icon
 } from 'react-icons/fa6';
 
 interface ToolbarProps {
@@ -137,6 +138,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
       case WIDGET_TYPES.DATA_SHARE: return <FaPaperclip /> as React.ReactElement;
       case WIDGET_TYPES.VISUALISER: return <FaVideo /> as React.ReactElement;
       case WIDGET_TYPES.RT_FEEDBACK: return <FaGauge /> as React.ReactElement;
+      case WIDGET_TYPES.TIC_TAC_TOE: return <FaTableCells /> as React.ReactElement;
       default: return <FaDice /> as React.ReactElement;
     }
   };
@@ -156,7 +158,8 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     [WIDGET_TYPES.QRCODE]: "QR Code",
     [WIDGET_TYPES.DATA_SHARE]: "Data Share",
     [WIDGET_TYPES.VISUALISER]: "Visualiser",
-    [WIDGET_TYPES.RT_FEEDBACK]: "RT Feedback"
+    [WIDGET_TYPES.RT_FEEDBACK]: "RT Feedback",
+    [WIDGET_TYPES.TIC_TAC_TOE]: "Tic-Tac-Toe"
   };
 
   const formatTime = (date: Date) => {
@@ -244,7 +247,8 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     WIDGET_TYPES.QRCODE,
     WIDGET_TYPES.DATA_SHARE,
     WIDGET_TYPES.VISUALISER,
-    WIDGET_TYPES.RT_FEEDBACK
+    WIDGET_TYPES.RT_FEEDBACK,
+    WIDGET_TYPES.TIC_TAC_TOE
   ];
 
   const otherWidgets = allWidgets.filter(widget => !customWidgets.includes(widget));

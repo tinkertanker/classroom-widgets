@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { isOverTrash } from '../../utils/widgetHelpers';
 import trashSound from '../../sounds/trash-crumple.mp3';
+import { FaTrash } from 'react-icons/fa6';
 
 interface DraggableWidgetProps {
   id: string;
@@ -49,6 +50,9 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
   const [isResizing, setIsResizing] = useState(false);
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle | null>(null);
   const [isOverTrashState, setIsOverTrashState] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Ref to the widget element for direct DOM manipulation
   const widgetRef = useRef<HTMLDivElement>(null);
@@ -85,6 +89,38 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
   // Track if mouse has moved (to distinguish click from drag)
   const hasDraggedRef = useRef(false);
   const DRAG_THRESHOLD = 3; // pixels
+  
+  // Show/hide trash icon based on interaction
+  useEffect(() => {
+    const shouldShow = isActive || isDragging || isHovered;
+    
+    if (shouldShow) {
+      setShowTrash(true);
+      // Clear any existing timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+      // Set new timeout to hide after 5 seconds
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowTrash(false);
+      }, 5000);
+    } else {
+      // Add a delay before hiding when hovering out
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+      // Wait 1.5 seconds before hiding the trash icon
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowTrash(false);
+      }, 1500);
+    }
+
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, [isActive, isDragging, isHovered]);
 
   // Handle drag start
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -256,18 +292,8 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
 
   // Handle mouse up
   const handleMouseUp = useCallback(() => {
-    if (isDragging && isOverTrashState && onRemove) {
-      // Play trash sound
-      const trashAudio = new Audio(trashSound);
-      trashAudio.play().catch(error => {
-        console.error("Error playing trash sound:", error);
-      });
-      
-      // Remove widget
-      onRemove();
-    }
-    
-    // Reset trash visual state
+    // We now handle deletion via the trash button, not drag-to-trash
+    // Just reset the visual state of the toolbar trash
     const trashElement = document.getElementById('trash');
     if (trashElement) {
       trashElement.classList.remove('bg-dusty-rose-500', 'transform', 'scale-105');
@@ -310,7 +336,7 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
     <div
       ref={widgetRef}
       className={`widget-item absolute ${
-        isActive ? 'ring-2 ring-sage-500 ring-opacity-50' : ''
+        isActive ? 'ring-1 ring-sage-400/30' : ''
       } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${
         isOverTrashState ? 'opacity-50 scale-95' : ''
       } ${isDragging || isResizing ? '' : 'transition-all duration-200'}`}
@@ -323,6 +349,8 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
         willChange: isDragging || isResizing ? 'transform' : 'auto'
       }}
       onMouseDown={handleMouseDown}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {typeof children === 'function' ? children(isDragging, hasDraggedRef.current) : children}
       
@@ -332,7 +360,7 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
           {resizeHandles.map(handle => (
             <div
               key={handle}
-              className={`resize-handle resize-handle-${handle} absolute bg-sage-500 hover:bg-sage-600 transition-colors`}
+              className={`resize-handle resize-handle-${handle} absolute bg-warm-gray-400/50 hover:bg-sage-500/70 transition-all duration-200 rounded-full`}
               onMouseDown={handleResizeMouseDown(handle)}
               style={{
                 ...getHandleStyle(handle),
@@ -342,30 +370,56 @@ const DraggableWidgetComponent: React.FC<DraggableWidgetProps> = ({
           ))}
         </>
       )}
+      
+      {/* Per-widget trash icon */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onRemove) {
+            // Play trash sound
+            const trashAudio = new Audio(trashSound);
+            trashAudio.play().catch(error => {
+              console.error("Error playing trash sound:", error);
+            });
+            onRemove();
+          }
+        }}
+        className={`absolute -bottom-10 left-1/2 transform -translate-x-1/2 
+                   w-8 h-8 bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600
+                   rounded-full flex items-center justify-center 
+                   shadow-md hover:shadow-lg
+                   transition-all duration-500 ease-in-out
+                   ${showTrash ? 'opacity-90 scale-100 hover:opacity-100 hover:scale-110' : 'opacity-0 scale-95'}`}
+        style={{
+          pointerEvents: showTrash ? 'auto' : 'none'
+        }}
+      >
+        <FaTrash className="text-warm-gray-600 dark:text-warm-gray-300 text-sm" />
+      </button>
     </div>
   );
 };
 
 // Helper functions for resize handles
 function getHandleStyle(handle: ResizeHandle): React.CSSProperties {
-  const size = 8;
+  const size = 6;
   const offset = -size / 2;
   
   switch (handle) {
     case 'n':
-      return { top: offset, left: '50%', transform: 'translateX(-50%)', width: size * 3, height: size };
+      return { top: offset, left: '50%', transform: 'translateX(-50%)', width: size * 4, height: size };
     case 'ne':
       return { top: offset, right: offset, width: size, height: size };
     case 'e':
-      return { top: '50%', right: offset, transform: 'translateY(-50%)', width: size, height: size * 3 };
+      return { top: '50%', right: offset, transform: 'translateY(-50%)', width: size, height: size * 4 };
     case 'se':
       return { bottom: offset, right: offset, width: size, height: size };
     case 's':
-      return { bottom: offset, left: '50%', transform: 'translateX(-50%)', width: size * 3, height: size };
+      return { bottom: offset, left: '50%', transform: 'translateX(-50%)', width: size * 4, height: size };
     case 'sw':
       return { bottom: offset, left: offset, width: size, height: size };
     case 'w':
-      return { top: '50%', left: offset, transform: 'translateY(-50%)', width: size, height: size * 3 };
+      return { top: '50%', left: offset, transform: 'translateY(-50%)', width: size, height: size * 4 };
     case 'nw':
       return { top: offset, left: offset, width: size, height: size };
     default:

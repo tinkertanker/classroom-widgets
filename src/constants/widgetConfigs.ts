@@ -138,6 +138,15 @@ export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
     minWidth: 300,
     minHeight: 300,
     lockAspectRatio: false
+  },
+  [WIDGET_TYPES.TIC_TAC_TOE]: {
+    defaultWidth: 350,
+    defaultHeight: 400,
+    minWidth: 300,
+    minHeight: 350,
+    maxWidth: 500,
+    maxHeight: 550,
+    lockAspectRatio: false
   }
 };
 

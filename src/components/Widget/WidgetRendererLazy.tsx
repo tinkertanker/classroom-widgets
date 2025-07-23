@@ -111,6 +111,10 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
       const RTFeedback = LazyWidgets.RTFeedback;
       return <RTFeedback {...commonProps} />;
       
+    case WIDGET_TYPES.TIC_TAC_TOE:
+      const TicTacToe = LazyWidgets.TicTacToe;
+      return <TicTacToe {...commonProps} />;
+      
     default:
       return null;
     }

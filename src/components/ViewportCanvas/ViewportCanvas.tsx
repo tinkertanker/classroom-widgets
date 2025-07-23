@@ -114,16 +114,41 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     
     // Check if this is a pinch zoom gesture (ctrl key is pressed on trackpad pinch)
     if (e.ctrlKey) {
-      // This is a pinch zoom
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
       
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       
-      // Calculate zoom
-      const delta = e.deltaY * -0.01;
-      const newScale = Math.min(Math.max(0.5, scale + delta), 2);
+      // Different sensitivities for different zoom methods
+      let sensitivity: number;
+      
+      // Detect zoom method:
+      // 1. deltaMode 0 = pixels (usually trackpad)
+      // 2. deltaMode 1 = lines (usually mouse wheel)
+      // 3. deltaMode 2 = pages (rare)
+      // Also, pinch gestures tend to have fractional deltaY values
+      const isTrackpadPinch = e.deltaMode === 0 && e.deltaY % 1 !== 0;
+      const isMouseWheel = e.deltaMode === 1 || (e.deltaMode === 0 && e.deltaY % 1 === 0);
+      
+      if (isTrackpadPinch) {
+        // Trackpad pinch - smooth zooming
+        sensitivity = 0.01;
+        console.log('Zoom method: Trackpad pinch', { deltaY: e.deltaY, deltaMode: e.deltaMode });
+      } else if (isMouseWheel) {
+        // Ctrl/Cmd + mouse wheel - stepped zooming
+        sensitivity = 0.005;
+        console.log('Zoom method: Mouse wheel', { deltaY: e.deltaY, deltaMode: e.deltaMode });
+      } else {
+        // Fallback
+        sensitivity = 0.008;
+        console.log('Zoom method: Unknown', { deltaY: e.deltaY, deltaMode: e.deltaMode });
+      }
+      
+      // Calculate zoom with exponential scaling for more natural feel
+      const delta = e.deltaY * -sensitivity;
+      const zoomFactor = Math.exp(delta);
+      const newScale = Math.min(Math.max(0.5, scale * zoomFactor), 2);
       
       if (newScale !== scale) {
         // Calculate the point in canvas coordinates under the mouse
