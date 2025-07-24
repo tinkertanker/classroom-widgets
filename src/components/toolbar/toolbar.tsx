@@ -5,6 +5,7 @@ import { useWorkspace } from '../../store/WorkspaceContext';
 import CustomizeToolbarWrapper from './CustomizeToolbarWrapper';
 import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
+import LaunchpadDialog from './LaunchpadDialog';
 import { 
   FaDice,           // Randomiser
   FaClock,          // Timer
@@ -66,12 +67,9 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const backgroundOptions = ['geometric', 'gradient', 'lines', 'dots', 'lowpoly', 'seawave'] as const;
   const [showMenu, setShowMenu] = useState(false);
   const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
-  const [showAllWidgets, setShowAllWidgets] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const menuRef = useRef<HTMLDivElement>(null);
-  const moreWidgetsRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [serverConnected, setServerConnected] = useState(false);
 
   // Check server connection (used by Poll and Data Share widgets)
@@ -108,19 +106,13 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           !menuButtonRef.current.contains(event.target as Node)) {
         setShowMenu(false);
       }
-      
-      if (showAllWidgets && moreWidgetsRef.current && moreButtonRef.current &&
-          !moreWidgetsRef.current.contains(event.target as Node) &&
-          !moreButtonRef.current.contains(event.target as Node)) {
-        setShowAllWidgets(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showMenu, showAllWidgets]);
+  }, [showMenu]);
 
   const getWidgetIcon = (widgetType: number): React.ReactElement => {
     switch (widgetType) {
@@ -179,7 +171,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const handleAddWidget = (widgetType: number) => {
     if (!state.stickerMode) {
       addWidget(widgetType);
-      setShowAllWidgets(false);
+      hideModal();
     }
   };
 
@@ -293,53 +285,32 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
 
         {/* More widgets button - prominent on left */}
         {otherWidgets.length > 0 && (
-          <div className="relative">
-            <button
-              ref={moreButtonRef}
-              onClick={() => setShowAllWidgets(!showAllWidgets)}
-              className={`w-16 h-16 p-2 rounded-lg text-warm-gray-700 dark:text-warm-gray-200 bg-soft-white/80 dark:bg-warm-gray-800/80 hover:bg-warm-white/80 dark:hover:bg-warm-gray-700/80 transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex flex-col items-center justify-center gap-1 relative ${
-                state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
-              } ${
-                showAllWidgets ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-warm-white dark:ring-offset-warm-gray-900' : ''
-              }`}
-              disabled={state.stickerMode}
-              title="More widgets"
-            >
+          <button
+            onClick={() => {
+              showModal({
+                title: 'Select a Widget',
+                content: (
+                  <LaunchpadDialog
+                    onAddWidget={handleAddWidget}
+                    onClose={hideModal}
+                    serverConnected={serverConnected}
+                  />
+                ),
+                className: "bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl max-w-5xl w-full mx-4 max-h-[70vh]",
+                overlayClassName: "fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1100] p-4"
+              });
+            }}
+            className={`w-16 h-16 p-2 rounded-lg bg-gradient-to-br from-sage-50 to-sage-100 dark:from-sage-900/20 dark:to-sage-800/30 hover:from-sage-100 hover:to-sage-200 dark:hover:from-sage-800/30 dark:hover:to-sage-700/40 transition-all duration-300 transform hover:scale-110 shadow-lg hover:shadow-xl flex flex-col items-center justify-center gap-1 relative group border-2 border-sage-200 dark:border-sage-700 ${
+              state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={state.stickerMode}
+            title="More widgets"
+          >
+            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">
               <LaunchpadIcon size={32} />
-              <span className="text-[10px] font-medium">MORE</span>
-            </button>
-
-            {showAllWidgets && (
-              <div 
-                ref={moreWidgetsRef}
-                className="absolute bottom-full left-0 mb-2 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-lg p-4 z-50"
-              >
-                <div className="grid grid-cols-4 gap-2 min-w-[280px]">
-                  {otherWidgets.map((widgetType) => (
-                    <button
-                      key={widgetType}
-                      onClick={() => handleAddWidget(widgetType)}
-                      className={`flex flex-col items-center p-3 rounded hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors ${
-                        (widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                      disabled={(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.RT_FEEDBACK) && !serverConnected}
-                      title={widgetNames[widgetType]}
-                    >
-                      <div className="text-2xl mb-1 text-warm-gray-700 dark:text-warm-gray-300 relative">
-                        {getWidgetIcon(widgetType)}
-                        {(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.RT_FEEDBACK) && !serverConnected && (
-                          <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" />
-                        )}
-                      </div>
-                      <span className="text-xs text-warm-gray-600 dark:text-warm-gray-400 text-center">
-                        {widgetNames[widgetType]}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+            <span className="text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
+          </button>
         )}
 
         {/* Separator */}

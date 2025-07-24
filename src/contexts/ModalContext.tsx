@@ -76,7 +76,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         >
           <div 
             ref={modalContentRef}
-            className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[80vh] overflow-auto"}
+            className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
             onClick={(e) => e.stopPropagation()}
           >
             {modalOptions.title && (
@@ -94,7 +94,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 )}
               </div>
             )}
-            <div className={modalOptions.title ? '' : 'relative'}>
+            <div className={modalOptions.title ? 'p-6' : 'relative p-6'}>
               {!modalOptions.title && modalOptions.showCloseButton !== false && (
                 <button
                   onClick={hideModal}
