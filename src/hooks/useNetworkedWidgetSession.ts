@@ -39,14 +39,40 @@ export function useNetworkedWidgetSession({
     if (!session.socket) return;
 
     const handleRoomCreated = (data: { roomType: string; widgetId?: string }) => {
-      if (data.roomType === roomType && data.widgetId === widgetId) {
+      // Only respond if:
+      // 1. Room type matches AND
+      // 2. Widget IDs match (including both being undefined)
+      // IMPORTANT: If widgetId is provided in the event, it must match this widget's ID
+      if (data.roomType === roomType) {
+        // If the event has a widgetId, only respond if it matches ours
+        if (data.widgetId && data.widgetId !== widgetId) {
+          return;
+        }
+        // If we have a widgetId but the event doesn't specify one, don't respond
+        if (widgetId && !data.widgetId) {
+          return;
+        }
+        // Otherwise, the widget IDs match (or both are undefined)
         setIsRoomActive(true);
         onRoomCreated?.();
       }
     };
 
     const handleRoomClosed = (data: { roomType: string; widgetId?: string }) => {
-      if (data.roomType === roomType && data.widgetId === widgetId) {
+      // Only respond if:
+      // 1. Room type matches AND
+      // 2. Widget IDs match (including both being undefined)
+      // IMPORTANT: If widgetId is provided in the event, it must match this widget's ID
+      if (data.roomType === roomType) {
+        // If the event has a widgetId, only respond if it matches ours
+        if (data.widgetId && data.widgetId !== widgetId) {
+          return;
+        }
+        // If we have a widgetId but the event doesn't specify one, don't respond
+        if (widgetId && !data.widgetId) {
+          return;
+        }
+        // Otherwise, the widget IDs match (or both are undefined)
         setIsRoomActive(false);
         onRoomClosed?.();
       }
@@ -79,17 +105,20 @@ export function useNetworkedWidgetSession({
   // Load saved state
   useEffect(() => {
     if (savedState) {
-      setIsRoomActive(savedState.isRoomActive || false);
+      // Don't restore isRoomActive from saved state
+      // Rooms are ephemeral and don't persist across page reloads
+      // Widget must create a new room after page refresh
+      setIsRoomActive(false);
     }
   }, [savedState]);
 
   // Save state when it changes
   useEffect(() => {
     onStateChange?.({ 
-      isRoomActive,
+      // Don't save isRoomActive - rooms are ephemeral
       roomType
     });
-  }, [isRoomActive, roomType, onStateChange]);
+  }, [roomType, onStateChange]);
 
   // Handle starting the widget
   const handleStart = useCallback(async () => {
@@ -112,7 +141,7 @@ export function useNetworkedWidgetSession({
     } finally {
       setIsStarting(false);
     }
-  }, [session, roomType]);
+  }, [session, roomType, widgetId]);
 
   // Handle stopping the widget
   const handleStop = useCallback(() => {

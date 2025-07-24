@@ -10,11 +10,17 @@ interface SessionParticipant {
   socketId: string;
 }
 
+interface ActiveRoom {
+  roomType: RoomType;
+  widgetId?: string;
+  roomId: string;
+}
+
 interface UseSessionProps {
   onSessionCreated?: (code: string) => void;
   onParticipantUpdate?: (count: number, participants: SessionParticipant[]) => void;
-  onRoomCreated?: (roomType: RoomType) => void;
-  onRoomClosed?: (roomType: RoomType) => void;
+  onRoomCreated?: (roomType: RoomType, widgetId?: string) => void;
+  onRoomClosed?: (roomType: RoomType, widgetId?: string) => void;
 }
 
 interface UseSessionReturn {
@@ -25,10 +31,10 @@ interface UseSessionReturn {
   isConnected: boolean;
   participantCount: number;
   participants: SessionParticipant[];
-  activeRooms: RoomType[];
+  activeRooms: ActiveRoom[];
   createSession: () => Promise<string>;
-  createRoom: (roomType: RoomType) => Promise<boolean>;
-  closeRoom: (roomType: RoomType) => void;
+  createRoom: (roomType: RoomType, widgetId?: string) => Promise<boolean>;
+  closeRoom: (roomType: RoomType, widgetId?: string) => void;
   cleanup: () => void;
   ensureSession: () => Promise<string>;
 }
@@ -50,65 +56,65 @@ export function useSession({
   const [isConnected, setIsConnected] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
   const [participants, setParticipants] = useState<SessionParticipant[]>([]);
-  const [activeRooms, setActiveRooms] = useState<RoomType[]>([]);
+  const [activeRooms, setActiveRooms] = useState<ActiveRoom[]>([]);
   
   const sessionCodeRef = useRef<string>('');
 
   // Initialize socket connection
   useEffect(() => {
-    if (!socket) {
-      const newSocket = io(SERVER_URL, {
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-      });
+    const newSocket = io(SERVER_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+    });
 
-      newSocket.on('connect', () => {
-        console.log('Connected to server');
-        setIsConnected(true);
-        setConnectionError('');
-      });
+    newSocket.on('connect', () => {
+      console.log('Connected to server');
+      setIsConnected(true);
+      setConnectionError('');
+    });
 
-      newSocket.on('disconnect', () => {
-        console.log('Disconnected from server');
-        setIsConnected(false);
-      });
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from server');
+      setIsConnected(false);
+    });
 
-      newSocket.on('connect_error', (error) => {
-        console.error('Connection error:', error);
-        setConnectionError('Failed to connect to server');
-        setIsConnected(false);
-      });
+    newSocket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
+      setConnectionError('Failed to connect to server');
+      setIsConnected(false);
+    });
 
-      // Session event handlers
-      newSocket.on('session:participantUpdate', (data) => {
-        setParticipantCount(data.count);
-        setParticipants(data.participants);
-        onParticipantUpdate?.(data.count, data.participants);
-      });
+    // Session event handlers
+    newSocket.on('session:participantUpdate', (data) => {
+      setParticipantCount(data.count);
+      setParticipants(data.participants);
+      onParticipantUpdate?.(data.count, data.participants);
+    });
 
-      newSocket.on('session:roomCreated', (data) => {
-        const { roomType } = data;
-        setActiveRooms(prev => [...new Set([...prev, roomType])]);
-        onRoomCreated?.(roomType);
+    newSocket.on('session:roomCreated', (data) => {
+      const { roomType, widgetId, roomId } = data;
+      setActiveRooms(prev => {
+        // Check if this room already exists
+        const exists = prev.some(r => r.roomId === roomId);
+        if (exists) return prev;
+        return [...prev, { roomType, widgetId, roomId }];
       });
+      onRoomCreated?.(roomType, widgetId);
+    });
 
-      newSocket.on('session:roomClosed', (data) => {
-        const { roomType } = data;
-        setActiveRooms(prev => prev.filter(rt => rt !== roomType));
-        onRoomClosed?.(roomType);
-      });
+    newSocket.on('session:roomClosed', (data) => {
+      const { roomType, widgetId, roomId } = data;
+      setActiveRooms(prev => prev.filter(r => r.roomId !== roomId));
+      onRoomClosed?.(roomType, widgetId);
+    });
 
-      setSocket(newSocket);
-    }
+    setSocket(newSocket);
 
     return () => {
-      if (socket) {
-        socket.removeAllListeners();
-        socket.disconnect();
-        setSocket(null);
-      }
+      newSocket.removeAllListeners();
+      newSocket.disconnect();
     };
   }, []); // Only run once on mount
 
@@ -161,7 +167,13 @@ export function useSession({
       }, (response: any) => {
         if (response.success) {
           if (!response.isExisting) {
-            setActiveRooms(prev => [...new Set([...prev, roomType])]);
+            const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+            setActiveRooms(prev => {
+              // Check if this room already exists
+              const exists = prev.some(r => r.roomId === roomId);
+              if (exists) return prev;
+              return [...prev, { roomType, widgetId, roomId }];
+            });
           }
           resolve(true);
         } else {
@@ -181,15 +193,20 @@ export function useSession({
       widgetId 
     });
     
-    setActiveRooms(prev => prev.filter(rt => rt !== roomType));
+    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    setActiveRooms(prev => prev.filter(r => r.roomId !== roomId));
   }, [socket, isConnected, sessionCode]);
 
   // Cleanup function
   const cleanup = useCallback(() => {
     if (socket) {
       // Close all active rooms
-      activeRooms.forEach(roomType => {
-        socket.emit('session:closeRoom', { sessionCode, roomType });
+      activeRooms.forEach(room => {
+        socket.emit('session:closeRoom', { 
+          sessionCode, 
+          roomType: room.roomType,
+          widgetId: room.widgetId 
+        });
       });
       
       socket.disconnect();

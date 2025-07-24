@@ -8,6 +8,7 @@ interface ModalOptions {
   onClose?: () => void;
   className?: string;
   overlayClassName?: string;
+  noPadding?: boolean;
 }
 
 interface ModalContextType {
@@ -94,8 +95,8 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 )}
               </div>
             )}
-            <div className={modalOptions.title ? 'p-6' : 'relative p-6'}>
-              {!modalOptions.title && modalOptions.showCloseButton !== false && (
+            <div className={modalOptions.noPadding ? '' : (modalOptions.title ? 'p-6' : 'relative p-6')}>
+              {!modalOptions.title && modalOptions.showCloseButton !== false && !modalOptions.noPadding && (
                 <button
                   onClick={hideModal}
                   className="absolute top-4 right-4 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none z-10"

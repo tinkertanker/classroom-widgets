@@ -9,6 +9,12 @@ interface SessionParticipant {
   socketId: string;
 }
 
+interface ActiveRoom {
+  roomType: RoomType;
+  widgetId?: string;
+  roomId: string;
+}
+
 interface SessionContextType {
   socket: Socket | null;
   sessionCode: string;
@@ -17,10 +23,10 @@ interface SessionContextType {
   isConnected: boolean;
   participantCount: number;
   participants: SessionParticipant[];
-  activeRooms: RoomType[];
+  activeRooms: ActiveRoom[];
   createSession: () => Promise<string>;
-  createRoom: (roomType: RoomType) => Promise<boolean>;
-  closeRoom: (roomType: RoomType) => void;
+  createRoom: (roomType: RoomType, widgetId?: string) => Promise<boolean>;
+  closeRoom: (roomType: RoomType, widgetId?: string) => void;
   cleanup: () => void;
   ensureSession: () => Promise<string>;
 }
@@ -48,11 +54,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     onParticipantUpdate: (count, participants) => {
       console.log('Participants updated:', count);
     },
-    onRoomCreated: (roomType) => {
-      console.log('Room created:', roomType);
+    onRoomCreated: (roomType, widgetId) => {
+      console.log('Room created:', roomType, widgetId ? `(widget: ${widgetId})` : '');
     },
-    onRoomClosed: (roomType) => {
-      console.log('Room closed:', roomType);
+    onRoomClosed: (roomType, widgetId) => {
+      console.log('Room closed:', roomType, widgetId ? `(widget: ${widgetId})` : '');
     }
   });
 
