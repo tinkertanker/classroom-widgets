@@ -105,12 +105,19 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         useEffect(() => {
           if (!session.socket) return;
 
-          const handleFeedbackUpdate = (data: FeedbackData) => {
-            setFeedbackData(data);
+          const handleFeedbackUpdate = (data: FeedbackData & { widgetId?: string }) => {
+            // Only handle updates for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              const { widgetId: _, ...feedbackData } = data;
+              setFeedbackData(feedbackData);
+            }
           };
 
-          const handleStateChanged = (data: { isActive: boolean }) => {
-            setIsActive(data.isActive);
+          const handleStateChanged = (data: { isActive: boolean; widgetId?: string }) => {
+            // Only handle state changes for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              setIsActive(data.isActive);
+            }
           };
 
           session.socket.on('rtfeedback:update', handleFeedbackUpdate);
@@ -120,7 +127,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
             session.socket?.off('rtfeedback:update', handleFeedbackUpdate);
             session.socket?.off('rtfeedback:stateChanged', handleStateChanged);
           };
-        }, [session.socket]);
+        }, [session.socket, widgetId]);
 
         // Emit start event when room is created
         useEffect(() => {

@@ -206,7 +206,7 @@ class QuestionsRoom {
     this.hostSocketId = null;
     this.questions = [];
     this.createdAt = Date.now();
-    this.isActive = false;
+    this.isActive = true; // Questions start active by default
   }
 
   addQuestion(studentId, text) {
@@ -256,7 +256,7 @@ class RTFeedbackRoom {
     this.participants = new Map();
     this.feedbackData = new Map(); // Map of studentId -> feedback value (1-5)
     this.createdAt = Date.now();
-    this.isActive = false; // Start inactive until teacher starts it
+    this.isActive = true; // RTFeedback starts active by default
   }
 
   updateFeedback(studentId, value) {
@@ -552,39 +552,19 @@ io.on('connection', (socket) => {
     session.addParticipant(socket.id, name, studentId || socket.id);
     currentSessionCode = code;
     
-    // Join session room
+    // Join session room only - don't auto-join widget rooms
     socket.join(`session:${code}`);
     
-    // Join all active room types and send initial data
+    // Get active rooms but don't join them
     const activeRooms = session.getActiveRoomTypes();
-    activeRooms.forEach(roomId => {
-      socket.join(`${code}:${roomId}`);
-      
-      // Parse roomId to get roomType and widgetId
-      const [roomType, widgetId] = roomId.includes(':') ? roomId.split(':') : [roomId, undefined];
-      
-      // Send initial room data
-      const room = session.getRoom(roomType, widgetId);
-      if (room) {
-        if (roomType === 'poll' && room instanceof PollRoom) {
-          // Send harmonized events for initial poll state
-          socket.emit('poll:dataUpdate', {
-            pollData: room.pollData,
-            results: room.getResults()
-          });
-          socket.emit('poll:stateChanged', { isActive: room.pollData.isActive });
-        } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
-          socket.emit('rtfeedback:update', room.getAggregatedFeedback());
-          socket.emit('rtfeedback:stateChanged', { isActive: room.isActive });
-        }
-      }
-    });
+    console.log(`Session ${code} has active rooms:`, activeRooms);
     
     // Send active rooms with both roomType and widgetId
     const activeRoomsData = activeRooms.map(roomId => {
       const [roomType, widgetId] = roomId.includes(':') ? roomId.split(':') : [roomId, undefined];
       return { roomType, widgetId, roomId };
     });
+    console.log(`Sending active rooms data to student:`, activeRoomsData);
     
     socket.emit('session:joined', {
       success: true,
@@ -633,6 +613,8 @@ io.on('connection', (socket) => {
     if (roomType === 'poll' && room instanceof PollRoom) {
       roomData = room.pollData;
     } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
+      roomData = { isActive: room.isActive };
+    } else if (roomType === 'questions' && room instanceof QuestionsRoom) {
       roomData = { isActive: room.isActive };
     }
     
@@ -947,7 +929,10 @@ io.on('connection', (socket) => {
     
     // Notify all in the room (including host)
     const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:update', feedbackData);
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:update', {
+      ...feedbackData,
+      widgetId: data.widgetId
+    });
     
     session.updateActivity();
   });
@@ -964,7 +949,10 @@ io.on('connection', (socket) => {
     
     // Send updated (empty) feedback to all participants
     const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:update', room.getAggregatedFeedback());
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:update', {
+      ...room.getAggregatedFeedback(),
+      widgetId: data.widgetId
+    });
     
     session.updateActivity();
   });
@@ -980,7 +968,10 @@ io.on('connection', (socket) => {
     
     // Notify all participants that feedback is now active
     const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:stateChanged', { isActive: true });
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:stateChanged', { 
+      isActive: true,
+      widgetId: data.widgetId
+    });
     
     session.updateActivity();
   });
@@ -996,7 +987,10 @@ io.on('connection', (socket) => {
     
     // Notify all participants that feedback is now inactive
     const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:stateChanged', { isActive: false });
+    io.to(`${session.code}:${rtfeedbackRoomId}`).emit('rtfeedback:stateChanged', { 
+      isActive: false,
+      widgetId: data.widgetId
+    });
     
     session.updateActivity();
   });
@@ -1122,184 +1116,17 @@ io.on('connection', (socket) => {
     session.updateActivity();
   });
 
-  // Unified room join handler (legacy support)
-  socket.on('room:join', (data) => {
-    // DEBUG: Log unified join attempt
-    console.log('Received room:join request:', data);
-    const { code, name, type } = data;
-    const room = rooms.get(code);
-    
-    if (!room) {
-      // DEBUG: Room not found
-      console.log(`Room ${code} not found`);
-      socket.emit('room:joined', {
-        success: false,
-        error: 'Room not found'
-      });
-      return;
-    }
-
-    // Handle based on room type
-    if (room instanceof PollRoom && type === 'poll') {
-      // Join as poll participant
-      room.participants.set(socket.id, {
-        id: socket.id,
-        name: name || `Student ${room.participants.size + 1}`,
-        hasVoted: false,
-        joinedAt: Date.now()
-      });
-      
-      socket.join(code);
-      socket.emit('room:joined', {
-        success: true,
-        type: 'poll',
-        pollData: room.pollData,
-        participantId: socket.id
-      });
-      
-      // Notify host of new participant
-      if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('participant:count', {
-          count: room.participants.size
-        });
-      }
-      
-      // DEBUG: Log successful poll join
-      console.log(`Participant joined poll room ${code}`);
-    } else if (room instanceof DataShareRoom && type === 'dataShare') {
-      // Join data share room
-      socket.join(code);
-      socket.emit('room:joined', {
-        success: true,
-        type: 'dataShare'
-      });
-      
-      // DEBUG: Log successful data share join
-      console.log(`Student joined data share room ${code}`);
-    } else if (room instanceof RTFeedbackRoom && type === 'rtfeedback') {
-      // Join RT feedback room
-      socket.join(code);
-      room.participants.set(socket.id, {
-        id: socket.id,
-        name: name || 'Student',
-        joinedAt: Date.now()
-      });
-      
-      socket.emit('room:joined', {
-        success: true,
-        type: 'rtfeedback',
-        studentId: socket.id,
-        isActive: room.isActive  // Include current state in join response
-      });
-      
-      // Notify host of new participant
-      if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('participant:joined', {
-          studentId: socket.id,
-          count: room.participants.size
-        });
-      }
-      
-      console.log(`Student joined RT feedback room ${code}`);
-    } else {
-      // Type mismatch
-      // DEBUG: Log type mismatch
-      console.log(`Room type mismatch: requested ${type} but room is ${room.constructor.name}`);
-      socket.emit('room:joined', {
-        success: false,
-        error: 'Room type mismatch'
-      });
-    }
-  });
 
   // Host joins room (widget)
 
 
 
-  // Participant votes
-  socket.on('vote:submit', (data) => {
-    const { code, optionIndex } = data;
-    const room = rooms.get(code);
-    
-    if (room && room instanceof PollRoom && room.vote(socket.id, optionIndex)) {
-      // Send confirmation to voter
-      socket.emit('vote:confirmed', { success: true });
-      
-      // Update all clients with new results
-      const results = room.getResults();
-      io.to(code).emit('results:update', results);
-      
-      console.log(`Vote recorded in room ${code}`);
-    } else {
-      socket.emit('vote:confirmed', { 
-        success: false, 
-        error: 'Unable to record vote' 
-      });
-    }
-  });
 
   // Data Share handlers
 
 
-  // Handle host closing room (widget deleted)
-  socket.on('host:closeRoom', (data) => {
-    const { code, type } = data;
-    console.log(`Received host:closeRoom for room ${code}, type: ${type} from socket ${socket.id}`);
-    const room = rooms.get(code);
-    
-    if (room && room.hostSocketId === socket.id) {
-      console.log(`Host verified for room ${code}, sending room:closed to participants`);
-      console.log(`Participants in room ${code}:`, room.participants);
-      
-      // Get all sockets in the room before cleanup
-      const socketsInRoom = io.sockets.adapter.rooms.get(code);
-      console.log(`Sockets in room ${code}:`, socketsInRoom ? Array.from(socketsInRoom) : 'none');
-      
-      // Notify all participants that the room is closing
-      socket.to(code).emit('room:closed', { 
-        code, 
-        type,
-        message: 'The host has closed this activity' 
-      });
-      
-      // Leave all participants from the room
-      if (socketsInRoom) {
-        socketsInRoom.forEach(socketId => {
-          const participantSocket = io.sockets.sockets.get(socketId);
-          if (participantSocket) {
-            participantSocket.leave(code);
-          }
-        });
-      }
-      
-      // Remove the room
-      rooms.delete(code);
-      console.log(`Host closed room ${code} (${type}) - room deleted`);
-    } else {
-      console.log(`Failed to close room ${code} - room not found or socket ${socket.id} is not host`);
-      if (room) {
-        console.log(`Room host is ${room.hostSocketId}, requesting socket is ${socket.id}`);
-      }
-    }
-  });
 
 
-  // Student feedback update - harmonized
-  socket.on('student:updateFeedback', (data) => {
-    const { code, value } = data;
-    const room = rooms.get(code);
-    
-    if (room && room instanceof RTFeedbackRoom && room.isActive) {
-      room.updateFeedback(socket.id, value);
-      
-      if (room.hostSocketId) {
-        io.to(room.hostSocketId).emit('rtfeedback:feedbackUpdate', {
-          studentId: socket.id,
-          value: value
-        });
-      }
-    }
-  });
 
 
   /**

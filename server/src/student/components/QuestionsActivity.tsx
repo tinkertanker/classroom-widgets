@@ -12,23 +12,42 @@ interface QuestionsActivityProps {
   socket: Socket;
   sessionCode: string;
   studentId: string;
-  onBack: () => void;
   widgetId?: string;
+  initialIsActive?: boolean;
 }
 
 const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   socket,
   sessionCode,
   studentId,
-  onBack,
-  widgetId
+  widgetId,
+  initialIsActive
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionText, setQuestionText] = useState('');
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(initialIsActive ?? false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Join the widget-specific room on mount
+  useEffect(() => {
+    if (widgetId) {
+      socket.emit('session:joinRoom', {
+        sessionCode: sessionCode,
+        roomType: 'questions',
+        widgetId
+      });
+
+      return () => {
+        socket.emit('session:leaveRoom', {
+          sessionCode: sessionCode,
+          roomType: 'questions',
+          widgetId
+        });
+      };
+    }
+  }, [socket, sessionCode, widgetId]);
 
   useEffect(() => {
 
@@ -118,16 +137,10 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   });
 
   return (
-    <div className="min-h-screen bg-warm-gray-50 dark:bg-warm-gray-900 p-4">
+    <div className="bg-warm-gray-50 dark:bg-warm-gray-900 p-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <button
-            onClick={onBack}
-            className="mb-4 text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-800 dark:hover:text-warm-gray-200"
-          >
-            ← Back to activities
-          </button>
           <h1 className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-100">
             Ask Questions
           </h1>
@@ -176,7 +189,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
               </label>
 
               {error && (
-                <p className="text-sm text-dusty-rose-600 dark:text-dusty-rose-400 mb-4">
+                <p className="text-sm text-dusty-rose-600 dark:text-dusty-rose-400 mb-2">
                   {error}
                 </p>
               )}
@@ -184,7 +197,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !questionText.trim()}
-                className="w-full px-6 py-3 bg-sage-500 text-white rounded-lg font-medium
+                className="w-full px-4 py-2 bg-sage-500 text-white rounded-lg font-medium text-sm
                          hover:bg-sage-600 active:bg-sage-700 disabled:opacity-50 
                          disabled:cursor-not-allowed transition-colors duration-200"
               >
@@ -196,25 +209,13 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
 
         {/* Success message */}
         {showSuccess && (
-          <div className="mb-6 p-4 bg-sage-100 dark:bg-sage-900/30 rounded-lg">
-            <p className="text-sage-700 dark:text-sage-300">
+          <div className="mb-3 p-3 bg-sage-100 dark:bg-sage-900/30 rounded-lg">
+            <p className="text-sage-700 dark:text-sage-300 text-sm">
               ✓ Question submitted successfully!
             </p>
           </div>
         )}
 
-        {/* Instructions */}
-        <div className="mt-8 p-4 bg-warm-gray-100 dark:bg-warm-gray-800 rounded-lg">
-          <h3 className="font-medium text-warm-gray-800 dark:text-warm-gray-200 mb-2">
-            Tips for asking good questions:
-          </h3>
-          <ul className="text-sm text-warm-gray-600 dark:text-warm-gray-400 space-y-1">
-            <li>• Be specific and clear</li>
-            <li>• Keep questions concise</li>
-            <li>• Ask one question at a time</li>
-            <li>• Check if your question has already been asked</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

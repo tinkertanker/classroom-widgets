@@ -16,24 +16,36 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
 
+  // Join the widget-specific room on mount
+  useEffect(() => {
+    if (isSession && widgetId) {
+      socket.emit('session:joinRoom', {
+        sessionCode: roomCode,
+        roomType: 'rtfeedback',
+        widgetId
+      });
+
+      return () => {
+        socket.emit('session:leaveRoom', {
+          sessionCode: roomCode,
+          roomType: 'rtfeedback',
+          widgetId
+        });
+      };
+    }
+  }, [socket, roomCode, widgetId, isSession]);
+
   // Send feedback when value changes (only when active)
   useEffect(() => {
     if (currentValue !== lastSentValue && !isSending && isActive) {
       setIsSending(true);
       
       // Send the updated value
-      if (isSession) {
-        socket.emit('session:rtfeedback:update', {
-          sessionCode: roomCode,
-          widgetId,
-          value: currentValue
-        });
-      } else {
-        socket.emit('student:updateFeedback', {
-          code: roomCode,
-          value: currentValue
-        });
-      }
+      socket.emit('session:rtfeedback:update', {
+        sessionCode: roomCode,
+        widgetId,
+        value: currentValue
+      });
       
       setLastSentValue(currentValue);
       
@@ -46,12 +58,6 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
 
   // Handle room closed and state changes
   useEffect(() => {
-    const handleRoomClosed = (data: any) => {
-      if (data.code === roomCode) {
-        // Room closed
-      }
-    };
-    
     const handleStateChanged = (data: { isActive: boolean }) => {
       const wasInactive = !isActive;
       setIsActive(data.isActive);
@@ -63,7 +69,6 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       }
     };
 
-    socket.on('room:closed', handleRoomClosed);
     socket.on('rtfeedback:stateChanged', handleStateChanged);
     
     // Request current state if we don't have initial state
@@ -76,10 +81,9 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
 
     return () => {
       if (timer) clearTimeout(timer);
-      socket.off('room:closed', handleRoomClosed);
       socket.off('rtfeedback:stateChanged', handleStateChanged);
     };
-  }, [socket, roomCode, isActive]);
+  }, [socket, roomCode, isActive, widgetId]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isActive) {
@@ -109,18 +113,18 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   };
 
   return (
-    <div className="p-6">
+    <div className="p-3">
       {!isActive ? (
         // Waiting state when teacher has stopped feedback
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <div className="text-center space-y-4">
-            <h2 className="text-2xl font-semibold text-warm-gray-600 mb-4">
+        <div className="flex flex-col items-center justify-center min-h-[250px]">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
               Feedback Paused
             </h2>
-            <p className="text-warm-gray-500">
+            <p className="text-warm-gray-500 text-sm">
               Waiting for teacher to start feedback collection...
             </p>
-            <div className="mt-8">
+            <div className="mt-4">
               <span className="inline-flex items-center text-sm text-warm-gray-500">
                 <span className="inline-block w-2 h-2 bg-warm-gray-400 rounded-full mr-2 animate-pulse"></span>
                 Connected to room {roomCode}
@@ -130,28 +134,28 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
         </div>
       ) : (
         <>
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold text-warm-gray-800 mb-2">
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-semibold text-warm-gray-800 mb-1">
               Real-Time Feedback
             </h2>
-            <p className="text-warm-gray-600">
+            <p className="text-warm-gray-600 text-sm">
               Adjust the slider to let your teacher know
             </p>
           </div>
 
           <div className="max-w-md mx-auto">
         {/* Current value display */}
-        <div className="text-center mb-8">
-          <div className={`text-5xl font-bold ${getColorForValue(currentValue)} transition-colors duration-300`}>
+        <div className="text-center mb-4">
+          <div className={`text-4xl font-bold ${getColorForValue(currentValue)} transition-colors duration-300`}>
             {currentValue.toFixed(1)}
           </div>
-          <div className={`text-xl mt-2 ${getColorForValue(currentValue)} transition-colors duration-300`}>
+          <div className={`text-lg mt-1 ${getColorForValue(currentValue)} transition-colors duration-300`}>
             {getLabelForValue(currentValue)}
           </div>
         </div>
 
         {/* Slider */}
-        <div className="mb-8">
+        <div className="mb-4">
           <input
             type="range"
             min="1"

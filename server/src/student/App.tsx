@@ -182,10 +182,12 @@ const App: React.FC = () => {
 
       newSocket.on('session:joined', (joinData) => {
         console.log('Received session:joined event:', joinData);
+        console.log('Active rooms received:', joinData.activeRooms);
         
         if (joinData.success && joinData.activeRooms) {
           // Join all active rooms in the session
           joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
+            console.log('Creating room for:', roomData);
             const roomId = `${code}-${roomData.roomId}-${Date.now()}`;
             
             const newRoom: JoinedRoom = {
@@ -335,8 +337,8 @@ const App: React.FC = () => {
           bg-soft-white dark:bg-warm-gray-800 rounded-b-lg border border-warm-gray-200 dark:border-warm-gray-700 border-t-0
           transition-all duration-300 ease-in-out
           ${isScrolled 
-            ? 'p-3 md:px-6 shadow-md' 
-            : 'p-6 shadow-sm'
+            ? 'p-2 md:px-4 shadow-md' 
+            : 'p-4 shadow-sm'
           }
         `}
       >
@@ -369,8 +371,8 @@ const App: React.FC = () => {
         >
           {/* Joined rooms list */}
           {joinedRooms.length > 0 && (
-            <div className="mt-8 px-4 pb-8">
-              <div className="flex flex-col gap-4 max-w-[800px] mx-auto">
+            <div className="mt-4 px-3 pb-4">
+              <div className="flex flex-col gap-3 max-w-[800px] mx-auto">
             {joinedRooms.map((room) => (
               <div 
                 key={room.id} 
@@ -383,24 +385,39 @@ const App: React.FC = () => {
                 }`} 
                 data-room-type={room.type}
               >
-                <div className={`flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700 ${room.type === 'poll' ? 'bg-sage-100 dark:bg-sage-900 border-b-sage-200 dark:border-b-sage-700' : room.type === 'dataShare' ? 'bg-terracotta-100 dark:bg-terracotta-900 border-b-terracotta-200 dark:border-b-terracotta-700' : room.type === 'rtfeedback' ? 'bg-amber-100 dark:bg-amber-900 border-b-amber-200 dark:border-b-amber-700' : 'bg-sky-100 dark:bg-sky-900 border-b-sky-200 dark:border-b-sky-700'}`}>
+                <div className={`flex justify-between items-center px-4 py-3 ${
+                  room.type === 'poll' 
+                    ? 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800' 
+                    : room.type === 'dataShare' 
+                    ? 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800' 
+                    : room.type === 'rtfeedback' 
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-700 dark:to-amber-800' 
+                    : 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-sky-700 dark:to-sky-800'
+                }`}>
                   <div className="flex gap-3 items-center">
-                    <span className="bg-warm-gray-200 dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-300 px-2 py-1 rounded text-xs font-bold font-mono tracking-wider">{room.code}</span>
-                    <span className="text-sage-700 dark:text-sage-300 text-base md:text-lg font-semibold">
+                    <span className="text-white text-base md:text-lg font-semibold">
                       {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : room.type === 'rtfeedback' ? 'RT Feedback' : 'Questions'}
                     </span>
                   </div>
                   <button 
-                    className="bg-warm-gray-400 text-white w-6 h-6 rounded text-xs cursor-pointer transition-colors duration-200 flex items-center justify-center hover:bg-warm-gray-500"
+                    className={`${
+                      room.type === 'poll' 
+                        ? 'bg-sage-700 hover:bg-sage-800 dark:bg-sage-900 dark:hover:bg-sage-950' 
+                        : room.type === 'dataShare' 
+                        ? 'bg-terracotta-700 hover:bg-terracotta-800 dark:bg-terracotta-900 dark:hover:bg-terracotta-950' 
+                        : room.type === 'rtfeedback' 
+                        ? 'bg-amber-700 hover:bg-amber-800 dark:bg-amber-900 dark:hover:bg-amber-950' 
+                        : 'bg-sky-700 hover:bg-sky-800 dark:bg-sky-900 dark:hover:bg-sky-950'
+                    } bg-opacity-50 text-white w-6 h-6 rounded text-xs cursor-pointer transition-all duration-200 flex items-center justify-center`}
                     onClick={() => toggleMinimizeRoom(room.id)}
-                    aria-label={minimizedRooms.has(room.id) ? `Expand activity ${room.code}` : `Minimize activity ${room.code}`}
+                    aria-label={minimizedRooms.has(room.id) ? `Expand activity` : `Minimize activity`}
                   >
                     {minimizedRooms.has(room.id) ? <FaPlus className="w-3 h-3" /> : <FaMinus className="w-3 h-3" />}
                   </button>
                 </div>
                 
                 {!minimizedRooms.has(room.id) && (
-                  <div className="p-4">
+                  <div className="p-3">
                     {room.type === 'poll' && (
                       <PollActivity 
                         socket={room.socket} 
@@ -434,8 +451,8 @@ const App: React.FC = () => {
                         socket={room.socket} 
                         sessionCode={room.code}
                         studentId={room.socket.id || ''}
-                        onBack={() => {}}
                         widgetId={room.widgetId}
+                        initialIsActive={room.initialData?.isActive}
                       />
                     )}
                   </div>
@@ -448,7 +465,7 @@ const App: React.FC = () => {
 
         {/* Empty state */}
         {joinedRooms.length === 0 && (
-          <div className="text-center py-12 px-4 mt-4 text-warm-gray-600 dark:text-warm-gray-400">
+          <div className="text-center py-8 px-3 mt-2 text-warm-gray-600 dark:text-warm-gray-400">
             <p className="text-base">No active sessions. Enter a session code above to get started!</p>
           </div>
         )}

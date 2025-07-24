@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaQuestion, FaPlay, FaStop, FaTrash, FaCheck } from 'react-icons/fa6';
-import { createWidgetEventNames } from '../../utils/networkedWidgetUtils';
 
 interface Question {
   id: string;
@@ -22,7 +21,6 @@ interface QuestionsProps {
 function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isActive, setIsActive] = useState(false);
-  const eventNames = createWidgetEventNames('questions', widgetId);
 
   // Load saved state
   useEffect(() => {
@@ -128,12 +126,12 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
         useEffect(() => {
           if (!session.socket || !session.sessionCode || !isRoomActive) return;
           
-          const eventName = isActive ? eventNames.start : eventNames.stop;
+          const eventName = isActive ? 'session:questions:start' : 'session:questions:stop';
           session.socket.emit(eventName, {
             sessionCode: session.sessionCode,
             widgetId
           });
-        }, [isActive, session.socket, session.sessionCode, isRoomActive]);
+        }, [isActive, session.socket, session.sessionCode, isRoomActive, widgetId]);
 
         const handleMarkAnswered = (questionId: string) => {
           if (!session.socket || !session.sessionCode) return;
@@ -148,7 +146,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
         const handleDeleteQuestion = (questionId: string) => {
           if (!session.socket || !session.sessionCode) return;
           
-          session.socket.emit(eventNames.delete, {
+          session.socket.emit('session:questions:delete', {
             sessionCode: session.sessionCode,
             widgetId,
             questionId

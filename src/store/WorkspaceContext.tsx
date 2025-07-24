@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { getWidgetConfig } from '../constants/widgetConfigs';
 import { WIDGET_TYPES } from '../constants/widgetTypes';
+import { isNetworkedWidget } from '../constants/widgetRegistry';
 
 // State types
 interface WorkspaceState {
@@ -88,7 +89,7 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
       const widgetState = state.widgetStates.get(widgetId);
       
       // Dispatch cleanup event for networked widgets
-      if (widget && (widget.index === WIDGET_TYPES.POLL || widget.index === WIDGET_TYPES.DATA_SHARE || widget.index === WIDGET_TYPES.RT_FEEDBACK)) {
+      if (widget && isNetworkedWidget(widget.index)) {
         window.dispatchEvent(new CustomEvent('widget-cleanup', {
           detail: {
             widgetId,

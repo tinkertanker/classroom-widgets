@@ -1,4 +1,5 @@
 import { WIDGET_TYPES } from './widgetTypes';
+import { WIDGET_REGISTRY, getAllWidgets } from './widgetRegistry';
 
 interface WidgetConfig {
   defaultWidth: number;
@@ -13,8 +14,30 @@ interface WidgetConfig {
   };
 }
 
-// Widget configuration definitions
-export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
+// Widget configuration definitions - Generated from WIDGET_REGISTRY
+export const WIDGET_CONFIGS: { [key: number]: WidgetConfig } = Object.fromEntries(
+  getAllWidgets().map(widget => [
+    widget.id,
+    {
+      ...widget.layout,
+      // Special handling for sticker configs
+      ...(widget.id === WIDGET_TYPES.STAMP ? {
+        stickerConfigs: {
+          exclamation: {
+            defaultWidth: 90,
+            defaultHeight: 160,
+            minWidth: 50,
+            minHeight: 90,
+            lockAspectRatio: 90 / 160
+          }
+        }
+      } : {})
+    }
+  ])
+);
+
+// Legacy manual configs (to be removed once confirmed working)
+const LEGACY_WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
   [WIDGET_TYPES.RANDOMISER]: {
     defaultWidth: 350,
     defaultHeight: 250,
