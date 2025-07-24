@@ -288,7 +288,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
           <button
             onClick={() => {
               showModal({
-                title: 'Select a Widget',
                 content: (
                   <LaunchpadDialog
                     onAddWidget={handleAddWidget}
@@ -296,8 +295,9 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
                     serverConnected={serverConnected}
                   />
                 ),
-                className: "bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl max-w-5xl w-full mx-4 max-h-[70vh]",
-                overlayClassName: "fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1100] p-4"
+                className: "bg-soft-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl max-w-5xl w-full mx-4 h-fit overflow-hidden",
+                overlayClassName: "fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1100] p-4",
+                noPadding: false
               });
             }}
             className={`w-16 h-16 p-2 rounded-lg bg-gradient-to-br from-sage-50 to-sage-100 dark:from-sage-900/20 dark:to-sage-800/30 hover:from-sage-100 hover:to-sage-200 dark:hover:from-sage-800/30 dark:hover:to-sage-700/40 transition-all duration-300 transform hover:scale-110 shadow-lg hover:shadow-xl flex flex-col items-center justify-center gap-1 relative group border-2 border-sage-200 dark:border-sage-700 ${
