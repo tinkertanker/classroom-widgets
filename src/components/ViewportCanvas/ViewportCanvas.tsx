@@ -24,9 +24,10 @@ interface ViewportCanvasProps {
   onWidgetClick: (id: string) => void;
   onWidgetPositionChange: (id: string, position: { x: number; y: number }) => void;
   onWidgetSizeChange: (id: string, size: { width: number; height: number }) => void;
+  onViewportChange?: (viewport: Viewport) => void;
 }
 
-interface Viewport {
+export interface Viewport {
   x: number;      // Top-left x position in canvas coordinates
   y: number;      // Top-left y position in canvas coordinates
   width: number;  // Width of viewport in canvas coordinates
@@ -51,7 +52,8 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
   onWidgetRemove,
   onWidgetClick,
   onWidgetPositionChange,
-  onWidgetSizeChange
+  onWidgetSizeChange,
+  onViewportChange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -90,23 +92,34 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       const viewportWidth = containerSize.width / scale;
       const viewportHeight = containerSize.height / scale;
 
-      setViewport(prev => ({
-        ...prev,
-        width: Math.min(viewportWidth, CANVAS_WIDTH),
-        height: Math.min(viewportHeight, CANVAS_HEIGHT)
-      }));
+      setViewport(prev => {
+        const newViewport = {
+          ...prev,
+          width: Math.min(viewportWidth, CANVAS_WIDTH),
+          height: Math.min(viewportHeight, CANVAS_HEIGHT)
+        };
+        return newViewport;
+      });
     }
   }, [scale, containerSize]);
 
   // Constrain viewport to canvas bounds
   const constrainViewport = useCallback((vp: Viewport): Viewport => {
-    return {
+    const constrained = {
       x: Math.max(0, Math.min(vp.x, CANVAS_WIDTH - vp.width)),
       y: Math.max(0, Math.min(vp.y, CANVAS_HEIGHT - vp.height)),
       width: vp.width,
       height: vp.height
     };
+    return constrained;
   }, []);
+  
+  // Report viewport changes
+  useEffect(() => {
+    if (onViewportChange && viewport.width > 0 && viewport.height > 0) {
+      onViewportChange(viewport);
+    }
+  }, [viewport, onViewportChange]);
 
   // Handle mouse wheel for zoom and trackpad pan
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -197,12 +210,13 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
         const newViewportX = canvasX - (mouseX / containerSize.width) * newViewportWidth;
         const newViewportY = canvasY - (mouseY / containerSize.height) * newViewportHeight;
         
-        setViewport(constrainViewport({
+        const newViewport = constrainViewport({
           x: newViewportX,
           y: newViewportY,
           width: Math.min(newViewportWidth, CANVAS_WIDTH),
           height: Math.min(newViewportHeight, CANVAS_HEIGHT)
-        }));
+        });
+        setViewport(newViewport);
         
         onScaleChange(newScale);
       }
@@ -213,12 +227,15 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
       const deltaX = e.deltaX * panSpeed / scale;
       const deltaY = e.deltaY * panSpeed / scale;
       
-      setViewport(prev => constrainViewport({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY,
-        width: prev.width,
-        height: prev.height
-      }));
+      setViewport(prev => {
+        const newViewport = constrainViewport({
+          x: prev.x + deltaX,
+          y: prev.y + deltaY,
+          width: prev.width,
+          height: prev.height
+        });
+        return newViewport;
+      });
     }
   }, [scale, onScaleChange, viewport, containerSize, constrainViewport]);
 
@@ -254,12 +271,13 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({
     const deltaX = (e.clientX - panStartRef.current.x) / scale;
     const deltaY = (e.clientY - panStartRef.current.y) / scale;
 
-    setViewport(constrainViewport({
+    const newViewport = constrainViewport({
       x: panStartRef.current.viewportX - deltaX,
       y: panStartRef.current.viewportY - deltaY,
       width: viewport.width,
       height: viewport.height
-    }));
+    });
+    setViewport(newViewport);
   }, [isPanning, scale, viewport.width, viewport.height, constrainViewport]);
 
   // Handle pan end

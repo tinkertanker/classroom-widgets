@@ -16,6 +16,7 @@ interface WorkspaceState {
   stickerMode: boolean;
   selectedStickerType: string;
   scale: number;
+  viewport: { x: number; y: number; width: number; height: number } | null;
 }
 
 // Action types
@@ -28,6 +29,7 @@ type WorkspaceAction =
   | { type: 'SET_BACKGROUND'; payload: { backgroundType: BackgroundType } }
   | { type: 'SET_STICKER_MODE'; payload: { enabled: boolean; stickerType?: string } }
   | { type: 'SET_SCALE'; payload: { scale: number } }
+  | { type: 'SET_VIEWPORT'; payload: { viewport: { x: number; y: number; width: number; height: number } } }
   | { type: 'LOAD_WORKSPACE'; payload: Partial<WorkspaceState> }
   | { type: 'RESET_WORKSPACE' };
 
@@ -40,7 +42,8 @@ const initialState: WorkspaceState = {
   backgroundType: 'geometric',
   stickerMode: false,
   selectedStickerType: 'heart',
-  scale: 1.0
+  scale: 1.0,
+  viewport: null
 };
 
 // Reducer
@@ -55,7 +58,8 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
         config.defaultWidth,
         config.defaultHeight,
         state.widgetPositions,
-        state.scale
+        state.scale,
+        state.viewport || undefined
       );
 
       // Set initial widget state for stickers
@@ -171,6 +175,13 @@ function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): Works
       };
     }
 
+    case 'SET_VIEWPORT': {
+      return {
+        ...state,
+        viewport: action.payload.viewport
+      };
+    }
+
     case 'LOAD_WORKSPACE': {
       return {
         ...state,
@@ -201,6 +212,7 @@ interface WorkspaceContextValue {
   setBackground: (backgroundType: BackgroundType) => void;
   setStickerMode: (enabled: boolean, stickerType?: string) => void;
   setScale: (scale: number) => void;
+  setViewport: (viewport: { x: number; y: number; width: number; height: number }) => void;
   loadWorkspace: (data: Partial<WorkspaceState>) => void;
   resetWorkspace: () => void;
 }
@@ -244,6 +256,10 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     dispatch({ type: 'SET_SCALE', payload: { scale } });
   }, []);
 
+  const setViewport = useCallback((viewport: { x: number; y: number; width: number; height: number }) => {
+    dispatch({ type: 'SET_VIEWPORT', payload: { viewport } });
+  }, []);
+
   const loadWorkspace = useCallback((data: Partial<WorkspaceState>) => {
     dispatch({ type: 'LOAD_WORKSPACE', payload: data });
   }, []);
@@ -262,6 +278,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setBackground,
     setStickerMode,
     setScale,
+    setViewport,
     loadWorkspace,
     resetWorkspace
   };

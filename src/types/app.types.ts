@@ -8,8 +8,8 @@ export interface WidgetInstance {
 export interface WidgetPosition {
   x: number;
   y: number;
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
 }
 
 export interface WidgetSize {

@@ -44,7 +44,8 @@ function AppContentInner() {
     setBackground,
     setStickerMode,
     resetWorkspace,
-    setScale
+    setScale,
+    setViewport
   } = useWorkspace();
 
   // UI State
@@ -264,6 +265,7 @@ function AppContentInner() {
             onWidgetClick={setActiveWidget}
             onWidgetPositionChange={handleWidgetPositionChange}
             onWidgetSizeChange={handleWidgetSizeChange}
+            onViewportChange={setViewport}
             background={<Background type={state.backgroundType} />}
           />
           
