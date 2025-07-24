@@ -140,9 +140,8 @@ const widgetCategories: Record<string, number[]> = {
 
 const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose, serverConnected }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [hoveredIndex, setHoveredIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const widgetRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Helper functions defined first
   const isWidgetDisabled = (widgetType: number) => {
@@ -176,82 +175,21 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
     [searchQuery, serverConnected]
   );
 
-  // Handle keyboard navigation
+  // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
-        return;
-      }
-
-      if (!searchInputRef.current?.contains(document.activeElement)) return;
-
-      const numCols = 4;
-      const numRows = Math.ceil(visibleWidgets.length / numCols);
-      const currentIndex = focusedIndex;
-
-      switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault();
-          if (currentIndex === -1) {
-            setFocusedIndex(0);
-          } else {
-            const nextRow = Math.floor(currentIndex / numCols) + 1;
-            if (nextRow < numRows) {
-              const nextIndex = Math.min(currentIndex + numCols, visibleWidgets.length - 1);
-              setFocusedIndex(nextIndex);
-            }
-          }
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          if (currentIndex > -1) {
-            const prevRow = Math.floor(currentIndex / numCols) - 1;
-            if (prevRow >= 0) {
-              setFocusedIndex(currentIndex - numCols);
-            } else {
-              setFocusedIndex(-1);
-              searchInputRef.current?.focus();
-            }
-          }
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          if (currentIndex > 0) {
-            setFocusedIndex(currentIndex - 1);
-          }
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          if (currentIndex < visibleWidgets.length - 1) {
-            setFocusedIndex(currentIndex + 1);
-          }
-          break;
-        case 'Enter':
-          if (currentIndex >= 0 && currentIndex < visibleWidgets.length) {
-            const widgetType = visibleWidgets[currentIndex];
-            if (!isWidgetDisabled(widgetType)) {
-              handleWidgetClick(widgetType);
-            }
-          }
-          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedIndex, visibleWidgets, onClose, handleWidgetClick]);
+  }, [onClose]);
 
-  // Focus the button when focusedIndex changes
+  // Reset hovered index when search changes
   useEffect(() => {
-    if (focusedIndex >= 0 && focusedIndex < widgetRefs.current.length) {
-      widgetRefs.current[focusedIndex]?.focus();
-    }
-  }, [focusedIndex]);
-
-  // Reset focused index when search changes
-  useEffect(() => {
-    setFocusedIndex(-1);
+    setHoveredIndex(-1);
   }, [searchQuery]);
 
   return (
@@ -310,7 +248,6 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
                        bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200
                        focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:ring-4 focus:ring-sage-500/10 dark:focus:ring-sage-400/10
                        placeholder-warm-gray-400 dark:placeholder-warm-gray-500 transition-all duration-200"
-              onFocus={() => setFocusedIndex(-1)}
             />
             {searchQuery && (
               <button
@@ -346,33 +283,33 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
               </div>
             ) : visibleWidgets.map((widgetType, index) => {
               const isDisabled = isWidgetDisabled(widgetType);
-              const isFocused = index === focusedIndex;
+              const isHovered = index === hoveredIndex;
 
               return (
                 <button
                   key={widgetType}
-                  ref={el => widgetRefs.current[index] = el}
                   onClick={() => !isDisabled && handleWidgetClick(widgetType)}
-                  onMouseEnter={() => setFocusedIndex(index)}
+                  onMouseEnter={() => setHoveredIndex(index)}
+                  onMouseLeave={() => setHoveredIndex(-1)}
                   className={`
                     group relative flex flex-col items-center p-2.5 rounded-xl transition-all duration-300 transform
                     ${isDisabled 
                       ? 'opacity-50 cursor-not-allowed' 
                       : 'cursor-pointer hover:scale-[1.03] hover:shadow-lg'
                     }
-                    ${isFocused
+                    ${isHovered
                       ? 'bg-gradient-to-br from-sage-50 to-sage-100 dark:from-sage-900/20 dark:to-sage-800/20 ring-2 ring-sage-500 shadow-lg scale-[1.05] z-10'
                       : 'bg-warm-gray-50 dark:bg-warm-gray-800 hover:bg-gradient-to-br hover:from-warm-gray-50 hover:to-warm-gray-100 dark:hover:from-warm-gray-800 dark:hover:to-warm-gray-700'
                     }
-                    border-2 ${isFocused ? 'border-sage-500' : 'border-transparent'}
+                    border-2 ${isHovered ? 'border-sage-500' : 'border-transparent'}
                     animate-in fade-in-0 slide-in-from-bottom-2 duration-300
                   `}
                   disabled={isDisabled}
                   title={widgetNames[widgetType]}
-                  tabIndex={0}
+                  tabIndex={-1}
                 >
                   <div className={`text-3xl mb-2 relative transition-all duration-300 ${
-                    isFocused
+                    isHovered
                       ? 'text-sage-600 dark:text-sage-400 transform scale-110'
                       : 'text-warm-gray-600 dark:text-warm-gray-400 group-hover:text-warm-gray-700 dark:group-hover:text-warm-gray-300'
                   }`}>
@@ -388,7 +325,7 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
                   </div>
                   <div className="text-center space-y-0.5">
                     <span className={`text-sm font-semibold block transition-colors duration-300 ${
-                      isFocused
+                      isHovered
                         ? 'text-sage-700 dark:text-sage-300'
                         : 'text-warm-gray-700 dark:text-warm-gray-200'
                     }`}>

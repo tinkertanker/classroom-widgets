@@ -71,6 +71,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [serverConnected, setServerConnected] = useState(false);
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
   // Check server connection (used by Poll and Data Share widgets)
   useEffect(() => {
@@ -310,6 +311,10 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
               <LaunchpadIcon size={32} />
             </div>
             <span className="text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
+            {/* Keyboard shortcut indicator */}
+            <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {isMac ? '⌘K' : 'Ctrl+K'}
+            </div>
           </button>
         )}
 

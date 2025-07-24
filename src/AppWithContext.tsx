@@ -57,7 +57,7 @@ function AppContentInner() {
   // Sync with localStorage
   const { isInitialized } = useWorkspaceSync();
 
-  // Handle 'S' key to exit sticker mode
+  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if not typing in an input field
@@ -65,14 +65,34 @@ function AppContentInner() {
         return;
       }
       
+      // Exit sticker mode with 'S' key
       if (e.key.toLowerCase() === 's' && state.stickerMode) {
         setStickerMode(false);
+        return;
+      }
+      
+      // Open widget launcher with Cmd/Ctrl + K
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Trigger the LaunchpadDialog by clicking the More button
+        const moreButton = document.querySelector('[title="More widgets"]') as HTMLButtonElement;
+        if (moreButton) {
+          moreButton.click();
+        }
+        return;
+      }
+      
+      // Toggle fullscreen with F11 or Cmd/Ctrl + Shift + F
+      if (e.key === 'F11' || ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f')) {
+        e.preventDefault();
+        toggleFullscreen();
+        return;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [state.stickerMode, setStickerMode]);
+  }, [state.stickerMode, setStickerMode, toggleFullscreen]);
 
   // Prevent swipe navigation
   useEffect(() => {
@@ -208,8 +228,8 @@ function AppContentInner() {
           {/* Fullscreen button */}
           <button
             onClick={toggleFullscreen}
-            className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200/80 hover:bg-warm-gray-300/80 dark:bg-warm-gray-700/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors duration-200 backdrop-blur-sm"
-            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200/80 hover:bg-warm-gray-300/80 dark:bg-warm-gray-700/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors duration-200 backdrop-blur-sm group"
+            title={isFullscreen ? "Exit fullscreen (F11)" : "Enter fullscreen (F11)"}
           >
             <svg
               className="w-5 h-5"
