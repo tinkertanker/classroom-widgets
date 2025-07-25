@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 
-export type RoomType = 'poll' | 'dataShare' | 'rtfeedback' | 'questions';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
 
 interface SessionParticipant {
   name: string;
@@ -128,17 +128,18 @@ export function useSession({
 
       setIsConnecting(true);
       
-      socket.emit('session:create', (response: any) => {
+      socket.emit('session:create', { existingCode: sessionCodeRef.current }, (response: any) => {
         setIsConnecting(false);
         
         if (response.success) {
           setSessionCode(response.code);
           sessionCodeRef.current = response.code;
-          setActiveRooms([]);
-          setParticipants([]);
-          setParticipantCount(0);
           
+          // Only reset rooms if this is a new session
           if (!response.isExisting) {
+            setActiveRooms([]);
+            setParticipants([]);
+            setParticipantCount(0);
             onSessionCreated?.(response.code);
           }
           

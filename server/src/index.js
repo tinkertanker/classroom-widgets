@@ -165,8 +165,8 @@ class PollRoom {
   }
 }
 
-// Room class to manage data share sessions
-class DataShareRoom {
+// Room class to manage link share sessions
+class LinkShareRoom {
   constructor(code) {
     this.code = code;
     this.hostSocketId = null;
@@ -209,10 +209,11 @@ class QuestionsRoom {
     this.isActive = true; // Questions start active by default
   }
 
-  addQuestion(studentId, text) {
+  addQuestion(studentId, text, studentName) {
     const question = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       studentId,
+      studentName: studentName || 'Anonymous',
       text,
       timestamp: Date.now(),
       answered: false
@@ -353,8 +354,8 @@ class Session {
       case 'poll':
         room = new PollRoom(this.code);
         break;
-      case 'dataShare':
-        room = new DataShareRoom(this.code);
+      case 'linkShare':
+        room = new LinkShareRoom(this.code);
         break;
       case 'rtfeedback':
         room = new RTFeedbackRoom(this.code);
@@ -460,13 +461,13 @@ app.get('/api/rooms/:code/exists', (req, res) => {
     console.log(`API: Room object found:`, room);
     console.log(`API: Room constructor name:`, room.constructor.name);
     console.log(`API: Is PollRoom?`, room instanceof PollRoom);
-    console.log(`API: Is DataShareRoom?`, room instanceof DataShareRoom);
+    console.log(`API: Is LinkShareRoom?`, room instanceof LinkShareRoom);
     console.log(`API: Is RTFeedbackRoom?`, room instanceof RTFeedbackRoom);
     
     if (room instanceof PollRoom) {
       roomType = 'poll';
-    } else if (room instanceof DataShareRoom) {
-      roomType = 'dataShare';
+    } else if (room instanceof LinkShareRoom) {
+      roomType = 'linkShare';
     } else if (room instanceof RTFeedbackRoom) {
       roomType = 'rtfeedback';
     }
@@ -494,7 +495,7 @@ io.on('connection', (socket) => {
    * A session contains:
    * - One host (teacher)
    * - Multiple participants (students)  
-   * - Multiple room types (poll, dataShare, rtfeedback)
+   * - Multiple room types (poll, linkShare, rtfeedback)
    * 
    * Benefits:
    * - Students enter one code and can access all activities
@@ -507,8 +508,16 @@ io.on('connection', (socket) => {
    */
   
   // Host creates or gets existing session
-  socket.on('session:create', (callback) => {
-    // Check if host already has a session
+  socket.on('session:create', (data, callback) => {
+    // Handle both old format (just callback) and new format (data + callback)
+    if (typeof data === 'function') {
+      callback = data;
+      data = {};
+    }
+    
+    const { existingCode } = data;
+    
+    // Check if host already has a session (by socket.id)
     let existingSession = null;
     for (const [code, session] of sessions) {
       if (session.hostSocketId === socket.id) {
@@ -517,10 +526,28 @@ io.on('connection', (socket) => {
       }
     }
     
+    // If no session found by socket.id but existingCode is provided,
+    // check if that session exists and update its hostSocketId
+    if (!existingSession && existingCode) {
+      existingSession = sessions.get(existingCode);
+      if (existingSession) {
+        // Update the hostSocketId to the new socket.id
+        console.log(`Updating host socket ID for session ${existingCode} from ${existingSession.hostSocketId} to ${socket.id}`);
+        existingSession.hostSocketId = socket.id;
+      }
+    }
+    
     if (existingSession) {
       currentSessionCode = existingSession.code;
       // Make sure host is in the session room
       socket.join(`session:${existingSession.code}`);
+      
+      // Rejoin all room namespaces for this session
+      for (const [roomId, room] of existingSession.rooms) {
+        socket.join(`${existingSession.code}:${roomId}`);
+        console.log(`Host rejoined room: ${existingSession.code}:${roomId}`);
+      }
+      
       callback({ success: true, code: existingSession.code, isExisting: true });
     } else {
       const code = generateSessionCode();
@@ -840,48 +867,74 @@ io.on('connection', (socket) => {
   });
   
   // Data Share handlers for sessions
-  socket.on('session:dataShare:submit', (data) => {
+  socket.on('session:linkShare:submit', (data) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) {
-      socket.emit('session:dataShare:submitted', { success: false, error: 'Session not found' });
+      socket.emit('session:linkShare:submitted', { success: false, error: 'Session not found' });
       return;
     }
     
-    const room = session.getRoom('dataShare', data.widgetId);
-    if (!room || !(room instanceof DataShareRoom)) {
-      socket.emit('session:dataShare:submitted', { success: false, error: 'Data share room not found' });
+    const room = session.getRoom('linkShare', data.widgetId);
+    if (!room || !(room instanceof LinkShareRoom)) {
+      socket.emit('session:linkShare:submitted', { success: false, error: 'Link share room not found' });
       return;
     }
     
     const participant = session.participants.get(socket.id);
     if (!participant) {
-      socket.emit('session:dataShare:submitted', { success: false, error: 'Not joined to session' });
+      socket.emit('session:linkShare:submitted', { success: false, error: 'Not joined to session' });
       return;
     }
     
-    const submission = room.addSubmission(participant.name || data.studentName, data.link);
+    // Update participant name if provided
+    if (data.studentName && data.studentName !== participant.name) {
+      participant.name = data.studentName;
+    }
+    
+    const submission = room.addSubmission(data.studentName || participant.name, data.link);
     
     // Notify all in the room
-    const dataShareRoomId = data.widgetId ? `dataShare:${data.widgetId}` : 'dataShare';
-    io.to(`${session.code}:${dataShareRoomId}`).emit('dataShare:newSubmission', submission);
+    const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
+    io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:newSubmission', submission);
     
     // Send confirmation to submitter
-    socket.emit('session:dataShare:submitted', { success: true });
+    socket.emit('session:linkShare:submitted', { success: true });
     
     session.updateActivity();
   });
   
-  socket.on('session:dataShare:delete', (data) => {
-    const session = sessions.get(data.sessionCode || currentSessionCode);
-    if (!session || session.hostSocketId !== socket.id) return;
+  socket.on('session:linkShare:delete', (data) => {
+    console.log('Received linkShare:delete event:', {
+      data,
+      socketId: socket.id,
+      currentSessionCode
+    });
     
-    const room = session.getRoom('dataShare', data.widgetId);
-    if (!room || !(room instanceof DataShareRoom)) return;
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session) {
+      console.log('Session not found:', data.sessionCode || currentSessionCode);
+      return;
+    }
+    
+    if (session.hostSocketId !== socket.id) {
+      console.log('Not host socket:', {
+        hostSocketId: session.hostSocketId,
+        currentSocketId: socket.id
+      });
+      return;
+    }
+    
+    const room = session.getRoom('linkShare', data.widgetId);
+    if (!room || !(room instanceof LinkShareRoom)) {
+      console.log('Room not found or not LinkShareRoom');
+      return;
+    }
     
     const deleted = room.deleteSubmission(data.submissionId);
     if (deleted) {
-      const dataShareRoomId = data.widgetId ? `dataShare:${data.widgetId}` : 'dataShare';
-      io.to(`${session.code}:${dataShareRoomId}`).emit('dataShare:submissionDeleted', data.submissionId);
+      const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
+      console.log('Emitting deletion to room:', `${session.code}:${linkShareRoomId}`);
+      io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:submissionDeleted', { submissionId: data.submissionId });
     }
     
     session.updateActivity();
@@ -1012,15 +1065,21 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Update participant name if provided
+    if (data.studentName && data.studentName !== participant.name) {
+      participant.name = data.studentName;
+    }
+    
     // Add the question
-    const question = room.addQuestion(participant.studentId, data.text);
+    const question = room.addQuestion(participant.studentId, data.text, data.studentName || participant.name);
     
     // Notify host about new question
     if (session.hostSocketId) {
       io.to(session.hostSocketId).emit('newQuestion', {
         questionId: question.id,
         text: question.text,
-        studentId: participant.studentId
+        studentId: participant.studentId,
+        studentName: question.studentName
       });
     }
     
@@ -1181,11 +1240,11 @@ io.on('connection', (socket) => {
             io.to(room.hostSocketId).emit('poll:participantCount', {
               count: participantCount
             });
-          } else if (room instanceof DataShareRoom) {
-            io.to(room.hostSocketId).emit('dataShare:participantLeft', {
+          } else if (room instanceof LinkShareRoom) {
+            io.to(room.hostSocketId).emit('linkShare:participantLeft', {
               studentId: socket.id
             });
-            io.to(room.hostSocketId).emit('dataShare:participantCount', {
+            io.to(room.hostSocketId).emit('linkShare:participantCount', {
               count: participantCount
             });
           } else if (room instanceof RTFeedbackRoom) {
