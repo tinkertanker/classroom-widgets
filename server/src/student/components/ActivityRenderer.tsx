@@ -4,7 +4,7 @@ import { ActivityRoomType, BaseActivityProps } from '../types/activity.types';
 // Lazy load activity components
 const activityComponents = {
   poll: lazy(() => import('./PollActivity')),
-  dataShare: lazy(() => import('./DataShareActivity')),
+  linkShare: lazy(() => import('./LinkShareActivity')),
   rtfeedback: lazy(() => import('./RTFeedbackActivity')),
   questions: lazy(() => import('./QuestionsActivity'))
 };
@@ -97,7 +97,7 @@ export const ActivityRenderer: React.FC<ActivityRendererProps> = ({
           initialPollData: initialData
         };
       
-      case 'dataShare':
+      case 'linkShare':
         return {
           ...baseProps,
           studentName

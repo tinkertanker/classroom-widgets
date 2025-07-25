@@ -43,7 +43,7 @@ export const LazyWidgets = {
   
   // Networked widgets - using PascalCase as they are in the registry
   Poll: lazy(() => import('../poll/Poll')),
-  DataShare: lazy(() => import('../dataShare/DataShare')),
+  LinkShare: lazy(() => import('../linkShare/LinkShare')),
   RTFeedback: lazy(() => import('../rtFeedback/RTFeedback')),
   Questions: lazy(() => import('../questions/Questions'))
 };

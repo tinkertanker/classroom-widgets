@@ -3,11 +3,11 @@ import io, { Socket } from 'socket.io-client';
 import { FaMinus, FaPlus } from 'react-icons/fa6';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
-import DataShareActivity from './components/DataShareActivity';
+import LinkShareActivity from './components/LinkShareActivity';
 import RTFeedbackActivity from './components/RTFeedbackActivity';
 import QuestionsActivity from './components/QuestionsActivity';
 
-export type RoomType = 'poll' | 'dataShare' | 'rtfeedback' | 'questions';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
 
 interface JoinedRoom {
   id: string;
@@ -22,6 +22,7 @@ interface JoinedRoom {
 
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
+  const [currentSessionCode, setCurrentSessionCode] = useState<string>(''); // Track current session
   const [leavingRooms, setLeavingRooms] = useState<Set<string>>(new Set());
   const [enteringRooms, setEnteringRooms] = useState<Set<string>>(new Set());
   const [minimizedRooms, setMinimizedRooms] = useState<Set<string>>(new Set());
@@ -38,6 +39,7 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
   const headerRef = useRef<HTMLDivElement>(null);
   
@@ -152,6 +154,11 @@ const App: React.FC = () => {
         throw new Error('Already joined this session');
       }
 
+      // Only allow one session at a time
+      if (currentSessionCode) {
+        throw new Error('You can only join one session at a time. Please leave the current session first.');
+      }
+
       // Update student name if provided
       if (name && name !== studentName) {
         setStudentName(name);
@@ -177,6 +184,7 @@ const App: React.FC = () => {
       // Set up socket event handlers
       newSocket.on('connect', () => {
         console.log(`Connected to server for session ${code}`);
+        setIsConnected(true);
         newSocket.emit('session:join', { code, name: name || studentName, studentId: newSocket.id });
       });
 
@@ -185,6 +193,9 @@ const App: React.FC = () => {
         console.log('Active rooms received:', joinData.activeRooms);
         
         if (joinData.success && joinData.activeRooms) {
+          // Set current session code
+          setCurrentSessionCode(code);
+          
           // Join all active rooms in the session
           joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
             console.log('Creating room for:', roomData);
@@ -220,6 +231,8 @@ const App: React.FC = () => {
           // Clean up on failure
           newSocket.close();
           socketRefs.current.delete(sessionId);
+          setCurrentSessionCode(''); // Clear session code
+          setIsConnected(false);
           throw new Error('Failed to join session');
         }
       });
@@ -285,12 +298,37 @@ const App: React.FC = () => {
       });
 
       newSocket.on('disconnect', () => {
-        console.log(`Disconnected from room ${code}`);
+        console.log(`Disconnected from session ${code}`);
+        setIsConnected(false);
+        // Clear current session when disconnected
+        setCurrentSessionCode('');
       });
 
     } catch (error) {
       throw error;
     }
+  };
+
+  const handleLeaveSession = () => {
+    // Add all rooms to leaving set to trigger animation
+    const roomIds = joinedRooms.map(room => room.id);
+    setLeavingRooms(prev => new Set([...prev, ...roomIds]));
+    
+    // Close all socket connections for this session
+    socketRefs.current.forEach((socket) => {
+      socket.close();
+    });
+    socketRefs.current.clear();
+    
+    // Clear current session and connection state
+    setCurrentSessionCode('');
+    setIsConnected(false);
+    
+    // Remove all rooms after animation completes
+    setTimeout(() => {
+      setJoinedRooms([]);
+      setLeavingRooms(new Set());
+    }, 300); // Match animation duration
   };
 
   const handleLeaveRoom = (roomId: string) => {
@@ -343,12 +381,15 @@ const App: React.FC = () => {
         `}
       >
         <JoinForm 
-          onJoin={handleJoin} 
+          onJoin={handleJoin}
+          onLeaveSession={handleLeaveSession}
+          currentSessionCode={currentSessionCode}
           defaultName={studentName}
           onNameChange={setStudentName}
           isDarkMode={isDarkMode}
           onToggleDarkMode={toggleDarkMode}
           isCompact={isScrolled}
+          isConnected={isConnected}
         />
       </div>
       
@@ -388,22 +429,25 @@ const App: React.FC = () => {
                 <div className={`flex justify-between items-center px-4 py-3 ${
                   room.type === 'poll' 
                     ? 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800' 
-                    : room.type === 'dataShare' 
+                    : room.type === 'linkShare' 
                     ? 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800' 
                     : room.type === 'rtfeedback' 
                     ? 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-700 dark:to-amber-800' 
                     : 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-sky-700 dark:to-sky-800'
                 }`}>
-                  <div className="flex gap-3 items-center">
+                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                     <span className="text-white text-base md:text-lg font-semibold">
-                      {room.type === 'poll' ? 'Poll' : room.type === 'dataShare' ? 'Data Share' : room.type === 'rtfeedback' ? 'RT Feedback' : 'Questions'}
+                      {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'}
+                    </span>
+                    <span className="text-white/80 text-xs sm:text-sm">
+                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : '• Submit questions to your teacher'}
                     </span>
                   </div>
                   <button 
                     className={`${
                       room.type === 'poll' 
                         ? 'bg-sage-700 hover:bg-sage-800 dark:bg-sage-900 dark:hover:bg-sage-950' 
-                        : room.type === 'dataShare' 
+                        : room.type === 'linkShare' 
                         ? 'bg-terracotta-700 hover:bg-terracotta-800 dark:bg-terracotta-900 dark:hover:bg-terracotta-950' 
                         : room.type === 'rtfeedback' 
                         ? 'bg-amber-700 hover:bg-amber-800 dark:bg-amber-900 dark:hover:bg-amber-950' 
@@ -427,13 +471,14 @@ const App: React.FC = () => {
                         widgetId={room.widgetId}
                       />
                     )}
-                    {room.type === 'dataShare' && (
-                      <DataShareActivity 
+                    {room.type === 'linkShare' && (
+                      <LinkShareActivity 
                         socket={room.socket} 
                         roomCode={room.code}
                         studentName={studentName}
                         isSession={true}
                         widgetId={room.widgetId}
+                        initialIsActive={room.initialData?.isActive}
                       />
                     )}
                     {room.type === 'rtfeedback' && (
@@ -451,6 +496,7 @@ const App: React.FC = () => {
                         socket={room.socket} 
                         sessionCode={room.code}
                         studentId={room.socket.id || ''}
+                        studentName={room.studentName}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
                       />
@@ -466,7 +512,7 @@ const App: React.FC = () => {
         {/* Empty state */}
         {joinedRooms.length === 0 && (
           <div className="text-center py-8 px-3 mt-2 text-warm-gray-600 dark:text-warm-gray-400">
-            <p className="text-base">No active sessions. Enter a session code above to get started!</p>
+            <p className="text-base">No active session. Enter a session code above to get started!</p>
           </div>
         )}
         </div>

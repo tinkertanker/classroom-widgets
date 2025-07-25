@@ -124,24 +124,10 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
             <p className="text-warm-gray-500 text-sm">
               Waiting for teacher to start feedback collection...
             </p>
-            <div className="mt-4">
-              <span className="inline-flex items-center text-sm text-warm-gray-500">
-                <span className="inline-block w-2 h-2 bg-warm-gray-400 rounded-full mr-2 animate-pulse"></span>
-                Connected to room {roomCode}
-              </span>
-            </div>
           </div>
         </div>
       ) : (
         <>
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-semibold text-warm-gray-800 mb-1">
-              Real-Time Feedback
-            </h2>
-            <p className="text-warm-gray-600 text-sm">
-              Adjust the slider to let your teacher know
-            </p>
-          </div>
 
           <div className="max-w-md mx-auto">
         {/* Current value display */}
@@ -187,19 +173,14 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
         </div>
 
         {/* Status */}
-        <div className="text-center text-sm text-warm-gray-500">
-          {isSending ? (
+        {isSending && (
+          <div className="text-center text-sm text-warm-gray-500">
             <span className="flex items-center justify-center">
               <span className="inline-block w-2 h-2 bg-sage-500 rounded-full mr-2 animate-pulse"></span>
               Updating...
             </span>
-          ) : (
-            <span className="flex items-center justify-center">
-              <span className="inline-block w-2 h-2 bg-sage-500 rounded-full mr-2"></span>
-              Connected
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
         </>
       )}

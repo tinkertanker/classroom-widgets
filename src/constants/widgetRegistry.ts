@@ -376,13 +376,13 @@ export const WIDGET_REGISTRY: { [key: number]: WidgetDefinition } = {
     }
   },
   
-  [WIDGET_TYPES.DATA_SHARE]: {
-    id: WIDGET_TYPES.DATA_SHARE,
-    name: 'DataShare',
-    displayName: 'Data Share',
+  [WIDGET_TYPES.LINK_SHARE]: {
+    id: WIDGET_TYPES.LINK_SHARE,
+    name: 'LinkShare',
+    displayName: 'Link Share',
     category: WidgetCategory.NETWORKED,
-    componentPath: 'dataShare',
-    description: 'Collect text submissions from students',
+    componentPath: 'linkShare',
+    description: 'Collect link submissions from students',
     features: {
       hasStateManagement: true,
       isResizable: true
@@ -395,10 +395,10 @@ export const WIDGET_REGISTRY: { [key: number]: WidgetDefinition } = {
       lockAspectRatio: false
     },
     networked: {
-      roomType: 'dataShare' as RoomType,
+      roomType: 'linkShare' as RoomType,
       hasStartStop: false,
       startsActive: true,
-      studentComponentName: 'DataShareActivity'
+      studentComponentName: 'LinkShareActivity'
     }
   },
   

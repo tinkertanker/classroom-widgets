@@ -1,6 +1,6 @@
 # Harmonized Widget Architecture
 
-This document defines the standardized architecture for all networked widgets (Poll, DataShare, RTFeedback).
+This document defines the standardized architecture for all networked widgets (Poll, Link Share, RTFeedback).
 
 ## Core Principles
 
@@ -13,7 +13,7 @@ This document defines the standardized architecture for all networked widgets (P
 
 ### Widget Event Prefixes
 - Poll: `poll:`
-- DataShare: `dataShare:`  
+- Link Share: `linkShare:`  
 - RTFeedback: `rtFeedback:`
 
 ### Standard Event Patterns
@@ -74,7 +74,7 @@ Server → Student:
 - `poll:results` - Final results
 ```
 
-### DataShare Widget
+### Link Share Widget
 ```
 Additional Teacher → Server:
 - `[prefix]:deleteSubmission` - Delete specific submission
@@ -89,8 +89,8 @@ Student → Server:
 - `student:deleteSubmission` - Delete own submission
 
 Server → Student:
-- `dataShare:updated` - Widget state
-- `dataShare:submissionConfirmed` - Submission received
+- `linkShare:updated` - Widget state
+- `linkShare:submissionConfirmed` - Submission received
 ```
 
 ### RTFeedback Widget

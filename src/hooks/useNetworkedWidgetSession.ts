@@ -44,15 +44,25 @@ export function useNetworkedWidgetSession({
       // 2. Widget IDs match (including both being undefined)
       // IMPORTANT: If widgetId is provided in the event, it must match this widget's ID
       if (data.roomType === roomType) {
+        // Debug logging
+        console.log(`[Widget ${widgetId}] Received roomCreated event:`, {
+          eventWidgetId: data.widgetId,
+          myWidgetId: widgetId,
+          roomType: data.roomType
+        });
+        
         // If the event has a widgetId, only respond if it matches ours
         if (data.widgetId && data.widgetId !== widgetId) {
+          console.log(`[Widget ${widgetId}] Ignoring event - widgetId mismatch`);
           return;
         }
         // If we have a widgetId but the event doesn't specify one, don't respond
         if (widgetId && !data.widgetId) {
+          console.log(`[Widget ${widgetId}] Ignoring event - no widgetId in event`);
           return;
         }
         // Otherwise, the widget IDs match (or both are undefined)
+        console.log(`[Widget ${widgetId}] Activating room`);
         setIsRoomActive(true);
         onRoomCreated?.();
       }
@@ -64,15 +74,25 @@ export function useNetworkedWidgetSession({
       // 2. Widget IDs match (including both being undefined)
       // IMPORTANT: If widgetId is provided in the event, it must match this widget's ID
       if (data.roomType === roomType) {
+        // Debug logging
+        console.log(`[Widget ${widgetId}] Received roomClosed event:`, {
+          eventWidgetId: data.widgetId,
+          myWidgetId: widgetId,
+          roomType: data.roomType
+        });
+        
         // If the event has a widgetId, only respond if it matches ours
         if (data.widgetId && data.widgetId !== widgetId) {
+          console.log(`[Widget ${widgetId}] Ignoring close event - widgetId mismatch`);
           return;
         }
         // If we have a widgetId but the event doesn't specify one, don't respond
         if (widgetId && !data.widgetId) {
+          console.log(`[Widget ${widgetId}] Ignoring close event - no widgetId in event`);
           return;
         }
         // Otherwise, the widget IDs match (or both are undefined)
+        console.log(`[Widget ${widgetId}] Deactivating room`);
         setIsRoomActive(false);
         onRoomClosed?.();
       }
@@ -102,15 +122,8 @@ export function useNetworkedWidgetSession({
     };
   }, [widgetId, isRoomActive, session, roomType]);
 
-  // Load saved state
-  useEffect(() => {
-    if (savedState) {
-      // Don't restore isRoomActive from saved state
-      // Rooms are ephemeral and don't persist across page reloads
-      // Widget must create a new room after page refresh
-      setIsRoomActive(false);
-    }
-  }, [savedState]);
+  // Don't load isRoomActive from saved state - rooms are ephemeral
+  // This effect is intentionally empty to prevent loading stale room state
 
   // Save state when it changes
   useEffect(() => {
@@ -126,11 +139,15 @@ export function useNetworkedWidgetSession({
       setIsStarting(true);
       setError(null);
       
+      console.log(`[Widget ${widgetId}] Starting ${roomType} room`);
+      
       // Ensure we have a session
       await session.ensureSession();
       
       // Create the room with widgetId
       await session.createRoom(roomType, widgetId);
+      
+      console.log(`[Widget ${widgetId}] Room creation requested`);
       
       // Room active state will be set by the roomCreated event
       
@@ -146,6 +163,7 @@ export function useNetworkedWidgetSession({
   // Handle stopping the widget
   const handleStop = useCallback(() => {
     if (session.socket && session.sessionCode) {
+      console.log(`[Widget ${widgetId}] Stopping ${roomType} room`);
       // Close the room with widgetId
       session.closeRoom(roomType, widgetId);
     }

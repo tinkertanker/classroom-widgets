@@ -12,6 +12,7 @@ interface QuestionsActivityProps {
   socket: Socket;
   sessionCode: string;
   studentId: string;
+  studentName?: string;
   widgetId?: string;
   initialIsActive?: boolean;
 }
@@ -20,6 +21,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   socket,
   sessionCode,
   studentId,
+  studentName,
   widgetId,
   initialIsActive
 }) => {
@@ -127,6 +129,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     socket.emit('session:questions:submit', {
       sessionCode,
       text: questionText.trim(),
+      studentName: studentName || 'Anonymous',
       widgetId
     });
   };
@@ -137,47 +140,34 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   });
 
   return (
-    <div className="bg-warm-gray-50 dark:bg-warm-gray-900 p-4">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-100">
-            Ask Questions
-          </h1>
-          <p className="text-warm-gray-600 dark:text-warm-gray-400 mt-2">
-            Submit questions to your teacher
-          </p>
+    <div className="p-3">
+      {!isActive ? (
+        // Waiting state when teacher has stopped accepting questions
+        <div className="flex flex-col items-center justify-center min-h-[250px]">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+              Questions Paused
+            </h2>
+            <p className="text-warm-gray-500 text-sm">
+              Waiting for teacher to start accepting questions...
+            </p>
+          </div>
         </div>
+      ) : (
+        <>
 
-        {/* Status */}
-        <div className={`mb-6 p-4 rounded-lg ${
-          isActive 
-            ? 'bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300' 
-            : 'bg-warm-gray-200 dark:bg-warm-gray-800 text-warm-gray-600 dark:text-warm-gray-400'
-        }`}>
-          {isActive ? (
-            <p>Questions are being accepted. Ask away!</p>
-          ) : (
-            <p>Questions are not being accepted right now.</p>
-          )}
-        </div>
-
-        {/* Question submission form */}
-        {isActive && (
-          <form onSubmit={handleSubmitQuestion} className="mb-8">
-            <div className="bg-white dark:bg-warm-gray-800 rounded-lg shadow-sm p-6">
-              <label className="block mb-4">
-                <span className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2 block">
+          {/* Question submission form */}
+          <form onSubmit={handleSubmitQuestion} className="mb-4">
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="question" className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
                   Your Question
-                </span>
+                </label>
                 <textarea
+                  id="question"
                   value={questionText}
                   onChange={(e) => setQuestionText(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 
-                           bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200
-                           focus:outline-none focus:ring-2 focus:ring-sage-500 dark:focus:ring-sage-400
-                           placeholder-warm-gray-400 dark:placeholder-warm-gray-500
-                           resize-none"
+                  className="w-full py-2 px-3 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md text-sm bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] resize-none"
                   placeholder="Type your question here..."
                   rows={3}
                   maxLength={500}
@@ -186,37 +176,33 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
                 <div className="mt-1 text-xs text-warm-gray-500 dark:text-warm-gray-400 text-right">
                   {questionText.length}/500
                 </div>
-              </label>
+              </div>
 
               {error && (
-                <p className="text-sm text-dusty-rose-600 dark:text-dusty-rose-400 mb-2">
+                <div className="bg-dusty-rose-50 dark:bg-dusty-rose-900/30 text-dusty-rose-700 dark:text-dusty-rose-300 p-2 rounded-md text-sm border border-dusty-rose-200 dark:border-dusty-rose-700">
                   {error}
-                </p>
+                </div>
               )}
 
               <button
                 type="submit"
                 disabled={isSubmitting || !questionText.trim()}
-                className="w-full px-4 py-2 bg-sage-500 text-white rounded-lg font-medium text-sm
-                         hover:bg-sage-600 active:bg-sage-700 disabled:opacity-50 
-                         disabled:cursor-not-allowed transition-colors duration-200"
+                className="w-full bg-sage-500 hover:bg-sage-600 text-white py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Question'}
               </button>
             </div>
           </form>
-        )}
 
-        {/* Success message */}
-        {showSuccess && (
-          <div className="mb-3 p-3 bg-sage-100 dark:bg-sage-900/30 rounded-lg">
-            <p className="text-sage-700 dark:text-sage-300 text-sm">
-              ✓ Question submitted successfully!
-            </p>
-          </div>
-        )}
+          {/* Success message */}
+          {showSuccess && (
+            <div className="bg-sage-50 dark:bg-sage-900/30 border border-sage-200 dark:border-sage-700 rounded-lg p-3 text-center text-sage-700 dark:text-sage-300 font-medium mb-3 text-sm">
+              Question submitted successfully!
+            </div>
+          )}
 
-      </div>
+        </>
+      )}
     </div>
   );
 };

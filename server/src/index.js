@@ -172,6 +172,7 @@ class LinkShareRoom {
     this.hostSocketId = null;
     this.submissions = [];
     this.createdAt = Date.now();
+    this.isActive = true; // Link sharing starts active by default
   }
 
   addSubmission(studentName, link) {
@@ -886,6 +887,12 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Check if link sharing is active
+    if (!room.isActive) {
+      socket.emit('session:linkShare:submitted', { success: false, error: 'Link sharing is not currently active' });
+      return;
+    }
+    
     // Update participant name if provided
     if (data.studentName && data.studentName !== participant.name) {
       participant.name = data.studentName;
@@ -936,6 +943,39 @@ io.on('connection', (socket) => {
       console.log('Emitting deletion to room:', `${session.code}:${linkShareRoomId}`);
       io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:submissionDeleted', { submissionId: data.submissionId });
     }
+    
+    session.updateActivity();
+  });
+  
+  // Link Share start/stop handlers
+  socket.on('session:linkShare:start', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('linkShare', data.widgetId);
+    if (!room || !(room instanceof LinkShareRoom)) return;
+    
+    room.isActive = true;
+    
+    // Notify students that link sharing is active
+    const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
+    io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:roomStateChanged', { isActive: true });
+    
+    session.updateActivity();
+  });
+  
+  socket.on('session:linkShare:stop', (data) => {
+    const session = sessions.get(data.sessionCode || currentSessionCode);
+    if (!session || session.hostSocketId !== socket.id) return;
+    
+    const room = session.getRoom('linkShare', data.widgetId);
+    if (!room || !(room instanceof LinkShareRoom)) return;
+    
+    room.isActive = false;
+    
+    // Notify students that link sharing is paused
+    const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
+    io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:roomStateChanged', { isActive: false });
     
     session.updateActivity();
   });

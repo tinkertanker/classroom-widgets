@@ -54,6 +54,14 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
   // Always render children to ensure hooks are called consistently
   const content = children({ session, isRoomActive });
 
+  // Debug logging
+  console.log(`[Widget ${widgetId}] NetworkedWidgetWrapper render:`, {
+    isRoomActive,
+    sessionCode: session.sessionCode,
+    isConnected: session.isConnected,
+    showingEmptyState: !isRoomActive || !session.sessionCode
+  });
+
   // Empty state
   if (!isRoomActive || !session.sessionCode) {
     return (
@@ -77,8 +85,10 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
   return (
     <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
       <NetworkedWidgetHeader 
-        roomCode={session.sessionCode}
+        title={title}
+        code={session.sessionCode}
         participantCount={session.participantCount}
+        icon={icon}
       >
         {headerChildren}
       </NetworkedWidgetHeader>

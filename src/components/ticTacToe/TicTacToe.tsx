@@ -104,37 +104,37 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
       {/* Score Display */}
-      <div className="flex justify-center mb-4">
-        <div className="flex items-center gap-6 text-sm font-medium">
-          <div className="flex items-center gap-2">
-            <span className="text-sage-600 dark:text-sage-400 text-xl">X</span>
+      <div className="flex justify-center mb-2">
+        <div className="flex items-center gap-4 text-sm font-medium">
+          <div className="flex items-center gap-1">
+            <span className="text-sage-600 dark:text-sage-400 text-lg">X</span>
             <span className="text-warm-gray-600 dark:text-warm-gray-400">{gameState.score.X}</span>
           </div>
-          <span className="text-warm-gray-400 dark:text-warm-gray-600">vs</span>
-          <div className="flex items-center gap-2">
+          <span className="text-warm-gray-400 dark:text-warm-gray-600 text-xs">vs</span>
+          <div className="flex items-center gap-1">
             <span className="text-warm-gray-600 dark:text-warm-gray-400">{gameState.score.O}</span>
-            <span className="text-terracotta-600 dark:text-terracotta-400 text-xl">O</span>
+            <span className="text-terracotta-600 dark:text-terracotta-400 text-lg">O</span>
           </div>
         </div>
       </div>
 
       {/* Game Status */}
-      <div className="text-center mb-4 h-8">
+      <div className="text-center mb-2 h-6">
         {gameState.winner && (
-          <div className="text-lg font-medium">
+          <div className="text-base font-medium">
             <span className={getCellStyle(gameState.winner)}>{gameState.winner}</span>
             <span className="text-warm-gray-600 dark:text-warm-gray-400"> wins!</span>
           </div>
         )}
         {gameState.isDraw && !gameState.winner && (
-          <div className="text-lg font-medium text-warm-gray-600 dark:text-warm-gray-400">
+          <div className="text-base font-medium text-warm-gray-600 dark:text-warm-gray-400">
             It's a draw!
           </div>
         )}
         {!gameState.winner && !gameState.isDraw && (
-          <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+          <div className="text-xs text-warm-gray-600 dark:text-warm-gray-400">
             Current player: <span className={getCellStyle(gameState.currentPlayer)}>{gameState.currentPlayer}</span>
           </div>
         )}
@@ -142,20 +142,20 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
 
       {/* Game Board */}
       <div className="flex-1 flex items-center justify-center">
-        <div className="grid grid-cols-3 gap-2 w-full max-w-xs aspect-square">
+        <div className="grid grid-cols-3 gap-1 w-full max-w-[200px] aspect-square">
           {gameState.board.map((value, index) => (
             <button
               key={index}
               onClick={() => handleCellClick(index)}
               className={`
-                aspect-square rounded-lg font-bold text-4xl
+                aspect-square rounded font-bold text-2xl
                 transition-all duration-200
                 ${value 
                   ? 'bg-warm-gray-100 dark:bg-warm-gray-700 cursor-default' 
                   : 'bg-warm-gray-50 dark:bg-warm-gray-750 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 cursor-pointer'
                 }
                 ${getCellStyle(value)}
-                border-2 border-warm-gray-300 dark:border-warm-gray-600
+                border border-warm-gray-300 dark:border-warm-gray-600
               `}
               disabled={!!value || !!gameState.winner || gameState.isDraw}
             >
@@ -166,7 +166,7 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
       </div>
 
       {/* Control Buttons */}
-      <div className="flex justify-center gap-2 mt-4">
+      <div className="flex justify-center gap-2 mt-2">
         <button
           onClick={resetGame}
           className="px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200"

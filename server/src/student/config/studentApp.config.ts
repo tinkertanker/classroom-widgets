@@ -47,7 +47,7 @@ export const studentAppConfig = {
       animationDuration: 300,
       resultBarAnimation: 300
     },
-    dataShare: {
+    linkShare: {
       maxLinkLength: 500,
       submitCooldown: 1000
     },

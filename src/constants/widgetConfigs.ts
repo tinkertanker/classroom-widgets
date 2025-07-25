@@ -141,7 +141,7 @@ const LEGACY_WIDGET_CONFIGS: { [key: number]: WidgetConfig } = {
     minHeight: 300,
     lockAspectRatio: false
   },
-  [WIDGET_TYPES.DATA_SHARE]: {
+  [WIDGET_TYPES.LINK_SHARE]: {
     defaultWidth: 450,
     defaultHeight: 500,
     minWidth: 350,

@@ -10,7 +10,7 @@ The application supports two architectures:
 
 ## Session-Based Events
 
-Session architecture allows one code to work across multiple widgets (Poll, DataShare, RTFeedback).
+Session architecture allows one code to work across multiple widgets (Poll, Link Share, RTFeedback).
 
 ### Core Session Events
 
@@ -19,7 +19,7 @@ Session architecture allows one code to work across multiple widgets (Poll, Data
   - Callback response: `{ success: boolean, code: string, isExisting: boolean, error?: string }`
 
 - `session:createRoom` - Create a room within the session
-  - Payload: `{ sessionCode: string, roomType: 'poll' | 'dataShare' | 'rtfeedback' }`
+  - Payload: `{ sessionCode: string, roomType: 'poll' | 'linkShare' | 'rtfeedback' }`
   - Callback response: `{ success: boolean, isExisting: boolean, error?: string }`
 
 - `session:closeRoom` - Close a specific room type
@@ -57,17 +57,17 @@ Session architecture allows one code to work across multiple widgets (Poll, Data
 - `session:poll:voteUpdate` - Individual vote update
   - Payload: `{ optionIndex: number, totalVotes: number }`
 
-### DataShare Session Events
+### Link Share Session Events
 
 #### Teacher emits:
-- `session:dataShare:clear` - Clear all submissions
+- `session:linkShare:clear` - Clear all submissions
   - Payload: `{ sessionCode: string }`
 
 #### Teacher receives:
-- `session:dataShare:newSubmission` - New submission received
+- `session:linkShare:newSubmission` - New submission received
   - Payload: `{ id: string, studentName: string, link: string, timestamp: number }`
 
-- `session:dataShare:submissionRemoved` - Submission was removed
+- `session:linkShare:submissionRemoved` - Submission was removed
   - Payload: `{ studentId: string }`
 
 ### RTFeedback Session Events
@@ -107,10 +107,10 @@ These events are used by widgets that haven't migrated to the session architectu
 - `vote:update` - Vote count update
 - `participant:update` - Participant count change
 
-### DataShare Widget Events
+### Link Share Widget Events
 
 #### Teacher emits:
-- `host:createDataShareRoom` - Create room
+- `host:createLinkShareRoom` - Create room
 - `host:closeRoom` - Close room
 
 #### Teacher receives:
@@ -147,7 +147,7 @@ These events are used by widgets that haven't migrated to the session architectu
 - `student:vote` - Submit vote
   - Payload: `{ sessionCode: string, optionIndex: number }`
 
-#### DataShare:
+#### Link Share:
 - `student:submitData` - Submit link/text
   - Payload: `{ sessionCode: string, link: string }`
 - `student:removeSubmission` - Remove submission

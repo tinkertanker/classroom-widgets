@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
 import { useModal } from '../../contexts/ModalContext';
 import { useWorkspace } from '../../store/WorkspaceContext';
+import { useSessionContext } from '../../contexts/SessionContext';
 import CustomizeToolbarWrapper from './CustomizeToolbarWrapper';
 import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
@@ -24,7 +25,6 @@ import {
   FaSun,            // Light mode
   FaStamp,          // Stamp icon
   FaChartColumn,    // Poll icon
-  FaWifi,           // Network indicator
   FaQrcode,         // QR Code icon
   FaPaperclip,      // Data Share icon
   FaVideo,          // Visualiser icon
@@ -49,6 +49,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   } = useWorkspace();
 
   const { showModal, hideModal } = useModal();
+  const session = useSessionContext();
   const [customWidgets, setCustomWidgets] = useState<number[]>(() => {
     const saved = localStorage.getItem('customToolbarWidgets');
     if (saved) {
@@ -72,6 +73,14 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [serverConnected, setServerConnected] = useState(false);
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
+  // List of networked widget types
+  const networkedWidgets = [
+    WIDGET_TYPES.POLL,
+    WIDGET_TYPES.LINK_SHARE,
+    WIDGET_TYPES.RT_FEEDBACK,
+    WIDGET_TYPES.QUESTIONS
+  ];
 
   // Check server connection (used by Poll and Data Share widgets)
   useEffect(() => {
@@ -129,7 +138,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
       case WIDGET_TYPES.SOUND_EFFECTS: return <FaMusic /> as React.ReactElement;
       case WIDGET_TYPES.POLL: return <FaChartColumn /> as React.ReactElement;
       case WIDGET_TYPES.QRCODE: return <FaQrcode /> as React.ReactElement;
-      case WIDGET_TYPES.DATA_SHARE: return <FaPaperclip /> as React.ReactElement;
+      case WIDGET_TYPES.LINK_SHARE: return <FaPaperclip /> as React.ReactElement;
       case WIDGET_TYPES.VISUALISER: return <FaVideo /> as React.ReactElement;
       case WIDGET_TYPES.RT_FEEDBACK: return <FaGauge /> as React.ReactElement;
       case WIDGET_TYPES.TIC_TAC_TOE: return <FaTableCells /> as React.ReactElement;
@@ -151,7 +160,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     [WIDGET_TYPES.SOUND_EFFECTS]: "Sound Effects",
     [WIDGET_TYPES.POLL]: "Poll",
     [WIDGET_TYPES.QRCODE]: "QR Code",
-    [WIDGET_TYPES.DATA_SHARE]: "Data Share",
+    [WIDGET_TYPES.LINK_SHARE]: "Link Share",
     [WIDGET_TYPES.VISUALISER]: "Visualiser",
     [WIDGET_TYPES.RT_FEEDBACK]: "RT Feedback",
     [WIDGET_TYPES.TIC_TAC_TOE]: "Tic-Tac-Toe",
@@ -241,7 +250,7 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
     WIDGET_TYPES.SOUND_EFFECTS,
     WIDGET_TYPES.POLL,
     WIDGET_TYPES.QRCODE,
-    WIDGET_TYPES.DATA_SHARE,
+    WIDGET_TYPES.LINK_SHARE,
     WIDGET_TYPES.VISUALISER,
     WIDGET_TYPES.RT_FEEDBACK,
     WIDGET_TYPES.TIC_TAC_TOE,
@@ -328,14 +337,11 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             className={`px-3 py-2 rounded-lg text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80 transition-all duration-200 group relative flex flex-col items-center gap-1 min-w-[80px] ${
               hoveringTrash ? 'scale-95 opacity-50' : ''
             } ${state.stickerMode ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={state.stickerMode || ((widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE || widgetType === WIDGET_TYPES.RT_FEEDBACK) && !serverConnected)}
-            title={widgetNames[widgetType]}
+            disabled={state.stickerMode || (networkedWidgets.includes(widgetType) && !session.isConnected)}
+            title={`${widgetNames[widgetType]}${networkedWidgets.includes(widgetType) ? ' (Requires server connection)' : ''}`}
           >
-            <div className="text-lg relative">
+            <div className="text-lg">
               {getWidgetIcon(widgetType)}
-              {(widgetType === WIDGET_TYPES.POLL || widgetType === WIDGET_TYPES.DATA_SHARE) && !serverConnected && (
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-dusty-rose-500 rounded-full" title="Server offline" />
-              )}
             </div>
             <span className="text-xs text-center leading-tight">{widgetNames[widgetType]}</span>
           </button>
@@ -444,18 +450,6 @@ export default function Toolbar({ darkMode, setDarkMode, hoveringTrash }: Toolba
             </button>
           </div>
         )}
-        </div>
-        
-        {/* Server connection indicator - moved to the right */}
-        <div 
-          className={`p-3 rounded-lg transition-all duration-200 bg-soft-white/80 dark:bg-warm-gray-800/80 ${
-            serverConnected 
-              ? 'text-sage-600 dark:text-sage-400' 
-              : 'text-warm-gray-400 dark:text-warm-gray-500'
-          }`}
-          title={serverConnected ? 'Server connected' : 'Server offline'}
-        >
-          <FaWifi className="text-xl" />
         </div>
       </div>
 

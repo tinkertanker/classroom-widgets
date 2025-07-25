@@ -78,7 +78,19 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         });
         setIsActive(false);
       }}
-      headerChildren={null}
+      headerChildren={
+        <button
+          onClick={() => setIsActive(!isActive)}
+          className={`p-1.5 rounded transition-colors duration-200 ${
+            isActive 
+              ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+              : 'bg-sage-500 hover:bg-sage-600 text-white'
+          }`}
+          title={isActive ? "Pause feedback" : "Resume feedback"}
+        >
+          {isActive ? <FaPause /> : <FaPlay />}
+        </button>
+      }
     >
       {({ session, isRoomActive }) => {
         // Join the widget-specific room
@@ -161,20 +173,6 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
 
         return (
           <>
-            {/* Header controls */}
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={() => setIsActive(!isActive)}
-                className={`p-1.5 rounded transition-colors duration-200 ${
-                  isActive 
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white' 
-                    : 'bg-sage-500 hover:bg-sage-600 text-white'
-                }`}
-                title={isActive ? "Pause feedback" : "Resume feedback"}
-              >
-                {isActive ? <FaPause /> : <FaPlay />}
-              </button>
-            </div>
 
             <div className="flex-1 flex flex-col">
               {showResults ? (

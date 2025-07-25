@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useModal } from '../../contexts/ModalContext';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import PollSettings from './PollSettings';
-import { FaPlay, FaStop, FaChartColumn, FaGear } from 'react-icons/fa6';
+import { FaPlay, FaPause, FaChartColumn, FaGear } from 'react-icons/fa6';
 
 interface PollProps {
   widgetId?: string;
@@ -52,6 +52,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     }
   }, [savedState]);
 
+
   const openSettings = () => {
     showModal({
       title: 'Poll Settings',
@@ -77,6 +78,25 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     });
   }, [onStateChange, pollData, results]);
 
+  const [sessionRef, setSessionRef] = useState<any>(null);
+  const [isRoomActiveRef, setIsRoomActiveRef] = useState(false);
+
+  const handleToggleActive = () => {
+    if (!sessionRef || !isRoomActiveRef) return;
+    
+    const newIsActive = !pollData.isActive;
+    const newPollData = { ...pollData, isActive: newIsActive };
+    setPollData(newPollData);
+    
+    if (sessionRef.socket) {
+      sessionRef.socket.emit('session:poll:update', {
+        sessionCode: sessionRef.sessionCode,
+        widgetId,
+        pollData: newPollData
+      });
+    }
+  };
+
   return (
     <NetworkedWidgetWrapper
       widgetId={widgetId}
@@ -90,16 +110,36 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         setPollData(prev => ({ ...prev, isActive: false }));
       }}
       headerChildren={
-        <button
-          onClick={openSettings}
-          className="p-1.5 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
-          title="Settings"
-        >
-          <FaGear />
-        </button>
+        <>
+          <button
+            onClick={openSettings}
+            className="p-1.5 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+            title="Settings"
+          >
+            <FaGear />
+          </button>
+          <button
+            onClick={handleToggleActive}
+            disabled={!pollData.question || pollData.options.filter(o => o).length < 2 || !isRoomActiveRef}
+            className={`p-1.5 rounded transition-colors duration-200 ${
+              pollData.isActive 
+                ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+                : 'bg-sage-500 hover:bg-sage-600 text-white disabled:bg-warm-gray-400 disabled:cursor-not-allowed'
+            }`}
+            title={pollData.isActive ? "Pause poll" : "Resume poll"}
+          >
+            {pollData.isActive ? <FaPause /> : <FaPlay />}
+          </button>
+        </>
       }
     >
       {({ session, isRoomActive }) => {
+        // Update refs for header buttons
+        useEffect(() => {
+          setSessionRef(session);
+          setIsRoomActiveRef(isRoomActive);
+        }, [session, isRoomActive]);
+
         // Join the widget-specific room
         useEffect(() => {
           if (!session.socket || !session.sessionCode || !isRoomActive) return;
@@ -182,6 +222,13 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
 
         return (
           <>
+            {/* Vote count */}
+            <div className="flex justify-between items-center mb-1">
+              <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
+              </div>
+            </div>
+
             {/* Poll content */}
             <div className="flex-1 flex flex-col">
               {pollData.question ? (
@@ -212,10 +259,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                       </div>
                     ))}
                   </div>
-                  
-                  <div className="mt-4 text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                    Total votes: {results.totalVotes}
-                  </div>
                 </div>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-warm-gray-500 dark:text-warm-gray-400">
@@ -224,30 +267,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
               )}
             </div>
 
-            {/* Control button */}
-            <div className="mt-4 flex justify-center">
-              <button
-                onClick={pollData.isActive ? handleStop : () => updatePoll({ isActive: true })}
-                disabled={!pollData.question || pollData.options.filter(o => o).length < 2}
-                className={`px-3 py-1.5 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5 ${
-                  pollData.isActive
-                    ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600'
-                    : 'bg-sage-500 hover:bg-sage-600 disabled:bg-warm-gray-400 disabled:cursor-not-allowed'
-                }`}
-              >
-                {pollData.isActive ? (
-                  <>
-                    <FaStop className="text-xs" />
-                    Stop Poll
-                  </>
-                ) : (
-                  <>
-                    <FaPlay className="text-xs" />
-                    Start Poll
-                  </>
-                )}
-              </button>
-            </div>
           </>
         );
       }}

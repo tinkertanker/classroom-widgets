@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
-import { FaQuestion, FaPlay, FaStop, FaTrash, FaCheck } from 'react-icons/fa6';
+import { FaQuestion, FaPlay, FaPause, FaTrash, FaCheck } from 'react-icons/fa6';
 
 interface Question {
   id: string;
   text: string;
   timestamp: Date;
   studentId: string;
+  studentName?: string;
   answered?: boolean;
 }
 
@@ -55,7 +56,19 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
         setQuestions([]);
         setIsActive(false);
       }}
-      headerChildren={null}
+      headerChildren={
+        <button
+          onClick={() => setIsActive(!isActive)}
+          className={`p-1.5 rounded transition-colors duration-200 ${
+            isActive 
+              ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+              : 'bg-sage-500 hover:bg-sage-600 text-white'
+          }`}
+          title={isActive ? "Pause accepting questions" : "Resume accepting questions"}
+        >
+          {isActive ? <FaPause /> : <FaPlay />}
+        </button>
+      }
     >
       {({ session, isRoomActive }) => {
         // Join the widget-specific room
@@ -82,12 +95,13 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
         useEffect(() => {
           if (!session.socket) return;
 
-          const handleNewQuestion = (data: { questionId: string; text: string; studentId: string }) => {
+          const handleNewQuestion = (data: { questionId: string; text: string; studentId: string; studentName?: string }) => {
             const newQuestion: Question = {
               id: data.questionId,
               text: data.text,
               timestamp: new Date(),
               studentId: data.studentId,
+              studentName: data.studentName,
               answered: false
             };
             setQuestions(prev => [...prev, newQuestion]);
@@ -174,23 +188,8 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
 
         return (
           <>
-            {/* Header controls */}
-            <div className="absolute top-4 right-4 z-10">
-              <button
-                onClick={() => setIsActive(!isActive)}
-                className={`p-1.5 rounded transition-colors duration-200 ${
-                  isActive 
-                    ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
-                    : 'bg-sage-500 hover:bg-sage-600 text-white'
-                }`}
-                title={isActive ? "Stop accepting questions" : "Start accepting questions"}
-              >
-                {isActive ? <FaStop /> : <FaPlay />}
-              </button>
-            </div>
-
             {/* Questions count */}
-            <div className="mt-3 mb-2 flex justify-between items-center">
+            <div className="flex justify-between items-center mb-1">
               <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
                 {questions.length} question{questions.length !== 1 ? 's' : ''} 
                 {questions.filter(q => !q.answered).length > 0 && 
@@ -252,7 +251,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-warm-gray-500 dark:text-warm-gray-400">
-                      {new Date(question.timestamp).toLocaleTimeString()}
+                      {question.studentName || 'Anonymous'} • {new Date(question.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
                 ))

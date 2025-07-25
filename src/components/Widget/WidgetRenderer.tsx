@@ -12,7 +12,7 @@ import SoundEffects from "../soundEffects/soundEffects";
 import Sticker from "../sticker/sticker";
 import Poll from "../poll/poll";
 import QRCodeWidget from "../qrcode/qrcode";
-import DataShare from "../dataShare/dataShare";
+import LinkShare from "../linkShare/linkShare";
 import Visualiser from "../visualiser/visualiser";
 import RTFeedback from "../rtFeedback/rtFeedback";
 import { WIDGET_TYPES } from "../../constants/widgetTypes";
@@ -83,8 +83,8 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetType, widgetId, s
         savedState={savedState}
         onStateChange={onStateChange}
       />;
-    case WIDGET_TYPES.DATA_SHARE:
-      return <DataShare
+    case WIDGET_TYPES.LINK_SHARE:
+      return <LinkShare
         widgetId={widgetId}
         savedState={savedState}
         onStateChange={onStateChange}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
+import { useSessionContext } from '../../contexts/SessionContext';
 import { 
   FaDice,
   FaClock,
@@ -17,7 +18,8 @@ import {
   FaVideo,
   FaGauge,
   FaTableCells,
-  FaCircleQuestion
+  FaCircleQuestion,
+  FaWifi
 } from 'react-icons/fa6';
 
 interface LaunchpadDialogProps {
@@ -40,7 +42,7 @@ const getWidgetIcon = (widgetType: number): React.ReactElement => {
     case WIDGET_TYPES.SOUND_EFFECTS: return <FaMusic />;
     case WIDGET_TYPES.POLL: return <FaChartColumn />;
     case WIDGET_TYPES.QRCODE: return <FaQrcode />;
-    case WIDGET_TYPES.DATA_SHARE: return <FaPaperclip />;
+    case WIDGET_TYPES.LINK_SHARE: return <FaPaperclip />;
     case WIDGET_TYPES.VISUALISER: return <FaVideo />;
     case WIDGET_TYPES.RT_FEEDBACK: return <FaGauge />;
     case WIDGET_TYPES.TIC_TAC_TOE: return <FaTableCells />;
@@ -62,7 +64,7 @@ const widgetNames: Record<number, string> = {
   [WIDGET_TYPES.SOUND_EFFECTS]: "Sound Effects",
   [WIDGET_TYPES.POLL]: "Poll",
   [WIDGET_TYPES.QRCODE]: "QR Code",
-  [WIDGET_TYPES.DATA_SHARE]: "Data Share",
+  [WIDGET_TYPES.LINK_SHARE]: "Link Share",
   [WIDGET_TYPES.VISUALISER]: "Visualiser",
   [WIDGET_TYPES.RT_FEEDBACK]: "RT Feedback",
   [WIDGET_TYPES.TIC_TAC_TOE]: "Tic-Tac-Toe",
@@ -82,7 +84,7 @@ const widgetDescriptions: Record<number, string> = {
   [WIDGET_TYPES.SOUND_EFFECTS]: "Play sound effects",
   [WIDGET_TYPES.POLL]: "Live polls with students",
   [WIDGET_TYPES.QRCODE]: "Generate QR codes",
-  [WIDGET_TYPES.DATA_SHARE]: "Collect links from students",
+  [WIDGET_TYPES.LINK_SHARE]: "Collect links from students",
   [WIDGET_TYPES.VISUALISER]: "Visual effects display",
   [WIDGET_TYPES.RT_FEEDBACK]: "Real-time feedback",
   [WIDGET_TYPES.TIC_TAC_TOE]: "Play tic-tac-toe game",
@@ -102,7 +104,7 @@ const allWidgets = [
   WIDGET_TYPES.SOUND_EFFECTS,
   WIDGET_TYPES.POLL,
   WIDGET_TYPES.QRCODE,
-  WIDGET_TYPES.DATA_SHARE,
+  WIDGET_TYPES.LINK_SHARE,
   WIDGET_TYPES.VISUALISER,
   WIDGET_TYPES.RT_FEEDBACK,
   WIDGET_TYPES.TIC_TAC_TOE,
@@ -122,7 +124,7 @@ const widgetCategories: Record<string, number[]> = {
   'Interactive': [
     WIDGET_TYPES.POLL,
     WIDGET_TYPES.QUESTIONS,
-    WIDGET_TYPES.DATA_SHARE,
+    WIDGET_TYPES.LINK_SHARE,
     WIDGET_TYPES.RT_FEEDBACK,
     WIDGET_TYPES.TIC_TAC_TOE
   ],
@@ -142,11 +144,19 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
   const [searchQuery, setSearchQuery] = useState('');
   const [hoveredIndex, setHoveredIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const session = useSessionContext();
+
+  // List of networked widget types
+  const networkedWidgets = [
+    WIDGET_TYPES.POLL,
+    WIDGET_TYPES.LINK_SHARE,
+    WIDGET_TYPES.RT_FEEDBACK,
+    WIDGET_TYPES.QUESTIONS
+  ];
 
   // Helper functions defined first
   const isWidgetDisabled = (widgetType: number) => {
-    const networkedWidgets = [WIDGET_TYPES.POLL, WIDGET_TYPES.DATA_SHARE, WIDGET_TYPES.RT_FEEDBACK, WIDGET_TYPES.QUESTIONS];
-    return networkedWidgets.includes(widgetType) && !serverConnected;
+    return networkedWidgets.includes(widgetType) && !session.isConnected;
   };
 
   const isWidgetVisible = (widgetType: number) => {
@@ -207,12 +217,10 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
         {/* Search input  */}
         <div className="">
           {/* Server status - only show if offline */}
-          {!serverConnected && (
+          {!session.isConnected && (
             <div className="mb-3">
               <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-800 text-xs">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a4.977 4.977 0 011.414 2.83m-1.414-2.83L12 12m0 0l2.829-2.829" />
-                </svg>
+                <FaWifi className="w-4 h-4" />
                 <span className="font-medium">Some widgets require server connection</span>
               </div>
             </div>
@@ -308,20 +316,22 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
                   title={widgetNames[widgetType]}
                   tabIndex={-1}
                 >
-                  <div className={`text-3xl mb-2 relative transition-all duration-300 ${
+                  {networkedWidgets.includes(widgetType) && (
+                    <div className={`absolute top-2 right-2 flex items-center justify-center ${
+                      session.isConnected 
+                        ? 'text-sage-500' 
+                        : 'text-dusty-rose-500'
+                    }`}
+                         title={session.isConnected ? "Server connected" : "Server offline"}>
+                      <FaWifi className="w-4 h-4" />
+                    </div>
+                  )}
+                  <div className={`text-3xl mb-2 transition-all duration-300 ${
                     isHovered
                       ? 'text-sage-600 dark:text-sage-400 transform scale-110'
                       : 'text-warm-gray-600 dark:text-warm-gray-400 group-hover:text-warm-gray-700 dark:group-hover:text-warm-gray-300'
                   }`}>
                     {getWidgetIcon(widgetType)}
-                    {isDisabled && (
-                      <div className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-dusty-rose-500 rounded-full" 
-                           title="Server offline">
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                    )}
                   </div>
                   <div className="text-center space-y-0.5">
                     <span className={`text-sm font-semibold block transition-colors duration-300 ${
@@ -337,12 +347,6 @@ const LaunchpadDialog: React.FC<LaunchpadDialogProps> = ({ onAddWidget, onClose,
                   </div>
                   {/* Hover effect overlay */}
                   <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-transparent to-sage-500/5 dark:to-sage-400/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                  {/* New badge for networked widgets */}
-                  {isDisabled && (
-                    <div className="absolute top-2 right-2 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded-full">
-                      ONLINE
-                    </div>
-                  )}
                 </button>
               );
             })}

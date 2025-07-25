@@ -99,9 +99,9 @@ const WidgetRendererLazy: React.FC<WidgetRendererProps> = ({
       const QRCodeWidget = LazyWidgets.QRCodeWidget;
       return <QRCodeWidget {...commonProps} />;
       
-    case WIDGET_TYPES.DATA_SHARE:
-      const DataShare = LazyWidgets.DataShare;
-      return <DataShare {...commonProps} />;
+    case WIDGET_TYPES.LINK_SHARE:
+      const LinkShare = LazyWidgets.LinkShare;
+      return <LinkShare {...commonProps} />;
       
     case WIDGET_TYPES.VISUALISER:
       const Visualiser = LazyWidgets.Visualiser;

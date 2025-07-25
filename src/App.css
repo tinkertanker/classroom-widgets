@@ -99,65 +99,6 @@ input[type="range"] {
   accent-color: #e39b93;
 }
 
-/* Vertical range slider */
-input[type="range"].vertical-slider {
-  writing-mode: bt-lr; /* IE */
-  -webkit-appearance: slider-vertical; /* WebKit */
-  width: 4px;
-  height: 80px;
-  background: transparent;
-  outline: none;
-}
 
-/* For Firefox */
-input[type="range"].vertical-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #d4847a;
-  cursor: pointer;
-  border: none;
-}
 
-input[type="range"].vertical-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #d4847a;
-  cursor: pointer;
-  border: none;
-}
 
-input[type="range"].vertical-slider::-moz-range-track {
-  width: 4px;
-  height: 100%;
-  cursor: pointer;
-  background: #e5e7eb;
-  border-radius: 2px;
-}
-
-input[type="range"].vertical-slider::-webkit-slider-runnable-track {
-  width: 4px;
-  height: 100%;
-  cursor: pointer;
-  background: #e5e7eb;
-  border-radius: 2px;
-}
-
-.dark input[type="range"].vertical-slider::-moz-range-track {
-  background: #374151;
-}
-
-.dark input[type="range"].vertical-slider::-webkit-slider-runnable-track {
-  background: #374151;
-}
-
-.dark input[type="range"].vertical-slider::-moz-range-thumb {
-  background: #e39b93;
-}
-
-.dark input[type="range"].vertical-slider::-webkit-slider-thumb {
-  background: #e39b93;
-}

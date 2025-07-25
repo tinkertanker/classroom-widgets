@@ -150,7 +150,7 @@ function validateComponentPaths(): ValidationResult {
       'volumeLevel': 'volumeLevel',
       'TicTacToe': 'TicTacToe',
       'Poll': 'poll',
-      'DataShare': 'dataShare',
+      'LinkShare': 'linkShare',
       'RTFeedback': 'rtFeedback',
       'Questions': 'questions'
     };
@@ -174,7 +174,7 @@ function validateComponentPaths(): ValidationResult {
 function validateStudentComponents(): ValidationResult {
   const expectedComponents = new Set([
     'PollActivity',
-    'DataShareActivity',
+    'LinkShareActivity',
     'RTFeedbackActivity',
     'QuestionsActivity'
   ]);

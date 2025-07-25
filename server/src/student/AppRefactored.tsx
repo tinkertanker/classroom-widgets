@@ -16,7 +16,7 @@ const getRoomDisplayName = (roomType: ActivityRoomType): string => {
 const getRoomGradientColors = (roomType: ActivityRoomType): string => {
   const gradients = {
     poll: 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800',
-    dataShare: 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800',
+    linkShare: 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800',
     rtfeedback: 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-700 dark:to-amber-800',
     questions: 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-sky-700 dark:to-sky-800'
   };
@@ -27,7 +27,7 @@ const getRoomGradientColors = (roomType: ActivityRoomType): string => {
 const getRoomMinimizeButtonColors = (roomType: ActivityRoomType): string => {
   const colors = {
     poll: 'bg-sage-700 hover:bg-sage-800 dark:bg-sage-900 dark:hover:bg-sage-950',
-    dataShare: 'bg-terracotta-700 hover:bg-terracotta-800 dark:bg-terracotta-900 dark:hover:bg-terracotta-950',
+    linkShare: 'bg-terracotta-700 hover:bg-terracotta-800 dark:bg-terracotta-900 dark:hover:bg-terracotta-950',
     rtfeedback: 'bg-amber-700 hover:bg-amber-800 dark:bg-amber-900 dark:hover:bg-amber-950',
     questions: 'bg-sky-700 hover:bg-sky-800 dark:bg-sky-900 dark:hover:bg-sky-950'
   };

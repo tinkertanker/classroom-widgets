@@ -41,7 +41,7 @@ export const activityStyles = {
       gradient: 'from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800',
       button: 'bg-sage-700 hover:bg-sage-800 dark:bg-sage-900 dark:hover:bg-sage-950'
     },
-    dataShare: {
+    linkShare: {
       primary: 'terracotta',
       gradient: 'from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800',
       button: 'bg-terracotta-700 hover:bg-terracotta-800 dark:bg-terracotta-900 dark:hover:bg-terracotta-950'

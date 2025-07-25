@@ -19,8 +19,8 @@ export interface PollActivityProps extends BaseActivityProps {
   };
 }
 
-export interface DataShareActivityProps extends BaseActivityProps {
-  studentName: string; // Required for data share
+export interface LinkShareActivityProps extends BaseActivityProps {
+  studentName: string; // Required for link share
 }
 
 export interface RTFeedbackActivityProps extends BaseActivityProps {
@@ -53,7 +53,7 @@ export interface SocketEventMap {
   
   // Confirmations
   'vote:confirmed': { success: boolean; error?: string };
-  'session:dataShare:submitted': { success: boolean; error?: string };
+  'session:linkShare:submitted': { success: boolean; error?: string };
   'questions:submitted': { success: boolean };
   
   // Lists
@@ -64,8 +64,8 @@ export interface SocketEventMap {
   'questionAnswered': { questionId: string };
   'questionDeleted': { questionId: string };
   'allQuestionsCleared': { widgetId: string };
-  'dataShare:newSubmission': any;
+  'linkShare:newSubmission': any;
 }
 
 // Room type from widget registry
-export type ActivityRoomType = 'poll' | 'dataShare' | 'rtfeedback' | 'questions';
+export type ActivityRoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';

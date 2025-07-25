@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaGear } from 'react-icons/fa6';
+import { IconType } from 'react-icons';
 
 interface NetworkedWidgetHeaderProps {
   title: string;
@@ -7,6 +8,7 @@ interface NetworkedWidgetHeaderProps {
   participantCount: number;
   onSettings?: () => void;
   children?: React.ReactNode;
+  icon?: IconType;
 }
 
 export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({ 
@@ -14,7 +16,8 @@ export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({
   code, 
   participantCount, 
   onSettings,
-  children 
+  children,
+  icon: Icon
 }) => {
   // Get the server URL and format it for student access
   const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
@@ -24,9 +27,9 @@ export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({
     <div className="mb-1">
       <div className="flex justify-between items-center mb-1">
         <div className="flex items-center gap-4">
-          <h3 className="text-lg font-medium text-warm-gray-800 dark:text-warm-gray-200">
-            {title}
-          </h3>
+          {Icon && (
+            <Icon className="text-2xl text-warm-gray-700 dark:text-warm-gray-300" title={title} />
+          )}
           <div className="flex items-center gap-2 bg-warm-gray-100 dark:bg-warm-gray-700 px-3 py-1 rounded-full">
             <span className="text-sm font-mono font-bold text-warm-gray-700 dark:text-warm-gray-300">
               {code}

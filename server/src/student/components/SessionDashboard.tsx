@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { RoomType } from '../App';
 import PollActivity from './PollActivity';
-import DataShareActivity from './DataShareActivity';
+import LinkShareActivity from './LinkShareActivity';
 import RTFeedbackActivity from './RTFeedbackActivity';
 import QuestionsActivity from './QuestionsActivity';
 
@@ -29,7 +29,7 @@ const SessionDashboard: React.FC<SessionDashboardProps> = ({
     switch (roomType) {
       case 'poll':
         return '📊';
-      case 'dataShare':
+      case 'linkShare':
         return '🔗';
       case 'rtfeedback':
         return '💭';
@@ -44,7 +44,7 @@ const SessionDashboard: React.FC<SessionDashboardProps> = ({
     switch (roomType) {
       case 'poll':
         return 'Poll';
-      case 'dataShare':
+      case 'linkShare':
         return 'Share Links';
       case 'rtfeedback':
         return 'Feedback';
@@ -91,8 +91,8 @@ const SessionDashboard: React.FC<SessionDashboardProps> = ({
               isSession={true}
             />
           )}
-          {selectedRoom === 'dataShare' && (
-            <DataShareActivity
+          {selectedRoom === 'linkShare' && (
+            <LinkShareActivity
               roomCode={sessionCode}
               socket={socket}
               studentName={studentName}

@@ -4,7 +4,7 @@ import { FaSun, FaMoon } from 'react-icons/fa6';
 import JoinForm from './components/JoinForm';
 import SessionDashboard from './components/SessionDashboard';
 
-export type RoomType = 'poll' | 'dataShare' | 'rtfeedback';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback';
 
 interface SessionData {
   code: string;

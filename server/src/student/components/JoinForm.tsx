@@ -3,14 +3,17 @@ import { FaSun, FaMoon } from 'react-icons/fa6';
 
 interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
+  onLeaveSession?: () => void;
+  currentSessionCode?: string;
   defaultName?: string;
   onNameChange?: (name: string) => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
   isCompact?: boolean;
+  isConnected?: boolean;
 }
 
-const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode, isCompact = false }) => {
+const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSessionCode, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode, isCompact = false, isConnected = false }) => {
   const [code, setCode] = useState('');
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState('');
@@ -25,6 +28,21 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
     e.preventDefault();
     setError('');
     
+    // If in a session, leave it
+    if (currentSessionCode && onLeaveSession) {
+      setIsLoading(true);
+      try {
+        onLeaveSession();
+        setCode(''); // Clear the code field
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error leaving session');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+    
+    // Otherwise, join a new session
     if (!/^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code)) {
       setError('Please enter a valid 5-character session code');
       return;
@@ -50,6 +68,9 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Don't allow changes if currently in a session
+    if (currentSessionCode) return;
+    
     // Only allow safe characters
     const value = e.target.value.toUpperCase().replace(/[^23456789ACDEFHJKMNPQRTUWXY]/g, '');
     setCode(value);
@@ -82,14 +103,37 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
         </button>
       )}
       
-      {!isCompact && (
+      {!isCompact ? (
         <div className="animate-fadeIn">
           <div className="flex justify-between items-start mb-6">
             <div className="flex-1">
-              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 dark:text-warm-gray-300 m-0 text-center pr-12">Join Classroom Session</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 dark:text-warm-gray-300 m-0 text-center pr-12">
+                {currentSessionCode ? (
+                  <div className="flex items-center justify-center">
+                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-sage-500' : 'bg-warm-gray-400'}`}></span>
+                    {isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
+                  </div>
+                ) : 'Join Classroom Session'}
+              </h1>
+              {currentSessionCode && (
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 text-center mt-2 pr-12">
+                  Leave to join a different session.
+                </p>
+              )}
             </div>
           </div>
         </div>
+      ) : (
+        // Compact mode header
+        currentSessionCode && (
+          <div className="flex items-center justify-center mb-2 pr-12">
+            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-sage-500' : 'bg-warm-gray-400'}`} 
+                  title={isConnected ? 'Connected' : 'Connecting...'}></span>
+            <h2 className="text-base font-semibold text-warm-gray-700 dark:text-warm-gray-300">
+              {isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
+            </h2>
+          </div>
+        )
       )}
       
       <form onSubmit={handleSubmit} className={`w-full ${isCompact ? 'pr-12' : ''}`}>
@@ -115,25 +159,27 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, defaultName = '', onNameCha
             <input
               type="text"
               id="code"
-              className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold bg-[#fafafa] dark:bg-warm-gray-700 transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
+              className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${currentSessionCode ? 'bg-warm-gray-100 dark:bg-warm-gray-600 cursor-not-allowed' : 'bg-[#fafafa] dark:bg-warm-gray-700'} ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
               maxLength={5}
               pattern="[23456789ACDEFHJKMNPQRTUWXY]{5}"
-              placeholder="123AB"
-              value={code}
+              placeholder={currentSessionCode ? currentSessionCode : "123AB"}
+              value={currentSessionCode || code}
               onChange={handleCodeChange}
-              required
+              required={!currentSessionCode}
               autoComplete="off"
               aria-describedby={error ? "error-message" : undefined}
+              disabled={!!currentSessionCode}
+              readOnly={!!currentSessionCode}
             />
           </div>
           
-          {/* Join button - hidden in compact mode on mobile since session code is hidden */}
+          {/* Join/Leave button - hidden in compact mode on mobile since session code is hidden */}
           <button 
             type="submit" 
-            className={`py-2.5 px-4 bg-sage-500 text-white border-0 rounded-md text-sm font-semibold cursor-pointer transition-colors duration-200 outline-none h-auto flex items-center justify-center hover:bg-sage-600 disabled:opacity-50 disabled:cursor-not-allowed ${isCompact ? 'hidden sm:flex py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_120px] sm:order-3' : 'sm:flex-[0_0_120px] sm:order-3'}`}
-            disabled={isLoading || !code}
+            className={`py-2.5 px-4 border-0 rounded-md text-sm font-semibold cursor-pointer transition-colors duration-200 outline-none h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed ${currentSessionCode ? 'bg-dusty-rose-500 text-white hover:bg-dusty-rose-600' : 'bg-sage-500 text-white hover:bg-sage-600'} ${isCompact ? 'hidden sm:flex py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_140px] sm:order-3' : 'sm:flex-[0_0_140px] sm:order-3'}`}
+            disabled={isLoading || (!currentSessionCode && !code)}
           >
-            {isLoading ? 'Joining...' : 'Join Session'}
+            {isLoading ? (currentSessionCode ? 'Leaving...' : 'Joining...') : (currentSessionCode ? 'Leave Session' : 'Join Session')}
           </button>
         </div>
         

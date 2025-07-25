@@ -10,7 +10,7 @@ import Toolbar from "./components/toolbar/toolbar";
 import { ViewportCanvas } from "./components/ViewportCanvas";
 import Background from "./components/backgrounds/backgrounds";
 import ResponsiveCheck from "./components/ResponsiveCheck/ResponsiveCheck";
-import SessionStatus from "./components/SessionStatus";
+import NetworkStatus from "./components/NetworkStatus/NetworkStatus";
 
 // Contexts
 import { ModalProvider } from "./contexts/ModalContext";
@@ -215,48 +215,45 @@ function AppContentInner() {
       <ResponsiveCheck />
       <ModalProvider>
         <div className="h-screen relative overflow-hidden bg-app-background" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-          {/* Session status display */}
-          {session.sessionCode && (
-            <SessionStatus
-              sessionCode={session.sessionCode}
-              participantCount={session.participantCount}
-              isConnected={session.isConnected}
-              className="absolute top-4 left-4 z-[999]"
-            />
-          )}
           
-          {/* Fullscreen button */}
-          <button
-            onClick={toggleFullscreen}
-            className="absolute top-4 right-4 z-[999] p-2 bg-warm-gray-200/80 hover:bg-warm-gray-300/80 dark:bg-warm-gray-700/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors duration-200 backdrop-blur-sm group"
-            title={isFullscreen ? "Exit fullscreen (F11)" : "Enter fullscreen (F11)"}
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+          {/* Top right controls */}
+          <div className="absolute top-4 right-4 z-[999] flex items-center gap-2">
+            {/* Network status with session info */}
+            <NetworkStatus />
+            
+            {/* Fullscreen button */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-3 bg-warm-gray-200/60 dark:bg-warm-gray-700/60 hover:bg-warm-gray-300/60 dark:hover:bg-warm-gray-600/60 text-warm-gray-700 dark:text-warm-gray-300 rounded-lg transition-all duration-200 backdrop-blur-sm"
+              title={isFullscreen ? "Exit fullscreen (F11)" : "Enter fullscreen (F11)"}
             >
-              {isFullscreen ? (
-                // Exit fullscreen icon
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
-                />
-              ) : (
-                // Enter fullscreen icon
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                />
-              )}
-            </svg>
-          </button>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {isFullscreen ? (
+                  // Exit fullscreen icon
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
+                  />
+                ) : (
+                  // Enter fullscreen icon
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
 
           {/* Main content area - Canvas */}
           <ViewportCanvas
@@ -315,10 +312,10 @@ function AppContentInner() {
           </div>
           
           {/* Zoom controls */}
-          <div className="fixed top-16 right-4 z-[999] flex flex-col items-center gap-1 bg-warm-gray-200/60 dark:bg-warm-gray-700/60 px-1 py-2 rounded-md backdrop-blur-sm">
+          <div className="fixed top-24 right-4 z-[999] flex flex-col items-center gap-1 bg-warm-gray-200/60 dark:bg-warm-gray-700/60 px-1 py-2 rounded-md backdrop-blur-sm">
             <button
               onClick={() => setScale(Math.min(2, state.scale + 0.1))}
-              className="p-1 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
+              className="p-1 hover:bg-warm-gray-300/60 dark:hover:bg-warm-gray-600/60 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
               title="Zoom in"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,14 +324,14 @@ function AppContentInner() {
             </button>
             <button
               onClick={() => setScale(1)}
-              className="px-1.5 py-0.5 text-xs font-medium text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 rounded transition-colors duration-200 min-w-[2.5rem]"
+              className="px-1.5 py-0.5 text-xs font-medium text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300/60 dark:hover:bg-warm-gray-600/60 rounded transition-colors duration-200 min-w-[2.5rem]"
               title="Reset zoom to 100%"
             >
               {Math.round(state.scale * 100)}%
             </button>
             <button
               onClick={() => setScale(Math.max(0.5, state.scale - 0.1))}
-              className="p-1 hover:bg-warm-gray-300/80 dark:hover:bg-warm-gray-600/80 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
+              className="p-1 hover:bg-warm-gray-300/60 dark:hover:bg-warm-gray-600/60 text-warm-gray-600 dark:text-warm-gray-400 rounded transition-colors duration-200"
               title="Zoom out"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
