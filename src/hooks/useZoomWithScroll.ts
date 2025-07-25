@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useWorkspace } from '../store/WorkspaceContext';
+import { useWorkspace } from './useWorkspace';
 
 interface ZoomOptions {
   minScale?: number;
@@ -15,7 +15,7 @@ export const useZoomWithScroll = (
   options: ZoomOptions = {}
 ) => {
   const { minScale = 0.5, maxScale = 2, scaleSensitivity = 0.01 } = options;
-  const { state, setScale } = useWorkspace();
+  const { scale, setScale } = useWorkspace();
   const initialDistance = useRef<number | null>(null);
   const initialScale = useRef<number>(1);
   const isScaling = useRef<boolean>(false);
@@ -32,7 +32,7 @@ export const useZoomWithScroll = (
     const container = containerRef.current;
     if (!container) return;
 
-    const currentScale = state.scale;
+    const currentScale = scale;
     
     // On first zoom of gesture, calculate and store the board origin point
     if (isFirstZoom) {
@@ -100,7 +100,7 @@ export const useZoomWithScroll = (
       if (e.touches.length === 2 && !isScaling.current) {
         touches = e.touches;
         initialDistance.current = getDistance(touches);
-        initialScale.current = state.scale;
+        initialScale.current = scale;
         isScaling.current = true;
         
         // Calculate and store the pinch center
@@ -112,7 +112,7 @@ export const useZoomWithScroll = (
         };
         
         // First zoom of the gesture
-        applyZoom(state.scale, zoomCenter.current.x, zoomCenter.current.y, true);
+        applyZoom(scale, zoomCenter.current.x, zoomCenter.current.y, true);
         
         e.preventDefault();
       }
@@ -210,8 +210,8 @@ export const useZoomWithScroll = (
           // Calculate board coordinates at mouse position
           const scrollX = container.scrollLeft;
           const scrollY = container.scrollTop;
-          const boardX = (scrollX + viewportX) / state.scale;
-          const boardY = (scrollY + viewportY) / state.scale;
+          const boardX = (scrollX + viewportX) / scale;
+          const boardY = (scrollY + viewportY) / scale;
           
           // Store zoom origin in both coordinate systems
           zoomOriginBoard.current = { x: boardX, y: boardY };
@@ -225,7 +225,7 @@ export const useZoomWithScroll = (
         // Calculate new scale with smoother delta calculation
         const delta = e.deltaY;
         const scaleFactor = 1 + (-delta * 0.001); // Smoother scaling factor
-        const targetScale = state.scale * scaleFactor;
+        const targetScale = scale * scaleFactor;
         const newScale = Math.max(
           minScale,
           Math.min(maxScale, targetScale)
@@ -304,5 +304,5 @@ export const useZoomWithScroll = (
         cancelAnimationFrame(zoomRaf.current);
       }
     };
-  }, [containerRef, scaleRef, state.scale, setScale, setDebugMarker, setViewportRect, minScale, maxScale, scaleSensitivity]);
+  }, [containerRef, scaleRef, scale, setScale, setDebugMarker, setViewportRect, minScale, maxScale, scaleSensitivity]);
 };

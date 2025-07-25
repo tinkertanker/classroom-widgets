@@ -15,11 +15,11 @@ export const LazyWidgets = {
   ImageDisplay: lazy(() => import('../imageDisplay/imageDisplay')),
   SoundEffects: lazy(() => import('../soundEffects/soundEffects')),
   Sticker: lazy(() => import('../sticker/sticker')),
-  Poll: lazy(() => import('../poll/Poll')),
+  Poll: lazy(() => import('../poll/poll')),
   QRCodeWidget: lazy(() => import('../qrcode/qrcode')),
   LinkShare: lazy(() => import('../linkShare/LinkShare')),
   Visualiser: lazy(() => import('../visualiser/visualiser')),
-  RTFeedback: lazy(() => import('../rtFeedback/RTFeedback')),
+  RTFeedback: lazy(() => import('../rtFeedback/rtFeedback')),
   TicTacToe: lazy(() => import('../ticTacToe/TicTacToe')),
   Questions: lazy(() => import('../questions/Questions'))
 };

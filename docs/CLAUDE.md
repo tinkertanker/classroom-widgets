@@ -321,6 +321,13 @@ npm start              # React app on port 3000
 - Fixed synchronization issues for late-joining students
 - Responsive student interface for any device
 
+### Widget Drag and Drop Implementation
+- Uses **react-rnd** library (v10.4.12) for draggable and resizable widgets
+- Widgets can be dragged anywhere within the board bounds
+- Resize handles on bottom-right corner
+- Aspect ratio locking available for certain widgets
+- **Scale-aware dragging**: The `scale` prop is passed to react-rnd to ensure accurate drag behavior at all zoom levels
+
 ### Zoom/Scale Implementation
 - Pinch-to-zoom support for trackpad and touch devices
 - Zoom maintains the point under the cursor/finger in the same viewport position
@@ -354,6 +361,7 @@ Where:
 3. Event batching for smooth zoom on rapid wheel events
 4. Hardware acceleration with CSS transforms
 5. Synchronous scroll updates after scale changes to prevent jitter
+6. React-rnd widgets receive the scale prop for proper drag compensation
 
 **Board Structure**:
 ```jsx

@@ -12,7 +12,7 @@ import SoundEffects from "../soundEffects/soundEffects";
 import Sticker from "../sticker/sticker";
 import Poll from "../poll/poll";
 import QRCodeWidget from "../qrcode/qrcode";
-import LinkShare from "../linkShare/linkShare";
+import LinkShare from "../linkShare/LinkShare";
 import Visualiser from "../visualiser/visualiser";
 import RTFeedback from "../rtFeedback/rtFeedback";
 import { WIDGET_TYPES } from "../../constants/widgetTypes";

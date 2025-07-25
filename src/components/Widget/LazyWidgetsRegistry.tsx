@@ -39,12 +39,12 @@ export const LazyWidgets = {
   sticker: lazy(() => import('../sticker/sticker')),
   qrcode: lazy(() => import('../qrcode/qrcode')),
   visualiser: lazy(() => import('../visualiser/visualiser')),
-  TicTacToe: lazy(() => import('../TicTacToe/TicTacToe')),
+  TicTacToe: lazy(() => import('../ticTacToe/TicTacToe')),
   
   // Networked widgets - using PascalCase as they are in the registry
-  Poll: lazy(() => import('../poll/Poll')),
+  Poll: lazy(() => import('../poll/poll')),
   LinkShare: lazy(() => import('../linkShare/LinkShare')),
-  RTFeedback: lazy(() => import('../rtFeedback/RTFeedback')),
+  RTFeedback: lazy(() => import('../rtFeedback/rtFeedback')),
   Questions: lazy(() => import('../questions/Questions'))
 };
 

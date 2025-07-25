@@ -7,7 +7,7 @@ import { BackgroundType } from "./types/app.types";
 
 // Components
 import Toolbar from "./components/toolbar/toolbar";
-import { ViewportCanvas } from "./components/ViewportCanvas";
+// import { ViewportCanvas } from "./components/ViewportCanvas"; // Removed - using Board in new architecture
 import Background from "./components/backgrounds/backgrounds";
 import ResponsiveCheck from "./components/ResponsiveCheck/ResponsiveCheck";
 import NetworkStatus from "./components/NetworkStatus/NetworkStatus";
@@ -256,6 +256,11 @@ function AppContentInner() {
           </div>
 
           {/* Main content area - Canvas */}
+          {/* ViewportCanvas removed - Old architecture component */}
+          <div className="flex-1 bg-warm-gray-100 dark:bg-warm-gray-900 flex items-center justify-center">
+            <p className="text-warm-gray-500">Old Context System - Use feature flag to switch to new architecture</p>
+          </div>
+          {/* Original ViewportCanvas usage - Commented out because ViewportCanvas was removed:
           <ViewportCanvas
             scale={state.scale}
             onScaleChange={setScale}
@@ -285,6 +290,7 @@ function AppContentInner() {
             onViewportChange={setViewport}
             background={<Background type={state.backgroundType} />}
           />
+          */}
           
           {/* HUD Elements - Fixed overlay */}
           {/* Sticker mode indicator */}

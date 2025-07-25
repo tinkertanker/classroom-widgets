@@ -1,13 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import App from './App';
 import AppWithContext from './AppWithContext';
 import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+// Feature flag to switch between old and new architecture
+const USE_NEW_ARCHITECTURE = import.meta.env.VITE_NEW_ARCH !== 'false';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Failed to find the root element');
+}
+
+const root = ReactDOM.createRoot(rootElement);
+
 root.render(
   <React.StrictMode>
-    <AppWithContext />
+    {USE_NEW_ARCHITECTURE ? <App /> : <AppWithContext />}
   </React.StrictMode>
 );
 

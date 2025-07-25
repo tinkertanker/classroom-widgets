@@ -1,5 +1,5 @@
 import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect } from 'react';
-import { useWorkspace } from '../../store/WorkspaceContext';
+import { useWorkspace } from '../../hooks/useWorkspace';
 import { useZoomWithScroll } from '../../hooks/useZoomWithScroll';
 
 interface BoardProps {
@@ -17,8 +17,7 @@ export interface BoardRef {
 }
 
 const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, stickerMode }, ref) => {
-  const { state } = useWorkspace();
-  const { scale } = state;
+  const { scale } = useWorkspace();
   
   
   const boardContainerRef = useRef<HTMLDivElement>(null);
