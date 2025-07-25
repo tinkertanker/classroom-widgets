@@ -1,6 +1,6 @@
 # Harmonized Widget Architecture
 
-This document defines the standardized architecture for all networked widgets (Poll, Link Share, RTFeedback).
+This document defines the standardized architecture for all networked widgets (Poll, Link Share, Questions, RTFeedback).
 
 ## Core Principles
 
@@ -93,6 +93,26 @@ Server → Student:
 - `linkShare:submissionConfirmed` - Submission received
 ```
 
+### Questions Widget
+```
+Additional Teacher → Server:
+- `[prefix]:markAnswered` - Mark question as answered
+- `[prefix]:deleteQuestion` - Delete specific question
+- `[prefix]:clearQuestions` - Clear all questions
+
+Additional Server → Teacher:
+- `[prefix]:questionReceived` - New question
+- `[prefix]:questionAnswered` - Question marked answered
+- `[prefix]:questionDeleted` - Question removed
+
+Student → Server:
+- `student:submitQuestion` - Submit question
+
+Server → Student:
+- `questions:updated` - Widget state
+- `questions:submissionConfirmed` - Question received
+```
+
 ### RTFeedback Widget
 ```
 Additional Teacher → Server:
@@ -166,9 +186,53 @@ All widgets should maintain:
 4. **User Experience**: Consistent behavior across all widgets
 5. **Session Support**: Ready for unified session architecture
 
+## UI/UX Standards
+
+### Teacher App Interface
+
+1. **Widget Headers**
+   - Display widget icon instead of text title (implemented)
+   - Activity code in grey pill without duplicate icons
+   - Consistent button placement (settings, play/pause)
+   - Participant count with user icon
+
+2. **Session Banner**
+   - Compact single-line display
+   - "Visit:" label for student URL
+   - "Code:" label for session code
+   - Copy buttons for both values
+   - Auto-expand when session starts
+
+3. **Widget Controls**
+   - Play/Pause buttons in header (not Stop)
+   - Consistent color scheme:
+     - Play: sage-500 (green)
+     - Pause: dusty-rose-500 (red)
+     - Settings: warm-gray
+   - Clear All functionality where applicable
+
+### Student App Interface
+
+1. **Session Header**
+   - Unified connection indicator in header
+   - Format: "Connected to session [CODE]"
+   - Subtitle: "Leave to join a different session"
+   - Connection state with colored dot (green=connected, gray=connecting)
+
+2. **Activity Cards**
+   - No individual connection indicators
+   - Consistent empty states when paused
+   - Clear activity instructions
+   - Responsive design for all devices
+
+3. **Visual Consistency**
+   - Matching color schemes between teacher and student
+   - Consistent spacing and typography
+   - Dark mode support throughout
+
 ## Implementation Priority
 
-1. **Phase 1**: Standardize event names in existing room-based architecture
-2. **Phase 2**: Add session-based support alongside room-based
-3. **Phase 3**: Migrate UI to prefer session-based when available
-4. **Phase 4**: Deprecate room-based architecture
+1. **Phase 1**: Standardize event names in existing room-based architecture ✓
+2. **Phase 2**: Add session-based support alongside room-based ✓
+3. **Phase 3**: Migrate UI to prefer session-based when available ✓
+4. **Phase 4**: Deprecate room-based architecture (in progress)

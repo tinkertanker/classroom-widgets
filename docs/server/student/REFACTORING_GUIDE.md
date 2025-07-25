@@ -1,195 +1,234 @@
 # Student App Refactoring Guide
 
-This document outlines the refactored architecture of the student app, designed to fully embrace the session-based approach and reduce code duplication.
+## Overview
 
-## Overview of Changes
+This guide documents the ongoing refactoring of the student app to improve scalability, maintainability, and code reliability.
 
-### 1. **Shared Types and Interfaces** (`types/activity.types.ts`)
-- `BaseActivityProps`: Common props for all activities
-- Extended props for specific activities (Poll, Link Share, etc.)
-- `ActivityState`: Common state interface
-- `SocketEventMap`: Type-safe socket events
-- `ActivityRoomType`: Union type from widget registry
+## Completed Work
 
-### 2. **Common Hooks**
+### ✅ Phase 1: Foundation
 
-#### `useActivitySocket` (`hooks/useActivitySocket.ts`)
-Manages socket lifecycle for all activities:
-- Automatic room join/leave
-- Wrapped emit/on/off methods with safety checks
-- Event handler cleanup
-- Initial state request timing
+1. **TypeScript Configuration**
+   - Enabled strict mode with additional checks
+   - Added `noImplicitReturns`, `noUncheckedIndexedAccess`, etc.
+   - All new code follows strict type safety
 
-```typescript
-const { emit, on, off, isConnected } = useActivitySocket({
-  socket,
-  sessionCode,
-  roomType: 'poll',
-  widgetId,
-  onRequestState: () => {
-    emit('poll:requestState', { code: sessionCode, widgetId });
-  }
-});
+2. **Comprehensive Type System**
+   - Created type definitions in `/types`:
+     - `socket.types.ts` - Complete socket event typing
+     - `session.types.ts` - Session and room types
+     - `ui.types.ts` - UI component props
+     - `activity.types.ts` - Activity-specific types
+   - Eliminated all `any` types in new code
+
+3. **State Management (Zustand)**
+   - Created centralized stores in `/store`:
+     - `sessionStore` - Session and room management
+     - `activityStore` - Activity data management
+     - `uiStore` - UI state (theme, animations, toasts)
+     - `connectionStore` - Socket connection state
+   - Implemented persistence for relevant state
+   - Added devtools support for debugging
+
+4. **Service Layer**
+   - Created services in `/services`:
+     - `SocketService` - Type-safe socket management
+     - `SessionService` - Session lifecycle management
+   - Singleton pattern for service instances
+   - Proper event handling and cleanup
+
+5. **Reusable UI Components**
+   - Created common components in `/components/common`:
+     - `Button` - Consistent button styling
+     - `Input` - Form inputs with validation
+     - `Card` - Base card component
+     - `ConnectionIndicator` - Connection status
+     - `LoadingState` - Loading indicators
+     - `ErrorBoundary` - Error handling
+     - `EmptyState` - Empty state displays
+   - Created layout components:
+     - `Header` - Responsive header with connection status
+     - `ActivityCard` - Consistent activity container
+
+## Architecture Improvements
+
+### Before (Monolithic)
+```
+App.tsx (524 lines)
+├── All state management
+├── Socket connections
+├── Room lifecycle
+├── UI rendering
+└── Event handling
 ```
 
-### 3. **Base Components** (`components/ActivityBase.tsx`)
-Reusable UI components:
-- `ActivityBase`: Container with common states (paused, error, active)
-- `ConnectionIndicator`: Shows connection status
-- `SuccessMessage`: Animated success notifications
-- `ActivityStatus`: Status bars with variants
-
-### 4. **Dynamic Activity Renderer** (`components/ActivityRenderer.tsx`)
-- Lazy loads activity components based on room type
-- Maps props appropriately for each activity type
-- Error boundaries for each activity
-- Uses widget registry for configuration
-
-### 5. **Centralized Configuration** (`config/studentApp.config.ts`)
-All app settings in one place:
-- Animation timings
-- UI dimensions
-- Socket settings
-- Error/success messages
-- Activity-specific configurations
-
-### 6. **Consistent Styling** (`styles/activityStyles.ts`)
-Shared style constants:
-- Container styles
-- Typography classes
-- Button variants
-- Input styles
-- Status message styles
-- Activity-specific color schemes
-
-## Migration Guide
-
-### Refactoring an Activity Component
-
-Before:
-```typescript
-const PollActivity: React.FC<Props> = ({ socket, roomCode, ... }) => {
-  // Lots of boilerplate for socket management
-  useEffect(() => {
-    socket.emit('session:joinRoom', { ... });
-    return () => {
-      socket.emit('session:leaveRoom', { ... });
-    };
-  }, [...]);
-  
-  // Manual event handling
-  useEffect(() => {
-    socket.on('poll:stateChanged', handler);
-    return () => socket.off('poll:stateChanged', handler);
-  }, [...]);
-  
-  // Inline UI for different states
-  if (!isActive) {
-    return <div>Paused...</div>;
-  }
-  
-  return <div>...</div>;
-};
+### After (Modular)
 ```
-
-After:
-```typescript
-const PollActivityRefactored: React.FC<PollActivityProps> = ({ ... }) => {
-  // Use common hook for socket management
-  const { emit, on, off, isConnected } = useActivitySocket({
-    socket,
-    sessionCode,
-    roomType: 'poll',
-    widgetId,
-    onRequestState: () => emit('poll:requestState', { ... })
-  });
-  
-  // Simplified event handling
-  useEffect(() => {
-    on('poll:stateChanged', handleStateChanged);
-    return () => off('poll:stateChanged', handleStateChanged);
-  }, [on, off]);
-  
-  // Use base component for common UI
-  return (
-    <ActivityBase
-      title={pollData.question}
-      isActive={pollData.isActive}
-      isConnected={isConnected}
-      error={error}
-    >
-      {/* Activity-specific content */}
-    </ActivityBase>
-  );
-};
+App.tsx (simplified)
+├── Providers
+├── Services initialization
+└── Layout components
+    ├── State → Zustand stores
+    ├── Sockets → SocketService
+    ├── Sessions → SessionService
+    └── UI → Component library
 ```
-
-## Benefits of Refactoring
-
-1. **Reduced Code Duplication**
-   - Socket management logic extracted to hook
-   - Common UI patterns in base components
-   - Shared styles and configurations
-
-2. **Improved Maintainability**
-   - Single source of truth for configurations
-   - Consistent patterns across activities
-   - Easier to add new activities
-
-3. **Better Type Safety**
-   - Typed socket events
-   - Proper prop interfaces
-   - Widget registry integration
-
-4. **Enhanced Developer Experience**
-   - Clear separation of concerns
-   - Reusable components and hooks
-   - Centralized documentation
-
-## Adding a New Activity
-
-1. Add activity type to widget registry
-2. Create activity component using base components:
-   ```typescript
-   const NewActivity: React.FC<NewActivityProps> = (props) => {
-     const { emit, on, off, isConnected } = useActivitySocket({
-       socket: props.socket,
-       sessionCode: props.sessionCode,
-       roomType: 'newActivity',
-       widgetId: props.widgetId
-     });
-     
-     return (
-       <ActivityBase {...baseProps}>
-         {/* Your activity UI */}
-       </ActivityBase>
-     );
-   };
-   ```
-3. Add to activity components map in `ActivityRenderer`
-4. Add activity-specific configuration to `studentApp.config.ts`
-
-## Testing Considerations
-
-The refactored architecture makes testing easier:
-- Mock `useActivitySocket` for isolated component testing
-- Test base components separately
-- Use configuration objects for consistent test data
-- Activity components focus on business logic, not infrastructure
-
-## Performance Improvements
-
-1. **Lazy Loading**: Activities load only when needed
-2. **Event Cleanup**: Proper cleanup prevents memory leaks
-3. **Optimized Rerenders**: Better state management
-4. **Animation Control**: Centralized timing configuration
 
 ## Next Steps
 
-1. Migrate remaining activity components to new patterns
-2. Add unit tests for hooks and base components
-3. Create Storybook stories for UI components
-4. Add performance monitoring
-5. Implement error tracking
+### Phase 2: Activity Refactoring
 
-This refactoring provides a solid foundation for maintaining and extending the student app with the session-based architecture.
+1. **Create Base Activity Component**
+   ```typescript
+   abstract class BaseActivity<T> {
+     // Common activity logic
+     // Socket event handling
+     // State management
+   }
+   ```
+
+2. **Migrate Activities**
+   - Refactor each activity to use:
+     - BaseActivity pattern
+     - Common UI components
+     - Typed socket events
+     - Centralized state
+
+3. **Activity Registry**
+   - Dynamic activity loading
+   - Extensible system for new activities
+   - Configuration-based setup
+
+### Phase 3: Error Handling
+
+1. **Global Error Boundary**
+   - Wrap entire app
+   - Graceful error recovery
+   - User-friendly messages
+
+2. **Service Error Handling**
+   - Retry mechanisms
+   - Connection recovery
+   - Fallback states
+
+### Phase 4: Testing
+
+1. **Unit Tests**
+   - Services
+   - Store actions
+   - Utility functions
+
+2. **Component Tests**
+   - UI components
+   - Activity components
+   - Integration tests
+
+## Migration Guide
+
+### For Existing Activities
+
+1. **Update Props**
+   ```typescript
+   // Old
+   interface Props {
+     socket: Socket;
+     roomCode: string;
+     initialData?: any;
+   }
+   
+   // New
+   interface Props extends BaseActivityProps {
+     // Activity-specific props only
+   }
+   ```
+
+2. **Use Services**
+   ```typescript
+   // Old
+   socket.emit('event', data);
+   
+   // New
+   socketService.emit('event', data);
+   ```
+
+3. **Use Stores**
+   ```typescript
+   // Old
+   const [isActive, setIsActive] = useState(false);
+   
+   // New
+   const { isActive } = useActivityStore();
+   ```
+
+## Benefits Achieved
+
+1. **Type Safety**
+   - Compile-time error catching
+   - Better IDE support
+   - Self-documenting code
+
+2. **Maintainability**
+   - Clear separation of concerns
+   - Reusable components
+   - Consistent patterns
+
+3. **Scalability**
+   - Easy to add new activities
+   - Modular architecture
+   - Performance optimizations
+
+4. **Developer Experience**
+   - Better debugging with devtools
+   - Consistent API patterns
+   - Comprehensive documentation
+
+## Code Examples
+
+### Using the New Architecture
+
+```typescript
+// Creating a new activity
+import { BaseActivity } from '../BaseActivity';
+import { useActivityStore } from '../../store';
+import { socketService } from '../../services';
+
+export class NewActivity extends BaseActivity<ActivityData> {
+  componentDidMount() {
+    // Auto-handled by base class
+    super.componentDidMount();
+    
+    // Activity-specific setup
+    this.setupActivityListeners();
+  }
+  
+  renderContent(data: ActivityData) {
+    return <YourActivityUI data={data} />;
+  }
+}
+```
+
+### Using UI Components
+
+```typescript
+import { Card, Button, EmptyState } from '../common';
+
+function MyComponent() {
+  return (
+    <Card>
+      <EmptyState
+        title="No data yet"
+        description="Start by creating something"
+        action={
+          <Button variant="primary" onClick={handleCreate}>
+            Create
+          </Button>
+        }
+      />
+    </Card>
+  );
+}
+```
+
+## Conclusion
+
+The refactoring transforms the student app from a monolithic structure to a modular, scalable architecture. The new structure provides better type safety, code reusability, and maintainability while preserving all existing functionality.

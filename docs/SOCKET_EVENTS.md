@@ -10,7 +10,7 @@ The application supports two architectures:
 
 ## Session-Based Events
 
-Session architecture allows one code to work across multiple widgets (Poll, Link Share, RTFeedback).
+Session architecture allows one code to work across multiple widgets (Poll, Link Share, Questions, RTFeedback).
 
 ### Core Session Events
 
@@ -19,7 +19,7 @@ Session architecture allows one code to work across multiple widgets (Poll, Link
   - Callback response: `{ success: boolean, code: string, isExisting: boolean, error?: string }`
 
 - `session:createRoom` - Create a room within the session
-  - Payload: `{ sessionCode: string, roomType: 'poll' | 'linkShare' | 'rtfeedback' }`
+  - Payload: `{ sessionCode: string, roomType: 'poll' | 'linkShare' | 'questions' | 'rtfeedback', widgetId?: string }`
   - Callback response: `{ success: boolean, isExisting: boolean, error?: string }`
 
 - `session:closeRoom` - Close a specific room type
@@ -60,15 +60,55 @@ Session architecture allows one code to work across multiple widgets (Poll, Link
 ### Link Share Session Events
 
 #### Teacher emits:
+- `session:linkShare:start` - Start accepting links
+  - Payload: `{ sessionCode: string, widgetId?: string }`
+
+- `session:linkShare:stop` - Stop accepting links  
+  - Payload: `{ sessionCode: string, widgetId?: string }`
+
 - `session:linkShare:clear` - Clear all submissions
-  - Payload: `{ sessionCode: string }`
+  - Payload: `{ sessionCode: string, widgetId?: string }`
+
+- `session:linkShare:removeSubmission` - Remove specific submission
+  - Payload: `{ sessionCode: string, submissionId: string, widgetId?: string }`
 
 #### Teacher receives:
 - `session:linkShare:newSubmission` - New submission received
-  - Payload: `{ id: string, studentName: string, link: string, timestamp: number }`
+  - Payload: `{ id: string, studentName: string, link: string, timestamp: number, widgetId?: string }`
 
 - `session:linkShare:submissionRemoved` - Submission was removed
-  - Payload: `{ studentId: string }`
+  - Payload: `{ submissionId: string, widgetId?: string }`
+
+- `linkShare:allCleared` - All submissions cleared
+  - Payload: `{ widgetId?: string }`
+
+- `linkShare:roomStateChanged` - Room active state changed
+  - Payload: `{ isActive: boolean, widgetId?: string }`
+
+### Questions Session Events
+
+#### Teacher emits:
+- `session:questions:start` - Start accepting questions
+  - Payload: `{ sessionCode: string, widgetId?: string }`
+
+- `session:questions:stop` - Stop accepting questions
+  - Payload: `{ sessionCode: string, widgetId?: string }`
+
+- `session:questions:markAnswered` - Mark question as answered
+  - Payload: `{ sessionCode: string, questionId: string, widgetId?: string }`
+
+- `session:questions:delete` - Delete a question
+  - Payload: `{ sessionCode: string, questionId: string, widgetId?: string }`
+
+- `session:questions:clearAll` - Clear all questions
+  - Payload: `{ sessionCode: string, widgetId?: string }`
+
+#### Teacher receives:
+- `session:questions:newQuestion` - New question submitted
+  - Payload: `{ id: string, text: string, studentName: string, timestamp: Date, answered: boolean, widgetId?: string }`
+
+- `questions:stateChanged` - Questions active state changed
+  - Payload: `{ isActive: boolean, widgetId?: string }`
 
 ### RTFeedback Session Events
 
@@ -148,14 +188,18 @@ These events are used by widgets that haven't migrated to the session architectu
   - Payload: `{ sessionCode: string, optionIndex: number }`
 
 #### Link Share:
-- `student:submitData` - Submit link/text
-  - Payload: `{ sessionCode: string, link: string }`
-- `student:removeSubmission` - Remove submission
+- `session:linkShare:submit` - Submit link
+  - Payload: `{ sessionCode: string, studentName: string, link: string, widgetId?: string }`
+- `student:removeSubmission` - Remove submission (legacy)
   - Payload: `{ sessionCode: string }`
 
+#### Questions:
+- `session:questions:submit` - Submit a question
+  - Payload: `{ sessionCode: string, text: string, studentName: string, widgetId?: string }`
+
 #### RTFeedback:
-- `student:rtfeedback:update` - Update feedback value
-  - Payload: `{ sessionCode: string, value: number }`
+- `session:rtfeedback:update` - Update feedback value
+  - Payload: `{ sessionCode: string, value: number, widgetId?: string }`
 
 ## Best Practices
 

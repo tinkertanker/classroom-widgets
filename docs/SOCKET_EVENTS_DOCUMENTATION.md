@@ -84,7 +84,7 @@ The application uses a hierarchical naming convention:
 ```javascript
 {
   roomId: string,
-  type: 'poll' | 'dataShare' | 'rtFeedback' | 'questions',
+  type: 'poll' | 'linkShare' | 'rtFeedback' | 'questions',
   widgetId: string
 }
 ```

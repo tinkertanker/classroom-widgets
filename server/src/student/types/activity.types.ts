@@ -1,4 +1,10 @@
 import { Socket } from 'socket.io-client';
+import { 
+  PollInitialData, 
+  LinkShareInitialData, 
+  RTFeedbackInitialData, 
+  QuestionsInitialData 
+} from './session.types';
 
 // Base props that all activity components receive
 export interface BaseActivityProps {
@@ -6,30 +12,31 @@ export interface BaseActivityProps {
   sessionCode: string;
   widgetId?: string;
   studentName?: string;
-  initialData?: any;
+  isSession?: boolean;
 }
 
 // Extended props for specific activities
 export interface PollActivityProps extends BaseActivityProps {
-  initialPollData?: {
-    question: string;
-    options: string[];
-    isActive: boolean;
-    votes?: Record<number, number>;
-  };
+  roomCode: string; // Alias for sessionCode
+  initialPollData?: PollInitialData;
 }
 
 export interface LinkShareActivityProps extends BaseActivityProps {
+  roomCode: string; // Alias for sessionCode
   studentName: string; // Required for link share
+  initialIsActive?: boolean;
 }
 
 export interface RTFeedbackActivityProps extends BaseActivityProps {
+  roomCode: string; // Alias for sessionCode
   studentName: string;
   initialIsActive?: boolean;
 }
 
 export interface QuestionsActivityProps extends BaseActivityProps {
+  sessionCode: string; // Uses sessionCode directly
   studentId: string;
+  studentName: string;
   initialIsActive?: boolean;
 }
 
@@ -38,34 +45,22 @@ export interface ActivityState {
   isActive: boolean;
   isConnected: boolean;
   error: string | null;
+  isLoading: boolean;
 }
 
-// Socket event types
-export interface SocketEventMap {
-  // State changes
-  'poll:stateChanged': { isActive: boolean };
-  'rtfeedback:stateChanged': { isActive: boolean };
-  'questions:stateChanged': { isActive: boolean };
-  
-  // Data updates
-  'poll:dataUpdate': { pollData: any; results?: any };
-  'poll:resultsUpdate': any;
-  
-  // Confirmations
-  'vote:confirmed': { success: boolean; error?: string };
-  'session:linkShare:submitted': { success: boolean; error?: string };
-  'questions:submitted': { success: boolean };
-  
-  // Lists
-  'questions:list': any[];
-  
-  // Specific events
-  'newQuestion': any;
-  'questionAnswered': { questionId: string };
-  'questionDeleted': { questionId: string };
-  'allQuestionsCleared': { widgetId: string };
-  'linkShare:newSubmission': any;
+// Activity configuration
+export interface ActivityConfig {
+  type: ActivityType;
+  title: string;
+  description: string;
+  icon: React.ComponentType;
+  component: React.ComponentType<any>;
+  gradient: string;
+  darkGradient: string;
 }
 
-// Room type from widget registry
-export type ActivityRoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
+// Activity types
+export type ActivityType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
+
+// Activity registry type
+export type ActivityRegistry = Record<ActivityType, ActivityConfig>;
