@@ -58,9 +58,9 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   const handleCustomize = () => {
     onClose();
     showModal({
-      title: 'Customize Toolbar',
       content: <CustomizeToolbarDragDrop onClose={hideModal} />,
-      className: 'max-w-4xl'
+      className: 'max-w-4xl',
+      noPadding: true
     });
   };
   

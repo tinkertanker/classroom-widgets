@@ -313,7 +313,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
           // Toolbar
           updateToolbar: (updates: Partial<ToolbarConfig>) => {
             set((state) => {
-              Object.assign(state.toolbar, updates);
+              state.toolbar = { ...state.toolbar, ...updates };
             });
           },
 

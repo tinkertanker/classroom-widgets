@@ -115,7 +115,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
       scrollPosition: { x: 0, y: 0 }
     });
   },
-  updateToolbar: () => {},
+  updateToolbar: (updates) => {
+    set((state) => ({
+      toolbar: { ...state.toolbar, ...updates }
+    }));
+  },
   toggleWidgetVisibility: () => {},
   pinWidget: () => {},
   unpinWidget: () => {},
