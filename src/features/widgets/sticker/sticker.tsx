@@ -12,7 +12,7 @@ import {
 } from 'react-icons/fa6';
 
 interface StickerProps {
-  stickerType: string;
+  stickerType?: string; // Optional now, can be read from savedState
   savedState?: {
     colorIndex: number;
     stickerType?: string;
@@ -22,7 +22,9 @@ interface StickerProps {
   onStateChange?: (state: any) => void;
 }
 
-const Sticker: React.FC<StickerProps> = ({ stickerType, savedState, onStateChange }) => {
+const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedState, onStateChange }) => {
+  // Get stickerType from props or savedState, with fallback to 'star'
+  const stickerType = propStickerType || savedState?.stickerType || savedState?.stampType || 'star';
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex || 0);
   const [rotation, setRotation] = useState(savedState?.rotation || 0);
 

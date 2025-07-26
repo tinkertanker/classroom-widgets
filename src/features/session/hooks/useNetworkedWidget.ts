@@ -97,22 +97,30 @@ export function useNetworkedWidget({
   useEffect(() => {
     if (!socket) return;
     
-    const handleRoomCreated = (data: { roomType: string; widgetId?: string; sessionCode: string }) => {
+    const handleRoomCreated = (data: { roomType: string; widgetId?: string; sessionCode?: string }) => {
+      console.log('[useNetworkedWidget] handleRoomCreated:', data, 'my roomType:', roomType, 'my widgetId:', widgetId);
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
+          console.log('[useNetworkedWidget] Room created - current sessionCode:', sessionCode || localSessionCode);
           setIsRoomActive(true);
-          setSessionCode(data.sessionCode);
-          setLocalSessionCode(data.sessionCode);
+          // Don't override existing session code - we already have it from session creation
+          // Only set if we somehow don't have one and the server provides it
+          if (!sessionCode && !localSessionCode && data.sessionCode) {
+            setSessionCode(data.sessionCode);
+            setLocalSessionCode(data.sessionCode);
+          }
           onRoomCreated?.();
         }
       }
     };
     
     const handleRoomClosed = (data: { roomType: string; widgetId?: string }) => {
+      console.log('[useNetworkedWidget] handleRoomClosed:', data, 'my roomType:', roomType, 'my widgetId:', widgetId);
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
+          console.log('[useNetworkedWidget] Room closed - clearing sessionCode');
           setIsRoomActive(false);
           setSessionCode(null);
           setParticipantCount(0);

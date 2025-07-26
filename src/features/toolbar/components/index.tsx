@@ -55,17 +55,14 @@ const Toolbar: React.FC = () => {
           setSelectedStickerType={setSelectedStickerType}
           setStickerMode={(mode) => {
             setStickerMode(mode);
-            if (mode && selectedStickerType) {
-              (window as any).setStickerMode?.(mode, selectedStickerType);
-            } else {
-              (window as any).setStickerMode?.(mode);
-            }
+            // Always pass the current selectedStickerType to the global function
+            (window as any).setStickerMode?.(mode, selectedStickerType);
           }}
           stickerMode={stickerMode}
           onClose={hideModal}
         />
       ),
-      className: 'max-w-2xl'
+      className: 'max-w-2xl bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl'
     });
   };
   
@@ -134,7 +131,7 @@ const Toolbar: React.FC = () => {
               'flex flex-col items-center gap-1 min-w-[80px]',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
-                : 'text-warm-gray-700 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
+                : 'text-warm-gray-700 dark:text-warm-gray-300 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
             )}
             title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >

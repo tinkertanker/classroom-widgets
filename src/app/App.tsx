@@ -9,11 +9,11 @@ import { migrateFromOldFormat } from '../shared/utils/migration';
 import Board from '../features/board/components';
 import Toolbar from '../features/toolbar/components';
 import TopControls from '../features/toolbar/components/TopControls';
-import SessionBanner from '../features/session/components/SessionBanner';
 import WidgetRenderer from '../features/board/components/WidgetRenderer';
 import Confetti from 'react-confetti';
 import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
-import { WidgetType } from '../shared/types';
+import { WidgetType, WidgetCategory } from '../shared/types';
+import { widgetRegistry } from '../services/WidgetRegistry';
 import io from 'socket.io-client';
 
 // Audio import for trash sound
@@ -48,16 +48,21 @@ const setupSocketConnection = (serverUrl: string, setServerStatus: any) => {
 };
 
 function App() {
-  const { theme } = useWorkspace();
+  const { theme, scale } = useWorkspace();
   const { url, setServerStatus } = useServerConnection();
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);
   const setSessionCode = useWorkspaceStore((state) => state.setSessionCode);
   const widgets = useWorkspaceStore((state) => state.widgets);
   const addWidget = useWorkspaceStore((state) => state.addWidget);
+  const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
+  const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
+  
+  // Note: Session code management is now handled by the networked widgets themselves
+  // via the useNetworkedWidget hook. They will set/clear the session code as needed.
   
   // Run migration on first load
   useEffect(() => {
@@ -156,14 +161,36 @@ function App() {
   // Handle board clicks for sticker mode
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (stickerMode && selectedStickerType) {
-      // Get click coordinates relative to the board
-      const board = e.currentTarget;
-      const rect = board.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      // Get the scroll container (board-scroll-container)
+      const scrollContainer = document.querySelector('.board-scroll-container') as HTMLElement;
+      
+      if (!scrollContainer) {
+        console.error('Could not find scroll container');
+        return;
+      }
+      
+      // Get positions relative to viewport
+      const scrollRect = scrollContainer.getBoundingClientRect();
+      
+      // Calculate click position relative to the scroll container
+      const clickX = e.clientX - scrollRect.left;
+      const clickY = e.clientY - scrollRect.top;
+      
+      // Add current scroll position to get board coordinates
+      const boardX = (clickX + scrollContainer.scrollLeft) / scale;
+      const boardY = (clickY + scrollContainer.scrollTop) / scale;
+      
+      // Center the sticker (actual rendered size: 150x150)
+      const stickerWidth = 150;
+      const stickerHeight = 150;
+      const x = boardX - stickerWidth / 2;
+      const y = boardY - stickerHeight / 2;
       
       // Add stamp widget at click position (stickers are stamps in this app)
-      addWidget(WidgetType.STAMP, { x, y });
+      const widgetId = addWidget(WidgetType.STAMP, { x, y });
+      
+      // Set the sticker type in the widget's state
+      updateWidgetState(widgetId, { stickerType: selectedStickerType });
       
       // Exit sticker mode after placing
       setStickerMode(false);
@@ -203,14 +230,6 @@ function App() {
           
           {/* Top Controls */}
           <TopControls />
-          
-          {/* Session Banner */}
-          {sessionCode && (
-            <SessionBanner
-              sessionCode={sessionCode}
-              onClose={() => setSessionCode(null)}
-            />
-          )}
           
           {/* Main Board */}
           <div className="h-full relative overflow-hidden">

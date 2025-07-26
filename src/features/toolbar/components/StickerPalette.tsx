@@ -50,6 +50,8 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
             onClick={() => {
               setSelectedStickerType(type);
               setStickerMode(true);
+              // Also set the global sticker mode with the type
+              (window as any).setStickerMode?.(true, type);
               if (onClose) onClose();
             }}
             className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-colors duration-200 ${

@@ -197,7 +197,11 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
   return (
     <ModalDialog
       title="Customize Toolbar"
-      subtitle="Drag widgets to the drop zones to move them between sections"
+      subtitle={
+        <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+          Drag widgets to the drop zones to move them between sections
+        </p>
+      }
       onClose={onClose}
       footer={footerContent}
       contentClassName="px-6 py-4"

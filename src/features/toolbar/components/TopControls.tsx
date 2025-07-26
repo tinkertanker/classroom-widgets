@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection } from '../../../shared/hooks/useWorkspace';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import SessionStatus from '../../session/components/SessionStatus/SessionStatus';
 
 const TopControls: React.FC = () => {
   const { scale, setScale } = useWorkspace();
   const { connected } = useServerConnection();
+  const sessionCode = useWorkspaceStore((state) => state.sessionCode);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSessionStatus, setShowSessionStatus] = useState(false);
+  const sessionStatusRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-show session banner when a session becomes active
+  React.useEffect(() => {
+    if (sessionCode && !showSessionStatus) {
+      setShowSessionStatus(true);
+    }
+  }, [sessionCode, showSessionStatus]);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -68,16 +80,57 @@ const TopControls: React.FC = () => {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+  
+  // Handle click outside to close session status
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (sessionStatusRef.current && !sessionStatusRef.current.contains(event.target as Node)) {
+        setShowSessionStatus(false);
+      }
+    };
+
+    if (showSessionStatus) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSessionStatus]);
 
   return (
     <div className="fixed top-4 right-4 flex items-center space-x-2 z-[998]">
-      {/* WiFi Status */}
-      <div className="flex items-center px-3 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm">
-        <div className={clsx(
-          'transition-colors duration-200',
-          connected ? 'text-sage-600' : 'text-warm-gray-400'
-        )}>
-          <FaWifi className="text-lg" />
+      {/* WiFi Status with Session Dropdown */}
+      <div className="relative" ref={sessionStatusRef}>
+        <button
+          onClick={() => setShowSessionStatus(!showSessionStatus)}
+          className={clsx(
+            "flex items-center px-3 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors",
+            sessionCode && "ring-2 ring-sage-500/20"
+          )}
+        >
+          <div className={clsx(
+            'transition-colors duration-200',
+            connected ? 'text-sage-600' : 'text-warm-gray-400'
+          )}>
+            <FaWifi className="text-lg" />
+          </div>
+          {sessionCode && (
+            <div className="ml-2 w-2 h-2 bg-sage-500 rounded-full animate-pulse" />
+          )}
+        </button>
+        
+        {/* Session Status Dropdown */}
+        <div className={`absolute top-0 right-full mr-2 transition-all duration-300 ease-out ${
+          showSessionStatus && sessionCode 
+            ? 'opacity-100 transform translate-x-0' 
+            : 'opacity-0 transform translate-x-4 pointer-events-none'
+        }`}>
+          {sessionCode && (
+            <SessionStatus
+              sessionCode={sessionCode}
+              participantCount={0}
+              isConnected={connected}
+              className="w-[600px]"
+            />
+          )}
         </div>
       </div>
 
