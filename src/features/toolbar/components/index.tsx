@@ -26,6 +26,7 @@ const Toolbar: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string>('');
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   
   const handleAddWidget = (type: WidgetType) => {
     createWidget(type);
@@ -76,75 +77,109 @@ const Toolbar: React.FC = () => {
   
   return (
     <>
-      <div className="bg-soft-white dark:bg-warm-gray-800 border border-warm-gray-200 dark:border-warm-gray-700 rounded-full px-6 py-2 shadow-lg relative">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col space-y-4 px-4 pt-4 pb-0 bg-warm-white shadow-sm relative transition-colors duration-200">
+        {/* Main widget buttons */}
+        <div className="flex space-x-3 items-end">
+          {/* Trash icon - prominent on left with large hit area */}
+          <TrashZone />
+          
+          {/* More widgets button - prominent on left */}
+          <button
+            onClick={handleShowMoreWidgets}
+            className={clsx(
+              'w-16 h-16 p-2 rounded-lg',
+              'bg-gradient-to-br from-sage-50 to-sage-100',
+              'dark:from-sage-900/20 dark:to-sage-800/30',
+              'hover:from-sage-100 hover:to-sage-200',
+              'dark:hover:from-sage-800/30 dark:hover:to-sage-700/40',
+              'transition-all duration-300 transform hover:scale-110',
+              'shadow-lg hover:shadow-xl',
+              'flex flex-col items-center justify-center gap-1',
+              'relative group',
+              'border-2 border-sage-200 dark:border-sage-700',
+              stickerMode ? 'opacity-50 cursor-not-allowed' : ''
+            )}
+            disabled={stickerMode}
+            title="More widgets (⌘K)"
+          >
+            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">
+              <LaunchpadIcon size={32} />
+            </div>
+            <span className="text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
+            {/* Keyboard shortcut indicator */}
+            <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {isMac ? '⌘K' : 'Ctrl+K'}
+            </div>
+          </button>
+          
+          {/* Separator */}
+          <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+          
           {/* Widget buttons */}
           {visibleConfigs.map((config) => (
             <WidgetButton
               key={config!.type}
               config={config!}
               onClick={() => handleAddWidget(config!.type)}
+              className={stickerMode ? 'opacity-50 cursor-not-allowed' : ''}
             />
           ))}
           
-          {/* More button */}
-          <Button
-            variant="ghost"
-            size="medium"
-            icon={<LaunchpadIcon size={18} />}
-            onClick={handleShowMoreWidgets}
-            className="opacity-80 hover:opacity-100"
-            title="Add widgets"
-          >
-            More
-          </Button>
-          
-          {/* Divider */}
-          <div className="w-px h-6 bg-warm-gray-300 dark:bg-warm-gray-600" />
+          {/* Spacer */}
+          <div className="flex-1" />
           
           {/* Stickers button */}
-          <Button
-            variant="ghost"
-            size="medium"
-            icon={<FaStamp />}
+          <button
             onClick={handleShowStickers}
-            className="opacity-80 hover:opacity-100"
-            title="Place stickers"
+            className={clsx(
+              'px-3 py-2 rounded-lg transition-all duration-200',
+              'flex flex-col items-center gap-1 min-w-[80px]',
+              stickerMode
+                ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
+                : 'text-warm-gray-700 bg-amber-100/80 dark:bg-amber-900/30 hover:bg-amber-200/80 dark:hover:bg-amber-800/40'
+            )}
+            title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >
-            Stickers
-          </Button>
+            <FaStamp className="text-lg" />
+            <span className="text-xs text-center leading-tight">Stickers</span>
+          </button>
           
-          {/* Right side - Clock, connection status, menu */}
-          <div className="flex items-center space-x-3 ml-auto">
-            {showClock && <Clock />}
-            
-            {showConnectionStatus && (
+          {/* Clock */}
+          {showClock && (
+            <div className="flex items-center px-4 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm">
+              <Clock />
+            </div>
+          )}
+          
+          {/* WiFi Status */}
+          {showConnectionStatus && (
+            <div className="flex items-center px-3 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm">
               <div className={clsx(
                 'transition-colors duration-200',
                 connected ? 'text-sage-600' : 'text-warm-gray-400'
               )}>
                 <FaWifi className="text-lg" />
               </div>
-            )}
-            
-            <Button
-              variant="ghost"
-              size="medium"
-              icon={<FaBars />}
+            </div>
+          )}
+          
+          {/* Menu button */}
+          <div className="relative">
+            <button
               onClick={() => setShowMenu(!showMenu)}
-              className="relative"
-            />
+              className="p-3 rounded-lg text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80 transition-colors"
+              title="Menu"
+            >
+              <FaBars className="w-5 h-5" />
+            </button>
+            
+            {/* Menu dropdown */}
+            {showMenu && (
+              <ToolbarMenu onClose={() => setShowMenu(false)} />
+            )}
           </div>
         </div>
       </div>
-      
-      {/* Trash Zone - positioned separately */}
-      <TrashZone />
-      
-      {/* Menu dropdown */}
-      {showMenu && (
-        <ToolbarMenu onClose={() => setShowMenu(false)} />
-      )}
     </>
   );
 };

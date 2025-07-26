@@ -17,21 +17,20 @@ const WidgetButton: React.FC<WidgetButtonProps> = ({ config, onClick, className 
     <button
       onClick={onClick}
       className={clsx(
-        'flex items-center space-x-2 px-3 py-1.5',
-        'bg-white/80 dark:bg-warm-gray-700/80',
-        'hover:bg-white dark:hover:bg-warm-gray-700',
-        'border border-warm-gray-200 dark:border-warm-gray-600',
-        'rounded-md shadow-sm',
-        'transition-all duration-200',
-        'hover:shadow-md hover:-translate-y-0.5',
-        'text-warm-gray-700 dark:text-warm-gray-300',
-        'text-sm font-medium',
+        'px-3 py-2 rounded-lg text-warm-gray-700',
+        'bg-soft-white/80 dark:bg-warm-gray-800/80',
+        'dark:text-warm-gray-300',
+        'hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80',
+        'transition-all duration-200 group relative',
+        'flex flex-col items-center gap-1 min-w-[80px]',
         className
       )}
       title={`Add ${config.name}`}
     >
-      <Icon className="text-base" />
-      <span>{config.name}</span>
+      <div className="text-lg">
+        <Icon />
+      </div>
+      <span className="text-xs text-center leading-tight">{config.name}</span>
     </button>
   );
 };
