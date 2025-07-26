@@ -92,9 +92,9 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
   };
   
   return (
-    <div className="flex flex-col h-[600px] max-h-[80vh] -mx-6 -my-4">
+    <div className="flex flex-col h-[600px] max-h-[80vh] -mx-6 -my-4 bg-white dark:bg-warm-gray-800 rounded-lg">
       {/* Header with search */}
-      <div className="px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">
+      <div className="px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700 bg-warm-gray-50 dark:bg-warm-gray-900 rounded-t-lg">
         {/* Search input */}
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -162,7 +162,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
       </div>
       
       {/* Widget grid */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4 bg-white dark:bg-warm-gray-800">
         {filteredWidgets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <svg className="w-16 h-16 text-warm-gray-300 dark:text-warm-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
