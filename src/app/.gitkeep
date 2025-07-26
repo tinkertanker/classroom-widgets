@@ -1,0 +1,4 @@
+# This folder will contain app-level code:
+# - App.tsx (main app component)
+# - App.css (app styles)
+# - providers/ (app-wide providers like ModalProvider)

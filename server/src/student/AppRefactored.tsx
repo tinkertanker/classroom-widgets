@@ -4,7 +4,7 @@ import { FaMinus, FaPlus } from 'react-icons/fa6';
 import JoinForm from './components/JoinForm';
 import { ActivityRenderer } from './components/ActivityRenderer';
 import { ActivityRoomType } from './types/activity.types';
-import { getNetworkedWidgets } from '../../constants/widgetRegistry';
+import { getNetworkedWidgets } from '../../../src/shared/constants/widgetRegistry';
 
 // Get display name for room type
 const getRoomDisplayName = (roomType: ActivityRoomType): string => {

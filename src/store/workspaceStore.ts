@@ -16,7 +16,7 @@ import {
   ToolbarConfig,
   ServerStatus,
   WidgetEvent
-} from '../types';
+} from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 
 interface WorkspaceStore extends WorkspaceState {

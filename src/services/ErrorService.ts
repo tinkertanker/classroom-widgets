@@ -1,7 +1,7 @@
 // Error Service - Centralized error handling and reporting
 
 import { useCallback } from 'react';
-import { AppError } from '../types';
+import { AppError } from '../shared/types';
 
 export enum ErrorCode {
   // Widget errors

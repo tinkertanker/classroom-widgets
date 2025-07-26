@@ -22,29 +22,29 @@ import {
   FaPersonChalkboard
 } from 'react-icons/fa6';
 
-import { WidgetType, WidgetConfig, WidgetCategory, Size } from '../types';
-import { WIDGET_TYPES } from '../constants/widgetTypes';
+import { WidgetType, WidgetConfig, WidgetCategory, Size } from '../shared/types';
+import { WIDGET_TYPES } from '../shared/constants/widgetTypes';
 
 // Lazy load all widgets
 const LazyWidgets = {
-  Randomiser: lazy(() => import('../components/randomiser')),
-  Timer: lazy(() => import('../components/timer')),
-  List: lazy(() => import('../components/list')),
-  TaskCue: lazy(() => import('../components/taskCue')),
-  TrafficLight: lazy(() => import('../components/trafficLight')),
-  AudioVolumeMonitor: lazy(() => import('../components/volumeLevel')),
-  ShortenLink: lazy(() => import('../components/shortenLink')),
-  TextBanner: lazy(() => import('../components/textBanner')),
-  ImageDisplay: lazy(() => import('../components/imageDisplay')),
-  SoundEffects: lazy(() => import('../components/soundEffects')),
-  Sticker: lazy(() => import('../components/sticker')),
-  Poll: lazy(() => import('../components/poll')),
-  QRCodeWidget: lazy(() => import('../components/qrcode')),
-  LinkShare: lazy(() => import('../components/linkShare')),
-  Visualiser: lazy(() => import('../components/visualiser')),
-  RTFeedback: lazy(() => import('../components/rtFeedback')),
-  TicTacToe: lazy(() => import('../components/ticTacToe')),
-  Questions: lazy(() => import('../components/questions'))
+  Randomiser: lazy(() => import('../features/widgets/randomiser')),
+  Timer: lazy(() => import('../features/widgets/timer')),
+  List: lazy(() => import('../features/widgets/list')),
+  TaskCue: lazy(() => import('../features/widgets/taskCue')),
+  TrafficLight: lazy(() => import('../features/widgets/trafficLight')),
+  AudioVolumeMonitor: lazy(() => import('../features/widgets/volumeLevel')),
+  ShortenLink: lazy(() => import('../features/widgets/shortenLink')),
+  TextBanner: lazy(() => import('../features/widgets/textBanner')),
+  ImageDisplay: lazy(() => import('../features/widgets/imageDisplay')),
+  SoundEffects: lazy(() => import('../features/widgets/soundEffects')),
+  Sticker: lazy(() => import('../features/widgets/sticker')),
+  Poll: lazy(() => import('../features/widgets/poll')),
+  QRCodeWidget: lazy(() => import('../features/widgets/qrcode')),
+  LinkShare: lazy(() => import('../features/widgets/linkShare')),
+  Visualiser: lazy(() => import('../features/widgets/visualiser')),
+  RTFeedback: lazy(() => import('../features/widgets/rtFeedback')),
+  TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
+  Questions: lazy(() => import('../features/widgets/questions'))
 };
 
 // Default sizes for widgets

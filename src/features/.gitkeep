@@ -1,0 +1,5 @@
+# This folder will contain feature modules:
+# - board/ (board/canvas functionality)
+# - toolbar/ (toolbar and widget launcher)
+# - widgets/ (all widget implementations)
+# - session/ (networking and session management)

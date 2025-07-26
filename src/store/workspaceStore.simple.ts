@@ -1,6 +1,6 @@
 // Simplified store for testing
 import { create } from 'zustand';
-import { BackgroundType, WidgetType } from '../types';
+import { BackgroundType, WidgetType } from '../shared/types';
 import { WorkspaceStore } from './workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 

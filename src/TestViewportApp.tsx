@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ViewportCanvas } from './components/ViewportCanvas';
-import { WIDGET_TYPES } from './constants/widgetTypes';
-import { getWidgetConfig } from './constants/widgetConfigs';
+import { WIDGET_TYPES } from './shared/constants/widgetTypes';
+import { getWidgetConfig } from './shared/constants/widgetConfigs';
 import Background from './components/backgrounds/backgrounds';
 
 export function TestViewportApp() {
