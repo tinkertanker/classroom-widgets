@@ -15,7 +15,7 @@ const mockCanvas = {
 global.HTMLCanvasElement.prototype.getContext = mockCanvas.getContext as any
 
 // Mock WebGL for face-api.js
-global.WebGLRenderingContext = jest.fn(() => ({
+global.WebGLRenderingContext = (() => ({
   canvas: mockCanvas,
   drawingBufferWidth: 640,
   drawingBufferHeight: 480,

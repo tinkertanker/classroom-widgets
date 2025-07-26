@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { WIDGET_REGISTRY, getWidget } from "../../../shared/constants/widgetRegistry";
 import { getWidgetDisplayName } from "../../../shared/utils/widgetRegistryHelpers";
-import { DragAwareWrapper } from "../../../components/common/DragAwareWrapper";
+import { DragAwareWrapper } from "../../../shared/components/DragAwareWrapper";
 import ErrorBoundary from "../../../shared/components/ErrorBoundary";
 import { LazyWidgets } from './LazyWidgets';
 

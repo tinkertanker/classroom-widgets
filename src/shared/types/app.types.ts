@@ -28,4 +28,4 @@ export type WidgetStatesMap = Map<string, any>;
 export type WidgetPositionsMap = Map<string, WidgetPosition>;
 
 // Re-export background type
-export type { BackgroundType } from "../../components/backgrounds/backgrounds";
+export type { BackgroundType } from "../backgrounds/backgrounds";

@@ -121,26 +121,43 @@ The application uses a dynamic widget system where widgets are:
 ### File Structure
 ```
 src/
-├── App.tsx                  # Main application with widget management logic
-├── components/              # Individual widget components
-│   ├── [widget-name]/      # Each widget in its own folder
-│   │   ├── index.tsx       # Component export
-│   │   └── [widget].tsx    # Component implementation
-│   ├── backgrounds/        # Background pattern components
-│   ├── toolbar/           # Toolbar and customization components
-│   └── Widget/            # Widget container and renderer
-├── constants/              # Widget types and configurations
-├── contexts/               # React contexts (Modal)
-├── hooks/                  # Custom React hooks
-├── utils/                  # Helper functions
-├── secrets/                # API key configuration
-server/                      # Backend server for real-time features
-├── src/                    # Server source code
-│   ├── index.js           # Express/Socket.io server
-│   └── student/           # Student React app source
-│       ├── components/    # Student app components
+├── app/                     # Application-level code
+│   ├── App.tsx             # Main application component
+│   ├── App.css             # Application styles
+│   └── providers/          # App-wide providers (ModalProvider)
+├── features/               # Feature-based modules
+│   ├── board/             # Board/canvas functionality
+│   │   ├── components/    # Board components
+│   │   └── hooks/         # Board-specific hooks
+│   ├── toolbar/           # Toolbar feature
+│   │   └── components/    # Toolbar components
+│   ├── widgets/           # All widget implementations
+│   │   ├── [widget-name]/ # Individual widget folders
+│   │   └── shared/        # Shared widget components
+│   └── session/           # Session/networking features
+│       ├── components/    # Session components
+│       └── hooks/         # Session hooks
+├── shared/                 # Shared across features
+│   ├── components/        # Reusable components
+│   ├── hooks/            # Shared React hooks
+│   ├── utils/            # Utility functions
+│   ├── types/            # TypeScript types
+│   ├── constants/        # Shared constants
+│   └── backgrounds/      # Background assets
+├── components/ui/          # UI component library
+├── contexts/              # React contexts
+├── services/              # Services (WidgetRegistry, ErrorService)
+├── store/                 # State management (Zustand)
+├── sounds/                # Sound assets
+└── styles/                # Global styles
+
+server/                     # Backend server for real-time features
+├── src/                   # Server source code
+│   ├── index.js          # Express/Socket.io server
+│   └── student/          # Student React app source
+│       ├── components/   # Student app components
 │       └── *.tsx/css     # Student app files
-└── public/                 # Built student app files
+└── public/               # Built student app files
 ```
 
 ## Important Implementation Details

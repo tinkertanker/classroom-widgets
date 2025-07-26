@@ -16,7 +16,7 @@ import LinkShare from "../linkShare/LinkShare";
 import Visualiser from "../visualiser/visualiser";
 import RTFeedback from "../rtFeedback/rtFeedback";
 import { WIDGET_TYPES } from "../../../shared/constants/widgetTypes";
-import { DragAwareWrapper } from "../../../components/common/DragAwareWrapper";
+import { DragAwareWrapper } from "../../../shared/components/DragAwareWrapper";
 import ErrorBoundary from "../../../shared/components/ErrorBoundary";
 
 interface WidgetRendererProps {

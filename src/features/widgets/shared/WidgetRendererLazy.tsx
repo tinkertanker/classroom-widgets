@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { WIDGET_TYPES } from "../../shared/constants/widgetTypes";
-import { DragAwareWrapper } from "../common/DragAwareWrapper";
+import { DragAwareWrapper } from "../../../shared/components/DragAwareWrapper";
 import ErrorBoundary from "../../shared/components/ErrorBoundary";
 import { LazyWidgets } from './LazyWidgets';
 
