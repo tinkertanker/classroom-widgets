@@ -1,8 +1,7 @@
 import React from 'react';
-import lowpolyBg from './lowpoly-bg.jpg';
-import seawaveBg from './seawave-bg.jpg';
-
-export type BackgroundType = 'geometric' | 'gradient' | 'lines' | 'dots' | 'lowpoly' | 'seawave';
+import lowpolyBg from '../assets/backgrounds/lowpoly-bg.jpg';
+import seawaveBg from '../assets/backgrounds/seawave-bg.jpg';
+import { BackgroundType } from '../../../shared/types';
 
 interface BackgroundProps {
   type: BackgroundType;

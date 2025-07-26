@@ -27,5 +27,4 @@ export interface WidgetState {
 export type WidgetStatesMap = Map<string, any>;
 export type WidgetPositionsMap = Map<string, WidgetPosition>;
 
-// Re-export background type
-export type { BackgroundType } from "../backgrounds/backgrounds";
+// Background type is defined in index.ts
