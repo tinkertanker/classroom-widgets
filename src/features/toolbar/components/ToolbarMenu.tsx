@@ -18,6 +18,8 @@ import {
 import { useWorkspace, useTheme } from '../../../shared/hooks/useWorkspace';
 import { useWidgets } from '../../../shared/hooks/useWidget';
 import { BackgroundType } from '../../../shared/types';
+import { useModal } from '../../../contexts/ModalContext';
+import CustomizeToolbarDialog from './CustomizeToolbarDialog';
 
 interface ToolbarMenuProps {
   onClose: () => void;
@@ -27,6 +29,7 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   const { setBackground } = useWorkspace();
   const { theme, toggleTheme } = useTheme();
   const { removeAll } = useWidgets();
+  const { showModal, hideModal } = useModal();
   const menuRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
@@ -53,9 +56,12 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   };
   
   const handleCustomize = () => {
-    // TODO: Open toolbar customization dialog
-    console.log('Customize toolbar');
     onClose();
+    showModal({
+      title: 'Customize Toolbar',
+      content: <CustomizeToolbarDialog onClose={hideModal} />,
+      className: 'max-w-3xl'
+    });
   };
   
   return (
