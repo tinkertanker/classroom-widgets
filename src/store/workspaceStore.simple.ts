@@ -34,7 +34,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   toolbar: defaultToolbar,
   serverStatus: {
     connected: false,
-    url: 'http://localhost:3001'
+    url: import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
   },
   widgetStates: new Map(),
   eventListeners: new Map(),

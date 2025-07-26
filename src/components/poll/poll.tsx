@@ -35,6 +35,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   });
   
   const { showModal, hideModal } = useModal();
+  
 
   // Load saved state
   useEffect(() => {

@@ -92,9 +92,9 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
           onClick={onBoardClick}
           style={{ 
             cursor: stickerMode ? 'crosshair' : 'default',
-            position: 'absolute',
-            top: 0,
-            left: 0
+            position: 'relative',
+            width: '3000px',
+            height: '2000px'
           }}
         >
           

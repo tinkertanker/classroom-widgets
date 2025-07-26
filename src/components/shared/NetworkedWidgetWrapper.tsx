@@ -2,8 +2,8 @@ import React, { ReactNode } from 'react';
 import { IconType } from 'react-icons';
 import { NetworkedWidgetEmpty } from './NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from './NetworkedWidgetHeader';
-import { useNetworkedWidgetSession } from '../../hooks/useNetworkedWidgetSession';
-import { RoomType } from '../../hooks/useSession';
+import { useNetworkedWidget } from '../../hooks/useNetworkedWidget';
+import { RoomType } from '../../hooks/useNetworkedWidget';
 
 interface NetworkedWidgetWrapperProps {
   widgetId?: string;
@@ -16,7 +16,7 @@ interface NetworkedWidgetWrapperProps {
   onRoomCreated?: () => void;
   onRoomClosed?: () => void;
   children: (props: {
-    session: ReturnType<typeof useNetworkedWidgetSession>['session'];
+    session: ReturnType<typeof useNetworkedWidget>['session'];
     isRoomActive: boolean;
   }) => ReactNode;
   headerChildren?: ReactNode;
@@ -42,7 +42,7 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
     handleStart,
     handleStop,
     session
-  } = useNetworkedWidgetSession({
+  } = useNetworkedWidget({
     widgetId,
     roomType,
     onRoomCreated,
@@ -55,12 +55,12 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
   const content = children({ session, isRoomActive });
 
   // Debug logging
-  console.log(`[Widget ${widgetId}] NetworkedWidgetWrapper render:`, {
-    isRoomActive,
-    sessionCode: session.sessionCode,
-    isConnected: session.isConnected,
-    showingEmptyState: !isRoomActive || !session.sessionCode
-  });
+  // console.log(`[Widget ${widgetId}] NetworkedWidgetWrapper render:`, {
+  //   isRoomActive,
+  //   sessionCode: session.sessionCode,
+  //   isConnected: session.isConnected,
+  //   showingEmptyState: !isRoomActive || !session.sessionCode
+  // });
 
   // Empty state
   if (!isRoomActive || !session.sessionCode) {
@@ -71,12 +71,12 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
         description={description}
         buttonText={
           isStarting ? "Starting..." : 
-          session.isConnecting ? "Connecting..." : 
+          !session.isConnected ? "Connecting..." : 
           `Start ${title}`
         }
         onStart={handleStart}
-        disabled={isStarting || session.isConnecting || !session.isConnected}
-        error={error || session.connectionError}
+        disabled={isStarting || !session.isConnected}
+        error={error}
       />
     );
   }

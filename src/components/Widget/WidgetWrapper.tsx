@@ -74,7 +74,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       onDragStop={handleDragStop}
       onResizeStop={handleResizeStop}
       onClick={handleClick}
-      bounds="parent"
+      bounds=".board"
       scale={scale}
       minWidth={config.minSize?.width}
       minHeight={config.minSize?.height}

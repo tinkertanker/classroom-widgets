@@ -17,13 +17,13 @@ interface Submission {
 
 function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
 
   // Load saved state
   useEffect(() => {
     if (savedState) {
       setSubmissions(savedState.submissions || []);
-      setIsActive(savedState.isActive !== undefined ? savedState.isActive : true);
+      setIsActive(savedState.isActive !== undefined ? savedState.isActive : false);
     }
   }, [savedState]);
 

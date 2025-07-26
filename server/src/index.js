@@ -172,7 +172,7 @@ class LinkShareRoom {
     this.hostSocketId = null;
     this.submissions = [];
     this.createdAt = Date.now();
-    this.isActive = true; // Link sharing starts active by default
+    this.isActive = false; // Link sharing starts paused by default
   }
 
   addSubmission(studentName, link) {
@@ -258,7 +258,7 @@ class RTFeedbackRoom {
     this.participants = new Map();
     this.feedbackData = new Map(); // Map of studentId -> feedback value (1-5)
     this.createdAt = Date.now();
-    this.isActive = true; // RTFeedback starts active by default
+    this.isActive = false; // RTFeedback starts paused by default
   }
 
   updateFeedback(studentId, value) {
@@ -544,7 +544,7 @@ io.on('connection', (socket) => {
       socket.join(`session:${existingSession.code}`);
       
       // Rejoin all room namespaces for this session
-      for (const [roomId, room] of existingSession.rooms) {
+      for (const [roomId, room] of existingSession.activeRooms) {
         socket.join(`${existingSession.code}:${roomId}`);
         console.log(`Host rejoined room: ${existingSession.code}:${roomId}`);
       }
@@ -704,6 +704,20 @@ io.on('connection', (socket) => {
     
     socket.join(roomNamespace);
     console.log(`Socket ${socket.id} joined room ${roomNamespace}`);
+    
+    // Send current room state to the joining student
+    const room = session.getRoom(roomType, widgetId);
+    if (room) {
+      // Handle different room types
+      if (roomType === 'linkShare' && room instanceof LinkShareRoom) {
+        // Send link share room state
+        socket.emit('linkShare:roomStateChanged', { isActive: room.isActive });
+      } else if (roomType === 'rtfeedback' && room instanceof RTFeedbackRoom) {
+        // Send RT feedback room state
+        socket.emit('rtfeedback:stateChanged', { isActive: room.isActive });
+      }
+      // Poll and Questions don't need initial state as they start paused
+    }
   });
   
   // Leave a specific room (for widget instances)

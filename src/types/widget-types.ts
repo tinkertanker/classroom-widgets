@@ -142,6 +142,14 @@ export interface QRCodeState {
   shortUrl?: string;
 }
 
+// =============================================================================
+// NETWORKED WIDGETS
+// All networked widgets follow these standards:
+// - Use `isActive` (not `isPaused`) to control whether accepting student input
+// - Default to `isActive: false` (start paused) to give teachers explicit control
+// - Server-side room state matches client-side defaults
+// =============================================================================
+
 // Poll Widget (Networked)
 export interface PollProps extends NetworkedWidgetProps {}
 
@@ -154,7 +162,7 @@ export interface PollOption {
 export interface PollState {
   question: string;
   options: PollOption[];
-  isActive: boolean;
+  isActive: boolean; // Controls whether accepting votes (default: false)
   allowMultiple: boolean;
   showResults: boolean;
   totalVotes: number;
@@ -174,7 +182,7 @@ export interface SharedLink {
 
 export interface LinkShareState {
   links: SharedLink[];
-  isActive: boolean;
+  isActive: boolean; // Controls whether accepting links (default: false)
   requireName: boolean;
   maxLinks: number;
 }
@@ -190,7 +198,7 @@ export interface FeedbackData {
 
 export interface RTFeedbackState {
   feedback: Map<string, FeedbackData>;
-  isActive: boolean;
+  isActive: boolean; // Controls whether accepting feedback (default: false)
   averageValue: number;
   distribution: number[];
 }
@@ -209,7 +217,7 @@ export interface Question {
 
 export interface QuestionsState {
   questions: Question[];
-  isActive: boolean;
+  isActive: boolean; // Controls whether accepting questions (default: false)
   requireName: boolean;
   maxQuestions: number;
 }

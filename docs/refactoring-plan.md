@@ -157,6 +157,15 @@ All other stages are pending completion of Stage 1.
 - **Cleanup**: Removed old toolbar.tsx, ZoomControl, and dependent hooks
 - **Simplification**: Removed feature flag - app now uses only the new architecture
 - **Documentation**: Created context-removal-summary.md
+- **Fixed Poll Widget**: 
+  - Resolved "Invalid session or not host" error
+  - Fixed server-side bug (existingSession.rooms → existingSession.activeRooms)
+  - Implemented proper session creation flow before room creation
+  - Poll widget now works with real-time features
+- **Store Architecture**:
+  - Currently using simplified store (workspaceStore.simple.ts) without middleware
+  - Full store (workspaceStore.ts) causes infinite rerenders - needs investigation
+  - Added task to investigate and fix full store implementation
 
 ### 2025-07-25
 
@@ -186,10 +195,14 @@ All other stages are pending completion of Stage 1.
 ## Next Steps
 
 ### Immediate (Stage 1 Completion)
-1. **Remove Context files**: Delete WorkspaceContext.tsx and related files
+1. ~~**Remove Context files**: Delete WorkspaceContext.tsx and related files~~ ✅ Completed
 2. **Implement error boundaries**: Add WidgetErrorBoundary, AppErrorBoundary
 3. **Apply coding standards**: File naming, folder structure per docs/coding-standards.md
 
 ### Future Stages
-4. Begin Stage 2: State Management optimization
-5. Continue with remaining stages as planned
+4. **Investigate and fix full Zustand store**: 
+   - Debug why the full store (with devtools, persist, immer) causes infinite rerenders
+   - Currently using simplified store without middleware as a workaround
+   - Goal: Migrate back to full store for persistence, devtools, and better DX
+5. Begin Stage 2: State Management optimization
+6. Continue with remaining stages as planned

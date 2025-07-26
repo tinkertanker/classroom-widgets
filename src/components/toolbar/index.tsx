@@ -13,16 +13,33 @@ import ToolbarMenu from './ToolbarMenu';
 import Clock from './Clock';
 import MoreWidgetsDialog from './MoreWidgetsDialog';
 import Button from '../ui/Button';
+import { useModal } from '../../contexts/ModalContext';
 
 const Toolbar: React.FC = () => {
   const { visibleWidgets, showClock, showConnectionStatus } = useToolbar();
   const { connected } = useServerConnection();
   const createWidget = useCreateWidget();
+  const { showModal, hideModal } = useModal();
   const [showMenu, setShowMenu] = useState(false);
-  const [showMoreWidgets, setShowMoreWidgets] = useState(false);
   
   const handleAddWidget = (type: WidgetType) => {
     createWidget(type);
+  };
+  
+  const handleShowMoreWidgets = () => {
+    showModal({
+      title: 'Add Widget',
+      content: (
+        <MoreWidgetsDialog
+          onClose={hideModal}
+          onSelectWidget={(type) => {
+            handleAddWidget(type);
+            hideModal();
+          }}
+        />
+      ),
+      className: 'max-w-3xl'
+    });
   };
   
   const visibleConfigs = visibleWidgets
@@ -48,7 +65,7 @@ const Toolbar: React.FC = () => {
               variant="ghost"
               size="medium"
               icon={<FaPlus />}
-              onClick={() => setShowMoreWidgets(true)}
+              onClick={handleShowMoreWidgets}
               className="opacity-80 hover:opacity-100"
               title="Add widgets"
             >
@@ -83,14 +100,6 @@ const Toolbar: React.FC = () => {
       {/* Menu dropdown */}
       {showMenu && (
         <ToolbarMenu onClose={() => setShowMenu(false)} />
-      )}
-      
-      {/* More widgets dialog */}
-      {showMoreWidgets && (
-        <MoreWidgetsDialog
-          onClose={() => setShowMoreWidgets(false)}
-          onSelectWidget={handleAddWidget}
-        />
       )}
     </>
   );

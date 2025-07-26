@@ -1,6 +1,7 @@
 // Main App component - Refactored for better architecture
 
 import React, { useEffect, useState } from 'react';
+import './App.css';
 import { ModalProvider } from './contexts/ModalContext';
 import { useWorkspace, useServerConnection } from './hooks/useWorkspace';
 import { useWorkspaceStore } from './store/workspaceStore.simple';

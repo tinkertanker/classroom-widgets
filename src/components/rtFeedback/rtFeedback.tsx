@@ -32,7 +32,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
     totalResponses: 0,
     average: 0
   });
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
   const [showResults, setShowResults] = useState(true);
 
   // Load saved state
@@ -43,7 +43,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         totalResponses: 0,
         average: 0
       });
-      setIsActive(savedState.isActive !== undefined ? savedState.isActive : true);
+      setIsActive(savedState.isActive !== undefined ? savedState.isActive : false);
       setShowResults(savedState.showResults !== undefined ? savedState.showResults : true);
     }
   }, [savedState]);
