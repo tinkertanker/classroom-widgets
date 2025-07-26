@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { FaPlus, FaBars, FaWifi, FaStamp } from 'react-icons/fa6';
+import { FaBars, FaWifi, FaStamp } from 'react-icons/fa6';
 import { useToolbar } from '../../../shared/hooks/useWorkspace';
 import { useCreateWidget } from '../../../shared/hooks/useWidget';
 import { useServerConnection } from '../../../shared/hooks/useWorkspace';
@@ -16,6 +16,7 @@ import Button from '../../../components/ui/Button';
 import { useModal } from '../../../contexts/ModalContext';
 import TrashZone from '../../board/components/TrashZone';
 import StickerPalette from './StickerPalette';
+import LaunchpadIcon from './LaunchpadIcon';
 
 const Toolbar: React.FC = () => {
   const { visibleWidgets, showClock, showConnectionStatus } = useToolbar();
@@ -90,7 +91,7 @@ const Toolbar: React.FC = () => {
           <Button
             variant="ghost"
             size="medium"
-            icon={<FaPlus />}
+            icon={<LaunchpadIcon size={18} />}
             onClick={handleShowMoreWidgets}
             className="opacity-80 hover:opacity-100"
             title="Add widgets"
