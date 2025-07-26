@@ -19,7 +19,7 @@ import { useWorkspace, useTheme } from '../../../shared/hooks/useWorkspace';
 import { useWidgets } from '../../../shared/hooks/useWidget';
 import { BackgroundType } from '../../../shared/types';
 import { useModal } from '../../../contexts/ModalContext';
-import CustomizeToolbarDialog from './CustomizeToolbarDialog';
+import CustomizeToolbarDragDrop from './CustomizeToolbarDragDrop';
 
 interface ToolbarMenuProps {
   onClose: () => void;
@@ -59,8 +59,8 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
     onClose();
     showModal({
       title: 'Customize Toolbar',
-      content: <CustomizeToolbarDialog onClose={hideModal} />,
-      className: 'max-w-3xl'
+      content: <CustomizeToolbarDragDrop onClose={hideModal} />,
+      className: 'max-w-4xl'
     });
   };
   
