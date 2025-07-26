@@ -14,7 +14,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({ sessionCode, onClose }) =
   const studentUrl = `${serverUrl}/student`;
   
   return (
-    <div className="bg-sage-500 text-white px-4 py-2 flex items-center justify-between">
+    <div className="absolute top-0 left-0 right-0 z-10 bg-sage-500 text-white px-4 py-2 flex items-center justify-between">
       <div className="flex items-center space-x-6">
         <div>
           <span className="text-sm opacity-90">Visit:</span>{' '}

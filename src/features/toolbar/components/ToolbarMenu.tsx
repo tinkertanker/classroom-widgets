@@ -59,7 +59,7 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   return (
     <div
       ref={menuRef}
-      className="absolute right-4 top-14 bg-white dark:bg-warm-gray-800 rounded-lg shadow-xl border border-warm-gray-200 dark:border-warm-gray-700 py-2 z-50 min-w-[200px]"
+      className="absolute right-4 bottom-16 bg-white dark:bg-warm-gray-800 rounded-lg shadow-xl border border-warm-gray-200 dark:border-warm-gray-700 py-2 z-50 min-w-[200px]"
     >
       {/* Theme Toggle */}
       <button

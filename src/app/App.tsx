@@ -189,7 +189,7 @@ function App() {
   return (
     <GlobalErrorBoundary>
       <ModalProvider>
-        <div className="h-screen flex flex-col bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden">
+        <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
           {/* Confetti */}
           {showConfetti && (
             <Confetti
@@ -200,9 +200,6 @@ function App() {
             />
           )}
           
-          {/* Toolbar */}
-          <Toolbar />
-          
           {/* Session Banner */}
           {sessionCode && (
             <SessionBanner
@@ -212,12 +209,17 @@ function App() {
           )}
           
           {/* Main Board */}
-          <div className="flex-1 relative overflow-hidden">
+          <div className="h-full relative overflow-hidden">
             <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
               {widgets.map((widget) => (
                 <WidgetRenderer key={widget.id} widgetId={widget.id} />
               ))}
             </Board>
+          </div>
+          
+          {/* Toolbar at bottom */}
+          <div className="toolbar-container">
+            <Toolbar />
           </div>
         </div>
       </ModalProvider>

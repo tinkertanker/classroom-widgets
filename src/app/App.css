@@ -77,13 +77,17 @@
 
 .toolbar-container {
   position: fixed;
-  bottom: 0;
+  bottom: 20px;
   left: 0;
   width: 100%;
   display: flex;
   justify-content: center;
   z-index: 999;
-  padding-bottom: 10px;
+  pointer-events: none;
+}
+
+.toolbar-container > * {
+  pointer-events: auto;
 }
 
 /* Custom range slider styles */
