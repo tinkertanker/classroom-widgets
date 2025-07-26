@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
-import { FaBars, FaWifi, FaStamp } from 'react-icons/fa6';
+import { FaBars, FaStamp } from 'react-icons/fa6';
 import { useToolbar } from '../../../shared/hooks/useWorkspace';
 import { useCreateWidget } from '../../../shared/hooks/useWidget';
-import { useServerConnection } from '../../../shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { WidgetType } from '../../../shared/types';
 import WidgetButton from './WidgetButton';
@@ -19,8 +18,7 @@ import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
 
 const Toolbar: React.FC = () => {
-  const { visibleWidgets, showClock, showConnectionStatus } = useToolbar();
-  const { connected } = useServerConnection();
+  const { visibleWidgets, showClock } = useToolbar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();
   const [showMenu, setShowMenu] = useState(false);
@@ -77,13 +75,13 @@ const Toolbar: React.FC = () => {
   
   return (
     <>
-      <div className="flex flex-col space-y-4 px-4 pt-4 pb-0 bg-warm-white shadow-sm relative transition-colors duration-200">
+      <div className="inline-flex flex-col space-y-4 px-4 pt-4 pb-2 bg-warm-white dark:bg-warm-gray-800 rounded-lg shadow-lg transition-colors duration-200">
         {/* Main widget buttons */}
-        <div className="flex space-x-3 items-end">
-          {/* Trash icon - prominent on left with large hit area */}
+        <div className="flex space-x-3 items-center justify-center">
+          {/* Trash icon */}
           <TrashZone />
           
-          {/* More widgets button - prominent on left */}
+          {/* More widgets button */}
           <button
             onClick={handleShowMoreWidgets}
             className={clsx(
@@ -136,7 +134,7 @@ const Toolbar: React.FC = () => {
               'flex flex-col items-center gap-1 min-w-[80px]',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
-                : 'text-warm-gray-700 bg-amber-100/80 dark:bg-amber-900/30 hover:bg-amber-200/80 dark:hover:bg-amber-800/40'
+                : 'text-warm-gray-700 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
             )}
             title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >
@@ -148,18 +146,6 @@ const Toolbar: React.FC = () => {
           {showClock && (
             <div className="flex items-center px-4 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm">
               <Clock />
-            </div>
-          )}
-          
-          {/* WiFi Status */}
-          {showConnectionStatus && (
-            <div className="flex items-center px-3 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm">
-              <div className={clsx(
-                'transition-colors duration-200',
-                connected ? 'text-sage-600' : 'text-warm-gray-400'
-              )}>
-                <FaWifi className="text-lg" />
-              </div>
             </div>
           )}
           

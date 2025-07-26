@@ -4,7 +4,7 @@ import { useCallback, useEffect } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { selectWidget } from '../../store/workspaceStore';
-import { WidgetInstance, Position, Size } from '../types';
+import { WidgetInstance, Position, Size, WidgetType } from '../types';
 
 // Hook for individual widget instances
 export function useWidget(widgetId: string) {
@@ -95,8 +95,40 @@ export function useWidgetEvents(widgetId: string, handlers: {
 // Hook for creating a new widget
 export function useCreateWidget() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
+  const scale = useWorkspaceStore((state) => state.scale);
   
-  return addWidget;
+  const createWidget = useCallback((type: WidgetType, position?: Position) => {
+    // If position is provided, use it
+    if (position) {
+      return addWidget(type, position);
+    }
+    
+    // Otherwise, calculate position based on viewport
+    const boardContainer = document.querySelector('.board-scroll-container') as HTMLElement;
+    if (boardContainer) {
+      const scrollLeft = boardContainer.scrollLeft;
+      const scrollTop = boardContainer.scrollTop;
+      const viewportWidth = boardContainer.clientWidth;
+      const viewportHeight = boardContainer.clientHeight;
+      
+      // Calculate center of viewport in board coordinates
+      const centerX = (scrollLeft + viewportWidth / 2) / scale;
+      const centerY = (scrollTop + viewportHeight / 2) / scale;
+      
+      // Offset slightly from center to avoid stacking
+      const offset = Math.random() * 50 - 25;
+      
+      return addWidget(type, {
+        x: centerX + offset - 100, // Subtract half of typical widget width
+        y: centerY + offset - 75   // Subtract half of typical widget height
+      });
+    }
+    
+    // Fallback to default position
+    return addWidget(type);
+  }, [addWidget, scale]);
+  
+  return createWidget;
 }
 
 // Hook for workspace-wide widget operations

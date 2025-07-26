@@ -8,6 +8,7 @@ import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '../shared/utils/migration';
 import Board from '../features/board/components';
 import Toolbar from '../features/toolbar/components';
+import TopControls from '../features/toolbar/components/TopControls';
 import SessionBanner from '../features/session/components/SessionBanner';
 import WidgetRenderer from '../features/board/components/WidgetRenderer';
 import Confetti from 'react-confetti';
@@ -129,7 +130,7 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         // Trigger the LaunchpadDialog by clicking the More button
-        const moreButton = document.querySelector('[title="Add widgets"]') as HTMLButtonElement;
+        const moreButton = document.querySelector('[title*="More widgets"]') as HTMLButtonElement;
         if (moreButton) {
           moreButton.click();
         }
@@ -199,6 +200,9 @@ function App() {
               numberOfPieces={200}
             />
           )}
+          
+          {/* Top Controls */}
+          <TopControls />
           
           {/* Session Banner */}
           {sessionCode && (
