@@ -2,11 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import AppWithContext from './AppWithContext';
 import reportWebVitals from './reportWebVitals';
-
-// Feature flag to switch between old and new architecture
-const USE_NEW_ARCHITECTURE = import.meta.env.VITE_NEW_ARCH !== 'false';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,7 +13,7 @@ const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>
-    {USE_NEW_ARCHITECTURE ? <App /> : <AppWithContext />}
+    <App />
   </React.StrictMode>
 );
 

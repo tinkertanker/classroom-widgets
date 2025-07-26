@@ -138,19 +138,27 @@ interface AppState {
 
 ## Progress Status
 
-### Stage 1: Foundation & Cleanup ✅ **COMPLETED**
+### Stage 1: Foundation & Cleanup ✅ **NEARLY COMPLETED**
 - [x] **Complete TypeScript migration** - All JS/JSX files converted to TypeScript
 - [x] **Fix runtime issues** - Resolved process.env → import.meta.env, fixed imports
 - [x] **Architecture cleanup** - Removed ViewportCanvas, using react-rnd consistently
 - [x] **Working application** - Toolbar, widgets, zoom, pan, and drag all functional
-- [ ] **Remove old Context system** - AppWithContext disabled, but files still exist
+- [x] **Remove old Context system** - All Context files removed, only ModalContext kept
 - [ ] **Error boundaries** - Not yet implemented
 - [ ] **Code standards** - Partial implementation
 
 ### Stage 2-6: Pending
 All other stages are pending completion of Stage 1.
 
-## Recent Changes (2025-07-25)
+## Recent Changes
+
+### 2025-07-26
+- **Context System Removal**: Deleted WorkspaceContext, SessionContext, AppWithContext
+- **Cleanup**: Removed old toolbar.tsx, ZoomControl, and dependent hooks
+- **Simplification**: Removed feature flag - app now uses only the new architecture
+- **Documentation**: Created context-removal-summary.md
+
+### 2025-07-25
 
 ### ✅ Completed
 1. **TypeScript Migration**: Converted all remaining JS files to TS

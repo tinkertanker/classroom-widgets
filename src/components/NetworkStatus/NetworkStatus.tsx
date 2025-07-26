@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaWifi, FaUsers, FaCopy } from 'react-icons/fa6';
-import { useSessionContext } from '../../contexts/SessionContext';
+// import { useSessionContext } from '../../contexts/SessionContext'; // Removed - not used in new architecture
 
 interface NetworkStatusProps {
   className?: string;

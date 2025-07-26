@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { WIDGET_TYPES } from '../../constants/widgetTypes';
-import { useSessionContext } from '../../contexts/SessionContext';
+// import { useSessionContext } from '../../contexts/SessionContext'; // Removed - not used in new architecture
 import { 
   FaDice,
   FaClock,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import AppWithContext from './AppWithContext';
+import App from './App';
 
 // Mock the audio files
 jest.mock('./sounds/trash-crumple.mp3', () => 'trash-sound.mp3');
@@ -18,12 +18,12 @@ describe('App Core Functionality', () => {
   });
 
   test('renders without crashing', () => {
-    render(<AppWithContext />);
+    render(<App />);
     expect(screen.getByRole('button', { name: /timer/i })).toBeInTheDocument();
   });
 
   test('dark mode toggle works', () => {
-    render(<AppWithContext />);
+    render(<App />);
     
     // Find and click the menu button
     const menuButton = screen.getByRole('button', { name: /menu/i });
@@ -38,7 +38,7 @@ describe('App Core Functionality', () => {
   });
 
   test('workspace state persists to localStorage', async () => {
-    render(<AppWithContext />);
+    render(<App />);
     
     // Add a widget
     const timerButton = screen.getByRole('button', { name: /timer/i });
@@ -67,7 +67,7 @@ describe('App Core Functionality', () => {
     localStorage.setItem('workspaceState', JSON.stringify(mockState));
     
     // Render app
-    render(<AppWithContext />);
+    render(<App />);
     
     // Verify that localStorage was accessed
     const savedState = localStorage.getItem('workspaceState');
