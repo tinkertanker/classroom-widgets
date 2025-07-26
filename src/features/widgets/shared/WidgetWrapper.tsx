@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useEffect } from 'react';
 import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
 import { useWidget, useWidgetDrag } from '../../../shared/hooks/useWidget';
-import { useWorkspace } from '../../../shared/hooks/useWorkspace';
+import { useWorkspace, useDragAndDrop } from '../../../shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '../../../shared/types';
 
@@ -14,9 +14,10 @@ interface WidgetWrapperProps {
 }
 
 const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => {
-  const { widget, move, resize, focus } = useWidget(widgetId);
+  const { widget, move, resize, focus, remove } = useWidget(widgetId);
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();
+  const { dropTarget } = useDragAndDrop();
   const rndRef = useRef<any>(null);
   
   if (!widget) return null;
@@ -30,10 +31,18 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   }, [startDrag, focus]);
 
   const handleDragStop = useCallback((e: any, d: any) => {
-    const newPosition: Position = { x: d.x, y: d.y };
-    move(newPosition);
+    if (dropTarget === 'trash') {
+      // Play trash sound
+      (window as any).playTrashSound?.();
+      // Remove the widget
+      remove();
+    } else {
+      // Normal drag end - update position
+      const newPosition: Position = { x: d.x, y: d.y };
+      move(newPosition);
+    }
     stopDrag();
-  }, [move, stopDrag]);
+  }, [move, stopDrag, dropTarget, remove]);
 
   const handleResizeStop = useCallback((e: any, direction: any, ref: any, delta: any, position: Position) => {
     const newSize: Size = {
