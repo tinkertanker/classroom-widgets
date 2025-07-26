@@ -1,6 +1,8 @@
 import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { useWorkspace } from '../../../shared/hooks/useWorkspace';
 import { useZoomWithScroll } from '../hooks/useZoomWithScroll';
+import Background from '../../../shared/backgrounds/backgrounds';
+import { BackgroundType } from '../../../shared/types';
 
 interface BoardProps {
   children: React.ReactNode;
@@ -17,7 +19,7 @@ export interface BoardRef {
 }
 
 const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, stickerMode }, ref) => {
-  const { scale } = useWorkspace();
+  const { scale, background } = useWorkspace();
   
   
   const boardContainerRef = useRef<HTMLDivElement>(null);
@@ -97,6 +99,8 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
             height: '2000px'
           }}
         >
+          {/* Background Pattern */}
+          {background !== BackgroundType.NONE && <Background type={background as any} />}
           
           {children}
           

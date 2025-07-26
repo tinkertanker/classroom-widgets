@@ -11,7 +11,9 @@ import {
   FaShapes,
   FaBrush,
   FaGripLines,
-  FaBorderNone
+  FaBorderNone,
+  FaMountain,
+  FaWater
 } from 'react-icons/fa6';
 import { useWorkspace, useTheme } from '../../../shared/hooks/useWorkspace';
 import { useWidgets } from '../../../shared/hooks/useWidget';
@@ -115,6 +117,22 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
       >
         <FaCircle className="mr-3" />
         Dots
+      </button>
+      
+      <button
+        onClick={() => handleBackgroundChange(BackgroundType.LOWPOLY)}
+        className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
+      >
+        <FaMountain className="mr-3" />
+        Low Poly
+      </button>
+      
+      <button
+        onClick={() => handleBackgroundChange(BackgroundType.SEAWAVE)}
+        className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
+      >
+        <FaWater className="mr-3" />
+        Sea Wave
       </button>
       
       <div className="h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1" />

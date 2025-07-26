@@ -75,7 +75,9 @@ export enum BackgroundType {
   GEOMETRIC = 'geometric',
   GRADIENT = 'gradient',
   LINES = 'lines',
-  DOTS = 'dots'
+  DOTS = 'dots',
+  LOWPOLY = 'lowpoly',
+  SEAWAVE = 'seawave'
 }
 
 // Toolbar Types
