@@ -53,43 +53,53 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
         <div className="absolute inset-0" style={{ zIndex: 0 }}>
           <div className="absolute inset-0" style={{ backgroundColor: 'var(--bg-main)' }} />
           
-          {/* Layer 1: Dusty rose gradient */}
+          {/* Layer 1: Dusty rose gradient - MORE VIBRANT */}
           <div 
-            className="absolute top-0 left-0 w-[80%] h-[80%] blur-3xl opacity-40" 
+            className="absolute top-0 left-0 w-[85%] h-[85%] blur-2xl opacity-70" 
             style={{
               background: isDarkMode 
-                ? 'radial-gradient(ellipse at top left, rgba(212, 132, 122, 0.3) 0%, rgba(168, 105, 97, 0.2) 40%, transparent 70%)'
-                : 'radial-gradient(ellipse at top left, rgba(227, 155, 147, 0.3) 0%, rgba(212, 132, 122, 0.2) 40%, transparent 70%)'
+                ? 'radial-gradient(ellipse at top left, rgba(217, 119, 147, 0.6) 0%, rgba(212, 132, 122, 0.4) 40%, transparent 70%)'
+                : 'radial-gradient(ellipse at top left, rgba(237, 145, 137, 0.7) 0%, rgba(227, 155, 147, 0.5) 40%, transparent 70%)'
             }}
           />
           
-          {/* Layer 2: Sage gradient */}
+          {/* Layer 2: Sage gradient - MORE VIBRANT */}
           <div 
-            className="absolute bottom-0 right-0 w-[70%] h-[70%] blur-3xl opacity-40"
+            className="absolute bottom-0 right-0 w-[80%] h-[80%] blur-2xl opacity-75"
             style={{
               background: isDarkMode
-                ? 'radial-gradient(ellipse at bottom right, rgba(94, 139, 94, 0.3) 0%, rgba(74, 109, 74, 0.2) 40%, transparent 70%)'
-                : 'radial-gradient(ellipse at bottom right, rgba(168, 195, 168, 0.3) 0%, rgba(138, 161, 138, 0.2) 40%, transparent 70%)'
+                ? 'radial-gradient(ellipse at bottom right, rgba(124, 179, 124, 0.6) 0%, rgba(94, 139, 94, 0.4) 40%, transparent 70%)'
+                : 'radial-gradient(ellipse at bottom right, rgba(134, 180, 159, 0.7) 0%, rgba(168, 195, 168, 0.5) 40%, transparent 70%)'
             }}
           />
           
-          {/* Layer 3: Terracotta gradient */}
+          {/* Layer 3: Terracotta gradient - MORE VIBRANT */}
           <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] blur-3xl opacity-30"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100%] h-[100%] blur-2xl opacity-60"
             style={{
               background: isDarkMode
-                ? 'radial-gradient(circle at center, rgba(217, 167, 157, 0.25) 0%, rgba(186, 130, 119, 0.2) 30%, transparent 60%)'
-                : 'radial-gradient(circle at center, rgba(237, 192, 183, 0.25) 0%, rgba(217, 167, 157, 0.2) 30%, transparent 60%)'
+                ? 'radial-gradient(circle at center, rgba(232, 152, 66, 0.5) 0%, rgba(217, 167, 157, 0.35) 30%, transparent 65%)'
+                : 'radial-gradient(circle at center, rgba(232, 152, 66, 0.6) 0%, rgba(237, 192, 183, 0.4) 30%, transparent 65%)'
             }}
           />
           
-          {/* Layer 4: Warm gray accent */}
+          {/* Layer 4: Purple accent - NEW VIBRANT COLOR */}
           <div 
-            className="absolute top-[20%] right-[20%] w-[40%] h-[40%] blur-2xl opacity-30"
+            className="absolute top-[30%] left-[30%] w-[50%] h-[50%] blur-xl opacity-50"
             style={{
               background: isDarkMode
-                ? 'radial-gradient(circle, rgba(214, 210, 204, 0.2) 0%, transparent 60%)'
-                : 'radial-gradient(circle, rgba(242, 238, 232, 0.2) 0%, transparent 60%)'
+                ? 'radial-gradient(circle, rgba(167, 139, 250, 0.4) 0%, transparent 60%)'
+                : 'radial-gradient(circle, rgba(167, 139, 250, 0.5) 0%, transparent 60%)'
+            }}
+          />
+          
+          {/* Layer 5: Teal accent - NEW VIBRANT COLOR */}
+          <div 
+            className="absolute bottom-[20%] left-[10%] w-[45%] h-[45%] blur-xl opacity-45"
+            style={{
+              background: isDarkMode
+                ? 'radial-gradient(circle, rgba(94, 234, 212, 0.35) 0%, transparent 60%)'
+                : 'radial-gradient(circle, rgba(94, 234, 212, 0.45) 0%, transparent 60%)'
             }}
           />
         </div>
