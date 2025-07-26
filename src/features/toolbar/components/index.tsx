@@ -11,7 +11,7 @@ import { WidgetType } from '../../../shared/types';
 import WidgetButton from './WidgetButton';
 import ToolbarMenu from './ToolbarMenu';
 import Clock from './Clock';
-import MoreWidgetsDialog from './MoreWidgetsDialog';
+import WidgetLaunchpad from './WidgetLaunchpad';
 import Button from '../../../components/ui/Button';
 import { useModal } from '../../../contexts/ModalContext';
 import TrashZone from '../../board/components/TrashZone';
@@ -36,15 +36,15 @@ const Toolbar: React.FC = () => {
     showModal({
       title: 'Add Widget',
       content: (
-        <MoreWidgetsDialog
+        <WidgetLaunchpad
           onClose={hideModal}
           onSelectWidget={(type) => {
             handleAddWidget(type);
-            hideModal();
           }}
         />
       ),
-      className: 'max-w-3xl'
+      className: 'max-w-4xl',
+      noPadding: true
     });
   };
   
