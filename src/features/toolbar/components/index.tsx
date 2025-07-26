@@ -43,7 +43,7 @@ const Toolbar: React.FC = () => {
           }}
         />
       ),
-      className: 'max-w-4xl',
+      className: 'max-w-4xl bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl',
       noPadding: true
     });
   };

@@ -5,7 +5,6 @@ import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { WidgetType, WidgetCategory } from '../../../shared/types';
 import { FaWifi } from 'react-icons/fa6';
 import { useServerConnection } from '../../../shared/hooks/useWorkspace';
-import ModalDialog from '../../../shared/components/ModalDialog';
 
 interface WidgetLaunchpadProps {
   onClose: () => void;
@@ -22,7 +21,9 @@ const categoryTitles: Record<WidgetCategory, string> = {
 const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidget }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory | null>(null);
+  const [focusedWidgetIndex, setFocusedWidgetIndex] = useState<number>(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const widgetRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const { connected: serverConnected } = useServerConnection();
   
   // Auto-focus search input
@@ -67,6 +68,18 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
     });
   }, [searchQuery, selectedCategory]);
   
+  // Auto-focus single widget
+  useEffect(() => {
+    if (filteredWidgets.length === 1) {
+      setFocusedWidgetIndex(0);
+      setTimeout(() => {
+        widgetRefs.current[0]?.focus();
+      }, 50);
+    } else {
+      setFocusedWidgetIndex(-1);
+    }
+  }, [filteredWidgets]);
+  
   // Group widgets by category
   const widgetsByCategory = useMemo(() => {
     const grouped = new Map<WidgetCategory, typeof filteredWidgets>();
@@ -87,93 +100,94 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
     onClose();
   };
   
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && filteredWidgets.length === 1) {
+      const widget = filteredWidgets[0];
+      const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
+      if (!isDisabled) {
+        handleWidgetClick(widget.type);
+      }
+    }
+  };
+  
   const isNetworkedWidget = (type: WidgetType) => {
     const widget = widgetRegistry.get(type);
     return widget?.category === WidgetCategory.NETWORKED;
   };
   
-  const headerContent = (
-    <>
-      {/* Search input */}
-      <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg className="h-5 w-5 text-warm-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-        <input
-          ref={searchInputRef}
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search widgets..."
-          className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-warm-gray-200 dark:border-warm-gray-600 
-                   bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200
-                   focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:ring-2 focus:ring-sage-500/20
-                   placeholder-warm-gray-400 dark:placeholder-warm-gray-500"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute inset-y-0 right-0 pr-3 flex items-center text-warm-gray-400 hover:text-warm-gray-600"
-          >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  return (
+    <div className="flex flex-col h-full max-h-[600px] bg-white dark:bg-warm-gray-800 rounded-lg">
+      {/* Search and filters section */}
+      <div className="p-6 pb-4">
+        {/* Search input */}
+        <div className="relative mb-3">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-warm-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          </button>
-        )}
-      </div>
-      
-      {/* Category filters */}
-      <div className="flex gap-2 mt-3">
-        <button
-          onClick={() => setSelectedCategory(null)}
-          className={`px-3 py-1 text-xs rounded-full transition-colors ${
-            !selectedCategory
-              ? 'bg-sage-500 text-white'
-              : 'bg-warm-gray-100 dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
-          }`}
-        >
-          All
-        </button>
-        {Object.entries(categoryTitles).map(([category, title]) => (
+          </div>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Search widgets..."
+            className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-warm-gray-200 dark:border-warm-gray-600 
+                     bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200
+                     focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:ring-2 focus:ring-sage-500/20
+                     placeholder-warm-gray-400 dark:placeholder-warm-gray-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-warm-gray-400 hover:text-warm-gray-600"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        
+        {/* Category filters */}
+        <div className="flex gap-2 mb-3">
           <button
-            key={category}
-            onClick={() => setSelectedCategory(category as WidgetCategory)}
+            onClick={() => setSelectedCategory(null)}
             className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              selectedCategory === category
+              !selectedCategory
                 ? 'bg-sage-500 text-white'
                 : 'bg-warm-gray-100 dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
             }`}
           >
-            {title}
+            All
           </button>
-        ))}
-      </div>
-      
-      {/* Server status warning */}
-      {!serverConnected && (
-        <div className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-xs">
-          <FaWifi className="w-3 h-3" />
-          <span>Some widgets require server connection</span>
+          {Object.entries(categoryTitles).map(([category, title]) => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category as WidgetCategory)}
+              className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                selectedCategory === category
+                  ? 'bg-sage-500 text-white'
+                  : 'bg-warm-gray-100 dark:bg-warm-gray-700 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
+              }`}
+            >
+              {title}
+            </button>
+          ))}
         </div>
-      )}
-    </>
-  );
-
-  return (
-    <ModalDialog
-      title="Add Widget"
-      onClose={onClose}
-      contentClassName="px-6 py-4"
-    >
-      {/* Header content in the main area */}
-      <div className="pb-4 border-b border-warm-gray-200 dark:border-warm-gray-700 -mx-6 px-6 -mt-4">
-        {headerContent}
+        
+        {/* Server status warning */}
+        {!serverConnected && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-xs">
+            <FaWifi className="w-3 h-3" />
+            <span>Some widgets require server connection</span>
+          </div>
+        )}
       </div>
       
       {/* Widget grid */}
-      <div className="pt-4">
+      <div className="flex-1 overflow-y-auto px-6 pb-6">
         {filteredWidgets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <svg className="w-16 h-16 text-warm-gray-300 dark:text-warm-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,19 +203,20 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
         ) : selectedCategory ? (
           // Show widgets in selected category
           <div className="grid grid-cols-4 gap-3">
-            {filteredWidgets.map((widget) => {
+            {filteredWidgets.map((widget, index) => {
               const Icon = widget.icon;
               const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
               
               return (
                 <button
                   key={widget.type}
+                  ref={(el) => { widgetRefs.current[index] = el; }}
                   onClick={() => !isDisabled && handleWidgetClick(widget.type)}
                   disabled={isDisabled}
                   className={`group relative flex flex-col items-center p-4 rounded-lg transition-all ${
                     isDisabled
                       ? 'opacity-50 cursor-not-allowed bg-warm-gray-50 dark:bg-warm-gray-700'
-                      : 'bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5'
+                      : 'bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-warm-gray-800'
                   }`}
                 >
                   {isNetworkedWidget(widget.type) && (
@@ -228,19 +243,22 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                   {categoryTitles[category]}
                 </h3>
                 <div className="grid grid-cols-4 gap-3">
-                  {widgets.map((widget) => {
+                  {widgets.map((widget, widgetIndex) => {
                     const Icon = widget.icon;
                     const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
+                    // Calculate global index for ref tracking
+                    const globalIndex = filteredWidgets.findIndex(w => w.type === widget.type);
                     
                     return (
                       <button
                         key={widget.type}
+                        ref={(el) => { if (globalIndex !== -1) widgetRefs.current[globalIndex] = el; }}
                         onClick={() => !isDisabled && handleWidgetClick(widget.type)}
                         disabled={isDisabled}
                         className={`group relative flex flex-col items-center p-4 rounded-lg transition-all ${
                           isDisabled
                             ? 'opacity-50 cursor-not-allowed bg-warm-gray-50 dark:bg-warm-gray-700'
-                            : 'bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5'
+                            : 'bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-warm-gray-800'
                         }`}
                       >
                         {isNetworkedWidget(widget.type) && (
@@ -263,7 +281,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
           </div>
         )}
       </div>
-    </ModalDialog>
+    </div>
   );
 };
 
