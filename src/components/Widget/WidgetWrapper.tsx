@@ -44,10 +44,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     move(position);
   }, [resize, move]);
 
-  const handleClick = useCallback(() => {
-    focus();
-  }, [focus]);
-
   // Handle zoom changes
   useEffect(() => {
     if (rndRef.current && rndRef.current.updatePosition) {
@@ -73,7 +69,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       onDragStart={handleDragStart}
       onDragStop={handleDragStop}
       onResizeStop={handleResizeStop}
-      onClick={handleClick}
       bounds=".board"
       scale={scale}
       minWidth={config.minSize?.width}
@@ -86,7 +81,11 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
         cursor: isBeingDragged ? 'grabbing' : 'grab'
       }}
       className={wrapperClasses}
-      cancel=".no-drag"
+      // IMPORTANT: The 'cancel' prop prevents react-rnd from starting a drag operation
+      // when clicking on interactive elements. Without this, the first click on these
+      // elements gets consumed by the drag handler instead of triggering the element's
+      // click handler. Add any clickable elements here or use the 'no-drag' class.
+      cancel=".no-drag, button, input, textarea, select, a, .clickable"
       enableResizing={{
         top: false,
         right: true,

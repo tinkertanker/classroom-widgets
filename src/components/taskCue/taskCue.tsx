@@ -69,7 +69,7 @@ function TaskCue({ isActive = false }: TaskCueProps) {
         <div className="bg-transparent rounded-lg w-full h-full flex flex-col" id="widget1">
             <div className="flex-1 flex flex-col justify-center items-center px-3 pt-3">
                 <div 
-                    className="w-full h-full flex flex-col items-center justify-center space-y-4 cursor-pointer hover:opacity-80 transition-opacity"
+                    className="clickable w-full h-full flex flex-col items-center justify-center space-y-4 cursor-pointer hover:opacity-80 transition-opacity"
                     onClick={handleNextState}
                     title="Click to cycle to next state"
                 >

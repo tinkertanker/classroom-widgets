@@ -157,6 +157,11 @@ server/                      # Backend server for real-time features
    - Traffic Light: 300x175px
    - Sound Effects: 80x420px (tall narrow layout)
 6. **Cleanup**: Remove widgets by implementing drag-to-trash functionality
+7. **Click Handling in Widgets**: Interactive elements inside widgets must be excluded from drag handling
+   - Add the `clickable` class to any div/element with onClick handlers
+   - Standard HTML elements (button, input, textarea, select, a) are automatically excluded
+   - Without this, the first click on these elements gets consumed by react-rnd's drag handler
+   - See WidgetWrapper.tsx `cancel` prop for the full list of excluded selectors
 
 ## Known Issues
 

@@ -83,7 +83,7 @@ function TrafficLight() {
               {["#ff0000", "#ffa500", "#008000"].map((color, index) => (
                 <div
                   key={color}
-                  className="relative rounded-full cursor-pointer mx-1 transition-all duration-300 hover:scale-105"
+                  className="clickable relative rounded-full cursor-pointer mx-1 transition-all duration-300 hover:scale-105"
                   style={{
                     width: `${state.boxHeight * 0.7}px`,
                     height: `${state.boxHeight * 0.7}px`,
