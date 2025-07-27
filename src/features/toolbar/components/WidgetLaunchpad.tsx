@@ -21,7 +21,7 @@ const categoryTitles: Record<WidgetCategory, string> = {
 const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidget }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory | null>(null);
-  const [focusedWidgetIndex, setFocusedWidgetIndex] = useState<number>(-1);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const widgetRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const { connected: serverConnected } = useServerConnection();
@@ -68,15 +68,12 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
     });
   }, [searchQuery, selectedCategory]);
   
-  // Auto-focus single widget
+  // Highlight single widget without focusing
   useEffect(() => {
     if (filteredWidgets.length === 1) {
-      setFocusedWidgetIndex(0);
-      setTimeout(() => {
-        widgetRefs.current[0]?.focus();
-      }, 50);
+      setHighlightedIndex(0);
     } else {
-      setFocusedWidgetIndex(-1);
+      setHighlightedIndex(-1);
     }
   }, [filteredWidgets]);
   
@@ -105,15 +102,9 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
       const widget = filteredWidgets[0];
       const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
       if (!isDisabled) {
-        // Launch the widget but don't close the modal immediately
+        // Launch the widget and close the modal
         onSelectWidget(widget.type);
-        // Keep focus on search field and clear the search to allow for more widgets
-        setSearchQuery('');
-        // Re-focus the search input after a brief delay
-        setTimeout(() => {
-          const searchInput = document.querySelector('input[placeholder="Search widgets..."]') as HTMLInputElement;
-          searchInput?.focus();
-        }, 50);
+        onClose();
       }
     }
   };
@@ -224,7 +215,9 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                   className={`group relative flex flex-col items-center p-4 rounded-lg transition-all ${
                     isDisabled
                       ? 'opacity-50 cursor-not-allowed bg-warm-gray-50 dark:bg-warm-gray-700'
-                      : 'bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-warm-gray-800'
+                      : `bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
+                          highlightedIndex === index ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
+                        }`
                   }`}
                 >
                   {isNetworkedWidget(widget.type) && (
@@ -251,7 +244,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                   {categoryTitles[category]}
                 </h3>
                 <div className="grid grid-cols-4 gap-3">
-                  {widgets.map((widget, widgetIndex) => {
+                  {widgets.map((widget) => {
                     const Icon = widget.icon;
                     const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
                     // Calculate global index for ref tracking
@@ -266,7 +259,9 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                         className={`group relative flex flex-col items-center p-4 rounded-lg transition-all ${
                           isDisabled
                             ? 'opacity-50 cursor-not-allowed bg-warm-gray-50 dark:bg-warm-gray-700'
-                            : 'bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-warm-gray-800'
+                            : `bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
+                                highlightedIndex === globalIndex ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
+                              }`
                         }`}
                       >
                         {isNetworkedWidget(widget.type) && (
