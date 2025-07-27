@@ -38,13 +38,11 @@ export function useSessionRecovery({
     if (!socket || !isConnected) return;
 
     const handleConnect = async () => {
-      console.log('[useSessionRecovery] Socket connected, checking for session recovery...');
       
       // Only attempt recovery if we've disconnected before (not on initial connect)
       if (lastSessionCode.current && !attemptingRecovery.current && hasDisconnected.current) {
         attemptingRecovery.current = true;
         setIsRecovering(true);
-        console.log('[useSessionRecovery] Attempting to recover session:', lastSessionCode.current);
         
         try {
           // Check if session still exists on server
@@ -67,7 +65,6 @@ export function useSessionRecovery({
             
             // Wait for join response
             const joinTimeout = setTimeout(() => {
-              console.log('[useSessionRecovery] Join timeout - session may be invalid');
               lastSessionCode.current = null;
               if (hasEverHadSession.current) {
                 onSessionLost?.();
@@ -79,10 +76,8 @@ export function useSessionRecovery({
             socket.once('session:joined', (joinData) => {
               clearTimeout(joinTimeout);
               if (joinData.success && joinData.activeRooms) {
-                console.log('[useSessionRecovery] Session recovered successfully');
                 onSessionRestored?.(joinData.activeRooms);
               } else {
-                console.log('[useSessionRecovery] Failed to recover session');
                 lastSessionCode.current = null;
                 if (hasEverHadSession.current) {
                   onSessionLost?.();
@@ -92,7 +87,6 @@ export function useSessionRecovery({
               setIsRecovering(false);
             });
           } else {
-            console.log('[useSessionRecovery] Session no longer exists on server');
             lastSessionCode.current = null;
             if (hasEverHadSession.current) {
               onSessionLost?.();
@@ -101,7 +95,6 @@ export function useSessionRecovery({
             setIsRecovering(false);
           }
         } catch (error) {
-          console.error('[useSessionRecovery] Error checking session:', error);
           attemptingRecovery.current = false;
           setIsRecovering(false);
           if (hasEverHadSession.current) {
@@ -112,7 +105,6 @@ export function useSessionRecovery({
     };
 
     const handleDisconnect = () => {
-      console.log('[useSessionRecovery] Socket disconnected');
       hasDisconnected.current = true;
       // Don't clear lastSessionCode here - we need it for recovery
     };

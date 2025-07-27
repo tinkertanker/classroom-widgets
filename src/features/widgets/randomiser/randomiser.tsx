@@ -51,8 +51,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       ),
       className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl",
       onClose: () => {
-        console.log("Settings modal closed, final choices:", choicesRef.current);
-        console.log("Settings modal closed, removed choices:", removedChoicesRef.current);
         // Update displayChoices to show items immediately if there are active choices
         const activeChoices = choicesRef.current.filter(choice => !removedChoicesRef.current.includes(choice));
         if (activeChoices.length > 0) {
@@ -211,7 +209,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       setTextheight(node.getBoundingClientRect().height);
       const resizeObserver = new ResizeObserver(() => {
         setTextheight(node.getBoundingClientRect().height);
-        // console.log(node.getBoundingClientRect().height);
       });
       resizeObserver.observe(node);
     }

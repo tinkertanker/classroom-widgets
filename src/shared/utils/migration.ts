@@ -162,7 +162,6 @@ export function migrateFromOldFormat(): void {
     // Check if migration is needed
     const newFormatExists = localStorage.getItem('classroom-widgets-workspace');
     if (newFormatExists) {
-      console.log('New format already exists, skipping migration');
       return;
     }
     
@@ -172,7 +171,6 @@ export function migrateFromOldFormat(): void {
     const oldToolbar = localStorage.getItem('toolbarConfig');
     
     if (!oldWorkspace && !oldStates && !oldToolbar) {
-      console.log('No old format data found, skipping migration');
       return;
     }
     
@@ -228,7 +226,6 @@ export function migrateFromOldFormat(): void {
     // Save in new format
     localStorage.setItem('classroom-widgets-workspace', JSON.stringify(migratedData));
     
-    console.log('Migration completed successfully');
     
     // Optionally backup old data
     localStorage.setItem('widgetWorkspace_backup', oldWorkspace || '');
@@ -236,6 +233,6 @@ export function migrateFromOldFormat(): void {
     localStorage.setItem('toolbarConfig_backup', oldToolbar || '');
     
   } catch (error) {
-    console.error('Migration failed:', error);
+    // Migration failed
   }
 }

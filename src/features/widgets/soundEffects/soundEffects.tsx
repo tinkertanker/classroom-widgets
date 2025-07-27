@@ -120,11 +120,10 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
       // Reset and play
       audio.currentTime = 0;
       audio.play().catch(error => {
-        console.error(`Error playing ${soundName} sound:`, error);
+        // Error playing sound
       });
     } else {
       // Fallback for when sound files aren't loaded yet
-      console.log(`Sound file not loaded for: ${soundName}`);
     }
     
     // Visual feedback - button press animation

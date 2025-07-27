@@ -70,18 +70,15 @@ export function useSession({
     });
 
     newSocket.on('connect', () => {
-      console.log('Connected to server');
       setIsConnected(true);
       setConnectionError('');
     });
 
     newSocket.on('disconnect', () => {
-      console.log('Disconnected from server');
       setIsConnected(false);
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
       setConnectionError('Failed to connect to server');
       setIsConnected(false);
     });

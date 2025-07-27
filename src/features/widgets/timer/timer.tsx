@@ -115,7 +115,7 @@ const Timer = () => {
       setTimerFinished(true);
       // Play the timer end sound
       timerEndAudio.play().catch(error => {
-        console.error("Error playing timer end sound:", error);
+        // Error playing timer end sound
       });
     }
   }, [time, isRunning]);
@@ -224,7 +224,6 @@ const Timer = () => {
         const elapsed = Date.now() - startTime;
         // Complete one rotation every 3 seconds counter-clockwise (-120 degrees/second)
         const angle = -90 - (elapsed / 1000) * 120;
-        console.log(`Elapsed: ${elapsed/1000}s, Angle: ${angle}`);
         setPulseAngle(angle);
         
         animationFrameId = requestAnimationFrame(animate);

@@ -79,7 +79,6 @@ const App: React.FC = () => {
     sessionCode: currentSessionCode,
     isConnected,
     onSessionRestored: (activeRooms) => {
-      console.log('[App] Session restored with rooms:', activeRooms);
       // Clear existing rooms first
       setJoinedRooms([]);
       
@@ -100,7 +99,6 @@ const App: React.FC = () => {
       });
     },
     onSessionLost: () => {
-      console.log('[App] Session lost, clearing state');
       setCurrentSessionCode('');
       setJoinedRooms([]);
       setPrimarySocket(null);
@@ -203,10 +201,8 @@ const App: React.FC = () => {
       }
 
       // Check if session exists
-      console.log('Checking if session exists via API...');
       const response = await fetch(`/api/sessions/${code}/exists`);
       const data = await response.json();
-      console.log('Session exists API response:', data);
       
       if (!data.exists) {
         throw new Error('Invalid session code');
@@ -222,14 +218,11 @@ const App: React.FC = () => {
 
       // Set up socket event handlers
       newSocket.on('connect', () => {
-        console.log(`Connected to server for session ${code}`);
         setIsConnected(true);
         newSocket.emit('session:join', { code, name: name || studentName, studentId: newSocket.id });
       });
 
       newSocket.on('session:joined', (joinData) => {
-        console.log('Received session:joined event:', joinData);
-        console.log('Active rooms received:', joinData.activeRooms);
         
         if (joinData.success && joinData.activeRooms) {
           // Set current session code
@@ -237,7 +230,6 @@ const App: React.FC = () => {
           
           // Join all active rooms in the session
           joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
-            console.log('Creating room for:', roomData);
             const roomId = `${code}-${roomData.roomId}-${Date.now()}`;
             
             const newRoom: JoinedRoom = {
@@ -269,7 +261,6 @@ const App: React.FC = () => {
 
       // Handle new rooms being created in the session
       newSocket.on('session:roomCreated', (data) => {
-        console.log('New room created in session:', data);
         const roomId = `${code}-${data.roomId}-${Date.now()}`;
         
         const newRoom: JoinedRoom = {
@@ -297,7 +288,6 @@ const App: React.FC = () => {
 
       // Handle rooms being closed in the session
       newSocket.on('session:roomClosed', (data) => {
-        console.log('Room closed in session:', data);
         // Find and remove the room of this type for this session
         setJoinedRooms(prev => {
           const roomToRemove = prev.find(r => 
@@ -315,7 +305,6 @@ const App: React.FC = () => {
       });
 
       newSocket.on('disconnect', () => {
-        console.log(`Disconnected from session ${code}`);
         setIsConnected(false);
         // Clear current session when disconnected
         setCurrentSessionCode('');

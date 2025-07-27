@@ -139,25 +139,5 @@ export function getWidgetsWithFeature(feature: keyof NonNullable<WidgetDefinitio
 export function logWidgetRegistryStatus(): void {
   const validation = validateAllWidgetImplementations();
   
-  console.group('Widget Registry Status');
-  console.log(`Total widgets: ${Object.keys(WIDGET_REGISTRY).length}`);
-  console.log(`Networked widgets: ${getNetworkedWidgetIds().length}`);
-  console.log(`Validation: ${validation.valid ? '✅ PASSED' : '❌ FAILED'}`);
-  
-  if (!validation.valid) {
-    console.error('Validation errors:', validation.errors);
-  }
-  
-  console.table(
-    Object.values(WIDGET_REGISTRY).map(w => ({
-      ID: w.id,
-      Name: w.displayName,
-      Category: w.category,
-      Networked: !!w.networked,
-      RoomType: w.networked?.roomType || '-',
-      HasStartStop: w.networked?.hasStartStop || false
-    }))
-  );
-  
-  console.groupEnd();
+  // Widget registry status logging removed
 }

@@ -49,7 +49,6 @@ export function useSessionWidget({
   useEffect(() => {
     const handleWidgetCleanup = (event: CustomEvent) => {
       if (event.detail.widgetId === widgetId && isRoomActive) {
-        console.log(`Widget ${widgetId} cleanup - closing ${roomType} room`);
         session.closeRoom(roomType);
       }
     };
@@ -82,7 +81,6 @@ export function useSessionWidget({
       await session.createRoom(roomType);
       setIsRoomActive(true);
     } catch (error) {
-      console.error('Failed to start room:', error);
       throw error;
     }
   }, [session, roomType]);

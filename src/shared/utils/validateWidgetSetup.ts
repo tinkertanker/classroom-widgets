@@ -215,28 +215,20 @@ function validateStudentComponents(): ValidationResult {
  * Console utility to run validation and display results
  */
 export function runWidgetValidation(): void {
-  console.group('🔍 Widget Setup Validation');
-  
   const results = validateCompleteWidgetSetup();
   const passed = results.filter(r => r.status === 'pass').length;
   const failed = results.filter(r => r.status === 'fail').length;
   const warnings = results.filter(r => r.status === 'warning').length;
   
-  console.log(`Summary: ${passed} passed, ${failed} failed, ${warnings} warnings`);
-  console.log('');
   
   results.forEach(result => {
     const icon = result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : '⚠️';
-    console.log(`${icon} ${result.category}: ${result.message}`);
     
     if (result.details && result.details.length > 0) {
       result.details.forEach(detail => {
-        console.log(`   - ${detail}`);
       });
     }
   });
-  
-  console.groupEnd();
   
   // Return overall status
   return failed === 0;

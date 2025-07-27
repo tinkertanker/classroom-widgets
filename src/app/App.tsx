@@ -30,12 +30,10 @@ const setupSocketConnection = (serverUrl: string, setServerStatus: any) => {
   });
   
   socket.on('connect', () => {
-    console.log('Connected to server');
     setServerStatus({ connected: true });
   });
   
   socket.on('disconnect', () => {
-    console.log('Disconnected from server');
     setServerStatus({ connected: false });
   });
   

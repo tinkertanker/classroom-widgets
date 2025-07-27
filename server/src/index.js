@@ -459,11 +459,6 @@ app.get('/api/rooms/:code/exists', (req, res) => {
   
   if (room) {
     // DEBUG: Log detailed room info
-    console.log(`API: Room object found:`, room);
-    console.log(`API: Room constructor name:`, room.constructor.name);
-    console.log(`API: Is PollRoom?`, room instanceof PollRoom);
-    console.log(`API: Is LinkShareRoom?`, room instanceof LinkShareRoom);
-    console.log(`API: Is RTFeedbackRoom?`, room instanceof RTFeedbackRoom);
     
     if (room instanceof PollRoom) {
       roomType = 'poll';
@@ -475,15 +470,11 @@ app.get('/api/rooms/:code/exists', (req, res) => {
   }
   
   // DEBUG: Log room existence check
-  console.log(`API: Checking if room ${code} exists: ${exists}`);
-  console.log(`API: Room type: ${roomType}`);
-  console.log(`API: All rooms: ${Array.from(rooms.keys())}`);
   res.json({ exists, roomType });
 });
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
   
   // Track which session this socket belongs to
   let currentSessionCode = null;
@@ -533,7 +524,6 @@ io.on('connection', (socket) => {
       existingSession = sessions.get(existingCode);
       if (existingSession) {
         // Update the hostSocketId to the new socket.id
-        console.log(`Updating host socket ID for session ${existingCode} from ${existingSession.hostSocketId} to ${socket.id}`);
         existingSession.hostSocketId = socket.id;
       }
     }
@@ -546,7 +536,6 @@ io.on('connection', (socket) => {
       // Rejoin all room namespaces for this session
       for (const [roomId, room] of existingSession.activeRooms) {
         socket.join(`${existingSession.code}:${roomId}`);
-        console.log(`Host rejoined room: ${existingSession.code}:${roomId}`);
       }
       
       callback({ success: true, code: existingSession.code, isExisting: true });
@@ -559,7 +548,6 @@ io.on('connection', (socket) => {
       
       socket.join(`session:${code}`);
       callback({ success: true, code, isExisting: false });
-      console.log(`Created new session: ${code}`);
     }
   });
   
@@ -585,14 +573,12 @@ io.on('connection', (socket) => {
     
     // Get active rooms but don't join them
     const activeRooms = session.getActiveRoomTypes();
-    console.log(`Session ${code} has active rooms:`, activeRooms);
     
     // Send active rooms with both roomType and widgetId
     const activeRoomsData = activeRooms.map(roomId => {
       const [roomType, widgetId] = roomId.includes(':') ? roomId.split(':') : [roomId, undefined];
       return { roomType, widgetId, roomId };
     });
-    console.log(`Sending active rooms data to student:`, activeRoomsData);
     
     socket.emit('session:joined', {
       success: true,
@@ -608,7 +594,6 @@ io.on('connection', (socket) => {
       });
     }
     
-    console.log(`Student ${name} joined session ${code}`);
   });
   
   // Host creates a room within session
@@ -655,7 +640,6 @@ io.on('connection', (socket) => {
     });
     
     callback({ success: true, isExisting: false });
-    console.log(`Created ${roomType} room (${roomId}) in session ${session.code}`);
   });
   
   // Host closes a room within session
@@ -689,7 +673,6 @@ io.on('connection', (socket) => {
       });
     }
     
-    console.log(`Closed ${roomType} room in session ${session.code}`);
   });
   
   // Join a specific room (for widget instances)
@@ -703,7 +686,6 @@ io.on('connection', (socket) => {
     const roomNamespace = `${session.code}:${roomId}`;
     
     socket.join(roomNamespace);
-    console.log(`Socket ${socket.id} joined room ${roomNamespace}`);
     
     // Send current room state to the joining student
     const room = session.getRoom(roomType, widgetId);
@@ -752,7 +734,6 @@ io.on('connection', (socket) => {
     const roomNamespace = `${session.code}:${roomId}`;
     
     socket.leave(roomNamespace);
-    console.log(`Socket ${socket.id} left room ${roomNamespace}`);
     
     // Remove participant from room
     const room = session.getRoom(roomType, widgetId);
@@ -962,36 +943,23 @@ io.on('connection', (socket) => {
   });
   
   socket.on('session:linkShare:delete', (data) => {
-    console.log('Received linkShare:delete event:', {
-      data,
-      socketId: socket.id,
-      currentSessionCode
-    });
-    
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) {
-      console.log('Session not found:', data.sessionCode || currentSessionCode);
       return;
     }
     
     if (session.hostSocketId !== socket.id) {
-      console.log('Not host socket:', {
-        hostSocketId: session.hostSocketId,
-        currentSocketId: socket.id
-      });
       return;
     }
     
     const room = session.getRoom('linkShare', data.widgetId);
     if (!room || !(room instanceof LinkShareRoom)) {
-      console.log('Room not found or not LinkShareRoom');
       return;
     }
     
     const deleted = room.deleteSubmission(data.submissionId);
     if (deleted) {
       const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
-      console.log('Emitting deletion to room:', `${session.code}:${linkShareRoomId}`);
       io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:submissionDeleted', { submissionId: data.submissionId });
     }
     
@@ -1035,41 +1003,34 @@ io.on('connection', (socket) => {
   socket.on('session:rtfeedback:update', (data) => {
     const session = sessions.get(data.sessionCode || currentSessionCode);
     if (!session) {
-      console.log('RTFeedback: Session not found for', data.sessionCode);
       return;
     }
     
     const room = session.getRoom('rtfeedback', data.widgetId);
     if (!room || !(room instanceof RTFeedbackRoom)) {
-      console.log('RTFeedback: Room not found or wrong type');
       return;
     }
     
     const participant = session.participants.get(socket.id);
     if (!participant) {
-      console.log('RTFeedback: Participant not found for', socket.id);
       return;
     }
     
     // Debug: Log the received value
-    console.log('RTFeedback: Received value', data.value, 'from', participant.name, 'room active:', room.isActive);
     
     // Only update if room is active
     if (!room.isActive) {
-      console.log('RTFeedback: Room is not active, ignoring feedback');
       return;
     }
     
     // Store the raw value (1-5) without rounding
     // The aggregation function will handle rounding to nearest 0.5
     const clampedValue = Math.max(1, Math.min(5, data.value));
-    console.log('RTFeedback: Processed value', data.value, '->', clampedValue);
     
     room.updateFeedback(socket.id, clampedValue);
     
     // Calculate aggregate feedback
     const feedbackData = room.getAggregatedFeedback();
-    console.log('RTFeedback: Aggregated data:', feedbackData);
     
     // Notify all in the room (including host)
     const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
@@ -1287,14 +1248,12 @@ io.on('connection', (socket) => {
 
   // Handle disconnection
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
     
     // Handle session disconnect
     if (currentSessionCode) {
       const session = sessions.get(currentSessionCode);
       if (session) {
         if (session.hostSocketId === socket.id) {
-          console.log(`Host disconnected from session ${currentSessionCode}`);
           // Keep session alive for reconnection
         } else {
           // Remove participant from session
@@ -1334,7 +1293,6 @@ io.on('connection', (socket) => {
     // Check if disconnected client was a host (legacy room support)
     rooms.forEach((room, code) => {
       if (room.hostSocketId === socket.id) {
-        console.log(`Host disconnected from room ${code}`);
         // Keep room alive for reconnection
       } else if (room.participants && room.participants.has(socket.id)) {
         room.participants.delete(socket.id);
@@ -1403,7 +1361,6 @@ setInterval(() => {
     if (now - session.createdAt > maxAge || 
         (now - session.lastActivity > inactivityTimeout && session.getParticipantCount() === 0)) {
       sessions.delete(code);
-      console.log(`Cleaned up old session ${code}`);
     }
   });
   
@@ -1411,7 +1368,6 @@ setInterval(() => {
   rooms.forEach((room, code) => {
     if (now - room.createdAt > maxAge) {
       rooms.delete(code);
-      console.log(`Cleaned up old room ${code}`);
     }
   });
 }, 60 * 60 * 1000); // Check every hour
@@ -1419,5 +1375,4 @@ setInterval(() => {
 // Start server
 const PORT = 3001; // Always use port 3001 for this server
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+});  console.log(`Server running on port ${PORT}`);

@@ -5,6 +5,8 @@ import { shallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { selectWidget } from '../../store/workspaceStore';
 import { WidgetInstance, Position, Size, WidgetType } from '../types';
+import { findAvailablePosition } from '../utils/widgetHelpers';
+import { widgetRegistry } from '../../services/WidgetRegistry';
 
 // Hook for individual widget instances
 export function useWidget(widgetId: string) {
@@ -95,6 +97,7 @@ export function useWidgetEvents(widgetId: string, handlers: {
 // Hook for creating a new widget
 export function useCreateWidget() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
+  const widgets = useWorkspaceStore((state) => state.widgets);
   const scale = useWorkspaceStore((state) => state.scale);
   
   const createWidget = useCallback((type: WidgetType, position?: Position) => {
@@ -103,7 +106,11 @@ export function useCreateWidget() {
       return addWidget(type, position);
     }
     
-    // Otherwise, calculate position based on viewport
+    // Get widget default size from registry
+    const widgetConfig = widgetRegistry.get(type);
+    const widgetSize = widgetConfig?.defaultSize || { width: 350, height: 350 };
+    
+    // Calculate position based on viewport
     const boardContainer = document.querySelector('.board-scroll-container') as HTMLElement;
     if (boardContainer) {
       const scrollLeft = boardContainer.scrollLeft;
@@ -111,22 +118,42 @@ export function useCreateWidget() {
       const viewportWidth = boardContainer.clientWidth;
       const viewportHeight = boardContainer.clientHeight;
       
-      // Calculate center of viewport in board coordinates
-      const centerX = (scrollLeft + viewportWidth / 2) / scale;
-      const centerY = (scrollTop + viewportHeight / 2) / scale;
+      // Create viewport info for findAvailablePosition
+      const viewport = {
+        x: scrollLeft / scale,
+        y: scrollTop / scale,
+        width: viewportWidth / scale,
+        height: viewportHeight / scale
+      };
       
-      // Offset slightly from center to avoid stacking
-      const offset = Math.random() * 50 - 25;
-      
-      return addWidget(type, {
-        x: centerX + offset - 100, // Subtract half of typical widget width
-        y: centerY + offset - 75   // Subtract half of typical widget height
+      // Create widget positions map with size info
+      const widgetPositions = new Map();
+      widgets.forEach(widget => {
+        const widgetConfig = widgetRegistry.get(widget.type);
+        const size = widget.size || widgetConfig?.defaultSize || { width: 350, height: 350 };
+        widgetPositions.set(widget.id, {
+          x: widget.position.x,
+          y: widget.position.y,
+          width: size.width,
+          height: size.height
+        });
       });
+      
+      // Find available position that minimizes overlap
+      const availablePosition = findAvailablePosition(
+        widgetSize.width,
+        widgetSize.height,
+        widgetPositions,
+        scale,
+        viewport
+      );
+      
+      return addWidget(type, availablePosition);
     }
     
     // Fallback to default position
     return addWidget(type);
-  }, [addWidget, scale]);
+  }, [addWidget, widgets, scale]);
   
   return createWidget;
 }

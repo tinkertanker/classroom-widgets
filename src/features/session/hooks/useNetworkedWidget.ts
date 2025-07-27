@@ -48,7 +48,6 @@ export function useNetworkedWidget({
   const isConnected = useWorkspaceStore((state) => state.serverStatus.connected);
   const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
   
-  // console.log('[useNetworkedWidget] Connection status:', { isConnected, serverUrl, sessionCode });
   
   const [socket, setSocket] = useState<any>(null);
   
@@ -90,11 +89,9 @@ export function useNetworkedWidget({
     sessionCode: localSessionCode || sessionCode,
     isConnected,
     onSessionRestored: () => {
-      console.log('[useNetworkedWidget] Session restored after disconnect');
       setError(null);
     },
     onSessionLost: () => {
-      console.log('[useNetworkedWidget] Session lost after disconnect');
       setIsRoomActive(false);
       setSessionCode(null);
       setLocalSessionCode(null);
@@ -123,11 +120,9 @@ export function useNetworkedWidget({
     if (!socket) return;
     
     const handleRoomCreated = (data: { roomType: string; widgetId?: string; sessionCode?: string }) => {
-      console.log('[useNetworkedWidget] handleRoomCreated:', data, 'my roomType:', roomType, 'my widgetId:', widgetId);
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
-          console.log('[useNetworkedWidget] Room created - current sessionCode:', sessionCode || localSessionCode);
           setIsRoomActive(true);
           // Don't override existing session code - we already have it from session creation
           // Only set if we somehow don't have one and the server provides it
@@ -141,11 +136,9 @@ export function useNetworkedWidget({
     };
     
     const handleRoomClosed = (data: { roomType: string; widgetId?: string }) => {
-      console.log('[useNetworkedWidget] handleRoomClosed:', data, 'my roomType:', roomType, 'my widgetId:', widgetId);
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
-          console.log('[useNetworkedWidget] Room closed - clearing sessionCode');
           setIsRoomActive(false);
           setSessionCode(null);
           setParticipantCount(0);
@@ -172,7 +165,6 @@ export function useNetworkedWidget({
     
     // Handle session recovery events
     const handleSessionRecovered = (data: { sessionCode: string; rooms: any[] }) => {
-      console.log('[useNetworkedWidget] Session recovered:', data);
       if (data.sessionCode) {
         setSessionCode(data.sessionCode);
         setLocalSessionCode(data.sessionCode);
@@ -222,14 +214,12 @@ export function useNetworkedWidget({
           
           socket.emit('session:create', {}, (response: any) => {
             clearTimeout(timeout);
-            // console.log('[useNetworkedWidget] session:create response:', response);
             if (response.error) {
               reject(new Error(response.error));
             } else if (response.success) {
               currentSessionCode = response.code;
               setSessionCode(response.code);
               setLocalSessionCode(response.code);
-              // console.log('[useNetworkedWidget] Session created with code:', currentSessionCode);
               resolve();
             } else {
               reject(new Error('Failed to create session'));
@@ -250,7 +240,6 @@ export function useNetworkedWidget({
           widgetId 
         }, (response: any) => {
           clearTimeout(timeout);
-          // console.log('[useNetworkedWidget] createRoom response:', response);
           if (response.error) {
             reject(new Error(response.error));
           } else if (response.success) {
@@ -290,7 +279,6 @@ export function useNetworkedWidget({
     if (savedState?.isRoomActive) {
       // Don't automatically restore room active state or session code
       // These should only be set when actively creating/joining a session
-      console.log('[useNetworkedWidget] Ignoring saved session state - sessions must be explicitly started');
     }
   }, [savedState]);
   
