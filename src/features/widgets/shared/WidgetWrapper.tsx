@@ -21,6 +21,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const { dropTarget } = useDragAndDrop();
   const rndRef = useRef<any>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   if (!widget) return null;
   
@@ -62,6 +64,15 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       rndRef.current.updatePosition({ x: widget.position.x, y: widget.position.y });
     }
   }, [scale, widget.position]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTrashTimeoutRef.current) {
+        clearTimeout(hideTrashTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const wrapperClasses = clsx(
     'widget-wrapper',
@@ -83,9 +94,23 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
 
   return (
     <div 
-      className="relative"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="relative group"
+      onMouseEnter={() => {
+        setIsHovered(true);
+        setShowTrash(true);
+        // Clear any pending timeout
+        if (hideTrashTimeoutRef.current) {
+          clearTimeout(hideTrashTimeoutRef.current);
+          hideTrashTimeoutRef.current = null;
+        }
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        // Delay hiding the trash button
+        hideTrashTimeoutRef.current = setTimeout(() => {
+          setShowTrash(false);
+        }, 2000);
+      }}
     >
       <Rnd
         ref={rndRef}
@@ -122,24 +147,23 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
           topLeft: true
         }}
       >
-        <div className="w-full h-full">
+        <div className="w-full h-full relative">
           {children}
+          {/* Hover trash icon */}
+          <button
+            onClick={handleDeleteClick}
+            className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2 
+                       bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white p-2 rounded-full 
+                       shadow-lg transition-opacity duration-500 ${
+                         showTrash && !isBeingDragged ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                       }`}
+            style={{ zIndex: 9999 }}
+            title="Delete widget"
+          >
+            <FaTrash className="w-3 h-3" />
+          </button>
         </div>
       </Rnd>
-      
-      {/* Hover trash icon */}
-      {isHovered && !isBeingDragged && (
-        <button
-          onClick={handleDeleteClick}
-          className="delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2 
-                     bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white p-2 rounded-full 
-                     shadow-lg transition-all duration-200 z-[9999]
-                     animate-in fade-in-0 slide-in-from-top-1 duration-150"
-          title="Delete widget"
-        >
-          <FaTrash className="w-3 h-3" />
-        </button>
-      )}
     </div>
   );
 };

@@ -217,10 +217,14 @@ function App() {
       }
     };
     
+    // Also expose a getter for the toolbar to check state
+    (window as any).getStickerMode = () => stickerMode;
+    
     return () => {
       delete (window as any).setStickerMode;
+      delete (window as any).getStickerMode;
     };
-  }, []);
+  }, [stickerMode]);
   
   return (
     <GlobalErrorBoundary>

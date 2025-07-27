@@ -1,6 +1,6 @@
 // Refactored Toolbar component using the centralized store
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { FaBars, FaStamp } from 'react-icons/fa6';
 import { useToolbar } from '../../../shared/hooks/useWorkspace';
@@ -25,6 +25,21 @@ const Toolbar: React.FC = () => {
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string>('');
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  
+  // Sync with global sticker mode state
+  useEffect(() => {
+    const checkStickerMode = () => {
+      const globalStickerMode = (window as any).getStickerMode?.();
+      if (globalStickerMode !== undefined && globalStickerMode !== stickerMode) {
+        setStickerMode(globalStickerMode);
+      }
+    };
+    
+    // Check periodically for state changes
+    const interval = setInterval(checkStickerMode, 100);
+    
+    return () => clearInterval(interval);
+  }, [stickerMode]);
   
   const handleAddWidget = (type: WidgetType) => {
     createWidget(type);
