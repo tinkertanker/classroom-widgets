@@ -3,6 +3,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import PollSettings from './PollSettings';
 import { FaPlay, FaPause, FaChartColumn, FaGear } from 'react-icons/fa6';
+import { getPollColor } from '../../../utils/pollColors';
 
 interface PollProps {
   widgetId?: string;
@@ -239,7 +240,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                   </h3>
                   
                   <div className="space-y-3">
-                    {pollData.options.map((option, index) => (
+                    {pollData.options.map((option, index) => {
+                      const color = getPollColor(index);
+                      return (
                       <div key={index} className="flex items-center gap-3">
                         <div className="flex-1">
                           <div className="flex justify-between text-sm mb-1">
@@ -250,7 +253,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                           </div>
                           <div className="h-6 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">
                             <div 
-                              className="h-full bg-sage-500 transition-all duration-300"
+                              className={`h-full ${color.progress} transition-all duration-300`}
                               style={{
                                 width: `${results.totalVotes > 0 ? ((results.votes[index] || 0) / results.totalVotes) * 100 : 0}%`
                               }}
@@ -258,7 +261,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (

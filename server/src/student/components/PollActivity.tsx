@@ -2,6 +2,7 @@ import React from 'react';
 import { Socket } from 'socket.io-client';
 import { usePollSocket } from '../hooks/usePollSocket';
 import { useSessionRoom } from '../hooks/useSessionRoom';
+import { getPollColor } from '../utils/pollColors';
 
 interface PollActivityProps {
   socket: Socket;
@@ -66,18 +67,21 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
         <>
           <div className="text-xl font-semibold text-warm-gray-400 mb-3 text-center">{pollData.question}</div>
           <div className="flex flex-col gap-2 opacity-50">
-            {pollData.options.map((option, index) => (
+            {pollData.options.map((option, index) => {
+              const color = getPollColor(index);
+              return (
               <div
                 key={index}
                 className={`p-3 border-2 rounded-lg cursor-not-allowed transition-all duration-200 relative overflow-hidden ${
                   selectedOption === index 
-                    ? 'border-warm-gray-400 bg-warm-gray-400 text-white' 
+                    ? color.disabled 
                     : 'border-warm-gray-300 bg-warm-gray-50'
                 }`}
               >
                 <div className="relative z-[1]">{option}</div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       );
@@ -88,15 +92,22 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
       <>
         <div className="text-xl font-semibold text-warm-gray-800 mb-3 text-center">{pollData.question}</div>
         <div className="flex flex-col gap-2">
-          {pollData.options.map((option, index) => (
+          {pollData.options.map((option, index) => {
+            const color = getPollColor(index);
+            return (
             <div
               key={index}
-              className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 relative overflow-hidden ${selectedOption === index ? 'border-sage-500 bg-sage-500 text-white' : 'border-warm-gray-300 hover:border-sage-500 hover:bg-sage-50'}`}
+              className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 relative overflow-hidden ${
+                selectedOption === index 
+                  ? color.selected 
+                  : `border-warm-gray-300 ${color.hover}`
+              }`}
               onClick={() => handleVote(index)}
             >
               <div className="relative z-[1]">{option}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </>
     );
@@ -113,12 +124,13 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
         <div className="text-xl font-semibold text-warm-gray-800 mb-3 text-center">{results.question || pollData.question}</div>
         <div className="flex flex-col gap-2">
           {options.map((option, index) => {
+            const color = getPollColor(index);
             const votes = results.votes[index] || 0;
             const percentage = Math.round((votes / totalVotes) * 100);
             
             return (
-              <div key={index} className="p-3 border-2 border-warm-gray-300 rounded-lg cursor-default relative overflow-hidden">
-                <div className="absolute top-0 left-0 h-full bg-sage-500/20 transition-[width] duration-300" style={{ width: `${percentage}%` }}></div>
+              <div key={index} className={`p-3 border-2 ${color.borderLight} rounded-lg cursor-default relative overflow-hidden`}>
+                <div className={`absolute top-0 left-0 h-full ${color.results} transition-[width] duration-300`} style={{ width: `${percentage}%` }}></div>
                 <div className="relative z-[1] flex justify-between items-center">
                   <span>{option}</span>
                   <span>{percentage}%</span>
