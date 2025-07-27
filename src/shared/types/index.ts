@@ -52,6 +52,28 @@ export interface WidgetConfig {
   maxSize?: Size;
   maintainAspectRatio?: boolean;
   category?: WidgetCategory;
+  features?: WidgetFeatures;
+  networked?: NetworkedWidgetConfig;
+  description?: string;
+}
+
+// Widget Features
+export interface WidgetFeatures {
+  hasSettings?: boolean;
+  hasStateManagement?: boolean;
+  requiresApiKey?: boolean;
+  hasAudioPlayback?: boolean;
+  hasFaceDetection?: boolean;
+  isResizable?: boolean;
+  canTriggerConfetti?: boolean;
+}
+
+// Networked Widget Configuration
+export interface NetworkedWidgetConfig {
+  roomType: string;
+  hasStartStop?: boolean;
+  startsActive?: boolean;
+  studentComponentName?: string;
 }
 
 export enum WidgetCategory {

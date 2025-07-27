@@ -1,9 +1,5 @@
-import { 
-  WIDGET_REGISTRY, 
-  getNetworkedWidgetIds, 
-  isNetworkedWidget,
-  WidgetDefinition 
-} from '../constants/widgetRegistry';
+import { widgetRegistry } from '../../services/WidgetRegistry';
+import { WidgetType, WidgetConfig } from '../types';
 import { WIDGET_TYPES } from '../constants/widgetTypes';
 
 /**
@@ -14,26 +10,27 @@ export function validateAllWidgetImplementations(): {
   errors: string[] 
 } {
   const errors: string[] = [];
+  const allWidgets = widgetRegistry.getAll();
   
-  Object.values(WIDGET_REGISTRY).forEach(widget => {
-    // Validate component path
-    if (!widget.componentPath) {
-      errors.push(`Widget ${widget.displayName} (${widget.id}) missing componentPath`);
+  allWidgets.forEach(widget => {
+    // Validate component
+    if (!widget.component) {
+      errors.push(`Widget ${widget.name} (${widget.type}) missing component`);
     }
     
     // Validate networked widget requirements
     if (widget.networked) {
       if (!widget.networked.roomType) {
-        errors.push(`Networked widget ${widget.displayName} missing roomType`);
+        errors.push(`Networked widget ${widget.name} missing roomType`);
       }
       if (!widget.networked.studentComponentName) {
-        errors.push(`Networked widget ${widget.displayName} missing studentComponentName`);
+        errors.push(`Networked widget ${widget.name} missing studentComponentName`);
       }
     }
     
-    // Validate layout configuration
-    if (!widget.layout) {
-      errors.push(`Widget ${widget.displayName} missing layout configuration`);
+    // Validate size configuration
+    if (!widget.defaultSize) {
+      errors.push(`Widget ${widget.name} missing defaultSize configuration`);
     }
   });
   
@@ -47,40 +44,51 @@ export function validateAllWidgetImplementations(): {
  * Get list of networked widget IDs for cleanup dispatch
  */
 export function getNetworkedWidgetIdsForCleanup(): number[] {
-  return getNetworkedWidgetIds();
+  const networkedWidgets = widgetRegistry.getNetworkedWidgets();
+  return networkedWidgets.map(widget => widgetRegistry.toLegacyType(widget.type));
 }
 
 /**
  * Check if a widget type should trigger cleanup on removal
  */
 export function shouldTriggerCleanup(widgetType: number): boolean {
-  return isNetworkedWidget(widgetType);
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  return enumType ? widgetRegistry.isNetworked(enumType) : false;
 }
 
 /**
  * Get widget display name from type
  */
 export function getWidgetDisplayName(widgetType: number): string {
-  return WIDGET_REGISTRY[widgetType]?.displayName || 'Unknown Widget';
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  return enumType ? widgetRegistry.getName(enumType) : 'Unknown Widget';
 }
 
 /**
  * Get widget component import path
  */
 export function getWidgetComponentPath(widgetType: number): string {
-  const widget = WIDGET_REGISTRY[widgetType];
-  if (!widget) {
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  if (!enumType) {
     throw new Error(`Widget type ${widgetType} not found in registry`);
   }
-  return widget.componentPath;
+  const widget = widgetRegistry.get(enumType);
+  if (!widget) {
+    throw new Error(`Widget config for type ${enumType} not found`);
+  }
+  // Return the widget name as component path for compatibility
+  return widget.name.charAt(0).toLowerCase() + widget.name.slice(1).replace(/\s+/g, '');
 }
 
 /**
  * Get student component name for networked widgets
  */
 export function getStudentComponentName(widgetType: number): string | null {
-  const widget = WIDGET_REGISTRY[widgetType];
-  return widget?.networked?.studentComponentName || null;
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  if (!enumType) return null;
+  
+  const config = widgetRegistry.getNetworkedConfig(enumType);
+  return config?.studentComponentName || null;
 }
 
 /**
@@ -91,12 +99,14 @@ export function generateToolbarItems(): {
   label: string;
   icon?: string;
 }[] {
-  return Object.values(WIDGET_REGISTRY)
-    .filter(widget => widget.category !== 'decorative') // Exclude stickers from main toolbar
+  const allWidgets = widgetRegistry.getAll();
+  
+  return allWidgets
+    .filter(widget => widget.category !== 'fun' || widget.name !== 'Sticker') // Exclude stickers from main toolbar
     .map(widget => ({
-      id: widget.id,
-      label: widget.displayName,
-      icon: widget.icon
+      id: widgetRegistry.toLegacyType(widget.type),
+      label: widget.name,
+      icon: widget.icon?.displayName || undefined
     }));
 }
 
@@ -104,33 +114,45 @@ export function generateToolbarItems(): {
  * Get room type for networked widget
  */
 export function getWidgetRoomType(widgetType: number): string | null {
-  const widget = WIDGET_REGISTRY[widgetType];
-  return widget?.networked?.roomType || null;
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  return enumType ? widgetRegistry.getRoomType(enumType) : null;
 }
 
 /**
  * Check if widget has start/stop functionality
  */
 export function widgetHasStartStop(widgetType: number): boolean {
-  const widget = WIDGET_REGISTRY[widgetType];
-  return widget?.networked?.hasStartStop || false;
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  if (!enumType) return false;
+  
+  const config = widgetRegistry.getNetworkedConfig(enumType);
+  return config?.hasStartStop || false;
 }
 
 /**
  * Check if widget starts in active state
  */
 export function widgetStartsActive(widgetType: number): boolean {
-  const widget = WIDGET_REGISTRY[widgetType];
-  return widget?.networked?.startsActive || false;
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  if (!enumType) return false;
+  
+  const config = widgetRegistry.getNetworkedConfig(enumType);
+  return config?.startsActive || false;
 }
 
 /**
  * Get all widgets with a specific feature
  */
-export function getWidgetsWithFeature(feature: keyof NonNullable<WidgetDefinition['features']>): WidgetDefinition[] {
-  return Object.values(WIDGET_REGISTRY).filter(
-    widget => widget.features?.[feature] === true
-  );
+export function getWidgetsWithFeature(feature: keyof import('../types').WidgetFeatures): WidgetConfig[] {
+  return widgetRegistry.getWidgetsByFeature(feature);
+}
+
+/**
+ * Check if widget is networked (using numeric type)
+ */
+export function isNetworkedWidget(widgetType: number): boolean {
+  const enumType = widgetRegistry.fromLegacyType(widgetType);
+  return enumType ? widgetRegistry.isNetworked(enumType) : false;
 }
 
 /**
@@ -139,5 +161,14 @@ export function getWidgetsWithFeature(feature: keyof NonNullable<WidgetDefinitio
 export function logWidgetRegistryStatus(): void {
   const validation = validateAllWidgetImplementations();
   
-  // Widget registry status logging removed
+  if (process.env.NODE_ENV === 'development') {
+    console.group('Widget Registry Status');
+    console.log(`Total widgets: ${widgetRegistry.getAll().length}`);
+    console.log(`Networked widgets: ${widgetRegistry.getNetworkedWidgets().length}`);
+    console.log(`Validation: ${validation.valid ? '✅ Valid' : '❌ Invalid'}`);
+    if (!validation.valid) {
+      console.error('Errors:', validation.errors);
+    }
+    console.groupEnd();
+  }
 }

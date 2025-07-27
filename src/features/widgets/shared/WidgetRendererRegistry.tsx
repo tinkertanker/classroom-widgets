@@ -1,9 +1,8 @@
 import React, { Suspense } from 'react';
-import { WIDGET_REGISTRY, getWidget } from "../../../shared/constants/widgetRegistry";
-import { getWidgetDisplayName } from "../../../shared/utils/widgetRegistryHelpers";
+import { widgetRegistry } from "../../../services/WidgetRegistry";
+import { WidgetType } from "../../../shared/types";
 import { DragAwareWrapper } from "../../../shared/components/DragAwareWrapper";
 import ErrorBoundary from "../../../shared/components/ErrorBoundary";
-import { LazyWidgets } from './LazyWidgets';
 
 interface WidgetRendererProps {
   widgetType: number;
@@ -41,10 +40,23 @@ const WidgetRendererRegistry: React.FC<WidgetRendererProps> = ({
   hasDragged
 }) => {
   const renderWidget = () => {
-    const widgetDef = getWidget(widgetType);
-    if (!widgetDef) {
+    // Convert legacy numeric type to enum
+    const enumType = widgetRegistry.fromLegacyType(widgetType);
+    if (!enumType) {
       console.error(`Widget type ${widgetType} not found in registry`);
       return <div>Unknown widget type</div>;
+    }
+
+    const widgetConfig = widgetRegistry.get(enumType);
+    if (!widgetConfig) {
+      console.error(`Widget config not found for type ${enumType}`);
+      return <div>Widget configuration not found</div>;
+    }
+
+    const LazyComponent = widgetConfig.component;
+    if (!LazyComponent) {
+      console.error(`Component not found for widget: ${widgetConfig.name}`);
+      return <div>Widget component not found</div>;
     }
 
     // Common props for all widgets
@@ -54,27 +66,21 @@ const WidgetRendererRegistry: React.FC<WidgetRendererProps> = ({
       onStateChange
     };
 
-    // Get the lazy-loaded component based on the widget name
-    const LazyComponent = LazyWidgets[widgetDef.name as keyof typeof LazyWidgets];
-    
-    if (!LazyComponent) {
-      console.error(`Lazy component not found for widget: ${widgetDef.name}`);
-      return <div>Widget component not found</div>;
-    }
-
     // Special prop handling based on widget type
-    switch(widgetDef.name) {
+    const widgetName = widgetConfig.name.toLowerCase();
+    
+    switch(widgetName) {
       case 'randomiser':
         return <LazyComponent {...commonProps} toggleConfetti={toggleConfetti} />;
       
       case 'timer':
-      case 'trafficLight':
-      case 'volumeLevel':
-      case 'shortenLink':
+      case 'traffic light':
+      case 'volume monitor':
+      case 'link shortener':
         return <LazyComponent />;
       
-      case 'taskCue':
-      case 'soundEffects':
+      case 'task cue':
+      case 'sound effects':
         return <LazyComponent isActive={isActive} />;
       
       case 'sticker':
@@ -90,7 +96,7 @@ const WidgetRendererRegistry: React.FC<WidgetRendererProps> = ({
   };
 
   return (
-    <ErrorBoundary widgetName={getWidgetDisplayName(widgetType).toLowerCase()}>
+    <ErrorBoundary widgetName={widgetRegistry.getName(widgetRegistry.fromLegacyType(widgetType) || WidgetType.RANDOMISER).toLowerCase()}>
       <Suspense fallback={<WidgetLoader />}>
         <DragAwareWrapper isDragging={isDragging} hasDragged={hasDragged}>
           {renderWidget()}

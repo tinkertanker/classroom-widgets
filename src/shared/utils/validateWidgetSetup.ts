@@ -1,6 +1,6 @@
-import { WIDGET_REGISTRY, getAllWidgets, getNetworkedWidgets } from '../constants/widgetRegistry';
+import { widgetRegistry } from '../../services/WidgetRegistry';
+import { WidgetType, WidgetConfig } from '../types';
 import { WIDGET_TYPES } from '../constants/widgetTypes';
-import { validateLazyWidgets } from '../../features/widgets/shared/LazyWidgetsRegistry';
 
 interface ValidationResult {
   category: string;
@@ -24,19 +24,15 @@ export function validateCompleteWidgetSetup(): ValidationResult[] {
   const networkedCheck = validateNetworkedWidgets();
   results.push(networkedCheck);
   
-  // 3. Check that all widgets have lazy imports
-  const lazyCheck = validateLazyImports();
-  results.push(lazyCheck);
+  // 3. Check that all widgets have components
+  const componentCheck = validateWidgetComponents();
+  results.push(componentCheck);
   
   // 4. Check for duplicate widget IDs
   const duplicateCheck = validateNoDuplicateIds();
   results.push(duplicateCheck);
   
-  // 5. Check component paths match folder structure
-  const pathCheck = validateComponentPaths();
-  results.push(pathCheck);
-  
-  // 6. Check networked widget student components
+  // 5. Check networked widget student components
   const studentCheck = validateStudentComponents();
   results.push(studentCheck);
   
@@ -47,7 +43,8 @@ function validateRegistryCompleteness(): ValidationResult {
   const missingInRegistry: string[] = [];
   
   Object.entries(WIDGET_TYPES).forEach(([name, id]) => {
-    if (!WIDGET_REGISTRY[id]) {
+    const enumType = widgetRegistry.fromLegacyType(id);
+    if (!enumType || !widgetRegistry.get(enumType)) {
       missingInRegistry.push(`${name} (ID: ${id})`);
     }
   });
@@ -64,27 +61,28 @@ function validateRegistryCompleteness(): ValidationResult {
 
 function validateNetworkedWidgets(): ValidationResult {
   const issues: string[] = [];
+  const networkedWidgets = widgetRegistry.getNetworkedWidgets();
   
-  getNetworkedWidgets().forEach(widget => {
+  networkedWidgets.forEach(widget => {
     if (!widget.networked) {
-      issues.push(`${widget.displayName}: Missing networked configuration`);
+      issues.push(`${widget.name}: Missing networked configuration`);
       return;
     }
     
     if (!widget.networked.roomType) {
-      issues.push(`${widget.displayName}: Missing roomType`);
+      issues.push(`${widget.name}: Missing roomType`);
     }
     
     if (!widget.networked.studentComponentName) {
-      issues.push(`${widget.displayName}: Missing studentComponentName`);
+      issues.push(`${widget.name}: Missing studentComponentName`);
     }
     
     if (widget.networked.hasStartStop === undefined) {
-      issues.push(`${widget.displayName}: Missing hasStartStop flag`);
+      issues.push(`${widget.name}: Missing hasStartStop flag`);
     }
     
     if (widget.networked.startsActive === undefined) {
-      issues.push(`${widget.displayName}: Missing startsActive flag`);
+      issues.push(`${widget.name}: Missing startsActive flag`);
     }
   });
   
@@ -98,33 +96,41 @@ function validateNetworkedWidgets(): ValidationResult {
   };
 }
 
-function validateLazyImports(): ValidationResult {
-  const { valid, missing } = validateLazyWidgets();
+function validateWidgetComponents(): ValidationResult {
+  const missing: string[] = [];
+  const allWidgets = widgetRegistry.getAll();
+  
+  allWidgets.forEach(widget => {
+    if (!widget.component) {
+      missing.push(widget.name);
+    }
+  });
   
   return {
-    category: 'Lazy Import Configuration',
-    status: valid ? 'pass' : 'fail',
-    message: valid 
-      ? 'All widgets have lazy imports configured' 
-      : `${missing.length} widgets missing lazy imports`,
+    category: 'Widget Component Configuration',
+    status: missing.length === 0 ? 'pass' : 'fail',
+    message: missing.length === 0 
+      ? 'All widgets have components configured' 
+      : `${missing.length} widgets missing components`,
     details: missing
   };
 }
 
 function validateNoDuplicateIds(): ValidationResult {
-  const idMap = new Map<number, string[]>();
+  const idMap = new Map<WidgetType, string[]>();
+  const allWidgets = widgetRegistry.getAll();
   
-  getAllWidgets().forEach(widget => {
-    if (!idMap.has(widget.id)) {
-      idMap.set(widget.id, []);
+  allWidgets.forEach(widget => {
+    if (!idMap.has(widget.type)) {
+      idMap.set(widget.type, []);
     }
-    idMap.get(widget.id)!.push(widget.displayName);
+    idMap.get(widget.type)!.push(widget.name);
   });
   
   const duplicates: string[] = [];
   idMap.forEach((names, id) => {
     if (names.length > 1) {
-      duplicates.push(`ID ${id}: ${names.join(', ')}`);
+      duplicates.push(`Type ${id}: ${names.join(', ')}`);
     }
   });
   
@@ -138,39 +144,6 @@ function validateNoDuplicateIds(): ValidationResult {
   };
 }
 
-function validateComponentPaths(): ValidationResult {
-  const warnings: string[] = [];
-  
-  getAllWidgets().forEach(widget => {
-    // Check if component path matches expected pattern
-    const expectedPath = widget.name.charAt(0).toLowerCase() + widget.name.slice(1);
-    
-    // Special cases for widgets with different naming conventions
-    const specialCases: Record<string, string> = {
-      'volumeLevel': 'volumeLevel',
-      'TicTacToe': 'TicTacToe',
-      'Poll': 'poll',
-      'LinkShare': 'linkShare',
-      'RTFeedback': 'rtFeedback',
-      'Questions': 'questions'
-    };
-    
-    const expected = specialCases[widget.name] || expectedPath;
-    if (widget.componentPath !== expected) {
-      warnings.push(`${widget.displayName}: componentPath '${widget.componentPath}' might not match folder '${expected}'`);
-    }
-  });
-  
-  return {
-    category: 'Component Path Validation',
-    status: warnings.length === 0 ? 'pass' : 'warning',
-    message: warnings.length === 0 
-      ? 'All component paths follow expected patterns' 
-      : `${warnings.length} potential path mismatches`,
-    details: warnings
-  };
-}
-
 function validateStudentComponents(): ValidationResult {
   const expectedComponents = new Set([
     'PollActivity',
@@ -179,8 +152,9 @@ function validateStudentComponents(): ValidationResult {
     'QuestionsActivity'
   ]);
   
+  const networkedWidgets = widgetRegistry.getNetworkedWidgets();
   const configuredComponents = new Set(
-    getNetworkedWidgets()
+    networkedWidgets
       .map(w => w.networked?.studentComponentName)
       .filter(Boolean)
   );
@@ -214,20 +188,29 @@ function validateStudentComponents(): ValidationResult {
 /**
  * Console utility to run validation and display results
  */
-export function runWidgetValidation(): void {
+export function runWidgetValidation(): boolean {
   const results = validateCompleteWidgetSetup();
   const passed = results.filter(r => r.status === 'pass').length;
   const failed = results.filter(r => r.status === 'fail').length;
   const warnings = results.filter(r => r.status === 'warning').length;
   
+  console.group('🔍 Widget Setup Validation');
+  console.log(`✅ Passed: ${passed} | ❌ Failed: ${failed} | ⚠️ Warnings: ${warnings}`);
+  console.groupEnd();
   
   results.forEach(result => {
     const icon = result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : '⚠️';
+    console.group(`${icon} ${result.category}`);
+    console.log(result.message);
     
     if (result.details && result.details.length > 0) {
+      console.group('Details:');
       result.details.forEach(detail => {
+        console.log(`  - ${detail}`);
       });
+      console.groupEnd();
     }
+    console.groupEnd();
   });
   
   // Return overall status
