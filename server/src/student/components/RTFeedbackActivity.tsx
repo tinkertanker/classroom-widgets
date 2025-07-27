@@ -120,7 +120,17 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       ) : (
         <>
 
-          <div className="max-w-md mx-auto">
+          <div className="max-w-md mx-auto relative">
+        {/* Updating indicator - absolute positioned */}
+        {isSending && (
+          <div className="absolute top-0 right-0 text-sm text-warm-gray-500">
+            <span className="flex items-center">
+              <span className="inline-block w-2 h-2 bg-sage-500 rounded-full mr-2 animate-pulse"></span>
+              Updating...
+            </span>
+          </div>
+        )}
+        
         {/* Current value display */}
         <div className="text-center mb-4">
           <div className={`text-4xl font-bold ${getColorForValue(currentValue)} transition-colors duration-300`}>
@@ -155,23 +165,13 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
         </div>
 
         {/* Labels */}
-        <div className="flex justify-between text-xs text-warm-gray-600 mb-4">
+        <div className="flex justify-between text-xs text-warm-gray-600">
           <span>Too Easy</span>
           <span>Easy</span>
           <span>Just Right</span>
           <span>Hard</span>
           <span>Too Hard</span>
         </div>
-
-        {/* Status */}
-        {isSending && (
-          <div className="text-center text-sm text-warm-gray-500">
-            <span className="flex items-center justify-center">
-              <span className="inline-block w-2 h-2 bg-sage-500 rounded-full mr-2 animate-pulse"></span>
-              Updating...
-            </span>
-          </div>
-        )}
       </div>
         </>
       )}
