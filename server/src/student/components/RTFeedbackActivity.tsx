@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { useSessionRoom } from '../hooks/useSessionRoom';
 
 interface RTFeedbackActivityProps {
   socket: Socket;
@@ -16,24 +17,14 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
 
-  // Join the widget-specific room on mount
-  useEffect(() => {
-    if (isSession && widgetId) {
-      socket.emit('session:joinRoom', {
-        sessionCode: roomCode,
-        roomType: 'rtfeedback',
-        widgetId
-      });
-
-      return () => {
-        socket.emit('session:leaveRoom', {
-          sessionCode: roomCode,
-          roomType: 'rtfeedback',
-          widgetId
-        });
-      };
-    }
-  }, [socket, roomCode, widgetId, isSession]);
+  // Handle room joining/leaving
+  useSessionRoom({
+    socket,
+    sessionCode: roomCode,
+    roomType: 'rtfeedback',
+    widgetId,
+    isSession
+  });
 
   // Send feedback when value changes (only when active)
   useEffect(() => {

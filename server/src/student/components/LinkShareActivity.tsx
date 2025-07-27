@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { useSessionRoom } from '../hooks/useSessionRoom';
 
 interface LinkShareActivityProps {
   socket: Socket;
@@ -25,24 +26,14 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   const [submissionCount, setSubmissionCount] = useState(0);
   const [isActive, setIsActive] = useState(initialIsActive);
 
-  // Join the widget-specific room on mount
-  useEffect(() => {
-    if (isSession && widgetId) {
-      socket.emit('session:joinRoom', {
-        sessionCode: roomCode,
-        roomType: 'linkShare',
-        widgetId
-      });
-
-      return () => {
-        socket.emit('session:leaveRoom', {
-          sessionCode: roomCode,
-          roomType: 'linkShare',
-          widgetId
-        });
-      };
-    }
-  }, [socket, roomCode, widgetId, isSession]);
+  // Handle room joining/leaving
+  useSessionRoom({
+    socket,
+    sessionCode: roomCode,
+    roomType: 'linkShare',
+    widgetId,
+    isSession
+  });
 
   // Listen for room state changes
   useEffect(() => {

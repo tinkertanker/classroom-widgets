@@ -1,19 +1,14 @@
 import { io, Socket } from 'socket.io-client';
 
-// Simple socket manager - keeps a single socket instance
-let socket: Socket | null = null;
-
+// Simple socket factory - creates new socket instances
+// This maintains the original behavior where each session gets its own socket
 export const getSocket = (): Socket => {
-  if (!socket) {
-    socket = io();
-  }
-  return socket;
+  return io();
 };
 
 // Optional: Add a cleanup function for completeness
-export const disconnectSocket = (): void => {
+export const disconnectSocket = (socket: Socket): void => {
   if (socket) {
     socket.disconnect();
-    socket = null;
   }
 };

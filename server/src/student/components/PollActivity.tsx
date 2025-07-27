@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Socket } from 'socket.io-client';
+import { usePollSocket } from '../hooks/usePollSocket';
+import { useSessionRoom } from '../hooks/useSessionRoom';
 
 interface PollActivityProps {
   socket: Socket;
@@ -25,101 +27,23 @@ interface Results {
 }
 
 const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, studentName, isSession = false, widgetId }) => {
-  const [pollData, setPollData] = useState<PollData>(initialPollData || {
-    question: '',
-    options: [],
-    isActive: false
+  // Handle room joining/leaving
+  useSessionRoom({
+    socket,
+    sessionCode: roomCode,
+    roomType: 'poll',
+    widgetId,
+    isSession
   });
-  const [hasVoted, setHasVoted] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [results, setResults] = useState<Results | null>(null);
 
-  // Join the widget-specific room on mount
-  useEffect(() => {
-    if (isSession && widgetId) {
-      socket.emit('session:joinRoom', {
-        sessionCode: roomCode,
-        roomType: 'poll',
-        widgetId
-      });
-
-      return () => {
-        socket.emit('session:leaveRoom', {
-          sessionCode: roomCode,
-          roomType: 'poll',
-          widgetId
-        });
-      };
-    }
-  }, [socket, roomCode, widgetId, isSession]);
-
-  useEffect(() => {
-    // Listen for poll state changes (harmonized)
-    socket.on('poll:stateChanged', (data: { isActive: boolean }) => {
-      
-      // If poll is restarted (was inactive, now active), reset vote state
-      if (!pollData.isActive && data.isActive) {
-        setHasVoted(false);
-        setSelectedOption(null);
-        setResults(null);
-      }
-      
-      setPollData(prev => ({ ...prev, isActive: data.isActive }));
-    });
-    
-    // Listen for poll data updates (harmonized)
-    socket.on('poll:dataUpdate', (data: { pollData: PollData; results?: Results }) => {
-      
-      if (data.pollData) {
-        setPollData(data.pollData);
-      }
-      if (data.results) {
-        setResults(data.results);
-      }
-    });
-
-    // Listen for vote updates from server
-    socket.on('poll:voteUpdate', (data: Results) => {
-      setResults(data);
-    });
-
-    // Listen for vote confirmation
-    socket.on('vote:confirmed', (data: { success: boolean }) => {
-      if (data.success) {
-        setHasVoted(true);
-      }
-    });
-
-    // Request current poll state if we don't have initial data or it's empty
-    let timer: NodeJS.Timeout | undefined;
-    const hasInitialData = initialPollData && initialPollData.question && initialPollData.options;
-    if (!hasInitialData) {
-      // Small delay to ensure component is fully mounted and server has processed join
-      timer = setTimeout(() => {
-        socket.emit('poll:requestState', { code: roomCode, widgetId });
-      }, 100);
-    }
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      socket.off('poll:stateChanged');
-      socket.off('poll:dataUpdate');
-      socket.off('poll:resultsUpdate');
-      socket.off('vote:confirmed');
-    };
-  }, [socket, roomCode]);
-
-  const handleVote = (optionIndex: number) => {
-    if (hasVoted || !pollData.isActive) return;
-    
-    setSelectedOption(optionIndex);
-    
-    socket.emit('session:poll:vote', { 
-      sessionCode: roomCode, 
-      option: optionIndex,
-      widgetId
-    });
-  };
+  // Use our custom hook for all socket logic
+  const { pollData, hasVoted, selectedOption, results, handleVote } = usePollSocket({
+    socket,
+    roomCode,
+    widgetId,
+    isSession,
+    initialPollData
+  });
 
   const renderContent = () => {
     if (!pollData.question || pollData.options.length === 0) {

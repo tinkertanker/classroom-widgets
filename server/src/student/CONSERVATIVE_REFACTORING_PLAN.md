@@ -78,7 +78,7 @@ export const isValidStudentName = (name: string) => {
 
 ---
 
-### Phase 3: Simplify One Activity Component ✅ Status: Not Started
+### Phase 3: Simplify One Activity Component ✅ Status: Completed
 **Goal**: Extract PollActivity's socket logic into a cleaner pattern
 
 **Options** (choose based on what feels right):
@@ -99,7 +99,7 @@ c) Just cleanup the existing component
 
 ---
 
-### Phase 4: Extract Common Activity Patterns ✅ Status: Not Started
+### Phase 4: Extract Common Activity Patterns ✅ Status: Completed
 **Goal**: If patterns emerge from Phase 3, extract common functionality
 
 **Possible Patterns**:
@@ -157,7 +157,20 @@ _This section will be updated as we progress_
 - Validation still works exactly the same
 
 ### Phase 3 Notes:
-- 
+- Created `hooks/usePollSocket.ts` custom hook
+- Extracted all socket logic and state management
+- Component reduced from 217 lines to ~130 lines
+- All functionality remains identical
+- Better separation of concerns: UI vs socket logic
+
+### Phase 4 Notes:
+- Analyzed all 4 activity components for common patterns
+- Created `PHASE_4_PATTERN_ANALYSIS.md` documenting findings
+- Extracted only the room join/leave pattern into `hooks/useSessionRoom.ts`
+- Updated all 4 activities to use the new hook
+- Removed duplicate code from `usePollSocket.ts`
+- Total change: ~40 lines added, ~60 lines removed
+- Build passes, functionality unchanged
 
 ## Rollback Plan
 Each phase is a single commit that can be reverted:

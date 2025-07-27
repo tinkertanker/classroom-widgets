@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { useSessionRoom } from '../hooks/useSessionRoom';
 
 interface Question {
   id: string;
@@ -32,24 +33,14 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Join the widget-specific room on mount
-  useEffect(() => {
-    if (widgetId) {
-      socket.emit('session:joinRoom', {
-        sessionCode: sessionCode,
-        roomType: 'questions',
-        widgetId
-      });
-
-      return () => {
-        socket.emit('session:leaveRoom', {
-          sessionCode: sessionCode,
-          roomType: 'questions',
-          widgetId
-        });
-      };
-    }
-  }, [socket, sessionCode, widgetId]);
+  // Handle room joining/leaving
+  useSessionRoom({
+    socket,
+    sessionCode,
+    roomType: 'questions',
+    widgetId,
+    isSession: true // Questions always use session mode
+  });
 
   useEffect(() => {
 
