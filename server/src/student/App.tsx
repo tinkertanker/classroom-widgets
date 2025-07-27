@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { FaMinus, FaPlus } from 'react-icons/fa6';
 import { getSocket } from './services/socket';
+import { useRoomAnimations } from './hooks/useRoomAnimations';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import LinkShareActivity from './components/LinkShareActivity';
@@ -24,9 +25,8 @@ interface JoinedRoom {
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
   const [currentSessionCode, setCurrentSessionCode] = useState<string>(''); // Track current session
-  const [leavingRooms, setLeavingRooms] = useState<Set<string>>(new Set());
-  const [enteringRooms, setEnteringRooms] = useState<Set<string>>(new Set());
   const [minimizedRooms, setMinimizedRooms] = useState<Set<string>>(new Set());
+  const { enteringRooms, leavingRooms, animateRoomEnter, animateRoomLeave, animateAllRoomsLeave } = useRoomAnimations();
   const [studentName, setStudentName] = useState(() => {
     // Try to get saved name from localStorage
     return localStorage.getItem('studentName') || '';
@@ -216,17 +216,8 @@ const App: React.FC = () => {
             // Add to beginning of array (newest first)
             setJoinedRooms(prev => [newRoom, ...prev]);
             
-            // Add to entering set for animation
-            setEnteringRooms(prev => new Set(prev).add(roomId));
-            
-            // Remove from entering set after animation
-            setTimeout(() => {
-              setEnteringRooms(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(roomId);
-                return newSet;
-              });
-            }, 50); // Short delay to trigger animation
+            // Animate room entry
+            animateRoomEnter(roomId);
           });
         } else {
           // Clean up on failure
@@ -263,14 +254,7 @@ const App: React.FC = () => {
           return [newRoom, ...prev];
         });
         
-        setEnteringRooms(prev => new Set(prev).add(roomId));
-        setTimeout(() => {
-          setEnteringRooms(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(roomId);
-            return newSet;
-          });
-        }, 50);
+        animateRoomEnter(roomId);
       });
 
       // Handle rooms being closed in the session
@@ -284,15 +268,9 @@ const App: React.FC = () => {
             r.widgetId === data.widgetId
           );
           if (roomToRemove) {
-            setLeavingRooms(leaving => new Set(leaving).add(roomToRemove.id));
-            setTimeout(() => {
+            animateRoomLeave(roomToRemove.id, () => {
               setJoinedRooms(rooms => rooms.filter(r => r.id !== roomToRemove.id));
-              setLeavingRooms(leaving => {
-                const newSet = new Set(leaving);
-                newSet.delete(roomToRemove.id);
-                return newSet;
-              });
-            }, 300);
+            });
           }
           return prev;
         });
@@ -311,9 +289,11 @@ const App: React.FC = () => {
   };
 
   const handleLeaveSession = () => {
-    // Add all rooms to leaving set to trigger animation
+    // Animate all rooms leaving
     const roomIds = joinedRooms.map(room => room.id);
-    setLeavingRooms(prev => new Set([...prev, ...roomIds]));
+    animateAllRoomsLeave(roomIds, () => {
+      setJoinedRooms([]);
+    });
     
     // Close all socket connections for this session
     socketRefs.current.forEach((socket) => {
@@ -324,17 +304,13 @@ const App: React.FC = () => {
     // Clear current session and connection state
     setCurrentSessionCode('');
     setIsConnected(false);
-    
-    // Remove all rooms after animation completes
-    setTimeout(() => {
-      setJoinedRooms([]);
-      setLeavingRooms(new Set());
-    }, 300); // Match animation duration
   };
 
   const handleLeaveRoom = (roomId: string) => {
-    // Add room to leaving set to trigger animation
-    setLeavingRooms(prev => new Set(prev).add(roomId));
+    // Animate room leaving
+    animateRoomLeave(roomId, () => {
+      setJoinedRooms(prev => prev.filter(room => room.id !== roomId));
+    });
     
     // Close socket connection
     const socket = socketRefs.current.get(roomId);
@@ -342,16 +318,6 @@ const App: React.FC = () => {
       socket.close();
       socketRefs.current.delete(roomId);
     }
-    
-    // Remove room after animation completes
-    setTimeout(() => {
-      setJoinedRooms(prev => prev.filter(room => room.id !== roomId));
-      setLeavingRooms(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(roomId);
-        return newSet;
-      });
-    }, 300); // Match animation duration
   };
 
   const toggleMinimizeRoom = (roomId: string) => {

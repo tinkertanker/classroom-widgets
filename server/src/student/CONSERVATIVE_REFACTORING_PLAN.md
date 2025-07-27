@@ -111,7 +111,7 @@ c) Just cleanup the existing component
 
 ---
 
-### Phase 5: Improve State Management (Optional) ✅ Status: Not Started
+### Phase 5: Improve State Management (Optional) ✅ Status: Completed
 **Goal**: Simplify the most complex state management
 
 **Candidates**:
@@ -171,6 +171,14 @@ _This section will be updated as we progress_
 - Removed duplicate code from `usePollSocket.ts`
 - Total change: ~40 lines added, ~60 lines removed
 - Build passes, functionality unchanged
+
+### Phase 5 Notes:
+- Analyzed state management pain points in App.tsx
+- Created `PHASE_5_STATE_ANALYSIS.md` documenting options
+- Extracted animation state into `hooks/useRoomAnimations.ts`
+- Replaced all setTimeout/animation logic with hook calls
+- Simplified from ~50 lines of animation code to ~10 lines
+- Build passes, much cleaner code
 
 ## Rollback Plan
 Each phase is a single commit that can be reverted:
