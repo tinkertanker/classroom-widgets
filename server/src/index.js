@@ -708,6 +708,27 @@ io.on('connection', (socket) => {
     // Send current room state to the joining student
     const room = session.getRoom(roomType, widgetId);
     if (room) {
+      // Add participant to room if they're a session participant
+      const participant = session.participants.get(socket.id);
+      if (participant && room.participants && !room.participants.has(socket.id)) {
+        room.participants.set(socket.id, {
+          id: socket.id,
+          name: participant.name,
+          studentId: participant.studentId,
+          joinedAt: Date.now()
+        });
+        
+        // Notify host of participant count update
+        const participantCount = room.participants.size;
+        if (room.hostSocketId) {
+          io.to(room.hostSocketId).emit('session:participantUpdate', {
+            count: participantCount,
+            roomType: roomType,
+            widgetId: widgetId
+          });
+        }
+      }
+      
       // Handle different room types
       if (roomType === 'linkShare' && room instanceof LinkShareRoom) {
         // Send link share room state
@@ -732,6 +753,22 @@ io.on('connection', (socket) => {
     
     socket.leave(roomNamespace);
     console.log(`Socket ${socket.id} left room ${roomNamespace}`);
+    
+    // Remove participant from room
+    const room = session.getRoom(roomType, widgetId);
+    if (room && room.participants && room.participants.has(socket.id)) {
+      room.participants.delete(socket.id);
+      
+      // Notify host of participant count update
+      const participantCount = room.participants.size;
+      if (room.hostSocketId) {
+        io.to(room.hostSocketId).emit('session:participantUpdate', {
+          count: participantCount,
+          roomType: roomType,
+          widgetId: widgetId
+        });
+      }
+    }
   });
   
   // SESSION-BASED ROOM HANDLERS
@@ -1270,6 +1307,26 @@ io.on('connection', (socket) => {
               participants: Array.from(session.participants.values())
             });
           }
+          
+          // Remove participant from all rooms they're in
+          session.activeRooms.forEach((room, roomId) => {
+            if (room.participants && room.participants.has(socket.id)) {
+              room.participants.delete(socket.id);
+              
+              // Parse room type from roomId (format: "roomType" or "roomType:widgetId")
+              const [roomType] = roomId.split(':');
+              
+              // Notify host of room participant count update
+              if (room.hostSocketId) {
+                const participantCount = room.participants.size;
+                io.to(room.hostSocketId).emit('session:participantUpdate', {
+                  count: participantCount,
+                  roomType: roomType,
+                  widgetId: room.widgetId
+                });
+              }
+            }
+          });
         }
       }
     }
@@ -1294,12 +1351,24 @@ io.on('connection', (socket) => {
             io.to(room.hostSocketId).emit('poll:participantCount', {
               count: participantCount
             });
+            // Also emit generic participantUpdate for new client code
+            io.to(room.hostSocketId).emit('session:participantUpdate', {
+              count: participantCount,
+              roomType: 'poll',
+              widgetId: room.widgetId
+            });
           } else if (room instanceof LinkShareRoom) {
             io.to(room.hostSocketId).emit('linkShare:participantLeft', {
               studentId: socket.id
             });
             io.to(room.hostSocketId).emit('linkShare:participantCount', {
               count: participantCount
+            });
+            // Also emit generic participantUpdate for new client code
+            io.to(room.hostSocketId).emit('session:participantUpdate', {
+              count: participantCount,
+              roomType: 'linkShare',
+              widgetId: room.widgetId
             });
           } else if (room instanceof RTFeedbackRoom) {
             room.removeFeedback(socket.id);
@@ -1308,6 +1377,12 @@ io.on('connection', (socket) => {
             });
             io.to(room.hostSocketId).emit('rtfeedback:participantCount', {
               count: participantCount
+            });
+            // Also emit generic participantUpdate for new client code
+            io.to(room.hostSocketId).emit('session:participantUpdate', {
+              count: participantCount,
+              roomType: 'rtfeedback',
+              widgetId: room.widgetId
             });
           }
         }
