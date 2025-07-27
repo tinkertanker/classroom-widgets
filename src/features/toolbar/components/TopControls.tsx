@@ -14,9 +14,12 @@ const TopControls: React.FC = () => {
   const sessionIslandRef = useRef<HTMLDivElement>(null);
   
   // Auto-expand session island when a session becomes active
+  // Hide when session ends
   React.useEffect(() => {
     if (sessionCode && !isSessionExpanded) {
       setIsSessionExpanded(true);
+    } else if (!sessionCode) {
+      setIsSessionExpanded(false);
     }
   }, [sessionCode]);
 
@@ -81,23 +84,8 @@ const TopControls: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
   
-  // Handle click outside to collapse session island
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (sessionIslandRef.current && !sessionIslandRef.current.contains(event.target as Node)) {
-        setIsSessionExpanded(false);
-      }
-    };
-
-    if (isSessionExpanded) {
-      // Small delay to prevent immediate closing when opening
-      setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
-      }, 0);
-      
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [isSessionExpanded]);
+  // Remove click outside handler - island should only be toggled by clicking on it
+  // or automatically when session starts/ends
 
   return (
     <div className="fixed top-4 right-4 flex items-start space-x-2 z-[998]">

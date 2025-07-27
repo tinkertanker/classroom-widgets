@@ -174,7 +174,16 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         return (
           <>
 
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col relative">
+              {/* Paused overlay */}
+              {!isActive && isRoomActive && session.isConnected && (
+                <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+                  <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
+                    <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Feedback is paused</p>
+                    <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+                  </div>
+                </div>
+              )}
               {showResults ? (
                 <>
                   <div className="flex justify-between items-center mb-1">

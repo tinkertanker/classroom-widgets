@@ -121,11 +121,6 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
                   </div>
                 ) : 'Join Classroom Session'}
               </h1>
-              {currentSessionCode && (
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 text-center mt-2 pr-12">
-                  Leave to join a different session.
-                </p>
-              )}
             </div>
           </div>
         </div>

@@ -208,12 +208,21 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
             </div>
 
             {/* Questions list */}
-            <div className="flex-1 overflow-y-auto space-y-2">
+            <div className="flex-1 overflow-y-auto space-y-2 relative">
+              {/* Paused overlay */}
+              {!isActive && isRoomActive && session.isConnected && (
+                <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+                  <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
+                    <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Questions are paused</p>
+                    <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+                  </div>
+                </div>
+              )}
               {sortedQuestions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-warm-gray-400 dark:text-warm-gray-600">
                   <FaQuestion className="text-4xl mb-2" />
                   <p className="text-sm">
-                    {isActive ? "Waiting for questions..." : "Start accepting questions"}
+                    {isActive ? "Waiting for questions..." : "Questions are paused"}
                   </p>
                 </div>
               ) : (
@@ -262,14 +271,6 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
               )}
             </div>
 
-            {/* Status indicator */}
-            {!isActive && questions.length === 0 && (
-              <div className="mt-3 pt-3 border-t border-warm-gray-200 dark:border-warm-gray-700 text-center">
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                  Click the play button to start accepting questions
-                </p>
-              </div>
-            )}
           </>
         );
       }}
