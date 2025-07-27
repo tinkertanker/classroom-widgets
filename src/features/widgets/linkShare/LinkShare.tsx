@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaLink, FaTrash, FaPlay, FaPause, FaArrowUpRightFromSquare } from 'react-icons/fa6';
+import { useWidgetSocket } from '../shared/hooks';
 
 interface LinkShareProps {
   widgetId?: string;
@@ -63,67 +64,30 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
       }
     >
       {({ session, isRoomActive }) => {
-        // Join the widget-specific room
-        useEffect(() => {
-          if (!session.socket || !session.sessionCode || !isRoomActive) return;
-          
-          // Join the room for this specific widget instance
-          session.socket.emit('session:joinRoom', { 
-            sessionCode: session.sessionCode,
-            roomType: 'linkShare',
-            widgetId 
-          });
-          
-          return () => {
-            session.socket?.emit('session:leaveRoom', { 
-              sessionCode: session.sessionCode,
-              roomType: 'linkShare',
-              widgetId 
-            });
-          };
-        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
-
-        // Setup socket listeners
-        useEffect(() => {
-          if (!session.socket) return;
-
-          const handleNewSubmission = (data: Submission) => {
+        // Socket event handlers
+        const socketEvents = useMemo(() => ({
+          'linkShare:newSubmission': (data: Submission) => {
             setSubmissions(prev => [...prev, data]);
-          };
-
-          const handleSubmissionDeleted = (data: { submissionId: string }) => {
+          },
+          'linkShare:submissionDeleted': (data: { submissionId: string }) => {
             setSubmissions(prev => prev.filter(s => s.id !== data.submissionId));
-          };
-
-          session.socket.on('linkShare:newSubmission', handleNewSubmission);
-          session.socket.on('linkShare:submissionDeleted', handleSubmissionDeleted);
-
-          return () => {
-            session.socket?.off('linkShare:newSubmission', handleNewSubmission);
-            session.socket?.off('linkShare:submissionDeleted', handleSubmissionDeleted);
-          };
-        }, [session.socket]);
-
-        // Handle active state changes
-        useEffect(() => {
-          if (!session.socket || !session.sessionCode || !isRoomActive) return;
-          
-          const eventName = isActive ? 'session:linkShare:start' : 'session:linkShare:stop';
-          session.socket.emit(eventName, {
-            sessionCode: session.sessionCode,
-            widgetId
-          });
-        }, [isActive, session.socket, session.sessionCode, isRoomActive, widgetId]);
-
-        const handleDeleteSubmission = (submissionId: string) => {
-          if (session.socket && isRoomActive) {
-            session.socket.emit('session:linkShare:delete', {
-              sessionCode: session.sessionCode,
-              widgetId,
-              submissionId
-            });
           }
-        };
+        }), []);
+
+        // Use the new composite hook for socket management
+        const { emitWidgetEvent } = useWidgetSocket({
+          socket: session.socket,
+          sessionCode: session.sessionCode,
+          roomType: 'linkShare',
+          widgetId,
+          isActive,
+          isRoomActive,
+          events: socketEvents
+        });
+
+        const handleDeleteSubmission = useCallback((submissionId: string) => {
+          emitWidgetEvent('delete', { submissionId });
+        }, [emitWidgetEvent]);
 
         return (
           <>

@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useModal } from '../../../contexts/ModalContext';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import PollSettings from './PollSettings';
 import { FaPlay, FaPause, FaChartColumn, FaGear } from 'react-icons/fa6';
 import { getPollColor } from '../../../utils/pollColors';
+import { useWidgetSocket } from '../shared/hooks';
 
 interface PollProps {
   widgetId?: string;
@@ -142,37 +143,12 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           setIsRoomActiveRef(isRoomActive);
         }, [session, isRoomActive]);
 
-        // Join the widget-specific room
-        useEffect(() => {
-          if (!session.socket || !session.sessionCode || !isRoomActive) return;
-          
-          const roomId = widgetId ? `poll:${widgetId}` : 'poll';
-          
-          // Join the room for this specific widget instance
-          session.socket.emit('session:joinRoom', { 
-            sessionCode: session.sessionCode,
-            roomType: 'poll',
-            widgetId 
-          });
-          
-          return () => {
-            session.socket?.emit('session:leaveRoom', { 
-              sessionCode: session.sessionCode,
-              roomType: 'poll',
-              widgetId 
-            });
-          };
-        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
-
-        // Setup socket listeners
-        useEffect(() => {
-          if (!session.socket) return;
-
-          const handlePollUpdate = (data: any) => {
+        // Socket event handlers
+        const socketEvents = useMemo(() => ({
+          'poll:updated': (data: any) => {
             setPollData(data);
-          };
-
-          const handlePollDataUpdate = (data: any) => {
+          },
+          'poll:dataUpdate': (data: any) => {
             if (data.pollData) {
               setPollData(data.pollData);
             }
@@ -183,40 +159,37 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                 participantCount: data.results.participantCount || 0
               });
             }
-          };
-
-          const handleVoteUpdate = (data: any) => {
+          },
+          'poll:voteUpdate': (data: any) => {
             setResults({
               votes: data.votes,
               totalVotes: data.totalVotes,
               participantCount: session.participantCount
             });
-          };
+          }
+        }), [session.participantCount]);
 
-          // Listen to both legacy and new event names
-          session.socket.on('poll:updated', handlePollUpdate);
-          session.socket.on('poll:dataUpdate', handlePollDataUpdate);
-          session.socket.on('poll:voteUpdate', handleVoteUpdate);
+        // Use the new composite hook for socket management
+        const { emitWidgetEvent } = useWidgetSocket({
+          socket: session.socket,
+          sessionCode: session.sessionCode,
+          roomType: 'poll',
+          widgetId,
+          isActive: pollData.isActive,
+          isRoomActive,
+          events: socketEvents,
+          startEvent: 'session:poll:start',
+          stopEvent: 'session:poll:stop'
+        });
 
-          return () => {
-            session.socket?.off('poll:updated', handlePollUpdate);
-            session.socket?.off('poll:dataUpdate', handlePollDataUpdate);
-            session.socket?.off('poll:voteUpdate', handleVoteUpdate);
-          };
-        }, [session.socket, session.participantCount]);
-
-        const updatePoll = (data: Partial<PollData>) => {
+        const updatePoll = useCallback((data: Partial<PollData>) => {
           const newPollData = { ...pollData, ...data };
           setPollData(newPollData);
           
-          if (session.socket && isRoomActive) {
-            session.socket.emit('session:poll:update', {
-              sessionCode: session.sessionCode,
-              widgetId,
-              pollData: newPollData
-            });
+          if (isRoomActive) {
+            emitWidgetEvent('update', { pollData: newPollData });
           }
-        };
+        }, [pollData, isRoomActive, emitWidgetEvent]);
 
         const handleStop = () => {
           updatePoll({ isActive: false });

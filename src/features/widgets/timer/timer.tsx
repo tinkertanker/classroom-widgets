@@ -1,246 +1,74 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo } from "react";
+import { 
+  useTimeSegmentEditor, 
+  useTimerCountdown, 
+  useTimerAnimation, 
+  useTimerAudio 
+} from "./hooks";
 
 // Audio import
 import timerEndSound from "./timer-end.mp3";
-const timerEndAudio = new Audio(timerEndSound);
 
 const Timer = () => {
-  const [initialTime, setInitialTime] = useState(10);
-  const [time, setTime] = useState(10);
-  const [changeTime, setChangeTime] = useState(-1);
-  const [isRunning, setIsRunning] = useState(false);
-  const [inEditMode, setInEditMode] = useState(false);
-  const [showStart, setShowStart] = useState(true);
-  const [showResume, setShowResume] = useState(false);
-  const [showPauseResume, setShowPauseResume] = useState(true);
-  const [timerFinished, setTimerFinished] = useState(false);
+  // Timer audio hook
+  const { playSound } = useTimerAudio({ 
+    soundUrl: timerEndSound,
+    enabled: true 
+  });
 
-  // Initialize values based on initialTime (10 seconds)
-  const [values, setValues] = useState(['00', '00', '10']);
-  const [timeValues, setTimeValues] = useState([0, 0, 10]);
-  const [editingSegment, setEditingSegment] = useState<number | null>(null);
-  const [tempValue, setTempValue] = useState('');
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [pulseAngle, setPulseAngle] = useState(-90); // Start at top
+  // Time segment editor hook
+  const segmentEditor = useTimeSegmentEditor({
+    initialValues: ['00', '00', '10'],
+    isRunning: false, // Will be updated by timer state
+    onValuesChange: (values, timeValues) => {
+      // When editing time segments, update the initial time for the timer
+      const totalSeconds = timeValues[0] * 3600 + timeValues[1] * 60 + timeValues[2];
+      // This will be used when starting the timer
+    }
+  });
 
-  // Calculate SVG path for the arc
-  const getArcPath = (percentage: number) => {
-    const centerRadius = 45;
-    const strokeWidth = 3; // Thinner stroke
-    const outerRadius = centerRadius + strokeWidth / 2;
-    const innerRadius = centerRadius - strokeWidth / 2;
-    const startAngle = -90; // Start at top
-    const endAngle = startAngle + (percentage * 360);
+  // Timer countdown hook
+  const {
+    time,
+    isRunning,
+    isPaused,
+    timerFinished,
+    progress,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    restartTimer
+  } = useTimerCountdown({
+    onTimeUp: playSound,
+    onTick: (newTime) => {
+      // Update the time segment editor when time changes
+      segmentEditor.updateFromTime(newTime);
+    }
+  });
+
+  // Timer animation hook
+  const { pulseAngle, arcPath } = useTimerAnimation({ 
+    isRunning, 
+    progress 
+  });
+
+  // Handle start button click
+  const handleStart = useCallback(() => {
+    const totalSeconds = 
+      segmentEditor.timeValues[0] * 3600 + 
+      segmentEditor.timeValues[1] * 60 + 
+      segmentEditor.timeValues[2];
     
-    const startAngleRad = (startAngle * Math.PI) / 180;
-    const endAngleRad = (endAngle * Math.PI) / 180;
-    
-    // Outer arc points
-    const x1 = 50 + outerRadius * Math.cos(startAngleRad);
-    const y1 = 50 + outerRadius * Math.sin(startAngleRad);
-    const x2 = 50 + outerRadius * Math.cos(endAngleRad);
-    const y2 = 50 + outerRadius * Math.sin(endAngleRad);
-    
-    // Inner arc points
-    const x3 = 50 + innerRadius * Math.cos(endAngleRad);
-    const y3 = 50 + innerRadius * Math.sin(endAngleRad);
-    const x4 = 50 + innerRadius * Math.cos(startAngleRad);
-    const y4 = 50 + innerRadius * Math.sin(startAngleRad);
-    
-    const largeArcFlag = percentage > 0.5 ? 1 : 0;
-    
-    if (percentage >= 0.9999) {
-      // Full circle requires special handling
-      return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 1 1 ${x1 - 0.01} ${y1} L ${x4 - 0.01} ${y4} A ${innerRadius} ${innerRadius} 0 1 0 ${x4} ${y4} Z`;
-    } else if (percentage <= 0.0001) {
-      return '';
+    if (totalSeconds > 0) {
+      startTimer(totalSeconds);
     }
-    
-    return `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArcFlag} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 0 ${x4} ${y4} Z`;
-  };
+  }, [segmentEditor.timeValues, startTimer]);
 
-  const handleSegmentClick = (index: number) => {
-    if (!isRunning) {
-      setEditingSegment(index);
-      setTempValue(values[index]);
-      setTimeout(() => inputRef.current?.select(), 0);
-    }
-  };
-
-  const handleSegmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (/^[0-9]*$/.test(value) && value.length <= 2) {
-      setTempValue(value);
-    }
-  };
-
-  const handleSegmentBlur = () => {
-    if (editingSegment !== null) {
-      const newValues = [...values];
-      const numValue = parseInt(tempValue) || 0;
-      
-      // Validate ranges
-      let validValue = numValue;
-      if (editingSegment === 0) { // hours
-        validValue = Math.min(99, numValue);
-      } else { // minutes or seconds
-        validValue = Math.min(59, numValue);
-      }
-      
-      newValues[editingSegment] = validValue.toString().padStart(2, '0');
-      setValues(newValues);
-      setTimeValues(newValues.map((x) => Number(x)));
-      setEditingSegment(null);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSegmentBlur();
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      handleSegmentBlur();
-      const nextSegment = editingSegment !== null ? (editingSegment + 1) % 3 : 0;
-      handleSegmentClick(nextSegment);
-    } else if (e.key === 'Escape') {
-      setEditingSegment(null);
-      setTempValue('');
-    }
-  };
-
-  useEffect(() => {
-    if (time <= 0 && isRunning) {
-      setIsRunning(false);
-      setShowPauseResume(false);
-      setTimerFinished(true);
-      // Play the timer end sound
-      timerEndAudio.play().catch(error => {
-        // Error playing timer end sound
-      });
-    }
-  }, [time, isRunning]);
-
-  const startTimer = (isResume=false) => {
-    if (!timeValues[0] && !timeValues[1] && !timeValues[2]) return;
-
-    let changes = [0, 0, 0];
-    let incomingTime = timeValues[2] + timeValues[1]*60 + timeValues[0]*3600;
-    if (timeValues[2] > 60) {
-      changes[1] += 1;
-      changes[2] -= 60;
-    }
-    if (timeValues[1]+changes[1] > 60) {
-      changes[0] += 1;
-      changes[1] -= 60;
-    }
-    if (timeValues[0]+changes[0] > 23) {
-      let change = timeValues[0]+changes[0]-23;
-      changes[0] -= change;
-      incomingTime -= change*3600;
-    }
-
-    let finalValues = timeValues.map((a, i) => a+changes[i]);
-    setTimeValues(finalValues);
-    setValues(finalValues.map((a) => String(a).padStart(2, '0')));
-    setInitialTime(isResume ? incomingTime-time+initialTime : incomingTime);
-    setTime(incomingTime);
-    setTimeout(() => setChangeTime(changeTime+1), 1000);
-
-    setIsRunning(true);
-    setInEditMode(false);
-    setShowStart(false);
-    setShowPauseResume(true);
-    setTimerFinished(false);
-  };
-  const pauseTimer = () => {
-    setIsRunning(false);
-    setInEditMode(true);
-    setShowResume(true);
-  };
-  const resumeTimer = () => {
-    setShowResume(false);
-    startTimer(true);
-  };
-  const restartTimer = () => {
-    setIsRunning(false);
-    setInEditMode(true);
-    setShowStart(true);
-    setShowResume(false);
-    setTime(initialTime);
-    setTimerFinished(false);
-
-    let actualValues = [0, 0, 0];
-    actualValues[0] = Math.floor(initialTime/3600);
-    actualValues[1] = Math.floor(initialTime/60) > 59 ? 59 : Math.floor(initialTime/60);
-    actualValues[2] = initialTime % 60;
-
-    setTimeValues(actualValues);
-    setValues(actualValues.map((a) => String(a).padStart(2, '0')));
-  };
-
-  // Timer logic
-  useEffect(() => {
-    if (isRunning) {
-      if (time > 0) {
-        let changes = [0, 0 ,0];
-
-        if (timeValues[2] > 0) {
-          changes[2]--;
-        } else if (timeValues[1] > 0) {
-          changes[1]--;
-          changes[2]+=59;
-        } else if (timeValues[0] > 0) {
-          changes[0]--;
-          changes[1]+=59;
-          changes[2]+=59;
-        }
-
-        let finalValues = timeValues.map((a, i) => a+changes[i]);
-        setTimeValues(finalValues);
-        setValues(finalValues.map((a) => String(a).padStart(2, '0')));
-        setTime(time-1);
-        setTimeout(() => setChangeTime(changeTime+1), 1000);
-      }
-    } else {
-      !showResume && !timerFinished && setTime(initialTime);
-    }
-  }, [changeTime]);
-
-  // When entering edit mode, you can click on any segment to edit
-  useEffect(() => {
-    if (inEditMode) {
-      // Reset editing state when entering edit mode
-      setEditingSegment(null);
-    }
-  }, [inEditMode]);
-
-  // Animate the pulse around the arc when timer is running
-  useEffect(() => {
-    if (isRunning) {
-      const startTime = Date.now();
-      let animationFrameId: number;
-      
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        // Complete one rotation every 3 seconds counter-clockwise (-120 degrees/second)
-        const angle = -90 - (elapsed / 1000) * 120;
-        setPulseAngle(angle);
-        
-        animationFrameId = requestAnimationFrame(animate);
-      };
-      
-      animationFrameId = requestAnimationFrame(animate);
-      
-      return () => {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
-      };
-    } else {
-      // Reset to top when not running
-      setPulseAngle(-90);
-    }
-  }, [isRunning]);
+  // Determine which controls to show
+  const showStartButton = !isRunning && !isPaused && !timerFinished;
+  const showPauseButton = isRunning;
+  const showResumeButton = isPaused;
+  const inEditMode = !isRunning;
 
   return (
     <>
@@ -272,7 +100,7 @@ const Timer = () => {
                   <mask id="progressMask">
                     <rect x="0" y="0" width="100" height="100" fill="black" />
                     <path
-                      d={getArcPath(time / initialTime)}
+                      d={arcPath}
                       fill="white"
                     />
                   </mask>
@@ -281,7 +109,7 @@ const Timer = () => {
                 {/* Full rainbow circle (always present but masked) */}
                 <g mask="url(#progressMask)">
                   <path
-                    d={getArcPath(1)}
+                    d={useTimerAnimation({ isRunning: false, progress: 1 }).arcPath}
                     fill="url(#rainbowGradient)"
                   />
                 </g>
@@ -429,18 +257,18 @@ const Timer = () => {
                     {time >= 3600 ? (
                       // Show hours:minutes:seconds - smaller text to fit
                       <div className="flex items-center" style={{ fontSize: 'clamp(1rem, 12cqmin, 3rem)' }}>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[0]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[0]}</span>
                         <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[1]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[1]}</span>
                         <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[2]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[2]}</span>
                       </div>
                     ) : time >= 60 ? (
                       // Show minutes:seconds - medium text
                       <div className="flex items-center" style={{ fontSize: 'clamp(1.5rem, 20cqmin, 5rem)' }}>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[1]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[1]}</span>
                         <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{values[2]}</span>
+                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[2]}</span>
                       </div>
                     ) : (
                       // Show only seconds - largest text
@@ -453,16 +281,16 @@ const Timer = () => {
                   /* EDIT MODE - Inline Editable Display */
                   <div className="flex flex-col items-center">
                     <div className="flex flex-row items-center">
-                      {values.map((val, idx) => (
+                      {segmentEditor.values.map((val, idx) => (
                         <React.Fragment key={idx}>
-                          {editingSegment === idx ? (
+                          {segmentEditor.editingSegment === idx ? (
                             <input
-                              ref={inputRef}
+                              ref={segmentEditor.inputRef}
                               type="text"
-                              value={tempValue}
-                              onChange={handleSegmentChange}
-                              onBlur={handleSegmentBlur}
-                              onKeyDown={handleKeyDown}
+                              value={segmentEditor.tempValue}
+                              onChange={segmentEditor.handleSegmentChange}
+                              onBlur={segmentEditor.handleSegmentBlur}
+                              onKeyDown={segmentEditor.handleKeyDown}
                               className="text-center text-warm-gray-800 dark:text-warm-gray-200 bg-warm-gray-100 dark:bg-warm-gray-700 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
                               style={{ 
                                 width: 'clamp(2.5rem, 15cqmin, 5rem)',
@@ -472,7 +300,7 @@ const Timer = () => {
                             />
                           ) : (
                             <span
-                              onClick={() => handleSegmentClick(idx)}
+                              onClick={() => segmentEditor.handleSegmentClick(idx)}
                               className={`leading-none text-warm-gray-800 dark:text-warm-gray-200 cursor-pointer hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 px-1 rounded-md transition-colors ${
                                 !isRunning ? 'hover:text-sage-600' : ''
                               }`}
@@ -484,7 +312,7 @@ const Timer = () => {
                           )}
                           
                           {/* Colon separator */}
-                          {idx < values.length - 1 && (
+                          {idx < segmentEditor.values.length - 1 && (
                             <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 mx-0" style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}>
                               :
                             </span>
@@ -492,7 +320,7 @@ const Timer = () => {
                         </React.Fragment>
                       ))}
                     </div>
-                    {!isRunning && editingSegment === null && (
+                    {!isRunning && segmentEditor.editingSegment === null && (
                       <div className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
                         <span>Click to edit</span>
                       </div>
@@ -509,31 +337,30 @@ const Timer = () => {
             >
               {'\u21BB'} Restart
             </button>
-          ) : showStart ? (
+          ) : showStartButton ? (
             <button
               className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
-              onClick={() => startTimer()}
+              onClick={handleStart}
             >
               {'\u25B6'} Start
             </button>
           ) : (
             <>
-              {showPauseResume && (
-                showResume ? (
-                  <button
-                    className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
-                    onClick={resumeTimer}
-                  >
-                    {'\u25B6'} Resume
-                  </button>
-                ) : (
-                  <button
-                    className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
-                    onClick={pauseTimer}
-                  >
-                    {'\u23F8'} Pause
-                  </button>
-                )
+              {showPauseButton && (
+                <button
+                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                  onClick={pauseTimer}
+                >
+                  {'\u23F8'} Pause
+                </button>
+              )}
+              {showResumeButton && (
+                <button
+                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                  onClick={resumeTimer}
+                >
+                  {'\u25B6'} Resume
+                </button>
               )}
               <button
                 className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
@@ -550,4 +377,3 @@ const Timer = () => {
 }
 
 export default Timer;
-

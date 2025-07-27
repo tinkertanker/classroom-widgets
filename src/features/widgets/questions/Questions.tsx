@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaQuestion, FaPlay, FaPause, FaTrash, FaCheck } from 'react-icons/fa6';
 import { getQuestionColor } from '../../../utils/questionColors';
+import { useWidgetSocket } from '../shared/hooks';
 
 interface Question {
   id: string;
@@ -72,31 +73,9 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       }
     >
       {({ session, isRoomActive }) => {
-        // Join the widget-specific room
-        useEffect(() => {
-          if (!session.socket || !session.sessionCode || !isRoomActive) return;
-          
-          // Join the room for this specific widget instance
-          session.socket.emit('session:joinRoom', { 
-            sessionCode: session.sessionCode,
-            roomType: 'questions',
-            widgetId 
-          });
-          
-          return () => {
-            session.socket?.emit('session:leaveRoom', { 
-              sessionCode: session.sessionCode,
-              roomType: 'questions',
-              widgetId 
-            });
-          };
-        }, [session.socket, session.sessionCode, isRoomActive, widgetId]);
-
-        // Setup socket listeners
-        useEffect(() => {
-          if (!session.socket) return;
-
-          const handleNewQuestion = (data: { questionId: string; text: string; studentId: string; studentName?: string }) => {
+        // Socket event handlers
+        const socketEvents = useMemo(() => ({
+          'newQuestion': (data: { questionId: string; text: string; studentId: string; studentName?: string }) => {
             const newQuestion: Question = {
               id: data.questionId,
               text: data.text,
@@ -106,78 +85,46 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
               answered: false
             };
             setQuestions(prev => [...prev, newQuestion]);
-          };
-
-          const handleQuestionAnswered = (data: { questionId: string }) => {
+          },
+          'questionAnswered': (data: { questionId: string }) => {
             setQuestions(prev => 
               prev.map(q => 
                 q.id === data.questionId ? { ...q, answered: true } : q
               )
             );
-          };
-
-          const handleQuestionDeleted = (data: { questionId: string }) => {
+          },
+          'questionDeleted': (data: { questionId: string }) => {
             setQuestions(prev => prev.filter(q => q.id !== data.questionId));
-          };
-
-          const handleAllQuestionsCleared = () => {
+          },
+          'allQuestionsCleared': () => {
             setQuestions([]);
-          };
-
-          session.socket.on('newQuestion', handleNewQuestion);
-          session.socket.on('questionAnswered', handleQuestionAnswered);
-          session.socket.on('questionDeleted', handleQuestionDeleted);
-          session.socket.on('allQuestionsCleared', handleAllQuestionsCleared);
-
-          return () => {
-            session.socket?.off('newQuestion', handleNewQuestion);
-            session.socket?.off('questionAnswered', handleQuestionAnswered);
-            session.socket?.off('questionDeleted', handleQuestionDeleted);
-            session.socket?.off('allQuestionsCleared', handleAllQuestionsCleared);
-          };
-        }, [session.socket]);
-
-        // Handle active state changes
-        useEffect(() => {
-          if (!session.socket || !session.sessionCode || !isRoomActive) return;
-          
-          const eventName = isActive ? 'session:questions:start' : 'session:questions:stop';
-          session.socket.emit(eventName, {
-            sessionCode: session.sessionCode,
-            widgetId
-          });
-        }, [isActive, session.socket, session.sessionCode, isRoomActive, widgetId]);
-
-        const handleMarkAnswered = (questionId: string) => {
-          if (!session.socket || !session.sessionCode) return;
-          
-          session.socket.emit('session:questions:markAnswered', {
-            sessionCode: session.sessionCode,
-            widgetId,
-            questionId
-          });
-        };
-
-        const handleDeleteQuestion = (questionId: string) => {
-          if (!session.socket || !session.sessionCode) return;
-          
-          session.socket.emit('session:questions:delete', {
-            sessionCode: session.sessionCode,
-            widgetId,
-            questionId
-          });
-        };
-
-        const handleClearAll = () => {
-          if (!session.socket || !session.sessionCode) return;
-          
-          if (window.confirm('Are you sure you want to clear all questions?')) {
-            session.socket.emit('session:questions:clearAll', {
-              sessionCode: session.sessionCode,
-              widgetId
-            });
           }
-        };
+        }), []);
+
+        // Use the new composite hook for socket management
+        const { emitWidgetEvent } = useWidgetSocket({
+          socket: session.socket,
+          sessionCode: session.sessionCode,
+          roomType: 'questions',
+          widgetId,
+          isActive,
+          isRoomActive,
+          events: socketEvents
+        });
+
+        const handleMarkAnswered = useCallback((questionId: string) => {
+          emitWidgetEvent('markAnswered', { questionId });
+        }, [emitWidgetEvent]);
+
+        const handleDeleteQuestion = useCallback((questionId: string) => {
+          emitWidgetEvent('delete', { questionId });
+        }, [emitWidgetEvent]);
+
+        const handleClearAll = useCallback(() => {
+          if (window.confirm('Are you sure you want to clear all questions?')) {
+            emitWidgetEvent('clearAll', {});
+          }
+        }, [emitWidgetEvent]);
 
         // Sort questions: unanswered first, then by timestamp
         const sortedQuestions = [...questions].sort((a, b) => {
