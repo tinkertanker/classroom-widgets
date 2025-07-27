@@ -7,18 +7,18 @@ import SessionStatus from '../../session/components/SessionStatus/SessionStatus'
 
 const TopControls: React.FC = () => {
   const { scale, setScale } = useWorkspace();
-  const { connected } = useServerConnection();
+  const { connected, url: serverUrl } = useServerConnection();
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showSessionStatus, setShowSessionStatus] = useState(false);
-  const sessionStatusRef = useRef<HTMLDivElement>(null);
+  const [isSessionExpanded, setIsSessionExpanded] = useState(false);
+  const sessionIslandRef = useRef<HTMLDivElement>(null);
   
-  // Auto-show session banner when a session becomes active
+  // Auto-expand session island when a session becomes active
   React.useEffect(() => {
-    if (sessionCode && !showSessionStatus) {
-      setShowSessionStatus(true);
+    if (sessionCode && !isSessionExpanded) {
+      setIsSessionExpanded(true);
     }
-  }, [sessionCode, showSessionStatus]);
+  }, [sessionCode]);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -81,29 +81,77 @@ const TopControls: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
   
-  // Handle click outside to close session status
+  // Handle click outside to collapse session island
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (sessionStatusRef.current && !sessionStatusRef.current.contains(event.target as Node)) {
-        setShowSessionStatus(false);
+      if (sessionIslandRef.current && !sessionIslandRef.current.contains(event.target as Node)) {
+        setIsSessionExpanded(false);
       }
     };
 
-    if (showSessionStatus) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (isSessionExpanded) {
+      // Small delay to prevent immediate closing when opening
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 0);
+      
+      return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [showSessionStatus]);
+  }, [isSessionExpanded]);
 
   return (
-    <div className="fixed top-4 right-4 flex items-center space-x-2 z-[998]">
-      {/* WiFi Status with Session Dropdown */}
-      <div className="relative" ref={sessionStatusRef}>
-        <button
-          onClick={() => setShowSessionStatus(!showSessionStatus)}
+    <div className="fixed top-4 right-4 flex items-start space-x-2 z-[998]">
+      {/* Dynamic Island-style Session Status */}
+      {sessionCode ? (
+        <div 
+          ref={sessionIslandRef}
+          onClick={() => setIsSessionExpanded(!isSessionExpanded)}
           className={clsx(
-            "flex items-center px-3 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors",
-            sessionCode && "ring-2 ring-sage-500/20"
+            "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl rounded-full shadow-lg",
+            "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
+            "transition-all duration-500 ease-out cursor-pointer",
+            "hover:scale-105",
+            isSessionExpanded ? "px-6 py-3" : "px-4 py-2"
+          )}
+        >
+          <div className="flex items-center">
+            {/* WiFi Icon - Always visible */}
+            <div className={clsx(
+              'transition-colors duration-200',
+              connected ? 'text-sage-600 dark:text-sage-400' : 'text-warm-gray-400 dark:text-warm-gray-500'
+            )}>
+              <FaWifi className="text-base" />
+            </div>
+            
+            {/* Session Info - Expandable */}
+            <div className={clsx(
+              "flex items-center gap-3 transition-all duration-500",
+              isSessionExpanded ? "max-w-[500px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden"
+            )}>
+              {/* Pulse indicator */}
+              <div className="w-2 h-2 bg-sage-500 dark:bg-sage-400 rounded-full animate-pulse" />
+              
+              {/* Session Code */}
+              <code className="text-xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider">
+                {sessionCode}
+              </code>
+              
+              {/* Separator */}
+              <div className="w-px h-4 bg-warm-gray-300 dark:bg-warm-gray-600" />
+              
+              {/* URL */}
+              <span className="text-sm text-warm-gray-600 dark:text-warm-gray-300 truncate">
+                {serverUrl?.replace(/^https?:\/\//, '')}/student
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Regular WiFi button when no session */
+        <button
+          className={clsx(
+            "flex items-center justify-center h-10 px-3 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm",
+            "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
           )}
         >
           <div className={clsx(
@@ -112,30 +160,11 @@ const TopControls: React.FC = () => {
           )}>
             <FaWifi className="text-lg" />
           </div>
-          {sessionCode && (
-            <div className="ml-2 w-2 h-2 bg-sage-500 rounded-full animate-pulse" />
-          )}
         </button>
-        
-        {/* Session Status Dropdown */}
-        <div className={`absolute top-0 right-full mr-2 transition-all duration-300 ease-out ${
-          showSessionStatus && sessionCode 
-            ? 'opacity-100 transform translate-x-0' 
-            : 'opacity-0 transform translate-x-4 pointer-events-none'
-        }`}>
-          {sessionCode && (
-            <SessionStatus
-              sessionCode={sessionCode}
-              participantCount={0}
-              isConnected={connected}
-              className="w-[600px]"
-            />
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Zoom Controls */}
-      <div className="flex items-center space-x-1 px-2 py-1 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm">
+      <div className="flex items-center space-x-1 px-2 py-1 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm h-10">
         <button
           onClick={handleZoomOut}
           className="p-1.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 transition-colors"
@@ -164,7 +193,7 @@ const TopControls: React.FC = () => {
       {/* Fullscreen Button */}
       <button
         onClick={handleFullscreen}
-        className="p-2.5 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
+        className="flex items-center justify-center h-10 w-10 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
         title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
       >
         {isFullscreen ? (
