@@ -23,11 +23,13 @@ export function useSessionRecovery({
   const [isRecovering, setIsRecovering] = useState(false);
   const attemptingRecovery = useRef(false);
   const lastSessionCode = useRef<string | null>(null);
+  const hasEverHadSession = useRef(false);
   
   useEffect(() => {
     // Track the last known session code
     if (sessionCode) {
       lastSessionCode.current = sessionCode;
+      hasEverHadSession.current = true;
     }
   }, [sessionCode]);
 
@@ -60,7 +62,9 @@ export function useSessionRecovery({
             const joinTimeout = setTimeout(() => {
               console.log('[useSessionRecovery] Join timeout - session may be invalid');
               lastSessionCode.current = null;
-              onSessionLost?.();
+              if (hasEverHadSession.current) {
+                onSessionLost?.();
+              }
               attemptingRecovery.current = false;
               setIsRecovering(false);
             }, 5000);
@@ -73,7 +77,9 @@ export function useSessionRecovery({
               } else {
                 console.log('[useSessionRecovery] Failed to recover session');
                 lastSessionCode.current = null;
-                onSessionLost?.();
+                if (hasEverHadSession.current) {
+                  onSessionLost?.();
+                }
               }
               attemptingRecovery.current = false;
               setIsRecovering(false);
@@ -81,7 +87,9 @@ export function useSessionRecovery({
           } else {
             console.log('[useSessionRecovery] Session no longer exists on server');
             lastSessionCode.current = null;
-            onSessionLost?.();
+            if (hasEverHadSession.current) {
+              onSessionLost?.();
+            }
             attemptingRecovery.current = false;
             setIsRecovering(false);
           }
@@ -89,7 +97,9 @@ export function useSessionRecovery({
           console.error('[useSessionRecovery] Error checking session:', error);
           attemptingRecovery.current = false;
           setIsRecovering(false);
-          onSessionLost?.();
+          if (hasEverHadSession.current) {
+            onSessionLost?.();
+          }
         }
       }
     };

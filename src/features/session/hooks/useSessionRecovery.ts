@@ -22,11 +22,13 @@ export function useSessionRecovery({
 }: UseSessionRecoveryProps) {
   const attemptingRecovery = useRef(false);
   const lastSessionCode = useRef<string | null>(null);
+  const hasEverHadSession = useRef(false);
   
   useEffect(() => {
     // Track the last known session code
     if (sessionCode) {
       lastSessionCode.current = sessionCode;
+      hasEverHadSession.current = true;
     }
   }, [sessionCode]);
 
@@ -57,20 +59,29 @@ export function useSessionRecovery({
               } else {
                 console.log('[useSessionRecovery] Failed to recover session:', response.error);
                 lastSessionCode.current = null;
-                onSessionLost?.();
+                // Only call onSessionLost if we actually had a session before
+                if (hasEverHadSession.current) {
+                  onSessionLost?.();
+                }
               }
               attemptingRecovery.current = false;
             });
           } else {
             console.log('[useSessionRecovery] Session no longer exists on server');
             lastSessionCode.current = null;
-            onSessionLost?.();
+            // Only call onSessionLost if we actually had a session before
+            if (hasEverHadSession.current) {
+              onSessionLost?.();
+            }
             attemptingRecovery.current = false;
           }
         } catch (error) {
           console.error('[useSessionRecovery] Error checking session:', error);
           attemptingRecovery.current = false;
-          onSessionLost?.();
+          // Only call onSessionLost if we actually had a session before
+          if (hasEverHadSession.current) {
+            onSessionLost?.();
+          }
         }
       }
     };

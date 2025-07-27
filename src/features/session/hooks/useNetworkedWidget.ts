@@ -84,7 +84,7 @@ export function useNetworkedWidget({
     }
   }, [sessionCode, localSessionCode]);
   
-  // Session recovery after hot reload
+  // Session recovery after hot reload - only if we had a session
   const { isRecovering } = useSessionRecovery({
     socket,
     sessionCode: localSessionCode || sessionCode,
@@ -99,7 +99,10 @@ export function useNetworkedWidget({
       setSessionCode(null);
       setLocalSessionCode(null);
       setParticipantCount(0);
-      setError('Session expired. Please start a new session.');
+      // Only show error if we actually had a session before
+      if (localSessionCode || sessionCode) {
+        setError('Session expired. Please start a new session.');
+      }
     }
   });
   
