@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useCallback } from "react";
 import * as React from "react";
-import { v4 as uuidv4 } from 'uuid';
 import { 
   FaPlus,
   FaBullseye,      // Focus/target icon for green state
@@ -9,6 +8,12 @@ import {
   FaCheck,         // Checkmark for completed/faded state
   FaClock          // Clock for waiting/neutral state
 } from 'react-icons/fa6';
+import {
+  useListItems,
+  useAutoResizeTextarea,
+  useResponsiveSize,
+  useListKeyboardHandlers
+} from './hooks';
 
 interface ListItem {
   id: string;
@@ -27,147 +32,73 @@ interface ListProps {
 }
 
 const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
-  // Initialize items with stable IDs
-  const [items, setItems] = useState<ListItem[]>(() => {
-    if (savedState?.items) {
-      return savedState.items;
-    }
-    // Convert legacy format to new format with IDs
-    if (savedState?.inputs) {
-      return savedState.inputs.map((text, index) => ({
-        id: uuidv4(),
-        text,
-        status: savedState.statuses?.[index] || 0
-      }));
-    }
-    return [{ id: uuidv4(), text: "", status: 0 }];
-  });
-  const [isLarge, setIsLarge] = useState(false);
-
-  const inputRefs = useRef<HTMLInputElement[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRefs = useRef<HTMLInputElement[]>([]);
 
-  // Notify parent of state changes
-  const updateState = () => {
-    if (onStateChange) {
-      onStateChange({
-        items: items,
-        // Keep backward compatibility
-        inputs: items.map(item => item.text),
-        statuses: items.map(item => item.status)
-      });
-    }
-  };
+  // List item management
+  const {
+    items,
+    addItem,
+    updateItemText,
+    cycleItemStatus,
+    deleteItem,
+    startEditing,
+    stopEditing
+  } = useListItems({ savedState, onStateChange });
 
-  // Update state whenever any value changes (skip initial render)
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    updateState();
-  }, [items]);
+  // Responsive size detection
+  const { isLarge } = useResponsiveSize({ containerRef });
 
-  // Detect widget size
-  useEffect(() => {
-    if (!containerRef.current) return;
+  // Auto-resize textarea functionality
+  const {
+    handleInput,
+    handleFocus,
+    createTextareaRef
+  } = useAutoResizeTextarea();
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const width = entry.contentRect.width;
-        // Consider "large" when width is greater than 400px
-        setIsLarge(width > 400);
-      }
-    });
+  // Add item with focus management
+  const handleAddInput = useCallback(() => {
+    addItem();
+    setTimeout(() => {
+      inputRefs.current[items.length]?.focus();
+    }, 0);
+  }, [addItem, items.length]);
 
-    resizeObserver.observe(containerRef.current);
+  // Keyboard handlers
+  const { handleKeyDown, handleMouseDown } = useListKeyboardHandlers({
+    onStopEditing: stopEditing,
+    onAddItem: handleAddInput,
+    items
+  });
 
-    return () => {
-      resizeObserver.disconnect();
+  // Get status button styles
+  const getStatusButtonStyles = (status: number) => {
+    const baseStyles = "rounded-full flex-shrink-0 transition-colors duration-200 flex items-center justify-center";
+    const sizeStyles = isLarge ? "w-12 h-12" : "w-8 h-8";
+    
+    const statusStyles = {
+      1: "bg-green-500 hover:bg-green-600",
+      2: "bg-yellow-500 hover:bg-yellow-600",
+      3: "bg-red-500 hover:bg-red-600",
+      4: "bg-warm-gray-400 hover:bg-warm-gray-500",
+      0: "bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-500"
     };
-  }, []);
-
-  const handleAddInput = () => {
-    const newItem = { id: uuidv4(), text: "", status: 0 };
-    setItems(prevItems => {
-      const newItems = [...prevItems, newItem];
-      setTimeout(() => {
-        inputRefs.current[newItems.length - 1]?.focus(); // Focus the last added input after updating state
-      }, 0);
-      return newItems;
-    });
+    
+    return `${baseStyles} ${sizeStyles} ${statusStyles[status as keyof typeof statusStyles] || statusStyles[0]}`;
   };
 
-  const handleInputChange = (id: string, value: string) => {
-    setItems(prevItems => 
-      prevItems.map(item => 
-        item.id === id ? { ...item, text: value } : item
-      )
-    );
+  // Get item background styles
+  const getItemBackgroundStyles = (status: number) => {
+    const statusStyles = {
+      1: "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200",
+      2: "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200",
+      3: "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200",
+      4: "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500",
+      0: "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
+    };
+    
+    return statusStyles[status as keyof typeof statusStyles] || statusStyles[0];
   };
-
-  const cycleStatus = (id: string) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, status: (item.status + 1) % 5 } : item
-      )
-    );
-  };
-  // useEffect(() => {
-  //   const savedInputs =       JSON.parse(localStorage.getItem('inputs') || '[]');
-  //   const savedCompleted =    JSON.parse(localStorage.getItem('completed') || '[]');
-  //   const savedHideComplete = JSON.parse(localStorage.getItem('hideComplete') || 'false');
-  //   const savedIsChecklist =  JSON.parse(localStorage.getItem('isChecklist') || 'true');
-
-  //   setInputs(savedInputs);
-  //   setCompleted(savedCompleted);
-  //   setHideComplete(savedHideComplete);
-  //   setIsChecklist(savedIsChecklist);
-  // }, []);
-
-
-  const handleDeleteInput = (id: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
-  };
-
-  const startEditing = (id: string) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, isEditing: true } : { ...item, isEditing: false }
-      )
-    );
-  };
-
-  const stopEditing = (id: string) => {
-    setItems(prevItems =>
-      prevItems.map(item =>
-        item.id === id ? { ...item, isEditing: false } : item
-      )
-    );
-  };
-
-
-  // // LOCAL STORAGE
-  // useEffect(() => {
-  //   localStorage.setItem('title', localTitle);
-  // }, [localTitle]);
-
-  // useEffect(() => {
-  //   localStorage.setItem('inputs', JSON.stringify(inputs));
-  // }, [inputs]);
-
-  // useEffect(() => {
-  //   localStorage.setItem('completed', JSON.stringify(completed));
-  // }, [completed]);
-
-  // useEffect(() => {
-  //   localStorage.setItem('hideComplete', JSON.stringify(hideComplete));
-  // }, [hideComplete]);
-
-  // useEffect(() => {
-  //   localStorage.setItem('isChecklist', JSON.stringify(isChecklist));
-  // }, [isChecklist]);
 
   return (
     <>
@@ -178,17 +109,9 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
               {items.map((item, index) => (
                   <div className="flex flex-row items-center gap-1" key={item.id}>
                     <button
-                        onClick={() => cycleStatus(item.id)}
+                        onClick={() => cycleItemStatus(item.id)}
                         aria-label="Cycle status"
-                        className={`rounded-full flex-shrink-0 transition-colors duration-200 flex items-center justify-center ${
-                          item.status === 1 ? "bg-green-500 hover:bg-green-600" :
-                          item.status === 2 ? "bg-yellow-500 hover:bg-yellow-600" :
-                          item.status === 3 ? "bg-red-500 hover:bg-red-600" :
-                          item.status === 4 ? "bg-warm-gray-400 hover:bg-warm-gray-500" :
-                          "bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-500"
-                        } ${
-                          isLarge ? "w-12 h-12" : "w-8 h-8"
-                        }`}
+                        className={getStatusButtonStyles(item.status)}
                       >
                         {item.status === 1 && <FaBullseye className={`text-white ${isLarge ? "text-xl" : "text-sm"}`} />}
                         {item.status === 2 && <FaTriangleExclamation className={`text-white ${isLarge ? "text-xl" : "text-sm"}`} />}
@@ -199,39 +122,15 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                     <div className="relative flex-1">
                       {item.isEditing ? (
                         <textarea
-                          ref={(el) => {
-                            if (el) {
-                              inputRefs.current[index] = el as any;
-                              el.focus();
-                              // Place cursor at the end instead of selecting all
-                              el.setSelectionRange(el.value.length, el.value.length);
-                            }
-                          }}
+                          ref={createTextareaRef(item.id, index)}
                           value={item.text}
-                          onChange={(e) => handleInputChange(item.id, e.target.value)}
+                          onChange={(e) => updateItemText(item.id, e.target.value)}
                           onBlur={() => stopEditing(item.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              stopEditing(item.id);
-                            } else if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              stopEditing(item.id);
-                              // If this is the last item and it has text, add a new item
-                              if (index === items.length - 1 && item.text.trim()) {
-                                handleAddInput();
-                              }
-                            }
-                          }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                          }}
+                          onKeyDown={(e) => handleKeyDown(e, item.id, index)}
+                          onMouseDown={handleMouseDown}
                           placeholder="Type away!"
                           className={`w-full px-3 pr-10 rounded placeholder-warm-gray-500 dark:placeholder-warm-gray-400 transition-colors duration-200 resize-none overflow-hidden ${
-                            item.status === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                            item.status === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                            item.status === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                            item.status === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
-                            "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
+                            getItemBackgroundStyles(item.status)
                           } ${
                             isLarge ? "text-2xl py-3" : "text-sm py-2"
                           }`}
@@ -240,28 +139,15 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                             height: 'auto',
                             minHeight: isLarge ? '3rem' : '2rem'
                           }}
-                          onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = target.scrollHeight + 'px';
-                          }}
-                          onFocus={(e) => {
-                            // Ensure proper height on focus
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = target.scrollHeight + 'px';
-                          }}
+                          onInput={handleInput}
+                          onFocus={handleFocus}
                         />
                       ) : (
                         <div
                           onClick={() => startEditing(item.id)}
-                          onMouseDown={(e) => e.stopPropagation()}
+                          onMouseDown={handleMouseDown}
                           className={`w-full px-3 pr-10 rounded cursor-text break-words transition-colors duration-200 ${
-                            item.status === 1 ? "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                            item.status === 2 ? "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                            item.status === 3 ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40 text-warm-gray-800 dark:text-warm-gray-200" :
-                            item.status === 4 ? "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-300 dark:text-warm-gray-500" :
-                            "bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200"
+                            getItemBackgroundStyles(item.status)
                           } ${
                             isLarge ? "text-2xl py-3 min-h-[3rem]" : "text-sm py-2 min-h-[2rem]"
                           }`}
@@ -274,7 +160,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                           item.status === 4 ? "text-warm-gray-300 dark:text-warm-gray-500" : "text-warm-gray-800 dark:text-warm-gray-200"
                         }`}
                         aria-label="Delete Task"
-                        onClick={() => handleDeleteInput(item.id)}
+                        onClick={() => deleteItem(item.id)}
                         tabIndex={-1}
                       >
                         <svg className={isLarge ? "w-5 h-5" : "w-4 h-4"} fill="none" stroke="currentColor" viewBox="0 0 24 24">

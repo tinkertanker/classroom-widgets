@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-// @ts-ignore
 import { 
-  FaThumbsUp, 
-  FaHeart, 
-  FaStar, 
-  FaFaceSmile, 
-  FaFaceSurprise,
-  FaExclamation,
-  FaFire,
-  FaCheck
-} from 'react-icons/fa6';
+  CustomThumbsUp,
+  CustomHeart,
+  CustomStar,
+  CustomSmile,
+  CustomArrowUp,
+  CustomLocationDot,
+  CustomRainbow,
+  CustomCheck
+} from './CustomStickerIcons';
 
 interface StickerProps {
   stickerType?: string; // Optional now, can be read from savedState
@@ -25,7 +24,9 @@ interface StickerProps {
 const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedState, onStateChange }) => {
   // Get stickerType from props or savedState, with fallback to 'star'
   const stickerType = propStickerType || savedState?.stickerType || savedState?.stampType || 'star';
-  const [colorIndex, setColorIndex] = useState(savedState?.colorIndex || 0);
+  // Initialize with random color if no saved state
+  const getRandomColorIndex = () => Math.floor(Math.random() * 6);
+  const [colorIndex, setColorIndex] = useState(savedState?.colorIndex ?? getRandomColorIndex());
   const [rotation, setRotation] = useState(savedState?.rotation || 0);
 
   // Generate random rotation between -40 and 40 in steps of 5
@@ -102,29 +103,36 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
     const renderIconWithBorder = () => {
       switch (stickerType) {
         case 'thumbsup':
-          return React.createElement(FaThumbsUp as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomThumbsUp, { className: iconClass, style: dropShadowStyle });
         case 'heart':
-          return React.createElement(FaHeart as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomHeart, { className: iconClass, style: dropShadowStyle });
         case 'star':
-          return React.createElement(FaStar as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomStar, { className: iconClass, style: dropShadowStyle });
         case 'smile':
-          return React.createElement(FaFaceSmile as any, { className: iconClass, style: dropShadowStyle });
-        case 'shocked':
-          return React.createElement(FaFaceSurprise as any, { className: iconClass, style: dropShadowStyle });
-        case 'exclamation':
-          return React.createElement(FaExclamation as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomSmile, { className: iconClass, style: dropShadowStyle });
+        case 'arrow':
+          return React.createElement(CustomArrowUp, { className: iconClass, style: dropShadowStyle });
+        case 'marker':
+          return React.createElement(CustomLocationDot, { className: iconClass, style: dropShadowStyle });
         case 'fire':
-          return React.createElement(FaFire as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomRainbow, { className: iconClass, style: dropShadowStyle });
         case 'check':
-          return React.createElement(FaCheck as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomCheck, { className: iconClass, style: dropShadowStyle });
         default:
-          return React.createElement(FaStar as any, { className: iconClass, style: dropShadowStyle });
+          return React.createElement(CustomStar, { className: iconClass, style: dropShadowStyle });
       }
     };
 
     return (
       <div className="relative w-full h-full">
-        {renderIconWithBorder()}
+        {/* Special scaling for rainbow icon */}
+        {stickerType === 'fire' ? (
+          <div className="scale-150">
+            {renderIconWithBorder()}
+          </div>
+        ) : (
+          renderIconWithBorder()
+        )}
       </div>
     );
   };

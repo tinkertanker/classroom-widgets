@@ -55,7 +55,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   
   // Widget methods
   addWidget: (type, position) => {
-    const id = Date.now().toString();
+    // Generate unique ID using timestamp + random string to avoid collisions
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const config = widgetRegistry.get(type);
     const newWidget = {
       id,

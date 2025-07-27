@@ -59,8 +59,11 @@ const SIZES = {
   tall: { width: 300, height: 400 },
   soundEffects: { width: 80, height: 420 },
   trafficLight: { width: 300, height: 175 },
-  poll: { width: 400, height: 450 },
-  timer: { width: 350, height: 415 }
+  timer: { width: 350, height: 415 },
+  volumeMonitor: { width: 315, height: 210 },
+  poll: { width: 400, height: 340 },
+  ticTacToe: { width: 350, height: 350 },
+  taskCue: { width: 325, height: 325 }
 };
 
 // Widget Registry
@@ -115,7 +118,9 @@ export class WidgetRegistry {
       name: 'Task Cue',
       icon: FaPersonChalkboard,
       component: LazyWidgets.TaskCue,
-      defaultSize: DEFAULT_SIZE,
+      defaultSize: SIZES.taskCue,
+      minSize: SIZES.taskCue,
+      maxSize: SIZES.taskCue,
       category: WidgetCategory.TEACHING_TOOLS
     });
 
@@ -133,7 +138,9 @@ export class WidgetRegistry {
       name: 'Volume Monitor',
       icon: FaVolumeHigh,
       component: LazyWidgets.AudioVolumeMonitor,
-      defaultSize: DEFAULT_SIZE,
+      defaultSize: SIZES.volumeMonitor,
+      minSize: SIZES.volumeMonitor,
+      maxSize: SIZES.volumeMonitor,
       category: WidgetCategory.TEACHING_TOOLS
     });
 
@@ -208,7 +215,9 @@ export class WidgetRegistry {
       name: 'Tic Tac Toe',
       icon: FaGamepad,
       component: LazyWidgets.TicTacToe,
-      defaultSize: DEFAULT_SIZE,
+      defaultSize: SIZES.ticTacToe,
+      minSize: SIZES.ticTacToe,
+      maxSize: SIZES.ticTacToe,
       category: WidgetCategory.FUN
     });
 
@@ -219,6 +228,7 @@ export class WidgetRegistry {
       icon: FaChartColumn,
       component: LazyWidgets.Poll,
       defaultSize: SIZES.poll,
+      minSize: { width: 300, height: 250 },
       category: WidgetCategory.NETWORKED
     });
 

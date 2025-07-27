@@ -4,51 +4,58 @@ This guide explains how to add a new widget to the classroom widgets application
 
 ## Overview
 
-All widgets are defined in a single source of truth: `/src/constants/widgetRegistry.ts`. This ensures that when you add a new widget, all necessary configurations and integrations are handled automatically.
+All widgets are defined in a single source of truth: `/src/services/WidgetRegistry.ts`. This ensures that when you add a new widget, all necessary configurations and integrations are handled automatically.
 
 ## Steps to Add a New Widget
 
-### 1. Add Widget Type Constant
+### 1. Add Widget Type to Enum
 
-First, add your widget to the `WIDGET_TYPES` enum in `/src/constants/widgetTypes.ts`:
+First, add your widget to the `WidgetType` enum in `/src/shared/types/index.ts`:
+
+```typescript
+export enum WidgetType {
+  // ... existing widgets ...
+  MY_NEW_WIDGET = 18  // Use the next available number
+}
+```
+
+Also add it to the legacy constants in `/src/shared/constants/widgetTypes.ts` for backward compatibility:
 
 ```typescript
 export const WIDGET_TYPES = {
   // ... existing widgets ...
-  MY_NEW_WIDGET: 18  // Use the next available number
+  MY_NEW_WIDGET: 18
 };
 ```
 
 ### 2. Add Widget Definition to Registry
 
-Add your widget definition to `WIDGET_REGISTRY` in `/src/constants/widgetRegistry.ts`:
+Add your widget definition to the `WidgetRegistry` class in `/src/services/WidgetRegistry.ts`:
 
 ```typescript
-[WIDGET_TYPES.MY_NEW_WIDGET]: {
-  id: WIDGET_TYPES.MY_NEW_WIDGET,
-  name: 'myNewWidget',           // Component folder name
-  displayName: 'My New Widget',   // User-facing name
-  category: WidgetCategory.STANDALONE,  // or NETWORKED
-  componentPath: 'myNewWidget',   // Folder path under /src/components/
-  description: 'Description of what the widget does',
-  features: {
-    hasSettings: true,
-    hasStateManagement: true,
-    isResizable: true
-  },
-  layout: {
-    defaultWidth: 350,
-    defaultHeight: 350,
-    minWidth: 200,
-    minHeight: 200,
-    lockAspectRatio: false
-  }
-}
+// First, import your widget component at the top of the file
+const LazyWidgets = {
+  // ... existing imports ...
+  MyNewWidget: lazy(() => import('../features/widgets/myNewWidget')),
+};
+
+// Then in the initializeWidgets() method, add:
+this.register({
+  type: WidgetType.MY_NEW_WIDGET,
+  name: 'My New Widget',
+  icon: FaYourIcon,  // Import from react-icons/fa6
+  component: LazyWidgets.MyNewWidget,
+  defaultSize: { width: 350, height: 350 },
+  minSize: { width: 200, height: 200 },  // Optional
+  maxSize: { width: 500, height: 500 },  // Optional
+  maintainAspectRatio: false,  // Optional
+  category: WidgetCategory.TEACHING_TOOLS  // or INTERACTIVE, FUN, NETWORKED
+});
 ```
 
 ### 3. Create Widget Component
 
-Create your widget component in `/src/components/myNewWidget/myNewWidget.tsx`:
+Create your widget component in `/src/features/widgets/myNewWidget/myNewWidget.tsx`:
 
 ```typescript
 import React from 'react';
@@ -76,25 +83,31 @@ const MyNewWidget: React.FC<MyNewWidgetProps> = ({
 export default MyNewWidget;
 ```
 
-### 4. Add to Lazy Widgets
+### 4. Add Widget to Toolbar (Optional)
 
-Add your widget to `/src/components/Widget/LazyWidgetsRegistry.tsx`:
+To make your widget appear in the default toolbar, add it to the `defaultToolbar.visibleWidgets` array in `/src/store/workspaceStore.simple.ts`:
 
 ```typescript
-export const LazyWidgets = {
-  // ... existing widgets ...
-  myNewWidget: lazy(() => import('../myNewWidget/myNewWidget')),
+const defaultToolbar = {
+  visibleWidgets: [
+    // ... existing widgets ...
+    WidgetType.MY_NEW_WIDGET
+  ],
+  // ...
 };
 ```
 
-### 5. Run Validation
+If you don't add it here, users can still access it through the "MORE" button.
 
-In development, run the widget validation to ensure everything is configured correctly:
+### 5. Test Your Widget
 
-```javascript
-// In browser console:
-validateWidgets()
+Start the development server and test your widget:
+
+```bash
+npm start
 ```
+
+Your widget should appear in the toolbar or in the "MORE" widgets modal.
 
 ## Adding a Networked Widget
 
@@ -198,18 +211,19 @@ import MyWidgetActivity from './components/MyWidgetActivity';
 
 ## Benefits of Using the Registry
 
-1. **Single Source of Truth**: All widget configurations in one place
-2. **Automatic Integration**: Widget cleanup, lifecycle events, and configuration are handled automatically
+1. **Single Source of Truth**: All widget configurations in one place (`/src/services/WidgetRegistry.ts`)
+2. **Automatic Integration**: Widget registration, lazy loading, and configuration are handled automatically
 3. **Type Safety**: TypeScript ensures all required properties are defined
-4. **Validation**: Built-in validation tools catch configuration errors early
-5. **Consistency**: Ensures all widgets follow the same patterns
+4. **Centralized Size Management**: Widget sizes defined in the `SIZES` constant for consistency
+5. **Category Organization**: Widgets organized by category (Teaching Tools, Interactive, Fun, Networked)
 
 ## Common Pitfalls to Avoid
 
-1. **Forgetting to add to WIDGET_TYPES**: Always start by adding the constant
-2. **Mismatched component paths**: Ensure `componentPath` matches your folder structure
+1. **Forgetting to add to WidgetType enum**: Always start by adding the enum value
+2. **Mismatched component paths**: Ensure the lazy import path matches your folder structure
 3. **Missing student components**: For networked widgets, don't forget the student side
 4. **Incorrect room types**: Each networked widget needs a unique `roomType`
+5. **Size constraints**: For non-resizable widgets, set minSize and maxSize to the same as defaultSize
 
 ## Testing Your Widget
 

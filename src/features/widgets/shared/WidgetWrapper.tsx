@@ -153,8 +153,9 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
           <button
             onClick={handleDeleteClick}
             className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2 
-                       bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white p-2 rounded-full 
-                       shadow-lg transition-opacity duration-500 ${
+                       bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500 
+                       text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full 
+                       shadow-lg transition-all duration-300 ${
                          showTrash && !isBeingDragged ? 'opacity-100' : 'opacity-0 pointer-events-none'
                        }`}
             style={{ zIndex: 9999 }}

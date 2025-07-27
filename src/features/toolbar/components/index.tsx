@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { FaBars, FaStamp } from 'react-icons/fa6';
+import { FaBars, FaStamp, FaBug } from 'react-icons/fa6';
 import { useToolbar } from '../../../shared/hooks/useWorkspace';
 import { useCreateWidget } from '../../../shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
@@ -16,6 +16,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import TrashZone from '../../board/components/TrashZone';
 import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 const Toolbar: React.FC = () => {
   const { visibleWidgets, showClock } = useToolbar();
@@ -40,6 +41,20 @@ const Toolbar: React.FC = () => {
     
     return () => clearInterval(interval);
   }, [stickerMode]);
+  
+  // Add keyboard shortcut for debug launch all
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Cmd/Ctrl + Shift + D
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        handleDebugLaunchAll();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   
   const handleAddWidget = (type: WidgetType) => {
     createWidget(type);
@@ -78,6 +93,91 @@ const Toolbar: React.FC = () => {
         />
       ),
       className: 'max-w-2xl bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl'
+    });
+  };
+  
+  // Debug function to launch all widgets
+  const handleDebugLaunchAll = () => {
+    const addWidget = useWorkspaceStore.getState().addWidget;
+    const allWidgetTypes = widgetRegistry.getAll();
+    
+    // Grid configuration
+    const MARGIN = 50; // Margin from edges
+    const SPACING = 30; // Spacing between widgets
+    const COLUMNS = 5; // Number of columns
+    
+    // Sort widgets by category for better organization
+    const sortedWidgets = [...allWidgetTypes].sort((a, b) => {
+      const categoryOrder = ['TEACHING_TOOLS', 'INTERACTIVE', 'FUN', 'NETWORKED'];
+      const aIndex = categoryOrder.indexOf(a.category || '');
+      const bIndex = categoryOrder.indexOf(b.category || '');
+      return aIndex - bIndex;
+    });
+    
+    // Track row heights for proper vertical spacing
+    let currentY = MARGIN;
+    let rowMaxHeight = 0;
+    let currentRow = -1;
+    
+    // Calculate positions for all widgets
+    sortedWidgets.forEach((config, index) => {
+      const row = Math.floor(index / COLUMNS);
+      const col = index % COLUMNS;
+      
+      // Get the widget's default size
+      const size = config.defaultSize || { width: 350, height: 350 };
+      
+      // Start new row if needed
+      if (row !== currentRow) {
+        currentY += rowMaxHeight + SPACING;
+        rowMaxHeight = 0;
+        currentRow = row;
+      }
+      
+      // Track max height in current row
+      rowMaxHeight = Math.max(rowMaxHeight, size.height);
+      
+      // Calculate position
+      const x = MARGIN + col * (Math.max(size.width, 350) + SPACING);
+      const y = currentY;
+      
+      // Add the widget at the calculated position
+      // Use setTimeout to ensure unique timestamps even with the improved ID generation
+      setTimeout(() => {
+        addWidget(config.type, { x, y });
+      }, index * 10); // Small delay between each widget
+    });
+    
+    // Calculate total area needed
+    const totalWidth = MARGIN * 2 + COLUMNS * (350 + SPACING);
+    const totalHeight = currentY + rowMaxHeight + MARGIN;
+    
+    // Show a notification
+    showModal({
+      title: 'Debug: All Widgets Launched',
+      content: (
+        <div className="p-4">
+          <p className="text-warm-gray-700 dark:text-warm-gray-300">
+            Launched {sortedWidgets.length} widgets in a grid layout.
+          </p>
+          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mt-2">
+            Widgets are arranged in {COLUMNS} columns with {SPACING}px spacing.
+          </p>
+          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mt-1">
+            Total area: {totalWidth} × {totalHeight} pixels
+          </p>
+          <div className="mt-3 text-xs text-warm-gray-500 dark:text-warm-gray-400">
+            <p className="font-semibold">Widgets by category:</p>
+            <ul className="mt-1 space-y-1">
+              <li>• Teaching Tools: {sortedWidgets.filter(w => w.category === 'TEACHING_TOOLS').length}</li>
+              <li>• Interactive: {sortedWidgets.filter(w => w.category === 'INTERACTIVE').length}</li>
+              <li>• Fun: {sortedWidgets.filter(w => w.category === 'FUN').length}</li>
+              <li>• Networked: {sortedWidgets.filter(w => w.category === 'NETWORKED').length}</li>
+            </ul>
+          </div>
+        </div>
+      ),
+      className: 'max-w-md bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl'
     });
   };
   
@@ -153,6 +253,31 @@ const Toolbar: React.FC = () => {
             <FaStamp className="text-lg" />
             <span className="text-xs text-center leading-tight">Stickers</span>
           </button>
+          
+          {/* Debug button */}
+          <>
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+            <button
+              onClick={handleDebugLaunchAll}
+              className={clsx(
+                'px-3 py-2 rounded-lg transition-all duration-200',
+                'flex flex-col items-center gap-1 min-w-[80px]',
+                'text-warm-gray-700 dark:text-warm-gray-300',
+                'bg-yellow-100 dark:bg-yellow-900/30',
+                'hover:bg-yellow-200 dark:hover:bg-yellow-800/40',
+                'border border-yellow-300 dark:border-yellow-700',
+                'relative group'
+              )}
+              title="Debug: Launch all widgets in a grid (⌘⇧D)"
+            >
+              <FaBug className="text-lg text-yellow-600 dark:text-yellow-400" />
+              <span className="text-xs text-center leading-tight">Debug All</span>
+              {/* Keyboard shortcut indicator */}
+              <div className="absolute -bottom-1 -right-1 bg-yellow-600 dark:bg-yellow-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {isMac ? '⌘⇧D' : 'Ctrl+Shift+D'}
+              </div>
+            </button>
+          </>
           
           {/* Clock */}
           {showClock && (
