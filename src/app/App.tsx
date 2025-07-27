@@ -131,6 +131,14 @@ function App() {
         return;
       }
       
+      // Exit sticker mode with S or Escape key
+      if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
+        e.preventDefault();
+        setStickerMode(false);
+        setSelectedStickerType(null);
+        return;
+      }
+      
       // Open widget launcher with Cmd/Ctrl + K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -145,7 +153,7 @@ function App() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [stickerMode]);
   
   // Prevent swipe navigation
   useEffect(() => {
@@ -230,6 +238,30 @@ function App() {
           
           {/* Top Controls */}
           <TopControls />
+          
+          {/* Sticker Mode Banner */}
+          {stickerMode && (
+            <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-[999] animate-in slide-in-from-top-2 duration-300">
+              <div className="bg-amber-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3">
+                <div className="text-sm font-medium">
+                  Sticker Mode Active - Click anywhere to place {selectedStickerType || 'a sticker'}
+                </div>
+                <div className="text-xs opacity-90">
+                  Press <kbd className="bg-amber-600 px-1 rounded">S</kbd> or <kbd className="bg-amber-600 px-1 rounded">Esc</kbd> to exit
+                </div>
+                <button
+                  onClick={() => {
+                    setStickerMode(false);
+                    setSelectedStickerType(null);
+                  }}
+                  className="ml-2 text-amber-200 hover:text-white transition-colors"
+                  title="Exit sticker mode"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
           
           {/* Main Board */}
           <div className="h-full relative overflow-hidden">

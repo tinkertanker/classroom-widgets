@@ -105,7 +105,15 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
       const widget = filteredWidgets[0];
       const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
       if (!isDisabled) {
-        handleWidgetClick(widget.type);
+        // Launch the widget but don't close the modal immediately
+        onSelectWidget(widget.type);
+        // Keep focus on search field and clear the search to allow for more widgets
+        setSearchQuery('');
+        // Re-focus the search input after a brief delay
+        setTimeout(() => {
+          const searchInput = document.querySelector('input[placeholder="Search widgets..."]') as HTMLInputElement;
+          searchInput?.focus();
+        }, 50);
       }
     }
   };

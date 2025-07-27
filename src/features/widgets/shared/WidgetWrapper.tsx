@@ -1,8 +1,9 @@
 // New Widget Wrapper component using the centralized store
 
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
+import { FaTrash } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '../../../shared/hooks/useWidget';
 import { useWorkspace, useDragAndDrop } from '../../../shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
@@ -19,6 +20,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const { scale } = useWorkspace();
   const { dropTarget } = useDragAndDrop();
   const rndRef = useRef<any>(null);
+  const [isHovered, setIsHovered] = useState(false);
   
   if (!widget) return null;
   
@@ -70,46 +72,75 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     }
   );
 
+  const handleDeleteClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    // Play trash sound
+    (window as any).playTrashSound?.();
+    // Remove the widget
+    remove();
+  }, [remove]);
+
   return (
-    <Rnd
-      ref={rndRef}
-      position={widget.position}
-      size={widget.size}
-      onDragStart={handleDragStart}
-      onDragStop={handleDragStop}
-      onResizeStop={handleResizeStop}
-      bounds=".board"
-      scale={scale}
-      minWidth={config.minSize?.width}
-      minHeight={config.minSize?.height}
-      maxWidth={config.maxSize?.width}
-      maxHeight={config.maxSize?.height}
-      lockAspectRatio={config.maintainAspectRatio}
-      style={{
-        zIndex: widget.zIndex + 100,
-        cursor: isBeingDragged ? 'grabbing' : 'grab'
-      }}
-      className={wrapperClasses}
-      // IMPORTANT: The 'cancel' prop prevents react-rnd from starting a drag operation
-      // when clicking on interactive elements. Without this, the first click on these
-      // elements gets consumed by the drag handler instead of triggering the element's
-      // click handler. Add any clickable elements here or use the 'no-drag' class.
-      cancel=".no-drag, button, input, textarea, select, a, .clickable"
-      enableResizing={{
-        top: false,
-        right: true,
-        bottom: true,
-        left: false,
-        topRight: false,
-        bottomRight: true,
-        bottomLeft: false,
-        topLeft: false
-      }}
+    <div 
+      className="relative"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="w-full h-full">
-        {children}
-      </div>
-    </Rnd>
+      <Rnd
+        ref={rndRef}
+        position={widget.position}
+        size={widget.size}
+        onDragStart={handleDragStart}
+        onDragStop={handleDragStop}
+        onResizeStop={handleResizeStop}
+        bounds=".board"
+        scale={scale}
+        minWidth={config.minSize?.width}
+        minHeight={config.minSize?.height}
+        maxWidth={config.maxSize?.width}
+        maxHeight={config.maxSize?.height}
+        lockAspectRatio={config.maintainAspectRatio}
+        style={{
+          zIndex: widget.zIndex + 100,
+          cursor: isBeingDragged ? 'grabbing' : 'grab'
+        }}
+        className={wrapperClasses}
+        // IMPORTANT: The 'cancel' prop prevents react-rnd from starting a drag operation
+        // when clicking on interactive elements. Without this, the first click on these
+        // elements gets consumed by the drag handler instead of triggering the element's
+        // click handler. Add any clickable elements here or use the 'no-drag' class.
+        cancel=".no-drag, button, input, textarea, select, a, .clickable, .delete-button"
+        enableResizing={{
+          top: true,
+          right: true,
+          bottom: true,
+          left: true,
+          topRight: true,
+          bottomRight: true,
+          bottomLeft: true,
+          topLeft: true
+        }}
+      >
+        <div className="w-full h-full">
+          {children}
+        </div>
+      </Rnd>
+      
+      {/* Hover trash icon */}
+      {isHovered && !isBeingDragged && (
+        <button
+          onClick={handleDeleteClick}
+          className="delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2 
+                     bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white p-2 rounded-full 
+                     shadow-lg transition-all duration-200 z-[9999]
+                     animate-in fade-in-0 slide-in-from-top-1 duration-150"
+          title="Delete widget"
+        >
+          <FaTrash className="w-3 h-3" />
+        </button>
+      )}
+    </div>
   );
 };
 

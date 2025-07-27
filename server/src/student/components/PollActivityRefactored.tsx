@@ -85,14 +85,14 @@ const PollActivityRefactored: React.FC<PollActivityProps> = ({
     // Register event listeners
     on('poll:stateChanged', handleStateChanged);
     on('poll:dataUpdate', handleDataUpdate);
-    on('poll:resultsUpdate', handleResultsUpdate);
+    on('poll:voteUpdate', handleResultsUpdate);
     on('vote:confirmed', handleVoteConfirmed);
 
     // Cleanup
     return () => {
       off('poll:stateChanged', handleStateChanged);
       off('poll:dataUpdate', handleDataUpdate);
-      off('poll:resultsUpdate', handleResultsUpdate);
+      off('poll:voteUpdate', handleResultsUpdate);
       off('vote:confirmed', handleVoteConfirmed);
     };
   }, [on, off, pollData.isActive]);

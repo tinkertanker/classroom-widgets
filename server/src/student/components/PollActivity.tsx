@@ -78,8 +78,8 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
       }
     });
 
-    // Listen for results updates (harmonized)
-    socket.on('poll:resultsUpdate', (data: Results) => {
+    // Listen for vote updates from server
+    socket.on('poll:voteUpdate', (data: Results) => {
       setResults(data);
     });
 
@@ -195,7 +195,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
                 <div className="absolute top-0 left-0 h-full bg-sage-500/20 transition-[width] duration-300" style={{ width: `${percentage}%` }}></div>
                 <div className="relative z-[1] flex justify-between items-center">
                   <span>{option}</span>
-                  <span>{votes} ({percentage}%)</span>
+                  <span>{percentage}%</span>
                 </div>
               </div>
             );

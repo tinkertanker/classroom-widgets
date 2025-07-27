@@ -151,7 +151,7 @@ export class PollActivityRefactored extends BaseActivity<BaseActivityProps, Poll
                       {option} {isMyVote && '(Your vote)'}
                     </span>
                     <span className="text-warm-gray-600 dark:text-warm-gray-400">
-                      {votes} vote{votes !== 1 ? 's' : ''} ({percentage}%)
+                      {percentage}%
                     </span>
                   </div>
                   <div className="w-full bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full h-2">
