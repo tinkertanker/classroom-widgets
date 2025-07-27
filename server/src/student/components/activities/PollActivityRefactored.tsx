@@ -137,7 +137,7 @@ export class PollActivityRefactored extends BaseActivity<BaseActivityProps, Poll
               </p>
             )}
             
-            {results && options.map((option, index) => {
+            {results && options && options.map((option, index) => {
               const votes = results.votes[index] || 0;
               const percentage = results.totalVotes > 0 
                 ? Math.round((votes / results.totalVotes) * 100) 

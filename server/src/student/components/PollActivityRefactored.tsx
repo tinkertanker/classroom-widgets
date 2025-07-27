@@ -124,7 +124,7 @@ const PollActivityRefactored: React.FC<PollActivityProps> = ({
 
     // Show results if available and voted
     if (hasVoted && results) {
-      return <PollResults results={results} />;
+      return <PollResults results={results} pollOptions={pollData.options} />;
     }
 
     // Show options for voting
@@ -203,12 +203,14 @@ const PollOptions: React.FC<{
 };
 
 // Poll results component
-const PollResults: React.FC<{ results: Results }> = ({ results }) => {
+const PollResults: React.FC<{ results: Results; pollOptions?: string[] }> = ({ results, pollOptions }) => {
   const totalVotes = results.totalVotes || 1;
+  // Use results.options if available, otherwise fall back to pollOptions
+  const options = results.options || pollOptions || [];
 
   return (
     <div className="flex flex-col gap-3">
-      {results.options.map((option, index) => {
+      {options.map((option, index) => {
         const votes = results.votes[index] || 0;
         const percentage = Math.round((votes / totalVotes) * 100);
         

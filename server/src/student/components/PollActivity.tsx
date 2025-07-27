@@ -181,12 +181,14 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
   const renderResults = () => {
     if (!results) return null;
     const totalVotes = results.totalVotes || 1;
+    // Use results.options if available, otherwise fall back to pollData.options
+    const options = results.options || pollData.options || [];
 
     return (
       <>
-        <div className="text-xl font-semibold text-warm-gray-800 mb-3 text-center">{results.question}</div>
+        <div className="text-xl font-semibold text-warm-gray-800 mb-3 text-center">{results.question || pollData.question}</div>
         <div className="flex flex-col gap-2">
-          {results.options.map((option, index) => {
+          {options.map((option, index) => {
             const votes = results.votes[index] || 0;
             const percentage = Math.round((votes / totalVotes) * 100);
             
