@@ -1,50 +1,26 @@
-import { ValidationRule } from '../types/ui.types';
+// Validation utilities for the student app
 
-export const validateSessionCode = (code: string): boolean => {
+/**
+ * Validates a session code format
+ * Valid codes are 5 characters using specific letters/numbers to avoid confusion
+ */
+export const isValidSessionCode = (code: string): boolean => {
   return /^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code);
 };
 
-export const validateUrl = (url: string): boolean => {
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
+/**
+ * Validates a student name
+ * Currently just checks if not empty after trimming
+ */
+export const isValidStudentName = (name: string): boolean => {
+  return name.trim().length > 0;
 };
 
-export const validateField = (value: any, rules?: ValidationRule): string | null => {
-  if (!rules) return null;
-  
-  if (rules.required && !value) {
-    return 'This field is required';
-  }
-  
-  if (rules.minLength && value.length < rules.minLength) {
-    return `Minimum length is ${rules.minLength} characters`;
-  }
-  
-  if (rules.maxLength && value.length > rules.maxLength) {
-    return `Maximum length is ${rules.maxLength} characters`;
-  }
-  
-  if (rules.pattern && !rules.pattern.test(value)) {
-    return 'Invalid format';
-  }
-  
-  if (rules.validate) {
-    const result = rules.validate(value);
-    if (typeof result === 'string') {
-      return result;
-    }
-    if (!result) {
-      return 'Invalid value';
-    }
-  }
-  
-  return null;
-};
-
-export const sanitizeInput = (input: string): string => {
-  return input.trim().replace(/[<>]/g, '');
+/**
+ * Sanitizes a student name by trimming whitespace
+ * Returns 'Anonymous' if empty
+ */
+export const sanitizeStudentName = (name: string): string => {
+  const trimmed = name.trim();
+  return trimmed || 'Anonymous';
 };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import io, { Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { FaMinus, FaPlus } from 'react-icons/fa6';
+import { getSocket } from './services/socket';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import LinkShareActivity from './components/LinkShareActivity';
@@ -175,7 +176,7 @@ const App: React.FC = () => {
       }
 
       // Create new socket connection for this session
-      const newSocket = io();
+      const newSocket = getSocket();
       const sessionId = `${code}-${Date.now()}`;
       
       // Store socket reference

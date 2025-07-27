@@ -107,7 +107,7 @@ const TopControls: React.FC = () => {
           ref={sessionIslandRef}
           onClick={() => setIsSessionExpanded(!isSessionExpanded)}
           className={clsx(
-            "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl rounded-full shadow-lg",
+            "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl rounded-full shadow-sm",
             "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
             "transition-all duration-500 ease-out cursor-pointer",
             "hover:scale-105",

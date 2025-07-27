@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaSun, FaMoon } from 'react-icons/fa6';
+import { isValidSessionCode, sanitizeStudentName } from '../utils/validation';
 
 interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
@@ -43,13 +44,13 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
     }
     
     // Otherwise, join a new session
-    if (!/^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code)) {
+    if (!isValidSessionCode(code)) {
       setError('Please enter a valid 5-character session code');
       return;
     }
 
     // Name is now optional, use default if empty
-    const finalName = name.trim() || 'Anonymous';
+    const finalName = sanitizeStudentName(name);
 
     setIsLoading(true);
     try {
