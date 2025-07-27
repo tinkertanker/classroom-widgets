@@ -1,6 +1,5 @@
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { WIDGET_TYPES } from './widgetTypes';
-import { WidgetType } from '../types';
 
 interface WidgetSizeConfig {
   defaultWidth: number;
@@ -19,7 +18,7 @@ interface WidgetSizeConfig {
 export const WIDGET_CONFIGS: { [key: number]: WidgetSizeConfig } = {};
 
 // Build configs from service registry
-Object.entries(WIDGET_TYPES).forEach(([name, legacyId]) => {
+Object.entries(WIDGET_TYPES).forEach(([, legacyId]) => {
   const enumType = widgetRegistry.fromLegacyType(legacyId);
   if (!enumType) return;
   
