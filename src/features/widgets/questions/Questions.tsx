@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaQuestion, FaPlay, FaPause, FaTrash, FaCheck } from 'react-icons/fa6';
+import { getQuestionColor } from '../../../utils/questionColors';
 
 interface Question {
   id: string;
@@ -216,18 +217,20 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
                   </p>
                 </div>
               ) : (
-                sortedQuestions.map((question) => (
+                sortedQuestions.map((question, index) => {
+                  const color = getQuestionColor(index);
+                  return (
                   <div
                     key={question.id}
                     className={`p-3 rounded-lg border transition-all duration-200 ${
                       question.answered
                         ? 'bg-warm-gray-50 dark:bg-warm-gray-750 border-warm-gray-200 dark:border-warm-gray-600 opacity-60'
-                        : 'bg-white dark:bg-warm-gray-700 border-warm-gray-300 dark:border-warm-gray-600'
+                        : `${color.bg} ${color.border}`
                     }`}
                   >
                     <div className="flex justify-between items-start gap-2">
                       <p className={`text-sm flex-1 ${
-                        question.answered ? 'line-through text-warm-gray-500' : 'text-warm-gray-700 dark:text-warm-gray-200'
+                        question.answered ? 'line-through text-warm-gray-500' : color.text
                       }`}>
                         {question.text}
                       </p>
@@ -235,7 +238,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
                         {!question.answered && (
                           <button
                             onClick={() => handleMarkAnswered(question.id)}
-                            className="p-1.5 text-sage-600 hover:bg-sage-100 dark:text-sage-400 dark:hover:bg-sage-900/30 rounded transition-colors"
+                            className={`p-1.5 ${color.icon} ${color.iconHover} rounded transition-colors`}
                             title="Mark as answered"
                           >
                             <FaCheck className="text-xs" />
@@ -254,7 +257,8 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
                       {question.studentName || 'Anonymous'} • {new Date(question.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 import { useSessionRoom } from '../hooks/useSessionRoom';
+import { getQuestionColor } from '../utils/questionColors';
 
 interface Question {
   id: string;
@@ -189,6 +190,43 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
           {showSuccess && (
             <div className="bg-sage-50 dark:bg-sage-900/30 border border-sage-200 dark:border-sage-700 rounded-lg p-3 text-center text-sage-700 dark:text-sage-300 font-medium mb-3 text-sm">
               Question submitted successfully!
+            </div>
+          )}
+
+          {/* Submitted questions */}
+          {sortedQuestions.length > 0 && (
+            <div className="mt-4">
+              <h3 className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
+                Your Questions ({sortedQuestions.length})
+              </h3>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {sortedQuestions.map((question, index) => {
+                  const color = getQuestionColor(index);
+                  return (
+                    <div
+                      key={question.id}
+                      className={`p-2 rounded-md border transition-all duration-200 ${
+                        question.answered
+                          ? `${color.answeredBg} ${color.border} opacity-75`
+                          : `${color.bg} ${color.border}`
+                      }`}
+                    >
+                      <p className={`text-sm ${
+                        question.answered 
+                          ? `${color.answeredText} line-through` 
+                          : color.text
+                      }`}>
+                        {question.text}
+                      </p>
+                      {question.answered && (
+                        <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
+                          ✓ Answered
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
