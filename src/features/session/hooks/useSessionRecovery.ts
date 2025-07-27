@@ -23,6 +23,7 @@ export function useSessionRecovery({
   const attemptingRecovery = useRef(false);
   const lastSessionCode = useRef<string | null>(null);
   const hasEverHadSession = useRef(false);
+  const hasDisconnected = useRef(false);  // Track if we've ever disconnected
   
   useEffect(() => {
     // Track the last known session code
@@ -38,14 +39,20 @@ export function useSessionRecovery({
     const handleConnect = async () => {
       console.log('[useSessionRecovery] Socket connected, checking for session recovery...');
       
-      // If we had a session code before disconnect, try to rejoin
-      if (lastSessionCode.current && !attemptingRecovery.current) {
+      // Only attempt recovery if we've disconnected before (not on initial connect)
+      if (lastSessionCode.current && !attemptingRecovery.current && hasDisconnected.current) {
         attemptingRecovery.current = true;
         console.log('[useSessionRecovery] Attempting to recover session:', lastSessionCode.current);
         
         try {
           // Check if session still exists on server
           const response = await fetch(`/api/sessions/${lastSessionCode.current}/exists`);
+          
+          // Check if response is ok and is JSON
+          if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+            throw new Error('Invalid response from server');
+          }
+          
           const data = await response.json();
           
           if (data.exists) {
@@ -88,6 +95,7 @@ export function useSessionRecovery({
 
     const handleDisconnect = () => {
       console.log('[useSessionRecovery] Socket disconnected');
+      hasDisconnected.current = true;
       // Don't clear lastSessionCode here - we need it for recovery
     };
 

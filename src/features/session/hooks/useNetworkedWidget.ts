@@ -284,24 +284,23 @@ export function useNetworkedWidget({
     });
   }, [socket, sessionCode, roomType, widgetId]);
   
-  // Load saved state
+  // Load saved state - but don't restore session code automatically
+  // Session codes should only be valid during active sessions
   useEffect(() => {
     if (savedState?.isRoomActive) {
-      setIsRoomActive(true);
-      if (savedState.sessionCode) {
-        setSessionCode(savedState.sessionCode);
-        setLocalSessionCode(savedState.sessionCode);
-      }
+      // Don't automatically restore room active state or session code
+      // These should only be set when actively creating/joining a session
+      console.log('[useNetworkedWidget] Ignoring saved session state - sessions must be explicitly started');
     }
-  }, [savedState, setSessionCode]);
+  }, [savedState]);
   
-  // Save state changes
+  // Save state changes - but don't persist session code
   useEffect(() => {
     onStateChange?.({
-      isRoomActive,
-      sessionCode
+      // Don't save isRoomActive or sessionCode
+      // These should be ephemeral and not persist across reloads
     });
-  }, [isRoomActive, sessionCode, onStateChange]);
+  }, [onStateChange]);
   
   return {
     isRoomActive,
