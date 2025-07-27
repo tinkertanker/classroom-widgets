@@ -3,6 +3,7 @@ import { Socket } from 'socket.io-client';
 import { FaMinus, FaPlus } from 'react-icons/fa6';
 import { getSocket } from './services/socket';
 import { useRoomAnimations } from './hooks/useRoomAnimations';
+import { useSessionRecovery } from './hooks/useSessionRecovery';
 import JoinForm from './components/JoinForm';
 import PollActivity from './components/PollActivity';
 import LinkShareActivity from './components/LinkShareActivity';
@@ -41,6 +42,7 @@ const App: React.FC = () => {
   });
   const [isScrolled, setIsScrolled] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [primarySocket, setPrimarySocket] = useState<Socket | null>(null);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
   const headerRef = useRef<HTMLDivElement>(null);
   
@@ -70,6 +72,41 @@ const App: React.FC = () => {
   const toggleDarkMode = () => {
     setIsDarkMode(prev => !prev);
   };
+  
+  // Session recovery after hot reload
+  const { isRecovering } = useSessionRecovery({
+    socket: primarySocket,
+    sessionCode: currentSessionCode,
+    isConnected,
+    onSessionRestored: (activeRooms) => {
+      console.log('[App] Session restored with rooms:', activeRooms);
+      // Clear existing rooms first
+      setJoinedRooms([]);
+      
+      // Recreate rooms from recovery data
+      activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
+        const roomId = `${currentSessionCode}-${roomData.roomId}-${Date.now()}`;
+        const newRoom: JoinedRoom = {
+          id: roomId,
+          code: currentSessionCode,
+          type: roomData.roomType,
+          studentName: studentName,
+          socket: primarySocket!,
+          joinedAt: Date.now(),
+          initialData: roomData.initialData || {},
+          widgetId: roomData.widgetId
+        };
+        setJoinedRooms(prev => [...prev, newRoom]);
+      });
+    },
+    onSessionLost: () => {
+      console.log('[App] Session lost, clearing state');
+      setCurrentSessionCode('');
+      setJoinedRooms([]);
+      setPrimarySocket(null);
+      socketRefs.current.clear();
+    }
+  });
 
 
   // Handle scroll state updates with throttling and hysteresis
@@ -181,6 +218,7 @@ const App: React.FC = () => {
       
       // Store socket reference
       socketRefs.current.set(sessionId, newSocket);
+      setPrimarySocket(newSocket);
 
       // Set up socket event handlers
       newSocket.on('connect', () => {
@@ -304,6 +342,7 @@ const App: React.FC = () => {
     // Clear current session and connection state
     setCurrentSessionCode('');
     setIsConnected(false);
+    setPrimarySocket(null);
   };
 
   const handleLeaveRoom = (roomId: string) => {
@@ -357,6 +396,7 @@ const App: React.FC = () => {
           onToggleDarkMode={toggleDarkMode}
           isCompact={isScrolled}
           isConnected={isConnected}
+          isRecovering={isRecovering}
         />
       </div>
       

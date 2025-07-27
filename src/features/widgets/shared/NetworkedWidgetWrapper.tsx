@@ -71,11 +71,12 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
         description={description}
         buttonText={
           isStarting ? "Starting..." : 
+          session.isRecovering ? "Reconnecting..." :
           !session.isConnected ? "Connecting..." : 
           `Start ${title}`
         }
         onStart={handleStart}
-        disabled={isStarting || !session.isConnected}
+        disabled={isStarting || !session.isConnected || session.isRecovering}
         error={error}
       />
     );
@@ -92,6 +93,25 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
       >
         {headerChildren}
       </NetworkedWidgetHeader>
+      
+      {/* Connection status overlay */}
+      {session.isRecovering && (
+        <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sage-500 border-t-transparent mb-2"></div>
+            <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">Reconnecting to session...</p>
+          </div>
+        </div>
+      )}
+      
+      {!session.isConnected && !session.isRecovering && (
+        <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+          <div className="text-center">
+            <p className="text-dusty-rose-600 dark:text-dusty-rose-400 text-sm font-medium mb-1">Disconnected</p>
+            <p className="text-warm-gray-600 dark:text-warm-gray-400 text-xs">Check your connection</p>
+          </div>
+        </div>
+      )}
       
       {content}
     </div>

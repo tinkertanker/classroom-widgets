@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useSessionRecovery } from './useSessionRecovery';
 
 export type RoomType = 'poll' | 'linkShare' | 'rtFeedback' | 'questions';
 
@@ -25,6 +26,7 @@ interface UseNetworkedWidgetReturn {
     sessionCode: string | null;
     participantCount: number;
     isConnected: boolean;
+    isRecovering?: boolean;
   };
 }
 
@@ -82,6 +84,25 @@ export function useNetworkedWidget({
     }
   }, [sessionCode, localSessionCode]);
   
+  // Session recovery after hot reload
+  const { isRecovering } = useSessionRecovery({
+    socket,
+    sessionCode: localSessionCode || sessionCode,
+    isConnected,
+    onSessionRestored: () => {
+      console.log('[useNetworkedWidget] Session restored after disconnect');
+      setError(null);
+    },
+    onSessionLost: () => {
+      console.log('[useNetworkedWidget] Session lost after disconnect');
+      setIsRoomActive(false);
+      setSessionCode(null);
+      setLocalSessionCode(null);
+      setParticipantCount(0);
+      setError('Session expired. Please start a new session.');
+    }
+  });
+  
   // Create session object - memoize to prevent infinite rerenders
   const session = useMemo(() => {
     const code = localSessionCode || sessionCode;
@@ -89,9 +110,10 @@ export function useNetworkedWidget({
       socket,
       sessionCode: code,
       participantCount,
-      isConnected
+      isConnected,
+      isRecovering
     };
-  }, [socket, localSessionCode, sessionCode, participantCount, isConnected]);
+  }, [socket, localSessionCode, sessionCode, participantCount, isConnected, isRecovering]);
   
   // Setup socket listeners
   useEffect(() => {
@@ -145,16 +167,34 @@ export function useNetworkedWidget({
       }
     };
     
+    // Handle session recovery events
+    const handleSessionRecovered = (data: { sessionCode: string; rooms: any[] }) => {
+      console.log('[useNetworkedWidget] Session recovered:', data);
+      if (data.sessionCode) {
+        setSessionCode(data.sessionCode);
+        setLocalSessionCode(data.sessionCode);
+        
+        // Check if our room is active
+        const ourRoom = data.rooms?.find(r => r.roomType === roomType && (!r.widgetId || r.widgetId === widgetId));
+        if (ourRoom) {
+          setIsRoomActive(true);
+          onRoomCreated?.();
+        }
+      }
+    };
+    
     socket.on('session:roomCreated', handleRoomCreated);
     socket.on('session:roomClosed', handleRoomClosed);
     socket.on('session:participantUpdate', handleParticipantUpdate);
     socket.on('session:error', handleError);
+    socket.on('session:recovered', handleSessionRecovered);
     
     return () => {
       socket.off('session:roomCreated', handleRoomCreated);
       socket.off('session:roomClosed', handleRoomClosed);
       socket.off('session:participantUpdate', handleParticipantUpdate);
       socket.off('session:error', handleError);
+      socket.off('session:recovered', handleSessionRecovered);
     };
   }, [socket, roomType, widgetId, onRoomCreated, onRoomClosed, setSessionCode, setLocalSessionCode]);
   

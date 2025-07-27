@@ -12,9 +12,10 @@ interface JoinFormProps {
   onToggleDarkMode?: () => void;
   isCompact?: boolean;
   isConnected?: boolean;
+  isRecovering?: boolean;
 }
 
-const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSessionCode, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode, isCompact = false, isConnected = false }) => {
+const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSessionCode, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode, isCompact = false, isConnected = false, isRecovering = false }) => {
   const [code, setCode] = useState('');
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState('');
@@ -111,8 +112,12 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               <h1 className="text-xl sm:text-2xl font-semibold text-warm-gray-700 dark:text-warm-gray-300 m-0 text-center pr-12">
                 {currentSessionCode ? (
                   <div className="flex items-center justify-center">
-                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-sage-500' : 'bg-warm-gray-400'}`}></span>
-                    {isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
+                    <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                      isRecovering ? 'bg-amber-500 animate-pulse' : 
+                      isConnected ? 'bg-sage-500' : 
+                      'bg-warm-gray-400'
+                    }`}></span>
+                    {isRecovering ? 'Reconnecting' : isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
                   </div>
                 ) : 'Join Classroom Session'}
               </h1>
@@ -128,10 +133,14 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
         // Compact mode header
         currentSessionCode && (
           <div className="flex items-center justify-center mb-2 pr-12">
-            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-sage-500' : 'bg-warm-gray-400'}`} 
-                  title={isConnected ? 'Connected' : 'Connecting...'}></span>
+            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+              isRecovering ? 'bg-amber-500 animate-pulse' : 
+              isConnected ? 'bg-sage-500' : 
+              'bg-warm-gray-400'
+            }`} 
+                  title={isRecovering ? 'Reconnecting...' : isConnected ? 'Connected' : 'Connecting...'}></span>
             <h2 className="text-base font-semibold text-warm-gray-700 dark:text-warm-gray-300">
-              {isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
+              {isRecovering ? 'Reconnecting' : isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
             </h2>
           </div>
         )
