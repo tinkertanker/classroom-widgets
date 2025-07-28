@@ -33,13 +33,17 @@ code {
   animation: scale-in 0.1s ease-out;
 }
 
-/* Sticker button hover animations */
-.group:hover .rainbow-sticker {
-  transform: translateY(-8px) translateX(3px) rotate(-20deg) !important;
+/* Sticker button hover animations - fanning out effect */
+.group:hover .smile-sticker {
+  transform: translateX(-10px) translateY(2px) rotate(-10deg) scale(1.05) !important;
 }
 
-.group:hover .smile-sticker {
-  transform: translateY(-3px) rotate(15deg) scale(1.05) !important;
+.group:hover .rainbow-sticker {
+  transform: translateY(-8px) translateX(0px) rotate(0deg) scale(1.05) !important;
+}
+
+.group:hover .star-sticker {
+  transform: translateX(10px) translateY(2px) rotate(30deg) scale(1.05) !important;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
