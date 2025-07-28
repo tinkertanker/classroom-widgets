@@ -108,6 +108,16 @@ export function useListItems({ initialItems, savedState, onStateChange }: UseLis
     );
   }, []);
 
+  // Reorder items (for drag and drop)
+  const reorderItems = useCallback((startIndex: number, endIndex: number) => {
+    setItems(prevItems => {
+      const result = Array.from(prevItems);
+      const [removed] = result.splice(startIndex, 1);
+      result.splice(endIndex, 0, removed);
+      return result;
+    });
+  }, []);
+
   return {
     items,
     addItem,
@@ -115,6 +125,7 @@ export function useListItems({ initialItems, savedState, onStateChange }: UseLis
     cycleItemStatus,
     deleteItem,
     startEditing,
-    stopEditing
+    stopEditing,
+    reorderItems
   };
 }

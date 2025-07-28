@@ -16,6 +16,7 @@ import {
 
 function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
+  const widgetRef = React.useRef<HTMLDivElement>(null);
   const [result, setResult] = useState("Enter a list to randomise!");
   const [buttonSettings, setButtonSettings] = useState("normal");
 
@@ -55,7 +56,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
     onAnimationComplete: (selectedItem) => {
       setResult(selectedItem);
       setButtonSettings("result");
-      triggerConfetti();
+      triggerConfetti(widgetRef.current);
       playCelebration();
     }
   });
@@ -160,6 +161,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   return (
     <>
       <div
+        ref={widgetRef}
         className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative"
         id="jason"
       >

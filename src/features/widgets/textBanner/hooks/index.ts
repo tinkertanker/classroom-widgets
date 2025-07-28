@@ -1,0 +1,1 @@
+export { useAutoFontSize } from './useAutoFontSize';
