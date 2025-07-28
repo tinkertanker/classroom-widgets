@@ -188,14 +188,16 @@ const Toolbar: React.FC = () => {
   
   return (
     <>
-      <div className="inline-flex flex-col space-y-4 px-4 pt-4 pb-2 bg-warm-white dark:bg-warm-gray-800 rounded-lg shadow-lg transition-colors duration-200">
+      <div className="inline-flex flex-col space-y-4 px-4 pt-4 pb-2 transition-colors duration-200 max-w-full">
         {/* Main widget buttons */}
-        <div className="flex space-x-3 items-center justify-center">
-          {/* Trash icon */}
-          <TrashZone />
-          
-          {/* More widgets button */}
-          <button
+        <div className="flex space-x-3 items-center">
+          {/* Left section - always visible */}
+          <div className="flex space-x-3 items-center flex-shrink-0">
+            {/* Trash icon */}
+            <TrashZone />
+            
+            {/* More widgets button */}
+            <button
             onClick={handleShowMoreWidgets}
             className={clsx(
               'w-16 h-16 p-2 rounded-lg',
@@ -222,24 +224,31 @@ const Toolbar: React.FC = () => {
               {isMac ? '⌘K' : 'Ctrl+K'}
             </div>
           </button>
+            
+            {/* Separator */}
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+          </div>
           
-          {/* Separator */}
-          <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+          {/* Middle section - scrollable widget buttons */}
+          <div className="flex space-x-3 items-center overflow-x-auto scrollbar-hide flex-1 min-w-0">
+            {visibleConfigs.map((config) => (
+              <WidgetButton
+                key={config!.type}
+                config={config!}
+                onClick={() => handleAddWidget(config!.type)}
+                className={clsx(
+                  stickerMode ? 'opacity-50 cursor-not-allowed' : '',
+                  'flex-shrink-0'
+                )}
+              />
+            ))}
+          </div>
           
-          {/* Widget buttons */}
-          {visibleConfigs.map((config) => (
-            <WidgetButton
-              key={config!.type}
-              config={config!}
-              onClick={() => handleAddWidget(config!.type)}
-              className={stickerMode ? 'opacity-50 cursor-not-allowed' : ''}
-            />
-          ))}
-          
-          {/* Spacer */}
-          <div className="flex-1" />
-          
-          {/* Stickers button */}
+          {/* Right section - always visible */}
+          <div className="flex space-x-3 items-center flex-shrink-0">
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+
+            {/* Stickers button */}
           <button
             onClick={handleShowStickers}
             className={clsx(
@@ -247,24 +256,24 @@ const Toolbar: React.FC = () => {
               'flex flex-col items-center gap-1 min-w-[80px]',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
-                : 'text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80'
+                : 'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70'
             )}
             title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >
+        
             <StackedStickersIcon 
               className={clsx(
-                "w-7 h-7 transform transition-transform duration-300",
+                "w-6 h-6 transform transition-transform duration-300",
                 stickerMode ? "scale-110" : "hover:scale-105"
               )}
               isActive={stickerMode}
             />
             <span className="text-xs text-center leading-tight">Stickers</span>
           </button>
-          
-          {/* Debug button */}
-          <>
-            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
-            <button
+            
+            {/* Debug button */}
+            <>
+              <button
               onClick={handleDebugLaunchAll}
               className={clsx(
                 'px-3 py-2 rounded-lg transition-all duration-200',
@@ -284,29 +293,30 @@ const Toolbar: React.FC = () => {
                 {isMac ? '⌘⇧D' : 'Ctrl+Shift+D'}
               </div>
             </button>
-          </>
-          
-          {/* Clock */}
-          {showClock && (
-            <div className="flex items-center px-4 py-2 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm">
-              <Clock />
-            </div>
-          )}
-          
-          {/* Menu button */}
-          <div className="relative">
-            <button
+            </>
+            
+            {/* Clock */}
+            {showClock && (
+              <div className="flex items-center p-2 bg-white/50 dark:bg-warm-gray-700/50 rounded-lg shadow-sm">
+                <Clock />
+              </div>
+            )}
+            
+            {/* Menu button */}
+            <div className="relative">
+              <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-3 rounded-lg text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80 transition-colors"
+              className="p-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-colors"
               title="Menu"
             >
               <FaBars className="w-5 h-5" />
             </button>
-            
-            {/* Menu dropdown */}
-            {showMenu && (
-              <ToolbarMenu onClose={() => setShowMenu(false)} />
-            )}
+              
+              {/* Menu dropdown */}
+              {showMenu && (
+                <ToolbarMenu onClose={() => setShowMenu(false)} />
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -67,6 +67,7 @@ export interface WidgetFeatures {
   hasFaceDetection?: boolean;
   isResizable?: boolean;
   canTriggerConfetti?: boolean;
+  isTransparent?: boolean;
 }
 
 // Networked Widget Configuration

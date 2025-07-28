@@ -11,6 +11,7 @@ import Toolbar from '../features/toolbar/components';
 import TopControls from '../features/toolbar/components/TopControls';
 import WidgetRenderer from '../features/board/components/WidgetRenderer';
 import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
+import SmallScreenWarning from '../shared/components/SmallScreenWarning';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import io from 'socket.io-client';
@@ -57,6 +58,7 @@ function App() {
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
+  const [screenTooSmall, setScreenTooSmall] = useState(window.innerWidth < 768);
   
   // Note: Session code management is now handled by the networked widgets themselves
   // via the useNetworkedWidget hook. They will set/clear the session code as needed.
@@ -74,6 +76,16 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+  
+  // Check screen size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setScreenTooSmall(window.innerWidth < 768);
+    };
+    
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   
   // Setup socket connection
   useEffect(() => {
@@ -212,9 +224,12 @@ function App() {
   
   return (
     <GlobalErrorBoundary>
-      <ConfettiProvider>
-        <ModalProvider>
-          <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
+      {screenTooSmall ? (
+        <SmallScreenWarning />
+      ) : (
+        <ConfettiProvider>
+          <ModalProvider>
+            <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
           
           {/* Top Controls */}
           <TopControls />
@@ -260,9 +275,10 @@ function App() {
           <div className="toolbar-container">
             <Toolbar />
           </div>
-        </div>
-        </ModalProvider>
-      </ConfettiProvider>
+          </div>
+          </ModalProvider>
+        </ConfettiProvider>
+      )}
     </GlobalErrorBoundary>
   );
 }

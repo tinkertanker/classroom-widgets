@@ -100,6 +100,7 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
         drop-shadow(-1.5px -1.5px 0 ${borderColor})
         drop-shadow(1.5px -1.5px 0 ${borderColor})
         drop-shadow(-1.5px 1.5px 0 ${borderColor})
+        drop-shadow(6px 6px 8px rgba(0, 0, 0, 0.3))
       `
     };
     
@@ -142,7 +143,7 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
 
   return (
     <div 
-      className="w-full h-full cursor-pointer p-3"
+      className="w-full h-full cursor-pointer p-4"
       onClick={handleClick}
       title="Click to change color and rotation"
       style={{

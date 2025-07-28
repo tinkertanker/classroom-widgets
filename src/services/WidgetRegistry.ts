@@ -15,7 +15,7 @@ import {
   FaChartColumn,
   FaQrcode,
   FaArrowUpRightFromSquare,
-  FaWaveSquare,
+  FaVideo,
   FaSliders,
   FaGamepad,
   FaCircleQuestion,
@@ -140,6 +140,7 @@ export class WidgetRegistry {
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Visual work mode indicators',
       features: {
+        isTransparent: true,
         hasSettings: true,
         hasStateManagement: true,
         isResizable: false
@@ -159,6 +160,7 @@ export class WidgetRegistry {
       features: {
         hasSettings: true,
         hasStateManagement: true,
+        isTransparent: true,
         isResizable: true
       }
     });
@@ -279,7 +281,8 @@ export class WidgetRegistry {
       category: WidgetCategory.FUN,
       description: 'Decorative stickers',
       features: {
-        isResizable: true
+        isResizable: true,
+        isTransparent: true
       }
     });
 
@@ -287,7 +290,7 @@ export class WidgetRegistry {
     this.register({
       type: WidgetType.VISUALISER,
       name: 'Visualiser',
-      icon: FaWaveSquare,
+      icon: FaVideo,
       component: LazyWidgets.Visualiser,
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 300, height: 225 },

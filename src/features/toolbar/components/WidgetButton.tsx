@@ -18,9 +18,9 @@ const WidgetButton: React.FC<WidgetButtonProps> = ({ config, onClick, className 
       onClick={onClick}
       className={clsx(
         'px-3 py-2 rounded-lg text-warm-gray-700',
-        'bg-soft-white/80 dark:bg-warm-gray-800/80',
+        'bg-white/50 dark:bg-warm-gray-700/50',
         'dark:text-warm-gray-300',
-        'hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80',
+        'hover:bg-white/70 dark:hover:bg-warm-gray-600/70',
         'transition-all duration-200 group relative',
         'flex flex-col items-center gap-1 min-w-[80px]',
         className

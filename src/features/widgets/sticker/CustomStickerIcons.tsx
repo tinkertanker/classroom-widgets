@@ -118,7 +118,7 @@ export const CustomRainbow: React.FC<StickerIconProps> = ({ className, style }) 
     className={className}
     style={style}
   >
-    <g>
+    <g transform="translate(0, 60)"> {/* Move the rainbow down */}
       {/* Outer red arc */}
       <path d="M256 80C362 80 448 166 448 272L448 320L416 320L416 272C416 183 343 112 256 112C169 112 96 183 96 272L96 320L64 320L64 272C64 166 150 80 256 80Z" fill="#ff4444"/>
       {/* Orange arc */}

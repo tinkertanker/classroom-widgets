@@ -163,7 +163,7 @@ const TopControls: React.FC = () => {
         
         <button
           onClick={handleZoomReset}
-          className="px-2 py-1 text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors"
+          className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors"
           title="Reset zoom"
         >
           {Math.round(scale * 100)}%

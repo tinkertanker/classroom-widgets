@@ -74,12 +74,14 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     };
   }, []);
 
+  const isTransparent = config.features?.isTransparent || false;
+  
   const wrapperClasses = clsx(
     'widget-wrapper',
     'transition-shadow duration-200',
     {
-      'shadow-lg ring-2 ring-sage-500': isBeingDragged,
-      'hover:shadow-md': !isBeingDragged
+      'shadow-lg ring-2 ring-sage-500': isBeingDragged && !isTransparent,
+      'hover:shadow-md': !isBeingDragged && !isTransparent
     }
   );
 
