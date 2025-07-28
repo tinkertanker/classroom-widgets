@@ -19,7 +19,8 @@ import {
   FaSliders,
   FaGamepad,
   FaCircleQuestion,
-  FaPersonChalkboard
+  FaPersonChalkboard,
+  FaSpellCheck
 } from 'react-icons/fa6';
 
 import { WidgetType, WidgetConfig, WidgetCategory, Size } from '../shared/types';
@@ -44,7 +45,8 @@ const LazyWidgets = {
   Visualiser: lazy(() => import('../features/widgets/visualiser')),
   RTFeedback: lazy(() => import('../features/widgets/rtFeedback')),
   TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
-  Questions: lazy(() => import('../features/widgets/questions'))
+  Questions: lazy(() => import('../features/widgets/questions')),
+  Wordle: lazy(() => import('../features/widgets/wordle/wordle'))
 };
 
 // Default sizes for widgets
@@ -316,6 +318,23 @@ export class WidgetRegistry {
       }
     });
 
+    // Wordle
+    this.register({
+      type: WidgetType.WORDLE,
+      name: 'Wordle',
+      icon: FaSpellCheck,
+      component: LazyWidgets.Wordle,
+      defaultSize: { width: 350, height: 500 },
+      minSize: { width: 300, height: 450 },
+      maxSize: { width: 400, height: 600 },
+      category: WidgetCategory.FUN,
+      description: 'Daily word puzzle game',
+      features: {
+        hasStateManagement: true,
+        isResizable: true
+      }
+    });
+
     // NETWORKED WIDGETS
 
     // Poll
@@ -492,7 +511,8 @@ export class WidgetRegistry {
       [WIDGET_TYPES.VISUALISER]: WidgetType.VISUALISER,
       [WIDGET_TYPES.RT_FEEDBACK]: WidgetType.RT_FEEDBACK,
       [WIDGET_TYPES.TIC_TAC_TOE]: WidgetType.TIC_TAC_TOE,
-      [WIDGET_TYPES.QUESTIONS]: WidgetType.QUESTIONS
+      [WIDGET_TYPES.QUESTIONS]: WidgetType.QUESTIONS,
+      [WIDGET_TYPES.WORDLE]: WidgetType.WORDLE
     };
     return mapping[legacyType];
   }
@@ -516,7 +536,8 @@ export class WidgetRegistry {
       [WidgetType.VISUALISER]: WIDGET_TYPES.VISUALISER,
       [WidgetType.RT_FEEDBACK]: WIDGET_TYPES.RT_FEEDBACK,
       [WidgetType.TIC_TAC_TOE]: WIDGET_TYPES.TIC_TAC_TOE,
-      [WidgetType.QUESTIONS]: WIDGET_TYPES.QUESTIONS
+      [WidgetType.QUESTIONS]: WIDGET_TYPES.QUESTIONS,
+      [WidgetType.WORDLE]: WIDGET_TYPES.WORDLE
     };
     return mapping[type];
   }

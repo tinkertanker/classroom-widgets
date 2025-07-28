@@ -71,7 +71,7 @@ const WidgetRendererRegistry: React.FC<WidgetRendererProps> = ({
     
     switch(widgetName) {
       case 'randomiser':
-        return <LazyComponent {...commonProps} toggleConfetti={toggleConfetti} />;
+        return <LazyComponent {...commonProps} />;
       
       case 'timer':
       case 'traffic light':

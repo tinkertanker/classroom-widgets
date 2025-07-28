@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { FaBars, FaStamp, FaBug } from 'react-icons/fa6';
+import { FaBars, FaBug } from 'react-icons/fa6';
+import { StackedStickersIcon } from './StackedStickersIcon';
 import { useToolbar } from '../../../shared/hooks/useWorkspace';
 import { useCreateWidget } from '../../../shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
@@ -242,15 +243,21 @@ const Toolbar: React.FC = () => {
           <button
             onClick={handleShowStickers}
             className={clsx(
-              'px-3 py-2 rounded-lg transition-all duration-200',
+              'px-3 py-2 rounded-lg transition-all duration-200 group',
               'flex flex-col items-center gap-1 min-w-[80px]',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
-                : 'text-warm-gray-700 dark:text-warm-gray-300 bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
+                : 'text-warm-gray-700 bg-soft-white/80 dark:bg-warm-gray-800/80 dark:text-warm-gray-300 hover:bg-warm-gray-100/80 dark:hover:bg-warm-gray-700/80'
             )}
             title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >
-            <FaStamp className="text-lg" />
+            <StackedStickersIcon 
+              className={clsx(
+                "w-7 h-7 transform transition-transform duration-300",
+                stickerMode ? "scale-110" : "hover:scale-105"
+              )}
+              isActive={stickerMode}
+            />
             <span className="text-xs text-center leading-tight">Stickers</span>
           </button>
           

@@ -38,7 +38,8 @@ export enum WidgetType {
   VISUALISER = 14,
   RT_FEEDBACK = 15,
   TIC_TAC_TOE = 16,
-  QUESTIONS = 17
+  QUESTIONS = 17,
+  WORDLE = 18
 }
 
 // Widget Configuration

@@ -10,11 +10,11 @@ import Board from '../features/board/components';
 import Toolbar from '../features/toolbar/components';
 import TopControls from '../features/toolbar/components/TopControls';
 import WidgetRenderer from '../features/board/components/WidgetRenderer';
-import Confetti from 'react-confetti';
 import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import io from 'socket.io-client';
+import { ConfettiProvider } from '../contexts/ConfettiContext';
 
 // Audio import for trash sound
 import trashSound from '../sounds/trash-crumple.mp3';
@@ -54,7 +54,6 @@ function App() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
   const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
   const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
-  const [showConfetti, setShowConfetti] = React.useState(false);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -96,19 +95,6 @@ function App() {
     };
   }, [url]); // setServerStatus is stable from zustand, doesn't need to be in deps
   
-  // Confetti trigger function for widgets
-  useEffect(() => {
-    (window as any).toggleConfetti = (show: boolean) => {
-      setShowConfetti(show);
-      if (show) {
-        setTimeout(() => setShowConfetti(false), 5000);
-      }
-    };
-    
-    return () => {
-      delete (window as any).toggleConfetti;
-    };
-  }, []);
   
   // Trash sound effect
   useEffect(() => {
@@ -226,30 +212,26 @@ function App() {
   
   return (
     <GlobalErrorBoundary>
-      <ModalProvider>
-        <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
-          {/* Confetti */}
-          {showConfetti && (
-            <Confetti
-              width={window.innerWidth}
-              height={window.innerHeight}
-              recycle={false}
-              numberOfPieces={200}
-            />
-          )}
+      <ConfettiProvider>
+        <ModalProvider>
+          <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
           
           {/* Top Controls */}
           <TopControls />
           
           {/* Sticker Mode Banner */}
           {stickerMode && (
-            <div className="fixed top-16 left-1/2 transform -translate-x-1/2 z-[999] animate-in slide-in-from-top-2 duration-300">
-              <div className="bg-amber-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3">
-                <div className="text-sm font-medium">
-                  Sticker Mode Active - Click anywhere to place {selectedStickerType || 'a sticker'}
+            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] animate-in slide-in-from-top-2 duration-300">
+              <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 relative overflow-hidden">
+                <div className="absolute inset-0 bg-white opacity-20 animate-pulse" />
+                <div className="relative flex items-center gap-2">
+                  <span className="text-xl animate-bounce">✨</span>
+                  <div className="text-sm font-bold">
+                    Sticker Mode Active - Click anywhere to place {selectedStickerType || 'a sticker'}!
+                  </div>
                 </div>
-                <div className="text-xs opacity-90">
-                  Press <kbd className="bg-amber-600 px-1 rounded">S</kbd> or <kbd className="bg-amber-600 px-1 rounded">Esc</kbd> to exit
+                <div className="relative text-xs opacity-90">
+                  Press <kbd className="bg-white/20 px-1 rounded">S</kbd> or <kbd className="bg-white/20 px-1 rounded">Esc</kbd> to exit
                 </div>
                 <button
                   onClick={() => {
@@ -279,7 +261,8 @@ function App() {
             <Toolbar />
           </div>
         </div>
-      </ModalProvider>
+        </ModalProvider>
+      </ConfettiProvider>
     </GlobalErrorBoundary>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { 
   CustomThumbsUp,
   CustomHeart,
@@ -28,6 +29,9 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
   const getRandomColorIndex = () => Math.floor(Math.random() * 6);
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex ?? getRandomColorIndex());
   const [rotation, setRotation] = useState(savedState?.rotation || 0);
+  
+  // Subscribe to theme changes
+  const theme = useWorkspaceStore((state) => state.theme);
 
   // Generate random rotation between -40 and 40 in steps of 5
   const getRandomRotation = () => {
@@ -81,9 +85,8 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
   const getStickerIcon = () => {
     const iconClass = `w-full h-full ${colorSchemes[colorIndex]} transition-colors duration-200`;
     
-    // Check if dark mode
-    const isDarkMode = document.documentElement.classList.contains('dark');
-    const borderColor = isDarkMode ? '#3d3835' : 'white';
+    // Use theme from store instead of checking DOM
+    const borderColor = theme === 'dark' ? '#3d3835' : 'white';
     
     
     // Standardized drop-shadow approach for all icon stamps

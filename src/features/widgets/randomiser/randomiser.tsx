@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import SlotMachine from "./slotMachine";
 import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../../contexts/ModalContext";
+import { useConfetti } from "../../../contexts/ConfettiContext";
 import { RandomiserProps } from "./types";
 import { FaDice, FaRotate, FaGear } from 'react-icons/fa6';
 import celebrateSoundFile from "./celebrate.mp3";
@@ -13,13 +14,14 @@ import {
   useResponsiveHeight 
 } from './hooks';
 
-function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserProps) {
+function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
   const [result, setResult] = useState("Enter a list to randomise!");
   const [buttonSettings, setButtonSettings] = useState("normal");
 
-  // Use global modal
+  // Use global modal and confetti
   const { showModal } = useModal();
+  const { triggerConfetti } = useConfetti();
 
   // Choice management
   const {
@@ -27,8 +29,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
     setInput,
     choices,
     removedChoices,
-    choicesRef,
-    removedChoicesRef,
     processChoices,
     getActiveChoices,
     removeChoice,
@@ -55,7 +55,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
     onAnimationComplete: (selectedItem) => {
       setResult(selectedItem);
       setButtonSettings("result");
-      toggleConfetti(true);
+      triggerConfetti();
       playCelebration();
     }
   });
@@ -86,7 +86,7 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
       className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl",
       onClose: () => {
         // Update displayChoices to show items immediately if there are active choices
-        const activeChoices = choicesRef.current.filter(choice => !removedChoicesRef.current.includes(choice));
+        const activeChoices = getActiveChoices();
         if (activeChoices.length > 0) {
           setDisplayChoices(activeChoices);
           // Reset animation state
@@ -101,7 +101,6 @@ function Randomiser({ toggleConfetti, savedState, onStateChange }: RandomiserPro
   };
 
   const handleRandomise = () => {
-    toggleConfetti(false);
     stopSound();
 
     const processedChoices = processChoices(input);

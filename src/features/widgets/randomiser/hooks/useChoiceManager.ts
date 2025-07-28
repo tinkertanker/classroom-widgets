@@ -113,8 +113,6 @@ export function useChoiceManager({
     setInput,
     choices,
     removedChoices,
-    choicesRef,
-    removedChoicesRef,
     processChoices,
     getActiveChoices,
     removeChoice,

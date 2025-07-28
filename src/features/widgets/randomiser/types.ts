@@ -12,7 +12,6 @@ export interface RandomiserSavedState {
 }
 
 export interface RandomiserProps {
-  toggleConfetti: (value: boolean) => void;
   savedState?: RandomiserSavedState;
   onStateChange?: (state: RandomiserState) => void;
 }

@@ -55,7 +55,7 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
               (window as any).setStickerMode?.(true, type);
               if (onClose) onClose();
             }}
-            className={`group relative flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 transform hover:scale-110 ${
+            className={`group relative flex items-center justify-center p-4 rounded-xl transition-all duration-300 transform hover:scale-110 ${
               selectedStickerType === type && stickerMode
                 ? 'bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 border-2 border-amber-500 shadow-lg shadow-amber-200 dark:shadow-amber-900/50 scale-110'
                 : 'hover:bg-gradient-to-br hover:from-warm-gray-50 hover:to-warm-gray-100 dark:hover:from-warm-gray-700 dark:hover:to-warm-gray-600 border-2 border-warm-gray-200 dark:border-warm-gray-600 hover:border-warm-gray-300 dark:hover:border-warm-gray-500 hover:shadow-md'
@@ -74,7 +74,6 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
                 })
               )}
             </div>
-            <span className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">{label}</span>
             {selectedStickerType === type && stickerMode && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
                 ✓
