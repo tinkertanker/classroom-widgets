@@ -1,4 +1,4 @@
-import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect, memo } from 'react';
 import { useWorkspace } from '../../../shared/hooks/useWorkspace';
 import { useZoomWithScroll } from '../hooks/useZoomWithScroll';
 import Background from './Background';
@@ -112,4 +112,4 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
   );
 });
 
-export default Board;
+export default memo(Board);

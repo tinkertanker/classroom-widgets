@@ -1,6 +1,6 @@
 // WidgetRenderer - Renders individual widgets with proper wrapping
 
-import React, { Suspense } from 'react';
+import React, { Suspense, memo } from 'react';
 import { useWidget } from '../../../shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import WidgetWrapper from '../../widgets/shared/WidgetWrapper';
@@ -52,4 +52,4 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
   );
 };
 
-export default WidgetRenderer;
+export default memo(WidgetRenderer);

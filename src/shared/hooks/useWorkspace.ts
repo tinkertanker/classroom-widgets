@@ -89,10 +89,10 @@ export function useServerConnection() {
 
 // Drag and drop hook
 export function useDragAndDrop() {
-  const isDragging = useWorkspaceStore((state) => state.dragState.isDragging);
-  const draggedWidgetId = useWorkspaceStore((state) => state.dragState.draggedWidgetId);
-  const dropTarget = useWorkspaceStore((state) => state.dragState.dropTarget);
+  const dragState = useWorkspaceStore((state) => state.dragState, shallow);
   const setDropTarget = useWorkspaceStore((state) => state.setDropTarget);
+  
+  const { isDragging, draggedWidgetId, dropTarget } = dragState;
 
   return {
     isDragging,

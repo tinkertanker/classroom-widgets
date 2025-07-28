@@ -10,8 +10,12 @@ import { widgetRegistry } from '../../services/WidgetRegistry';
 
 // Hook for individual widget instances
 export function useWidget(widgetId: string) {
-  const widget = useWorkspaceStore((state) => state.widgets.find(w => w.id === widgetId));
-  const widgetState = useWorkspaceStore((state) => state.widgetStates.get(widgetId));
+  const widget = useWorkspaceStore(
+    useCallback((state) => state.widgets.find(w => w.id === widgetId), [widgetId])
+  );
+  const widgetState = useWorkspaceStore(
+    useCallback((state) => state.widgetStates.get(widgetId), [widgetId])
+  );
   
   const updatePosition = useWorkspaceStore((state) => state.moveWidget);
   const updateSize = useWorkspaceStore((state) => state.resizeWidget);
@@ -97,7 +101,7 @@ export function useWidgetEvents(widgetId: string, handlers: {
 // Hook for creating a new widget
 export function useCreateWidget() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
-  const widgets = useWorkspaceStore((state) => state.widgets);
+  const widgets = useWorkspaceStore((state) => state.widgets, shallow);
   const scale = useWorkspaceStore((state) => state.scale);
   
   const createWidget = useCallback((type: WidgetType, position?: Position) => {

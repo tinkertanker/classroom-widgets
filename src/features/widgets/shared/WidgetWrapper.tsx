@@ -1,6 +1,6 @@
 // New Widget Wrapper component using the centralized store
 
-import React, { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useEffect, useState, memo } from 'react';
 import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
 import { FaTrash } from 'react-icons/fa6';
@@ -171,4 +171,4 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   );
 };
 
-export default WidgetWrapper;
+export default memo(WidgetWrapper);
