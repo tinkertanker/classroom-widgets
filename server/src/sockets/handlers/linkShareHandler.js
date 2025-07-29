@@ -67,6 +67,22 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     session.updateActivity();
   });
 
+  // Student requests linkShare state (on join/refresh)
+  socket.on('linkShare:requestState', (data) => {
+    const { code, widgetId } = data;
+    const session = sessionManager.getSession(code);
+    
+    if (session) {
+      const room = session.getRoom('linkShare', widgetId);
+      if (room && room instanceof LinkShareRoom) {
+        socket.emit(EVENTS.LINK_SHARE.STATE_CHANGED, { 
+          isActive: room.isActive,
+          widgetId: data.widgetId
+        });
+      }
+    }
+  });
+
   // Link Share start/stop handlers
   socket.on('session:linkShare:start', (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());

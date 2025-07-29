@@ -109,6 +109,28 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     session.updateActivity();
   });
 
+  // Student requests questions state (on join/refresh)
+  socket.on('questions:requestState', (data) => {
+    const { code, widgetId } = data;
+    const session = sessionManager.getSession(code);
+    
+    if (session) {
+      const room = session.getRoom('questions', widgetId);
+      if (room && room instanceof QuestionsRoom) {
+        socket.emit(EVENTS.QUESTIONS.STATE_CHANGED, { 
+          isActive: room.isActive,
+          widgetId: data.widgetId
+        });
+        
+        // Also send the current questions list
+        socket.emit('questions:list', {
+          questions: room.getAllQuestions(),
+          widgetId: data.widgetId
+        });
+      }
+    }
+  });
+
   // Questions start/stop handlers
   socket.on('session:questions:start', (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());

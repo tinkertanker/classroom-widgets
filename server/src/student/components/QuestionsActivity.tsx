@@ -76,14 +76,16 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     });
 
     // Handle submission response
-    socket.on('questions:submitted', (data: { success: boolean }) => {
+    socket.on('session:questions:submitted', (data: { success: boolean; error?: string }) => {
+      setIsSubmitting(false);
       if (data.success) {
         setQuestionText('');
         setError('');
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
+      } else if (data.error) {
+        setError(data.error);
       }
-      setIsSubmitting(false);
     });
 
     // Handle submission error
@@ -98,7 +100,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       socket.off('questionAnswered');
       socket.off('questionDeleted');
       socket.off('allQuestionsCleared');
-      socket.off('questions:submitted');
+      socket.off('session:questions:submitted');
       socket.off('questions:error');
     };
   }, [socket, sessionCode, studentId]);
@@ -120,7 +122,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
 
     socket.emit('session:questions:submit', {
       sessionCode,
-      text: questionText.trim(),
+      question: questionText.trim(),
       studentName: studentName || 'Anonymous',
       widgetId
     });

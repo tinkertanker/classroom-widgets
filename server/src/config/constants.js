@@ -65,7 +65,7 @@ module.exports = {
       STOP: 'session:linkShare:stop',
       NEW_SUBMISSION: 'linkShare:newSubmission',
       SUBMISSION_DELETED: 'linkShare:submissionDeleted',
-      STATE_CHANGED: 'linkShare:roomStateChanged'
+      STATE_CHANGED: 'linkShare:stateChanged'
     },
     RT_FEEDBACK: {
       UPDATE: 'session:rtfeedback:update',

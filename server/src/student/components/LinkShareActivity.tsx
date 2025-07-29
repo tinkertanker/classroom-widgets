@@ -42,11 +42,20 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
     };
 
     socket.on('linkShare:stateChanged', handleRoomStateChanged);
+    
+    // Request current state if we don't have initial state
+    let timer: NodeJS.Timeout | undefined;
+    if (initialIsActive === undefined) {
+      timer = setTimeout(() => {
+        socket.emit('linkShare:requestState', { code: roomCode, widgetId });
+      }, 100);
+    }
 
     return () => {
+      if (timer) clearTimeout(timer);
       socket.off('linkShare:stateChanged', handleRoomStateChanged);
     };
-  }, [socket]);
+  }, [socket, roomCode, widgetId, initialIsActive]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -60,7 +60,14 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       }
     };
 
+    const handleSubmitted = (data: { success: boolean; error?: string }) => {
+      if (!data.success) {
+        console.error('Failed to submit feedback:', data.error);
+      }
+    };
+
     socket.on('rtfeedback:stateChanged', handleStateChanged);
+    socket.on('session:rtfeedback:submitted', handleSubmitted);
     
     // Request current state if we don't have initial state
     let timer: NodeJS.Timeout | undefined;
@@ -73,6 +80,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     return () => {
       if (timer) clearTimeout(timer);
       socket.off('rtfeedback:stateChanged', handleStateChanged);
+      socket.off('session:rtfeedback:submitted', handleSubmitted);
     };
   }, [socket, roomCode, isActive, widgetId]);
 
