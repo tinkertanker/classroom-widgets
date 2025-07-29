@@ -54,8 +54,11 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     });
 
     // Handle existing questions list
-    socket.on('questions:list', (questionsList: Question[]) => {
-      setQuestions(questionsList);
+    socket.on('questions:list', (data: { questions: Question[]; widgetId?: string }) => {
+      // Only handle if it's for this widget
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setQuestions(data.questions || []);
+      }
     });
 
     // Handle question being answered
