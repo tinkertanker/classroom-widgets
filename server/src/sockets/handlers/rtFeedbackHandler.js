@@ -82,7 +82,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     }
     
     // Submit feedback
-    room.submitFeedback(socket.id, data.value);
+    room.updateFeedback(socket.id, data.value);
     
     // Send confirmation
     socket.emit('session:rtfeedback:submitted', { success: true });
@@ -97,6 +97,22 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     session.updateActivity();
   });
 
+  // Student requests rtfeedback state (on join/refresh)
+  socket.on('rtfeedback:requestState', (data) => {
+    const { code, widgetId } = data;
+    const session = sessionManager.getSession(code);
+    
+    if (session) {
+      const room = session.getRoom('rtfeedback', widgetId);
+      if (room && room instanceof RTFeedbackRoom) {
+        socket.emit('rtfeedback:stateChanged', { 
+          isActive: room.isActive,
+          widgetId: data.widgetId
+        });
+      }
+    }
+  });
+
   // Handle reset request
   socket.on('session:rtfeedback:reset', (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
@@ -105,7 +121,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     const room = session.getRoom('rtfeedback', data.widgetId);
     if (!room || !(room instanceof RTFeedbackRoom)) return;
     
-    room.reset();
+    room.clearAllFeedback();
     
     // Emit updated state to all in the room
     const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
@@ -149,7 +165,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       return;
     }
     
-    room.submitFeedback(socket.id, data.value);
+    room.updateFeedback(socket.id, data.value);
     
     io.to(`room:${data.code}`).emit('rtfeedback:update', room.getAggregatedFeedback());
   });
@@ -161,7 +177,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     if (!room || !(room instanceof RTFeedbackRoom)) return;
     if (room.hostSocketId !== socket.id) return;
     
-    room.reset();
+    room.clearAllFeedback();
     io.to(`room:${data.code}`).emit('rtfeedback:update', room.getAggregatedFeedback());
   });
 };
