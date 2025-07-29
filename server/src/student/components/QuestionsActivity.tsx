@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { useSessionRoom } from '../hooks/useSessionRoom';
 import { getQuestionColor } from '../utils/questionColors';
 
 interface Question {
@@ -34,14 +33,12 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Handle room joining/leaving
-  useSessionRoom({
-    socket,
-    sessionCode,
-    roomType: 'questions',
-    widgetId,
-    isSession: true // Questions always use session mode
-  });
+  // Update isActive when prop changes
+  useEffect(() => {
+    if (initialIsActive !== undefined) {
+      setIsActive(initialIsActive);
+    }
+  }, [initialIsActive]);
 
   useEffect(() => {
 
@@ -49,8 +46,11 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     socket.emit('questions:requestState', { code: sessionCode, widgetId });
 
     // Handle state changes
-    socket.on('questions:stateChanged', (data: { isActive: boolean }) => {
-      setIsActive(data.isActive);
+    socket.on('questions:stateChanged', (data: { isActive: boolean; widgetId?: string }) => {
+      // Only handle state changes for this specific widget
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setIsActive(data.isActive);
+      }
     });
 
     // Handle existing questions list
@@ -140,7 +140,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     <div className="p-3">
       {!isActive ? (
         // Waiting state when teacher has stopped accepting questions
-        <div className="flex flex-col items-center justify-center min-h-[250px]">
+        <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
               Questions Paused

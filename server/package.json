@@ -1,19 +1,15 @@
 {
   "name": "classroom-widgets-server",
   "version": "1.0.0",
-  "main": "src/index.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node src/start.js",
-    "start:legacy": "node src/index.legacy.js",
-    "start:new": "node src/server.js",
-    "dev": "nodemon src/start.js",
-    "dev:legacy": "nodemon src/index.legacy.js",
-    "dev:new": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "dev:with-student": "./dev.sh",
     "build:student": "cd src/student && npm install && npm run build",
     "clean:student": "rm -rf public/*",
     "test": "node test-server.js",
-    "test:integration": "npm run start:new & sleep 3 && node test-server.js && pkill -f 'node src/server.js'"
+    "test:integration": "npm run start & sleep 3 && node test-server.js && pkill -f 'node src/server.js'"
   },
   "keywords": [],
   "author": "",

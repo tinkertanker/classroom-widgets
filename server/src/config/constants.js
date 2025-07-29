@@ -46,9 +46,11 @@ module.exports = {
       JOIN: 'session:join',
       CREATE_ROOM: 'session:createRoom',
       CLOSE_ROOM: 'session:closeRoom',
-      JOIN_ROOM: 'session:joinRoom',
-      LEAVE_ROOM: 'session:leaveRoom',
-      PARTICIPANT_UPDATE: 'session:participantUpdate'
+      PARTICIPANT_UPDATE: 'session:participantUpdate',
+      UPDATE_WIDGET_STATE: 'session:updateWidgetState',
+      WIDGET_STATE_CHANGED: 'session:widgetStateChanged',
+      HOST_DISCONNECTED: 'session:hostDisconnected',
+      HOST_RECONNECTED: 'session:hostReconnected'
     },
     POLL: {
       UPDATE: 'session:poll:update',
@@ -61,8 +63,6 @@ module.exports = {
     LINK_SHARE: {
       SUBMIT: 'session:linkShare:submit',
       DELETE: 'session:linkShare:delete',
-      START: 'session:linkShare:start',
-      STOP: 'session:linkShare:stop',
       NEW_SUBMISSION: 'linkShare:newSubmission',
       SUBMISSION_DELETED: 'linkShare:submissionDeleted',
       STATE_CHANGED: 'linkShare:stateChanged'
@@ -70,8 +70,6 @@ module.exports = {
     RT_FEEDBACK: {
       UPDATE: 'session:rtfeedback:update',
       RESET: 'session:rtfeedback:reset',
-      START: 'session:rtfeedback:start',
-      STOP: 'session:rtfeedback:stop',
       STATE_CHANGED: 'rtfeedback:stateChanged',
       DATA_UPDATE: 'rtfeedback:update'
     },
@@ -80,8 +78,6 @@ module.exports = {
       MARK_ANSWERED: 'session:questions:markAnswered',
       DELETE: 'session:questions:delete',
       CLEAR_ALL: 'session:questions:clearAll',
-      START: 'session:questions:start',
-      STOP: 'session:questions:stop',
       STATE_CHANGED: 'questions:stateChanged',
       NEW_QUESTION: 'newQuestion',
       QUESTION_ANSWERED: 'questionAnswered',

@@ -25,6 +25,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         if (existingSession) {
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
+          // Notify students that host has reconnected
+          io.to(`session:${existingSession.code}`).emit(EVENTS.SESSION.HOST_RECONNECTED);
         }
       }
       
@@ -105,6 +107,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Get active rooms data
       const activeRoomsData = session.getActiveRooms();
       
+      // Join all active widget rooms
+      activeRoomsData.forEach(roomData => {
+        const roomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
+        socket.join(`${code}:${roomId}`);
+      });
+      
       socket.emit('session:joined', {
         success: true,
         activeRooms: activeRoomsData,
@@ -159,11 +167,27 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
       socket.join(`${session.code}:${roomId}`);
       
+      // Make all session participants join the widget room
+      const socketIds = [];
+      io.sockets.adapter.rooms.get(`session:${session.code}`)?.forEach(socketId => {
+        socketIds.push(socketId);
+      });
+      
+      console.log('[SESSION DEBUG] Creating room:', { roomType, widgetId, roomId, sessionCode: session.code });
+      console.log('[SESSION DEBUG] Adding sockets to room:', socketIds);
+      
+      socketIds.forEach(socketId => {
+        const participantSocket = io.sockets.sockets.get(socketId);
+        if (participantSocket) {
+          participantSocket.join(`${session.code}:${roomId}`);
+          console.log('[SESSION DEBUG] Socket joined room:', { socketId, room: `${session.code}:${roomId}` });
+        }
+      });
+      
       // Notify all session participants about new room
       io.to(`session:${session.code}`).emit('session:roomCreated', {
         roomType,
         widgetId,
-        roomId,
         roomData: room.toJSON()
       });
       
@@ -193,8 +217,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Notify all participants
       io.to(`session:${session.code}`).emit('session:roomClosed', { 
         roomType, 
-        widgetId,
-        roomId 
+        widgetId
       });
       
       // Clear the room namespace
@@ -211,80 +234,46 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
   });
   
-  // Join a specific room
-  socket.on(EVENTS.SESSION.JOIN_ROOM, async (data) => {
+  // Unified widget state update handler
+  socket.on(EVENTS.SESSION.UPDATE_WIDGET_STATE, async (data) => {
     try {
-      const { sessionCode, roomType, widgetId } = data;
+      const { sessionCode, roomType, widgetId, isActive } = data;
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
       
-      if (!session) return;
-      
-      const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
-      const roomNamespace = `${session.code}:${roomId}`;
-      
-      socket.join(roomNamespace);
-      
-      // Send current room state to the joining student
-      const room = session.getRoom(roomType, widgetId);
-      if (room) {
-        // Add participant to room if they're a session participant
-        const participant = session.getParticipant(socket.id);
-        if (participant) {
-          room.addParticipant(socket.id, {
-            name: participant.name,
-            studentId: participant.studentId
-          });
-          
-          // Notify host of participant count update
-          if (room.hostSocketId) {
-            io.to(room.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-              count: room.getParticipantCount(),
-              roomType: roomType,
-              widgetId: widgetId
-            });
-          }
-        }
-        
-        // Send room-specific initial state
-        socket.emit(`${roomType}:roomJoined`, {
-          roomData: room.toJSON(),
-          isActive: room.isActive
-        });
+      if (!session || session.hostSocketId !== socket.id) {
+        return;
       }
+      
+      const room = session.getRoom(roomType, widgetId);
+      if (!room) {
+        return;
+      }
+      
+      // Update room state
+      if (roomType === 'poll' && room.pollData) {
+        room.pollData.isActive = isActive;
+      } else {
+        room.isActive = isActive;
+      }
+      
+      // Broadcast unified state change to all participants
+      io.to(`session:${session.code}`).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
+        roomType,
+        widgetId,
+        isActive
+      });
+      
+      // Also emit widget-specific event for backward compatibility
+      const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+      io.to(`${session.code}:${roomId}`).emit(`${roomType}:stateChanged`, {
+        isActive,
+        widgetId
+      });
+      
+      session.updateActivity();
     } catch (error) {
-      console.error('Error joining room:', error);
+      console.error('Error updating widget state:', error);
     }
   });
   
-  // Leave a specific room
-  socket.on(EVENTS.SESSION.LEAVE_ROOM, async (data) => {
-    try {
-      const { sessionCode, roomType, widgetId } = data;
-      const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
-      
-      if (!session) return;
-      
-      const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
-      const roomNamespace = `${session.code}:${roomId}`;
-      
-      socket.leave(roomNamespace);
-      
-      // Remove participant from room
-      const room = session.getRoom(roomType, widgetId);
-      if (room) {
-        room.removeParticipant(socket.id);
-        
-        // Notify host of participant count update
-        if (room.hostSocketId) {
-          io.to(room.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-            count: room.getParticipantCount(),
-            roomType: roomType,
-            widgetId: widgetId
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error leaving room:', error);
-    }
-  });
 };

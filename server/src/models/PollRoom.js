@@ -12,6 +12,8 @@ class PollRoom extends Room {
       votes: {},
       isActive: false
     };
+    // Track who has voted by socket ID
+    this.voters = new Set();
   }
 
   getType() {
@@ -50,15 +52,13 @@ class PollRoom extends Room {
   vote(participantId, optionIndex) {
     if (!this.pollData.isActive) return false;
     
-    // Check if participant already voted
-    const participant = this.participants.get(participantId);
-    if (!participant || participant.hasVoted) return false;
+    // Check if participant already voted using our voters Set
+    if (this.voters.has(participantId)) return false;
 
     // Record vote
     if (this.pollData.votes[optionIndex] !== undefined) {
       this.pollData.votes[optionIndex]++;
-      participant.hasVoted = true;
-      participant.vote = optionIndex;
+      this.voters.add(participantId);
       this.updateActivity();
       return true;
     }
@@ -69,11 +69,8 @@ class PollRoom extends Room {
    * Clear all votes when restarting a poll
    */
   clearVotes() {
-    // Reset participant voting status
-    this.participants.forEach((participant) => {
-      participant.hasVoted = false;
-      delete participant.vote;
-    });
+    // Clear the voters Set
+    this.voters.clear();
 
     // Reset vote counts
     if (this.pollData.options) {
