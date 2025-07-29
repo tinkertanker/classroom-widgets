@@ -27,7 +27,9 @@ const setupSocketConnection = (serverUrl: string, setServerStatus: any) => {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,
-    reconnectionAttempts: 5
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: Infinity, // Keep trying forever
+    timeout: 20000
   });
   
   socket.on('connect', () => {
@@ -41,6 +43,10 @@ const setupSocketConnection = (serverUrl: string, setServerStatus: any) => {
   socket.on('connect_error', (error: any) => {
     console.error('Connection error:', error);
     setServerStatus({ connected: false, error: error.message });
+  });
+  
+  socket.on('reconnect_attempt', (attemptNumber: number) => {
+    console.log(`Reconnecting... (attempt ${attemptNumber})`);
   });
   
   return socket;

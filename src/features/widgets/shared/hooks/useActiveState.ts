@@ -33,13 +33,14 @@ export function useActiveState({
   useEffect(() => {
     if (!socket || !sessionCode || !isRoomActive) return;
 
-    const eventName = isActive ? startEventName : stopEventName;
-    
-    socket.emit(eventName, {
+    // Use unified state update event
+    socket.emit('session:updateWidgetState', {
       sessionCode,
-      widgetId
+      roomType,
+      widgetId,
+      isActive
     });
-  }, [isActive, socket, sessionCode, isRoomActive, widgetId, startEventName, stopEventName]);
+  }, [isActive, socket, sessionCode, isRoomActive, widgetId, roomType]);
 
   // Helper function to toggle active state
   const toggleActive = useCallback((newState: boolean) => {
@@ -55,17 +56,21 @@ export function useActiveState({
       return;
     }
 
-    const eventName = newState ? startEventName : stopEventName;
-    console.log('[useActiveState] Emitting event:', eventName, 'with data:', {
+    // Use unified state update event
+    console.log('[useActiveState] Emitting session:updateWidgetState with data:', {
       sessionCode,
-      widgetId
+      roomType,
+      widgetId,
+      isActive: newState
     });
     
-    socket.emit(eventName, {
+    socket.emit('session:updateWidgetState', {
       sessionCode,
-      widgetId
+      roomType,
+      widgetId,
+      isActive: newState
     });
-  }, [socket, sessionCode, isRoomActive, widgetId, startEventName, stopEventName]);
+  }, [socket, sessionCode, isRoomActive, widgetId, roomType]);
 
   return { toggleActive };
 }

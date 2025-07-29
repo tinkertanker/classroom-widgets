@@ -11,9 +11,10 @@ const TopControls: React.FC = () => {
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSessionExpanded, setIsSessionExpanded] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
   
-  // Auto-expand session island when a session becomes active
+  // Auto-expand session island when a session becomes active or when disconnected
   // Hide when session ends
   React.useEffect(() => {
     if (sessionCode && !isSessionExpanded) {
@@ -22,6 +23,13 @@ const TopControls: React.FC = () => {
       setIsSessionExpanded(false);
     }
   }, [sessionCode]);
+  
+  // Auto-expand when disconnected to show status
+  React.useEffect(() => {
+    if (!connected && sessionCode) {
+      setIsSessionExpanded(true);
+    }
+  }, [connected, sessionCode]);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -87,20 +95,51 @@ const TopControls: React.FC = () => {
   // Remove click outside handler - island should only be toggled by clicking on it
   // or automatically when session starts/ends
 
+  // Handle reconnection attempt
+  const handleReconnect = React.useCallback(() => {
+    if (!connected && sessionCode) {
+      const socket = (window as any).socket;
+      if (socket && !socket.connected) {
+        setIsReconnecting(true);
+        socket.connect();
+        
+        // Reset reconnecting state after a timeout
+        setTimeout(() => {
+          setIsReconnecting(false);
+        }, 3000);
+      }
+    }
+  }, [connected, sessionCode]);
+  
+  // Reset reconnecting state when connection status changes
+  React.useEffect(() => {
+    if (connected) {
+      setIsReconnecting(false);
+    }
+  }, [connected]);
+
   return (
     <div className="fixed top-4 right-4 flex items-start space-x-2 z-[998]">
       {/* Dynamic Island-style Session Status */}
       {sessionCode ? (
         <div 
           ref={sessionIslandRef}
-          onClick={() => setIsSessionExpanded(!isSessionExpanded)}
+          onClick={() => {
+            // If disconnected, attempt reconnection on click
+            if (!connected) {
+              handleReconnect();
+            } else {
+              setIsSessionExpanded(!isSessionExpanded);
+            }
+          }}
           className={clsx(
             "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl rounded-full shadow-sm",
             "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
             "transition-all duration-500 ease-out cursor-pointer",
-            "hover:scale-105",
+            !connected ? "animate-pulse" : "hover:scale-105",
             isSessionExpanded ? "px-6 py-3" : "px-4 py-2"
           )}
+          title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
         >
           <div className="flex items-center">
             {/* WiFi Icon - Always visible */}
@@ -116,8 +155,18 @@ const TopControls: React.FC = () => {
               "flex items-center gap-3 transition-all duration-500",
               isSessionExpanded ? "max-w-[500px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden"
             )}>
-              {/* Pulse indicator */}
-              <div className="w-2 h-2 bg-sage-500 dark:bg-sage-400 rounded-full animate-pulse" />
+              {/* Connection status indicator */}
+              {connected ? (
+                <div className="w-2 h-2 bg-sage-500 dark:bg-sage-400 rounded-full animate-pulse" />
+              ) : isReconnecting ? (
+                <div className="text-xs text-amber-600 dark:text-amber-400 whitespace-nowrap animate-pulse">
+                  Reconnecting...
+                </div>
+              ) : (
+                <div className="text-xs text-warm-gray-600 dark:text-warm-gray-400 whitespace-nowrap">
+                  Disconnected - Click to retry
+                </div>
+              )}
               
               {/* Session Code */}
               <code className="text-xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider">
@@ -141,6 +190,7 @@ const TopControls: React.FC = () => {
             "flex items-center justify-center h-10 px-3 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm",
             "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
           )}
+          title={connected ? 'Connected to server' : 'Disconnected from server'}
         >
           <div className={clsx(
             'transition-colors duration-200',

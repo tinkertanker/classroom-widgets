@@ -172,11 +172,14 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
             }
           },
           'poll:voteUpdate': (data: any) => {
-            setResults({
-              votes: data.votes,
-              totalVotes: data.totalVotes,
-              participantCount: session.participantCount
-            });
+            // Only handle vote updates for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              setResults({
+                votes: data.votes,
+                totalVotes: data.totalVotes,
+                participantCount: session.participantCount
+              });
+            }
           },
           'poll:stateChanged': (data: { isActive: boolean; widgetId?: string }) => {
             // Only handle state changes for this specific widget
@@ -187,7 +190,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         }), [session.participantCount, widgetId]);
 
         // Use the new composite hook for socket management
-        const { emitWidgetEvent, toggleActive } = useWidgetSocket({
+        const { emitWidgetEvent, toggleActive, hasJoinedRoom } = useWidgetSocket({
           socket: session.socket,
           sessionCode: session.sessionCode,
           roomType: 'poll',
@@ -207,10 +210,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
             emitWidgetEvent('update', { pollData: newPollData });
           }
         }, [pollData, isRoomActive, emitWidgetEvent]);
-
-        const handleStop = () => {
-          updatePoll({ isActive: false });
-        };
 
         const handleToggleActive = () => {
           // Validate poll data before toggling

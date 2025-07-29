@@ -40,6 +40,8 @@ function setupSocketHandlers(io, sessionManager) {
           if (session.hostSocketId === socket.id) {
             console.log(`Host disconnected from session ${currentSessionCode}`);
             // Keep session alive for reconnection
+            // Notify all students that the teacher has disconnected
+            io.to(`session:${currentSessionCode}`).emit(EVENTS.SESSION.HOST_DISCONNECTED);
           } else {
             // Remove participant from session
             session.removeParticipant(socket.id);
@@ -74,25 +76,8 @@ function setupSocketHandlers(io, sessionManager) {
         }
       }
       
-      // Handle legacy room disconnect
-      sessionManager.rooms.forEach((room, code) => {
-        if (room.hostSocketId === socket.id) {
-          console.log(`Host disconnected from legacy room ${code}`);
-          // Keep room alive for reconnection
-        } else if (room.participants && room.participants.has(socket.id)) {
-          room.removeParticipant(socket.id);
-          
-          // Notify host
-          if (room.hostSocketId) {
-            const roomType = room.getType ? room.getType() : 'unknown';
-            io.to(room.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-              count: room.getParticipantCount(),
-              roomType: roomType,
-              widgetId: room.widgetId
-            });
-          }
-        }
-      });
+      // Legacy room handling is no longer needed since we moved to session-based architecture
+      // All room management is now handled through sessions
     });
   });
 }

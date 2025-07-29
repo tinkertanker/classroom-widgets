@@ -173,14 +173,10 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         socketIds.push(socketId);
       });
       
-      console.log('[SESSION DEBUG] Creating room:', { roomType, widgetId, roomId, sessionCode: session.code });
-      console.log('[SESSION DEBUG] Adding sockets to room:', socketIds);
-      
       socketIds.forEach(socketId => {
         const participantSocket = io.sockets.sockets.get(socketId);
         if (participantSocket) {
           participantSocket.join(`${session.code}:${roomId}`);
-          console.log('[SESSION DEBUG] Socket joined room:', { socketId, room: `${session.code}:${roomId}` });
         }
       });
       

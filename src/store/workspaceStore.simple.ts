@@ -1,5 +1,6 @@
 // Simplified store for testing
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { BackgroundType, WidgetType } from '../shared/types';
 import { WorkspaceStore } from './workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
@@ -18,7 +19,9 @@ const defaultToolbar = {
   showConnectionStatus: true
 };
 
-export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
+export const useWorkspaceStore = create<WorkspaceStore>()(
+  persist(
+    (set, get) => ({
   // Initial State
   widgets: [],
   background: BackgroundType.NONE,
@@ -159,4 +162,24 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   saveSnapshot: () => {},
   undo: () => {},
   redo: () => {}
-}));
+    }),
+    {
+      name: 'workspace-storage', // unique name for localStorage key
+      partialize: (state) => ({
+        // Only persist essential data
+        widgets: state.widgets,
+        background: state.background,
+        theme: state.theme,
+        scale: state.scale,
+        toolbar: state.toolbar,
+        widgetStates: Array.from(state.widgetStates.entries())
+      }),
+      onRehydrateStorage: () => (state) => {
+        // Convert arrays back to Maps after loading from storage
+        if (state && state.widgetStates && Array.isArray(state.widgetStates)) {
+          state.widgetStates = new Map(state.widgetStates);
+        }
+      }
+    }
+  )
+);

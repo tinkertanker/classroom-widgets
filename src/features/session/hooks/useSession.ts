@@ -13,7 +13,6 @@ interface SessionParticipant {
 interface ActiveRoom {
   roomType: RoomType;
   widgetId?: string;
-  roomId: string;
 }
 
 interface UseSessionProps {
@@ -65,22 +64,42 @@ export function useSession({
     const newSocket = io(SERVER_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: Infinity,  // Keep trying forever
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     });
 
     newSocket.on('connect', () => {
       setIsConnected(true);
       setConnectionError('');
+      
+      // If we have a session code, try to rejoin the session
+      if (sessionCodeRef.current) {
+        newSocket.emit('session:create', { existingCode: sessionCodeRef.current }, (response: any) => {
+          if (response.success) {
+            console.log('Reconnected to session:', response.code);
+          }
+        });
+      }
     });
 
     newSocket.on('disconnect', () => {
       setIsConnected(false);
+      setConnectionError('Disconnected from server. Reconnecting...');
     });
 
     newSocket.on('connect_error', (error) => {
-      setConnectionError('Failed to connect to server');
+      setConnectionError('Cannot connect to server. Retrying...');
       setIsConnected(false);
+    });
+    
+    newSocket.on('reconnect_attempt', (attemptNumber) => {
+      setConnectionError(`Reconnecting... (attempt ${attemptNumber})`);
+    });
+    
+    newSocket.on('reconnect_failed', () => {
+      setConnectionError('Failed to reconnect. Please refresh the page.');
     });
 
     // Session event handlers
@@ -91,19 +110,19 @@ export function useSession({
     });
 
     newSocket.on('session:roomCreated', (data) => {
-      const { roomType, widgetId, roomId } = data;
+      const { roomType, widgetId } = data;
       setActiveRooms(prev => {
         // Check if this room already exists
-        const exists = prev.some(r => r.roomId === roomId);
+        const exists = prev.some(r => r.roomType === roomType && r.widgetId === widgetId);
         if (exists) return prev;
-        return [...prev, { roomType, widgetId, roomId }];
+        return [...prev, { roomType, widgetId }];
       });
       onRoomCreated?.(roomType, widgetId);
     });
 
     newSocket.on('session:roomClosed', (data) => {
-      const { roomType, widgetId, roomId } = data;
-      setActiveRooms(prev => prev.filter(r => r.roomId !== roomId));
+      const { roomType, widgetId } = data;
+      setActiveRooms(prev => prev.filter(r => !(r.roomType === roomType && r.widgetId === widgetId)));
       onRoomClosed?.(roomType, widgetId);
     });
 
@@ -165,12 +184,11 @@ export function useSession({
       }, (response: any) => {
         if (response.success) {
           if (!response.isExisting) {
-            const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
             setActiveRooms(prev => {
               // Check if this room already exists
-              const exists = prev.some(r => r.roomId === roomId);
+              const exists = prev.some(r => r.roomType === roomType && r.widgetId === widgetId);
               if (exists) return prev;
-              return [...prev, { roomType, widgetId, roomId }];
+              return [...prev, { roomType, widgetId }];
             });
           }
           resolve(true);
@@ -191,10 +209,17 @@ export function useSession({
       widgetId 
     });
     
-    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
-    setActiveRooms(prev => prev.filter(r => r.roomId !== roomId));
+    setActiveRooms(prev => prev.filter(r => !(r.roomType === roomType && r.widgetId === widgetId)));
   }, [socket, isConnected, sessionCode]);
 
+  // Manual reconnect function
+  const reconnect = useCallback(() => {
+    if (socket && !socket.connected) {
+      setConnectionError('Attempting to reconnect...');
+      socket.connect();
+    }
+  }, [socket]);
+  
   // Cleanup function
   const cleanup = useCallback(() => {
     if (socket) {
@@ -240,6 +265,7 @@ export function useSession({
     createRoom,
     closeRoom,
     cleanup,
-    ensureSession
+    ensureSession,
+    reconnect
   };
 }

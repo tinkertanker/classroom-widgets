@@ -8,7 +8,6 @@ const { TIME, LIMITS } = require('../config/constants');
 class SessionManager {
   constructor() {
     this.sessions = new Map();
-    this.rooms = new Map(); // Legacy room support
     
     // Start cleanup interval
     this.startCleanupInterval();
@@ -70,14 +69,6 @@ class SessionManager {
       }
     }
 
-    // Clean up legacy rooms
-    for (const [code, room] of this.rooms) {
-      if (now - room.lastActivity > TIME.ROOM_IDLE_TIMEOUT) {
-        console.log(`Cleaning up inactive legacy room: ${code}`);
-        this.rooms.delete(code);
-        cleanedCount++;
-      }
-    }
 
     if (cleanedCount > 0) {
       console.log(`Cleaned up ${cleanedCount} inactive sessions/rooms`);
@@ -107,7 +98,6 @@ class SessionManager {
 
     return {
       activeSessions: this.sessions.size,
-      legacyRooms: this.rooms.size,
       totalParticipants,
       totalRooms
     };
@@ -117,41 +107,9 @@ class SessionManager {
    * Check if room code is available
    */
   isRoomCodeAvailable(code) {
-    return !this.rooms.has(code) && !this.sessions.has(code);
+    return !this.sessions.has(code);
   }
 
-  /**
-   * Create a legacy room (for backward compatibility)
-   */
-  createLegacyRoom(type, hostSocketId) {
-    const code = generateRoomCode(this.sessions, this.rooms);
-    let room;
-
-    switch (type) {
-      case 'poll':
-        const PollRoom = require('../models/PollRoom');
-        room = new PollRoom(code);
-        break;
-      case 'linkShare':
-        const LinkShareRoom = require('../models/LinkShareRoom');
-        room = new LinkShareRoom(code);
-        break;
-      case 'rtfeedback':
-        const RTFeedbackRoom = require('../models/RTFeedbackRoom');
-        room = new RTFeedbackRoom(code);
-        break;
-      case 'questions':
-        const QuestionsRoom = require('../models/QuestionsRoom');
-        room = new QuestionsRoom(code);
-        break;
-      default:
-        throw new Error(`Unknown room type: ${type}`);
-    }
-
-    room.hostSocketId = hostSocketId;
-    this.rooms.set(code, room);
-    return room;
-  }
 }
 
 module.exports = SessionManager;

@@ -76,17 +76,13 @@ export const usePollSocket = ({
 
     // Vote updates
     const handleVoteUpdate = (data: Results) => {
-      console.log('[POLL STUDENT DEBUG] Received poll:voteUpdate:', data);
       setResults(data);
     };
 
     // Vote confirmation
     const handleVoteConfirmed = (data: { success: boolean; error?: string }) => {
-      console.log('[POLL STUDENT DEBUG] Vote confirmed:', data);
       if (data.success) {
         setHasVoted(true);
-      } else if (data.error) {
-        console.log('[POLL STUDENT DEBUG] Vote error:', data.error);
       }
     };
 
@@ -116,21 +112,15 @@ export const usePollSocket = ({
   }, [socket, roomCode, widgetId, initialPollData, pollData.isActive]);
 
   const handleVote = (optionIndex: number) => {
-    console.log('[POLL STUDENT DEBUG] handleVote called:', { optionIndex, hasVoted, isActive: pollData.isActive });
-    if (hasVoted || !pollData.isActive) {
-      console.log('[POLL STUDENT DEBUG] Vote blocked:', { hasVoted, isActive: pollData.isActive });
-      return;
-    }
+    if (hasVoted || !pollData.isActive) return;
     
     setSelectedOption(optionIndex);
     
-    const voteData = { 
+    socket.emit('session:poll:vote', { 
       sessionCode: roomCode, 
       optionIndex: optionIndex,
       widgetId
-    };
-    console.log('[POLL STUDENT DEBUG] Emitting session:poll:vote:', voteData);
-    socket.emit('session:poll:vote', voteData);
+    });
   };
 
   return {

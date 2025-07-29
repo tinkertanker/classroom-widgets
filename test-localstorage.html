@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test localStorage</title>
+</head>
+<body>
+    <h1>LocalStorage Test for Classroom Widgets</h1>
+    <button onclick="testStorage()">Test LocalStorage</button>
+    <button onclick="clearStorage()">Clear Storage</button>
+    <pre id="output"></pre>
+    
+    <script>
+        function testStorage() {
+            const output = document.getElementById('output');
+            
+            // Check if workspace-storage exists
+            const stored = localStorage.getItem('workspace-storage');
+            if (stored) {
+                output.textContent = 'Found workspace-storage:\n' + JSON.stringify(JSON.parse(stored), null, 2);
+            } else {
+                output.textContent = 'No workspace-storage found. Add some widgets in the app first.';
+            }
+            
+            // Show all localStorage keys
+            const keys = Object.keys(localStorage);
+            output.textContent += '\n\nAll localStorage keys: ' + keys.join(', ');
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('workspace-storage');
+            document.getElementById('output').textContent = 'Cleared workspace-storage';
+        }
+    </script>
+</body>
+</html>

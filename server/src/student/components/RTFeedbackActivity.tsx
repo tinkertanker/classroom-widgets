@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { useSessionRoom } from '../hooks/useSessionRoom';
 
 interface RTFeedbackActivityProps {
   socket: Socket;
@@ -17,14 +16,12 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
 
-  // Handle room joining/leaving
-  useSessionRoom({
-    socket,
-    sessionCode: roomCode,
-    roomType: 'rtfeedback',
-    widgetId,
-    isSession
-  });
+  // Update isActive when prop changes
+  useEffect(() => {
+    if (initialIsActive !== undefined) {
+      setIsActive(initialIsActive);
+    }
+  }, [initialIsActive]);
 
   // Send feedback when value changes (only when active)
   useEffect(() => {
@@ -115,7 +112,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     <div className="p-3">
       {!isActive ? (
         // Waiting state when teacher has stopped feedback
-        <div className="flex flex-col items-center justify-center min-h-[250px]">
+        <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
               Feedback Paused

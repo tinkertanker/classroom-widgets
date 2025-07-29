@@ -161,7 +161,6 @@ class Session {
       rooms.push({
         roomType,
         widgetId,
-        roomId,
         room: room.toJSON()
       });
     });
