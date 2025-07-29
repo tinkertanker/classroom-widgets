@@ -71,8 +71,9 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     
     if (room.markAnswered(data.questionId)) {
       const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
-      io.to(`${session.code}:${questionsRoomId}`).emit('questions:questionAnswered', { 
-        questionId: data.questionId 
+      io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.QUESTION_ANSWERED, { 
+        questionId: data.questionId,
+        widgetId: data.widgetId
       });
     }
     
@@ -89,8 +90,9 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     
     if (room.deleteQuestion(data.questionId)) {
       const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
-      io.to(`${session.code}:${questionsRoomId}`).emit('questions:questionDeleted', { 
-        questionId: data.questionId 
+      io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.QUESTION_DELETED, { 
+        questionId: data.questionId,
+        widgetId: data.widgetId
       });
     }
     
@@ -108,7 +110,9 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     room.clearAllQuestions();
     
     const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
-    io.to(`${session.code}:${questionsRoomId}`).emit('questions:allQuestionsCleared');
+    io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.ALL_CLEARED, {
+      widgetId: data.widgetId
+    });
     
     session.updateActivity();
   });
