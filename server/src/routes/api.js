@@ -1,135 +1,214 @@
-const { LIMITS } = require('../config/constants');
+const express = require('express');
+const { asyncHandler } = require('../middleware/errorHandler');
+const { ValidationError, NotFoundError } = require('../middleware/errorHandler');
+const { isValidSessionCode, isValidRoomCode } = require('../middleware/validation');
 
 /**
- * Setup API routes
+ * API routes for RESTful endpoints
  */
-module.exports = function setupApiRoutes(app, sessionManager) {
-  // Health check endpoint
-  app.get('/api/health', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date(),
-      sessions: sessionManager.sessions.size,
-      uptime: process.uptime()
+module.exports = (sessionManager) => {
+  const router = express.Router();
+
+  /**
+   * Get server statistics
+   */
+  router.get('/stats', (req, res) => {
+    const stats = sessionManager.getStats();
+    res.json({
+      success: true,
+      data: stats
     });
   });
 
-  // Session Management APIs
-  app.post('/api/sessions/create', async (req, res, next) => {
-    try {
-      const session = sessionManager.createSession();
-      
-      res.json({ 
-        code: session.code, 
-        success: true 
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Check if session exists and get active rooms
-  app.get('/api/sessions/:code/exists', (req, res) => {
+  /**
+   * Get session information
+   */
+  router.get('/sessions/:code', asyncHandler(async (req, res) => {
     const { code } = req.params;
-    const session = sessionManager.getSession(code);
     
-    if (session) {
-      res.json({ 
-        exists: true, 
-        activeRooms: session.getActiveRoomTypes(),
+    if (!isValidSessionCode(code)) {
+      throw new ValidationError('Invalid session code format');
+    }
+    
+    const session = sessionManager.getSession(code);
+    if (!session) {
+      throw new NotFoundError('Session not found');
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        code: session.code,
         participantCount: session.getParticipantCount(),
+        activeRooms: session.getActiveRooms(),
         createdAt: session.createdAt,
         lastActivity: session.lastActivity
-      });
-    } else {
-      res.json({ exists: false });
-    }
-  });
-
-  // Get session details
-  app.get('/api/sessions/:code', (req, res) => {
-    const { code } = req.params;
-    const session = sessionManager.getSession(code);
-    
-    if (!session) {
-      return res.status(404).json({ 
-        error: 'Session not found' 
-      });
-    }
-    
-    res.json(session.toJSON());
-  });
-
-  // Legacy room creation endpoint (for backward compatibility)
-  app.post('/api/rooms/create', async (req, res, next) => {
-    try {
-      const code = generateRoomCode(sessionManager.rooms);
-      const room = new PollRoom(code);
-      sessionManager.rooms.set(code, room);
-      
-      res.json({ 
-        code, 
-        success: true 
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Legacy room exists endpoint
-  app.get('/api/rooms/:code/exists', (req, res) => {
-    const { code } = req.params;
-    const room = sessionManager.rooms.get(code);
-    
-    if (!room) {
-      return res.json({ exists: false });
-    }
-    
-    let roomType = null;
-    if (room.getType) {
-      roomType = room.getType();
-    } else {
-      // Legacy type detection
-      if (room instanceof PollRoom) roomType = 'poll';
-      else if (room instanceof LinkShareRoom) roomType = 'linkShare';
-      else if (room instanceof RTFeedbackRoom) roomType = 'rtfeedback';
-      else if (room instanceof QuestionsRoom) roomType = 'questions';
-    }
-    
-    res.json({ 
-      exists: true, 
-      roomType 
-    });
-  });
-
-  // Server statistics endpoint
-  app.get('/api/stats', (req, res) => {
-    const stats = {
-      sessions: {
-        total: sessionManager.sessions.size,
-        withParticipants: 0,
-        activeRooms: 0
-      },
-      legacyRooms: sessionManager.rooms.size,
-      uptime: process.uptime(),
-      memory: process.memoryUsage()
-    };
-    
-    // Calculate session statistics
-    sessionManager.sessions.forEach(session => {
-      if (session.getParticipantCount() > 0) {
-        stats.sessions.withParticipants++;
       }
-      stats.sessions.activeRooms += session.activeRooms.size;
     });
+  }));
+
+  /**
+   * Check if session code exists
+   */
+  router.get('/sessions/:code/exists', (req, res) => {
+    const { code } = req.params;
     
-    res.json(stats);
+    if (!isValidSessionCode(code)) {
+      return res.json({
+        success: true,
+        exists: false
+      });
+    }
+    
+    const exists = sessionManager.getSession(code) !== undefined;
+    res.json({
+      success: true,
+      exists
+    });
   });
 
-  // 404 handler for API routes
-  app.use('/api/*', (req, res) => {
-    res.status(404).json({ 
-      error: 'API endpoint not found' 
+  /**
+   * Get room information (legacy support)
+   */
+  router.get('/rooms/:code', asyncHandler(async (req, res) => {
+    const { code } = req.params;
+    
+    if (!isValidRoomCode(code)) {
+      throw new ValidationError('Invalid room code format');
+    }
+    
+    const room = sessionManager.rooms.get(code);
+    if (!room) {
+      throw new NotFoundError('Room not found');
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        code: room.code,
+        type: room.getType ? room.getType() : 'unknown',
+        participantCount: room.getParticipantCount ? room.getParticipantCount() : 0,
+        isActive: room.isActive !== undefined ? room.isActive : true,
+        createdAt: room.createdAt
+      }
+    });
+  }));
+
+  /**
+   * Check if room code is available
+   */
+  router.get('/check-code/:code', (req, res) => {
+    const { code } = req.params;
+    
+    const isAvailable = sessionManager.isRoomCodeAvailable(code);
+    res.json({
+      success: true,
+      available: isAvailable
     });
   });
+
+  /**
+   * Get widget types and capabilities
+   */
+  router.get('/widgets', (req, res) => {
+    res.json({
+      success: true,
+      data: {
+        widgets: [
+          {
+            type: 'poll',
+            name: 'Poll',
+            description: 'Create interactive polls',
+            features: ['multiple-choice', 'real-time-results', 'anonymous-voting']
+          },
+          {
+            type: 'linkShare',
+            name: 'Link Share',
+            description: 'Collect links from participants',
+            features: ['url-validation', 'real-time-collection', 'moderation']
+          },
+          {
+            type: 'rtfeedback',
+            name: 'Real-time Feedback',
+            description: 'Gauge understanding in real-time',
+            features: ['difficulty-scale', 'anonymous-feedback', 'live-visualization']
+          },
+          {
+            type: 'questions',
+            name: 'Q&A',
+            description: 'Collect and manage questions',
+            features: ['question-submission', 'mark-as-answered', 'moderation']
+          }
+        ]
+      }
+    });
+  });
+
+  /**
+   * Clean up inactive sessions (admin endpoint)
+   */
+  router.post('/admin/cleanup', asyncHandler(async (req, res) => {
+    // In production, this should be protected with authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+    }
+    
+    sessionManager.cleanupInactiveSessions();
+    const stats = sessionManager.getStats();
+    
+    res.json({
+      success: true,
+      message: 'Cleanup completed',
+      stats
+    });
+  }));
+
+  /**
+   * API documentation endpoint
+   */
+  router.get('/', (req, res) => {
+    res.json({
+      success: true,
+      message: 'Classroom Widgets API',
+      version: '2.0.0',
+      endpoints: {
+        stats: {
+          method: 'GET',
+          path: '/api/stats',
+          description: 'Get server statistics'
+        },
+        sessionInfo: {
+          method: 'GET',
+          path: '/api/sessions/:code',
+          description: 'Get session information'
+        },
+        sessionExists: {
+          method: 'GET',
+          path: '/api/sessions/:code/exists',
+          description: 'Check if session exists'
+        },
+        roomInfo: {
+          method: 'GET',
+          path: '/api/rooms/:code',
+          description: 'Get room information (legacy)'
+        },
+        checkCode: {
+          method: 'GET',
+          path: '/api/check-code/:code',
+          description: 'Check if code is available'
+        },
+        widgets: {
+          method: 'GET',
+          path: '/api/widgets',
+          description: 'Get available widget types'
+        }
+      }
+    });
+  });
+
+  return router;
 };
