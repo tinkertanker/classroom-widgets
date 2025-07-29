@@ -6,9 +6,9 @@ The server now supports running either the legacy monolithic server or the new m
 ## How to Use
 
 ### Default Behavior
-By default, the server runs in **legacy mode** for safety:
+By default, the server runs the **new modular server**:
 ```bash
-npm start  # Runs legacy server
+npm start  # Runs new modular server
 ```
 
 ### Using Environment Variables
@@ -50,8 +50,7 @@ npm run dev:new
 The server selection follows this priority order:
 1. Command line flags (`--new` or `--legacy`)
 2. `USE_NEW_SERVER` environment variable
-3. `NODE_ENV=production` (automatically uses new server)
-4. Default: legacy server (in development)
+3. Default: new modular server (in all environments)
 
 ## Environment Configuration
 Create a `.env` file based on `.env.example`:
@@ -62,10 +61,10 @@ cp .env.example .env
 
 Key configuration:
 ```env
-# Use new modular server
+# Use new modular server (default)
 USE_NEW_SERVER=true
 
-# Or keep legacy (default in dev)
+# Or switch to legacy if needed
 USE_NEW_SERVER=false
 ```
 

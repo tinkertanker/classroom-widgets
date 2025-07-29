@@ -33,9 +33,9 @@ if (forceNew) {
   useNewServer = true;
   console.log('🚀 Using NEW server (production environment)');
 } else {
-  // Default to legacy for now (safe rollout)
-  useNewServer = false;
-  console.log('🔧 Using LEGACY server (default)');
+  // Default to new server
+  useNewServer = true;
+  console.log('🚀 Using NEW server (default)');
 }
 
 // Select server file
