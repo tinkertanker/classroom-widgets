@@ -34,8 +34,8 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     
     // Add the question
     const question = room.addQuestion(
+      socket.id,
       data.question, 
-      socket.id, 
       data.studentName || participant.name
     );
     
@@ -124,7 +124,7 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
         
         // Also send the current questions list
         socket.emit('questions:list', {
-          questions: room.getAllQuestions(),
+          questions: room.getQuestions(),
           widgetId: data.widgetId
         });
       }
@@ -221,8 +221,8 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     
     const participant = room.participants.get(socket.id);
     const question = room.addQuestion(
-      data.question,
       socket.id,
+      data.question,
       data.studentName || participant.name
     );
     
