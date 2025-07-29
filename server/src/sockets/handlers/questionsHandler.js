@@ -47,11 +47,15 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     
     // Notify all in the room
     const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
-    io.to(`${session.code}:${questionsRoomId}`).emit('questions:newQuestion', {
-      questionId: question.id,
+    io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.NEW_QUESTION, {
+      id: question.id,
+      questionId: question.id,  // Keep for compatibility
       text: question.text,
       studentId: question.studentId,
-      studentName: question.studentName
+      studentName: question.studentName,
+      timestamp: question.timestamp,
+      answered: question.answered,
+      widgetId: data.widgetId
     });
     
     session.updateActivity();
