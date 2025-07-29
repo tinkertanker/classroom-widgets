@@ -10,7 +10,7 @@ This guide explains all available npm scripts for development and deployment.
 npm run install:all
 
 # Run everything for development
-npm run dev:all
+npm run dev:concurrent
 ```
 
 ### For Production

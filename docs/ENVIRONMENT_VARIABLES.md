@@ -1,73 +1,56 @@
 # Environment Variables Configuration Guide
 
 This document provides a comprehensive reference for all environment variables used in the Classroom Widgets application.
+It's recommended to copy the `.env.example` files in each sub-project (`/`, `server/`, `server/src/student/`) to `.env` to get started.
 
-## Frontend Environment Variables
+---
 
-### Required Variables
+## Teacher App (`/`)
 
-#### `REACT_APP_SERVER_URL`
-- **Description**: URL of the backend server for real-time features
+These variables are used by the main teacher-facing application (the root Vite project). They must be prefixed with `VITE_` and configured in the root `.env` file.
+
+### `VITE_SERVER_URL` (Required)
+- **Description**: The public URL of the backend server for WebSocket connections.
 - **Default**: `http://localhost:3001`
-- **Production**: `https://go.tk.sg`
-- **Used by**: Poll widget, Link Share widget
-- **Example**:
-  ```bash
-  REACT_APP_SERVER_URL=https://go.tk.sg
-  ```
+- **Production Example**: `https://api.your-domain.com`
 
-### Optional Variables
-
-#### `REACT_APP_DEBUG`
-- **Description**: Enable debug mode for development
-- **Default**: `false`
-- **Values**: `true` | `false`
-- **Example**:
-  ```bash
-  REACT_APP_DEBUG=true
-  ```
-
-#### `REACT_APP_GA_ID`
-- **Description**: Google Analytics tracking ID
+### `VITE_SHORTIO_API_KEY` (Optional)
+- **Description**: API key for the Short.io service, used by the "Link Shortener" widget.
 - **Default**: None
-- **Example**:
-  ```bash
-  REACT_APP_GA_ID=UA-123456789-1
-  ```
 
-#### `REACT_APP_SENTRY_DSN`
-- **Description**: Sentry error tracking DSN
+### `VITE_GA_ID` (Optional)
+- **Description**: Google Analytics Tracking ID for analytics.
 - **Default**: None
-- **Example**:
-  ```bash
-  REACT_APP_SENTRY_DSN=https://example@sentry.io/123456
-  ```
 
-## Backend Environment Variables
+### `VITE_SENTRY_DSN` (Optional)
+- **Description**: Sentry DSN for client-side error tracking.
+- **Default**: None
 
-### Required Variables
+---
 
-#### `NODE_ENV`
-- **Description**: Node.js environment mode
-- **Default**: `development`
-- **Values**: `development` | `production` | `test`
-- **Example**:
-  ```bash
-  NODE_ENV=production
-  ```
+## Student App (`server/src/student`)
 
-#### `PORT`
-- **Description**: Port number for the server to listen on
+These variables are used by the student-facing application. They must be prefixed with `VITE_` and configured in `server/src/student/.env`.
+
+### `VITE_SERVER_URL` (Required)
+- **Description**: The public URL of the backend server for the student app to connect to.
+- **Default**: `http://localhost:3001`
+- **Production Example**: `https://api.your-domain.com`
+
+---
+
+## Backend Server (`server/`)
+
+These variables are used by the Express.js backend server. They are configured in `server/.env` and do not use a prefix.
+
+### `PORT` (Required)
+- **Description**: Port for the server to listen on.
 - **Default**: `3001`
-- **Example**:
-  ```bash
-  PORT=3001
-  ```
 
-#### `CORS_ORIGINS`
-- **Description**: Comma-separated list of allowed CORS origins
-- **Default**: `http://localhost:3000,http://localhost:3001`
-- **Production**: `https://widgets.tk.sg,https://go.tk.sg`
+### `CORS_ORIGINS` (Required)
+- **Description**: Comma-separated list of allowed origins for CORS. This should include the URLs for your teacher and student apps.
+- **Default**: `http://localhost:3000`
+- **Production Example**: `https://teacher-app.com,https://student-app.com`
 - **Example**:
   ```bash
   CORS_ORIGINS=https://widgets.tk.sg,https://go.tk.sg

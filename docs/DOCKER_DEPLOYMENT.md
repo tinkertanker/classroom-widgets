@@ -1,163 +1,175 @@
-# Docker Deployment Quick Reference
+# Docker Deployment Guide
 
-This is a quick reference guide for deploying Classroom Widgets with Docker.
+This guide covers deploying the Classroom Widgets application using Docker and Docker Compose.
 
-## Development Setup
+## Overview
+
+The application is deployed as two services:
+- **`frontend`**: The Teacher App (React + Vite) served by Nginx.
+- **`backend`**: The Express server, which handles the API, WebSocket connections, and serves the Student App.
+
+This architecture simplifies deployment by using a single backend for both API and Student App hosting, which avoids CORS issues and streamlines SSL configuration.
+
+## Prerequisites
+
+- Docker and Docker Compose installed on your server.
+- A domain or subdomain pointed at your server's IP address.
+- An optional reverse proxy (like Nginx or Caddy) to handle SSL termination.
+
+## Deployment Steps
+
+### 1. Clone the Repository
 
 ```bash
-# Start both frontend and backend
-docker compose up --build
-
-# Access:
-# - Frontend: http://localhost:3000
-# - Backend: http://localhost:3001
-```
-
-## Production Deployment
-
-### 1. Initial Setup
-
-```bash
-# Clone repository on your server
 git clone https://github.com/yourusername/classroom-widgets.git
 cd classroom-widgets
+```
 
-# Configure environment
+### 2. Configure Environment Variables
+
+Create production environment files from the examples:
+
+```bash
+# For the frontend (Teacher App)
 cp .env.production.example .env.production
+
+# For the backend server
 cp server/.env.production.example server/.env.production
-
-# Add Short.io API key (optional - for Link Shortener widget)
-cp .env.example .env
-# Edit .env and set VITE_SHORTIO_API_KEY to your API key
 ```
 
-### 2. Deploy
+**Edit `.env.production`:**
+
+Set the URL for your backend server. This is passed to the Teacher App at build time.
+
+```env
+# The public URL of your backend server
+VITE_SERVER_URL=https://your-backend-domain.com
+```
+
+**Edit `server/.env.production`:**
+
+Configure the backend server settings.
+
+```env
+# The port the backend server will run on inside the container
+PORT=3001
+
+# A comma-separated list of allowed origins for CORS
+CORS_ORIGINS=https://your-frontend-domain.com
+```
+
+### 3. Build and Deploy with Docker Compose
+
+Use the production Docker Compose file to build and start the services in detached mode:
 
 ```bash
-# Build and start in detached mode
-docker compose -f docker compose.prod.yml up -d --build
-
-# Verify containers are running
-docker ps
+# Build and start the containers
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
-### 3. Container Management
+This command builds the Docker images for the `frontend` and `backend` services and starts them as defined in `docker-compose.prod.yml`.
+
+### 4. Verify the Deployment
+
+Check that the containers are running:
 
 ```bash
-# View logs
-docker compose -f docker compose.prod.yml logs -f
-
-# Stop containers
-docker compose -f docker compose.prod.yml down
-
-# Restart containers
-docker compose -f docker compose.prod.yml restart
-
-# Update deployment
-git pull
-docker compose -f docker compose.prod.yml down
-docker compose -f docker compose.prod.yml up -d --build
+docker-compose -f docker-compose.prod.yml ps
 ```
 
-## SSL Configuration
+You should see both the `frontend` and `backend` services with a status of `Up`.
 
-### Using Nginx Reverse Proxy
+## SSL/TLS Configuration (Recommended)
 
-1. Install Nginx on host:
-```bash
-sudo apt update
-sudo apt install nginx certbot python3-certbot-nginx
-```
+It is highly recommended to use a reverse proxy on your host machine to handle SSL/TLS termination. This keeps your SSL certificates on the host and simplifies the container setup.
 
-2. Create Nginx config for frontend (`/etc/nginx/sites-available/widgets.tk.sg`):
+Here is an example of how to configure Nginx as a reverse proxy:
+
+1.  **Install Nginx and Certbot** on your host machine.
+2.  **Configure Nginx** to proxy requests to your Docker containers.
+3.  **Obtain SSL certificates** from Let's Encrypt using Certbot.
+
+**Example Nginx configuration for the frontend:**
+
 ```nginx
 server {
-    server_name widgets.tk.sg;
-    
+    server_name your-frontend-domain.com;
+
     location / {
-        proxy_pass http://localhost:80;
+        proxy_pass http://localhost:8080; # Assuming you map the container's port 80 to 8080
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/your-frontend-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-frontend-domain.com/privkey.pem;
 }
 ```
 
-3. Create Nginx config for backend (`/etc/nginx/sites-available/go.tk.sg`):
+**Example Nginx configuration for the backend:**
+
 ```nginx
 server {
-    server_name go.tk.sg;
-    
+    server_name your-backend-domain.com;
+
     location / {
         proxy_pass http://localhost:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
     }
+
+    listen 443 ssl;
+    ssl_certificate /etc/letsencrypt/live/your-backend-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-backend-domain.com/privkey.pem;
 }
 ```
 
-4. Enable sites and get SSL certificates:
-```bash
-sudo ln -s /etc/nginx/sites-available/widgets.tk.sg /etc/nginx/sites-enabled/
-sudo ln -s /etc/nginx/sites-available/go.tk.sg /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-sudo certbot --nginx -d widgets.tk.sg -d go.tk.sg
-```
+## Managing the Deployment
 
-## Health Checks
+### View Logs
+
+To view the logs for all services:
 
 ```bash
-# Check frontend
-curl -I http://localhost:80
-
-# Check backend
-curl http://localhost:3001/health
-
-# Check container status
-docker compose -f docker compose.prod.yml ps
+docker-compose -f docker-compose.prod.yml logs -f
 ```
+
+To view the logs for a specific service:
+
+```bash
+docker-compose -f docker-compose.prod.yml logs -f frontend
+docker-compose -f docker-compose.prod.yml logs -f backend
+```
+
+### Stop the Services
+
+To stop the running services:
+
+```bash
+docker-compose -f docker-compose.prod.yml down
+```
+
+### Update the Deployment
+
+To update the deployment with the latest code:
+
+1.  **Pull the latest changes** from your Git repository:
+    ```bash
+    git pull
+    ```
+2.  **Rebuild and restart** the services:
+    ```bash
+    docker-compose -f docker-compose.prod.yml up -d --build
+    ```
 
 ## Troubleshooting
 
-```bash
-# View container logs
-docker logs classroom-widgets-frontend
-docker logs classroom-widgets-backend
-
-# Enter container for debugging
-docker exec -it classroom-widgets-backend sh
-
-# Check resource usage
-docker stats
-
-# Clean rebuild
-docker compose -f docker compose.prod.yml down -v
-docker system prune -a
-docker compose -f docker compose.prod.yml up -d --build
-```
-
-## Backup Script
-
-Create `/opt/backup-classroom-widgets.sh`:
-```bash
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_DIR="/backups/classroom-widgets"
-mkdir -p $BACKUP_DIR
-
-cd /path/to/classroom-widgets
-tar -czf $BACKUP_DIR/backup_$DATE.tar.gz \
-  docker compose*.yml \
-  .env.production \
-  server/.env.production \
-  .env
-
-find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
-```
-
-Add to crontab:
-```bash
-0 2 * * * /opt/backup-classroom-widgets.sh
-```
+-   **Container fails to start**: Check the logs for a specific service to identify the error.
+-   **Permission issues**: Ensure that the user running the Docker commands has the necessary permissions to access the project files.
+-   **Network conflicts**: If the default ports (e.g., 80, 3001) are already in use, you can change them in the `docker-compose.prod.yml` file.

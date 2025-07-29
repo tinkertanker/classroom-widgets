@@ -149,24 +149,8 @@ const MyWidgetActivity: React.FC<MyWidgetActivityProps> = ({
   widgetId,
   initialIsActive 
 }) => {
-  // Join room on mount
-  useEffect(() => {
-    if (widgetId) {
-      socket.emit('session:joinRoom', {
-        sessionCode,
-        roomType: 'myWidget',
-        widgetId
-      });
-
-      return () => {
-        socket.emit('session:leaveRoom', {
-          sessionCode,
-          roomType: 'myWidget',
-          widgetId
-        });
-      };
-    }
-  }, [socket, sessionCode, widgetId]);
+  // Students are automatically part of all session rooms
+  // No need to explicitly join/leave individual widget rooms
 
   // Your student interface
   return (

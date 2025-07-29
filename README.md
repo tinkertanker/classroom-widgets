@@ -1,13 +1,13 @@
 # Classroom Widgets Documentation
 
-Interactive classroom management tools with real-time student engagement features.
+A suite of interactive classroom management tools with real-time student engagement features.
 
 ## 📚 Table of Contents
 
 - [Project Overview](#project-overview)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
-- [Features](#features)
+- [Core Features](#core-features)
 - [Development](#development)
 - [Deployment](#deployment)
 - [Documentation](#documentation)
@@ -17,17 +17,16 @@ Interactive classroom management tools with real-time student engagement feature
 Classroom Widgets is a real-time classroom management system that enables teachers to create interactive activities and engage with students through various widget tools. The system consists of:
 
 - **Teacher Application**: A React-based interface for creating and managing classroom activities
-- **Student Application**: A responsive web app for students to participate in activities
-- **Backend Server**: Express.js server handling real-time communication via Socket.io
+- **Student Application**: A responsive web app for students to participate in activities.
+- **Backend Server**: An Express.js server handling real-time communication via Socket.io.
 
-### Key Features
+### Available Widgets
 
-- **15+ Interactive Widgets**: Timer, Randomiser, Poll, Questions, Link Share, RT Feedback, and more
-- **Real-time Collaboration**: Instant updates between teacher and student devices
-- **Session Management**: Simple 5-character codes for easy student access
-- **Responsive Design**: Works on phones, tablets, and computers
-- **Dark Mode Support**: Comfortable viewing in any lighting condition
-- **Persistent Workspace**: Auto-saves widget layouts and states
+- **Interactive**: Poll, Questions, Link Share, Real-time Feedback.
+- **Utility**: Timer, Randomiser, List, Task Cue, Traffic Light.
+- **Display**: Text Banner, Image Display, QR Code, Sound Effects, Stickers.
+
+See the complete [Features List](./FEATURES.md) for more details.
 
 ## 🚀 Quick Start
 
@@ -35,6 +34,7 @@ Classroom Widgets is a real-time classroom management system that enables teache
 
 - Node.js 18+ and npm
 - Git
+- Docker and Docker Compose (for production deployment)
 
 ### First Time Setup
 
@@ -49,31 +49,31 @@ npm run install:all
 
 ### Development
 
-```bash
-# Run everything (recommended)
-npm run dev:all
-```
+To run all services concurrently (recommended):
 
+```bash
+npm run dev
+```
 This starts:
 - Teacher app: http://localhost:3000
 - Server + Student app: http://localhost:3001
-- Student app direct: http://localhost:3001/student
 
 ### Production Build
 
 ```bash
-# Build everything
 npm run build:all
 ```
 
 ## 🏗️ Architecture
 
-### System Overview
+### System Overview (Development Environment)
+
+The project is a monorepo consisting of three main parts that run concurrently during development using `npm run dev`.
 
 ```
 ┌─────────────────┐         ┌─────────────────┐
 │   Teacher App   │         │  Student App    │
-│   (React SPA)   │         │   (React SPA)   │
+│   (Vite + React)│         │ (Vite + React)  │
 │  localhost:3000 │         │ localhost:3001  │
 └────────┬────────┘         └────────┬────────┘
          │                           │
@@ -88,27 +88,37 @@ npm run build:all
 
 ### Project Structure
 
-```
+The repository is structured as a monorepo with three `package.json` files, orchestrating the three main parts of the application.
+
+```plaintext
 classroom-widgets/
-├── src/                    # Teacher app (main React application)
-│   ├── components/        # Widget components
-│   ├── contexts/          # React contexts
-│   ├── hooks/             # Custom hooks
-│   └── utils/             # Helper functions
-├── server/                 # Backend server
-│   ├── src/              
-│   │   ├── index.js      # Express + Socket.io server
-│   │   └── student/      # Student app source (Vite)
-│   └── public/           # Built student app files
-├── docs/                  # Documentation
-└── nginx.conf            # Production config
+├── src/                      # Teacher App source code (Vite + React)
+│   ├── components/           # Widget and UI components
+│   ├── features/             # Feature-based modules (widgets, session, etc.)
+│   ├── store/                # Zustand state management
+│   └── index.tsx             # Main entry point for the Teacher App
+├── server/                   # Backend and Student App workspace
+│   ├── src/                  # Server source code
+│   │   ├── server.js         # Main Express + Socket.io server entry point
+│   │   ├── config/           # Environment and app configuration
+│   │   ├── middleware/       # Express middleware
+│   │   ├── routes/           # API routes
+│   │   ├── sockets/          # Socket.IO event handlers
+│   │   └── student/          # Student App source code (Vite + React)
+│   │       ├── src/          # Student App components and logic
+│   │       └── package.json  # Student App dependencies
+│   ├── public/               # Built Student App (served by Express)
+│   └── package.json          # Backend server dependencies
+├── docs/                     # Project documentation
+├── package.json              # Root package (for Teacher App) and monorepo scripts
+└── vite.config.js            # Vite config for the Teacher App
 ```
 
 ### Technology Stack
 
-- **Frontend**: React 18.3, TypeScript, Tailwind CSS
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite
 - **Backend**: Express.js, Socket.io
-- **Student App**: Vite, React, TypeScript
+- **State Management**: Zustand
 - **Deployment**: Docker, Nginx
 
 ## ✨ Features
@@ -155,54 +165,44 @@ classroom-widgets/
 
 ### Available Scripts
 
+The most important scripts are run from the root `package.json`:
+
 ```bash
-# Teacher app only
-npm start                 # Development server
-npm test                  # Run tests
-npm run build            # Production build
+# Install all dependencies in all workspaces
+npm run install:all
 
-# Server only
-cd server
-npm start                # Start server
-npm run dev              # Development with nodemon
+# Run Teacher App, Student App, and Server concurrently
+npm run dev
 
-# Student app only
-cd server/src/student
-npm run dev              # Development server
-npm run build            # Production build
+# Build all applications for production
+npm run build:all
 
-# Everything
-npm run dev:all          # Run all in development
-npm run build:all        # Build everything
-npm run install:all      # Install all dependencies
+# Start the production server
+npm start
+
+# Run tests for the Teacher App
+npm test
 ```
 
 See [SCRIPTS.md](./SCRIPTS.md) for complete script documentation.
 
-### Bundle Analysis
-
-To analyze the build bundle size:
-
-```bash
-# Using Create React App's built-in stats
-npm run build -- --stats
-
-# Or install source-map-explorer (recommended)
-npm install --save-dev source-map-explorer
-npm run build
-npx source-map-explorer 'build/static/js/*.js'
-```
-
 ### Environment Variables
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory for the Teacher App, and a `.env` file in `server/` for the server.
 
+**Root `.env`:**
 ```env
 # Optional - for Link Shortener widget
 VITE_SHORTIO_API_KEY=your_api_key
 
 # Server configuration
 VITE_SERVER_URL=http://localhost:3001
+```
+
+**`server/.env`:**
+```env
+# Port for the server
+PORT=3001
 ```
 
 See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for all options.
@@ -227,7 +227,7 @@ See [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) for detailed instructions.
 1. Build all applications: `npm run build:all`
 2. Set up Nginx with provided configuration
 3. Configure environment variables
-4. Start the Express server
+4. Start the Express server: `npm start`
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide.
 
@@ -250,10 +250,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide.
 - [General Deployment](./DEPLOYMENT.md) - Various deployment options
 - [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) - Pre-deployment verification
 
-### API Documentation
-- [Socket Events Reference](./SOCKET_EVENTS_DOCUMENTATION.md) - Complete event listing
-- [Widget State Management](./hooks/README.md) - State persistence
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -265,10 +261,3 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide.
 ## 📄 License
 
 This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-- Built with React and Create React App
-- Real-time features powered by Socket.io
-- UI components styled with Tailwind CSS
-- Icons from react-icons library
