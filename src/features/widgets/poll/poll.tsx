@@ -36,6 +36,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     participantCount: 0
   });
   const toggleActiveRef = useRef<(() => void) | null>(null);
+  const updatePollRef = useRef<((data: Partial<PollData>) => void) | null>(null);
   
   const { showModal, hideModal } = useModal();
   
@@ -64,8 +65,13 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         <PollSettings 
           pollData={pollData}
           onSave={(data) => {
-            setPollData({ ...pollData, ...data });
+            const newPollData = { ...pollData, ...data };
+            setPollData(newPollData);
             hideModal();
+            // Update server with new poll data if connected
+            if (updatePollRef.current) {
+              updatePollRef.current(newPollData);
+            }
           }}
           onClose={hideModal}
         />
@@ -92,6 +98,13 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       title="Poll"
       description="Create interactive polls for your students"
       icon={FaChartColumn}
+      onRoomCreated={() => {
+        // Send initial poll data to server when room is created
+        if (pollData.question && pollData.options.length > 0) {
+          // This will be handled by having access to emitWidgetEvent
+          // For now, we'll need to handle this differently
+        }
+      }}
       onRoomClosed={() => {
         setPollData(prev => ({ ...prev, isActive: false }));
       }}
@@ -141,7 +154,14 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           },
           'poll:dataUpdate': (data: any) => {
             if (data.pollData) {
-              setPollData(data.pollData);
+              // Only update poll data if it has content (not empty from server)
+              // This prevents overwriting local settings with empty server data
+              if (data.pollData.question || data.pollData.options?.length > 0) {
+                setPollData(data.pollData);
+              } else {
+                // If server has empty data but we have local data, just update isActive
+                setPollData(prev => ({ ...prev, isActive: data.pollData.isActive }));
+              }
             }
             if (data.results) {
               setResults({
@@ -206,6 +226,19 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         useEffect(() => {
           toggleActiveRef.current = handleToggleActive;
         }, [handleToggleActive]);
+
+        // Store updatePoll in ref so settings can access it
+        useEffect(() => {
+          updatePollRef.current = updatePoll;
+        }, [updatePoll]);
+
+        // Send poll data to server when room becomes active
+        useEffect(() => {
+          if (isRoomActive && pollData.question && pollData.options.length > 0) {
+            // Send the current poll data to the server
+            emitWidgetEvent('update', { pollData });
+          }
+        }, [isRoomActive]); // Only run when room becomes active
 
         return (
           <>
