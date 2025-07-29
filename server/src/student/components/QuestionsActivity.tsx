@@ -137,7 +137,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   });
 
   return (
-    <div className="p-3">
+    <div className="p-3 relative">
       {!isActive ? (
         // Waiting state when teacher has stopped accepting questions
         <div className="flex flex-col items-center justify-center py-8">
@@ -191,12 +191,14 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
             </div>
           </form>
 
-          {/* Success message */}
-          {showSuccess && (
-            <div className="bg-sage-50 dark:bg-sage-900/30 border border-sage-200 dark:border-sage-700 rounded-lg p-3 text-center text-sage-700 dark:text-sage-300 font-medium mb-3 text-sm">
+          {/* Success message overlay */}
+          <div className={`absolute inset-x-0 top-0 z-10 transition-all duration-300 ease-in-out ${
+            showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+          }`}>
+            <div className="bg-sage-500 dark:bg-sage-600 text-white p-3 text-center font-medium text-sm shadow-lg">
               Question submitted successfully!
             </div>
-          )}
+          </div>
 
           {/* Submitted questions */}
           {sortedQuestions.length > 0 && (

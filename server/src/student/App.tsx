@@ -42,6 +42,7 @@ const App: React.FC = () => {
   });
   const [isScrolled, setIsScrolled] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [hostConnected, setHostConnected] = useState(true);
   const [primarySocket, setPrimarySocket] = useState<Socket | null>(null);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
   const headerRef = useRef<HTMLDivElement>(null);
@@ -83,8 +84,9 @@ const App: React.FC = () => {
       setJoinedRooms([]);
       
       // Recreate rooms from recovery data
-      activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
-        const roomId = `${currentSessionCode}-${roomData.roomId}-${Date.now()}`;
+      activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string }) => {
+        const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
+        const roomId = `${currentSessionCode}-${computedRoomId}-${Date.now()}`;
         const newRoom: JoinedRoom = {
           id: roomId,
           code: currentSessionCode,
@@ -229,8 +231,9 @@ const App: React.FC = () => {
           setCurrentSessionCode(code);
           
           // Join all active rooms in the session
-          joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, roomId: string }) => {
-            const roomId = `${code}-${roomData.roomId}-${Date.now()}`;
+          joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string }) => {
+            const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
+            const roomId = `${code}-${computedRoomId}-${Date.now()}`;
             
             const newRoom: JoinedRoom = {
               id: roomId,
@@ -261,7 +264,8 @@ const App: React.FC = () => {
 
       // Handle new rooms being created in the session
       newSocket.on('session:roomCreated', (data) => {
-        const roomId = `${code}-${data.roomId}-${Date.now()}`;
+        const computedRoomId = data.widgetId ? `${data.roomType}:${data.widgetId}` : data.roomType;
+        const roomId = `${code}-${computedRoomId}-${Date.now()}`;
         
         const newRoom: JoinedRoom = {
           id: roomId,
@@ -304,10 +308,44 @@ const App: React.FC = () => {
         });
       });
 
+      // Handle unified widget state changes
+      newSocket.on('session:widgetStateChanged', (data) => {
+        // Update the isActive state for the specific widget
+        setJoinedRooms(prev => prev.map(room => {
+          if (room.code === code && room.type === data.roomType && room.widgetId === data.widgetId) {
+            return { ...room, initialData: { ...room.initialData, isActive: data.isActive } };
+          }
+          return room;
+        }));
+      });
+
+      // Handle host disconnect/reconnect
+      newSocket.on('session:hostDisconnected', () => {
+        setHostConnected(false);
+      });
+      
+      newSocket.on('session:hostReconnected', () => {
+        setHostConnected(true);
+      });
+      
       newSocket.on('disconnect', () => {
         setIsConnected(false);
-        // Clear current session when disconnected
-        setCurrentSessionCode('');
+      });
+      
+      newSocket.on('connect', () => {
+        setIsConnected(true);
+        // If we were in a session, try to rejoin
+        if (currentSessionCode && name) {
+          newSocket.emit('session:join', { 
+            code: currentSessionCode, 
+            name,
+            studentId
+          });
+        }
+      });
+      
+      newSocket.on('reconnect_attempt', (attemptNumber) => {
+        // Reconnection attempts are now indicated by the warning icon
       });
 
     } catch (error) {
@@ -361,7 +399,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 font-sans">
+    <div className="min-h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 font-sans flex flex-col">
       {/* Sticky header with join form */}
       <div 
         ref={headerRef} 
@@ -389,31 +427,23 @@ const App: React.FC = () => {
         />
       </div>
       
-      {/* Main content wrapper with minimum height */}
-      <div className="min-h-screen flex flex-col">
+      {/* Main content wrapper */}
+      <div className="flex-1 flex flex-col">
         {/* Spacer to prevent content from going under fixed header */}
         <div 
           style={{ height: 'var(--header-height, 180px)' }} 
           className="transition-[height] duration-300 ease-in-out flex-shrink-0" 
         />
 
-        {/* Content area with flex-grow and minimum height to ensure scrollability */}
-        <div 
-          className="flex-grow" 
-          style={{ 
-            minHeight: isScrolled 
-              ? `calc(100vh - var(--header-height) + ${SCROLL_THRESHOLD_ENTER + 20}px)` 
-              : 'auto'
-          }}
-        >
-          {/* Joined rooms list */}
+        {/* Content area - flexbox container */}
+        <div className="flex-1 flex flex-col px-3 py-4">
+          {/* Joined rooms list - centered container with flex items */}
           {joinedRooms.length > 0 && (
-            <div className="mt-4 px-3 pb-4">
-              <div className="flex flex-col gap-3 max-w-[800px] mx-auto">
+            <div className="w-full max-w-[800px] mx-auto flex flex-col gap-3 items-stretch">
             {joinedRooms.map((room) => (
               <div 
                 key={room.id} 
-                className={`bg-soft-white dark:bg-warm-gray-800 rounded-lg overflow-hidden shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 transition-all duration-300 transform-gpu ${
+                className={`bg-soft-white dark:bg-warm-gray-800 rounded-lg overflow-hidden shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 transition-all duration-300 transform-gpu flex-shrink-0 ${
                   leavingRooms.has(room.id) 
                     ? 'opacity-0 scale-95 -translate-x-full' 
                     : enteringRooms.has(room.id)
@@ -422,15 +452,30 @@ const App: React.FC = () => {
                 }`} 
                 data-room-type={room.type}
               >
-                <div className={`flex justify-between items-center px-4 py-3 ${
-                  room.type === 'poll' 
-                    ? 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800' 
-                    : room.type === 'linkShare' 
-                    ? 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800' 
-                    : room.type === 'rtfeedback' 
-                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-700 dark:to-amber-800' 
-                    : 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-sky-700 dark:to-sky-800'
-                }`}>
+                <div 
+                  className={`flex justify-between items-center px-4 py-3 transition-colors duration-300 cursor-pointer select-none ${
+                    !room.initialData?.isActive
+                      ? 'bg-gradient-to-r from-warm-gray-400 to-warm-gray-500 dark:from-warm-gray-600 dark:to-warm-gray-700 hover:from-warm-gray-450 hover:to-warm-gray-550 dark:hover:from-warm-gray-650 dark:hover:to-warm-gray-750'
+                      : room.type === 'poll' 
+                      ? 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800 hover:from-sage-550 hover:to-sage-650 dark:hover:from-sage-750 dark:hover:to-sage-850' 
+                      : room.type === 'linkShare' 
+                      ? 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800 hover:from-terracotta-550 hover:to-terracotta-650 dark:hover:from-terracotta-750 dark:hover:to-terracotta-850' 
+                      : room.type === 'rtfeedback' 
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-700 dark:to-amber-800 hover:from-amber-550 hover:to-amber-650 dark:hover:from-amber-750 dark:hover:to-amber-850' 
+                      : 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-sky-700 dark:to-sky-800 hover:from-sky-550 hover:to-sky-650 dark:hover:from-sky-750 dark:hover:to-sky-850'
+                  }`}
+                  onClick={() => toggleMinimizeRoom(room.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleMinimizeRoom(room.id);
+                    }
+                  }}
+                  aria-expanded={!minimizedRooms.has(room.id)}
+                  aria-label={`${room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
+                >
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                     <span className="text-white text-base md:text-lg font-semibold">
                       {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'}
@@ -439,25 +484,37 @@ const App: React.FC = () => {
                       {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : '• Submit questions to your teacher'}
                     </span>
                   </div>
-                  <button 
+                  <div 
                     className={`${
-                      room.type === 'poll' 
-                        ? 'bg-sage-700 hover:bg-sage-800 dark:bg-sage-900 dark:hover:bg-sage-950' 
+                      !room.initialData?.isActive
+                        ? 'bg-warm-gray-600 dark:bg-warm-gray-800'
+                        : room.type === 'poll' 
+                        ? 'bg-sage-700 dark:bg-sage-900' 
                         : room.type === 'linkShare' 
-                        ? 'bg-terracotta-700 hover:bg-terracotta-800 dark:bg-terracotta-900 dark:hover:bg-terracotta-950' 
+                        ? 'bg-terracotta-700 dark:bg-terracotta-900' 
                         : room.type === 'rtfeedback' 
-                        ? 'bg-amber-700 hover:bg-amber-800 dark:bg-amber-900 dark:hover:bg-amber-950' 
-                        : 'bg-sky-700 hover:bg-sky-800 dark:bg-sky-900 dark:hover:bg-sky-950'
-                    } bg-opacity-50 text-white w-6 h-6 rounded text-xs cursor-pointer transition-all duration-200 flex items-center justify-center`}
-                    onClick={() => toggleMinimizeRoom(room.id)}
-                    aria-label={minimizedRooms.has(room.id) ? `Expand activity` : `Minimize activity`}
+                        ? 'bg-amber-700 dark:bg-amber-900' 
+                        : 'bg-sky-700 dark:bg-sky-900'
+                    } bg-opacity-50 text-white w-6 h-6 rounded text-xs transition-all duration-200 flex items-center justify-center pointer-events-none`}
                   >
                     {minimizedRooms.has(room.id) ? <FaPlus className="w-3 h-3" /> : <FaMinus className="w-3 h-3" />}
-                  </button>
+                  </div>
                 </div>
                 
-                {!minimizedRooms.has(room.id) && (
-                  <div className="p-3">
+                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  minimizedRooms.has(room.id) ? 'max-h-0' : 'max-h-[500px]'
+                }`}>
+                  <div className="p-3 relative min-h-0">
+                    {/* Overlay when teacher is disconnected */}
+                    {!hostConnected && (
+                      <div className="absolute inset-0 bg-warm-gray-900/80 dark:bg-warm-gray-950/80 rounded-md flex items-center justify-center z-10">
+                        <div className="text-center text-white p-4">
+                          <div className="text-lg font-semibold mb-2">Activity Paused</div>
+                          <div className="text-sm opacity-80">Waiting for teacher to reconnect...</div>
+                        </div>
+                      </div>
+                    )}
+                    
                     {room.type === 'poll' && (
                       <PollActivity 
                         socket={room.socket} 
@@ -498,19 +555,20 @@ const App: React.FC = () => {
                       />
                     )}
                   </div>
-                )}
+                </div>
               </div>
             ))}
-          </div>
-        </div>
-        )}
+            </div>
+          )}
 
-        {/* Empty state */}
-        {joinedRooms.length === 0 && (
-          <div className="text-center py-8 px-3 mt-2 text-warm-gray-600 dark:text-warm-gray-400">
-            <p className="text-base">No active session. Enter a session code above to get started!</p>
-          </div>
-        )}
+          {/* Empty state */}
+          {joinedRooms.length === 0 && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center text-warm-gray-600 dark:text-warm-gray-400">
+                <p className="text-base">No active session. Enter a session code above to get started!</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

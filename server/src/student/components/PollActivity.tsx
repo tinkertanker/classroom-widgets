@@ -1,7 +1,6 @@
 import React from 'react';
 import { Socket } from 'socket.io-client';
 import { usePollSocket } from '../hooks/usePollSocket';
-import { useSessionRoom } from '../hooks/useSessionRoom';
 import { getPollColor } from '../utils/pollColors';
 
 interface PollActivityProps {
@@ -28,14 +27,6 @@ interface Results {
 }
 
 const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, studentName, isSession = false, widgetId }) => {
-  // Handle room joining/leaving
-  useSessionRoom({
-    socket,
-    sessionCode: roomCode,
-    roomType: 'poll',
-    widgetId,
-    isSession
-  });
 
   // Use our custom hook for all socket logic
   const { pollData, hasVoted, selectedOption, results, handleVote } = usePollSocket({
@@ -48,12 +39,34 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
 
   const renderContent = () => {
     if (!pollData.question || pollData.options.length === 0) {
-      return <div className="text-center text-warm-gray-600 text-sm py-6 px-3">Waiting for poll to start...</div>;
+      return (
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+              Poll Paused
+            </h2>
+            <p className="text-warm-gray-500 text-sm">
+              Waiting for teacher to start the poll...
+            </p>
+          </div>
+        </div>
+      );
     }
 
     // Poll is not active and student hasn't voted
     if (!pollData.isActive && !hasVoted) {
-      return <div className="text-center text-warm-gray-600 text-sm py-6 px-3">Waiting for poll to start...</div>;
+      return (
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+              Poll Paused
+            </h2>
+            <p className="text-warm-gray-500 text-sm">
+              Waiting for teacher to start the poll...
+            </p>
+          </div>
+        </div>
+      );
     }
 
     // Show results if available
@@ -144,7 +157,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
   };
 
   return (
-    <div className="min-h-[200px] flex flex-col justify-center">
+    <div className="flex flex-col">
       {renderContent()}
     </div>
   );

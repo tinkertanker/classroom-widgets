@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaSun, FaMoon } from 'react-icons/fa6';
+import { FaSun, FaMoon, FaTriangleExclamation } from 'react-icons/fa6';
 import { isValidSessionCode, sanitizeStudentName } from '../utils/validation';
 
 interface JoinFormProps {
@@ -117,6 +117,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
                       isConnected ? 'bg-sage-500' : 
                       'bg-warm-gray-400'
                     }`}></span>
+                    {!isConnected && !isRecovering && <FaTriangleExclamation className="text-dusty-rose-500 mr-2" />}
                     {isRecovering ? 'Reconnecting' : isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
                   </div>
                 ) : 'Join Classroom Session'}
@@ -134,7 +135,8 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               'bg-warm-gray-400'
             }`} 
                   title={isRecovering ? 'Reconnecting...' : isConnected ? 'Connected' : 'Connecting...'}></span>
-            <h2 className="text-base font-semibold text-warm-gray-700 dark:text-warm-gray-300">
+            <h2 className="text-base font-semibold text-warm-gray-700 dark:text-warm-gray-300 flex items-center">
+              {!isConnected && !isRecovering && <FaTriangleExclamation className="text-dusty-rose-500 mr-2" />}
               {isRecovering ? 'Reconnecting' : isConnected ? 'Connected' : 'Connecting...'} to session {currentSessionCode}
             </h2>
           </div>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { useSessionRoom } from '../hooks/useSessionRoom';
 
 interface LinkShareActivityProps {
   socket: Socket;
@@ -26,14 +25,10 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   const [submissionCount, setSubmissionCount] = useState(0);
   const [isActive, setIsActive] = useState(initialIsActive);
 
-  // Handle room joining/leaving
-  useSessionRoom({
-    socket,
-    sessionCode: roomCode,
-    roomType: 'linkShare',
-    widgetId,
-    isSession
-  });
+  // Update isActive when prop changes
+  useEffect(() => {
+    setIsActive(initialIsActive);
+  }, [initialIsActive]);
 
   // Listen for room state changes
   useEffect(() => {
@@ -117,27 +112,41 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   // Remove the isSuccess early return - always show the form
 
   return (
-    <div>
+    <div className="relative">
       {!isActive ? (
         // Inactive state
-        <div className="text-center py-8">
-          <p className="text-warm-gray-600 dark:text-warm-gray-400">
-            Waiting for your teacher to start accepting links...
-          </p>
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+              Link Sharing Paused
+            </h2>
+            <p className="text-warm-gray-500 text-sm">
+              Waiting for teacher to start accepting links...
+            </p>
+          </div>
         </div>
       ) : (
         // Active state
         <>
-          {/* Success message */}
-          {showSuccess && (
-            <div className="bg-sage-50 dark:bg-sage-900/30 border border-sage-200 dark:border-sage-700 rounded-lg p-3 text-center text-sage-700 dark:text-sage-300 font-medium mb-3 text-sm">
+          {/* Success message overlay */}
+          <div className={`absolute inset-x-0 top-0 z-10 transition-all duration-300 ease-in-out ${
+            showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+          }`}>
+            <div className="bg-terracotta-500 dark:bg-terracotta-600 text-white p-3 text-center font-medium text-sm shadow-lg">
               Link shared successfully!
             </div>
-          )}
+          </div>
           
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="shareLink" className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">Share a Link</label>
+              <div className="flex justify-between items-center mb-1">
+                <label htmlFor="shareLink" className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">Share a Link</label>
+                {submissionCount > 0 && (
+                  <span className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+                    {submissionCount} link{submissionCount !== 1 ? 's' : ''} shared
+                  </span>
+                )}
+              </div>
               <input
                 type="url"
                 id="shareLink"
@@ -155,15 +164,6 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
             {error && <div className="mt-2 bg-dusty-rose-50 dark:bg-dusty-rose-900/30 text-dusty-rose-700 dark:text-dusty-rose-300 p-2 rounded-md text-sm border border-dusty-rose-200 dark:border-dusty-rose-700">{error}</div>}
           </form>
         </>
-      )}
-      
-      {/* Submission count */}
-      {isActive && submissionCount > 0 && (
-        <div className="text-sm text-warm-gray-500 mt-4 text-center">
-          <span className="text-warm-gray-600 dark:text-warm-gray-400">
-            {submissionCount} link{submissionCount !== 1 ? 's' : ''} shared
-          </span>
-        </div>
       )}
     </div>
   );
