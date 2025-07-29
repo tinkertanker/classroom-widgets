@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaLink, FaTrash, FaPlay, FaPause, FaArrowUpRightFromSquare } from 'react-icons/fa6';
 import { useWidgetSocket } from '../shared/hooks';
@@ -19,6 +19,7 @@ interface Submission {
 function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isActive, setIsActive] = useState(false);
+  const toggleActiveRef = useRef<(() => void) | null>(null);
 
   // Load saved state
   useEffect(() => {
@@ -49,19 +50,23 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
         setSubmissions([]);
         setIsActive(false);
       }}
-      headerChildren={
-        <button
-          onClick={() => setIsActive(!isActive)}
-          className={`p-1.5 rounded transition-colors duration-200 ${
-            isActive 
-              ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
-              : 'bg-sage-500 hover:bg-sage-600 text-white'
-          }`}
-          title={isActive ? "Pause accepting links" : "Resume accepting links"}
-        >
-          {isActive ? <FaPause /> : <FaPlay />}
-        </button>
-      }
+      headerChildren={({ session, isRoomActive }) => {
+        if (!session || !isRoomActive || !toggleActiveRef.current) return null;
+        
+        return (
+          <button
+            onClick={toggleActiveRef.current}
+            className={`p-1.5 rounded transition-colors duration-200 ${
+              isActive 
+                ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+                : 'bg-sage-500 hover:bg-sage-600 text-white'
+            }`}
+            title={isActive ? "Pause accepting links" : "Resume accepting links"}
+          >
+            {isActive ? <FaPause /> : <FaPlay />}
+          </button>
+        );
+      }}
     >
       {({ session, isRoomActive }) => {
         // Socket event handlers
@@ -71,23 +76,36 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
           },
           'linkShare:submissionDeleted': (data: { submissionId: string }) => {
             setSubmissions(prev => prev.filter(s => s.id !== data.submissionId));
+          },
+          'linkShare:stateChanged': (data: { isActive: boolean; widgetId?: string }) => {
+            // Only handle state changes for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              setIsActive(data.isActive);
+            }
           }
-        }), []);
+        }), [widgetId]);
 
         // Use the new composite hook for socket management
-        const { emitWidgetEvent } = useWidgetSocket({
+        const { emitWidgetEvent, toggleActive } = useWidgetSocket({
           socket: session.socket,
           sessionCode: session.sessionCode,
           roomType: 'linkShare',
           widgetId,
           isActive,
           isRoomActive,
-          events: socketEvents
+          events: socketEvents,
+          startEvent: 'session:linkShare:start',
+          stopEvent: 'session:linkShare:stop'
         });
 
         const handleDeleteSubmission = useCallback((submissionId: string) => {
           emitWidgetEvent('delete', { submissionId });
         }, [emitWidgetEvent]);
+
+        // Store toggleActive in ref so header can access it
+        useEffect(() => {
+          toggleActiveRef.current = () => toggleActive(!isActive);
+        }, [toggleActive, isActive]);
 
         return (
           <>

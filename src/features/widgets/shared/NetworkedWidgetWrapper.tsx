@@ -19,7 +19,11 @@ interface NetworkedWidgetWrapperProps {
     session: ReturnType<typeof useNetworkedWidget>['session'];
     isRoomActive: boolean;
   }) => ReactNode;
-  headerChildren?: ReactNode;
+  headerChildren?: (props: {
+    session: ReturnType<typeof useNetworkedWidget>['session'];
+    isRoomActive: boolean;
+    widgetId?: string;
+  }) => ReactNode;
 }
 
 export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
@@ -83,7 +87,7 @@ export const NetworkedWidgetWrapper: React.FC<NetworkedWidgetWrapperProps> = ({
         participantCount={session.participantCount}
         icon={icon}
       >
-        {headerChildren}
+        {headerChildren?.({ session, isRoomActive, widgetId })}
       </NetworkedWidgetHeader>
       
       {/* Connection status overlay */}

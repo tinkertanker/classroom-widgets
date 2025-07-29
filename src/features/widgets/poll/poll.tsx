@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useModal } from '../../../contexts/ModalContext';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import PollSettings from './PollSettings';
@@ -35,6 +35,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     totalVotes: 0,
     participantCount: 0
   });
+  const toggleActiveRef = useRef<(() => void) | null>(null);
   
   const { showModal, hideModal } = useModal();
   
@@ -81,24 +82,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     });
   }, [onStateChange, pollData, results]);
 
-  const [sessionRef, setSessionRef] = useState<any>(null);
-  const [isRoomActiveRef, setIsRoomActiveRef] = useState(false);
-
-  const handleToggleActive = () => {
-    if (!sessionRef || !isRoomActiveRef) return;
-    
-    const newIsActive = !pollData.isActive;
-    const newPollData = { ...pollData, isActive: newIsActive };
-    setPollData(newPollData);
-    
-    if (sessionRef.socket) {
-      sessionRef.socket.emit('session:poll:update', {
-        sessionCode: sessionRef.sessionCode,
-        widgetId,
-        pollData: newPollData
-      });
-    }
-  };
 
   return (
     <NetworkedWidgetWrapper
@@ -112,8 +95,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       onRoomClosed={() => {
         setPollData(prev => ({ ...prev, isActive: false }));
       }}
-      headerChildren={
-        <>
+      headerChildren={({ session, isRoomActive }) => {
+        if (!session || !isRoomActive) return (
           <button
             onClick={openSettings}
             className="p-1.5 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
@@ -121,28 +104,36 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           >
             <FaGear />
           </button>
-          <button
-            onClick={handleToggleActive}
-            disabled={!pollData.question || pollData.options.filter(o => o).length < 2 || !isRoomActiveRef}
-            className={`p-1.5 rounded transition-colors duration-200 ${
-              pollData.isActive 
-                ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
-                : 'bg-sage-500 hover:bg-sage-600 text-white disabled:bg-warm-gray-400 disabled:cursor-not-allowed'
-            }`}
-            title={pollData.isActive ? "Pause poll" : "Resume poll"}
-          >
-            {pollData.isActive ? <FaPause /> : <FaPlay />}
-          </button>
-        </>
-      }
+        );
+        
+        return (
+          <>
+            {toggleActiveRef.current && (
+              <button
+                onClick={toggleActiveRef.current}
+                disabled={!pollData.question || pollData.options.filter(o => o).length < 2}
+                className={`p-1.5 rounded transition-colors duration-200 ${
+                  pollData.isActive 
+                    ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+                    : 'bg-sage-500 hover:bg-sage-600 text-white disabled:bg-warm-gray-400 disabled:cursor-not-allowed'
+                }`}
+                title={pollData.isActive ? "Pause poll" : "Resume poll"}
+              >
+                {pollData.isActive ? <FaPause /> : <FaPlay />}
+              </button>
+            )}
+            <button
+              onClick={openSettings}
+              className="p-1.5 text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+              title="Settings"
+            >
+              <FaGear />
+            </button>
+          </>
+        );
+      }}
     >
       {({ session, isRoomActive }) => {
-        // Update refs for header buttons
-        useEffect(() => {
-          setSessionRef(session);
-          setIsRoomActiveRef(isRoomActive);
-        }, [session, isRoomActive]);
-
         // Socket event handlers
         const socketEvents = useMemo(() => ({
           'poll:updated': (data: any) => {
@@ -166,11 +157,17 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
               totalVotes: data.totalVotes,
               participantCount: session.participantCount
             });
+          },
+          'poll:stateChanged': (data: { isActive: boolean; widgetId?: string }) => {
+            // Only handle state changes for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              setPollData(prev => ({ ...prev, isActive: data.isActive }));
+            }
           }
-        }), [session.participantCount]);
+        }), [session.participantCount, widgetId]);
 
         // Use the new composite hook for socket management
-        const { emitWidgetEvent } = useWidgetSocket({
+        const { emitWidgetEvent, toggleActive } = useWidgetSocket({
           socket: session.socket,
           sessionCode: session.sessionCode,
           roomType: 'poll',
@@ -195,13 +192,26 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           updatePoll({ isActive: false });
         };
 
+        const handleToggleActive = () => {
+          // Validate poll data before toggling
+          if (!pollData.question || pollData.options.filter(o => o).length < 2) {
+            return;
+          }
+          
+          // Use the standard toggleActive function
+          toggleActive(!pollData.isActive);
+        };
+
+        // Store toggleActive in ref so header can access it
+        useEffect(() => {
+          toggleActiveRef.current = handleToggleActive;
+        }, [handleToggleActive]);
+
         return (
           <>
             {/* Vote count */}
-            <div className="flex justify-between items-center mb-1">
-              <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
-              </div>
+            <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-1">
+              {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
             </div>
 
             {/* Poll content */}

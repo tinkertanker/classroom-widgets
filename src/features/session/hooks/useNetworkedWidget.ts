@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useSessionRecovery } from './useSessionRecovery';
 
-export type RoomType = 'poll' | 'linkShare' | 'rtFeedback' | 'questions';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
 
 interface UseNetworkedWidgetProps {
   widgetId?: string;

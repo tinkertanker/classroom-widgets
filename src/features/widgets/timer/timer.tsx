@@ -1,12 +1,13 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { 
   useTimeSegmentEditor, 
   useTimerCountdown, 
   useTimerAnimation, 
   useTimerAudio 
 } from "./hooks";
-
-// Audio import
+import { cn, widgetContainer, buttons, text, transitions, backgrounds } from '../../../shared/utils/styles';
+import { HamsterAnimation } from './components/HamsterAnimation';
+import { TimeDisplay } from './components/TimeDisplay';
 import timerEndSound from "./timer-end.mp3";
 
 const Timer = () => {
@@ -72,7 +73,7 @@ const Timer = () => {
 
   return (
     <>
-      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full overflow-hidden flex flex-col" style={{ containerType: 'size' }}>
+      <div className={cn(widgetContainer)} style={{ containerType: 'size' }}>
         <div className="flex-1 relative flex items-center justify-center p-4">
           <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
                 {/* Background circle (gray) */}
@@ -114,129 +115,7 @@ const Timer = () => {
                   />
                 </g>
                 
-                {/* Animated hamster on wheel */}
-                {isRunning && time > 0 && (
-                    <g transform={`rotate(${pulseAngle} 50 50)`}>
-                      {/* Hamster running on smaller circle path inside the wheel */}
-                      <g transform="translate(50, 8) scale(0.9, -0.9)">
-                      {/* Hamster body */}
-                      <ellipse 
-                        cx="0" 
-                        cy="0" 
-                        rx="6" 
-                        ry="4.5" 
-                        fill="#D2691E" 
-                        stroke="#8B4513" 
-                        strokeWidth="0.8"
-                      />
-                      {/* Hamster head */}
-                      <circle 
-                        cx="-4" 
-                        cy="-1.5" 
-                        r="3.5" 
-                        fill="#DEB887" 
-                        stroke="#8B4513" 
-                        strokeWidth="0.8"
-                      />
-                      {/* Hamster ears */}
-                      <circle cx="-5.5" cy="-3.5" r="1.3" fill="#D2691E" />
-                      <circle cx="-2.5" cy="-3.5" r="1.3" fill="#D2691E" />
-                      {/* Hamster eyes */}
-                      <circle cx="-5" cy="-1.5" r="0.7" fill="#000" />
-                      <circle cx="-3" cy="-1.5" r="0.7" fill="#000" />
-                      {/* Eye sparkle */}
-                      <circle cx="-4.8" cy="-1.8" r="0.3" fill="#fff" />
-                      <circle cx="-2.8" cy="-1.8" r="0.3" fill="#fff" />
-                      {/* Hamster nose */}
-                      <circle cx="-6.5" cy="-0.5" r="0.4" fill="#8B4513" />
-                      {/* Hamster feet - animated running with better visibility */}
-                      <g>
-                        {/* Front feet - made more visible */}
-                        <ellipse 
-                          cx="-2.5" 
-                          cy="3.5" 
-                          rx="1" 
-                          ry="1.5" 
-                          fill="#654321"
-                          stroke="#3D2611"
-                          strokeWidth="0.3"
-                        >
-                          <animateTransform
-                            attributeName="transform"
-                            attributeType="XML"
-                            type="rotate"
-                            values="0 -2.5 3.5;-30 -2.5 3.5;30 -2.5 3.5;0 -2.5 3.5"
-                            dur="0.4s"
-                            repeatCount="indefinite"
-                          />
-                        </ellipse>
-                        <ellipse 
-                          cx="-4" 
-                          cy="3.5" 
-                          rx="1" 
-                          ry="1.5" 
-                          fill="#654321"
-                          stroke="#3D2611"
-                          strokeWidth="0.3"
-                        >
-                          <animateTransform
-                            attributeName="transform"
-                            attributeType="XML"
-                            type="rotate"
-                            values="0 -4 3.5;30 -4 3.5;-30 -4 3.5;0 -4 3.5"
-                            dur="0.4s"
-                            repeatCount="indefinite"
-                          />
-                        </ellipse>
-                        {/* Back feet - made more visible */}
-                        <ellipse 
-                          cx="1.5" 
-                          cy="3.5" 
-                          rx="1" 
-                          ry="1.5" 
-                          fill="#654321"
-                          stroke="#3D2611"
-                          strokeWidth="0.3"
-                        >
-                          <animateTransform
-                            attributeName="transform"
-                            attributeType="XML"
-                            type="rotate"
-                            values="0 1.5 3.5;30 1.5 3.5;-30 1.5 3.5;0 1.5 3.5"
-                            dur="0.4s"
-                            repeatCount="indefinite"
-                          />
-                        </ellipse>
-                        <ellipse 
-                          cx="3" 
-                          cy="3.5" 
-                          rx="1" 
-                          ry="1.5" 
-                          fill="#654321"
-                          stroke="#3D2611"
-                          strokeWidth="0.3"
-                        >
-                          <animateTransform
-                            attributeName="transform"
-                            attributeType="XML"
-                            type="rotate"
-                            values="0 3 3.5;-30 3 3.5;30 3 3.5;0 3 3.5"
-                            dur="0.4s"
-                            repeatCount="indefinite"
-                          />
-                        </ellipse>
-                      </g>
-                      {/* Hamster tail */}
-                      <path 
-                        d="M 4.5 0 Q 7 -1.5 8.5 1" 
-                        stroke="#8B4513" 
-                        strokeWidth="1.2" 
-                        fill="none"
-                        strokeLinecap="round"
-                      />
-                    </g>
-                  </g>
-                )}
+                {isRunning && time > 0 && <HamsterAnimation pulseAngle={pulseAngle} />}
               </svg>
               <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] flex items-center justify-center"
@@ -246,37 +125,18 @@ const Timer = () => {
                   <div className="flex items-center justify-center w-full h-full">
                     <span 
                       style={{ fontSize: 'clamp(1.5rem, 15cqmin, 4rem)' }} 
-                      className="font-bold text-warm-gray-900 dark:text-warm-gray-100 text-center"
+                      className={cn("font-bold text-center", text.primary)}
                     >
                       Time's Up!
                     </span>
                   </div>
                 ) : isRunning && !inEditMode ? (
-                  /* DISPLAY MODE */
-                  <div className="flex items-center justify-center w-full h-full cursor-pointer" onClick={pauseTimer}>
-                    {time >= 3600 ? (
-                      // Show hours:minutes:seconds - smaller text to fit
-                      <div className="flex items-center" style={{ fontSize: 'clamp(1rem, 12cqmin, 3rem)' }}>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[0]}</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[1]}</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[2]}</span>
-                      </div>
-                    ) : time >= 60 ? (
-                      // Show minutes:seconds - medium text
-                      <div className="flex items-center" style={{ fontSize: 'clamp(1.5rem, 20cqmin, 5rem)' }}>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[1]}</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">:</span>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{segmentEditor.values[2]}</span>
-                      </div>
-                    ) : (
-                      // Show only seconds - largest text
-                      <div className="flex items-center" style={{ fontSize: 'clamp(2rem, 28cqmin, 7rem)' }}>
-                        <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 font-bold">{time}</span>
-                      </div>
-                    )}
-                  </div>
+                  <TimeDisplay 
+                    time={time} 
+                    values={segmentEditor.values} 
+                    isEditing={false} 
+                    onPause={pauseTimer} 
+                  />
                 ) : (
                   /* EDIT MODE - Inline Editable Display */
                   <div className="flex flex-col items-center">
@@ -291,7 +151,11 @@ const Timer = () => {
                               onChange={segmentEditor.handleSegmentChange}
                               onBlur={segmentEditor.handleSegmentBlur}
                               onKeyDown={segmentEditor.handleKeyDown}
-                              className="text-center text-warm-gray-800 dark:text-warm-gray-200 bg-warm-gray-100 dark:bg-warm-gray-700 rounded-md outline-none focus:ring-2 focus:ring-sage-500"
+                              className={cn(
+                                "text-center rounded-md outline-none focus:ring-2 focus:ring-sage-500",
+                                text.primary,
+                                backgrounds.surface
+                              )}
                               style={{ 
                                 width: 'clamp(2.5rem, 15cqmin, 5rem)',
                                 fontSize: 'clamp(1.5rem, 12cqmin, 3rem)'
@@ -301,9 +165,13 @@ const Timer = () => {
                           ) : (
                             <span
                               onClick={() => segmentEditor.handleSegmentClick(idx)}
-                              className={`leading-none text-warm-gray-800 dark:text-warm-gray-200 cursor-pointer hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 px-1 rounded-md transition-colors ${
-                                !isRunning ? 'hover:text-sage-600' : ''
-                              }`}
+                              className={cn(
+                                "leading-none cursor-pointer px-1 rounded-md",
+                                text.primary,
+                                backgrounds.hover,
+                                transitions.colors,
+                                !isRunning && 'hover:text-sage-600'
+                              )}
                               title={!isRunning ? 'Click to edit' : ''}
                               style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}
                             >
@@ -313,7 +181,7 @@ const Timer = () => {
                           
                           {/* Colon separator */}
                           {idx < segmentEditor.values.length - 1 && (
-                            <span className="leading-none text-warm-gray-800 dark:text-warm-gray-200 mx-0" style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}>
+                            <span className={cn("leading-none mx-0", text.primary)} style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}>
                               :
                             </span>
                           )}
@@ -321,7 +189,7 @@ const Timer = () => {
                       ))}
                     </div>
                     {!isRunning && segmentEditor.editingSegment === null && (
-                      <div className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
+                      <div className={cn("text-xs mt-1", text.muted)}>
                         <span>Click to edit</span>
                       </div>
                     )}
@@ -332,14 +200,14 @@ const Timer = () => {
         <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center gap-2">
           {timerFinished ? (
             <button
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+              className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
               onClick={restartTimer}
             >
               {'\u21BB'} Restart
             </button>
           ) : showStartButton ? (
             <button
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+              className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
               onClick={handleStart}
             >
               {'\u25B6'} Start
@@ -348,7 +216,7 @@ const Timer = () => {
             <>
               {showPauseButton && (
                 <button
-                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                  className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
                   onClick={pauseTimer}
                 >
                   {'\u23F8'} Pause
@@ -356,14 +224,14 @@ const Timer = () => {
               )}
               {showResumeButton && (
                 <button
-                  className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                  className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
                   onClick={resumeTimer}
                 >
                   {'\u25B6'} Resume
                 </button>
               )}
               <button
-                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200"
+                className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
                 onClick={restartTimer}
               >
                 {'\u21BB'} Restart

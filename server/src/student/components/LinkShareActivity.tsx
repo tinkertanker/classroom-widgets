@@ -41,10 +41,10 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
       setIsActive(data.isActive);
     };
 
-    socket.on('linkShare:roomStateChanged', handleRoomStateChanged);
+    socket.on('linkShare:stateChanged', handleRoomStateChanged);
 
     return () => {
-      socket.off('linkShare:roomStateChanged', handleRoomStateChanged);
+      socket.off('linkShare:stateChanged', handleRoomStateChanged);
     };
   }, [socket]);
 

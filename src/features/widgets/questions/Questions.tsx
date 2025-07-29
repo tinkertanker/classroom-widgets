@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { FaQuestion, FaPlay, FaPause, FaTrash, FaCheck } from 'react-icons/fa6';
 import { getQuestionColor } from '../../../utils/questionColors';
@@ -24,6 +24,7 @@ interface QuestionsProps {
 function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isActive, setIsActive] = useState(false);
+  const toggleActiveRef = useRef<(() => void) | null>(null);
 
   // Load saved state
   useEffect(() => {
@@ -51,26 +52,30 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       description="Let students submit questions during your lesson"
       icon={FaQuestion}
       onRoomCreated={() => {
-        setIsActive(true);
-        // Start accepting questions automatically when room is created
+        // Don't automatically start - let server state control this
+        // Server starts with isActive: false by default
       }}
       onRoomClosed={() => {
         setQuestions([]);
         setIsActive(false);
       }}
-      headerChildren={
-        <button
-          onClick={() => setIsActive(!isActive)}
-          className={`p-1.5 rounded transition-colors duration-200 ${
-            isActive 
-              ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
-              : 'bg-sage-500 hover:bg-sage-600 text-white'
-          }`}
-          title={isActive ? "Pause accepting questions" : "Resume accepting questions"}
-        >
-          {isActive ? <FaPause /> : <FaPlay />}
-        </button>
-      }
+      headerChildren={({ session, isRoomActive }) => {
+        if (!session || !isRoomActive || !toggleActiveRef.current) return null;
+        
+        return (
+          <button
+            onClick={toggleActiveRef.current}
+            className={`p-1.5 rounded transition-colors duration-200 ${
+              isActive 
+                ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+                : 'bg-sage-500 hover:bg-sage-600 text-white'
+            }`}
+            title={isActive ? "Pause accepting questions" : "Resume accepting questions"}
+          >
+            {isActive ? <FaPause /> : <FaPlay />}
+          </button>
+        );
+      }}
     >
       {({ session, isRoomActive }) => {
         // Socket event handlers
@@ -98,18 +103,26 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
           },
           'allQuestionsCleared': () => {
             setQuestions([]);
+          },
+          'questions:stateChanged': (data: { isActive: boolean; widgetId?: string }) => {
+            // Only handle state changes for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              setIsActive(data.isActive);
+            }
           }
-        }), []);
+        }), [widgetId]);
 
         // Use the new composite hook for socket management
-        const { emitWidgetEvent } = useWidgetSocket({
+        const { emitWidgetEvent, toggleActive } = useWidgetSocket({
           socket: session.socket,
           sessionCode: session.sessionCode,
           roomType: 'questions',
           widgetId,
           isActive,
           isRoomActive,
-          events: socketEvents
+          events: socketEvents,
+          startEvent: 'session:questions:start',
+          stopEvent: 'session:questions:stop'
         });
 
         const handleMarkAnswered = useCallback((questionId: string) => {
@@ -125,6 +138,11 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
             emitWidgetEvent('clearAll', {});
           }
         }, [emitWidgetEvent]);
+
+        // Store toggleActive in ref so header can access it
+        useEffect(() => {
+          toggleActiveRef.current = () => toggleActive(!isActive);
+        }, [toggleActive, isActive]);
 
         // Sort questions: unanswered first, then by timestamp
         const sortedQuestions = [...questions].sort((a, b) => {

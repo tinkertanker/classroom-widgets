@@ -31,6 +31,7 @@ export function useSocketEvents({
 
     // Attach all event listeners
     const eventEntries = Object.entries(eventsRef.current);
+    console.log('[useSocketEvents] Registering events:', eventEntries.map(([name]) => name));
     
     eventEntries.forEach(([eventName, handler]) => {
       socket.on(eventName, handler);

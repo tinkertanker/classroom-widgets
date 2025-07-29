@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { NetworkedWidgetWrapper } from '../shared/NetworkedWidgetWrapper';
 import { useWidgetSocket } from '../shared/hooks/useWidgetSocket';
 import { FaGauge, FaPlay, FaPause } from 'react-icons/fa6';
@@ -35,6 +35,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   });
   const [isActive, setIsActive] = useState(false);
   const [showResults, setShowResults] = useState(true);
+  const toggleActiveRef = useRef<(() => void) | null>(null);
 
   // Load saved state
   useEffect(() => {
@@ -57,19 +58,20 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
       showResults
     });
   }, [onStateChange, feedbackData, isActive, showResults]);
+  
 
   return (
     <NetworkedWidgetWrapper
       widgetId={widgetId}
       savedState={savedState}
       onStateChange={handleStateChange}
-      roomType="rtFeedback"
+      roomType="rtfeedback"
       title="RT Feedback"
       description="Get real-time feedback on lesson difficulty"
       icon={FaGauge}
       onRoomCreated={() => {
-        // Start accepting feedback automatically when room is created
-        setIsActive(true);
+        // Don't automatically start - let server state control this
+        // Server starts with isActive: false by default
       }}
       onRoomClosed={() => {
         setFeedbackData({
@@ -79,54 +81,57 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         });
         setIsActive(false);
       }}
-      headerChildren={
-        <button
-          onClick={() => setIsActive(!isActive)}
-          className={`p-1.5 rounded transition-colors duration-200 ${
-            isActive 
-              ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
-              : 'bg-sage-500 hover:bg-sage-600 text-white'
-          }`}
-          title={isActive ? "Pause feedback" : "Resume feedback"}
-        >
-          {isActive ? <FaPause /> : <FaPlay />}
-        </button>
-      }
+      headerChildren={({ session, isRoomActive }) => {
+        if (!session || !isRoomActive || !toggleActiveRef.current) return null;
+        
+        return (
+          <button
+            onClick={toggleActiveRef.current}
+            className={`p-1.5 rounded transition-colors duration-200 ${
+              isActive 
+                ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+                : 'bg-sage-500 hover:bg-sage-600 text-white'
+            }`}
+            title={isActive ? "Pause feedback" : "Resume feedback"}
+          >
+            {isActive ? <FaPause /> : <FaPlay />}
+          </button>
+        );
+      }}
     >
       {({ session, isRoomActive }) => {
         // Define socket event handlers
-        const socketEvents = [
-          {
-            event: 'rtfeedback:update',
-            handler: (data: FeedbackData & { widgetId?: string }) => {
-              // Only handle updates for this specific widget
-              if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-                const { widgetId: _, ...feedbackData } = data;
-                setFeedbackData(feedbackData);
-              }
+        const socketEvents = {
+          'rtfeedback:update': (data: FeedbackData & { widgetId?: string }) => {
+            // Only handle updates for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              const { widgetId: _, ...feedbackData } = data;
+              setFeedbackData(feedbackData);
             }
           },
-          {
-            event: 'rtfeedback:stateChanged',
-            handler: (data: { isActive: boolean; widgetId?: string }) => {
-              // Only handle state changes for this specific widget
-              if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-                setIsActive(data.isActive);
-              }
+          'rtfeedback:stateChanged': (data: { isActive: boolean; widgetId?: string }) => {
+            // Only handle state changes for this specific widget
+            if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+              setIsActive(data.isActive);
             }
           }
-        ];
+        };
 
         // Use the widget socket hook to manage socket connections and events
-        const { emitWidgetEvent } = useWidgetSocket({
+        const { emitWidgetEvent, toggleActive } = useWidgetSocket({
           socket: session.socket,
           sessionCode: session.sessionCode,
-          roomType: 'rtFeedback',
+          roomType: 'rtfeedback',
           widgetId,
           isActive,
           isRoomActive,
           events: socketEvents
         });
+
+        // Store toggleActive in ref so header can access it
+        useEffect(() => {
+          toggleActiveRef.current = () => toggleActive(!isActive);
+        }, [toggleActive, isActive]);
 
         const handleReset = () => {
           emitWidgetEvent('reset');
@@ -134,6 +139,10 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
 
         return (
           <>
+            {/* Response count */}
+            <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-3">
+              {feedbackData.totalResponses} responses
+            </div>
 
             <div className="flex-1 flex flex-col relative">
               {/* Paused overlay */}
@@ -147,12 +156,6 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
               )}
               {showResults ? (
                 <>
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-                      {feedbackData.totalResponses} responses
-                    </div>
-                  </div>
-
                   <div className="flex-1 flex items-end justify-around gap-1 pb-1">
                     {feedbackData.understanding.map((count, index) => {
                       const maxCount = Math.max(...feedbackData.understanding, 1);

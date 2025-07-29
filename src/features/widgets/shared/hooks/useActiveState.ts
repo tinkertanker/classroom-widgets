@@ -43,9 +43,24 @@ export function useActiveState({
 
   // Helper function to toggle active state
   const toggleActive = useCallback((newState: boolean) => {
-    if (!socket || !sessionCode || !isRoomActive) return;
+    console.log('[useActiveState] toggleActive called with newState:', newState);
+    console.log('[useActiveState] socket:', !!socket, 'sessionCode:', sessionCode, 'isRoomActive:', isRoomActive);
+    
+    if (!socket || !sessionCode || !isRoomActive) {
+      console.log('[useActiveState] BLOCKED - missing:', {
+        socket: !socket,
+        sessionCode: !sessionCode,
+        isRoomActive: !isRoomActive
+      });
+      return;
+    }
 
     const eventName = newState ? startEventName : stopEventName;
+    console.log('[useActiveState] Emitting event:', eventName, 'with data:', {
+      sessionCode,
+      widgetId
+    });
+    
     socket.emit(eventName, {
       sessionCode,
       widgetId
