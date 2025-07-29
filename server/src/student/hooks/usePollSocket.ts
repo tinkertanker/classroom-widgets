@@ -90,7 +90,7 @@ export const usePollSocket = ({
     socket.on('poll:stateChanged', handleStateChanged);
     socket.on('poll:dataUpdate', handleDataUpdate);
     socket.on('poll:voteUpdate', handleVoteUpdate);
-    socket.on('vote:confirmed', handleVoteConfirmed);
+    socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
 
     // Request initial state if needed
     let timer: NodeJS.Timeout | undefined;
@@ -107,7 +107,7 @@ export const usePollSocket = ({
       socket.off('poll:stateChanged', handleStateChanged);
       socket.off('poll:dataUpdate', handleDataUpdate);
       socket.off('poll:voteUpdate', handleVoteUpdate);
-      socket.off('vote:confirmed', handleVoteConfirmed);
+      socket.off('session:poll:voteConfirmed', handleVoteConfirmed);
     };
   }, [socket, roomCode, widgetId, initialPollData, pollData.isActive]);
 
@@ -118,7 +118,7 @@ export const usePollSocket = ({
     
     socket.emit('session:poll:vote', { 
       sessionCode: roomCode, 
-      option: optionIndex,
+      optionIndex: optionIndex,
       widgetId
     });
   };

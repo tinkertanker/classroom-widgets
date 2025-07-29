@@ -32,7 +32,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       setIsSending(true);
       
       // Send the updated value
-      socket.emit('session:rtfeedback:update', {
+      socket.emit('session:rtfeedback:submit', {
         sessionCode: roomCode,
         widgetId,
         value: currentValue
