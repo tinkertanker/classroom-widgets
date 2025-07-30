@@ -31,11 +31,10 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 *   `Server → Student`: `session:joined` with `{ success, activeRooms, participantId, error? }`
 *   `Server → Teacher`: `session:participantUpdate` with `{ count, participants }`
 
-**Student Leaves Session**
+**Student Leaves Session (Automatic)**
 
-*   `Student → Server`: `session:leave` with `{ sessionCode }`
-*   `Server → Teacher`: `session:participantUpdate` with `{ count }`
-*   On disconnect (e.g., page close), the server automatically detects the departure and sends a `session:participantUpdate` to the teacher.
+*   On disconnect (e.g., page close), the server automatically detects the departure and sends:
+    *   `Server → Teacher`: `session:participantUpdate` with `{ count, participants }`
 
 ### Widget (Room) Management
 
@@ -57,6 +56,13 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 *   `Teacher → Server`: `session:updateWidgetState` with `{ sessionCode, roomType, widgetId, isActive }`
 *   `Server → All`: `session:widgetStateChanged` with `{ roomType, widgetId, isActive }`
 
+## State Request Pattern
+
+All widgets support a state request pattern for synchronizing late-joining students:
+
+*   `Student → Server`: `[widgetType]:requestState` with `{ sessionCode, widgetId }`
+*   `Server → Student`: `[widgetType]:stateChanged` with widget-specific state data
+
 ## Widget-Specific Events
 
 ### Poll Widget
@@ -71,6 +77,8 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 *   `Student → Server`: `session:poll:vote` with `{ sessionCode, widgetId, optionIndex }`
 *   `Server → Student`: `session:poll:voteConfirmed` with `{ success, error? }`
 *   `Server → All`: `poll:voteUpdate` with `{ votes, totalVotes, widgetId }`
+
+Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for backward compatibility.
 
 ### Link Share Widget
 

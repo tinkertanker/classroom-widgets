@@ -129,7 +129,16 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
             </div>
 
             {/* Submissions list */}
-            <div className="flex-1 overflow-y-auto space-y-2">
+            <div className="flex-1 overflow-y-auto space-y-2 relative">
+              {/* Paused overlay */}
+              {!isActive && isRoomActive && session.isConnected && (
+                <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+                  <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
+                    <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Link sharing is paused</p>
+                    <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+                  </div>
+                </div>
+              )}
               {submissions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-warm-gray-400 dark:text-warm-gray-600">
                   <FaLink className="text-4xl mb-2" />

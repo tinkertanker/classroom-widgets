@@ -135,6 +135,64 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
   });
   
+  // Host recovers a session after disconnect/reload
+  socket.on('session:recover', async (data, callback) => {
+    try {
+      const { sessionCode } = data;
+      const session = sessionManager.getSession(sessionCode);
+      
+      if (!session) {
+        console.log('[SessionRecovery] Session not found:', sessionCode);
+        callback({ success: false, error: 'Session not found' });
+        return;
+      }
+      
+      // For recovery after page reload
+      // The old socket might still appear connected briefly
+      const oldHostId = session.hostSocketId;
+      
+      // Log the recovery attempt
+      console.log('[SessionRecovery] Recovery attempt:', {
+        sessionCode,
+        oldHostId,
+        newSocketId: socket.id,
+        isSameSocket: oldHostId === socket.id
+      });
+      
+      // Update the host socket ID to the new one
+      session.hostSocketId = socket.id;
+      
+      // Join session room
+      socket.join(`session:${session.code}`);
+      
+      // Get active rooms data
+      const activeRoomsData = session.getActiveRooms();
+      
+      // Join all active room channels
+      activeRoomsData.forEach(roomData => {
+        const roomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
+        socket.join(`${session.code}:${roomId}`);
+      });
+      
+      callback({ 
+        success: true,
+        sessionCode: session.code,
+        rooms: activeRoomsData
+      });
+      
+      // Emit recovery event
+      socket.emit('session:recovered', {
+        sessionCode: session.code,
+        rooms: activeRoomsData
+      });
+      
+      console.log(`[SessionRecovery] Host recovered session ${session.code} (old socket: ${oldHostId}, new socket: ${socket.id})`);
+    } catch (error) {
+      console.error('Error recovering session:', error);
+      callback({ success: false, error: error.message || 'Failed to recover session' });
+    }
+  });
+  
   // Host creates a room within session
   socket.on(EVENTS.SESSION.CREATE_ROOM, async (data, callback) => {
     try {
@@ -158,7 +216,11 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         // Rejoin the room
         const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
         socket.join(`${session.code}:${roomId}`);
-        callback({ success: true, isExisting: true });
+        callback({ 
+          success: true, 
+          isExisting: true,
+          roomData: existingRoom.toJSON()
+        });
         return;
       }
       
@@ -187,13 +249,67 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         roomData: room.toJSON()
       });
       
-      callback({ success: true, isExisting: false });
+      // Send initial state to all participants
+      const roomNamespace = `${session.code}:${roomId}`;
+      io.to(roomNamespace).emit(`${roomType}:stateChanged`, {
+        isActive: room.isActive,
+        widgetId
+      });
+      
+      // Return room data to the teacher
+      callback({ 
+        success: true, 
+        isExisting: false,
+        roomData: room.toJSON()
+      });
     } catch (error) {
       console.error('Error creating room:', error);
       callback({ 
         success: false, 
         error: error.message 
       });
+    }
+  });
+  
+  // Host closes entire session
+  socket.on(EVENTS.SESSION.CLOSE, async (data) => {
+    try {
+      const { sessionCode } = data;
+      const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
+      
+      if (!session || !session.isHost(socket.id)) {
+        return;
+      }
+      
+      // Notify all participants that session is closing
+      io.to(`session:${session.code}`).emit('session:closed');
+      
+      // Remove all participants from session rooms
+      session.activeRooms.forEach((room, roomId) => {
+        const roomNamespace = `${session.code}:${roomId}`;
+        const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
+        if (socketsInRoom) {
+          socketsInRoom.forEach(socketId => {
+            const s = io.sockets.sockets.get(socketId);
+            if (s) s.leave(roomNamespace);
+          });
+        }
+      });
+      
+      // Remove all participants from session
+      const sessionNamespace = `session:${session.code}`;
+      const socketsInSession = io.sockets.adapter.rooms.get(sessionNamespace);
+      if (socketsInSession) {
+        socketsInSession.forEach(socketId => {
+          const s = io.sockets.sockets.get(socketId);
+          if (s) s.leave(sessionNamespace);
+        });
+      }
+      
+      // Delete the session
+      sessionManager.deleteSession(session.code);
+    } catch (error) {
+      console.error('Error closing session:', error);
     }
   });
   

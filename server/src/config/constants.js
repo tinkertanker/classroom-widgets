@@ -29,7 +29,7 @@ module.exports = {
   },
 
   // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U)
-  SAFE_CHARACTERS: '23456789ACDEFHJKMNPQRTUWXY',
+  SAFE_CHARACTERS: '23456789ACDEFHJKNPQRTUWY',
 
   // Room types
   ROOM_TYPES: {
@@ -42,47 +42,71 @@ module.exports = {
   // Socket event namespaces
   EVENTS: {
     SESSION: {
+      // Client -> Server events
       CREATE: 'session:create',
       JOIN: 'session:join',
+      CLOSE: 'session:close',
       CREATE_ROOM: 'session:createRoom',
       CLOSE_ROOM: 'session:closeRoom',
-      PARTICIPANT_UPDATE: 'session:participantUpdate',
       UPDATE_WIDGET_STATE: 'session:updateWidgetState',
+      // Server -> Client events
+      CREATED: 'session:created',
+      JOINED: 'session:joined',
+      CLOSED: 'session:closed',
+      ROOM_CREATED: 'session:roomCreated',
+      ROOM_CLOSED: 'session:roomClosed',
+      PARTICIPANT_UPDATE: 'session:participantUpdate',
       WIDGET_STATE_CHANGED: 'session:widgetStateChanged',
       HOST_DISCONNECTED: 'session:hostDisconnected',
       HOST_RECONNECTED: 'session:hostReconnected'
     },
     POLL: {
+      // Client -> Server events
       UPDATE: 'session:poll:update',
       VOTE: 'session:poll:vote',
       REQUEST_STATE: 'poll:requestState',
+      // Server -> Client events
+      VOTE_CONFIRMED: 'session:poll:voteConfirmed',
       DATA_UPDATE: 'poll:dataUpdate',
       STATE_CHANGED: 'poll:stateChanged',
       VOTE_UPDATE: 'poll:voteUpdate'
     },
     LINK_SHARE: {
+      // Client -> Server events
       SUBMIT: 'session:linkShare:submit',
       DELETE: 'session:linkShare:delete',
+      REQUEST_STATE: 'linkShare:requestState',
+      // Server -> Client events
+      SUBMITTED: 'session:linkShare:submitted',
       NEW_SUBMISSION: 'linkShare:newSubmission',
       SUBMISSION_DELETED: 'linkShare:submissionDeleted',
       STATE_CHANGED: 'linkShare:stateChanged'
     },
     RT_FEEDBACK: {
-      UPDATE: 'session:rtfeedback:update',
+      // Client -> Server events
+      SUBMIT: 'session:rtfeedback:submit',
       RESET: 'session:rtfeedback:reset',
+      REQUEST_STATE: 'rtfeedback:requestState',
+      // Server -> Client events
+      SUBMITTED: 'session:rtfeedback:submitted',
       STATE_CHANGED: 'rtfeedback:stateChanged',
       DATA_UPDATE: 'rtfeedback:update'
     },
     QUESTIONS: {
+      // Client -> Server events
       SUBMIT: 'session:questions:submit',
       MARK_ANSWERED: 'session:questions:markAnswered',
       DELETE: 'session:questions:delete',
       CLEAR_ALL: 'session:questions:clearAll',
+      REQUEST_STATE: 'questions:requestState',
+      // Server -> Client events
+      SUBMITTED: 'session:questions:submitted',
       STATE_CHANGED: 'questions:stateChanged',
-      NEW_QUESTION: 'newQuestion',
-      QUESTION_ANSWERED: 'questionAnswered',
-      QUESTION_DELETED: 'questionDeleted',
-      ALL_CLEARED: 'allQuestionsCleared'
+      LIST: 'questions:list',
+      NEW_QUESTION: 'questions:newQuestion',
+      QUESTION_ANSWERED: 'questions:questionAnswered',
+      QUESTION_DELETED: 'questions:questionDeleted',
+      ALL_CLEARED: 'questions:allCleared'
     }
   }
 };

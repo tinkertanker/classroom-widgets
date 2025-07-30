@@ -13,13 +13,15 @@ import {
   FaGripLines,
   FaBorderNone,
   FaMountain,
-  FaWater
+  FaWater,
+  FaXmark
 } from 'react-icons/fa6';
 import { useWorkspace, useTheme } from '../../../shared/hooks/useWorkspace';
 import { useWidgets } from '../../../shared/hooks/useWidget';
 import { BackgroundType } from '../../../shared/types';
 import { useModal } from '../../../contexts/ModalContext';
 import CustomizeToolbarDragDrop from './CustomizeToolbarDragDrop';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface ToolbarMenuProps {
   onClose: () => void;
@@ -31,6 +33,9 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   const { removeAll } = useWidgets();
   const { showModal, hideModal } = useModal();
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  const sessionCode = useWorkspaceStore((state) => state.sessionCode);
+  const closeSession = useWorkspaceStore((state) => state.closeSession);
   
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -62,6 +67,18 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
       className: 'max-w-4xl',
       noPadding: true
     });
+  };
+  
+  const handleCloseSession = () => {
+    if (window.confirm('Are you sure you want to close this session? All students will be disconnected.')) {
+      // Get socket from window
+      const socket = (window as any).socket;
+      if (socket && sessionCode) {
+        socket.emit('session:close', { sessionCode });
+      }
+      closeSession();
+      onClose();
+    }
   };
   
   return (
@@ -159,6 +176,19 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
         <FaRotateLeft className="mr-3" />
         Reset Workspace
       </button>
+      
+      {sessionCode && (
+        <>
+          <div className="h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1" />
+          <button
+            onClick={handleCloseSession}
+            className="w-full flex items-center px-4 py-2 text-sm text-dusty-rose-600 dark:text-dusty-rose-400 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
+          >
+            <FaXmark className="mr-3" />
+            Close Session ({sessionCode})
+          </button>
+        </>
+      )}
     </div>
   );
 };

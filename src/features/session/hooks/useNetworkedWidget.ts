@@ -21,6 +21,7 @@ interface UseNetworkedWidgetReturn {
   error: string | null;
   handleStart: () => Promise<void>;
   handleStop: () => void;
+  closeSession: () => void;
   session: {
     socket: any;
     sessionCode: string | null;
@@ -44,6 +45,7 @@ export function useNetworkedWidget({
   const [participantCount, setParticipantCount] = useState(0);
   
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);
+  const sessionCreatedAt = useWorkspaceStore((state) => state.sessionCreatedAt);
   const setSessionCode = useWorkspaceStore((state) => state.setSessionCode);
   const isConnected = useWorkspaceStore((state) => state.serverStatus.connected);
   const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
@@ -88,14 +90,25 @@ export function useNetworkedWidget({
     socket,
     sessionCode: localSessionCode || sessionCode,
     isConnected,
+    isCreatingSession: isStarting,
     onSessionRestored: () => {
+      console.log('[NetworkedWidget] Session restored successfully');
       setError(null);
+      // Ensure session code is properly set after recovery
+      const storedCode = useWorkspaceStore.getState().sessionCode;
+      if (storedCode && !sessionCode) {
+        setSessionCode(storedCode);
+        setLocalSessionCode(storedCode);
+      }
     },
     onSessionLost: () => {
+      console.log('[NetworkedWidget] Session lost');
       setIsRoomActive(false);
       setSessionCode(null);
       setLocalSessionCode(null);
       setParticipantCount(0);
+      // Clear persisted session from store
+      useWorkspaceStore.getState().setSessionCode(null);
       // Only show error if we actually had a session before
       if (localSessionCode || sessionCode) {
         setError('Session expired. Please start a new session.');
@@ -178,11 +191,33 @@ export function useNetworkedWidget({
       }
     };
     
+    // Handle unified widget state changes from server
+    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
+      if (data.roomType === roomType) {
+        const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
+        if (widgetMatch) {
+          // Widget should update its own state based on this event
+          // This is handled by the widget-specific listeners (e.g., poll:stateChanged)
+        }
+      }
+    };
+    
+    // Handle session closed by host
+    const handleSessionClosed = () => {
+      setIsRoomActive(false);
+      setSessionCode(null);
+      setLocalSessionCode(null);
+      setParticipantCount(0);
+      setError('Session has been closed by the host');
+    };
+    
     socket.on('session:roomCreated', handleRoomCreated);
     socket.on('session:roomClosed', handleRoomClosed);
     socket.on('session:participantUpdate', handleParticipantUpdate);
     socket.on('session:error', handleError);
     socket.on('session:recovered', handleSessionRecovered);
+    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
+    socket.on('session:closed', handleSessionClosed);
     
     return () => {
       socket.off('session:roomCreated', handleRoomCreated);
@@ -190,11 +225,21 @@ export function useNetworkedWidget({
       socket.off('session:participantUpdate', handleParticipantUpdate);
       socket.off('session:error', handleError);
       socket.off('session:recovered', handleSessionRecovered);
+      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
+      socket.off('session:closed', handleSessionClosed);
     };
   }, [socket, roomType, widgetId, onRoomCreated, onRoomClosed, setSessionCode, setLocalSessionCode]);
   
   // Handle start
   const handleStart = useCallback(async () => {
+    console.log('[NetworkedWidget] handleStart called', {
+      socket: !!socket,
+      isConnected,
+      sessionCode,
+      localSessionCode,
+      isRecovering
+    });
+    
     if (!socket || !isConnected) {
       setError('Not connected to server. Please check your connection.');
       return;
@@ -203,15 +248,60 @@ export function useNetworkedWidget({
     setIsStarting(true);
     setError(null);
     
+    // Clear any stale session data when starting fresh after an error
+    if (error === 'Session expired. Please start a new session.') {
+      console.log('[NetworkedWidget] Clearing stale session data');
+      setSessionCode(null);
+      setLocalSessionCode(null);
+    }
+    
     try {
       // First ensure we have a session
-      let currentSessionCode = sessionCode;
+      let currentSessionCode = localSessionCode || sessionCode;
+      const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+      
+      // Check if existing session is valid
+      if (currentSessionCode && sessionCreatedAt) {
+        const sessionAge = Date.now() - sessionCreatedAt;
+        if (sessionAge > TWO_HOURS) {
+          // Session is too old, clear it
+          console.log('[NetworkedWidget] Session too old, clearing');
+          setSessionCode(null);
+          setLocalSessionCode(null);
+          currentSessionCode = null;
+        } else if (isRecovering) {
+          // If we're currently recovering, wait for it to complete
+          console.log('[NetworkedWidget] Session recovery in progress, waiting...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Re-check session code after recovery
+          currentSessionCode = sessionCode || localSessionCode;
+        } else {
+          // Session exists and is valid - check if it still exists on server
+          try {
+            const response = await fetch(`${serverUrl}/api/sessions/${currentSessionCode}/exists`);
+            const data = await response.json();
+            if (!data.exists) {
+              console.log('[NetworkedWidget] Session no longer exists on server, clearing');
+              setSessionCode(null);
+              setLocalSessionCode(null);
+              currentSessionCode = null;
+            }
+          } catch (error) {
+            console.log('[NetworkedWidget] Error checking session, clearing:', error);
+            setSessionCode(null);
+            setLocalSessionCode(null);
+            currentSessionCode = null;
+          }
+        }
+      }
+      
       if (!currentSessionCode) {
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error('Timeout creating session'));
           }, 10000);
           
+          console.log('[NetworkedWidget] Creating new session');
           socket.emit('session:create', {}, (response: any) => {
             clearTimeout(timeout);
             if (response.error) {
@@ -220,7 +310,8 @@ export function useNetworkedWidget({
               currentSessionCode = response.code;
               setSessionCode(response.code);
               setLocalSessionCode(response.code);
-              resolve();
+              // Add a small delay to prevent immediate recovery attempts
+              setTimeout(() => resolve(), 100);
             } else {
               reject(new Error('Failed to create session'));
             }
@@ -234,22 +325,43 @@ export function useNetworkedWidget({
           reject(new Error('Timeout creating room'));
         }, 10000);
         
+        console.log('[NetworkedWidget] Emitting session:createRoom', {
+          sessionCode: currentSessionCode,
+          roomType,
+          widgetId
+        });
+        
         socket.emit('session:createRoom', { 
           sessionCode: currentSessionCode,
           roomType,
           widgetId 
         }, (response: any) => {
           clearTimeout(timeout);
+          console.log('[NetworkedWidget] createRoom response:', response);
           if (response.error) {
+            // If we get "Invalid session or not host", clear the session and retry
+            if (response.error === 'Invalid session or not host') {
+              console.log('[NetworkedWidget] Not recognized as host, clearing session');
+              setSessionCode(null);
+              setLocalSessionCode(null);
+              useWorkspaceStore.getState().setSessionCode(null);
+            }
             reject(new Error(response.error));
           } else if (response.success) {
-            // Set room as active and ensure session code is set
+            // Set room as active based on server response
             setIsRoomActive(true);
             setIsStarting(false);
             // Make sure local session code is set
             if (!localSessionCode && currentSessionCode) {
               setLocalSessionCode(currentSessionCode);
             }
+            
+            // If server provided room data, notify parent component
+            if (response.roomData) {
+              onRoomCreated?.();
+              // The widget will receive the isActive state through session:widgetStateChanged event
+            }
+            
             resolve();
           } else {
             reject(new Error('Failed to create room'));
@@ -272,6 +384,20 @@ export function useNetworkedWidget({
       widgetId 
     });
   }, [socket, sessionCode, roomType, widgetId]);
+  
+  // Handle explicit session close
+  const closeSession = useCallback(() => {
+    if (!socket || !sessionCode) return;
+    
+    // Close the session on the server
+    socket.emit('session:close', { sessionCode });
+    
+    // Clear local session state
+    setSessionCode(null);
+    setLocalSessionCode(null);
+    setIsRoomActive(false);
+    setParticipantCount(0);
+  }, [socket, sessionCode, setSessionCode]);
   
   // Load saved state - but don't restore session code automatically
   // Session codes should only be valid during active sessions
@@ -296,6 +422,7 @@ export function useNetworkedWidget({
     error,
     handleStart,
     handleStop,
+    closeSession,
     session
   };
 }

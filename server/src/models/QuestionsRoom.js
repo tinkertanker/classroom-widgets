@@ -7,7 +7,7 @@ class QuestionsRoom extends Room {
   constructor(code, widgetId = null) {
     super(code, widgetId);
     this.questions = [];
-    this.isActive = true; // Questions start active by default
+    this.isActive = false; // All widgets start paused by default
   }
 
   getType() {

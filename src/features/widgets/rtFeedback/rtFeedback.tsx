@@ -154,57 +154,60 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
                   </div>
                 </div>
               )}
-              {showResults ? (
-                <>
-                  <div className="flex-1 flex items-end justify-around gap-1 pb-1">
-                    {feedbackData.understanding.map((count, index) => {
-                      const maxCount = Math.max(...feedbackData.understanding, 1);
-                      const percentage = (count / maxCount) * 100 || 0;
-                      return (
-                        <div key={index} className="flex-1 flex flex-col items-center">
-                          <div className="relative w-full h-32 flex items-end">
-                            <div 
-                              className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
-                              style={{ height: `${percentage}%`, minHeight: '1px' }}
-                            />
+              
+              <div className="flex-1 flex flex-col">
+                {showResults ? (
+                  <>
+                    <div className="flex-1 flex items-end justify-around gap-1 pb-1">
+                      {feedbackData.understanding.map((count, index) => {
+                        const maxCount = Math.max(...feedbackData.understanding, 1);
+                        const percentage = (count / maxCount) * 100 || 0;
+                        return (
+                          <div key={index} className="flex-1 flex flex-col items-center">
+                            <div className="relative w-full h-32 flex items-end">
+                              <div 
+                                className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
+                                style={{ height: `${percentage}%`, minHeight: '1px' }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                    {/* Descriptive labels */}
+                    <div className="flex justify-between px-4 text-xs text-warm-gray-500">
+                      <span>Too Easy</span>
+                      <span>Easy</span>
+                      <span>Just Right</span>
+                      <span>Hard</span>
+                      <span>Too Hard</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-warm-gray-600 dark:text-warm-gray-400">
+                        Results hidden
+                      </p>
+                    </div>
                   </div>
-                  {/* Descriptive labels */}
-                  <div className="flex justify-between px-4 text-xs text-warm-gray-500">
-                    <span>Too Easy</span>
-                    <span>Easy</span>
-                    <span>Just Right</span>
-                    <span>Hard</span>
-                    <span>Too Hard</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-warm-gray-600 dark:text-warm-gray-400">
-                      Results hidden
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            <div className="flex justify-between gap-2 mt-1">
-              <button
-                onClick={() => setShowResults(!showResults)}
-                className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
-              >
-                {showResults ? 'Hide' : 'Show'} Results
-              </button>
-              <button
-                onClick={handleReset}
-                className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
-              >
-                Reset
-              </button>
+              <div className="flex justify-between gap-2 mt-1">
+                <button
+                  onClick={() => setShowResults(!showResults)}
+                  className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
+                >
+                  {showResults ? 'Hide' : 'Show'} Results
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
             </div>
           </>
         );

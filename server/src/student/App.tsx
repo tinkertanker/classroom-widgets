@@ -84,7 +84,7 @@ const App: React.FC = () => {
       setJoinedRooms([]);
       
       // Recreate rooms from recovery data
-      activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string }) => {
+      activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
         const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
         const roomId = `${currentSessionCode}-${computedRoomId}-${Date.now()}`;
         const newRoom: JoinedRoom = {
@@ -94,7 +94,7 @@ const App: React.FC = () => {
           studentName: studentName,
           socket: primarySocket!,
           joinedAt: Date.now(),
-          initialData: roomData.initialData || {},
+          initialData: roomData.room || {},
           widgetId: roomData.widgetId
         };
         setJoinedRooms(prev => [...prev, newRoom]);
@@ -231,7 +231,7 @@ const App: React.FC = () => {
           setCurrentSessionCode(code);
           
           // Join all active rooms in the session
-          joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string }) => {
+          joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
             const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
             const roomId = `${code}-${computedRoomId}-${Date.now()}`;
             
@@ -242,7 +242,7 @@ const App: React.FC = () => {
               studentName: name || studentName,
               socket: newSocket,
               joinedAt: Date.now(),
-              initialData: {},
+              initialData: roomData.room || {},
               widgetId: roomData.widgetId
             };
             
@@ -339,7 +339,7 @@ const App: React.FC = () => {
           newSocket.emit('session:join', { 
             code: currentSessionCode, 
             name,
-            studentId
+            studentId: newSocket.id
           });
         }
       });

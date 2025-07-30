@@ -26,14 +26,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-rnd', 'socket.io-client'],
-          faceapi: ['face-api.js']
+          vendor: ['react', 'react-dom', 'react-rnd', 'socket.io-client']
         }
       }
     }
   },
   optimizeDeps: {
-    include: ['face-api.js']
+    include: []
   },
   test: {
     globals: true,

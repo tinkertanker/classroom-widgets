@@ -29,6 +29,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   scale: 1,
   scrollPosition: { x: 0, y: 0 },
   sessionCode: null,
+  sessionCreatedAt: null,
   dragState: {
     isDragging: false,
     draggedWidgetId: null,
@@ -47,7 +48,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   canRedo: false,
   
   // Simple action implementations
-  setSessionCode: (code) => set({ sessionCode: code }),
+  setSessionCode: (code) => set({ 
+    sessionCode: code,
+    sessionCreatedAt: code ? Date.now() : null 
+  }),
+  closeSession: () => set({ 
+    sessionCode: null,
+    sessionCreatedAt: null 
+  }),
   setBackground: (background) => set({ background }),
   setTheme: (theme) => set({ theme }),
   setScale: (scale) => set({ scale }),
@@ -172,7 +180,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         theme: state.theme,
         scale: state.scale,
         toolbar: state.toolbar,
-        widgetStates: Array.from(state.widgetStates.entries())
+        widgetStates: Array.from(state.widgetStates.entries()),
+        sessionCode: state.sessionCode,
+        sessionCreatedAt: state.sessionCreatedAt
       }),
       onRehydrateStorage: () => (state) => {
         // Convert arrays back to Maps after loading from storage
