@@ -17,6 +17,7 @@ interface JoinedRoom {
   code: string;
   type: RoomType;
   studentName: string;
+  studentId: string; // Added studentId to the interface
   socket: Socket;
   joinedAt: number;
   initialData?: any; // Store initial poll/activity data
@@ -240,6 +241,7 @@ const App: React.FC = () => {
               code,
               type: roomData.roomType,
               studentName: name || studentName,
+              studentId: newSocket.id, // Populate studentId
               socket: newSocket,
               joinedAt: Date.now(),
               initialData: roomData.room || {},
@@ -272,6 +274,7 @@ const App: React.FC = () => {
           code,
           type: data.roomType,
           studentName: name || studentName,
+          studentId: newSocket.id, // Populate studentId
           socket: newSocket,
           joinedAt: Date.now(),
           initialData: data.roomData || {},
@@ -548,7 +551,7 @@ const App: React.FC = () => {
                       <QuestionsActivity 
                         socket={room.socket} 
                         sessionCode={room.code}
-                        studentId={room.socket.id || ''}
+                        studentId={room.studentId || ''}
                         studentName={room.studentName}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}

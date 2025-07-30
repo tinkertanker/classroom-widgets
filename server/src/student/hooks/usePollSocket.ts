@@ -53,6 +53,8 @@ export const usePollSocket = ({
 
   // Socket event listeners
   useEffect(() => {
+    if (!socket) return;
+
     // Poll state changes
     const handleStateChanged = (data: { isActive: boolean }) => {
       // Reset vote state when poll restarts
@@ -97,7 +99,9 @@ export const usePollSocket = ({
     const hasInitialData = initialPollData && initialPollData.question && initialPollData.options;
     if (!hasInitialData) {
       timer = setTimeout(() => {
-        socket.emit('poll:requestState', { code: roomCode, widgetId });
+        if (socket) {
+          socket.emit('poll:requestState', { code: roomCode, widgetId });
+        }
       }, 100);
     }
 
@@ -112,7 +116,7 @@ export const usePollSocket = ({
   }, [socket, roomCode, widgetId, initialPollData, pollData.isActive]);
 
   const handleVote = (optionIndex: number) => {
-    if (hasVoted || !pollData.isActive) return;
+    if (!socket || hasVoted || !pollData.isActive) return;
     
     setSelectedOption(optionIndex);
     

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
 import { ModalProvider } from '../contexts/ModalContext';
+import { SocketProvider } from '../contexts/SocketProvider';
 import { useWorkspace, useServerConnection } from '../shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '../shared/utils/migration';
@@ -14,43 +15,13 @@ import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '../shared/components/SmallScreenWarning';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
-import io from 'socket.io-client';
+
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
 // Audio import for trash sound
 import trashSound from '../sounds/trash-crumple.mp3';
 const trashAudio = new Audio(trashSound);
 
-// Socket connection setup
-const setupSocketConnection = (serverUrl: string, setServerStatus: any) => {
-  const socket = io(serverUrl, {
-    transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    reconnectionAttempts: Infinity, // Keep trying forever
-    timeout: 20000
-  });
-  
-  socket.on('connect', () => {
-    setServerStatus({ connected: true });
-  });
-  
-  socket.on('disconnect', () => {
-    setServerStatus({ connected: false });
-  });
-  
-  socket.on('connect_error', (error: any) => {
-    console.error('Connection error:', error);
-    setServerStatus({ connected: false, error: error.message });
-  });
-  
-  socket.on('reconnect_attempt', (attemptNumber: number) => {
-    console.log(`Reconnecting... (attempt ${attemptNumber})`);
-  });
-  
-  return socket;
-};
 
 function App() {
   const { theme, scale } = useWorkspace();
@@ -93,25 +64,6 @@ function App() {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
   
-  // Setup socket connection
-  useEffect(() => {
-    // Prevent multiple socket connections
-    if ((window as any).socket) {
-      return;
-    }
-    
-    const socket = setupSocketConnection(url, setServerStatus);
-    
-    // Store socket in window for widgets to access
-    (window as any).socket = socket;
-    
-    return () => {
-      if ((window as any).socket) {
-        socket.disconnect();
-        delete (window as any).socket;
-      }
-    };
-  }, [url]); // setServerStatus is stable from zustand, doesn't need to be in deps
   
   
   // Trash sound effect
@@ -233,9 +185,10 @@ function App() {
       {screenTooSmall ? (
         <SmallScreenWarning />
       ) : (
-        <ConfettiProvider>
-          <ModalProvider>
-            <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
+        <SocketProvider>
+          <ConfettiProvider>
+              <ModalProvider>
+                <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
           
           {/* Top Controls */}
           <TopControls />
@@ -271,19 +224,20 @@ function App() {
           {/* Main Board */}
           <div className="h-full relative overflow-hidden">
             <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
-              {widgets.map((widget) => (
-                <WidgetRenderer key={widget.id} widgetId={widget.id} />
-              ))}
-            </Board>
+                  {widgets.map((widget) => (
+                    <WidgetRenderer key={widget.id} widgetId={widget.id} />
+                  ))}
+                </Board>
           </div>
           
           {/* Toolbar at bottom */}
           <div className="toolbar-container">
             <Toolbar />
           </div>
-          </div>
-          </ModalProvider>
-        </ConfettiProvider>
+              </div>
+            </ModalProvider>
+          </ConfettiProvider>
+        </SocketProvider>
       )}
     </GlobalErrorBoundary>
   );

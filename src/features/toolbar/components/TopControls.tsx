@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus } from 'react-icons/fa6';
+import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus, FaXmark } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection } from '../../../shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
@@ -9,6 +9,7 @@ const TopControls: React.FC = () => {
   const { scale, setScale } = useWorkspace();
   const { connected, url: serverUrl } = useServerConnection();
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);
+  const closeSession = useWorkspaceStore((state) => state.closeSession);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSessionExpanded, setIsSessionExpanded] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
@@ -180,6 +181,29 @@ const TopControls: React.FC = () => {
               <span className="text-sm text-warm-gray-600 dark:text-warm-gray-300 truncate">
                 {serverUrl?.replace(/^https?:\/\//, '')}/student
               </span>
+              
+              {/* Close Session Button */}
+              {connected && (
+                <>
+                  <div className="w-px h-4 bg-warm-gray-300 dark:bg-warm-gray-600" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm('Are you sure you want to close this session? All students will be disconnected.')) {
+                        const socket = (window as any).socket;
+                        if (socket && sessionCode) {
+                          socket.emit('session:close', { sessionCode });
+                        }
+                        closeSession();
+                      }
+                    }}
+                    className="text-dusty-rose-600 dark:text-dusty-rose-400 hover:text-dusty-rose-700 dark:hover:text-dusty-rose-300 transition-colors p-1 rounded hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20"
+                    title="Close session"
+                  >
+                    <FaXmark className="text-sm" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

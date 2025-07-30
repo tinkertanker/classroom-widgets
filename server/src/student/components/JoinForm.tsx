@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaSun, FaMoon, FaTriangleExclamation } from 'react-icons/fa6';
-import { isValidSessionCode, sanitizeStudentName } from '../utils/validation';
+import { isValidSessionCode, sanitizeStudentName } from '../../../../src/shared/utils/validation';
 
 interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
