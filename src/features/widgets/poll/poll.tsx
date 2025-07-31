@@ -47,7 +47,11 @@ interface PollResults {
 }
 
 // Poll Provider component
-const PollProvider: React.FC<PollProps> = ({ widgetId, savedState, onStateChange, children }) => {
+interface PollProviderProps extends PollProps {
+  children: React.ReactNode;
+}
+
+const PollProvider: React.FC<PollProviderProps> = ({ widgetId, savedState, onStateChange, children }) => {
   const { session, isRoomActive } = useNetworkedWidgetContext();
   const { showModal, hideModal } = useModal();
   const [pollData, setPollData] = useState<PollData>({
@@ -187,6 +191,35 @@ const PollProvider: React.FC<PollProps> = ({ widgetId, savedState, onStateChange
   );
 };
 
+function PollHeaderControls() {
+  const { pollData, toggleActive, openSettings } = usePollContext();
+  const { session, isRoomActive } = useNetworkedWidgetContext();
+
+  return (
+    <>
+      <button
+        onClick={toggleActive}
+        disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
+        className={`p-2 rounded transition-colors ${
+          pollData.isActive 
+            ? 'text-dusty-rose-600 hover:text-dusty-rose-700 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300 hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20' 
+            : 'text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 hover:bg-sage-100 dark:hover:bg-sage-900/20'
+        } disabled:opacity-50 disabled:cursor-not-allowed`}
+        title={pollData.isActive ? "Pause poll" : "Start poll"}
+      >
+        {pollData.isActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}
+      </button>
+      <button
+        onClick={openSettings}
+        className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+        title="Settings"
+      >
+        <FaGear className="text-base" />
+      </button>
+    </>
+  );
+}
+
 function PollContent() {
   const { widgetId } = useWidget();
   const { pollData, results, toggleActive, openSettings } = usePollContext();
@@ -258,16 +291,22 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   return (
     <WidgetProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
       <NetworkedWidgetWrapperV2
-        widgetId={widgetId}
         roomType="poll"
         title="Poll"
         description="Create interactive polls for your students"
         icon={FaChartColumn}
         // onRoomCreated and onRoomClosed will be handled by PollProvider
+        headerChildren={(networkedState) => (
+          <PollProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
+            <PollHeaderControls />
+          </PollProvider>
+        )}
       >
-        <PollProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
-          <PollContent />
-        </PollProvider>
+        {(networkedState) => (
+          <PollProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
+            <PollContent />
+          </PollProvider>
+        )}
       </NetworkedWidgetWrapperV2>
     </WidgetProvider>
   );

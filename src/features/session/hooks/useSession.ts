@@ -54,6 +54,13 @@ export function useSession() {
       return null;
     }
     
+    // Check if we already have an active session
+    const existingSessionCode = localSessionCode || sessionCode;
+    if (existingSessionCode && !isRecovering) {
+      console.log('[Session] Already have an active session:', existingSessionCode);
+      return existingSessionCode;
+    }
+    
     setIsStarting(true);
     setError(null);
     
@@ -92,6 +99,7 @@ export function useSession() {
       }
       
       if (!currentSessionCode) {
+        // Create a new session
         return await new Promise<string | null>((resolve, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error('Timeout creating session'));
@@ -110,8 +118,31 @@ export function useSession() {
             }
           });
         });
+      } else {
+        // Rejoin existing session as teacher
+        return await new Promise<string | null>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Timeout joining session'));
+          }, 10000);
+          
+          socket.emit('session:join', { 
+            sessionCode: currentSessionCode, 
+            role: 'teacher' 
+          }, (response: any) => {
+            clearTimeout(timeout);
+            if (response.error) {
+              reject(new Error(response.error));
+            } else if (response.success) {
+              console.log('[Session] Rejoined session as teacher:', currentSessionCode);
+              setSessionCode(currentSessionCode);
+              setLocalSessionCode(currentSessionCode);
+              setTimeout(() => resolve(currentSessionCode), 100);
+            } else {
+              reject(new Error('Failed to rejoin session'));
+            }
+          });
+        });
       }
-      return currentSessionCode;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create session');
       setIsStarting(false);

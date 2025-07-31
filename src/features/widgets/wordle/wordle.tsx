@@ -62,7 +62,7 @@ const Wordle: React.FC<WordleProps> = ({ savedState, onStateChange }) => {
               <div className="text-sm font-medium">
                 {gameStatus === 'won' ? (
                   <span className="text-emerald-600 dark:text-emerald-400">
-                    🎉 You won!
+                    You won!
                   </span>
                 ) : (
                   <span className="text-warm-gray-600 dark:text-warm-gray-400">

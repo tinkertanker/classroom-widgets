@@ -136,6 +136,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   });
   
   // Host recovers a session after disconnect/reload
+  // RECOVERY DISABLED TEMPORARILY
+  /*
   socket.on('session:recover', async (data, callback) => {
     try {
       const { sessionCode } = data;
@@ -192,6 +194,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       callback({ success: false, error: error.message || 'Failed to recover session' });
     }
   });
+  */
   
   // Host creates a room within session
   socket.on(EVENTS.SESSION.CREATE_ROOM, async (data, callback) => {

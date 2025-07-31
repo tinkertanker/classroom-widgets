@@ -33,8 +33,8 @@ interface NetworkedWidgetWrapperV2Props {
   icon: IconType;
   onRoomCreated?: () => void;
   onRoomClosed?: () => void;
-  children: ReactNode;
-  headerChildren?: ReactNode;
+  children: (networkedState: NetworkedWidgetContextType) => ReactNode; // Render prop
+  headerChildren?: (networkedState: NetworkedWidgetContextType) => ReactNode; // Render prop
   emptyStateChildren?: ReactNode; // Allow custom empty state content
 }
 
@@ -67,6 +67,15 @@ export const NetworkedWidgetWrapperV2: React.FC<NetworkedWidgetWrapperV2Props> =
     onStateChange
   });
 
+  const networkedState = {
+    session,
+    isRoomActive,
+    isStarting,
+    error,
+    handleStart,
+    handleStop
+  };
+
   // Empty state
   if (!isRoomActive || !session.sessionCode) {
     return (
@@ -89,14 +98,7 @@ export const NetworkedWidgetWrapperV2: React.FC<NetworkedWidgetWrapperV2Props> =
 
   // Active state - provide context to children
   return (
-    <NetworkedWidgetContext.Provider value={{
-      session,
-      isRoomActive,
-      isStarting,
-      error,
-      handleStart,
-      handleStop
-    }}>
+    <NetworkedWidgetContext.Provider value={networkedState}>
       <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
         <NetworkedWidgetHeader 
           title={title}
@@ -104,7 +106,7 @@ export const NetworkedWidgetWrapperV2: React.FC<NetworkedWidgetWrapperV2Props> =
           participantCount={session.participantCount}
           icon={icon}
         >
-          {headerChildren}
+          {headerChildren && headerChildren(networkedState)}
         </NetworkedWidgetHeader>
         
         {/* Connection status overlay */}
@@ -126,7 +128,7 @@ export const NetworkedWidgetWrapperV2: React.FC<NetworkedWidgetWrapperV2Props> =
           </div>
         )}
         
-        {children}
+        {children(networkedState)}
       </div>
     </NetworkedWidgetContext.Provider>
   );

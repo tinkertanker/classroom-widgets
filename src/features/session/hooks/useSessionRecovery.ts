@@ -89,10 +89,16 @@ export function useSessionRecovery({
         // Don't attempt recovery if the session was created in the last 5 seconds
         // This prevents recovery attempts on freshly created sessions
         if (sessionAge > 5000 && sessionAge < TWO_HOURS) {
-          // Session is still valid, try to recover it
-          console.log('[SessionRecovery] Found persisted session, attempting recovery:', persistedSessionCode);
-          lastSessionCode.current = persistedSessionCode;
-          hasDisconnected.current = true; // Simulate disconnect to trigger recovery
+          // Check if we're already connected to this session
+          if (sessionCode === persistedSessionCode && isConnected) {
+            console.log('[SessionRecovery] Already connected to this session, skipping recovery');
+            lastSessionCode.current = persistedSessionCode;
+          } else {
+            // Session is still valid, try to recover it
+            console.log('[SessionRecovery] Found persisted session, attempting recovery:', persistedSessionCode);
+            lastSessionCode.current = persistedSessionCode;
+            hasDisconnected.current = true; // Simulate disconnect to trigger recovery
+          }
         } else if (sessionAge >= TWO_HOURS) {
           // Session is too old, clear it from store
           console.log('[SessionRecovery] Persisted session too old, clearing');
@@ -128,10 +134,9 @@ export function useSessionRecovery({
           
           if (data.exists) {
             // Session still exists, emit recovery event
-            console.log('[SessionRecovery] Emitting session:recover', {
-              sessionCode: lastSessionCode.current,
-              socketId: socket.id
-            });
+            console.log('[SessionRecovery] Session exists but recovery disabled for debugging');
+            // RECOVERY DISABLED TEMPORARILY
+            /*
             socket.emit('session:recover', { 
               sessionCode: lastSessionCode.current 
             }, (response: any) => {
@@ -162,6 +167,9 @@ export function useSessionRecovery({
                 }
               }
             });
+            */
+            attemptingRecovery.current = false;
+            lastSessionCode.current = null;
           } else {
             // Session doesn't exist on server - this is OK if we're about to create a new one
             console.log('[SessionRecovery] Session does not exist on server, skipping recovery');

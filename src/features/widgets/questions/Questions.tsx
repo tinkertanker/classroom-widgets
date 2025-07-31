@@ -86,7 +86,7 @@ const QuestionsProvider: React.FC<QuestionsProps & { children: React.ReactNode }
     }
   }), [widgetId]);
 
-  const { emitWidgetEvent, toggleActive } = useWidgetSocket({
+  const { emitWidgetEvent, toggleActive: toggleActiveState } = useWidgetSocket({
     socket: session.socket,
     sessionCode: session.sessionCode,
     roomType: 'questions',
@@ -112,6 +112,10 @@ const QuestionsProvider: React.FC<QuestionsProps & { children: React.ReactNode }
     }
   }, [emitWidgetEvent]);
 
+  const toggleActive = useCallback(() => {
+    toggleActiveState(!isActive);
+  }, [isActive, toggleActiveState]);
+
   useEffect(() => {
     onStateChange?.({
       questions,
@@ -134,6 +138,33 @@ const QuestionsProvider: React.FC<QuestionsProps & { children: React.ReactNode }
     </QuestionsContext.Provider>
   );
 };
+
+function QuestionsContentWrapper() {
+  const { isRoomActive } = useNetworkedWidgetContext();
+  const { isActive, toggleActive } = useQuestionsContext();
+
+  return (
+    <>
+      {/* Header controls */}
+      {isRoomActive && (
+        <div className="absolute top-4 right-4 z-20">
+          <button
+            onClick={toggleActive}
+            className={`p-1.5 rounded transition-colors duration-200 ${
+              isActive 
+                ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
+                : 'bg-sage-500 hover:bg-sage-600 text-white'
+            }`}
+            title={isActive ? "Pause accepting questions" : "Resume accepting questions"}
+          >
+            {isActive ? <FaPause /> : <FaPlay />}
+          </button>
+        </div>
+      )}
+      <QuestionsContent />
+    </>
+  );
+}
 
 function QuestionsContent() {
   const { widgetId } = useWidget();
@@ -240,35 +271,16 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   return (
     <WidgetProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
       <NetworkedWidgetWrapperV2
-        widgetId={widgetId}
         roomType="questions"
         title="Student Questions"
         description="Let students submit questions during your lesson"
         icon={FaQuestion}
-        onRoomCreated={() => {}} // Handled by QuestionsProvider
-        onRoomClosed={() => {}} // Handled by QuestionsProvider
-        headerChildren={({ session, isRoomActive }) => {
-          const { isActive, toggleActive } = useQuestionsContext();
-          if (!session || !isRoomActive) return null;
-          
-          return (
-            <button
-              onClick={toggleActive}
-              className={`p-1.5 rounded transition-colors duration-200 ${
-                isActive 
-                  ? 'bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white' 
-                  : 'bg-sage-500 hover:bg-sage-600 text-white'
-              }`}
-              title={isActive ? "Pause accepting questions" : "Resume accepting questions"}
-            >
-              {isActive ? <FaPause /> : <FaPlay />}
-            </button>
-          );
-        }}
       >
-        <QuestionsProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
-          <QuestionsContent />
-        </QuestionsProvider>
+        {() => (
+          <QuestionsProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
+            <QuestionsContentWrapper />
+          </QuestionsProvider>
+        )}
       </NetworkedWidgetWrapperV2>
     </WidgetProvider>
   );
