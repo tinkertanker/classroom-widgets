@@ -44,9 +44,6 @@ export const NetworkedWidgetEmpty: React.FC<NetworkedWidgetEmptyProps> = ({
             <p className="text-sm text-dusty-rose-700 dark:text-dusty-rose-300">
               {error}
             </p>
-            <p className="text-xs text-dusty-rose-600 dark:text-dusty-rose-400 mt-2">
-              Start the server with: <code className="bg-dusty-rose-200 dark:bg-dusty-rose-800 px-1 rounded">cd server && npm start</code>
-            </p>
           </div>
         )}
       </div>
