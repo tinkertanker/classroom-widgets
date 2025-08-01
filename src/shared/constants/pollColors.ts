@@ -2,33 +2,33 @@
 // Each option gets progressively lighter shade for visual distinction
 export const pollColors = [
   {
-    // Option A - Darkest (100% opacity)
+    // Option A - Darkest
     progress: 'bg-sage-500',
     progressDark: 'dark:bg-sage-400',
     label: 'text-sage-700 dark:text-sage-300'
   },
   {
-    // Option B - 80% opacity
-    progress: 'bg-sage-500/80',
-    progressDark: 'dark:bg-sage-400/80',
+    // Option B
+    progress: 'bg-sage-400',
+    progressDark: 'dark:bg-sage-300',
     label: 'text-sage-700 dark:text-sage-300'
   },
   {
-    // Option C - 60% opacity
-    progress: 'bg-sage-500/60',
-    progressDark: 'dark:bg-sage-400/60',
+    // Option C
+    progress: 'bg-sage-300',
+    progressDark: 'dark:bg-sage-200',
     label: 'text-sage-700 dark:text-sage-300'
   },
   {
-    // Option D - 45% opacity
-    progress: 'bg-sage-500/45',
-    progressDark: 'dark:bg-sage-400/45',
+    // Option D
+    progress: 'bg-sage-200',
+    progressDark: 'dark:bg-sage-100',
     label: 'text-sage-700 dark:text-sage-300'
   },
   {
-    // Option E - 35% opacity
-    progress: 'bg-sage-500/35',
-    progressDark: 'dark:bg-sage-400/35',
+    // Option E - Lightest
+    progress: 'bg-sage-100',
+    progressDark: 'dark:bg-sage-50',
     label: 'text-sage-700 dark:text-sage-300'
   }
 ];

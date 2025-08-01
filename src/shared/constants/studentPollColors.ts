@@ -12,7 +12,7 @@ export const studentPollColors = [
     borderLight: 'border-sage-200'
   },
   {
-    // Option B - Slightly lighter
+    // Option B
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400', 
     selected: 'border-sage-500 bg-sage-100 border-2',
@@ -42,7 +42,7 @@ export const studentPollColors = [
     borderLight: 'border-sage-200'
   },
   {
-    // Option E - Lightest
+    // Option E
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400',
     selected: 'border-sage-500 bg-sage-100 border-2',
