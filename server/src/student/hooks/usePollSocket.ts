@@ -60,12 +60,7 @@ export const usePollSocket = ({
       // Only handle poll state changes for this widget
       if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
         console.log('[Student Poll] Received widget state change:', data);
-        // Reset vote state when poll restarts
-        if (!pollData.isActive && data.isActive) {
-          setHasVoted(false);
-          setSelectedOption(null);
-          setResults(null);
-        }
+        // Don't reset vote state when poll is paused/resumed - preserve voting data
         setPollData(prev => ({ ...prev, isActive: data.isActive }));
       }
     };

@@ -14,16 +14,11 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     const room = session.getRoom('poll', data.widgetId);
     if (!room || !(room instanceof PollRoom)) return;
     
-    // Track previous active state
-    const wasInactive = !room.pollData.isActive;
-    
     // Use setPollData to ensure proper initialization
     room.setPollData(data.pollData);
     
-    // If poll is being activated after being inactive, clear previous votes
-    if (wasInactive && data.pollData.isActive) {
-      room.clearVotes();
-    }
+    // Don't clear votes when reactivating - preserve voting data during pause/resume
+    // This allows teachers to pause polls temporarily without losing data
     
     // Emit harmonized events
     const roomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
