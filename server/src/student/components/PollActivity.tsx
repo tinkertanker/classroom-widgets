@@ -1,7 +1,7 @@
 import React from 'react';
 import { Socket } from 'socket.io-client';
 import { usePollSocket } from '../hooks/usePollSocket';
-import { getPollColor } from '../../../../src/shared/constants/pollColors';
+import { getStudentPollColor } from '../../../../src/shared/constants/studentPollColors';
 
 interface PollActivityProps {
   socket: Socket;
@@ -81,7 +81,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
           <div className="text-xl font-semibold text-warm-gray-400 mb-3 text-center">{pollData.question}</div>
           <div className="flex flex-col gap-2 opacity-50">
             {pollData.options.map((option, index) => {
-              const color = getPollColor(index);
+              const color = getStudentPollColor(index);
               return (
               <div
                 key={index}

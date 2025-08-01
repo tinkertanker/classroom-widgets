@@ -278,7 +278,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
                     </div>
                     <div className="h-6 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full ${color.progress} transition-all duration-500`}
+                        className={`h-full ${color.progress} ${color.progressDark} transition-all duration-500`}
                         style={{
                           width: `${results.totalVotes > 0 ? ((results.votes[index] || 0) / results.totalVotes) * 100 : 0}%`
                         }}
