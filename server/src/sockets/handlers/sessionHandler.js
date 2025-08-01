@@ -31,14 +31,14 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       }
       
       if (existingSession) {
-        // Rejoin session
+        // Rejoin session room
         socket.join(`session:${existingSession.code}`);
         
-        // Rejoin all room namespaces
+        // Rejoin all active widget rooms for the host
         existingSession.activeRooms.forEach((room, roomId) => {
           socket.join(`${existingSession.code}:${roomId}`);
         });
-        
+
         callback({ 
           success: true, 
           code: existingSession.code, 

@@ -58,45 +58,29 @@ export function useSession() {
       return null;
     }
     
-    // Check if we already have an active session
-    const existingSessionCode = localSessionCode || sessionCode;
-    if (existingSessionCode && !isRecovering) {
-      console.log('[Session] Already have an active session:', existingSessionCode);
-      return existingSessionCode;
-    }
-    
     setIsStarting(true);
     setError(null);
     
-    if (error === 'Session expired. Please start a new session.') {
-      setSessionCode(null);
-      setLocalSessionCode(null);
-    }
-    
     try {
-      let currentSessionCode = localSessionCode || sessionCode;
+      // Get latest session state directly from the store to avoid dependency cycle
+      let currentSessionCode = useWorkspaceStore.getState().sessionCode;
+      const currentSessionCreatedAt = useWorkspaceStore.getState().sessionCreatedAt;
       const TWO_HOURS = 2 * 60 * 60 * 1000;
       
-      if (currentSessionCode && sessionCreatedAt) {
-        const sessionAge = Date.now() - sessionCreatedAt;
+      if (currentSessionCode && currentSessionCreatedAt) {
+        const sessionAge = Date.now() - currentSessionCreatedAt;
         if (sessionAge > TWO_HOURS) {
           setSessionCode(null);
-          setLocalSessionCode(null);
           currentSessionCode = null;
-        } else if (isRecovering) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          currentSessionCode = sessionCode || localSessionCode;
         } else {
           try {
             const response = await api.get(`/api/sessions/${currentSessionCode}/exists`);
             if (!response.data.exists) {
               setSessionCode(null);
-              setLocalSessionCode(null);
               currentSessionCode = null;
             }
           } catch (error) {
             setSessionCode(null);
-            setLocalSessionCode(null);
             currentSessionCode = null;
           }
         }
@@ -104,7 +88,7 @@ export function useSession() {
       
       if (!currentSessionCode) {
         // Create a new session
-        return await new Promise<string | null>((resolve, reject) => {
+        return await new Promise<any>((resolve, reject) => {
           const timeout = setTimeout(() => {
             reject(new Error('Timeout creating session'));
           }, 10000);
@@ -115,8 +99,7 @@ export function useSession() {
               reject(new Error(response.error));
             } else if (response.success) {
               setSessionCode(response.code);
-              setLocalSessionCode(response.code);
-              setTimeout(() => resolve(response.code), 100);
+              resolve({ code: response.code, activeRooms: [] });
             } else {
               reject(new Error('Failed to create session'));
             }
@@ -124,23 +107,21 @@ export function useSession() {
         });
       } else {
         // Rejoin existing session as teacher
-        return await new Promise<string | null>((resolve, reject) => {
+        return await new Promise<any>((resolve, reject) => {
           const timeout = setTimeout(() => {
-            reject(new Error('Timeout joining session'));
+            reject(new Error('Timeout rejoining session'));
           }, 10000);
           
-          socket.emit('session:join', { 
-            sessionCode: currentSessionCode, 
-            role: 'teacher' 
+          socket.emit('session:create', { 
+            existingCode: currentSessionCode
           }, (response: any) => {
             clearTimeout(timeout);
             if (response.error) {
               reject(new Error(response.error));
             } else if (response.success) {
-              console.log('[Session] Rejoined session as teacher:', currentSessionCode);
+              console.log('[Session] Rejoined session as teacher:', currentSessionCode, 'with active rooms:', response.activeRooms);
               setSessionCode(currentSessionCode);
-              setLocalSessionCode(currentSessionCode);
-              setTimeout(() => resolve(currentSessionCode), 100);
+              resolve({ code: currentSessionCode, activeRooms: response.activeRooms || [] });
             } else {
               reject(new Error('Failed to rejoin session'));
             }
@@ -152,7 +133,7 @@ export function useSession() {
       setIsStarting(false);
       return null;
     }
-  }, [socket?.connected, isConnected, sessionCode, localSessionCode, isRecovering, sessionCreatedAt, setSessionCode]);
+  }, [socket, isConnected, setSessionCode]);
   
   const closeSession = useCallback(() => {
     if (!socket || !sessionCode) return;

@@ -29,17 +29,26 @@ export function useSocketEvents({
   useEffect(() => {
     if (!socket || !isActive) return;
 
-    // Attach all event listeners
+    // Wrapper function to call the latest handler from the ref
+    const wrappedEvents: EventMap = {};
+    
+    // Register all event listeners
     const eventEntries = Object.entries(eventsRef.current);
     console.log('[useSocketEvents] Registering events:', eventEntries.map(([name]) => name));
     
     eventEntries.forEach(([eventName, handler]) => {
-      socket.on(eventName, handler);
+      const eventHandler = (data: any) => {
+        if (eventsRef.current[eventName]) {
+          eventsRef.current[eventName](data);
+        }
+      };
+      wrappedEvents[eventName] = eventHandler;
+      socket.on(eventName, eventHandler);
     });
 
     // Cleanup function to remove all listeners
     return () => {
-      eventEntries.forEach(([eventName, handler]) => {
+      Object.entries(wrappedEvents).forEach(([eventName, handler]) => {
         socket.off(eventName, handler);
       });
     };

@@ -107,21 +107,25 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
   // Handle session-based poll events
   socket.on('session:poll:vote', (data) => {
     const { sessionCode, widgetId, optionIndex } = data;
+    console.log(`[pollHandler] Received session:poll:vote for session: ${sessionCode}, widget: ${widgetId}, option: ${optionIndex}`);
     const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
     
     if (!session) {
+      console.log(`[pollHandler] Session not found: ${sessionCode}`);
       socket.emit('session:poll:voteConfirmed', { success: false, error: 'Session not found' });
       return;
     }
     
     const room = session.getRoom('poll', widgetId);
     if (!room || !(room instanceof PollRoom)) {
+      console.log(`[pollHandler] Poll room not found for widget: ${widgetId}`);
       socket.emit('session:poll:voteConfirmed', { success: false, error: 'Poll not found' });
       return;
     }
     
     // Check if poll is active
     if (!room.pollData.isActive) {
+      console.log(`[pollHandler] Poll is not active for widget: ${widgetId}`);
       socket.emit('session:poll:voteConfirmed', { success: false, error: 'Poll is not active' });
       return;
     }
@@ -129,22 +133,27 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     // Check if participant has already voted
     const participant = session.getParticipant(socket.id);
     if (!participant) {
+      console.log(`[pollHandler] Participant not found: ${socket.id}`);
       socket.emit('session:poll:voteConfirmed', { success: false, error: 'Not a valid participant' });
       return;
     }
     
     // Record vote
     if (room.vote(socket.id, optionIndex)) {
+      console.log(`[pollHandler] Vote recorded for participant: ${socket.id}`);
       socket.emit('session:poll:voteConfirmed', { success: true });
       
       // Emit updated results to all in the room
       const pollRoomId = widgetId ? `poll:${widgetId}` : 'poll';
-      io.to(`${session.code}:${pollRoomId}`).emit('poll:voteUpdate', {
+      const voteUpdateData = {
         votes: room.getVoteCounts(),
         totalVotes: room.getTotalVotes(),
         widgetId: widgetId
-      });
+      };
+      console.log(`[pollHandler] Emitting poll:voteUpdate to room ${session.code}:${pollRoomId} with data:`, voteUpdateData);
+      io.to(`${session.code}:${pollRoomId}`).emit('poll:voteUpdate', voteUpdateData);
     } else {
+      console.log(`[pollHandler] Participant already voted: ${socket.id}`);
       socket.emit('session:poll:voteConfirmed', { success: false, error: 'Already voted' });
     }
     

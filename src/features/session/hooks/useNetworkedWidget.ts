@@ -136,7 +136,7 @@ export function useNetworkedWidget({
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off('session:closed', handleSessionClosed);
     };
-  }, [socket, roomType, widgetId, onRoomCreated, onRoomClosed]);
+  }, [socket, roomType, widgetId, onRoomCreated, onRoomClosed, closeSessionHook]);
   
   // Handle start
   const handleStart = useCallback(async () => {
@@ -144,7 +144,18 @@ export function useNetworkedWidget({
     setError(null);
     
     try {
-      const currentSessionCode = await createSession();
+      const sessionData = await createSession();
+      const currentSessionCode = sessionData?.code;
+      const activeRooms = sessionData?.activeRooms || [];
+      
+      // Check if our room is already active from a previous session
+      const ourRoomIsActive = activeRooms.some(room => room.roomType === roomType && (room.widgetId === widgetId || !room.widgetId));
+      if (ourRoomIsActive) {
+        setIsRoomActive(true);
+        setIsStarting(false);
+        onRoomCreated?.();
+        return;
+      }
       
       if (currentSessionCode) {
         await new Promise<void>((resolve, reject) => {

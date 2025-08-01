@@ -33,15 +33,19 @@ export function useWidgetSocket({
 }: UseWidgetSocketProps) {
   const [isConnected, setIsConnected] = useState(false);
 
+  const onJoin = useCallback(() => setIsConnected(true), []);
+  const onLeave = useCallback(() => setIsConnected(false), []);
+
   // Manage room join/leave
+  // For teacher side, we join the room when it's active (created)
   const hasJoinedRoom = useSocketRoom({
     socket,
     sessionCode,
     roomType,
     widgetId,
     isActive: isRoomActive,
-    onJoin: () => setIsConnected(true),
-    onLeave: () => setIsConnected(false)
+    onJoin,
+    onLeave
   });
 
   // Manage socket events

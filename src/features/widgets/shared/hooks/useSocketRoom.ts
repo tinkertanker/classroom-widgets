@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
 
 interface UseSocketRoomProps {
@@ -25,28 +25,33 @@ export function useSocketRoom({
   onJoin,
   onLeave
 }: UseSocketRoomProps) {
-  const hasJoinedRef = useRef(false);
+  const [hasJoined, setHasJoined] = useState(false);
 
   useEffect(() => {
-    if (!socket || !sessionCode) {
-      if (hasJoinedRef.current && onLeave) {
-        onLeave();
-        hasJoinedRef.current = false;
+    // Debug: isActive, hasJoined, roomType
+    if (isActive) {
+      if (!hasJoined) {
+        // Joining room
+        setHasJoined(true);
+        onJoin?.();
       }
-      return;
+    } else {
+      if (hasJoined) {
+        // Leaving room
+        setHasJoined(false);
+        onLeave?.();
+      }
     }
-    
-    // Teacher is automatically part of the room as the host
-    // No need to emit join/leave events
-    hasJoinedRef.current = true;
-    onJoin?.();
+  }, [isActive, onJoin, onLeave, roomType]); // Removed hasJoined from deps to prevent loops
 
-    // Cleanup function
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      hasJoinedRef.current = false;
-      onLeave?.();
+      if (hasJoined) {
+        onLeave?.();
+      }
     };
-  }, [socket, sessionCode, onJoin, onLeave]);
+  }, [onLeave, hasJoined]);
 
-  return hasJoinedRef.current;
+  return hasJoined;
 }
