@@ -416,13 +416,6 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       
       console.log('[server] State change broadcast complete');
       
-      // Also emit widget-specific event for backward compatibility
-      const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
-      io.to(`${session.code}:${roomId}`).emit(`${roomType}:stateChanged`, {
-        isActive,
-        widgetId
-      });
-      
       session.updateActivity();
     } catch (error) {
       console.error('Error updating widget state:', error);

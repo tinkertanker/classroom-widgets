@@ -45,10 +45,10 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     // Request current state when joining
     socket.emit('questions:requestState', { code: sessionCode, widgetId });
 
-    // Handle state changes
-    socket.on('questions:stateChanged', (data: { isActive: boolean; widgetId?: string }) => {
-      // Only handle state changes for this specific widget
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+    // Handle unified widget state changes
+    socket.on('session:widgetStateChanged', (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
+      // Only handle questions state changes for this specific widget
+      if (data.roomType === 'questions' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
         setIsActive(data.isActive);
       }
     });
@@ -98,7 +98,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     });
 
     return () => {
-      socket.off('questions:stateChanged');
+      socket.off('session:widgetStateChanged');
       socket.off('questions:list');
       socket.off('questionAnswered');
       socket.off('questionDeleted');

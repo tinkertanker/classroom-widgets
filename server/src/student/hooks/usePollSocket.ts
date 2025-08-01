@@ -55,15 +55,19 @@ export const usePollSocket = ({
   useEffect(() => {
     if (!socket) return;
 
-    // Poll state changes
-    const handleStateChanged = (data: { isActive: boolean }) => {
-      // Reset vote state when poll restarts
-      if (!pollData.isActive && data.isActive) {
-        setHasVoted(false);
-        setSelectedOption(null);
-        setResults(null);
+    // Unified widget state changes
+    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
+      // Only handle poll state changes for this widget
+      if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
+        console.log('[Student Poll] Received widget state change:', data);
+        // Reset vote state when poll restarts
+        if (!pollData.isActive && data.isActive) {
+          setHasVoted(false);
+          setSelectedOption(null);
+          setResults(null);
+        }
+        setPollData(prev => ({ ...prev, isActive: data.isActive }));
       }
-      setPollData(prev => ({ ...prev, isActive: data.isActive }));
     };
 
     // Poll data updates
@@ -89,7 +93,7 @@ export const usePollSocket = ({
     };
 
     // Register listeners
-    socket.on('poll:stateChanged', handleStateChanged);
+    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on('poll:dataUpdate', handleDataUpdate);
     socket.on('poll:voteUpdate', handleVoteUpdate);
     socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
@@ -108,7 +112,7 @@ export const usePollSocket = ({
     // Cleanup
     return () => {
       if (timer) clearTimeout(timer);
-      socket.off('poll:stateChanged', handleStateChanged);
+      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off('poll:dataUpdate', handleDataUpdate);
       socket.off('poll:voteUpdate', handleVoteUpdate);
       socket.off('session:poll:voteConfirmed', handleVoteConfirmed);

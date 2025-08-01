@@ -147,9 +147,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     console.log('[Poll] Toggling active state to:', newState);
     toggleActive(newState);
     
-    // When activating, also send the poll data
-    if (newState && isRoomActive) {
-      console.log('[Poll] Sending poll data with activation');
+    // Always send the poll data when toggling state
+    if (isRoomActive) {
+      console.log('[Poll] Sending poll data with state change to:', newState);
       emitWidgetEvent('update', { pollData: { ...pollData, isActive: newState } });
     }
   }, [pollData, toggleActive, isRoomActive, emitWidgetEvent]);
