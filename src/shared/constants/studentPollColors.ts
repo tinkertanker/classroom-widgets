@@ -5,7 +5,7 @@ export const studentPollColors = [
     // Option A - Darkest
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400',
-    selected: 'border-sage-500 bg-sage-100',
+    selected: 'border-sage-500 bg-sage-100 border-2',
     disabled: 'border-sage-200 bg-sage-50',
     results: 'bg-white',
     resultsBar: 'bg-sage-500',
@@ -15,7 +15,7 @@ export const studentPollColors = [
     // Option B - Slightly lighter
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400', 
-    selected: 'border-sage-400 bg-sage-50',
+    selected: 'border-sage-500 bg-sage-100 border-2',
     disabled: 'border-sage-200 bg-sage-50',
     results: 'bg-white',
     resultsBar: 'bg-sage-400',
@@ -25,7 +25,7 @@ export const studentPollColors = [
     // Option C
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400',
-    selected: 'border-sage-300 bg-sage-50',
+    selected: 'border-sage-500 bg-sage-100 border-2',
     disabled: 'border-sage-200 bg-sage-50',
     results: 'bg-white',
     resultsBar: 'bg-sage-300',
@@ -35,7 +35,7 @@ export const studentPollColors = [
     // Option D  
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400',
-    selected: 'border-sage-300 bg-sage-50',
+    selected: 'border-sage-500 bg-sage-100 border-2',
     disabled: 'border-sage-200 bg-sage-50',
     results: 'bg-white',
     resultsBar: 'bg-sage-200',
@@ -45,7 +45,7 @@ export const studentPollColors = [
     // Option E - Lightest
     border: 'border-sage-300',
     borderHover: 'hover:border-sage-400',
-    selected: 'border-sage-300 bg-sage-50',
+    selected: 'border-sage-500 bg-sage-100 border-2',
     disabled: 'border-sage-200 bg-sage-50',
     results: 'bg-white',
     resultsBar: 'bg-sage-100',
