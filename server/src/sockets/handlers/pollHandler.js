@@ -22,8 +22,10 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     
     // Emit harmonized events
     const roomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
+    // Don't send votes in pollData - they belong in results
+    const { votes, ...pollDataWithoutVotes } = room.pollData;
     io.to(`${session.code}:${roomId}`).emit('poll:dataUpdate', {
-      pollData: room.pollData,
+      pollData: pollDataWithoutVotes,
       results: room.getResults()
     });
     
@@ -40,13 +42,11 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     if (session) {
       const room = session.getRoom('poll', widgetId);
       if (room && room instanceof PollRoom) {
+        // Don't send votes in pollData - they belong in results
+        const { votes, ...pollDataWithoutVotes } = room.pollData;
         socket.emit('poll:dataUpdate', {
-          pollData: room.pollData,
+          pollData: pollDataWithoutVotes,
           results: room.getResults()
-        });
-        socket.emit('poll:stateChanged', { 
-          isActive: room.pollData.isActive,
-          widgetId: data.widgetId
         });
       }
     }
