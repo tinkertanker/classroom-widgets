@@ -8,6 +8,7 @@ module.exports = {
     "./components/**/*.tsx",
     "./utils/**/*.ts",
     "./hooks/**/*.ts",
+    "../../../src/shared/constants/**/*.ts",
   ],
   theme: {
     extend: {
