@@ -124,11 +124,11 @@ const About: React.FC = () => {
             <span className="text-warm-gray-900 dark:text-warm-gray-100"> Classroom Magic</span>
           </h2>
           <p className="text-xl text-warm-gray-600 dark:text-warm-gray-400 mb-4 max-w-3xl mx-auto">
-            We built this instead of grading papers. Interactive classroom tools that actually work - 
-            timers, polls, Q&A, randomizers, and more. All in one place, zero setup required.
+            We built this instead of grading student projects. Interactive classroom tools that just work - 
+            timers, polls, Q&A, randomisers, and more. All in one place, zero setup required.
           </p>
           <p className="text-lg mb-4 text-warm-gray-500 dark:text-warm-gray-400 italic">
-            Warning: May cause excessive student engagement and spontaneous learning
+            Warning: May lead to student engagement and learning
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <a
@@ -164,7 +164,7 @@ const About: React.FC = () => {
         
         <div className="max-w-7xl mx-auto relative z-20">
           <h3 className="text-3xl font-bold text-center text-warm-gray-900 dark:text-warm-gray-100 mb-12">
-            Tools That Actually Work (We're As Surprised As You Are)
+            Tools That Just Work (We're As Surprised As You Are)
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
@@ -314,7 +314,6 @@ const About: React.FC = () => {
                 </h4>
                 <ul className="text-sm text-warm-gray-600 dark:text-warm-gray-400 space-y-1">
                   <li>• Your personal data (we don't even ask)</li>
-                  <li>• Student information (the name field is optional)</li>
                   <li>• Credit cards (we're allergic to money)</li>
                   <li>• Passwords (login? never heard of her)</li>
                 </ul>
@@ -325,9 +324,8 @@ const About: React.FC = () => {
                   Actual Risks:
                 </h4>
                 <ul className="text-sm text-warm-gray-600 dark:text-warm-gray-400 space-y-1">
-                  <li>• Students might actually participate</li>
+                  <li>• Students might participate</li>
                   <li>• You might have too much fun</li>
-                  <li>• Other teachers will want to know your secret</li>
                   <li>• Possible addiction to rainbow stickers</li>
                 </ul>
               </div>
@@ -340,13 +338,13 @@ const About: React.FC = () => {
       {/* Benefits */}
       <section className="py-20 px-4 bg-sage-50 dark:bg-warm-gray-800 relative overflow-hidden">
         {/* Subtle decorative element */}
-        <div className="absolute top-0 right-0 opacity-[0.02] dark:opacity-[0.01]">
+        <div className="absolute top-100 rotate-[-25deg] opacity-[0.05] dark:opacity-[0.05]">
           <img src="/randomiser.png" alt="" className="w-64 h-auto transform translate-x-32 -translate-y-32" />
         </div>
         
         <div className="max-w-4xl mx-auto relative z-10">
           <h3 className="text-3xl font-bold text-center text-warm-gray-900 dark:text-warm-gray-100 mb-12">
-            Why This Exists (Spoiler: We Were Bored)
+            Key Features
           </h3>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {benefits.map((benefit, index) => (
@@ -376,7 +374,7 @@ const About: React.FC = () => {
             <div className="prose prose-lg dark:prose-invert max-w-none text-center">
               <p className="text-warm-gray-700 dark:text-warm-gray-300 mb-6">
                 We're tinkerers and tech educators who got tired of having 47 browser tabs open just to find 
-                a decent timer and a randomizer wheel that doesn't look like it was made in 2003.
+                a decent timer and a randomiser wheel that doesn't look like it was made in 2003.
               </p>
               <p className="text-warm-gray-700 dark:text-warm-gray-300 mb-6">
                 So we built our own. Then we kept adding more and more, increasingly useless, widgets to it.
@@ -419,7 +417,7 @@ const About: React.FC = () => {
             </div>
             <p className="text-lg text-warm-gray-700 dark:text-warm-gray-300 mb-4">
               We've asked Claude, ChatGPT and Gemini to help build this page.
-              Then we added stickers. Then more stickers. Then we made them self-aware.
+              Then we added stickers and decals. Lots of them. Even the AI agents started judging us.
             </p>
           </div>
         </div>
