@@ -30,17 +30,8 @@ export function useActiveState({
   const startEventName = startEvent || `session:${roomType}:start`;
   const stopEventName = stopEvent || `session:${roomType}:stop`;
 
-  useEffect(() => {
-    if (!socket || !sessionCode || !isRoomActive) return;
-
-    // Use unified state update event
-    socket.emit('session:updateWidgetState', {
-      sessionCode,
-      roomType,
-      widgetId,
-      isActive
-    });
-  }, [isActive, socket, sessionCode, isRoomActive, widgetId, roomType]);
+  // Removed useEffect that was causing duplicate emissions
+  // The toggleActive function below handles all state updates
 
   // Helper function to toggle active state
   const toggleActive = useCallback((newState: boolean) => {
@@ -61,14 +52,23 @@ export function useActiveState({
       sessionCode,
       roomType,
       widgetId,
-      isActive: newState
+      isActive: newState,
+      socketConnected: socket.connected,
+      socketId: socket.id
     });
+    
+    if (!socket.connected) {
+      console.error('[useActiveState] Socket is not connected!');
+      return;
+    }
     
     socket.emit('session:updateWidgetState', {
       sessionCode,
       roomType,
       widgetId,
       isActive: newState
+    }, (response: any) => {
+      console.log('[useActiveState] Server response:', response);
     });
   }, [socket, sessionCode, isRoomActive, widgetId, roomType]);
 

@@ -23,29 +23,33 @@ export function useSession() {
     }
   }, [sessionCode, localSessionCode]);
   
+  const onSessionRestored = useCallback(() => {
+    console.log('[Session] Session restored successfully');
+    setError(null);
+    const storedCode = useWorkspaceStore.getState().sessionCode;
+    if (storedCode && !sessionCode) {
+      setSessionCode(storedCode);
+      setLocalSessionCode(storedCode);
+    }
+  }, [sessionCode, setSessionCode]);
+
+  const onSessionLost = useCallback(() => {
+    console.log('[Session] Session lost');
+    setSessionCode(null);
+    setLocalSessionCode(null);
+    useWorkspaceStore.getState().setSessionCode(null);
+    if (localSessionCode || sessionCode) {
+      setError('Session expired. Please start a new session.');
+    }
+  }, [localSessionCode, sessionCode, setSessionCode]);
+
   const { isRecovering } = useSessionRecovery({
     socket,
     sessionCode: localSessionCode || sessionCode,
     isConnected,
     isCreatingSession: isStarting,
-    onSessionRestored: () => {
-      console.log('[Session] Session restored successfully');
-      setError(null);
-      const storedCode = useWorkspaceStore.getState().sessionCode;
-      if (storedCode && !sessionCode) {
-        setSessionCode(storedCode);
-        setLocalSessionCode(storedCode);
-      }
-    },
-    onSessionLost: () => {
-      console.log('[Session] Session lost');
-      setSessionCode(null);
-      setLocalSessionCode(null);
-      useWorkspaceStore.getState().setSessionCode(null);
-      if (localSessionCode || sessionCode) {
-        setError('Session expired. Please start a new session.');
-      }
-    }
+    onSessionRestored,
+    onSessionLost
   });
   
   const createSession = useCallback(async () => {

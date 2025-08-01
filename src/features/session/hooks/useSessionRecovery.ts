@@ -29,10 +29,16 @@ export function useSessionRecovery({
   const hasAttemptedInitialRecovery = useRef(false);  // Track initial page load recovery
   const lastSocketId = useRef<string | null>(null);  // Track socket changes
   const hasRetried = useRef(false);  // Track if we've retried recovery
+  const isCreatingSessionRef = useRef(isCreatingSession);
   
   // Get persisted session info from store
   const persistedSessionCode = useWorkspaceStore((state) => state.sessionCode);
   const sessionCreatedAt = useWorkspaceStore((state) => state.sessionCreatedAt);
+  
+  // Keep the ref updated with the latest value
+  useEffect(() => {
+    isCreatingSessionRef.current = isCreatingSession;
+  }, [isCreatingSession]);
   
   useEffect(() => {
     // Track the last known session code
@@ -68,7 +74,7 @@ export function useSessionRecovery({
       }
       
       // Skip recovery if we're actively creating a session
-      if (isCreatingSession) {
+      if (isCreatingSessionRef.current) {
         console.log('[SessionRecovery] Skipping recovery - session creation in progress');
         return;
       }
@@ -83,7 +89,7 @@ export function useSessionRecovery({
           sessionAge: sessionAge / 1000 / 60, // in minutes
           maxAge: TWO_HOURS / 1000 / 60, // in minutes
           socketChanged,
-          isCreatingSession
+          isCreatingSession: isCreatingSessionRef.current
         });
         
         // Don't attempt recovery if the session was created in the last 5 seconds

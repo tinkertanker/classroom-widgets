@@ -198,6 +198,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   
   // Host creates a room within session
   socket.on(EVENTS.SESSION.CREATE_ROOM, async (data, callback) => {
+    console.log('[server] Received session:createRoom:', data);
     try {
       const { sessionCode, roomType, widgetId } = data;
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
@@ -351,32 +352,69 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   
   // Unified widget state update handler
   socket.on(EVENTS.SESSION.UPDATE_WIDGET_STATE, async (data) => {
+    console.log('[server] Received session:updateWidgetState:', data);
     try {
       const { sessionCode, roomType, widgetId, isActive } = data;
+      console.log('[server] Getting session for code:', sessionCode);
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
       
-      if (!session || session.hostSocketId !== socket.id) {
+      if (!session) {
+        console.log('[server] updateWidgetState - No session found for code:', sessionCode);
         return;
       }
+      
+      if (session.hostSocketId !== socket.id) {
+        console.log('[server] updateWidgetState - Not host:', {
+          hostSocketId: session.hostSocketId,
+          currentSocketId: socket.id
+        });
+        return;
+      }
+      
+      console.log('[server] Session and host validated');
       
       const room = session.getRoom(roomType, widgetId);
       if (!room) {
+        console.log('[server] updateWidgetState - Room not found:', { roomType, widgetId });
         return;
       }
       
+      console.log('[server] Found room, updating state');
+      
       // Update room state
       if (roomType === 'poll' && room.pollData) {
+        console.log('[server] Updating poll room isActive from', room.pollData.isActive, 'to', isActive);
         room.pollData.isActive = isActive;
       } else {
         room.isActive = isActive;
       }
       
+      // Check what rooms this socket is in
+      const socketRooms = Array.from(socket.rooms);
+      console.log('[server] Current socket rooms:', socketRooms);
+      
+      const sessionRoom = `session:${session.code}`;
+      
+      // Ensure the host is in the session room
+      if (!socket.rooms.has(sessionRoom)) {
+        console.log('[server] Host socket not in session room, joining now');
+        socket.join(sessionRoom);
+      }
+      
+      console.log('[server] Broadcasting state change to session:', sessionRoom);
+      
+      // Check if anyone is in the session room
+      const roomSockets = io.sockets.adapter.rooms.get(sessionRoom);
+      console.log('[server] Sockets in session room:', roomSockets ? Array.from(roomSockets) : 'No room exists');
+      
       // Broadcast unified state change to all participants
-      io.to(`session:${session.code}`).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
+      io.to(sessionRoom).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
         roomType,
         widgetId,
         isActive
       });
+      
+      console.log('[server] State change broadcast complete');
       
       // Also emit widget-specific event for backward compatibility
       const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
