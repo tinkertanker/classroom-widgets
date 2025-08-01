@@ -141,12 +141,18 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
             const votes = results.votes[index] || 0;
             const percentage = Math.round((votes / totalVotes) * 100);
             
+            const isMyChoice = selectedOption === index;
             return (
-              <div key={index} className={`p-3 border-2 ${color.borderLight} ${selectedOption === index ? color.results : 'bg-warm-gray-50'} rounded-lg cursor-default relative overflow-hidden`}>
+              <div key={index} className={`p-3 border-2 ${isMyChoice ? 'border-sage-500 bg-sage-50' : 'border-warm-gray-200 bg-white'} rounded-lg cursor-default relative overflow-hidden transition-all duration-200`}>
                 <div className={`absolute top-0 left-0 h-full ${color.resultsBar} transition-[width] duration-300`} style={{ width: `${percentage}%` }}></div>
                 <div className="relative z-[1] flex justify-between items-center">
-                  <span>{option}</span>
-                  <span>{percentage}%</span>
+                  <div className="flex items-center gap-2">
+                    <span className={isMyChoice ? 'font-semibold' : ''}>{option}</span>
+                    {isMyChoice && (
+                      <span className="text-xs bg-sage-500 text-white px-2 py-0.5 rounded-full">Your choice</span>
+                    )}
+                  </div>
+                  <span className={isMyChoice ? 'font-semibold' : ''}>{percentage}%</span>
                 </div>
               </div>
             );
