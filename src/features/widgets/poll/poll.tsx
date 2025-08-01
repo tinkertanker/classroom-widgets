@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaChartColumn, FaGear } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
-import { useWidget } from '../../../contexts/WidgetContext';
+import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
@@ -49,8 +49,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   const [showOverlay, setShowOverlay] = useState(!pollData.isActive);
   
   // Hooks
-  const { widgetId: ctxWidgetId } = useWidget();
-  const effectiveWidgetId = widgetId || ctxWidgetId;
   const { showModal, hideModal } = useModal();
   
   // Networked widget hook
@@ -61,7 +59,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     handleStart,
     session
   } = useNetworkedWidget({
-    widgetId: effectiveWidgetId,
+    widgetId,
     roomType: 'poll',
     savedState,
     onStateChange
@@ -91,8 +89,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       }
     },
     'poll:voteUpdate': (data: any) => {
-      console.log('[Poll] Received poll:voteUpdate:', data, 'for widget:', effectiveWidgetId);
-      if (data.widgetId === effectiveWidgetId || (!data.widgetId && !effectiveWidgetId)) {
+      console.log('[Poll] Received poll:voteUpdate:', data, 'for widget:', widgetId);
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         console.log('[Poll] Updating vote results');
         setResults(prevResults => ({
           ...prevResults,
@@ -102,8 +100,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       }
     },
     'session:widgetStateChanged': (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      console.log('[Poll] Received session:widgetStateChanged:', data, 'for widget:', effectiveWidgetId);
-      if (data.roomType === 'poll' && (data.widgetId === effectiveWidgetId || (!data.widgetId && !effectiveWidgetId))) {
+      console.log('[Poll] Received session:widgetStateChanged:', data, 'for widget:', widgetId);
+      if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
         setPollData(prev => {
           if (prev.isActive !== data.isActive) {
             console.log('[Poll] Updating isActive from', prev.isActive, 'to', data.isActive);
@@ -113,14 +111,14 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         });
       }
     }
-  }), [effectiveWidgetId]);
+  }), [widgetId]);
   
   // Widget socket hook
   const { emitWidgetEvent, toggleActive } = useWidgetSocket({
     socket: session.socket,
     sessionCode: session.sessionCode,
     roomType: 'poll',
-    widgetId: effectiveWidgetId,
+    widgetId,
     isActive: pollData.isActive,
     isRoomActive,
     events: socketEvents,
@@ -321,4 +319,13 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   );
 }
 
-export default Poll;
+// Export wrapped component to ensure WidgetProvider is available
+const PollWithProvider = (props: PollProps) => {
+  return (
+    <WidgetProvider {...props}>
+      <Poll {...props} />
+    </WidgetProvider>
+  );
+};
+
+export default PollWithProvider;
