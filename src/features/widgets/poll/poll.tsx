@@ -1,30 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo, createContext, useContext } from 'react';
-import { useModal } from '../../../contexts/ModalContext';
-import { WidgetProvider } from '../../../contexts/WidgetContext';
-import { NetworkedWidgetWrapperV2, useNetworkedWidgetContext } from '../shared/NetworkedWidgetWrapperV2';
-import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
-import PollSettings from './PollSettings';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaChartColumn, FaGear } from 'react-icons/fa6';
-import { getPollColor } from '../../../shared/constants/pollColors';
+import { useModal } from '../../../contexts/ModalContext';
+import { useWidget } from '../../../contexts/WidgetContext';
+import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
+import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { useWidgetSocket } from '../shared/hooks';
-// Removed unused import: useWidget
-// Removed unused import: useWidgetState
+import { getPollColor } from '../../../shared/constants/pollColors';
+import PollSettings from './PollSettings';
 
 interface PollProps {
   widgetId?: string;
   savedState?: any;
   onStateChange?: (state: any) => void;
 }
-
-// Removed PollContext - using SharedPollContext instead
-
-export const usePollContext = () => {
-  const context = useContext(SharedPollContext);
-  if (!context) {
-    throw new Error('usePollContext must be used within SharedPollContext');
-  }
-  return context;
-};
 
 interface PollData {
   question: string;
@@ -38,70 +27,45 @@ interface PollResults {
   participantCount: number;
 }
 
-// Removed PollProvider component - all functionality moved to PollSocketManager
+// Create a mock context for PollSettings compatibility
+export const usePollContext = () => {
+  throw new Error('usePollContext is not available in the simplified version');
+};
 
-// Removed PollHeaderControls - moved inline to headerChildren
-
-function PollPlayPauseButton() {
-  const { pollData, toggleActive } = usePollContext();
-  const { session } = useNetworkedWidgetContext();
+function Poll({ widgetId, savedState, onStateChange }: PollProps) {
+  // State
+  const [pollData, setPollData] = useState<PollData>(() => savedState?.pollData || {
+    question: 'What is the question?',
+    options: ['A', 'B'],
+    isActive: false
+  });
   
-  return (
-    <button
-      onClick={toggleActive}
-      disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
-      className={`p-2 rounded ${
-        pollData.isActive 
-          ? 'text-dusty-rose-600 hover:text-dusty-rose-700 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300 hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20' 
-          : 'text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 hover:bg-sage-100 dark:hover:bg-sage-900/20'
-      } disabled:opacity-50 disabled:cursor-not-allowed`}
-      title={pollData.isActive ? "Pause poll" : "Start poll"}
-    >
-      {pollData.isActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}
-    </button>
-  );
-}
-
-function PollSettingsButton() {
-  const { openSettings } = usePollContext();
+  const [results, setResults] = useState<PollResults>(() => savedState?.results || {
+    votes: {},
+    totalVotes: 0,
+    participantCount: 0
+  });
   
-  return (
-    <button
-      onClick={openSettings}
-      className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
-      title="Settings"
-    >
-      <FaGear className="text-base" />
-    </button>
-  );
-}
-
-// Create a shared state context for Poll instances
-interface SharedPollState {
-  pollData: PollData;
-  results: PollResults;
-  setPollData: (data: PollData | ((prev: PollData) => PollData)) => void;
-  setResults: (data: PollResults | ((prev: PollResults) => PollResults)) => void;
-  toggleActive: (newState: boolean) => void;
-  emitWidgetEvent: (eventName: string, data: any) => void;
-  updatePoll: (data: Partial<PollData>) => void;
-  openSettings: () => void;
-}
-
-const SharedPollContext = React.createContext<SharedPollState | null>(null);
-
-// Removed unused singleton state manager
-
-// Custom hook that manages all socket logic
-function usePollSocket({ widgetId, pollData, setPollData, setResults }: { 
-  widgetId?: string; 
-  pollData: PollData;
-  setPollData: React.Dispatch<React.SetStateAction<PollData>>;
-  results: PollResults;
-  setResults: React.Dispatch<React.SetStateAction<PollResults>>;
-}) {
-  const { session, isRoomActive } = useNetworkedWidgetContext();
+  const [showOverlay, setShowOverlay] = useState(!pollData.isActive);
+  
+  // Hooks
+  const { widgetId: ctxWidgetId } = useWidget();
+  const effectiveWidgetId = widgetId || ctxWidgetId;
   const { showModal, hideModal } = useModal();
+  
+  // Networked widget hook
+  const {
+    isRoomActive,
+    isStarting,
+    error,
+    handleStart,
+    session
+  } = useNetworkedWidget({
+    widgetId: effectiveWidgetId,
+    roomType: 'poll',
+    savedState,
+    onStateChange
+  });
   
   // Socket event handlers
   const socketEvents = useMemo(() => ({
@@ -127,8 +91,8 @@ function usePollSocket({ widgetId, pollData, setPollData, setResults }: {
       }
     },
     'poll:voteUpdate': (data: any) => {
-      console.log('[Poll] Received poll:voteUpdate:', data, 'for widget:', widgetId);
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+      console.log('[Poll] Received poll:voteUpdate:', data, 'for widget:', effectiveWidgetId);
+      if (data.widgetId === effectiveWidgetId || (!data.widgetId && !effectiveWidgetId)) {
         console.log('[Poll] Updating vote results');
         setResults(prevResults => ({
           ...prevResults,
@@ -137,44 +101,34 @@ function usePollSocket({ widgetId, pollData, setPollData, setResults }: {
         }));
       }
     },
-    // Only listen to the unified session:widgetStateChanged event
     'session:widgetStateChanged': (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      console.log('[Poll] Received session:widgetStateChanged:', data, 'for widget:', widgetId);
-      if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
+      console.log('[Poll] Received session:widgetStateChanged:', data, 'for widget:', effectiveWidgetId);
+      if (data.roomType === 'poll' && (data.widgetId === effectiveWidgetId || (!data.widgetId && !effectiveWidgetId))) {
         setPollData(prev => {
-          // Only update if the value actually changed
           if (prev.isActive !== data.isActive) {
             console.log('[Poll] Updating isActive from', prev.isActive, 'to', data.isActive);
             return { ...prev, isActive: data.isActive };
           }
-          return prev; // No change needed
+          return prev;
         });
       }
     }
-  }), [session.participantCount, widgetId]);
-
-  // Only create socket connection if this is the provider instance
-  // Removed debug log to prevent console spam
+  }), [effectiveWidgetId]);
   
-  // Log once when room becomes active
-  useEffect(() => {
-    if (isRoomActive) {
-      console.log('[Poll] Room is active, should register events. Socket connected:', session.socket?.connected);
-    }
-  }, [isRoomActive, session.socket]);
-  
+  // Widget socket hook
   const { emitWidgetEvent, toggleActive } = useWidgetSocket({
     socket: session.socket,
     sessionCode: session.sessionCode,
     roomType: 'poll',
-    widgetId,
+    widgetId: effectiveWidgetId,
     isActive: pollData.isActive,
     isRoomActive,
     events: socketEvents,
     startEvent: 'session:poll:start',
     stopEvent: 'session:poll:stop'
   });
-
+  
+  // Actions
   const updatePoll = useCallback((data: Partial<PollData>) => {
     const newPollData = { ...pollData, ...data };
     setPollData(newPollData);
@@ -182,8 +136,8 @@ function usePollSocket({ widgetId, pollData, setPollData, setResults }: {
     if (isRoomActive) {
       emitWidgetEvent('update', { pollData: newPollData });
     }
-  }, [pollData, isRoomActive, emitWidgetEvent, setPollData]);
-
+  }, [pollData, isRoomActive, emitWidgetEvent]);
+  
   const handleToggleActive = useCallback(() => {
     console.log('[Poll] handleToggleActive called, current state:', pollData.isActive);
     if (!pollData.question || pollData.options.filter(o => o).length < 2) {
@@ -201,89 +155,65 @@ function usePollSocket({ widgetId, pollData, setPollData, setResults }: {
       emitWidgetEvent('update', { pollData: { ...pollData, isActive: newState } });
     }
   }, [pollData, toggleActive, isRoomActive, emitWidgetEvent]);
-
+  
   const openSettings = useCallback(() => {
     showModal({
       title: 'Poll Settings',
-      content: <PollSettings onClose={hideModal} />,
+      content: <PollSettings onSave={(data) => {
+        updatePoll(data);
+        hideModal();
+      }} onClose={hideModal} />,
       onClose: hideModal
     });
-  }, [showModal, hideModal]);
-
-  // Send poll data to server only when room first becomes active
-  useEffect(() => {
-    if (isRoomActive && pollData.question && pollData.options.length > 0) {
-      emitWidgetEvent('update', { pollData });
-    }
-  }, [isRoomActive]); // Only depend on isRoomActive, not pollData
-
-  return {
-    toggleActive: handleToggleActive,
-    updatePoll,
-    openSettings,
-    emitWidgetEvent
-  };
-}
-
-// Component that provides poll context inside NetworkedWidgetWrapperV2
-function PollProvider({ widgetId, pollData, setPollData, results, setResults, children }: {
-  widgetId?: string;
-  pollData: PollData;
-  setPollData: React.Dispatch<React.SetStateAction<PollData>>;
-  results: PollResults;
-  setResults: React.Dispatch<React.SetStateAction<PollResults>>;
-  children: React.ReactNode;
-}) {
-  // Use the custom hook to manage socket logic
-  const { toggleActive: handleToggleActive, updatePoll, openSettings, emitWidgetEvent } = usePollSocket({
-    widgetId,
-    pollData,
-    setPollData,
-    results,
-    setResults
-  });
-
-  const value = useMemo(() => ({
-    pollData,
-    results,
-    setPollData,
-    setResults,
-    toggleActive: handleToggleActive,
-    emitWidgetEvent,
-    updatePoll,
-    openSettings
-  }), [pollData, results, handleToggleActive, updatePoll, openSettings]); // Removed setPollData, setResults, emitWidgetEvent from deps as they're stable
-
-  return (
-    <SharedPollContext.Provider value={value}>
-      {children}
-    </SharedPollContext.Provider>
-  );
-}
-
-// Removed PollRefSetter - no longer needed
-
-// Component that renders the entire poll widget content including header
-function PollUI() {
-  const { pollData, results } = usePollContext();
-  const { session, isRoomActive } = useNetworkedWidgetContext();
-  const [showOverlay, setShowOverlay] = useState(!pollData.isActive);
+  }, [showModal, hideModal, updatePoll]);
   
-  // Delay showing/hiding overlay to prevent flicker
+  // Effects
   useEffect(() => {
     if (!pollData.isActive) {
-      // Show overlay immediately when pausing
       setShowOverlay(true);
     } else {
-      // Hide overlay with a small delay when playing
       const timer = setTimeout(() => setShowOverlay(false), 50);
       return () => clearTimeout(timer);
     }
   }, [pollData.isActive]);
-
+  
+  useEffect(() => {
+    onStateChange?.({
+      pollData,
+      results
+    });
+  }, [onStateChange, pollData, results]);
+  
+  useEffect(() => {
+    if (isRoomActive && pollData.question && pollData.options.length > 0) {
+      emitWidgetEvent('update', { pollData });
+    }
+  }, [isRoomActive]); // Only on room activation
+  
+  // Empty state
+  if (!isRoomActive || !session.sessionCode) {
+    return (
+      <NetworkedWidgetEmpty
+        icon={FaChartColumn}
+        title="Poll"
+        description="Create interactive polls for your students"
+        buttonText={
+          isStarting ? "Starting..." : 
+          session.isRecovering ? "Reconnecting..." :
+          !session.isConnected ? "Connecting..." : 
+          "Start Poll"
+        }
+        onStart={handleStart}
+        disabled={isStarting || !session.isConnected || session.isRecovering}
+        error={error}
+      />
+    );
+  }
+  
+  // Active state
   return (
-    <>
-      {/* Header with controls */}
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
+      {/* Header */}
       <NetworkedWidgetHeader 
         title="Poll"
         code={session.sessionCode || ''}
@@ -291,8 +221,25 @@ function PollUI() {
         icon={FaChartColumn}
       >
         <div className="flex gap-2">
-          <PollPlayPauseButton />
-          <PollSettingsButton />
+          <button
+            onClick={handleToggleActive}
+            disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
+            className={`p-2 rounded ${
+              pollData.isActive 
+                ? 'text-dusty-rose-600 hover:text-dusty-rose-700 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300 hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20' 
+                : 'text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 hover:bg-sage-100 dark:hover:bg-sage-900/20'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={pollData.isActive ? "Pause poll" : "Start poll"}
+          >
+            {pollData.isActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}
+          </button>
+          <button
+            onClick={openSettings}
+            className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+            title="Settings"
+          >
+            <FaGear className="text-base" />
+          </button>
         </div>
       </NetworkedWidgetHeader>
       
@@ -351,72 +298,26 @@ function PollUI() {
           </div>
         )}
       </div>
-    </>
-  );
-}
-
-function PollContent({ widgetId, pollData, setPollData, results, setResults }: {
-  widgetId?: string;
-  pollData: PollData;
-  setPollData: React.Dispatch<React.SetStateAction<PollData>>;
-  results: PollResults;
-  setResults: React.Dispatch<React.SetStateAction<PollResults>>;
-}) {
-  return (
-    <NetworkedWidgetWrapperV2
-      roomType="poll"
-      title="Poll"
-      description="Create interactive polls for your students"
-      icon={FaChartColumn}
-      headerChildren={() => null} // No header children - we'll render header inside content
-    >
-      {() => (
-        <PollProvider
-          widgetId={widgetId}
-          pollData={pollData}
-          setPollData={setPollData}
-          results={results}
-          setResults={setResults}
-        >
-          <PollUI />
-        </PollProvider>
+      
+      {/* Connection status overlays */}
+      {session.isRecovering && (
+        <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sage-500 border-t-transparent mb-2"></div>
+            <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">Reconnecting to session...</p>
+          </div>
+        </div>
       )}
-    </NetworkedWidgetWrapperV2>
-  );
-}
-
-function Poll({ widgetId, savedState, onStateChange }: PollProps) {
-  // Shared state that both instances will use
-  const [pollData, setPollData] = useState<PollData>(() => savedState?.pollData || {
-    question: 'What is the question?',
-    options: ['A', 'B'],
-    isActive: false
-  });
-  
-  const [results, setResults] = useState<PollResults>(() => savedState?.results || {
-    votes: {},
-    totalVotes: 0,
-    participantCount: 0
-  });
-  
-  // Save state changes
-  useEffect(() => {
-    onStateChange?.({
-      pollData,
-      results
-    });
-  }, [onStateChange, pollData, results]);
-  
-  return (
-    <WidgetProvider widgetId={widgetId} savedState={savedState} onStateChange={onStateChange}>
-      <PollContent
-        widgetId={widgetId}
-        pollData={pollData}
-        setPollData={setPollData}
-        results={results}
-        setResults={setResults}
-      />
-    </WidgetProvider>
+      
+      {!session.isConnected && !session.isRecovering && (
+        <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+          <div className="text-center">
+            <p className="text-dusty-rose-600 dark:text-dusty-rose-400 text-sm font-medium mb-1">Disconnected</p>
+            <p className="text-warm-gray-600 dark:text-warm-gray-400 text-xs">Check your connection</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

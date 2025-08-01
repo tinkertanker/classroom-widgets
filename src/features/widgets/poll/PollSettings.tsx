@@ -3,12 +3,28 @@ import { usePollContext } from './poll';
 
 interface PollSettingsProps {
   onClose: () => void;
+  onSave?: (data: { question: string; options: string[] }) => void;
+  initialData?: { question: string; options: string[] };
 }
 
 const PollSettings: React.FC<PollSettingsProps> = ({
-  onClose
+  onClose,
+  onSave,
+  initialData
 }) => {
-  const { pollData, updatePoll } = usePollContext();
+  // Try to use context if available, otherwise use props
+  let pollData: any;
+  let updatePoll: any;
+  
+  try {
+    const context = usePollContext();
+    pollData = context.pollData;
+    updatePoll = context.updatePoll;
+  } catch {
+    // Context not available, use props
+    pollData = initialData || { question: '', options: ['', ''] };
+    updatePoll = onSave;
+  }
   const [question, setQuestion] = useState(pollData.question || '');
   const [options, setOptions] = useState(pollData.options?.length > 0 ? pollData.options : ['', '']);
 
