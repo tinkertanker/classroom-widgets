@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaChartColumn, FaGear, FaArrowRotateLeft } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
-import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useNetworkedWidgetV2 } from '../../session/hooks/useNetworkedWidgetV2';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { useSocketEvents } from '../shared/hooks/useSocketEvents';
@@ -63,8 +63,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     error,
     handleStart,
     handleStop,
-    session
-  } = useNetworkedWidget({
+    session,
+    recoveryData
+  } = useNetworkedWidgetV2({
     widgetId,
     roomType: 'poll',
     savedState,
@@ -254,22 +255,36 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     });
   }, [onStateChange, pollData, results]);
   
-  // Handle room establishment - request state for existing rooms, send data for new ones
+  // Handle recovery data from SessionContext
+  useEffect(() => {
+    if (recoveryData && recoveryData.roomData) {
+      console.log('[Poll] Applying recovery data:', recoveryData);
+      
+      // Apply recovered widget state
+      if (recoveryData.isActive !== undefined) {
+        setIsWidgetActive(recoveryData.isActive);
+      }
+      
+      // Apply recovered poll data if available
+      if (recoveryData.roomData.pollData) {
+        setPollData(recoveryData.roomData.pollData);
+      }
+      
+      // Apply recovered results if available
+      if (recoveryData.roomData.results) {
+        setResults(recoveryData.roomData.results);
+      }
+    }
+  }, [recoveryData]);
+
+  // Handle room establishment - send data for new rooms only
   useEffect(() => {
     if (hasRoom && session.socket && session.sessionCode) {
       // Small delay to ensure room is fully established on server
       const timer = setTimeout(() => {
-        // Always request current state from server when room is established
-        // This handles both new rooms and recovered sessions
-        console.log('[Poll] Room established, requesting current state');
-        session.socket.emit('poll:requestState', {
-          code: session.sessionCode,
-          widgetId
-        });
-        
-        // Also send our local data if we have any (for new polls)
-        if (pollData.question && pollData.options.length > 0) {
-          console.log('[Poll] Sending poll data to server');
+        // For new rooms (no recovery data), send our local data if we have any
+        if (!recoveryData && pollData.question && pollData.options.length > 0) {
+          console.log('[Poll] New room detected, sending initial poll data');
           emit('session:poll:update', {
             sessionCode: session.sessionCode,
             widgetId,
