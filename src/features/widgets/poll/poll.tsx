@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaChartColumn, FaGear, FaArrowRotateLeft } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
-import { useNetworkedWidgetUnified } from '../../session/hooks/useNetworkedWidgetUnified';
+import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
-import { useUnifiedSocketEvents } from '../../session/hooks/useUnifiedSocketEvents';
-import { useUnifiedSession } from '../../../contexts/UnifiedSessionContext';
+import { useSocketEvents } from '../../session/hooks/useSocketEvents';
+import { useSession } from '../../../contexts/SessionContext';
 import { getPollColor } from '../../../shared/constants/pollColors';
 import PollSettings from './PollSettings';
 import { getRandomPollQuestion } from './pollQuestions';
@@ -65,7 +65,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     handleStop,
     session,
     recoveryData
-  } = useNetworkedWidgetUnified({
+  } = useNetworkedWidget({
     widgetId,
     roomType: 'poll',
     savedState,
@@ -73,7 +73,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   });
   
   // Get unified session for additional methods
-  const unifiedSession = useUnifiedSession();
+  const unifiedSession = useSession();
   
   // Socket event handlers
   const socketEvents = useMemo(() => ({
@@ -114,7 +114,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   }), [widgetId]);
   
   // Use socket events hook for automatic event management
-  const { emit } = useUnifiedSocketEvents({
+  const { emit } = useSocketEvents({
     events: socketEvents,
     isActive: hasRoom // Only listen to events when room exists
   });

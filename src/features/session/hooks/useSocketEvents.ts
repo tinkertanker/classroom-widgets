@@ -1,25 +1,25 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { useUnifiedSession } from '../../../contexts/UnifiedSessionContext';
+import { useSession } from '../../../contexts/SessionContext';
 
-interface UseUnifiedSocketEventsProps {
+interface UseSocketEventsProps {
   events: Record<string, (data: any) => void>;
   isActive?: boolean; // Optional flag to enable/disable event listeners
 }
 
-interface UseUnifiedSocketEventsReturn {
+interface UseSocketEventsReturn {
   emit: (event: string, data: any) => void;
   emitWithAck: (event: string, data: any) => Promise<any>;
 }
 
 /**
- * Hook to manage socket event listeners using the unified session
+ * Hook to manage socket event listeners using the session
  * Automatically cleans up listeners on unmount or when events change
  */
-export function useUnifiedSocketEvents({
+export function useSocketEvents({
   events,
   isActive = true
-}: UseUnifiedSocketEventsProps): UseUnifiedSocketEventsReturn {
-  const { socket, isConnected } = useUnifiedSession();
+}: UseSocketEventsProps): UseSocketEventsReturn {
+  const { socket, isConnected } = useSession();
   const eventsRef = useRef(events);
   
   // Update events ref to avoid stale closures

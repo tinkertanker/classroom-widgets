@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaLink, FaTrash, FaArrowUpRightFromSquare } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
-import { useNetworkedWidgetUnified } from '../../session/hooks/useNetworkedWidgetUnified';
+import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
-import { useUnifiedSocketEvents } from '../../session/hooks/useUnifiedSocketEvents';
-import { useUnifiedSession } from '../../../contexts/UnifiedSessionContext';
+import { useSocketEvents } from '../../session/hooks/useSocketEvents';
+import { useSession } from '../../../contexts/SessionContext';
 
 interface LinkShareProps {
   widgetId?: string;
@@ -40,7 +40,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
     handleStop,
     session,
     recoveryData
-  } = useNetworkedWidgetUnified({
+  } = useNetworkedWidget({
     widgetId,
     roomType: 'linkShare',
     savedState,
@@ -48,7 +48,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   });
   
   // Get unified session for additional methods
-  const unifiedSession = useUnifiedSession();
+  const unifiedSession = useSession();
   
   // Socket event handlers
   const socketEvents = useMemo(() => ({
@@ -71,7 +71,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   }), [widgetId]);
   
   // Use socket events hook for automatic event management
-  const { emit } = useUnifiedSocketEvents({
+  const { emit } = useSocketEvents({
     events: socketEvents,
     isActive: hasRoom
   });
