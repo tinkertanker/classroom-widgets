@@ -49,7 +49,6 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
     io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.NEW_QUESTION, {
       id: question.id,
-      questionId: question.id,  // Keep for compatibility
       text: question.text,
       studentId: question.studentId,
       studentName: question.studentName,

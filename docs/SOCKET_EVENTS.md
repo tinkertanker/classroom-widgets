@@ -145,7 +145,6 @@ Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for b
 *   `Server → Student`: `session:questions:submitted` with `{ success, error? }`
 *   `Server → Teacher`: `questions:newQuestion` with `{ id, studentName, text, timestamp, answered, widgetId }`
     - Note: Student sends `question` field, but server broadcasts as `text` field
-    - Server also includes `questionId` field for backward compatibility (same value as `id`)
 
 **Management**
 
