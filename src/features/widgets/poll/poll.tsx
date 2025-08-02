@@ -259,16 +259,15 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     if (hasRoom && session.socket && session.sessionCode) {
       // Small delay to ensure room is fully established on server
       const timer = setTimeout(() => {
-        // Only request state if we're recovering from a saved session
-        // Don't request state for brand new widgets
-        if (savedState) {
-          console.log('[Poll] Recovering from saved state, requesting current server state');
-          session.socket.emit('poll:requestState', {
-            code: session.sessionCode,
-            widgetId
-          });
-        } else if (pollData.question && pollData.options.length > 0) {
-          // This is a brand new poll, send our initial data
+        console.log('[Poll] Room established, requesting current state');
+        // First, request the current state from the server
+        session.socket.emit('poll:requestState', {
+          code: session.sessionCode,
+          widgetId
+        });
+        
+        // Only send our local data if this is a brand new poll (no saved state)
+        if (!savedState && pollData.question && pollData.options.length > 0) {
           console.log('[Poll] New poll detected, sending initial poll data');
           emit('session:poll:update', {
             sessionCode: session.sessionCode,
