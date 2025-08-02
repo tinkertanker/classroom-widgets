@@ -5,7 +5,8 @@ import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
-import { useWidgetSocket } from '../shared/hooks';
+import { useSocketEvents } from '../shared/hooks/useSocketEvents';
+import { useActiveState } from '../shared/hooks/useActiveState';
 import { getPollColor } from '../../../shared/constants/pollColors';
 import PollSettings from './PollSettings';
 import { getRandomPollQuestion } from './pollQuestions';
@@ -28,11 +29,6 @@ interface PollResults {
   participantCount: number;
 }
 
-// Create a mock context for PollSettings compatibility
-export const usePollContext = () => {
-  throw new Error('usePollContext is not available in the simplified version');
-};
-
 function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   // State
   const [pollData, setPollData] = useState<PollData>(() => {
@@ -53,7 +49,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     participantCount: 0
   });
   
-  const [showOverlay, setShowOverlay] = useState(true);
   const [hasAutoResized, setHasAutoResized] = useState(false);
   const [isWidgetActive, setIsWidgetActive] = useState(false); // Track actual widget active state
   
@@ -78,14 +73,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   
   // Socket event handlers
   const socketEvents = useMemo(() => ({
-    'poll:updated': (data: any) => {
-      console.log('[Poll] Received poll:updated:', data);
-      setPollData(data);
-    },
     'poll:dataUpdate': (data: any) => {
       console.log('[Poll] Received poll:dataUpdate:', data, 'for widget:', widgetId);
-      // Only process if this update is for our widget
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+      if (data.widgetId === widgetId) {
         console.log('[Poll] Processing dataUpdate for our widget');
         if (data.pollData) {
           setPollData(data.pollData);
@@ -101,7 +91,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     },
     'poll:voteUpdate': (data: any) => {
       console.log('[Poll] Received poll:voteUpdate:', data, 'for widget:', widgetId);
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+      if (data.widgetId === widgetId) {
         console.log('[Poll] Updating vote results');
         setResults(prevResults => ({
           ...prevResults,
@@ -115,40 +105,26 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
         console.log('[Poll] Updating widget active state to:', data.isActive);
         setIsWidgetActive(data.isActive);
-      } else {
-        console.log('[Poll] Ignoring event - roomType or widgetId mismatch', {
-          eventRoomType: data.roomType,
-          myRoomType: 'poll',
-          eventWidgetId: data.widgetId,
-          myWidgetId: widgetId,
-          match: data.widgetId === widgetId
-        });
       }
     }
   }), [widgetId]);
   
-  // Widget socket hook
-  const { emitWidgetEvent, toggleActive, hasJoinedRoom } = useWidgetSocket({
+  // Use socket events hook for automatic event management
+  const { emit } = useSocketEvents({
+    socket: session.socket,
+    events: socketEvents,
+    isActive: hasRoom // Only allow emitting when room exists
+  });
+  
+  // Use active state hook for widget state management
+  const { toggleActive, reset } = useActiveState({
     socket: session.socket,
     sessionCode: session.sessionCode,
     roomType: 'poll',
     widgetId,
     isActive: hasRoom,
-    hasRoom,
-    events: socketEvents,
-    startEvent: 'session:poll:start',
-    stopEvent: 'session:poll:stop'
+    isRoomActive: hasRoom
   });
-  
-  // Debug logging
-  useEffect(() => {
-    console.log('[Poll] Widget socket state:', {
-      hasRoom,
-      hasJoinedRoom,
-      isWidgetActive,
-      socketConnected: session.socket?.connected
-    });
-  }, [hasRoom, hasJoinedRoom, isWidgetActive, session.socket]);
   
   // Actions
   const updatePoll = useCallback((data: Partial<PollData>) => {
@@ -156,9 +132,13 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     setPollData(newPollData);
     
     if (hasRoom) {
-      emitWidgetEvent('update', { pollData: newPollData });
+      emit('session:poll:update', {
+        sessionCode: session.sessionCode,
+        widgetId,
+        pollData: newPollData
+      });
     }
-  }, [pollData, hasRoom, emitWidgetEvent]);
+  }, [pollData, hasRoom, emit, session.sessionCode, widgetId]);
   
   const handleToggleActive = useCallback(() => {
     console.log('[Poll] handleToggleActive called, current state:', isWidgetActive);
@@ -169,14 +149,20 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     
     const newState = !isWidgetActive;
     console.log('[Poll] Toggling active state to:', newState);
+    
+    // Use the toggleActive function from useActiveState hook
     toggleActive(newState);
     
     // Always send the poll data when toggling state
     if (hasRoom) {
       console.log('[Poll] Sending poll data with state change');
-      emitWidgetEvent('update', { pollData });
+      emit('session:poll:update', {
+        sessionCode: session.sessionCode,
+        widgetId,
+        pollData
+      });
     }
-  }, [pollData, toggleActive, isWidgetActive, hasRoom, emitWidgetEvent]);
+  }, [pollData, isWidgetActive, hasRoom, toggleActive, emit, session.sessionCode, widgetId]);
   
   const openSettings = useCallback(() => {
     showModal({
@@ -209,13 +195,10 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   }, [showModal, hideModal, updatePoll, pollData]);
   
   const resetVotes = useCallback(() => {
-    if (!session.socket || !session.sessionCode || !hasRoom) return;
+    if (!hasRoom) return;
     
     console.log('[Poll] Resetting votes');
-    session.socket.emit('session:poll:reset', {
-      sessionCode: session.sessionCode,
-      widgetId
-    });
+    reset();
     
     // Clear local results immediately for responsive UI
     setResults({
@@ -223,7 +206,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       totalVotes: 0,
       participantCount: 0
     });
-  }, [session.socket, session.sessionCode, widgetId, hasRoom]);
+  }, [hasRoom, reset]);
   
   // Auto-resize only on initial widget creation
   useEffect(() => {
@@ -245,15 +228,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     }
   }, [widget, resize, widgetId, savedState, hasAutoResized, pollData.options.length]);
   
-  // Effects
-  useEffect(() => {
-    if (!isWidgetActive) {
-      setShowOverlay(true);
-    } else {
-      const timer = setTimeout(() => setShowOverlay(false), 50);
-      return () => clearTimeout(timer);
-    }
-  }, [isWidgetActive]);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -282,12 +256,11 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   
   // Send poll data when room is first established
   useEffect(() => {
-    if (hasRoom && session.socket && session.sessionCode && pollData.question && pollData.options.length > 0) {
+    if (hasRoom && pollData.question && pollData.options.length > 0) {
       // Small delay to ensure room is fully established on server
       const timer = setTimeout(() => {
-        console.log('[Poll] Room established, sending initial poll data directly');
-        // Send directly via socket to bypass the isActive check in emitWidgetEvent
-        session.socket.emit('session:poll:update', {
+        console.log('[Poll] Room established, sending initial poll data');
+        emit('session:poll:update', {
           sessionCode: session.sessionCode,
           widgetId,
           pollData
@@ -296,12 +269,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       return () => clearTimeout(timer);
     }
   }, [hasRoom]); // Only trigger when hasRoom changes
-  
-  // Log when socket events are registered
-  useEffect(() => {
-    console.log('[Poll] Socket events effect running, socket:', !!session.socket, 'events:', Object.keys(socketEvents));
-  }, [session.socket, socketEvents]);
-  
   
   // Empty state - only show when no session exists
   if (!session.sessionCode) {
@@ -373,7 +340,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       {/* Poll content */}
       <div className="flex-1 flex flex-col relative">
         {/* Paused overlay */}
-        {showOverlay && !isWidgetActive && session.isConnected && (
+        {!isWidgetActive && session.isConnected && (
           <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 rounded-lg flex items-center justify-center z-10">
             <div className="text-center bg-white dark:bg-warm-gray-800 rounded-lg px-6 py-4 shadow-lg border border-warm-gray-200 dark:border-warm-gray-700">
               <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Poll is paused</p>

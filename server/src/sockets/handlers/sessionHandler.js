@@ -439,4 +439,63 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
   });
   
+  // Unified reset handler for all widget types
+  socket.on('session:reset', async (data) => {
+    console.log('[server] Received session:reset:', data);
+    try {
+      const { sessionCode, widgetId } = data;
+      const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
+      
+      if (!session || session.hostSocketId !== socket.id) {
+        console.log('[server] Unauthorized reset attempt');
+        return;
+      }
+      
+      // Find the room by widgetId
+      let room = null;
+      let roomType = null;
+      
+      // Search through all active rooms to find the one with this widgetId
+      for (const [roomKey, roomInstance] of session.activeRooms) {
+        if (roomKey.includes(widgetId) || (roomInstance.widgetId === widgetId)) {
+          room = roomInstance;
+          roomType = roomInstance.getType();
+          break;
+        }
+      }
+      
+      if (!room) {
+        console.log('[server] Room not found for reset with widgetId:', widgetId);
+        return;
+      }
+      
+      // Call the room's reset method if it exists
+      if (typeof room.reset === 'function') {
+        console.log('[server] Calling reset on room:', roomType);
+        room.reset();
+        
+        // Emit appropriate update event based on room type
+        const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+        const roomNamespace = `${session.code}:${roomId}`;
+        
+        // Get the updated state after reset
+        const updateData = room.getUpdateData ? room.getUpdateData() : {};
+        updateData.widgetId = widgetId;
+        
+        // Emit room-specific update event
+        // For poll, use voteUpdate, for others use update
+        const eventName = roomType === 'poll' ? 'poll:voteUpdate' : `${roomType}:update`;
+        io.to(roomNamespace).emit(eventName, updateData);
+        
+        console.log('[server] Reset complete, update emitted');
+      } else {
+        console.log('[server] Room type does not support reset:', roomType);
+      }
+      
+      session.updateActivity();
+    } catch (error) {
+      console.error('Error handling reset:', error);
+    }
+  });
+  
 };

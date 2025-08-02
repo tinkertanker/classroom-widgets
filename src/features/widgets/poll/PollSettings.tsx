@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { usePollContext } from './poll';
 
 interface PollSettingsProps {
   onClose: () => void;
@@ -12,19 +11,9 @@ const PollSettings: React.FC<PollSettingsProps> = ({
   onSave,
   initialData
 }) => {
-  // Try to use context if available, otherwise use props
-  let pollData: any;
-  let updatePoll: any;
+  const pollData = initialData || { question: '', options: ['', ''] };
+  const updatePoll = onSave;
   
-  try {
-    const context = usePollContext();
-    pollData = context.pollData;
-    updatePoll = context.updatePoll;
-  } catch {
-    // Context not available, use props
-    pollData = initialData || { question: '', options: ['', ''] };
-    updatePoll = onSave;
-  }
   const [question, setQuestion] = useState(pollData.question || '');
   const [options, setOptions] = useState(pollData.options?.length > 0 ? pollData.options : ['', '']);
 
@@ -99,7 +88,9 @@ const PollSettings: React.FC<PollSettingsProps> = ({
       <div className="px-6 pb-4 flex justify-center">
         <button
           onClick={() => {
-            updatePoll({ question, options });
+            if (updatePoll) {
+              updatePoll({ question, options });
+            }
             onClose();
           }}
           className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"

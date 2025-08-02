@@ -173,36 +173,5 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
   });
 
   // Handle poll reset (clear all votes)
-  socket.on('session:poll:reset', (data) => {
-    const { sessionCode, widgetId } = data;
-    const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
-    
-    if (!session || session.hostSocketId !== socket.id) {
-      console.log('[pollHandler] Unauthorized reset attempt');
-      return;
-    }
-    
-    const room = session.getRoom('poll', widgetId);
-    if (!room || !(room instanceof PollRoom)) {
-      console.log('[pollHandler] Poll room not found for reset');
-      return;
-    }
-    
-    // Clear all votes
-    room.clearVotes();
-    console.log(`[pollHandler] Reset votes for poll widget: ${widgetId}`);
-    
-    // Emit updated results to all participants
-    const pollRoomId = widgetId ? `poll:${widgetId}` : 'poll';
-    const resetData = {
-      votes: room.getVoteCounts(),
-      totalVotes: 0,
-      widgetId: widgetId
-    };
-    
-    io.to(`${session.code}:${pollRoomId}`).emit('poll:voteUpdate', resetData);
-    
-    session.updateActivity();
-  });
 
 };

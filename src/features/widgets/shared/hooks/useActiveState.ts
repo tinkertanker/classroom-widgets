@@ -71,5 +71,34 @@ export function useActiveState({
     });
   }, [socket, sessionCode, widgetId, roomType]);
 
-  return { toggleActive };
+  // Helper function to reset widget data
+  const reset = useCallback(() => {
+    console.log('[useActiveState] reset called');
+    console.log('[useActiveState] socket:', !!socket, 'sessionCode:', sessionCode);
+    
+    if (!socket || !sessionCode) {
+      console.log('[useActiveState] BLOCKED - missing:', {
+        socket: !socket,
+        sessionCode: !sessionCode
+      });
+      return;
+    }
+
+    if (!socket.connected) {
+      console.error('[useActiveState] Socket is not connected!');
+      return;
+    }
+    
+    console.log('[useActiveState] Emitting session:reset with data:', {
+      sessionCode,
+      widgetId
+    });
+    
+    socket.emit('session:reset', {
+      sessionCode,
+      widgetId
+    });
+  }, [socket, sessionCode, widgetId, roomType]);
+
+  return { toggleActive, reset };
 }

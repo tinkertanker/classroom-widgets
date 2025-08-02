@@ -105,10 +105,9 @@ export function useNetworkedWidget({
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
-          // Update the room active state
-          // Note: This is updating hasRoom based on isActive, which is incorrect
-          // TODO: Track actual active/paused state separately
-          setHasRoom(data.isActive);
+          // This event is about widget active/paused state, not room existence
+          // Room existence is tracked via roomCreated/roomClosed events
+          // Widget components should handle this event directly for active/paused state
         }
       }
     };
@@ -217,22 +216,6 @@ export function useNetworkedWidget({
     
   }, [socket, sessionCode, closeSessionHook]);
   
-  // Load saved state - but don't restore session code automatically
-  // Session codes should only be valid during active sessions
-  useEffect(() => {
-    if (savedState?.hasRoom) {
-      // Don't automatically restore room active state or session code
-      // These should only be set when actively creating/joining a session
-    }
-  }, [savedState]);
-  
-  // Save state changes - but don't persist session code
-  useEffect(() => {
-    onStateChange?.({
-      // Don't save hasRoom or sessionCode
-      // These should be ephemeral and not persist across reloads
-    });
-  }, [onStateChange]);
   
   return {
     hasRoom,

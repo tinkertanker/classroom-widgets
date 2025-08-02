@@ -44,7 +44,6 @@ export function useSocketEvents({
     
     // Register all event listeners
     const eventEntries = Object.entries(eventsRef.current);
-    console.log('[useSocketEvents] Registering events:', eventEntries.map(([name]) => name), 'isActive:', isActive);
     
     eventEntries.forEach(([eventName, handler]) => {
       const eventHandler = (data: any) => {
@@ -58,7 +57,6 @@ export function useSocketEvents({
 
     // Cleanup function to remove all listeners
     return () => {
-      console.log('[useSocketEvents] Cleaning up events:', Object.keys(wrappedEvents));
       Object.entries(wrappedEvents).forEach(([eventName, handler]) => {
         socket.off(eventName, handler);
       });
@@ -67,17 +65,8 @@ export function useSocketEvents({
 
   // Helper to emit events
   const emit = useCallback((eventName: string, data: any) => {
-    console.log('[useSocketEvents] emit called:', {
-      eventName,
-      hasSocket: !!socket,
-      isConnected: socket?.connected,
-      isActive,
-      willEmit: !!(socket && socket.connected && isActive)
-    });
     if (socket && socket.connected && isActive) {
       socket.emit(eventName, data);
-    } else {
-      console.warn('[useSocketEvents] NOT emitting - missing requirements');
     }
   }, [socket, isActive]);
 
