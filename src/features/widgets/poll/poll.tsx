@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaChartColumn, FaGear, FaArrowRotateLeft } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
-import { useNetworkedWidgetV2 } from '../../session/hooks/useNetworkedWidgetV2';
+import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { useSocketEvents } from '../shared/hooks/useSocketEvents';
@@ -65,7 +65,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     handleStop,
     session,
     recoveryData
-  } = useNetworkedWidgetV2({
+  } = useNetworkedWidget({
     widgetId,
     roomType: 'poll',
     savedState,
