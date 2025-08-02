@@ -59,11 +59,11 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       if (data.widgetId === widgetId) {
         const question: Question = {
           id: data.id,
-          text: data.question,
+          text: data.text,
           timestamp: new Date(data.timestamp),
           studentId: data.studentId || '',
           studentName: data.studentName,
-          answered: data.isAnswered || false
+          answered: data.answered || false
         };
         setQuestions(prev => [...prev, question]);
       }
