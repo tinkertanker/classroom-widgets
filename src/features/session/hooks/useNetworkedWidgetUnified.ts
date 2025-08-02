@@ -51,7 +51,6 @@ export function useNetworkedWidgetUnified({
     // Check if this widget has recovery data
     const roomData = session.getWidgetRecoveryData(widgetId);
     if (roomData) {
-      console.log("[NetworkedWidget] Found recovery data for widget", widgetId);
       setHasRoom(true);
     }
   }, [widgetId, session.getWidgetRecoveryData]); // Only depends on widgetId and the getter function
@@ -62,14 +61,12 @@ export function useNetworkedWidgetUnified({
     
     const handleRoomCreated = (data: { roomType: string; widgetId?: string }) => {
       if (data.roomType === roomType && data.widgetId === widgetId) {
-        console.log(`[NetworkedWidget] Room created for widget ${widgetId}`);
         setHasRoom(true);
       }
     };
     
     const handleRoomClosed = (data: { roomType: string; widgetId?: string }) => {
       if (data.roomType === roomType && data.widgetId === widgetId) {
-        console.log(`[NetworkedWidget] Room closed for widget ${widgetId}`);
         setHasRoom(false);
       }
     };
@@ -97,7 +94,6 @@ export function useNetworkedWidgetUnified({
       // Ensure we have a session first
       let sessionCode = session.sessionCode;
       if (!sessionCode) {
-        console.log('[NetworkedWidget] No session exists, creating one');
         sessionCode = await session.createSession();
         if (!sessionCode) {
           throw new Error('Failed to create session');
@@ -108,7 +104,6 @@ export function useNetworkedWidgetUnified({
       }
       
       // Create the room
-      console.log(`[NetworkedWidget] Creating room for widget ${widgetId}, sessionCode: ${session.sessionCode}`);
       const success = await session.createRoom(roomType, widgetId);
       if (!success) {
         throw new Error('Failed to create room');
@@ -127,7 +122,6 @@ export function useNetworkedWidgetUnified({
   const handleStop = useCallback(() => {
     if (!widgetId) return;
     
-    console.log(`[NetworkedWidget] Stopping widget ${widgetId}`);
     session.closeRoom(roomType, widgetId);
   }, [widgetId, roomType, session]);
   

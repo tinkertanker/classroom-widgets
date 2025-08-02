@@ -41,7 +41,10 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     
     // Notify all in the room
     const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
-    io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:newSubmission', submission);
+    io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:newSubmission', {
+      ...submission,
+      widgetId: data.widgetId
+    });
     
     // Send confirmation to submitter
     socket.emit('session:linkShare:submitted', { success: true });
@@ -60,7 +63,8 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     if (room.deleteSubmission(data.submissionId)) {
       const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
       io.to(`${session.code}:${linkShareRoomId}`).emit('linkShare:submissionDeleted', { 
-        submissionId: data.submissionId 
+        submissionId: data.submissionId,
+        widgetId: data.widgetId
       });
     }
     

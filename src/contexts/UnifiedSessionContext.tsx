@@ -98,7 +98,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     if (!socket) return;
     
     const handleConnect = () => {
-      console.log('[UnifiedSession] Socket connected');
       setIsConnected(true);
       setIsConnecting(false);
       
@@ -109,12 +108,10 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     };
     
     const handleDisconnect = () => {
-      console.log('[UnifiedSession] Socket disconnected');
       setIsConnected(false);
     };
     
     const handleConnecting = () => {
-      console.log('[UnifiedSession] Socket connecting');
       setIsConnecting(true);
     };
     
@@ -142,7 +139,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     if (!socket) return;
     
     const handleRoomCreated = (data: { roomType: string; widgetId: string; roomData: any }) => {
-      console.log('[UnifiedSession] Room created:', data);
       setActiveRooms(prev => {
         const next = new Map(prev);
         next.set(data.widgetId, {
@@ -156,7 +152,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     };
     
     const handleRoomClosed = (data: { roomType: string; widgetId: string }) => {
-      console.log('[UnifiedSession] Room closed:', data);
       setActiveRooms(prev => {
         const next = new Map(prev);
         next.delete(data.widgetId);
@@ -170,7 +165,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     };
     
     const handleWidgetStateChanged = (data: { roomType: string; widgetId: string; isActive: boolean }) => {
-      console.log('[UnifiedSession] Widget state changed:', data);
       setActiveRooms(prev => {
         const next = new Map(prev);
         const room = next.get(data.widgetId);
@@ -296,17 +290,12 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
   const cleanupOrphanedRooms = useCallback(async () => {
     if (!socket?.connected || !sessionCode) return;
     
-    console.log('[UnifiedSession] Starting orphaned room cleanup');
     
     // Get current widgets from store
     const currentWidgets = useWorkspaceStore.getState().widgets;
-    console.log('[UnifiedSession] All widgets in store:', currentWidgets);
     const networkedWidgetIds = currentWidgets
       .filter((w: any) => ['poll', 'questions', 'rtfeedback', 'linkShare'].includes(w.type))
       .map((w: any) => w.id);
-    
-    console.log('[UnifiedSession] Current networked widgets:', networkedWidgetIds);
-    console.log('[UnifiedSession] Active rooms to check:', Array.from(activeRooms.keys()));
     
     // Check each active room
     const roomsToClose: string[] = [];
@@ -425,11 +414,9 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     // Use ref to always get the current session code
     const currentCode = sessionCodeRef.current;
     
-    console.log('[UnifiedSession] createRoom - currentCode:', currentCode, 'isRecovering:', isRecovering);
     
     // Wait for recovery to complete if in progress
     if (isRecovering && !isInitialRecoveryComplete.current) {
-      console.log('[UnifiedSession] Waiting for recovery to complete before creating room');
       await new Promise<void>((resolve) => {
         const checkInterval = setInterval(() => {
           if (!isRecovering || isInitialRecoveryComplete.current) {
@@ -452,7 +439,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
         widgetId
       }, (response: any) => {
         if (response.success) {
-          console.log('[UnifiedSession] Room created successfully');
           resolve(true);
         } else {
           console.error('[UnifiedSession] Failed to create room:', response.error);
