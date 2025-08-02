@@ -3,6 +3,7 @@ import { FaPlay, FaPause, FaChartColumn, FaGear, FaArrowRotateLeft } from 'react
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { useSocketEvents } from '../shared/hooks/useSocketEvents';
@@ -142,7 +143,14 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   }, [pollData, hasRoom, emit, session.sessionCode, widgetId]);
   
   const handleToggleActive = useCallback(() => {
-    console.log('[Poll] handleToggleActive called, current state:', isWidgetActive);
+    console.log('[Poll] handleToggleActive called, current state:', isWidgetActive, 'hasRoom:', hasRoom);
+    
+    // Check if we have a room first
+    if (!hasRoom) {
+      console.log('[Poll] Cannot toggle - no room exists');
+      return;
+    }
+    
     if (!pollData.question || pollData.options.filter(o => o).length < 2) {
       console.log('[Poll] Cannot toggle - invalid question or options');
       return;
@@ -155,14 +163,12 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     toggleActive(newState);
     
     // Always send the poll data when toggling state
-    if (hasRoom) {
-      console.log('[Poll] Sending poll data with state change');
-      emit('session:poll:update', {
-        sessionCode: session.sessionCode,
-        widgetId,
-        pollData
-      });
-    }
+    console.log('[Poll] Sending poll data with state change');
+    emit('session:poll:update', {
+      sessionCode: session.sessionCode,
+      widgetId,
+      pollData
+    });
   }, [pollData, isWidgetActive, hasRoom, toggleActive, emit, session.sessionCode, widgetId]);
   
   const openSettings = useCallback(() => {
@@ -230,23 +236,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   }, [widget, resize, widgetId, savedState, hasAutoResized, pollData.options.length]);
   
   
-  // Cleanup on unmount
-  useEffect(() => {
-    console.log('[Poll] Widget mounted, widgetId:', widgetId);
-    
-    // Store current values in a ref to access them in cleanup
-    const cleanupRef = { handleStop, sessionCode: session.sessionCode };
-    
-    return () => {
-      console.log('[Poll] Widget unmounting. widgetId:', widgetId, 'sessionCode:', cleanupRef.sessionCode);
-      // Always try to close the room on unmount if we have a session
-      // This ensures cleanup happens even if the room was paused before deletion
-      if (cleanupRef.sessionCode && cleanupRef.handleStop) {
-        console.log('[Poll] Calling handleStop to ensure room cleanup');
-        cleanupRef.handleStop();
-      }
-    };
-  }, [handleStop, session.sessionCode]);
+  // Cleanup handled by workspace when widget is deleted
+  // No need to handle it here as it can cause issues with re-renders
   
   useEffect(() => {
     onStateChange?.({
@@ -296,8 +287,8 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     }
   }, [hasRoom]); // Only trigger when hasRoom changes
   
-  // Empty state - only show when no session exists
-  if (!session.sessionCode) {
+  // Empty state - show when no room exists
+  if (!hasRoom) {
     return (
       <NetworkedWidgetEmpty
         icon={FaChartColumn}
