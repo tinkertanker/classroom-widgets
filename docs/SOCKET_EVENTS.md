@@ -44,10 +44,16 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 *   `Server → Teacher`: (callback) with `{ success, isExisting?, error? }`
 *   `Server → Students`: `session:roomCreated` with `{ roomType, widgetId, roomData }`
 
-**Teacher Closes a Widget**
+**Teacher Closes/Deletes a Widget**
 
 *   `Teacher → Server`: `session:closeRoom` with `{ sessionCode, roomType, widgetId }`
 *   `Server → Students`: `session:roomClosed` with `{ roomType, widgetId }`
+
+This happens when:
+- Teacher deletes a widget (by dragging to trash or clicking delete button)
+- Teacher explicitly closes a room (if the widget provides this functionality)
+
+The flow ensures that when a widget is removed on the teacher's side, all connected students are notified and the widget is properly cleaned up from their active rooms list.
 
 ### Widget State Management
 
@@ -60,8 +66,8 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 
 All widgets support a state request pattern for synchronizing late-joining students:
 
-*   `Student → Server`: `[widgetType]:requestState` with `{ sessionCode, widgetId }`
-*   `Server → Student`: `[widgetType]:stateChanged` with widget-specific state data
+*   `Student → Server`: `[widgetType]:requestState` with `{ code, widgetId }` (note: uses 'code' not 'sessionCode')
+*   `Server → Student`: Widget-specific response (varies by widget type)
 
 ## Widget-Specific Events
 
@@ -70,13 +76,27 @@ All widgets support a state request pattern for synchronizing late-joining stude
 **Configuration**
 
 *   `Teacher → Server`: `session:poll:update` with `{ sessionCode, widgetId, pollData }`
-*   `Server → All`: `poll:dataUpdate` with `{ pollData, results?, widgetId }`
+*   `Server → All`: `poll:dataUpdate` with `{ pollData, results, widgetId }`
+    - `pollData`: Contains question, options, and isActive state (votes excluded)
+    - `results`: Contains votes object, totalVotes, and participantCount
+    - `widgetId`: Widget instance identifier
 
 **Student Interaction**
 
 *   `Student → Server`: `session:poll:vote` with `{ sessionCode, widgetId, optionIndex }`
-*   `Server → Student`: `session:poll:voteConfirmed` with `{ success, error? }`
+*   `Server → Student`: `session:poll:voteConfirmed` with `{ success, widgetId, error? }`
 *   `Server → All`: `poll:voteUpdate` with `{ votes, totalVotes, widgetId }`
+
+**State Synchronization**
+
+*   `Student → Server`: `poll:requestState` with `{ code, widgetId }`
+*   `Server → Student`: `poll:dataUpdate` with `{ pollData, results, widgetId }`
+
+**Vote Reset**
+
+*   `Teacher → Server`: `session:poll:reset` with `{ sessionCode, widgetId }`
+*   `Server → All`: `poll:voteUpdate` with `{ votes: {}, totalVotes: 0, widgetId }`
+    - Students detect totalVotes=0 and clear their selection
 
 Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for backward compatibility.
 

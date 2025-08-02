@@ -7,7 +7,7 @@ interface UseActiveStateProps {
   roomType: string;
   widgetId?: string;
   isActive: boolean;
-  isRoomActive: boolean;
+  isRoomActive: boolean; // TODO: Rename to hasRoom
   startEvent?: string;
   stopEvent?: string;
 }
@@ -22,7 +22,7 @@ export function useActiveState({
   roomType,
   widgetId,
   isActive,
-  isRoomActive,
+  isRoomActive, // TODO: Rename to hasRoom
   startEvent,
   stopEvent
 }: UseActiveStateProps) {
@@ -36,13 +36,12 @@ export function useActiveState({
   // Helper function to toggle active state
   const toggleActive = useCallback((newState: boolean) => {
     console.log('[useActiveState] toggleActive called with newState:', newState);
-    console.log('[useActiveState] socket:', !!socket, 'sessionCode:', sessionCode, 'isRoomActive:', isRoomActive);
+    console.log('[useActiveState] socket:', !!socket, 'sessionCode:', sessionCode, 'hasRoom:', isRoomActive);
     
-    if (!socket || !sessionCode || !isRoomActive) {
+    if (!socket || !sessionCode) {
       console.log('[useActiveState] BLOCKED - missing:', {
         socket: !socket,
-        sessionCode: !sessionCode,
-        isRoomActive: !isRoomActive
+        sessionCode: !sessionCode
       });
       return;
     }
@@ -70,7 +69,7 @@ export function useActiveState({
     }, (response: any) => {
       console.log('[useActiveState] Server response:', response);
     });
-  }, [socket, sessionCode, isRoomActive, widgetId, roomType]);
+  }, [socket, sessionCode, widgetId, roomType]);
 
   return { toggleActive };
 }

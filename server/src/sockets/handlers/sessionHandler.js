@@ -68,6 +68,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   
   // Student joins session
   socket.on(EVENTS.SESSION.JOIN, async (data) => {
+    console.log('[sessionHandler] Student joining session:', {
+      code: data.code,
+      name: data.name,
+      studentId: data.studentId,
+      socketId: socket.id
+    });
+    
     try {
       const { code, name, studentId } = data;
       
@@ -82,6 +89,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       const session = sessionManager.getSession(code);
       
       if (!session) {
+        console.log('[sessionHandler] Session not found:', code);
         socket.emit('session:joined', { 
           success: false, 
           error: 'Session not found' 
@@ -106,13 +114,20 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       
       // Get active rooms data
       const activeRoomsData = session.getActiveRooms();
+      console.log('[sessionHandler] Active rooms for session:', code, activeRoomsData.map(r => ({
+        type: r.roomType,
+        widgetId: r.widgetId,
+        hasPollData: r.roomType === 'poll' ? !!r.room?.pollData?.question : 'N/A'
+      })));
       
       // Join all active widget rooms
       activeRoomsData.forEach(roomData => {
         const roomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
         socket.join(`${code}:${roomId}`);
+        console.log('[sessionHandler] Student joined room:', `${code}:${roomId}`);
       });
       
+      console.log('[sessionHandler] Sending session:joined response with', activeRoomsData.length, 'active rooms');
       socket.emit('session:joined', {
         success: true,
         activeRooms: activeRoomsData,
@@ -253,11 +268,11 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         roomData: room.toJSON()
       });
       
-      // Send initial state to all participants
-      const roomNamespace = `${session.code}:${roomId}`;
-      io.to(roomNamespace).emit(`${roomType}:stateChanged`, {
-        isActive: room.isActive,
-        widgetId
+      // Send initial state to all participants using the unified event
+      io.to(`session:${session.code}`).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
+        roomType,
+        widgetId,
+        isActive: room.isActive
       });
       
       // Return room data to the teacher
@@ -319,17 +334,21 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   
   // Host closes a room within session
   socket.on(EVENTS.SESSION.CLOSE_ROOM, async (data) => {
+    console.log('[SessionHandler] Received session:closeRoom:', data);
     try {
       const { sessionCode, roomType, widgetId } = data;
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
       
       if (!session || !session.isHost(socket.id)) {
+        console.log('[SessionHandler] Cannot close room - invalid session or not host');
         return;
       }
       
       const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+      console.log('[SessionHandler] Closing room:', roomId);
       session.closeRoom(roomType, widgetId);
       
+      console.log('[SessionHandler] Broadcasting room closed to all participants');
       // Notify all participants
       io.to(`session:${session.code}`).emit('session:roomClosed', { 
         roomType, 
@@ -382,12 +401,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       console.log('[server] Found room, updating state');
       
       // Update room state
-      if (roomType === 'poll' && room.pollData) {
-        console.log('[server] Updating poll room isActive from', room.pollData.isActive, 'to', isActive);
-        room.pollData.isActive = isActive;
-      } else {
-        room.isActive = isActive;
-      }
+      console.log('[server] Updating room isActive from', room.isActive, 'to', isActive);
+      room.isActive = isActive;
       
       // Check what rooms this socket is in
       const socketRooms = Array.from(socket.rooms);
@@ -408,11 +423,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       console.log('[server] Sockets in session room:', roomSockets ? Array.from(roomSockets) : 'No room exists');
       
       // Broadcast unified state change to all participants
-      io.to(sessionRoom).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
+      const eventData = {
         roomType,
         widgetId,
         isActive
-      });
+      };
+      console.log('[server] Emitting WIDGET_STATE_CHANGED with data:', eventData);
+      io.to(sessionRoom).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, eventData);
       
       console.log('[server] State change broadcast complete');
       

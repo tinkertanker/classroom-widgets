@@ -10,7 +10,7 @@ interface UseWidgetSocketProps {
   roomType: string;
   widgetId?: string;
   isActive: boolean;
-  isRoomActive: boolean;
+  isRoomActive: boolean; // TODO: Rename to hasRoom
   events?: Record<string, (data: any) => void>;
   startEvent?: string;
   stopEvent?: string;
@@ -26,7 +26,7 @@ export function useWidgetSocket({
   roomType,
   widgetId,
   isActive,
-  isRoomActive,
+  isRoomActive, // TODO: Rename to hasRoom
   events = {},
   startEvent,
   stopEvent
@@ -43,7 +43,7 @@ export function useWidgetSocket({
     sessionCode,
     roomType,
     widgetId,
-    isActive: isRoomActive,
+    isActive: isRoomActive, // TODO: This conflates room existence with active state
     onJoin,
     onLeave
   });
@@ -62,7 +62,7 @@ export function useWidgetSocket({
     roomType,
     widgetId,
     isActive,
-    isRoomActive: hasJoinedRoom,
+    isRoomActive: hasJoinedRoom, // TODO: Rename to hasRoom
     startEvent,
     stopEvent
   });

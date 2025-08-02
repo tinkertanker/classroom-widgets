@@ -8,12 +8,25 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
   
   // Poll update handler
   socket.on('session:poll:update', (data) => {
+    console.log('[pollHandler] Received session:poll:update:', {
+      sessionCode: data.sessionCode,
+      widgetId: data.widgetId,
+      pollData: data.pollData
+    });
+    
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) return;
+    if (!session || session.hostSocketId !== socket.id) {
+      console.log('[pollHandler] Ignoring poll:update - not from host');
+      return;
+    }
     
     const room = session.getRoom('poll', data.widgetId);
-    if (!room || !(room instanceof PollRoom)) return;
+    if (!room || !(room instanceof PollRoom)) {
+      console.log('[pollHandler] Poll room not found for widget:', data.widgetId);
+      return;
+    }
     
+    console.log('[pollHandler] Setting poll data for room:', data.widgetId);
     // Use setPollData to ensure proper initialization
     room.setPollData(data.pollData);
     
@@ -24,9 +37,12 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     const roomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
     // Don't send votes in pollData - they belong in results
     const { votes, ...pollDataWithoutVotes } = room.pollData;
+    
+    console.log('[pollHandler] Broadcasting poll data to room:', `${session.code}:${roomId}`);
     io.to(`${session.code}:${roomId}`).emit('poll:dataUpdate', {
       pollData: pollDataWithoutVotes,
-      results: room.getResults()
+      results: room.getResults(),
+      widgetId: data.widgetId
     });
     
     
@@ -46,7 +62,8 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
         const { votes, ...pollDataWithoutVotes } = room.pollData;
         socket.emit('poll:dataUpdate', {
           pollData: pollDataWithoutVotes,
-          results: room.getResults()
+          results: room.getResults(),
+          widgetId: widgetId
         });
       }
     }
@@ -69,7 +86,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     }
     
     // Check if poll is active
-    if (!room.pollData.isActive) {
+    if (!room.isActive) {
       socket.emit('vote:confirmed', { success: false, error: 'Poll is not active' });
       return;
     }
@@ -107,21 +124,21 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     
     if (!session) {
       console.log(`[pollHandler] Session not found: ${sessionCode}`);
-      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Session not found' });
+      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Session not found', widgetId });
       return;
     }
     
     const room = session.getRoom('poll', widgetId);
     if (!room || !(room instanceof PollRoom)) {
       console.log(`[pollHandler] Poll room not found for widget: ${widgetId}`);
-      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Poll not found' });
+      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Poll not found', widgetId });
       return;
     }
     
     // Check if poll is active
-    if (!room.pollData.isActive) {
+    if (!room.isActive) {
       console.log(`[pollHandler] Poll is not active for widget: ${widgetId}`);
-      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Poll is not active' });
+      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Poll is not active', widgetId });
       return;
     }
     
@@ -129,14 +146,14 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     const participant = session.getParticipant(socket.id);
     if (!participant) {
       console.log(`[pollHandler] Participant not found: ${socket.id}`);
-      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Not a valid participant' });
+      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Not a valid participant', widgetId });
       return;
     }
     
     // Record vote
     if (room.vote(socket.id, optionIndex)) {
       console.log(`[pollHandler] Vote recorded for participant: ${socket.id}`);
-      socket.emit('session:poll:voteConfirmed', { success: true });
+      socket.emit('session:poll:voteConfirmed', { success: true, widgetId });
       
       // Emit updated results to all in the room
       const pollRoomId = widgetId ? `poll:${widgetId}` : 'poll';
@@ -149,8 +166,41 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       io.to(`${session.code}:${pollRoomId}`).emit('poll:voteUpdate', voteUpdateData);
     } else {
       console.log(`[pollHandler] Participant already voted: ${socket.id}`);
-      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Already voted' });
+      socket.emit('session:poll:voteConfirmed', { success: false, error: 'Already voted', widgetId });
     }
+    
+    session.updateActivity();
+  });
+
+  // Handle poll reset (clear all votes)
+  socket.on('session:poll:reset', (data) => {
+    const { sessionCode, widgetId } = data;
+    const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
+    
+    if (!session || session.hostSocketId !== socket.id) {
+      console.log('[pollHandler] Unauthorized reset attempt');
+      return;
+    }
+    
+    const room = session.getRoom('poll', widgetId);
+    if (!room || !(room instanceof PollRoom)) {
+      console.log('[pollHandler] Poll room not found for reset');
+      return;
+    }
+    
+    // Clear all votes
+    room.clearVotes();
+    console.log(`[pollHandler] Reset votes for poll widget: ${widgetId}`);
+    
+    // Emit updated results to all participants
+    const pollRoomId = widgetId ? `poll:${widgetId}` : 'poll';
+    const resetData = {
+      votes: room.getVoteCounts(),
+      totalVotes: 0,
+      widgetId: widgetId
+    };
+    
+    io.to(`${session.code}:${pollRoomId}`).emit('poll:voteUpdate', resetData);
     
     session.updateActivity();
   });

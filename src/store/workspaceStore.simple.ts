@@ -80,6 +80,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     return id;
   },
   removeWidget: (widgetId) => {
+    console.log('[WorkspaceStore] removeWidget called for widget:', widgetId);
     set((state) => ({ 
       widgets: state.widgets.filter(w => w.id !== widgetId) 
     }));

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface UseSessionRecoveryProps {
@@ -22,7 +22,7 @@ export function useSessionRecovery({
   onSessionLost,
   isCreatingSession = false
 }: UseSessionRecoveryProps) {
-  const attemptingRecovery = useRef(false);
+  const [attemptingRecovery, setAttemptingRecovery] = useState(false);
   const lastSessionCode = useRef<string | null>(null);
   const hasEverHadSession = useRef(false);
   const hasDisconnected = useRef(false);  // Track if we've ever disconnected
@@ -39,6 +39,14 @@ export function useSessionRecovery({
   useEffect(() => {
     isCreatingSessionRef.current = isCreatingSession;
   }, [isCreatingSession]);
+  
+  // Reset recovery state when session changes
+  useEffect(() => {
+    if (sessionCode && attemptingRecovery) {
+      console.log('[SessionRecovery] Session established, clearing recovery state');
+      setAttemptingRecovery(false);
+    }
+  }, [sessionCode, attemptingRecovery]);
   
   useEffect(() => {
     // Track the last known session code
@@ -116,13 +124,13 @@ export function useSessionRecovery({
       
       // Only attempt recovery if we've disconnected before (not on initial connect)
       // OR if the socket has changed (page reload)
-      if (lastSessionCode.current && !attemptingRecovery.current && (hasDisconnected.current || socketChanged)) {
+      if (lastSessionCode.current && !attemptingRecovery && (hasDisconnected.current || socketChanged)) {
         console.log('[SessionRecovery] Attempting recovery for session:', lastSessionCode.current, {
           hasDisconnected: hasDisconnected.current,
-          attemptingRecovery: attemptingRecovery.current,
+          attemptingRecovery: attemptingRecovery,
           sessionCode
         });
-        attemptingRecovery.current = true;
+        setAttemptingRecovery(true);
         
         try {
           // Get the server URL from the store
@@ -174,18 +182,18 @@ export function useSessionRecovery({
               }
             });
             */
-            attemptingRecovery.current = false;
+            setAttemptingRecovery(false);
             lastSessionCode.current = null;
           } else {
             // Session doesn't exist on server - this is OK if we're about to create a new one
             console.log('[SessionRecovery] Session does not exist on server, skipping recovery');
             lastSessionCode.current = null;
-            attemptingRecovery.current = false;
+            setAttemptingRecovery(false);
             // Don't call onSessionLost - let the widget create a fresh session
           }
         } catch (error) {
           console.log('[SessionRecovery] Error checking session:', error);
-          attemptingRecovery.current = false;
+          setAttemptingRecovery(false);
           lastSessionCode.current = null;
           // Don't call onSessionLost on errors - let the widget create a fresh session
         }
@@ -213,7 +221,7 @@ export function useSessionRecovery({
   }, [socket, isConnected, sessionCode, persistedSessionCode, sessionCreatedAt, onSessionRestored, onSessionLost]);
 
   return {
-    isRecovering: attemptingRecovery.current,
+    isRecovering: attemptingRecovery,
     lastSessionCode: lastSessionCode.current
   };
 }

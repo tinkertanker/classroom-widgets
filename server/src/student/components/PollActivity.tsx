@@ -7,6 +7,7 @@ interface PollActivityProps {
   socket: Socket;
   roomCode: string;
   initialPollData?: PollData;
+  initialIsActive?: boolean;
   studentName?: string;
   isSession?: boolean;
   widgetId?: string;
@@ -15,7 +16,6 @@ interface PollActivityProps {
 interface PollData {
   question: string;
   options: string[];
-  isActive: boolean;
   votes?: Record<number, number>;
 }
 
@@ -26,18 +26,22 @@ interface Results {
   totalVotes: number;
 }
 
-const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, studentName, isSession = false, widgetId }) => {
+const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, initialIsActive, studentName, isSession = false, widgetId }) => {
+  console.log(`[PollActivity ${widgetId}] Mounting with initialPollData:`, initialPollData, 'initialIsActive:', initialIsActive);
 
   // Use our custom hook for all socket logic
-  const { pollData, hasVoted, selectedOption, results, handleVote } = usePollSocket({
+  const { pollData, isActive, hasVoted, selectedOption, results, handleVote } = usePollSocket({
     socket,
     roomCode,
     widgetId,
     isSession,
-    initialPollData
+    initialPollData,
+    initialIsActive
   });
 
   const renderContent = () => {
+    console.log(`[PollActivity ${widgetId}] Rendering - hasVoted: ${hasVoted}, selectedOption: ${selectedOption}, isActive: ${isActive}`);
+    
     if (!pollData.question || pollData.options.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-8">
@@ -54,7 +58,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     }
 
     // Poll is not active and student hasn't voted
-    if (!pollData.isActive && !hasVoted) {
+    if (!isActive && !hasVoted) {
       return (
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">

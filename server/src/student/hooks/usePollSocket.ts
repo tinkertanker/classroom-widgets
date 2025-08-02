@@ -4,7 +4,6 @@ import { Socket } from 'socket.io-client';
 interface PollData {
   question: string;
   options: string[];
-  isActive: boolean;
   votes?: Record<number, number>;
 }
 
@@ -21,10 +20,12 @@ interface UsePollSocketProps {
   widgetId?: string;
   isSession?: boolean;
   initialPollData?: PollData;
+  initialIsActive?: boolean;
 }
 
 interface UsePollSocketReturn {
   pollData: PollData;
+  isActive: boolean;
   hasVoted: boolean;
   selectedOption: number | null;
   results: Results | null;
@@ -40,16 +41,19 @@ export const usePollSocket = ({
   roomCode,
   widgetId,
   isSession = false,
-  initialPollData
+  initialPollData,
+  initialIsActive = false
 }: UsePollSocketProps): UsePollSocketReturn => {
   const [pollData, setPollData] = useState<PollData>(initialPollData || {
     question: '',
-    options: [],
-    isActive: false
+    options: []
   });
+  const [isActive, setIsActive] = useState(initialIsActive);
   const [hasVoted, setHasVoted] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [results, setResults] = useState<Results | null>(null);
+  
+  console.log(`[usePollSocket ${widgetId}] Initialized with isActive:`, initialIsActive);
 
   // Socket event listeners
   useEffect(() => {
@@ -61,29 +65,48 @@ export const usePollSocket = ({
       if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
         console.log('[Student Poll] Received widget state change:', data);
         // Don't reset vote state when poll is paused/resumed - preserve voting data
-        setPollData(prev => ({ ...prev, isActive: data.isActive }));
+        setIsActive(data.isActive);
       }
     };
 
     // Poll data updates
-    const handleDataUpdate = (data: { pollData: PollData; results?: Results }) => {
-      if (data.pollData) {
-        setPollData(data.pollData);
-      }
-      if (data.results) {
-        setResults(data.results);
+    const handleDataUpdate = (data: { pollData: PollData; results?: Results; widgetId?: string }) => {
+      // Only process if this update is for our widget
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        console.log('[Student Poll] Processing dataUpdate for widget:', widgetId);
+        if (data.pollData) {
+          setPollData(data.pollData);
+        }
+        if (data.results) {
+          setResults(data.results);
+        }
       }
     };
 
     // Vote updates
-    const handleVoteUpdate = (data: Results) => {
-      setResults(data);
+    const handleVoteUpdate = (data: Results & { widgetId?: string }) => {
+      // Only process if this update is for our widget
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        console.log('[Student Poll] Processing voteUpdate for widget:', widgetId);
+        setResults(data);
+        
+        // If total votes is 0, this is a reset - clear the student's selection
+        if (data.totalVotes === 0) {
+          console.log('[Student Poll] Votes reset, clearing selection');
+          setHasVoted(false);
+          setSelectedOption(null);
+        }
+      }
     };
 
     // Vote confirmation
-    const handleVoteConfirmed = (data: { success: boolean; error?: string }) => {
-      if (data.success) {
-        setHasVoted(true);
+    const handleVoteConfirmed = (data: { success: boolean; error?: string; widgetId?: string }) => {
+      // Only process if this confirmation is for our widget
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        console.log('[Student Poll] Processing vote confirmation for widget:', widgetId);
+        if (data.success) {
+          setHasVoted(true);
+        }
       }
     };
 
@@ -112,11 +135,13 @@ export const usePollSocket = ({
       socket.off('poll:voteUpdate', handleVoteUpdate);
       socket.off('session:poll:voteConfirmed', handleVoteConfirmed);
     };
-  }, [socket, roomCode, widgetId, initialPollData, pollData.isActive]);
+  }, [socket, roomCode, widgetId, initialPollData]);
 
   const handleVote = (optionIndex: number) => {
-    if (!socket || hasVoted || !pollData.isActive) return;
+    console.log(`[usePollSocket ${widgetId}] handleVote called - hasVoted: ${hasVoted}, isActive: ${isActive}`);
+    if (!socket || hasVoted || !isActive) return;
     
+    console.log(`[usePollSocket ${widgetId}] Sending vote for option ${optionIndex}`);
     setSelectedOption(optionIndex);
     
     socket.emit('session:poll:vote', { 
@@ -128,6 +153,7 @@ export const usePollSocket = ({
 
   return {
     pollData,
+    isActive,
     hasVoted,
     selectedOption,
     results,

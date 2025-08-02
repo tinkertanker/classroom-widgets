@@ -9,6 +9,9 @@ class Room {
     this.participants = new Map();
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
+    // Start rooms as paused/inactive by default
+    // This ensures teachers have time to configure the widget before students can interact
+    // and maintains consistency between server state and client UI expectations
     this.isActive = false;
   }
 

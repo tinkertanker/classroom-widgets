@@ -36,6 +36,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
 
   const handleDragStop = useCallback((e: any, d: any) => {
     if (dropTarget === 'trash') {
+      console.log('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
       // Play trash sound
       (window as any).playTrashSound?.();
       // Remove the widget
@@ -46,7 +47,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       move(newPosition);
     }
     stopDrag();
-  }, [move, stopDrag, dropTarget, remove]);
+  }, [move, stopDrag, dropTarget, remove, widgetId]);
 
   const handleResizeStop = useCallback((e: any, direction: any, ref: any, delta: any, position: Position) => {
     const newSize: Size = {
@@ -88,11 +89,12 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
+    console.log('[WidgetWrapper] Delete button clicked, removing widget:', widgetId);
     // Play trash sound
     (window as any).playTrashSound?.();
     // Remove the widget
     remove();
-  }, [remove]);
+  }, [remove, widgetId]);
 
   return (
     <div 

@@ -16,7 +16,7 @@ interface UseNetworkedWidgetProps {
 }
 
 interface UseNetworkedWidgetReturn {
-  isRoomActive: boolean;
+  hasRoom: boolean;
   isStarting: boolean;
   error: string | null;
   handleStart: () => Promise<void>;
@@ -39,7 +39,7 @@ export function useNetworkedWidget({
   savedState,
   onStateChange
 }: UseNetworkedWidgetProps): UseNetworkedWidgetReturn {
-  const [isRoomActive, setIsRoomActive] = useState(false);
+  const [hasRoom, setHasRoom] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [participantCount, setParticipantCount] = useState(0);
@@ -55,7 +55,7 @@ export function useNetworkedWidget({
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
-          setIsRoomActive(true);
+          setHasRoom(true);
           onRoomCreated?.();
         }
       }
@@ -65,7 +65,7 @@ export function useNetworkedWidget({
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
-          setIsRoomActive(false);
+          setHasRoom(false);
           setParticipantCount(0);
           onRoomClosed?.();
         }
@@ -94,7 +94,7 @@ export function useNetworkedWidget({
         // Check if our room is active
         const ourRoom = data.rooms?.find(r => r.roomType === roomType && (!r.widgetId || r.widgetId === widgetId));
         if (ourRoom) {
-          setIsRoomActive(true);
+          setHasRoom(true);
           onRoomCreated?.();
         }
       }
@@ -105,15 +105,17 @@ export function useNetworkedWidget({
       if (data.roomType === roomType) {
         const widgetMatch = data.widgetId === undefined || data.widgetId === widgetId;
         if (widgetMatch) {
-          // Widget should update its own state based on this event
-          // This is handled by the widget-specific listeners (e.g., poll:stateChanged)
+          // Update the room active state
+          // Note: This is updating hasRoom based on isActive, which is incorrect
+          // TODO: Track actual active/paused state separately
+          setHasRoom(data.isActive);
         }
       }
     };
     
     // Handle session closed by host
     const handleSessionClosed = () => {
-      setIsRoomActive(false);
+      setHasRoom(false);
       setParticipantCount(0);
       setError('Session has been closed by the host');
       closeSessionHook(); // Use the closeSession from useSession
@@ -151,7 +153,7 @@ export function useNetworkedWidget({
       // Check if our room is already active from a previous session
       const ourRoomIsActive = activeRooms.some(room => room.roomType === roomType && (room.widgetId === widgetId || !room.widgetId));
       if (ourRoomIsActive) {
-        setIsRoomActive(true);
+        setHasRoom(true);
         setIsStarting(false);
         onRoomCreated?.();
         return;
@@ -175,7 +177,7 @@ export function useNetworkedWidget({
               }
               reject(new Error(response.error));
             } else if (response.success) {
-              setIsRoomActive(true);
+              setHasRoom(true);
               setIsStarting(false);
               if (response.roomData) {
                 onRoomCreated?.();
@@ -197,6 +199,7 @@ export function useNetworkedWidget({
   const handleStop = useCallback(() => {
     if (!socket || !sessionCode) return;
     
+    console.log('[NetworkedWidget] Closing room:', { sessionCode, roomType, widgetId });
     socket.emit('session:closeRoom', { 
       sessionCode,
       roomType,
@@ -217,7 +220,7 @@ export function useNetworkedWidget({
   // Load saved state - but don't restore session code automatically
   // Session codes should only be valid during active sessions
   useEffect(() => {
-    if (savedState?.isRoomActive) {
+    if (savedState?.hasRoom) {
       // Don't automatically restore room active state or session code
       // These should only be set when actively creating/joining a session
     }
@@ -226,13 +229,13 @@ export function useNetworkedWidget({
   // Save state changes - but don't persist session code
   useEffect(() => {
     onStateChange?.({
-      // Don't save isRoomActive or sessionCode
+      // Don't save hasRoom or sessionCode
       // These should be ephemeral and not persist across reloads
     });
   }, [onStateChange]);
   
   return {
-    isRoomActive,
+    hasRoom,
     isStarting,
     error,
     handleStart,

@@ -22,6 +22,7 @@ interface JoinedRoom {
   joinedAt: number;
   initialData?: any; // Store initial poll/activity data
   widgetId?: string; // Widget instance ID for multiple instances
+  isActive: boolean; // Track active state for header styling
 }
 
 const App: React.FC = () => {
@@ -96,7 +97,8 @@ const App: React.FC = () => {
           socket: primarySocket!,
           joinedAt: Date.now(),
           initialData: roomData.room || {},
-          widgetId: roomData.widgetId
+          widgetId: roomData.widgetId,
+          isActive: roomData.room?.isActive || false
         };
         setJoinedRooms(prev => [...prev, newRoom]);
       });
@@ -226,6 +228,7 @@ const App: React.FC = () => {
       });
 
       newSocket.on('session:joined', (joinData) => {
+        console.log('[Student App] session:joined data:', joinData);
         
         if (joinData.success && joinData.activeRooms) {
           // Set current session code
@@ -233,6 +236,14 @@ const App: React.FC = () => {
           
           // Join all active rooms in the session
           joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
+            console.log('[Student App] Processing room:', roomData);
+            console.log('[Student App] Room data structure:', {
+              roomType: roomData.roomType,
+              room: roomData.room,
+              isActive: roomData.room?.isActive,
+              pollData: roomData.room?.pollData,
+              fullRoom: JSON.stringify(roomData.room)
+            });
             const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
             const roomId = `${code}-${computedRoomId}-${Date.now()}`;
             
@@ -245,8 +256,11 @@ const App: React.FC = () => {
               socket: newSocket,
               joinedAt: Date.now(),
               initialData: roomData.room || {},
-              widgetId: roomData.widgetId
+              widgetId: roomData.widgetId,
+              isActive: roomData.room?.isActive || false
             };
+            
+            console.log('[Student App] Created room with isActive:', newRoom.isActive, 'from roomData.room:', roomData.room);
             
             // Add to beginning of array (newest first)
             setJoinedRooms(prev => [newRoom, ...prev]);
@@ -278,7 +292,8 @@ const App: React.FC = () => {
           socket: newSocket,
           joinedAt: Date.now(),
           initialData: data.roomData || {},
-          widgetId: data.widgetId
+          widgetId: data.widgetId,
+          isActive: data.roomData?.isActive || false
         };
         
         // Add room if not already exists
@@ -295,6 +310,7 @@ const App: React.FC = () => {
 
       // Handle rooms being closed in the session
       newSocket.on('session:roomClosed', (data) => {
+        console.log('[Student App] Received session:roomClosed:', data);
         // Find and remove the room of this type for this session
         setJoinedRooms(prev => {
           const roomToRemove = prev.find(r => 
@@ -303,9 +319,13 @@ const App: React.FC = () => {
             r.widgetId === data.widgetId
           );
           if (roomToRemove) {
+            console.log('[Student App] Found room to remove:', roomToRemove);
             animateRoomLeave(roomToRemove.id, () => {
+              console.log('[Student App] Removing room from state:', roomToRemove.id);
               setJoinedRooms(rooms => rooms.filter(r => r.id !== roomToRemove.id));
             });
+          } else {
+            console.log('[Student App] No matching room found to remove');
           }
           return prev;
         });
@@ -316,7 +336,11 @@ const App: React.FC = () => {
         // Update the isActive state for the specific widget
         setJoinedRooms(prev => prev.map(room => {
           if (room.code === code && room.type === data.roomType && room.widgetId === data.widgetId) {
-            return { ...room, initialData: { ...room.initialData, isActive: data.isActive } };
+            return { 
+              ...room, 
+              isActive: data.isActive,
+              initialData: { ...room.initialData, isActive: data.isActive } 
+            };
           }
           return room;
         }));
@@ -457,7 +481,7 @@ const App: React.FC = () => {
               >
                 <div 
                   className={`flex justify-between items-center px-4 py-3 transition-colors duration-300 cursor-pointer select-none ${
-                    !room.initialData?.isActive
+                    !room.isActive
                       ? 'bg-gradient-to-r from-warm-gray-400 to-warm-gray-500 dark:from-warm-gray-600 dark:to-warm-gray-700 hover:from-warm-gray-450 hover:to-warm-gray-550 dark:hover:from-warm-gray-650 dark:hover:to-warm-gray-750'
                       : room.type === 'poll' 
                       ? 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800 hover:from-sage-550 hover:to-sage-650 dark:hover:from-sage-750 dark:hover:to-sage-850' 
@@ -489,7 +513,7 @@ const App: React.FC = () => {
                   </div>
                   <div 
                     className={`${
-                      !room.initialData?.isActive
+                      !room.isActive
                         ? 'bg-warm-gray-600 dark:bg-warm-gray-800'
                         : room.type === 'poll' 
                         ? 'bg-sage-700 dark:bg-sage-900' 
@@ -522,7 +546,8 @@ const App: React.FC = () => {
                       <PollActivity 
                         socket={room.socket} 
                         roomCode={room.code}
-                        initialPollData={room.initialData}
+                        initialPollData={room.initialData?.pollData}
+                        initialIsActive={room.isActive}
                         isSession={true}
                         widgetId={room.widgetId}
                       />

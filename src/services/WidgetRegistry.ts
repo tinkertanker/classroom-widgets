@@ -346,8 +346,9 @@ export class WidgetRegistry {
       name: 'Poll',
       icon: FaChartColumn,
       component: LazyWidgets.Poll,
-      defaultSize: { width: 400, height: 340 },
+      defaultSize: { width: 400, height: 400 },
       minSize: { width: 300, height: 250 },
+      maxSize: { width: 600, height: 800 },
       category: WidgetCategory.NETWORKED,
       description: 'Real-time polling with student participation',
       features: {

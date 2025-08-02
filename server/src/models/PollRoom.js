@@ -9,8 +9,7 @@ class PollRoom extends Room {
     this.pollData = {
       question: '',
       options: [],
-      votes: {},
-      isActive: false
+      votes: {}
     };
     // Track who has voted by socket ID
     this.voters = new Set();
@@ -50,7 +49,7 @@ class PollRoom extends Room {
    * Record a vote from a participant
    */
   vote(participantId, optionIndex) {
-    if (!this.pollData.isActive) return false;
+    if (!this.isActive) return false;
     
     // Check if participant already voted using our voters Set
     if (this.voters.has(participantId)) return false;
