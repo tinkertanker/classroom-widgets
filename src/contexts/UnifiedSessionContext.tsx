@@ -82,7 +82,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
   const isCreatingSession = useRef(false);
   const sessionCodeRef = useRef(sessionCode);
   const isInitialRecoveryComplete = useRef(false);
-  const hasPerformedCleanup = useRef(false);
   
   // Constants
   const TWO_HOURS = 2 * 60 * 60 * 1000;
@@ -291,7 +290,9 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     }
   }, [sessionCode, sessionCreatedAt, socket, isRecovering]);
   
-  // Clean up orphaned rooms after recovery is complete
+  // Clean up orphaned rooms - should be called when widgets are deleted
+  // Not called automatically to prevent closing rooms during page refresh
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const cleanupOrphanedRooms = useCallback(async () => {
     if (!socket?.connected || !sessionCode) return;
     
@@ -334,18 +335,9 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     console.log('[UnifiedSession] Orphaned room cleanup complete');
   }, [socket, sessionCode, activeRooms]);
   
-  // Trigger cleanup after recovery is complete
-  useEffect(() => {
-    if (isInitialRecoveryComplete.current && !hasPerformedCleanup.current && !isRecovering) {
-      // Delay cleanup to ensure widgets are loaded
-      const timer = setTimeout(() => {
-        cleanupOrphanedRooms();
-        hasPerformedCleanup.current = true;
-      }, 2000); // Increased delay to ensure widgets are fully loaded
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isRecovering, cleanupOrphanedRooms]);
+  // Don't trigger automatic cleanup after recovery
+  // Cleanup should only happen when widgets are explicitly deleted
+  // This prevents closing rooms during page refresh when widgets haven't loaded yet
   
   // Clear session
   const clearSession = useCallback(() => {
@@ -356,7 +348,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     setRecoveryData(new Map());
     setParticipantCounts(new Map());
     hasAttemptedRecovery.current = false;
-    hasPerformedCleanup.current = false;
   }, [setStoreSessionCode]);
   
   // Create session
@@ -390,7 +381,6 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
             setStoreSessionCode(response.code);
             sessionCodeRef.current = response.code; // Update ref immediately
             isInitialRecoveryComplete.current = true; // No recovery needed for new session
-            hasPerformedCleanup.current = true; // No cleanup needed for new session
             setRecoveryData(new Map()); // Clear any old recovery data
             resolve(response.code);
           } else {
@@ -437,12 +427,12 @@ export const UnifiedSessionProvider: React.FC<UnifiedSessionProviderProps> = ({ 
     
     console.log('[UnifiedSession] createRoom - currentCode:', currentCode, 'isRecovering:', isRecovering);
     
-    // Wait for recovery and cleanup to complete if in progress
-    if ((isRecovering && !isInitialRecoveryComplete.current) || (isInitialRecoveryComplete.current && !hasPerformedCleanup.current)) {
-      console.log('[UnifiedSession] Waiting for recovery and cleanup to complete before creating room');
+    // Wait for recovery to complete if in progress
+    if (isRecovering && !isInitialRecoveryComplete.current) {
+      console.log('[UnifiedSession] Waiting for recovery to complete before creating room');
       await new Promise<void>((resolve) => {
         const checkInterval = setInterval(() => {
-          if ((!isRecovering || isInitialRecoveryComplete.current) && hasPerformedCleanup.current) {
+          if (!isRecovering || isInitialRecoveryComplete.current) {
             clearInterval(checkInterval);
             resolve();
           }
