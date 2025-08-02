@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaPlay, FaPause, FaChartColumn, FaGear, FaArrowRotateLeft } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
-import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useNetworkedWidgetUnified } from '../../session/hooks/useNetworkedWidgetUnified';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
-import { useSocketEvents } from '../shared/hooks/useSocketEvents';
-import { useActiveState } from '../shared/hooks/useActiveState';
+import { useUnifiedSocketEvents } from '../../session/hooks/useUnifiedSocketEvents';
+import { useUnifiedSession } from '../../../contexts/UnifiedSessionContext';
 import { getPollColor } from '../../../shared/constants/pollColors';
 import PollSettings from './PollSettings';
 import { getRandomPollQuestion } from './pollQuestions';
@@ -66,12 +65,15 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     handleStop,
     session,
     recoveryData
-  } = useNetworkedWidget({
+  } = useNetworkedWidgetUnified({
     widgetId,
     roomType: 'poll',
     savedState,
     onStateChange
   });
+  
+  // Get unified session for additional methods
+  const unifiedSession = useUnifiedSession();
   
   // Socket event handlers
   const socketEvents = useMemo(() => ({
@@ -112,21 +114,25 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   }), [widgetId]);
   
   // Use socket events hook for automatic event management
-  const { emit } = useSocketEvents({
-    socket: session.socket,
+  const { emit } = useUnifiedSocketEvents({
     events: socketEvents,
-    isActive: hasRoom // Only allow emitting when room exists
+    isActive: hasRoom // Only listen to events when room exists
   });
   
-  // Use active state hook for widget state management
-  const { toggleActive, reset } = useActiveState({
-    socket: session.socket,
-    sessionCode: session.sessionCode,
-    roomType: 'poll',
-    widgetId,
-    isActive: hasRoom,
-    isRoomActive: hasRoom
-  });
+  // Toggle active state using unified session
+  const toggleActive = useCallback((newState: boolean) => {
+    if (!widgetId || !hasRoom) return;
+    unifiedSession.updateRoomState('poll', widgetId, newState);
+  }, [widgetId, hasRoom, unifiedSession]);
+  
+  // Reset votes
+  const reset = useCallback(() => {
+    if (!widgetId || !hasRoom) return;
+    emit('session:reset', {
+      sessionCode: session.sessionCode,
+      widgetId
+    });
+  }, [widgetId, hasRoom, emit, session.sessionCode]);
   
   // Actions
   const updatePoll = useCallback((data: Partial<PollData>) => {
@@ -249,16 +255,23 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   // Handle recovery data from SessionContext
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      console.log('[Poll] Applying recovery data:', recoveryData);
+      console.log('[Poll] Recovery data available:', recoveryData);
       
       // Apply recovered widget state
       if (recoveryData.isActive !== undefined) {
         setIsWidgetActive(recoveryData.isActive);
       }
       
-      // Apply recovered poll data if available
-      if (recoveryData.roomData.pollData) {
+      // Only apply recovered poll data if it has meaningful content
+      // (not empty question/options which indicates a new widget)
+      if (recoveryData.roomData.pollData && 
+          recoveryData.roomData.pollData.question && 
+          recoveryData.roomData.pollData.options && 
+          recoveryData.roomData.pollData.options.length > 0) {
+        console.log('[Poll] Applying recovered poll data');
         setPollData(recoveryData.roomData.pollData);
+      } else {
+        console.log('[Poll] Recovery data has empty poll data, keeping random question');
       }
       
       // Apply recovered results if available

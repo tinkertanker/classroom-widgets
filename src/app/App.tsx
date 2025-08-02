@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import './App.css';
 import { ModalProvider } from '../contexts/ModalContext';
 import { SocketProvider } from '../contexts/SocketProvider';
-import { SessionProvider } from '../contexts/SessionContext';
+import { UnifiedSessionProvider } from '../contexts/UnifiedSessionContext';
 import { useWorkspace, useServerConnection } from '../shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '../shared/utils/migration';
@@ -187,7 +187,7 @@ function App() {
         <SmallScreenWarning />
       ) : (
         <SocketProvider>
-          <SessionProvider>
+          <UnifiedSessionProvider>
             <ConfettiProvider>
               <ModalProvider>
                 <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
@@ -239,7 +239,7 @@ function App() {
               </div>
             </ModalProvider>
           </ConfettiProvider>
-          </SessionProvider>
+          </UnifiedSessionProvider>
         </SocketProvider>
       )}
     </GlobalErrorBoundary>

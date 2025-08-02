@@ -234,8 +234,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, [socket, sessionCode, setSessionCode]);
   
   const createRoom = useCallback(async (roomType: string, widgetId: string): Promise<boolean> => {
+    console.log('[SessionContext] createRoom called, sessionCode:', sessionCode, 'socket:', !!socket);
     if (!socket || !sessionCode) {
-      console.error('[SessionContext] Cannot create room - no session');
+      console.error('[SessionContext] Cannot create room - no session. sessionCode:', sessionCode, 'socket:', !!socket);
       return false;
     }
     
