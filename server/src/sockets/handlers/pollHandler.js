@@ -65,6 +65,13 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
           results: room.getResults(),
           widgetId: widgetId
         });
+        
+        // Also emit the widget's active state
+        socket.emit('session:widgetStateChanged', {
+          roomType: 'poll',
+          widgetId: widgetId,
+          isActive: room.isActive
+        });
       }
     }
   });

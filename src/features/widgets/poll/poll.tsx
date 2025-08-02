@@ -254,17 +254,27 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     });
   }, [onStateChange, pollData, results]);
   
-  // Send poll data when room is first established
+  // Handle room establishment - request state for existing rooms, send data for new ones
   useEffect(() => {
-    if (hasRoom && pollData.question && pollData.options.length > 0) {
+    if (hasRoom && session.socket && session.sessionCode) {
       // Small delay to ensure room is fully established on server
       const timer = setTimeout(() => {
-        console.log('[Poll] Room established, sending initial poll data');
-        emit('session:poll:update', {
-          sessionCode: session.sessionCode,
-          widgetId,
-          pollData
+        console.log('[Poll] Room established, requesting current state');
+        // First, request the current state from the server
+        session.socket.emit('poll:requestState', {
+          code: session.sessionCode,
+          widgetId
         });
+        
+        // Only send our local data if this is a brand new poll (no saved state)
+        if (!savedState && pollData.question && pollData.options.length > 0) {
+          console.log('[Poll] New poll detected, sending initial poll data');
+          emit('session:poll:update', {
+            sessionCode: session.sessionCode,
+            widgetId,
+            pollData
+          });
+        }
       }, 100);
       return () => clearTimeout(timer);
     }
