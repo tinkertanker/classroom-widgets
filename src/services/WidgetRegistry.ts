@@ -46,7 +46,7 @@ const LazyWidgets = {
   RTFeedback: lazy(() => import('../features/widgets/rtFeedback')),
   TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
   Questions: lazy(() => import('../features/widgets/questions')),
-  Wordle: lazy(() => import('../features/widgets/wordle/wordle'))
+  // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
 // Default sizes for widgets
@@ -321,22 +321,22 @@ export class WidgetRegistry {
       }
     });
 
-    // Wordle
-    this.register({
-      type: WidgetType.WORDLE,
-      name: 'Wordle',
-      icon: FaSpellCheck,
-      component: LazyWidgets.Wordle,
-      defaultSize: { width: 350, height: 500 },
-      minSize: { width: 300, height: 450 },
-      maxSize: { width: 400, height: 600 },
-      category: WidgetCategory.FUN,
-      description: 'Daily word puzzle game',
-      features: {
-        hasStateManagement: true,
-        isResizable: true
-      }
-    });
+    // Wordle - TEMPORARILY DISABLED FOR PRODUCTION
+    // this.register({
+    //   type: WidgetType.WORDLE,
+    //   name: 'Wordle',
+    //   icon: FaSpellCheck,
+    //   component: LazyWidgets.Wordle,
+    //   defaultSize: { width: 350, height: 500 },
+    //   minSize: { width: 300, height: 450 },
+    //   maxSize: { width: 400, height: 600 },
+    //   category: WidgetCategory.FUN,
+    //   description: 'Daily word puzzle game',
+    //   features: {
+    //     hasStateManagement: true,
+    //     isResizable: true
+    //   }
+    // });
 
     // NETWORKED WIDGETS
 
