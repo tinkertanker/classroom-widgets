@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { useWidgetStateChange } from './useWidgetStateChange';
 
 interface PollData {
   question: string;
@@ -55,19 +56,23 @@ export const usePollSocket = ({
   
   console.log(`[usePollSocket ${widgetId}] Initialized with isActive:`, initialIsActive);
 
-  // Socket event listeners
+  // Use shared hook for widget state changes
+  useWidgetStateChange({
+    socket,
+    roomCode,
+    roomType: 'poll',
+    widgetId,
+    initialIsActive,
+    onStateChange: (newIsActive) => {
+      console.log('[Student Poll] Received widget state change:', newIsActive);
+      // Don't reset vote state when poll is paused/resumed - preserve voting data
+      setIsActive(newIsActive);
+    }
+  });
+
+  // Socket event listeners for poll-specific events
   useEffect(() => {
     if (!socket) return;
-
-    // Unified widget state changes
-    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      // Only handle poll state changes for this widget
-      if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        console.log('[Student Poll] Received widget state change:', data);
-        // Don't reset vote state when poll is paused/resumed - preserve voting data
-        setIsActive(data.isActive);
-      }
-    };
 
     // Poll data updates
     const handleDataUpdate = (data: { pollData: PollData; results?: Results; widgetId?: string }) => {
@@ -111,7 +116,6 @@ export const usePollSocket = ({
     };
 
     // Register listeners
-    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on('poll:dataUpdate', handleDataUpdate);
     socket.on('poll:voteUpdate', handleVoteUpdate);
     socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
@@ -130,7 +134,6 @@ export const usePollSocket = ({
     // Cleanup
     return () => {
       if (timer) clearTimeout(timer);
-      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off('poll:dataUpdate', handleDataUpdate);
       socket.off('poll:voteUpdate', handleVoteUpdate);
       socket.off('session:poll:voteConfirmed', handleVoteConfirmed);

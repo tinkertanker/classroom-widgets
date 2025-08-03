@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
 import { getStudentQuestionColor } from '../../../../src/shared/constants/studentQuestionColors';
+import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface Question {
   id: string;
@@ -40,18 +41,21 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     }
   }, [initialIsActive]);
 
-  useEffect(() => {
+  // Listen for widget state changes using shared hook
+  useWidgetStateChange({
+    socket,
+    roomCode: sessionCode,
+    roomType: 'questions',
+    widgetId,
+    initialIsActive,
+    onStateChange: (newIsActive) => {
+      setIsActive(newIsActive);
+    }
+  });
 
+  useEffect(() => {
     // Request current state when joining
     socket.emit('questions:requestState', { code: sessionCode, widgetId });
-
-    // Handle unified widget state changes
-    socket.on('session:widgetStateChanged', (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      // Only handle questions state changes for this specific widget
-      if (data.roomType === 'questions' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        setIsActive(data.isActive);
-      }
-    });
 
     // Handle existing questions list
     socket.on('questions:list', (data: { questions: Question[]; widgetId?: string }) => {
@@ -98,7 +102,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     });
 
     return () => {
-      socket.off('session:widgetStateChanged');
       socket.off('questions:list');
       socket.off('questionAnswered');
       socket.off('questionDeleted');
@@ -106,7 +109,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       socket.off('session:questions:submitted');
       socket.off('questions:error');
     };
-  }, [socket, sessionCode, studentId]);
+  }, [socket, sessionCode, studentId, widgetId]);
 
   const handleSubmitQuestion = (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface RTFeedbackActivityProps {
   socket: Socket;
@@ -44,61 +45,39 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     }
   }, [currentValue, lastSentValue, socket, roomCode, isSending, isActive]);
 
-  // Handle room closed and state changes
+  // Listen for room state changes using shared hook
+  useWidgetStateChange({
+    socket,
+    roomCode,
+    roomType: 'rtfeedback',
+    widgetId,
+    initialIsActive,
+    onStateChange: (newIsActive) => {
+      const wasInactive = !isActive;
+      setIsActive(newIsActive);
+      
+      // Reset to middle value when restarted from inactive state
+      if (newIsActive && wasInactive) {
+        setCurrentValue(3);
+        setLastSentValue(3);
+      }
+    }
+  });
+
+  // Handle submission response
   useEffect(() => {
-    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      // Only handle rtfeedback state changes for this specific widget
-      if (data.roomType === 'rtfeedback' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        const wasInactive = !isActive;
-        setIsActive(data.isActive);
-        
-        // Reset to middle value when restarted from inactive state
-        if (data.isActive && wasInactive) {
-          setCurrentValue(3);
-          setLastSentValue(3);
-        }
-      }
-    };
-
-    // Also listen for the legacy event for backward compatibility
-    const handleStateChanged = (data: { isActive: boolean; widgetId?: string }) => {
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        const wasInactive = !isActive;
-        setIsActive(data.isActive);
-        
-        // Reset to middle value when restarted from inactive state
-        if (data.isActive && wasInactive) {
-          setCurrentValue(3);
-          setLastSentValue(3);
-        }
-      }
-    };
-
     const handleSubmitted = (data: { success: boolean; error?: string }) => {
       if (!data.success) {
         console.error('Failed to submit feedback:', data.error);
       }
     };
 
-    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
-    socket.on('rtfeedback:stateChanged', handleStateChanged);
     socket.on('session:rtfeedback:submitted', handleSubmitted);
     
-    // Request current state if we don't have initial state
-    let timer: NodeJS.Timeout | undefined;
-    if (initialIsActive === undefined) {
-      timer = setTimeout(() => {
-        socket.emit('rtfeedback:requestState', { code: roomCode, widgetId });
-      }, 100);
-    }
-
     return () => {
-      if (timer) clearTimeout(timer);
-      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
-      socket.off('rtfeedback:stateChanged', handleStateChanged);
       socket.off('session:rtfeedback:submitted', handleSubmitted);
     };
-  }, [socket, roomCode, isActive, widgetId]);
+  }, [socket]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isActive) {

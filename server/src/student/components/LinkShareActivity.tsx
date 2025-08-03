@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
+import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface LinkShareActivityProps {
   socket: Socket;
@@ -30,39 +31,17 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
     setIsActive(initialIsActive);
   }, [initialIsActive]);
 
-  // Listen for room state changes
-  useEffect(() => {
-    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      // Only handle linkShare state changes for this specific widget
-      if (data.roomType === 'linkShare' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        setIsActive(data.isActive);
-      }
-    };
-
-    // Also listen for the legacy event for backward compatibility
-    const handleRoomStateChanged = (data: { isActive: boolean; widgetId?: string }) => {
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        setIsActive(data.isActive);
-      }
-    };
-
-    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
-    socket.on('linkShare:stateChanged', handleRoomStateChanged);
-    
-    // Request current state if we don't have initial state
-    let timer: NodeJS.Timeout | undefined;
-    if (initialIsActive === undefined) {
-      timer = setTimeout(() => {
-        socket.emit('linkShare:requestState', { code: roomCode, widgetId });
-      }, 100);
+  // Listen for room state changes using shared hook
+  useWidgetStateChange({
+    socket,
+    roomCode,
+    roomType: 'linkShare',
+    widgetId,
+    initialIsActive,
+    onStateChange: (newIsActive) => {
+      setIsActive(newIsActive);
     }
-
-    return () => {
-      if (timer) clearTimeout(timer);
-      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
-      socket.off('linkShare:stateChanged', handleRoomStateChanged);
-    };
-  }, [socket, roomCode, widgetId, initialIsActive]);
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
