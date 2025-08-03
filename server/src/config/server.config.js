@@ -7,13 +7,13 @@ module.exports = {
 
   // Environment
   NODE_ENV: process.env.NODE_ENV || 'development',
-  IS_PRODUCTION: process.env.NODE_ENV === 'production',
+  IS_PRODUCTION: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging',
 
   // CORS configuration
   CORS: {
     // Allowed origins - can be set via environment variable
-    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS 
-      ? process.env.ALLOWED_ORIGINS.split(',') 
+    ALLOWED_ORIGINS: process.env.CORS_ORIGINS 
+      ? process.env.CORS_ORIGINS.split(',') 
       : [
           'http://localhost:3000',
           'http://localhost:3001', 
