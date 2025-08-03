@@ -33,19 +33,22 @@ export const text = {
 // Common button styles
 export const buttons = {
   primary: cn(
-    "bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700",
-    "text-white rounded",
+    "bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40",
+    "border-2 border-sage-500 dark:border-sage-400",
+    "text-sage-700 dark:text-sage-300 rounded",
     transitions.colors
   ),
   secondary: cn(
-    "bg-warm-gray-200 hover:bg-warm-gray-300 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500",
+    "bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-800 dark:hover:bg-warm-gray-700",
+    "border-2 border-warm-gray-400 dark:border-warm-gray-500",
     text.primary,
     "rounded",
     transitions.colors
   ),
   danger: cn(
-    "bg-dusty-rose-500 hover:bg-dusty-rose-600",
-    "text-white rounded",
+    "bg-dusty-rose-100 hover:bg-dusty-rose-200 dark:bg-dusty-rose-900/30 dark:hover:bg-dusty-rose-900/40",
+    "border-2 border-dusty-rose-500 dark:border-dusty-rose-400",
+    "text-dusty-rose-700 dark:text-dusty-rose-300 rounded",
     transitions.colors
   ),
   ghost: cn(

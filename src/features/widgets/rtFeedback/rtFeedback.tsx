@@ -233,13 +233,13 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         <div className="flex justify-between gap-2 mt-1">
           <button
             onClick={handleToggleResults}
-            className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
+            className="flex-1 px-3 py-1.5 text-sm bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border-2 border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 rounded transition-colors"
           >
             {showResults ? 'Hide' : 'Show'} Results
           </button>
           <button
             onClick={handleReset}
-            className="flex-1 px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors"
+            className="flex-1 px-3 py-1.5 text-sm bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border-2 border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 rounded transition-colors"
           >
             Reset
           </button>

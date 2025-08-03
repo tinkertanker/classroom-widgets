@@ -206,7 +206,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
                   </p>
                   {result === "Enter a list to randomise!" && (
                     <button
-                      className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 text-white text-sm rounded transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-terracotta-100 hover:bg-terracotta-200 dark:bg-terracotta-900/30 dark:hover:bg-terracotta-900/40 border-2 border-terracotta-500 dark:border-terracotta-400 text-terracotta-700 dark:text-terracotta-300 text-sm rounded transition-colors duration-200 flex items-center gap-1.5"
                       onClick={openSettings}
                     >
                       <FaGear className="text-xs" />
@@ -221,7 +221,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
         {buttonSettings === "normal" ? (
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
             <button
-              className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border-2 border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
               onClick={handleRandomise}
               disabled={isLoading}
             >
@@ -240,7 +240,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-dusty-rose-100 hover:bg-dusty-rose-200 dark:bg-dusty-rose-900/30 dark:hover:bg-dusty-rose-900/40 border-2 border-dusty-rose-500 dark:border-dusty-rose-400 text-dusty-rose-700 dark:text-dusty-rose-300 text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleRemoveResult}
                 disabled={removedChoices.includes(result)}
               >
@@ -249,7 +249,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
               <button
                 disabled={isLoading}
                 ref={initialResultFocus}
-                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border-2 border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
                 onClick={handleRandomise}
               >
                 <FaRotate className="text-xs" />
