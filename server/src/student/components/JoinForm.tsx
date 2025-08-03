@@ -183,7 +183,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
           {/* Join/Leave button - hidden in compact mode on mobile since session code is hidden */}
           <button 
             type="submit" 
-            className={`py-2.5 px-4 bg-white dark:bg-warm-gray-800 border-2 rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 outline-none h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed ${currentSessionCode ? 'border-dusty-rose-500 dark:border-dusty-rose-400 text-dusty-rose-600 dark:text-dusty-rose-400 hover:bg-dusty-rose-500 hover:text-white dark:hover:bg-dusty-rose-400 dark:hover:text-white' : 'border-sage-500 dark:border-sage-400 text-sage-600 dark:text-sage-400 hover:bg-sage-500 hover:text-white dark:hover:bg-sage-400 dark:hover:text-white'} ${isCompact ? 'hidden sm:flex py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_140px] sm:order-3' : 'sm:flex-[0_0_140px] sm:order-3'}`}
+            className={`py-2.5 px-4 rounded-md text-sm font-semibold cursor-pointer transition-all duration-200 outline-none h-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-white ${currentSessionCode ? 'bg-dusty-rose-500 dark:bg-dusty-rose-400 hover:bg-dusty-rose-600 dark:hover:bg-dusty-rose-500' : 'bg-sage-500 dark:bg-sage-400 hover:bg-sage-600 dark:hover:bg-sage-500'} ${isCompact ? 'hidden sm:flex py-2 px-4 text-sm h-auto leading-[1.4] sm:flex-[0_0_140px] sm:order-3' : 'sm:flex-[0_0_140px] sm:order-3'}`}
             disabled={isLoading || (!currentSessionCode && !code)}
           >
             {isLoading ? (currentSessionCode ? 'Leaving...' : 'Joining...') : (currentSessionCode ? 'Leave Session' : 'Join Session')}
