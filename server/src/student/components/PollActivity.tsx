@@ -1,7 +1,7 @@
 import React from 'react';
 import { Socket } from 'socket.io-client';
 import { usePollSocket } from '../hooks/usePollSocket';
-import { getStudentPollColor } from '@shared/constants/studentPollColors';
+import { getStudentPollColor } from '../shared/constants/studentPollColors';
 
 interface PollActivityProps {
   socket: Socket;
