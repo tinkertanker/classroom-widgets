@@ -1,0 +1,43 @@
+# Backend Server Dockerfile for Staging
+# This Dockerfile has access to the full project context
+FROM node:18-alpine
+
+# Install dumb-init for proper signal handling and wget for health checks
+RUN apk add --no-cache dumb-init wget
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy server package files
+COPY server/package*.json ./
+
+# Install production dependencies
+RUN npm ci --only=production
+
+# Copy server application code
+COPY server/ .
+
+# Copy shared constants from main app to student app build directory
+COPY src/shared/constants ./src/student/shared/constants
+
+# Build the student app
+RUN cd src/student && npm install && npm run build
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Change ownership of app directory
+RUN chown -R nodejs:nodejs /usr/src/app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port (will use PORT env variable)
+EXPOSE 3001
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the server
+CMD ["node", "src/server.js"]
