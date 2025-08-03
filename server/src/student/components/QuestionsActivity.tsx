@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { getStudentQuestionColor } from '../../../../src/shared/constants/studentQuestionColors';
+import { getQuestionColor } from '../utils/questionColors';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface Question {
@@ -213,7 +213,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
               </h3>
               <div className="space-y-2 max-h-[200px] overflow-y-auto">
                 {sortedQuestions.map((question, index) => {
-                  const color = getStudentQuestionColor(index);
+                  const color = getQuestionColor(index);
                   return (
                     <div
                       key={question.id}
