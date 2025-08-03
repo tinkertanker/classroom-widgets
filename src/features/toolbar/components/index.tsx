@@ -43,8 +43,12 @@ const Toolbar: React.FC = () => {
     return () => clearInterval(interval);
   }, [stickerMode]);
   
-  // Add keyboard shortcut for debug launch all
+  // Add keyboard shortcut for debug launch all (only in development)
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      return;
+    }
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Cmd/Ctrl + Shift + D
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
@@ -271,8 +275,8 @@ const Toolbar: React.FC = () => {
             <span className="text-xs text-center leading-tight">Stickers</span>
           </button>
             
-            {/* Debug button */}
-            <>
+            {/* Debug button - only in development */}
+            {process.env.NODE_ENV === 'development' && (
               <button
               onClick={handleDebugLaunchAll}
               className={clsx(
@@ -293,7 +297,7 @@ const Toolbar: React.FC = () => {
                 {isMac ? '⌘⇧D' : 'Ctrl+Shift+D'}
               </div>
             </button>
-            </>
+            )}
             
             {/* Clock */}
             {showClock && (
