@@ -187,7 +187,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !questionText.trim()}
-                className="w-full bg-sage-500 hover:bg-sage-600 text-white py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full border-2 border-sage-500 dark:border-sage-400 text-sage-600 dark:text-sage-400 hover:bg-sage-500 hover:text-white dark:hover:bg-sage-400 dark:hover:text-warm-gray-900 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Question'}
               </button>
@@ -198,8 +198,8 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
           <div className={`absolute inset-x-0 top-0 z-10 transition-all duration-300 ease-in-out ${
             showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
           }`}>
-            <div className="bg-sage-500 dark:bg-sage-600 text-white p-3 text-center font-medium text-sm shadow-lg">
-              Question submitted successfully!
+            <div className="bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 p-3 text-center font-medium text-sm shadow-md border border-sage-200 dark:border-sage-700">
+              ✓ Question submitted successfully!
             </div>
           </div>
 

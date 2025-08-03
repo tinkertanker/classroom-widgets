@@ -480,16 +480,16 @@ const App: React.FC = () => {
                 data-room-type={room.type}
               >
                 <div 
-                  className={`flex justify-between items-center px-4 py-3 transition-colors duration-300 cursor-pointer select-none ${
+                  className={`flex justify-between items-center px-4 py-2 transition-all duration-300 cursor-pointer select-none border-b-2 ${
                     !room.isActive
-                      ? 'bg-gradient-to-r from-warm-gray-400 to-warm-gray-500 dark:from-warm-gray-600 dark:to-warm-gray-700 hover:from-warm-gray-450 hover:to-warm-gray-550 dark:hover:from-warm-gray-650 dark:hover:to-warm-gray-750'
+                      ? 'border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-50 dark:bg-warm-gray-800/50'
                       : room.type === 'poll' 
-                      ? 'bg-gradient-to-r from-sage-500 to-sage-600 dark:from-sage-700 dark:to-sage-800 hover:from-sage-550 hover:to-sage-650 dark:hover:from-sage-750 dark:hover:to-sage-850' 
+                      ? 'border-sage-500 dark:border-sage-400 bg-sage-50/50 dark:bg-sage-900/10 hover:bg-sage-100/50 dark:hover:bg-sage-900/20' 
                       : room.type === 'linkShare' 
-                      ? 'bg-gradient-to-r from-terracotta-500 to-terracotta-600 dark:from-terracotta-700 dark:to-terracotta-800 hover:from-terracotta-550 hover:to-terracotta-650 dark:hover:from-terracotta-750 dark:hover:to-terracotta-850' 
+                      ? 'border-terracotta-500 dark:border-terracotta-400 bg-terracotta-50/50 dark:bg-terracotta-900/10 hover:bg-terracotta-100/50 dark:hover:bg-terracotta-900/20' 
                       : room.type === 'rtfeedback' 
-                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-700 dark:to-amber-800 hover:from-amber-550 hover:to-amber-650 dark:hover:from-amber-750 dark:hover:to-amber-850' 
-                      : 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-sky-700 dark:to-sky-800 hover:from-sky-550 hover:to-sky-650 dark:hover:from-sky-750 dark:hover:to-sky-850'
+                      ? 'border-amber-500 dark:border-amber-400 bg-amber-50/50 dark:bg-amber-900/10 hover:bg-amber-100/50 dark:hover:bg-amber-900/20' 
+                      : 'border-sky-500 dark:border-sky-400 bg-sky-50/50 dark:bg-sky-900/10 hover:bg-sky-100/50 dark:hover:bg-sky-900/20'
                   }`}
                   onClick={() => toggleMinimizeRoom(room.id)}
                   role="button"
@@ -504,25 +504,35 @@ const App: React.FC = () => {
                   aria-label={`${room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
                 >
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                    <span className="text-white text-base md:text-lg font-semibold">
+                    <span className={`text-base md:text-lg font-semibold ${
+                      !room.isActive
+                        ? 'text-warm-gray-600 dark:text-warm-gray-400'
+                        : room.type === 'poll' 
+                        ? 'text-sage-700 dark:text-sage-300' 
+                        : room.type === 'linkShare' 
+                        ? 'text-terracotta-700 dark:text-terracotta-300' 
+                        : room.type === 'rtfeedback' 
+                        ? 'text-amber-700 dark:text-amber-300' 
+                        : 'text-sky-700 dark:text-sky-300'
+                    }`}>
                       {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'}
                     </span>
-                    <span className="text-white/80 text-xs sm:text-sm">
+                    <span className="text-warm-gray-600 dark:text-warm-gray-400 text-xs sm:text-sm">
                       {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : '• Submit questions to your teacher'}
                     </span>
                   </div>
                   <div 
-                    className={`${
+                    className={`border-2 ${
                       !room.isActive
-                        ? 'bg-warm-gray-600 dark:bg-warm-gray-800'
+                        ? 'border-warm-gray-400 dark:border-warm-gray-600 text-warm-gray-600 dark:text-warm-gray-400'
                         : room.type === 'poll' 
-                        ? 'bg-sage-700 dark:bg-sage-900' 
+                        ? 'border-sage-500 dark:border-sage-400 text-sage-600 dark:text-sage-400' 
                         : room.type === 'linkShare' 
-                        ? 'bg-terracotta-700 dark:bg-terracotta-900' 
+                        ? 'border-terracotta-500 dark:border-terracotta-400 text-terracotta-600 dark:text-terracotta-400' 
                         : room.type === 'rtfeedback' 
-                        ? 'bg-amber-700 dark:bg-amber-900' 
-                        : 'bg-sky-700 dark:bg-sky-900'
-                    } bg-opacity-50 text-white w-6 h-6 rounded text-xs transition-all duration-200 flex items-center justify-center pointer-events-none`}
+                        ? 'border-amber-500 dark:border-amber-400 text-amber-600 dark:text-amber-400' 
+                        : 'border-sky-500 dark:border-sky-400 text-sky-600 dark:text-sky-400'
+                    } bg-transparent w-6 h-6 rounded text-xs transition-all duration-200 flex items-center justify-center pointer-events-none`}
                   >
                     {minimizedRooms.has(room.id) ? <FaPlus className="w-3 h-3" /> : <FaMinus className="w-3 h-3" />}
                   </div>
