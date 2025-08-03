@@ -16,6 +16,9 @@ RUN npm ci --only=production
 # Copy application code
 COPY . .
 
+# Build the student app
+RUN cd src/student && npm install && npm run build
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
