@@ -33,4 +33,4 @@ EXPOSE 3001
 ENTRYPOINT ["dumb-init", "--"]
 
 # Start the server
-CMD ["node", "src/index.js"]
+CMD ["node", "src/server.js"]
