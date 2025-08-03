@@ -187,7 +187,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
               <button
                 type="submit"
                 disabled={isSubmitting || !questionText.trim()}
-                className="w-full bg-transparent dark:bg-transparent border-2 border-sage-500 dark:border-sage-400 text-sage-600 dark:text-sage-400 hover:bg-sage-500 hover:text-white dark:hover:bg-sage-400 dark:hover:text-warm-gray-900 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-white dark:bg-warm-gray-800 border-2 border-sage-500 dark:border-sage-400 text-sage-600 dark:text-sage-400 hover:bg-sage-500 hover:text-white dark:hover:bg-sage-400 dark:hover:text-white py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Question'}
               </button>
