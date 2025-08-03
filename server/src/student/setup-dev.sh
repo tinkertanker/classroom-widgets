@@ -10,10 +10,10 @@ rm -rf shared
 mkdir -p shared/constants shared/utils
 
 # Create symlinks to main app's shared files
-ln -sf ../../../../src/shared/constants/studentQuestionColors.ts shared/constants/
-ln -sf ../../../../src/shared/constants/studentPollColors.ts shared/constants/
-ln -sf ../../../../src/shared/constants/colors.ts shared/constants/
-ln -sf ../../../../src/shared/utils/validation.ts shared/utils/
+ln -sf ../../../src/shared/constants/studentQuestionColors.ts shared/constants/
+ln -sf ../../../src/shared/constants/studentPollColors.ts shared/constants/
+ln -sf ../../../src/shared/constants/colors.ts shared/constants/
+ln -sf ../../../src/shared/utils/validation.ts shared/utils/
 
 echo "Symlinks created successfully!"
 ls -la shared/constants/
