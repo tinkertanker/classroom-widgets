@@ -480,16 +480,16 @@ const App: React.FC = () => {
                 data-room-type={room.type}
               >
                 <div 
-                  className={`flex justify-between items-center px-4 py-2 transition-all duration-300 cursor-pointer select-none border-b-2 ${
+                  className={`flex justify-between items-center px-4 py-2.5 transition-all duration-300 cursor-pointer select-none border-b-3 ${
                     !room.isActive
-                      ? 'border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-50 dark:bg-warm-gray-800/50'
+                      ? 'border-warm-gray-400 dark:border-warm-gray-600 bg-warm-gray-100 dark:bg-warm-gray-800'
                       : room.type === 'poll' 
-                      ? 'border-sage-500 dark:border-sage-400 bg-sage-50/50 dark:bg-sage-900/10 hover:bg-sage-100/50 dark:hover:bg-sage-900/20' 
+                      ? 'border-sage-500 dark:border-sage-400 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-900/40' 
                       : room.type === 'linkShare' 
-                      ? 'border-terracotta-500 dark:border-terracotta-400 bg-terracotta-50/50 dark:bg-terracotta-900/10 hover:bg-terracotta-100/50 dark:hover:bg-terracotta-900/20' 
+                      ? 'border-terracotta-500 dark:border-terracotta-400 bg-terracotta-100 dark:bg-terracotta-900/30 hover:bg-terracotta-200 dark:hover:bg-terracotta-900/40' 
                       : room.type === 'rtfeedback' 
-                      ? 'border-amber-500 dark:border-amber-400 bg-amber-50/50 dark:bg-amber-900/10 hover:bg-amber-100/50 dark:hover:bg-amber-900/20' 
-                      : 'border-sky-500 dark:border-sky-400 bg-sky-50/50 dark:bg-sky-900/10 hover:bg-sky-100/50 dark:hover:bg-sky-900/20'
+                      ? 'border-amber-500 dark:border-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/40' 
+                      : 'border-sky-500 dark:border-sky-400 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-200 dark:hover:bg-sky-900/40'
                   }`}
                   onClick={() => toggleMinimizeRoom(room.id)}
                   role="button"
@@ -522,17 +522,17 @@ const App: React.FC = () => {
                     </span>
                   </div>
                   <div 
-                    className={`border-2 ${
+                    className={`${
                       !room.isActive
-                        ? 'border-warm-gray-400 dark:border-warm-gray-600 text-warm-gray-600 dark:text-warm-gray-400'
+                        ? 'bg-warm-gray-500 dark:bg-warm-gray-600 text-white'
                         : room.type === 'poll' 
-                        ? 'border-sage-500 dark:border-sage-400 text-sage-600 dark:text-sage-400' 
+                        ? 'bg-sage-500 dark:bg-sage-600 text-white' 
                         : room.type === 'linkShare' 
-                        ? 'border-terracotta-500 dark:border-terracotta-400 text-terracotta-600 dark:text-terracotta-400' 
+                        ? 'bg-terracotta-500 dark:bg-terracotta-600 text-white' 
                         : room.type === 'rtfeedback' 
-                        ? 'border-amber-500 dark:border-amber-400 text-amber-600 dark:text-amber-400' 
-                        : 'border-sky-500 dark:border-sky-400 text-sky-600 dark:text-sky-400'
-                    } bg-transparent w-6 h-6 rounded text-xs transition-all duration-200 flex items-center justify-center pointer-events-none`}
+                        ? 'bg-amber-500 dark:bg-amber-600 text-white' 
+                        : 'bg-sky-500 dark:bg-sky-600 text-white'
+                    } w-6 h-6 rounded-full text-xs transition-all duration-200 flex items-center justify-center pointer-events-none shadow-sm`}
                   >
                     {minimizedRooms.has(room.id) ? <FaPlus className="w-3 h-3" /> : <FaMinus className="w-3 h-3" />}
                   </div>
