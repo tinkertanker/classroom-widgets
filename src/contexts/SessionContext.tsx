@@ -104,13 +104,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setIsConnecting(false);
       
       // Attempt recovery if we have a session
-      if (sessionCode && sessionCreatedAt && !hasAttemptedRecovery.current) {
+      // Reset the recovery flag on reconnect to allow re-recovery
+      if (sessionCode && sessionCreatedAt) {
+        hasAttemptedRecovery.current = false;
         attemptSessionRecovery();
       }
     };
     
     const handleDisconnect = () => {
       setIsConnected(false);
+      // Reset recovery state on disconnect
+      setIsRecovering(false);
     };
     
     const handleConnecting = () => {
@@ -214,6 +218,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       return;
     }
     
+    // Add timeout for recovery attempt
+    const recoveryTimeout = setTimeout(() => {
+      console.log('[Session] Recovery timeout - falling back to normal state');
+      setIsRecovering(false);
+      hasAttemptedRecovery.current = true;
+    }, 10000); // 10 second timeout
+    
     hasAttemptedRecovery.current = true;
     setIsRecovering(true);
     console.log('[UnifiedSession] Attempting session recovery for:', sessionCode);
@@ -247,10 +258,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           console.error('[UnifiedSession] Failed to recover session:', response.error);
           clearSession();
           setIsRecovering(false);
+          clearTimeout(recoveryTimeout);
           return;
         }
         
-        console.log('[UnifiedSession] Session recovered successfully');
+        console.log('[Session] Recovery - Session rejoined successfully');
         
         // Store recovery data separately - this is a snapshot from the server
         const recoveryMap = new Map<string, ActiveRoom>();
@@ -279,10 +291,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         
         setIsRecovering(false);
         isInitialRecoveryComplete.current = true;
+        clearTimeout(recoveryTimeout);
       });
     } catch (error) {
       console.error('[UnifiedSession] Recovery error:', error);
       setIsRecovering(false);
+      clearTimeout(recoveryTimeout);
     }
   }, [sessionCode, sessionCreatedAt, socket, isRecovering]);
   
