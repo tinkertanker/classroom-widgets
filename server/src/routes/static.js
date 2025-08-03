@@ -30,8 +30,11 @@ if (serverConfig.IS_PRODUCTION) {
     }
   }));
 
-  // Serve the student app
-  router.get('/student', (req, res) => {
+  // Serve the student app and its assets
+  router.use('/student', express.static(path.join(publicPath, 'student')));
+  
+  // Serve the student app index for client-side routing
+  router.get('/student/*', (req, res) => {
     res.sendFile(path.join(publicPath, 'student', 'index.html'));
   });
 

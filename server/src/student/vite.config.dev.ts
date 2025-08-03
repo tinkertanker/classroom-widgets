@@ -4,14 +4,14 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/',
+  base: '/student/',
   resolve: {
     alias: {
       '@shared': resolve(__dirname, '../../../src/shared')
     }
   },
   build: {
-    outDir: '../../public',
+    outDir: '../../public/student',
     emptyOutDir: true,
   },
   server: {

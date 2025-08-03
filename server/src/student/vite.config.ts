@@ -4,9 +4,9 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/',
+  base: '/student/',
   build: {
-    outDir: '../../public',
+    outDir: '../../public/student',
     emptyOutDir: true,
   }
 });
