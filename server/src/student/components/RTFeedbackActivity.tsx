@@ -107,7 +107,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   };
 
   return (
-    <div className="p-3">
+    <div>
       {!isActive ? (
         // Waiting state when teacher has stopped feedback
         <div className="flex flex-col items-center justify-center py-8">

@@ -140,7 +140,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   });
 
   return (
-    <div className="p-3 relative">
+    <div className="relative">
       {!isActive ? (
         // Waiting state when teacher has stopped accepting questions
         <div className="flex flex-col items-center justify-center py-8">
