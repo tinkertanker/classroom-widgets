@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus, FaCircleInfo } from 'react-icons/fa6';
+import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection } from '../../../shared/hooks/useWorkspace';
 import { useSession } from '../../../contexts/SessionContext';
@@ -137,14 +137,6 @@ const TopControls: React.FC = () => {
         )}
       </button>
 
-      {/* About Link */}
-      <a
-        href="/about"
-        className="flex items-center justify-center h-10 w-10 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
-        title="Learn more about Classroom Widgets"
-      >
-        <FaCircleInfo className="w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" />
-      </a>
     </div>
   );
 };

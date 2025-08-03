@@ -13,7 +13,8 @@ import {
   FaGripLines,
   FaBorderNone,
   FaMountain,
-  FaWater
+  FaWater,
+  FaCircleInfo
 } from 'react-icons/fa6';
 import { useWorkspace, useTheme } from '../../../shared/hooks/useWorkspace';
 import { useWidgets } from '../../../shared/hooks/useWidget';
@@ -161,6 +162,18 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
         <FaRotateLeft className="mr-3" />
         Reset Workspace
       </button>
+      
+      <div className="h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1" />
+      
+      {/* About Link */}
+      <a
+        href="/about"
+        onClick={onClose}
+        className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
+      >
+        <FaCircleInfo className="mr-3" />
+        About
+      </a>
       
     </div>
   );
