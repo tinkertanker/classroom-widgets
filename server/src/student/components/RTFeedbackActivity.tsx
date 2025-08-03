@@ -46,14 +46,31 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
 
   // Handle room closed and state changes
   useEffect(() => {
-    const handleStateChanged = (data: { isActive: boolean }) => {
-      const wasInactive = !isActive;
-      setIsActive(data.isActive);
-      
-      // Reset to middle value when restarted from inactive state
-      if (data.isActive && wasInactive) {
-        setCurrentValue(3);
-        setLastSentValue(3);
+    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
+      // Only handle rtfeedback state changes for this specific widget
+      if (data.roomType === 'rtfeedback' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
+        const wasInactive = !isActive;
+        setIsActive(data.isActive);
+        
+        // Reset to middle value when restarted from inactive state
+        if (data.isActive && wasInactive) {
+          setCurrentValue(3);
+          setLastSentValue(3);
+        }
+      }
+    };
+
+    // Also listen for the legacy event for backward compatibility
+    const handleStateChanged = (data: { isActive: boolean; widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        const wasInactive = !isActive;
+        setIsActive(data.isActive);
+        
+        // Reset to middle value when restarted from inactive state
+        if (data.isActive && wasInactive) {
+          setCurrentValue(3);
+          setLastSentValue(3);
+        }
       }
     };
 
@@ -63,6 +80,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       }
     };
 
+    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on('rtfeedback:stateChanged', handleStateChanged);
     socket.on('session:rtfeedback:submitted', handleSubmitted);
     
@@ -76,6 +94,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
 
     return () => {
       if (timer) clearTimeout(timer);
+      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off('rtfeedback:stateChanged', handleStateChanged);
       socket.off('session:rtfeedback:submitted', handleSubmitted);
     };

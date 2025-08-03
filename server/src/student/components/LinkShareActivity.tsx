@@ -32,10 +32,21 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
 
   // Listen for room state changes
   useEffect(() => {
-    const handleRoomStateChanged = (data: { isActive: boolean }) => {
-      setIsActive(data.isActive);
+    const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
+      // Only handle linkShare state changes for this specific widget
+      if (data.roomType === 'linkShare' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
+        setIsActive(data.isActive);
+      }
     };
 
+    // Also listen for the legacy event for backward compatibility
+    const handleRoomStateChanged = (data: { isActive: boolean; widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setIsActive(data.isActive);
+      }
+    };
+
+    socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on('linkShare:stateChanged', handleRoomStateChanged);
     
     // Request current state if we don't have initial state
@@ -48,6 +59,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
 
     return () => {
       if (timer) clearTimeout(timer);
+      socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off('linkShare:stateChanged', handleRoomStateChanged);
     };
   }, [socket, roomCode, widgetId, initialIsActive]);
