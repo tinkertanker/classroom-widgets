@@ -149,7 +149,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
                 className="w-full py-2 px-3 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md text-sm bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
-            <button type="submit" disabled={isSubmitting || !isActive} className="mt-3 w-full bg-terracotta-500 dark:bg-terracotta-400 text-white hover:bg-terracotta-600 dark:hover:bg-terracotta-500 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button type="submit" disabled={isSubmitting || !isActive} className="mt-3 w-3/4 mx-auto block bg-terracotta-500 dark:bg-terracotta-400 text-white hover:bg-terracotta-600 dark:hover:bg-terracotta-500 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
               {isSubmitting ? 'Sharing...' : 'Share Link'}
             </button>
             {error && <div className="mt-2 bg-dusty-rose-50 dark:bg-dusty-rose-900/30 text-dusty-rose-700 dark:text-dusty-rose-300 p-2 rounded-md text-sm border border-dusty-rose-200 dark:border-dusty-rose-700">{error}</div>}
