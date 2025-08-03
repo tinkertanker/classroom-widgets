@@ -92,7 +92,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
                 className={`p-3 border-2 rounded-lg cursor-not-allowed transition-all duration-200 relative overflow-hidden ${
                   selectedOption === index 
                     ? color.disabled 
-                    : 'border-warm-gray-300 bg-warm-gray-50'
+                    : 'border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-50 dark:bg-warm-gray-800'
                 }`}
               >
                 <div className="relative z-[1]">{option}</div>
@@ -107,7 +107,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     // Poll is active and student hasn't voted yet
     return (
       <>
-        <div className="text-xl font-semibold text-warm-gray-800 mb-3 text-center">{pollData.question}</div>
+        <div className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-200 mb-3 text-center">{pollData.question}</div>
         <div className="flex flex-col gap-2">
           {pollData.options.map((option, index) => {
             const color = getStudentPollColor(index);
@@ -117,7 +117,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
               className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 relative overflow-hidden ${
                 selectedOption === index 
                   ? color.selected 
-                  : 'border-warm-gray-300 bg-white hover:bg-warm-gray-50'
+                  : 'border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 hover:bg-warm-gray-50 dark:hover:bg-warm-gray-700'
               }`}
               onClick={() => handleVote(index)}
             >
@@ -138,7 +138,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
 
     return (
       <>
-        <div className="text-xl font-semibold text-warm-gray-800 mb-3 text-center">{results.question || pollData.question}</div>
+        <div className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-200 mb-3 text-center">{results.question || pollData.question}</div>
         <div className="flex flex-col gap-2">
           {options.map((option, index) => {
             const color = getStudentPollColor(index);
@@ -147,7 +147,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
             
             const isMyChoice = selectedOption === index;
             return (
-              <div key={index} className={`p-3 border-2 ${isMyChoice ? 'border-sage-500 bg-sage-50' : 'border-warm-gray-200 bg-white'} rounded-lg cursor-default relative overflow-hidden transition-all duration-200`}>
+              <div key={index} className={`p-3 border-2 ${isMyChoice ? 'border-sage-500 dark:border-sage-400 bg-sage-50 dark:bg-sage-900/20' : 'border-warm-gray-200 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800'} rounded-lg cursor-default relative overflow-hidden transition-all duration-200`}>
                 <div className={`absolute top-0 left-0 h-full ${color.resultsBar} transition-[width] duration-300`} style={{ width: `${percentage}%` }}></div>
                 <div className="relative z-[1] flex justify-between items-center">
                   <div className="flex items-center gap-2">
