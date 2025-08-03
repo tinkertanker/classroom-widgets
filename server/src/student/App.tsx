@@ -480,7 +480,7 @@ const App: React.FC = () => {
                 data-room-type={room.type}
               >
                 <div 
-                  className={`flex justify-between items-center px-4 py-2.5 transition-all duration-300 cursor-pointer select-none border-b-3 ${
+                  className={`flex justify-between items-center px-4 py-2.5 transition-all duration-300 cursor-pointer select-none border-b-2 ${
                     !room.isActive
                       ? 'border-warm-gray-400 dark:border-warm-gray-600 bg-warm-gray-100 dark:bg-warm-gray-800'
                       : room.type === 'poll' 
