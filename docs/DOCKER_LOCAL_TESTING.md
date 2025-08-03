@@ -1,22 +1,22 @@
-# Local Docker Testing Guide
+# Local Docker Testing Guide (Staging Environment)
 
-This guide explains how to test the Classroom Widgets application locally using Docker before deploying to production.
+This guide explains how to test the Classroom Widgets application locally using Docker in a staging environment before deploying to production.
 
 ## Prerequisites
 
 - Docker Desktop installed and running
 - Docker Compose installed (comes with Docker Desktop)
-- `.env.production` file configured (see `.env.example`)
+- `.env.staging` file configured (see `.env.staging.example`)
 
 ## Quick Start
 
-### 1. Create Production Environment File
+### 1. Create Staging Environment File
 
 ```bash
 # Copy the example file
-cp .env.example .env.production
+cp .env.staging.example .env.staging
 
-# Edit the file to set production values
+# Edit the file to set staging values
 # Make sure to set:
 # - VITE_SERVER_URL=http://localhost:3001
 # - CORS_ORIGINS=http://localhost:3000,http://localhost
@@ -26,10 +26,10 @@ cp .env.example .env.production
 
 ```bash
 # Build and start all services
-docker-compose up --build
+docker-compose -f docker-compose.staging.yml up --build
 
 # Or run in detached mode (background)
-docker-compose up -d --build
+docker-compose -f docker-compose.staging.yml up -d --build
 ```
 
 ### 3. Access the Application
@@ -38,46 +38,50 @@ docker-compose up -d --build
 - **Student App**: http://localhost:3000/student
 - **Backend API**: http://localhost:3001
 
-## Testing Production Build
+## Using the Test Script
 
-To test the exact production build:
+For convenience, use the provided test script:
 
 ```bash
-# Use the production compose file
-docker-compose -f docker-compose.prod.yml up --build
-
-# Note: You'll need to modify VIRTUAL_HOST entries for local testing
+# Run the staging test script
+./docker-test-local.sh
 ```
+
+This script will:
+- Check if Docker is running
+- Create `.env.staging` if it doesn't exist
+- Build and start the staging environment
+- Display the URLs for accessing the application
 
 ## Common Commands
 
 ### View Logs
 ```bash
 # All services
-docker-compose logs -f
+docker-compose -f docker-compose.staging.yml logs -f
 
 # Specific service
-docker-compose logs -f frontend
-docker-compose logs -f backend
+docker-compose -f docker-compose.staging.yml logs -f frontend
+docker-compose -f docker-compose.staging.yml logs -f backend
 ```
 
 ### Stop Services
 ```bash
 # Stop all services
-docker-compose down
+docker-compose -f docker-compose.staging.yml down
 
 # Stop and remove volumes (clean slate)
-docker-compose down -v
+docker-compose -f docker-compose.staging.yml down -v
 ```
 
 ### Rebuild After Code Changes
 ```bash
 # Rebuild and restart
-docker-compose up --build
+docker-compose -f docker-compose.staging.yml up --build
 
 # Rebuild specific service
-docker-compose build frontend
-docker-compose build backend
+docker-compose -f docker-compose.staging.yml build frontend
+docker-compose -f docker-compose.staging.yml build backend
 ```
 
 ## Troubleshooting
@@ -94,13 +98,13 @@ lsof -i :3001
 ```
 
 ### CORS Issues
-Make sure your `.env.production` includes:
+Make sure your `.env.staging` includes:
 ```
 CORS_ORIGINS=http://localhost:3000,http://localhost
 ```
 
 ### Can't Connect to Backend
-Check that `VITE_SERVER_URL` in your `.env.production` is set to:
+Check that `VITE_SERVER_URL` in your `.env.staging` is set to:
 ```
 VITE_SERVER_URL=http://localhost:3001
 ```
@@ -108,13 +112,13 @@ VITE_SERVER_URL=http://localhost:3001
 ### Container Won't Start
 Check logs for specific service:
 ```bash
-docker-compose logs backend
-docker-compose logs frontend
+docker-compose -f docker-compose.staging.yml logs backend
+docker-compose -f docker-compose.staging.yml logs frontend
 ```
 
-## Testing Checklist
+## Staging Testing Checklist
 
-Before deploying to production, test:
+Before deploying to production, test in your staging environment:
 
 - [ ] Teacher can create a session
 - [ ] Student can join via session code
@@ -122,8 +126,9 @@ Before deploying to production, test:
 - [ ] WebSocket connections are stable
 - [ ] File uploads work (if applicable)
 - [ ] Dark mode works correctly
-- [ ] No console errors in production mode
+- [ ] No console errors in staging mode
 - [ ] Performance is acceptable
+- [ ] Debug logs are disabled (unless VITE_DEBUG=true)
 
 ## Production Deployment
 
@@ -136,7 +141,8 @@ Once local testing is complete:
 
 ## Additional Notes
 
-- The local Docker setup mimics production but uses different ports and no SSL
-- Debug logs are disabled in production builds (VITE_DEBUG has no effect)
+- The staging environment mimics production but uses different ports and no SSL
+- Debug logs can be enabled in staging by setting VITE_DEBUG=true in `.env.staging`
+- This is a STAGING environment - perfect for testing before production deployment
 - Make sure to test with multiple browsers/devices
 - Consider load testing if expecting many concurrent users
