@@ -17,8 +17,9 @@ RUN npm ci --only=production
 # Copy server application code
 COPY server/ .
 
-# Copy shared constants from main app to student app build directory
+# Copy shared resources from main app to student app build directory
 COPY src/shared/constants ./src/student/shared/constants
+COPY src/shared/utils ./src/student/shared/utils
 
 # Build the student app
 RUN cd src/student && npm install && npm run build
