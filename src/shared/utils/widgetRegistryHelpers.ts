@@ -1,6 +1,7 @@
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { WidgetType, WidgetConfig } from '../types';
 import { WIDGET_TYPES } from '../constants/widgetTypes';
+import { debug } from './debug';
 
 /**
  * Validates that all required widget components are properly implemented
@@ -162,13 +163,13 @@ export function logWidgetRegistryStatus(): void {
   const validation = validateAllWidgetImplementations();
   
   if (process.env.NODE_ENV === 'development') {
-    console.group('Widget Registry Status');
-    console.log(`Total widgets: ${widgetRegistry.getAll().length}`);
-    console.log(`Networked widgets: ${widgetRegistry.getNetworkedWidgets().length}`);
-    console.log(`Validation: ${validation.valid ? '✅ Valid' : '❌ Invalid'}`);
+    debug.group('Widget Registry Status');
+    debug(`Total widgets: ${widgetRegistry.getAll().length}`);
+    debug(`Networked widgets: ${widgetRegistry.getNetworkedWidgets().length}`);
+    debug(`Validation: ${validation.valid ? '✅ Valid' : '❌ Invalid'}`);
     if (!validation.valid) {
-      console.error('Errors:', validation.errors);
+      debug.error('Errors:', validation.errors);
     }
-    console.groupEnd();
+    debug.groupEnd();
   }
 }

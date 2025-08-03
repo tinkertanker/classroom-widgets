@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import io, { Socket } from 'socket.io-client';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { useServerConnection } from '../shared/hooks/useWorkspace';
+import { debug } from '../shared/utils/debug';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -39,12 +40,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
     
     newSocket.on('connect_error', (error: any) => {
-      console.error('Connection error:', error);
+      debug.error('Connection error:', error);
       setServerStatus({ connected: false, error: error.message });
     });
     
     newSocket.on('reconnect_attempt', (attemptNumber: number) => {
-      console.log(`Reconnecting... (attempt ${attemptNumber})`);
+      debug(`Reconnecting... (attempt ${attemptNumber})`);
     });
 
     return () => {

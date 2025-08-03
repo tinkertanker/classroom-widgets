@@ -1,6 +1,7 @@
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { WidgetType, WidgetConfig } from '../types';
 import { WIDGET_TYPES } from '../constants/widgetTypes';
+import { debug } from './debug';
 
 interface ValidationResult {
   category: string;
@@ -194,23 +195,23 @@ export function runWidgetValidation(): boolean {
   const failed = results.filter(r => r.status === 'fail').length;
   const warnings = results.filter(r => r.status === 'warning').length;
   
-  console.group('🔍 Widget Setup Validation');
-  console.log(`✅ Passed: ${passed} | ❌ Failed: ${failed} | ⚠️ Warnings: ${warnings}`);
-  console.groupEnd();
+  debug.group('🔍 Widget Setup Validation');
+  debug(`✅ Passed: ${passed} | ❌ Failed: ${failed} | ⚠️ Warnings: ${warnings}`);
+  debug.groupEnd();
   
   results.forEach(result => {
     const icon = result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : '⚠️';
-    console.group(`${icon} ${result.category}`);
-    console.log(result.message);
+    debug.group(`${icon} ${result.category}`);
+    debug(result.message);
     
     if (result.details && result.details.length > 0) {
-      console.group('Details:');
+      debug.group('Details:');
       result.details.forEach(detail => {
-        console.log(`  - ${detail}`);
+        debug(`  - ${detail}`);
       });
-      console.groupEnd();
+      debug.groupEnd();
     }
-    console.groupEnd();
+    debug.groupEnd();
   });
   
   // Return overall status

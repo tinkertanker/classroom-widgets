@@ -11,6 +11,7 @@ import { getPollColor } from '../../../shared/constants/pollColors';
 import PollSettings from './PollSettings';
 import { getRandomPollQuestion } from './pollQuestions';
 import { useWidget } from '../../../shared/hooks/useWidget';
+import { debug } from '../../../shared/utils/debug';
 
 interface PollProps {
   widgetId?: string;
@@ -78,9 +79,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   // Socket event handlers
   const socketEvents = useMemo(() => ({
     'poll:dataUpdate': (data: any) => {
-      console.log('[Poll] Received poll:dataUpdate:', data, 'for widget:', widgetId);
+      debug('[Poll] Received poll:dataUpdate:', data, 'for widget:', widgetId);
       if (data.widgetId === widgetId) {
-        console.log('[Poll] Processing dataUpdate for our widget');
+        debug('[Poll] Processing dataUpdate for our widget');
         if (data.pollData) {
           setPollData(data.pollData);
         }
@@ -94,9 +95,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       }
     },
     'poll:voteUpdate': (data: any) => {
-      console.log('[Poll] Received poll:voteUpdate:', data, 'for widget:', widgetId);
+      debug('[Poll] Received poll:voteUpdate:', data, 'for widget:', widgetId);
       if (data.widgetId === widgetId) {
-        console.log('[Poll] Updating vote results');
+        debug('[Poll] Updating vote results');
         setResults(prevResults => ({
           ...prevResults,
           votes: data.votes,
@@ -105,9 +106,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       }
     },
     'session:widgetStateChanged': (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      console.log('[Poll] Received session:widgetStateChanged:', data, 'for widget:', widgetId);
+      debug('[Poll] Received session:widgetStateChanged:', data, 'for widget:', widgetId);
       if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        console.log('[Poll] Updating widget active state to:', data.isActive);
+        debug('[Poll] Updating widget active state to:', data.isActive);
         setIsWidgetActive(data.isActive);
       }
     }
@@ -149,27 +150,27 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   }, [pollData, hasRoom, emit, session.sessionCode, widgetId]);
   
   const handleToggleActive = useCallback(() => {
-    console.log('[Poll] handleToggleActive called, current state:', isWidgetActive, 'hasRoom:', hasRoom);
+    debug('[Poll] handleToggleActive called, current state:', isWidgetActive, 'hasRoom:', hasRoom);
     
     // Check if we have a room first
     if (!hasRoom) {
-      console.log('[Poll] Cannot toggle - no room exists');
+      debug('[Poll] Cannot toggle - no room exists');
       return;
     }
     
     if (!pollData.question || pollData.options.filter(o => o).length < 2) {
-      console.log('[Poll] Cannot toggle - invalid question or options');
+      debug('[Poll] Cannot toggle - invalid question or options');
       return;
     }
     
     const newState = !isWidgetActive;
-    console.log('[Poll] Toggling active state to:', newState);
+    debug('[Poll] Toggling active state to:', newState);
     
     // Use the toggleActive function from useActiveState hook
     toggleActive(newState);
     
     // Always send the poll data when toggling state
-    console.log('[Poll] Sending poll data with state change');
+    debug('[Poll] Sending poll data with state change');
     emit('session:poll:update', {
       sessionCode: session.sessionCode,
       widgetId,
@@ -197,7 +198,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
             const visibleOptions = Math.min(data.options.length, maxOptions);
             const calculatedHeight = baseHeight + (visibleOptions * optionHeight);
             
-            console.log(`[Poll] Auto-resizing after settings change to height: ${calculatedHeight} for ${data.options.length} options`);
+            debug(`[Poll] Auto-resizing after settings change to height: ${calculatedHeight} for ${data.options.length} options`);
             resize({ width: widget.size.width, height: calculatedHeight });
           }
         }} 
@@ -210,7 +211,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   const resetVotes = useCallback(() => {
     if (!hasRoom) return;
     
-    console.log('[Poll] Resetting votes');
+    debug('[Poll] Resetting votes');
     reset();
     
     // Clear local results immediately for responsive UI
@@ -235,7 +236,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       const visibleOptions = Math.min(pollData.options.length, maxOptions);
       const calculatedHeight = baseHeight + (visibleOptions * optionHeight);
       
-      console.log(`[Poll] Auto-resizing new widget to height: ${calculatedHeight} for ${pollData.options.length} options`);
+      debug(`[Poll] Auto-resizing new widget to height: ${calculatedHeight} for ${pollData.options.length} options`);
       resize({ width: widget.size.width, height: calculatedHeight });
       setHasAutoResized(true);
     }
@@ -255,7 +256,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   // Handle recovery data from SessionContext
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      console.log('[Poll] Recovery data available:', recoveryData);
+      debug('[Poll] Recovery data available:', recoveryData);
       
       // Apply recovered widget state
       if (recoveryData.isActive !== undefined) {
@@ -268,10 +269,10 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           recoveryData.roomData.pollData.question && 
           recoveryData.roomData.pollData.options && 
           recoveryData.roomData.pollData.options.length > 0) {
-        console.log('[Poll] Applying recovered poll data');
+        debug('[Poll] Applying recovered poll data');
         setPollData(recoveryData.roomData.pollData);
       } else {
-        console.log('[Poll] Recovery data has empty poll data, keeping random question');
+        debug('[Poll] Recovery data has empty poll data, keeping random question');
       }
       
       // Apply recovered results if available
@@ -288,7 +289,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       const timer = setTimeout(() => {
         // For new rooms (no recovery data), send our local data if we have any
         if (!recoveryData && pollData.question && pollData.options.length > 0) {
-          console.log('[Poll] New room detected, sending initial poll data');
+          debug('[Poll] New room detected, sending initial poll data');
           emit('session:poll:update', {
             sessionCode: session.sessionCode,
             widgetId,

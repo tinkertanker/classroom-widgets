@@ -9,14 +9,16 @@
  * }
  */
 
+import { debug } from '../shared/utils/debug';
+
 export function enableRenderTracking() {
   if (process.env.NODE_ENV !== 'development') {
     return;
   }
 
   // Option 1: Use React DevTools Profiler
-  console.log('%c🔍 Render tracking enabled', 'color: #4CAF50; font-weight: bold');
-  console.log('Use React DevTools Profiler to monitor component renders');
+  debug('%c🔍 Render tracking enabled', 'color: #4CAF50; font-weight: bold');
+  debug('Use React DevTools Profiler to monitor component renders');
   
   // Option 2: Monkey patch React to log all renders
   const React = require('react');
@@ -25,7 +27,7 @@ export function enableRenderTracking() {
   React.createElement = function(...args: any[]) {
     if (typeof args[0] === 'function' && args[0].name) {
       // Log functional component renders
-      console.count(`[Render] ${args[0].name}`);
+      debug(`[Render] ${args[0].name}`);
     }
     return originalCreateElement.apply(React, args);
   };
@@ -57,7 +59,7 @@ export function useRenderTracker(componentName: string, props: Record<string, an
       });
       
       if (Object.keys(changedProps).length > 0) {
-        console.log(
+        debug(
           `%c[${componentName}] Re-rendered (${renderCount.current})`,
           'color: #FF9800',
           changedProps

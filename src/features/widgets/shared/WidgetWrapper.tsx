@@ -8,6 +8,7 @@ import { useWidget, useWidgetDrag } from '../../../shared/hooks/useWidget';
 import { useWorkspace, useDragAndDrop } from '../../../shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '../../../shared/types';
+import { debug } from '../../../shared/utils/debug';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -36,7 +37,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
 
   const handleDragStop = useCallback((e: any, d: any) => {
     if (dropTarget === 'trash') {
-      console.log('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
+      debug('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
       // Play trash sound
       (window as any).playTrashSound?.();
       // Remove the widget
@@ -89,7 +90,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    console.log('[WidgetWrapper] Delete button clicked, removing widget:', widgetId);
+    debug('[WidgetWrapper] Delete button clicked, removing widget:', widgetId);
     // Play trash sound
     (window as any).playTrashSound?.();
     // Remove the widget

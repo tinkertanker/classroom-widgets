@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 import { BackgroundType, WidgetType } from '../shared/types';
 import { WorkspaceStore } from './workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
+import { debug } from '../shared/utils/debug';
 
 const defaultToolbar = {
   visibleWidgets: [
@@ -80,7 +81,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     return id;
   },
   removeWidget: (widgetId) => {
-    console.log('[WorkspaceStore] removeWidget called for widget:', widgetId);
+    debug('[WorkspaceStore] removeWidget called for widget:', widgetId);
     set((state) => ({ 
       widgets: state.widgets.filter(w => w.id !== widgetId) 
     }));
