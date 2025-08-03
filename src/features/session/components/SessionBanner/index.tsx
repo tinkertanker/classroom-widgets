@@ -5,21 +5,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaWifi, FaXmark } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useServerConnection } from '../../../../shared/hooks/useWorkspace';
+import { useSession } from '../../../../contexts/SessionContext';
 
 interface SessionBannerProps {
-  sessionCode: string;
-  connected: boolean;
-  onClose: () => void;
   className?: string;
 }
 
 const SessionBanner: React.FC<SessionBannerProps> = ({ 
-  sessionCode, 
-  connected,
-  onClose,
   className = ''
 }) => {
   const { url: serverUrl } = useServerConnection();
+  const session = useSession();
+  const { sessionCode, isConnected: connected, closeSession: onClose } = session;
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
@@ -43,10 +40,9 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
   // Handle reconnection attempt
   const handleReconnect = React.useCallback(() => {
     if (!connected && sessionCode) {
-      const socket = (window as any).socket;
-      if (socket && !socket.connected) {
+      if (session.socket && !session.socket.connected) {
         setIsReconnecting(true);
-        socket.connect();
+        session.socket.connect();
         
         // Reset reconnecting state after a timeout
         setTimeout(() => {
@@ -54,7 +50,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         }, 3000);
       }
     }
-  }, [connected, sessionCode]);
+  }, [connected, sessionCode, session.socket]);
   
   // Reset reconnecting state when connection status changes
   useEffect(() => {
@@ -66,9 +62,8 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
   const handleCloseSession = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to close this session? All students will be disconnected.')) {
-      const socket = (window as any).socket;
-      if (socket && sessionCode) {
-        socket.emit('session:close', { sessionCode });
+      if (session.socket && sessionCode) {
+        session.socket.emit('session:close', { sessionCode });
       }
       onClose();
     }

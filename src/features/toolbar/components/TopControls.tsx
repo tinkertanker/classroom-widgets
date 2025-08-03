@@ -3,13 +3,13 @@ import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus, FaCircleInfo } from 'rea
 import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection } from '../../../shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useSession } from '../../../contexts/SessionContext';
 import SessionBanner from '../../session/components/SessionBanner';
 
 const TopControls: React.FC = () => {
   const { scale, setScale } = useWorkspace();
   const { connected } = useServerConnection();
-  const sessionCode = useWorkspaceStore((state) => state.sessionCode);
-  const closeSession = useWorkspaceStore((state) => state.closeSession);
+  const { sessionCode } = useSession();
   const [isFullscreen, setIsFullscreen] = useState(false);
   
 
@@ -79,11 +79,7 @@ const TopControls: React.FC = () => {
     <div className="fixed top-4 right-4 flex items-start space-x-2 z-[998]">
       {/* Dynamic Island-style Session Status */}
       {sessionCode ? (
-        <SessionBanner
-          sessionCode={sessionCode}
-          connected={connected}
-          onClose={closeSession}
-        />
+        <SessionBanner />
       ) : (
         /* Regular WiFi button when no session */
         <button
