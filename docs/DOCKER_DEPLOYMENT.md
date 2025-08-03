@@ -10,6 +10,11 @@ The application is deployed as two services:
 
 This architecture simplifies deployment by using a single backend for both API and Student App hosting, which avoids CORS issues and streamlines SSL configuration.
 
+### What's New
+- The backend now builds the student app from source during Docker image creation
+- Shared constants and utilities are automatically synchronized between teacher and student apps
+- The student app is served at `/student` from the backend server
+
 ## Prerequisites
 
 - Docker and Docker Compose installed on your server.
@@ -64,20 +69,31 @@ Use the production Docker Compose file to build and start the services in detach
 
 ```bash
 # Build and start the containers
-docker-compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker compose.prod.yml up -d --build
 ```
 
-This command builds the Docker images for the `frontend` and `backend` services and starts them as defined in `docker-compose.prod.yml`.
+This command builds the Docker images for the `frontend` and `backend` services and starts them as defined in `docker compose.prod.yml`.
+
+**Note**: The backend build process includes:
+- Installing dependencies for the student app
+- Copying shared constants and utilities from the teacher app
+- Building the student app with Vite
+- The build may take a few minutes on first deployment
 
 ### 4. Verify the Deployment
 
 Check that the containers are running:
 
 ```bash
-docker-compose -f docker-compose.prod.yml ps
+docker compose -f docker compose.prod.yml ps
 ```
 
 You should see both the `frontend` and `backend` services with a status of `Up`.
+
+Test the deployment:
+- Teacher App: http://your-frontend-domain.com
+- Student App: http://your-backend-domain.com/student
+- API Health Check: http://your-backend-domain.com/api/health
 
 ## SSL/TLS Configuration (Recommended)
 
@@ -137,14 +153,14 @@ server {
 To view the logs for all services:
 
 ```bash
-docker-compose -f docker-compose.prod.yml logs -f
+docker compose -f docker compose.prod.yml logs -f
 ```
 
 To view the logs for a specific service:
 
 ```bash
-docker-compose -f docker-compose.prod.yml logs -f frontend
-docker-compose -f docker-compose.prod.yml logs -f backend
+docker compose -f docker compose.prod.yml logs -f frontend
+docker compose -f docker compose.prod.yml logs -f backend
 ```
 
 ### Stop the Services
@@ -152,7 +168,7 @@ docker-compose -f docker-compose.prod.yml logs -f backend
 To stop the running services:
 
 ```bash
-docker-compose -f docker-compose.prod.yml down
+docker compose -f docker compose.prod.yml down
 ```
 
 ### Update the Deployment
@@ -165,11 +181,24 @@ To update the deployment with the latest code:
     ```
 2.  **Rebuild and restart** the services:
     ```bash
-    docker-compose -f docker-compose.prod.yml up -d --build
+    docker compose -f docker compose.prod.yml up -d --build
     ```
+
+## Shared Files Between Teacher and Student Apps
+
+The Docker build process automatically synchronizes shared constants and utilities between the teacher and student apps. This ensures consistent behavior across both applications.
+
+### Shared Files Include:
+- Color schemes for widgets (questions, polls)
+- Validation utilities
+- Other shared constants
+
+These files are copied during the Docker build process, so any changes require rebuilding the backend image.
 
 ## Troubleshooting
 
 -   **Container fails to start**: Check the logs for a specific service to identify the error.
 -   **Permission issues**: Ensure that the user running the Docker commands has the necessary permissions to access the project files.
--   **Network conflicts**: If the default ports (e.g., 80, 3001) are already in use, you can change them in the `docker-compose.prod.yml` file.
+-   **Network conflicts**: If the default ports (e.g., 80, 3001) are already in use, you can change them in the `docker compose.prod.yml` file.
+-   **Student app not loading**: Ensure the backend build completed successfully. Check logs for any build errors.
+-   **404 on student app assets**: Verify that the student app was built to the correct directory (`public/student`).
