@@ -56,6 +56,14 @@ export function useNetworkedWidget({
     }
   }, [widgetId, session.getWidgetRecoveryData]); // Only depends on widgetId and the getter function
   
+  // Watch for session being cleared
+  useEffect(() => {
+    if (!session.sessionCode && hasRoom) {
+      // Session has been cleared, so no rooms exist anymore
+      setHasRoom(false);
+    }
+  }, [session.sessionCode, hasRoom]);
+  
   // Listen for room events
   useEffect(() => {
     if (!session.socket || !widgetId) return;
@@ -72,12 +80,19 @@ export function useNetworkedWidget({
       }
     };
     
+    const handleSessionClosed = () => {
+      // When the entire session is closed, all rooms are closed
+      setHasRoom(false);
+    };
+    
     session.socket.on('session:roomCreated', handleRoomCreated);
     session.socket.on('session:roomClosed', handleRoomClosed);
+    session.socket.on('session:closed', handleSessionClosed);
     
     return () => {
       session.socket.off('session:roomCreated', handleRoomCreated);
       session.socket.off('session:roomClosed', handleRoomClosed);
+      session.socket.off('session:closed', handleSessionClosed);
     };
   }, [session.socket, roomType, widgetId]);
   
