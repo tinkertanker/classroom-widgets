@@ -34,20 +34,20 @@ export const text = {
 export const buttons = {
   primary: cn(
     "bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40",
-    "border-2 border-sage-500 dark:border-sage-400",
+    "border border-sage-500 dark:border-sage-400",
     "text-sage-700 dark:text-sage-300 rounded",
     transitions.colors
   ),
   secondary: cn(
     "bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-800 dark:hover:bg-warm-gray-700",
-    "border-2 border-warm-gray-400 dark:border-warm-gray-500",
+    "border border-warm-gray-400 dark:border-warm-gray-500",
     text.primary,
     "rounded",
     transitions.colors
   ),
   danger: cn(
     "bg-dusty-rose-100 hover:bg-dusty-rose-200 dark:bg-dusty-rose-900/30 dark:hover:bg-dusty-rose-900/40",
-    "border-2 border-dusty-rose-500 dark:border-dusty-rose-400",
+    "border border-dusty-rose-500 dark:border-dusty-rose-400",
     "text-dusty-rose-700 dark:text-dusty-rose-300 rounded",
     transitions.colors
   ),
