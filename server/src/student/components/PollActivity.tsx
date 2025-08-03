@@ -95,7 +95,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
                     : 'border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-50 dark:bg-warm-gray-800'
                 }`}
               >
-                <div className="relative z-[1]">{option}</div>
+                <div className="relative z-[1] text-warm-gray-800 dark:text-warm-gray-200">{option}</div>
               </div>
               );
             })}
@@ -121,7 +121,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
               }`}
               onClick={() => handleVote(index)}
             >
-              <div className="relative z-[1]">{option}</div>
+              <div className="relative z-[1] text-warm-gray-800 dark:text-warm-gray-200">{option}</div>
             </div>
             );
           })}
@@ -149,7 +149,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
             return (
               <div key={index} className={`p-3 border-2 ${isMyChoice ? 'border-sage-500 dark:border-sage-400 bg-sage-50 dark:bg-sage-900/20' : 'border-warm-gray-200 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800'} rounded-lg cursor-default relative overflow-hidden transition-all duration-200`}>
                 <div className={`absolute top-0 left-0 h-full ${color.resultsBar} transition-[width] duration-300`} style={{ width: `${percentage}%` }}></div>
-                <div className="relative z-[1] flex justify-between items-center">
+                <div className="relative z-[1] flex justify-between items-center text-warm-gray-800 dark:text-warm-gray-200">
                   <div className="flex items-center gap-2">
                     <span className={isMyChoice ? 'font-semibold' : ''}>{option}</span>
                     {isMyChoice && (
