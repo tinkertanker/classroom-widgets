@@ -109,7 +109,6 @@ p {
 button {
   font-family: inherit;
   cursor: pointer;
-  border: none;
   transition: all 0.2s ease;
   outline: none;
 }
