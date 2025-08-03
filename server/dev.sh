@@ -6,6 +6,9 @@ if [ ! -d "src/student/node_modules" ]; then
     cd src/student && npm install && cd ../..
 fi
 
+# Setup shared symlinks
+cd src/student && ./setup-dev.sh && cd ../..
+
 # Start the Express server in one terminal
 echo "Starting Express server..."
 npm start &

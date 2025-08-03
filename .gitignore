@@ -25,3 +25,6 @@ yarn-debug.log*
 yarn-error.log*
 
 src/secrets/shortioKey.js
+
+# Student app shared symlinks (dev only)
+server/src/student/shared
