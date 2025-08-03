@@ -466,7 +466,7 @@ const App: React.FC = () => {
         <div className="flex-1 flex flex-col px-3 py-4">
           {/* Joined rooms list - centered container with flex items */}
           {joinedRooms.length > 0 && (
-            <div className="w-full max-w-[800px] mx-auto flex flex-col gap-3 items-stretch">
+            <div className="w-full max-w-[800px] mx-auto flex flex-col gap-6 items-stretch">
             {joinedRooms.map((room) => (
               <div 
                 key={room.id} 
