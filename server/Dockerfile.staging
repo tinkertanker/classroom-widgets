@@ -17,6 +17,9 @@ RUN npm ci --only=production
 # Copy server application code
 COPY server/ .
 
+# Create shared directories in student app
+RUN mkdir -p ./src/student/shared/constants ./src/student/shared/utils
+
 # Copy only the specific shared files needed by student app
 COPY src/shared/constants/studentQuestionColors.ts ./src/student/shared/constants/
 COPY src/shared/constants/studentPollColors.ts ./src/student/shared/constants/
