@@ -160,9 +160,14 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
           <form onSubmit={handleSubmitQuestion} className="mb-4">
             <div className="space-y-3">
               <div>
-                <label htmlFor="question" className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
-                  Your Question
-                </label>
+                <div className="flex justify-between items-baseline mb-1">
+                  <label htmlFor="question" className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
+                    Your Question
+                  </label>
+                  <span className="text-xs text-warm-gray-500 dark:text-warm-gray-400">
+                    {questionText.length}/500
+                  </span>
+                </div>
                 <textarea
                   id="question"
                   value={questionText}
@@ -173,9 +178,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
                   maxLength={500}
                   disabled={isSubmitting}
                 />
-                <div className="mt-1 text-xs text-warm-gray-500 dark:text-warm-gray-400 text-right">
-                  {questionText.length}/500
-                </div>
               </div>
 
               {error && (
