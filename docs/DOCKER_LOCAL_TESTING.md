@@ -26,10 +26,10 @@ cp .env.staging.example .env.staging
 
 ```bash
 # Build and start all services
-docker-compose -f docker-compose.staging.yml up --build
+docker compose -f docker-compose.staging.yml up --build
 
 # Or run in detached mode (background)
-docker-compose -f docker-compose.staging.yml up -d --build
+docker compose -f docker-compose.staging.yml up -d --build
 ```
 
 ### 3. Access the Application
@@ -58,30 +58,30 @@ This script will:
 ### View Logs
 ```bash
 # All services
-docker-compose -f docker-compose.staging.yml logs -f
+docker compose -f docker-compose.staging.yml logs -f
 
 # Specific service
-docker-compose -f docker-compose.staging.yml logs -f frontend
-docker-compose -f docker-compose.staging.yml logs -f backend
+docker compose -f docker-compose.staging.yml logs -f frontend
+docker compose -f docker-compose.staging.yml logs -f backend
 ```
 
 ### Stop Services
 ```bash
 # Stop all services
-docker-compose -f docker-compose.staging.yml down
+docker compose -f docker-compose.staging.yml down
 
 # Stop and remove volumes (clean slate)
-docker-compose -f docker-compose.staging.yml down -v
+docker compose -f docker-compose.staging.yml down -v
 ```
 
 ### Rebuild After Code Changes
 ```bash
 # Rebuild and restart
-docker-compose -f docker-compose.staging.yml up --build
+docker compose -f docker-compose.staging.yml up --build
 
 # Rebuild specific service
-docker-compose -f docker-compose.staging.yml build frontend
-docker-compose -f docker-compose.staging.yml build backend
+docker compose -f docker-compose.staging.yml build frontend
+docker compose -f docker-compose.staging.yml build backend
 ```
 
 ## Troubleshooting
@@ -112,8 +112,8 @@ VITE_SERVER_URL=http://localhost:3001
 ### Container Won't Start
 Check logs for specific service:
 ```bash
-docker-compose -f docker-compose.staging.yml logs backend
-docker-compose -f docker-compose.staging.yml logs frontend
+docker compose -f docker-compose.staging.yml logs backend
+docker compose -f docker-compose.staging.yml logs frontend
 ```
 
 ## Staging Testing Checklist

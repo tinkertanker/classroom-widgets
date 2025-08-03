@@ -23,27 +23,27 @@ fi
 
 # Build and run with staging compose file
 echo "\n🔨 Building Docker images for staging..."
-docker-compose -f docker-compose.staging.yml build
+docker compose -f docker-compose.staging.yml build
 
 echo "\n🚀 Starting staging services..."
-docker-compose -f docker-compose.staging.yml up -d
+docker compose -f docker-compose.staging.yml up -d
 
 echo "\n⏳ Waiting for services to be ready..."
 sleep 5
 
 # Check if services are running
-if docker-compose -f docker-compose.staging.yml ps | grep -q "Up"; then
+if docker compose -f docker-compose.staging.yml ps | grep -q "Up"; then
     echo "\n✅ Staging environment is running!"
     echo "\n🎭 STAGING ENVIRONMENT:"
     echo "   Teacher App: http://localhost:3000"
     echo "   Student App: http://localhost:3000/student"
     echo "   Backend API: http://localhost:3001"
     echo "\n📋 Useful commands:"
-    echo "   View logs:    docker-compose -f docker-compose.staging.yml logs -f"
-    echo "   Stop:         docker-compose -f docker-compose.staging.yml down"
-    echo "   Rebuild:      docker-compose -f docker-compose.staging.yml up --build"
+    echo "   View logs:    docker compose -f docker-compose.staging.yml logs -f"
+    echo "   Stop:         docker compose -f docker-compose.staging.yml down"
+    echo "   Rebuild:      docker compose -f docker-compose.staging.yml up --build"
     echo "\n🔍 This is a STAGING environment - perfect for testing before production!"
 else
-    echo "\n❌ Failed to start staging services. Check logs with: docker-compose -f docker-compose.staging.yml logs"
+    echo "\n❌ Failed to start staging services. Check logs with: docker compose -f docker-compose.staging.yml logs"
     exit 1
 fi
