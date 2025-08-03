@@ -128,7 +128,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
             </div>
           </div>
           
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="mb-4">
             <div className="mb-3">
               <div className="flex justify-between items-center mb-1">
                 <label htmlFor="shareLink" className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">Share a Link</label>
