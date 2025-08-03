@@ -73,6 +73,21 @@ This design is efficient because it:
 - Simplifies SSL configuration and deployment
 - Shares resources between API and student app serving
 
+### Testing Checklist
+When making changes, ensure:
+- [ ] Widget focus/blur behavior works correctly
+- [ ] Keyboard shortcuts work when widgets are focused
+- [ ] Networked widget state synchronization is maintained
+- [ ] Button styling is consistent across all widgets
+- [ ] Canvas clicks clear widget focus
+
+### Known Patterns
+1. Always use `buttons.primary` or `buttons.danger` from styles utility for action buttons
+2. NetworkedWidgetEmpty component handles the pre-session state
+3. Widget focus is managed through the workspace store
+4. Canvas clicks should clear widget focus
+5. All networked widgets use `useNetworkedWidget` hook for connection management
+
 ### Widget System
 The application uses a dynamic widget system where widgets are:
 1. Added via toolbar buttons - each creates a new widget instance with unique UUID
@@ -312,6 +327,20 @@ npm start              # React app on port 3000
 - **Auto-sync**: Receives room state updates (active/paused) from teacher
 
 ## Recent Updates
+
+### Focus System Implementation (August 2025)
+- Added `focusedWidgetId` tracking to workspace store
+- `WidgetWrapper` handles focus on click and passes `isActive` prop to widgets
+- Sound Effects widget keyboard shortcuts (1-9, 0) now work when widget is focused
+- Clicking on the canvas (outside widgets) clears the focused widget
+
+### Networked Widget Improvements (August 2025)
+- Fixed state synchronization when sessions are closed
+- All networked widgets properly reflect disconnected state when session ends
+- Start/stop buttons now use consistent outline button styles
+- Button styles defined in `src/shared/utils/styles.ts`:
+  - Primary buttons: `buttons.primary` (sage theme with border)
+  - Danger buttons: `buttons.danger` (dusty rose theme with border)
 
 ### RT Feedback Widget (formerly Understanding Feedback)
 - Renamed from "Understanding Feedback" to "RT Feedback" throughout codebase
