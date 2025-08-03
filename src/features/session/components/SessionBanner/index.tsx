@@ -4,7 +4,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaWifi, FaXmark } from 'react-icons/fa6';
 import { clsx } from 'clsx';
-import { useServerConnection } from '../../../../shared/hooks/useWorkspace';
 import { useSession } from '../../../../contexts/SessionContext';
 
 interface SessionBannerProps {
@@ -14,9 +13,8 @@ interface SessionBannerProps {
 const SessionBanner: React.FC<SessionBannerProps> = ({ 
   className = ''
 }) => {
-  const { url: serverUrl } = useServerConnection();
   const session = useSession();
-  const { sessionCode, isConnected: connected, closeSession: onClose } = session;
+  const { sessionCode, isConnected: connected, closeSession: onClose, serverUrl } = session;
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);

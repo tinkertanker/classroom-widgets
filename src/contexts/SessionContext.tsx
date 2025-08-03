@@ -22,6 +22,7 @@ interface SessionContextValue {
   isConnecting: boolean;
   isRecovering: boolean;
   hasAttemptedRecovery: boolean;
+  serverUrl: string;
   
   // Room management
   activeRooms: Map<string, ActiveRoom>;
@@ -65,6 +66,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const storeSessionCode = useWorkspaceStore((state) => state.sessionCode);
   const storeSessionCreatedAt = useWorkspaceStore((state) => state.sessionCreatedAt);
   const setStoreSessionCode = useWorkspaceStore((state) => state.setSessionCode);
+  const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
   
   // Local state
   const [sessionCode, setSessionCode] = useState<string | null>(storeSessionCode);
@@ -479,7 +481,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     return recoveryData.get(widgetId) || null;
   }, [recoveryData]);
   
-  const value: UnifiedSessionContextValue = {
+  const value: SessionContextValue = {
     // Session state
     sessionCode,
     sessionCreatedAt,
@@ -491,6 +493,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     isConnecting,
     isRecovering,
     hasAttemptedRecovery: hasAttemptedRecovery.current || isInitialRecoveryComplete.current,
+    serverUrl,
     
     // Room management
     activeRooms,
