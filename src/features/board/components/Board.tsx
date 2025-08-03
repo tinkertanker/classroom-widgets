@@ -3,6 +3,7 @@ import { useWorkspace } from '../../../shared/hooks/useWorkspace';
 import { useZoomWithScroll } from '../hooks/useZoomWithScroll';
 import Background from './Background';
 import { BackgroundType } from '../../../shared/types';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface BoardProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export interface BoardRef {
 
 const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, stickerMode }, ref) => {
   const { scale, background } = useWorkspace();
+  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   
   
   const boardContainerRef = useRef<HTMLDivElement>(null);
@@ -66,7 +68,18 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
   });
 
   return (
-    <div className="board-scroll-container" ref={boardContainerRef}>
+    <div 
+      className="board-scroll-container" 
+      ref={boardContainerRef}
+      onClick={(e) => {
+        // Clear focus when clicking anywhere on the canvas (including scroll area)
+        const target = e.target as HTMLElement;
+        // Check if we clicked on the canvas itself (not on a widget)
+        if (!target.closest('.widget-wrapper')) {
+          setFocusedWidget(null);
+        }
+      }}
+    >
       
       {/* Size wrapper to ensure correct scroll area */}
       <div style={{

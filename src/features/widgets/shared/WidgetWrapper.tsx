@@ -9,6 +9,7 @@ import { useWorkspace, useDragAndDrop } from '../../../shared/hooks/useWorkspace
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '../../../shared/types';
 import { debug } from '../../../shared/utils/debug';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -24,6 +25,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const [isHovered, setIsHovered] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
+  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   
   if (!widget) return null;
   
@@ -97,6 +100,11 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     remove();
   }, [remove, widgetId]);
 
+  const handleWidgetClick = useCallback(() => {
+    setFocusedWidget(widgetId);
+    focus();
+  }, [widgetId, setFocusedWidget, focus]);
+
   return (
     <div 
       className="relative group"
@@ -152,7 +160,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
           topLeft: true
         }}
       >
-        <div className="w-full h-full relative">
+        <div className="w-full h-full relative" onClick={handleWidgetClick}>
           {children}
           {/* Hover trash icon */}
           <button

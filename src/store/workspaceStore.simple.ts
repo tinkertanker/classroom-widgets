@@ -47,6 +47,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   historyIndex: -1,
   canUndo: false,
   canRedo: false,
+  focusedWidgetId: null,
   
   // Simple action implementations
   setSessionCode: (code) => set({ 
@@ -117,8 +118,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         widgets.push(widget);
         widgets.forEach((w, i) => { w.zIndex = i; });
       }
-      return { widgets };
+      return { widgets, focusedWidgetId: widgetId };
     });
+  },
+  setFocusedWidget: (widgetId) => {
+    set({ focusedWidgetId: widgetId });
   },
   resetWorkspace: () => {
     set({ 

@@ -5,6 +5,7 @@ import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
+import { buttons } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
 
@@ -163,11 +164,9 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
           <button
             onClick={handleToggleActive}
             disabled={!session.isConnected}
-            className={`p-2 rounded ${
-              isWidgetActive 
-                ? 'text-dusty-rose-600 hover:text-dusty-rose-700 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300 hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20' 
-                : 'text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 hover:bg-sage-100 dark:hover:bg-sage-900/20'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`${
+              isWidgetActive ? buttons.danger : buttons.primary
+            } p-2 disabled:opacity-50 disabled:cursor-not-allowed`}
             title={isWidgetActive ? "Pause feedback" : "Start feedback"}
           >
             {isWidgetActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}

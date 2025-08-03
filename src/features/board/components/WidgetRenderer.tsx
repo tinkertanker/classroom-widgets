@@ -6,6 +6,7 @@ import { widgetRegistry } from '../../../services/WidgetRegistry';
 import WidgetWrapper from '../../widgets/shared/WidgetWrapper';
 import ErrorBoundary from '../../../shared/components/ErrorBoundary';
 import { Card } from '../../../components/ui';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface WidgetRendererProps {
   widgetId: string;
@@ -22,6 +23,7 @@ const WidgetLoader: React.FC = () => (
 
 const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
   const { widget, state, setState } = useWidget(widgetId);
+  const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
   
   if (!widget) return null;
   
@@ -38,7 +40,8 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
   const widgetProps = {
     widgetId,
     savedState: state,
-    onStateChange: setState
+    onStateChange: setState,
+    isActive: focusedWidgetId === widgetId
   };
   
   return (

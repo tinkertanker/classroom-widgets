@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconType } from 'react-icons';
+import { buttons } from '../../../shared/utils/styles';
 
 interface NetworkedWidgetEmptyProps {
   title: string;
@@ -35,7 +36,7 @@ export const NetworkedWidgetEmpty: React.FC<NetworkedWidgetEmptyProps> = ({
         <button
           onClick={onStart}
           disabled={disabled}
-          className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`${buttons.primary} px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {buttonText}
         </button>
