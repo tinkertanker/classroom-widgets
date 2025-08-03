@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { useSocket } from '../hooks/useSocket';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import api from '../services/api';
+import { debug } from '../shared/utils/debug';
 
 interface ActiveRoom {
   roomType: string;
@@ -192,7 +193,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     };
     
     const handleSessionClosed = () => {
-      console.log('[UnifiedSession] Session closed by host');
+      debug('[UnifiedSession] Session closed by host');
       clearSession();
       setError('Session has been closed');
     };
@@ -220,20 +221,20 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     
     // Add timeout for recovery attempt
     const recoveryTimeout = setTimeout(() => {
-      console.log('[Session] Recovery timeout - falling back to normal state');
+      debug('[Session] Recovery timeout - falling back to normal state');
       setIsRecovering(false);
       hasAttemptedRecovery.current = true;
     }, 10000); // 10 second timeout
     
     hasAttemptedRecovery.current = true;
     setIsRecovering(true);
-    console.log('[UnifiedSession] Attempting session recovery for:', sessionCode);
+    debug('[UnifiedSession] Attempting session recovery for:', sessionCode);
     
     try {
       // Check session age
       const sessionAge = Date.now() - sessionCreatedAt;
       if (sessionAge > TWO_HOURS) {
-        console.log('[UnifiedSession] Session too old, clearing');
+        debug('[UnifiedSession] Session too old, clearing');
         clearSession();
         return;
       }
@@ -242,12 +243,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       try {
         const response = await api.get(`/api/sessions/${sessionCode}/exists`);
         if (!response.data.exists) {
-          console.log('[UnifiedSession] Session no longer exists on server');
+          debug('[UnifiedSession] Session no longer exists on server');
           clearSession();
           return;
         }
       } catch (error) {
-        console.error('[UnifiedSession] Error checking session existence:', error);
+        debug.error('[UnifiedSession] Error checking session existence:', error);
         clearSession();
         return;
       }
@@ -255,14 +256,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       // Rejoin session
       socket.emit('session:create', { existingCode: sessionCode }, (response: any) => {
         if (!response.success) {
-          console.error('[UnifiedSession] Failed to recover session:', response.error);
+          debug.error('[UnifiedSession] Failed to recover session:', response.error);
           clearSession();
           setIsRecovering(false);
           clearTimeout(recoveryTimeout);
           return;
         }
         
-        console.log('[Session] Recovery - Session rejoined successfully');
+        debug('[Session] Recovery - Session rejoined successfully');
         
         // Store recovery data separately - this is a snapshot from the server
         const recoveryMap = new Map<string, ActiveRoom>();
@@ -294,7 +295,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         clearTimeout(recoveryTimeout);
       });
     } catch (error) {
-      console.error('[UnifiedSession] Recovery error:', error);
+      debug.error('[UnifiedSession] Recovery error:', error);
       setIsRecovering(false);
       clearTimeout(recoveryTimeout);
     }
@@ -317,7 +318,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     const roomsToClose: string[] = [];
     activeRooms.forEach((_, widgetId) => {
       if (!networkedWidgetIds.includes(widgetId)) {
-        console.log('[UnifiedSession] Found orphaned room:', widgetId);
+        debug('[UnifiedSession] Found orphaned room:', widgetId);
         roomsToClose.push(widgetId);
       }
     });
@@ -326,7 +327,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     for (const widgetId of roomsToClose) {
       const room = activeRooms.get(widgetId);
       if (room) {
-        console.log('[UnifiedSession] Closing orphaned room:', widgetId);
+        debug('[UnifiedSession] Closing orphaned room:', widgetId);
         socket.emit('session:closeRoom', {
           sessionCode,
           roomType: room.roomType,
@@ -337,7 +338,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       }
     }
     
-    console.log('[UnifiedSession] Orphaned room cleanup complete');
+    debug('[UnifiedSession] Orphaned room cleanup complete');
   }, [socket, sessionCode, activeRooms]);
   
   // Don't trigger automatic cleanup after recovery
@@ -358,7 +359,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Create session
   const createSession = useCallback(async (): Promise<string | null> => {
     if (!socket?.connected || isCreatingSession.current) {
-      console.error('[UnifiedSession] Cannot create session - not connected or already creating');
+      debug.error('[UnifiedSession] Cannot create session - not connected or already creating');
       return null;
     }
     
@@ -380,7 +381,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           isCreatingSession.current = false;
           
           if (response.success) {
-            console.log('[UnifiedSession] Session created:', response.code);
+            debug('[UnifiedSession] Session created:', response.code);
             setSessionCode(response.code);
             setSessionCreatedAt(Date.now());
             setStoreSessionCode(response.code);
@@ -389,7 +390,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             setRecoveryData(new Map()); // Clear any old recovery data
             resolve(response.code);
           } else {
-            console.error('[UnifiedSession] Failed to create session:', response.error);
+            debug.error('[UnifiedSession] Failed to create session:', response.error);
             setError(response.error || 'Failed to create session');
             resolve(null);
           }
@@ -397,7 +398,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       });
     } catch (error) {
       isCreatingSession.current = false;
-      console.error('[UnifiedSession] Error creating session:', error);
+      debug.error('[UnifiedSession] Error creating session:', error);
       setError('Failed to create session');
       return null;
     }
@@ -420,7 +421,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const closeSession = useCallback(() => {
     if (!socket || !sessionCode) return;
     
-    console.log('[UnifiedSession] Closing session:', sessionCode);
+    debug('[UnifiedSession] Closing session:', sessionCode);
     socket.emit('session:close', { sessionCode });
     clearSession();
   }, [socket, sessionCode, clearSession]);
@@ -444,7 +445,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     }
     
     if (!socket?.connected || !currentCode) {
-      console.error('[UnifiedSession] Cannot create room - no session or not connected', { currentCode, connected: socket?.connected });
+      debug.error('[UnifiedSession] Cannot create room - no session or not connected', { currentCode, connected: socket?.connected });
       return false;
     }
     
@@ -457,7 +458,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         if (response.success) {
           resolve(true);
         } else {
-          console.error('[UnifiedSession] Failed to create room:', response.error);
+          debug.error('[UnifiedSession] Failed to create room:', response.error);
           setError(response.error || 'Failed to create room');
           resolve(false);
         }
@@ -469,7 +470,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const closeRoom = useCallback((roomType: string, widgetId: string) => {
     if (!socket || !sessionCode) return;
     
-    console.log('[UnifiedSession] Closing room:', widgetId);
+    debug('[UnifiedSession] Closing room:', widgetId);
     socket.emit('session:closeRoom', {
       sessionCode,
       roomType,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
+import { debug } from '../../../shared/utils/debug';
 
 export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
 
@@ -141,7 +142,7 @@ export function useNetworkedWidget({
       // Small delay to check if this is a real unmount or just a re-render
       setTimeout(() => {
         if (!isMountedRef.current && widgetId && hasRoom) {
-          console.log(`[NetworkedWidget] Widget ${widgetId} truly unmounting, closing room`);
+          debug(`[NetworkedWidget] Widget ${widgetId} truly unmounting, closing room`);
           session.closeRoom(roomType, widgetId);
         }
       }, 0);
