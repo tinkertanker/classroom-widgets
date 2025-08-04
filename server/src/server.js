@@ -39,6 +39,12 @@ class AppServer {
    * Configure Express middleware
    */
   configureMiddleware() {
+    // Static file serving should come BEFORE CORS in production
+    // This prevents CORS checks on static assets served from the same domain
+    if (serverConfig.IS_PRODUCTION) {
+      this.app.use(staticRoutes);
+    }
+
     // CORS configuration
     this.app.use(cors({
       origin: function(origin, callback) {
@@ -118,10 +124,7 @@ class AppServer {
       });
     });
 
-    // Static file serving
-    if (serverConfig.IS_PRODUCTION) {
-      this.app.use(staticRoutes);
-    }
+    // Static file serving moved to configureMiddleware() to avoid CORS issues
 
     // 404 handler
     this.app.use((req, res) => {
