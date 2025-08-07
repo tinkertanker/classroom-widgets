@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useAnimationFrame } from '../../../../shared/hooks/useAnimationFrame';
 
 interface UseTimerAnimationProps {
@@ -11,7 +11,7 @@ interface UseTimerAnimationProps {
  * and arc path calculations
  */
 export function useTimerAnimation({ isRunning, progress }: UseTimerAnimationProps) {
-  const [pulseAngle, setPulseAngle] = useState(-90); // Start at top
+  const [pulseAngle, setPulseAngle] = useState(0); // Start at top (no rotation needed since hamster is already at top)
   const startTimeRef = useRef<number | null>(null);
 
   // Animate the hamster wheel rotation using the reusable hook
@@ -23,7 +23,7 @@ export function useTimerAnimation({ isRunning, progress }: UseTimerAnimationProp
       
       const elapsed = timestamp - startTimeRef.current;
       // Complete one rotation every 3 seconds counter-clockwise (-120 degrees/second)
-      const angle = -90 - (elapsed / 1000) * 120;
+      const angle = 0 - (elapsed / 1000) * 120;
       setPulseAngle(angle);
     },
     { isActive: isRunning }
@@ -31,11 +31,49 @@ export function useTimerAnimation({ isRunning, progress }: UseTimerAnimationProp
 
   // Reset angle when not running
   if (!isRunning) {
-    if (pulseAngle !== -90) {
-      setPulseAngle(-90);
+    if (pulseAngle !== 0) {
+      setPulseAngle(0);
     }
     startTimeRef.current = null;
   }
+
+  // Determine if hamster is over the colored arc or grey arc
+  const isHamsterOnColoredArc = useMemo(() => {
+    // The hamster is at translate(50, 8) which is at the top of the circle
+    // With pulseAngle=0, it's at the top (north)
+    // As pulseAngle decreases (negative), it rotates counter-clockwise
+    
+    // Normalize hamster angle to 0-360 range
+    // Since hamster starts at top with angle 0, and rotates counter-clockwise (negative angles)
+    // We need to add 90 to align with the arc's coordinate system where -90° = top
+    let hamsterAngleInArcCoords = (pulseAngle - 90) % 360;
+    if (hamsterAngleInArcCoords < 0) {
+      hamsterAngleInArcCoords += 360;
+    }
+    
+    // The colored arc starts at -90 degrees (top) and extends clockwise
+    // In 0-360 range: -90° = 270°
+    const arcStartAngle = 270;
+    // The arc extends by progress * 360 degrees clockwise from the start
+    const arcExtent = progress * 360;
+    
+    // Check if hamster is within the colored arc range
+    if (progress === 0) {
+      return false; // No colored arc when progress is 0
+    } else if (progress >= 0.9999) {
+      return true; // Full circle, hamster is always on colored arc
+    }
+    
+    // For a clockwise arc from startAngle extending arcExtent degrees
+    // We need to check if the hamster angle is within this range
+    let angleFromStart = hamsterAngleInArcCoords - arcStartAngle;
+    if (angleFromStart < 0) {
+      angleFromStart += 360;
+    }
+    
+    // The hamster is on the colored arc if it's within the arc extent
+    return angleFromStart <= arcExtent;
+  }, [pulseAngle, progress]);
 
   // Calculate SVG path for the arc
   const getArcPath = (percentage: number) => {
@@ -78,6 +116,8 @@ export function useTimerAnimation({ isRunning, progress }: UseTimerAnimationProp
   return {
     pulseAngle,
     arcPath,
-    getArcPath
+    getArcPath,
+    isHamsterOnColoredArc,
+    isHamsterOnGreyArc: !isHamsterOnColoredArc
   };
 }

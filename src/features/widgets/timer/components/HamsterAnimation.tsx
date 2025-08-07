@@ -2,15 +2,20 @@ import React from 'react';
 
 interface HamsterAnimationProps {
   pulseAngle: number;
+  isOnColoredArc?: boolean;
 }
 
-export const HamsterAnimation: React.FC<HamsterAnimationProps> = ({ pulseAngle }) => (
+export const HamsterAnimation: React.FC<HamsterAnimationProps> = ({ pulseAngle, isOnColoredArc = true }) => (
   <g transform={`rotate(${pulseAngle} 50 50)`}>
     <g transform="translate(50, 8) scale(0.9, -0.9)">
-      <ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#D2691E" stroke="#8B4513" strokeWidth="0.8" />
-      <circle cx="-4" cy="-1.5" r="3.5" fill="#DEB887" stroke="#8B4513" strokeWidth="0.8" />
-      <circle cx="-5.5" cy="-3.5" r="1.3" fill="#D2691E" />
-      <circle cx="-2.5" cy="-3.5" r="1.3" fill="#D2691E" />
+      {/* Add a subtle glow effect when on colored arc */}
+      {isOnColoredArc && (
+        <circle cx="0" cy="0" r="8" fill="rgba(255, 255, 0, 0.3)" filter="blur(2px)" />
+      )}
+      <ellipse cx="0" cy="0" rx="6" ry="4.5" fill={isOnColoredArc ? "#D2691E" : "#8B8B8B"} stroke="#8B4513" strokeWidth="0.8" />
+      <circle cx="-4" cy="-1.5" r="3.5" fill={isOnColoredArc ? "#DEB887" : "#A9A9A9"} stroke="#8B4513" strokeWidth="0.8" />
+      <circle cx="-5.5" cy="-3.5" r="1.3" fill={isOnColoredArc ? "#D2691E" : "#8B8B8B"} />
+      <circle cx="-2.5" cy="-3.5" r="1.3" fill={isOnColoredArc ? "#D2691E" : "#8B8B8B"} />
       <circle cx="-5" cy="-1.5" r="0.7" fill="#000" />
       <circle cx="-3" cy="-1.5" r="0.7" fill="#000" />
       <circle cx="-4.8" cy="-1.8" r="0.3" fill="#fff" />

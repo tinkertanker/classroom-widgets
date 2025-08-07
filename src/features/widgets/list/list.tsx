@@ -130,6 +130,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
             placeholder="Type away!"
             className={cn(
               "w-full px-3 pr-10 rounded resize-none overflow-hidden",
+              text.primary,
               text.placeholder,
               transitions.colors,
               getStatusColor(item.status, 'surface'),
@@ -151,6 +152,7 @@ const SortableItem: React.FC<SortableItemProps> = ({
               "w-full px-3 pr-10 rounded cursor-text break-words",
               transitions.colors,
               getStatusColor(item.status, 'surface'),
+              text.primary,
               isLarge ? "text-2xl py-3 min-h-[3rem]" : "text-sm py-2 min-h-[2rem]"
             )}
           >

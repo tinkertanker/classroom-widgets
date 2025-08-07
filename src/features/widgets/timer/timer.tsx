@@ -48,10 +48,13 @@ const Timer = () => {
   });
 
   // Timer animation hook
-  const { pulseAngle, arcPath } = useTimerAnimation({ 
+  const { pulseAngle, arcPath, isHamsterOnColoredArc, isHamsterOnGreyArc } = useTimerAnimation({ 
     isRunning, 
     progress 
   });
+  
+  // You can now use isHamsterOnColoredArc and isHamsterOnGreyArc
+  // These values update in real-time as the hamster moves around the circle
 
   // Handle start button click
   const handleStart = useCallback(() => {
@@ -115,7 +118,7 @@ const Timer = () => {
                   />
                 </g>
                 
-                {isRunning && time > 0 && <HamsterAnimation pulseAngle={pulseAngle} />}
+                {isRunning && time > 0 && <HamsterAnimation pulseAngle={pulseAngle} isOnColoredArc={isHamsterOnColoredArc} />}
               </svg>
               <div
                 className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70%] h-[70%] flex items-center justify-center"
