@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 import { 
   useTimeSegmentEditor, 
   useTimerCountdown, 
@@ -8,14 +8,38 @@ import {
 import { cn, widgetContainer, buttons, text, transitions, backgrounds } from '../../../shared/utils/styles';
 import { HamsterAnimation } from './components/HamsterAnimation';
 import { TimeDisplay } from './components/TimeDisplay';
-import timerEndSound from "./timer-end.mp3";
+import timerEndSound1 from "./timer-end.mp3";
+import timerEndSound2 from "./timer-end-2.wav";
+import timerEndSound3 from "./timer-end-3.mp3";
 
 const Timer = () => {
-  // Timer audio hook
-  const { playSound } = useTimerAudio({ 
-    soundUrl: timerEndSound,
+  // Timer audio hooks for all three sounds
+  const { playSound: playSound1 } = useTimerAudio({ 
+    soundUrl: timerEndSound1,
     enabled: true 
   });
+  
+  const { playSound: playSound2 } = useTimerAudio({ 
+    soundUrl: timerEndSound2,
+    enabled: true 
+  });
+  
+  const { playSound: playSound3 } = useTimerAudio({ 
+    soundUrl: timerEndSound3,
+    enabled: true 
+  });
+
+  // Randomly play one of the three sounds
+  const playRandomSound = useCallback(() => {
+    const randomChoice = Math.random();
+    if (randomChoice < 0.33) {
+      playSound1();
+    } else if (randomChoice < 0.67) {
+      playSound2();
+    } else {
+      playSound3();
+    }
+  }, [playSound1, playSound2, playSound3]);
 
   // Time segment editor hook
   const segmentEditor = useTimeSegmentEditor({
@@ -40,7 +64,7 @@ const Timer = () => {
     resumeTimer,
     restartTimer
   } = useTimerCountdown({
-    onTimeUp: playSound,
+    onTimeUp: playRandomSound,
     onTick: (newTime) => {
       // Update the time segment editor when time changes
       segmentEditor.updateFromTime(newTime);
