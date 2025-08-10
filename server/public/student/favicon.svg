@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#5e8b5e" />
+  
+  <!-- Widget grid pattern -->
+  <g opacity="0.3">
+    <rect x="80" y="80" width="140" height="140" rx="20" fill="white" />
+    <rect x="240" y="80" width="140" height="140" rx="20" fill="white" />
+    <rect x="80" y="240" width="140" height="140" rx="20" fill="white" />
+    <rect x="240" y="240" width="140" height="140" rx="20" fill="white" />
+  </g>
+  
+  <!-- Center icon - simplified chalkboard/grid -->
+  <g transform="translate(256, 256)">
+    <!-- Main board -->
+    <rect x="-100" y="-80" width="200" height="140" rx="12" fill="white" />
+    
+    <!-- Grid lines -->
+    <line x1="-100" y1="-20" x2="100" y2="-20" stroke="#5e8b5e" stroke-width="4" />
+    <line x1="-100" y1="20" x2="100" y2="20" stroke="#5e8b5e" stroke-width="4" />
+    <line x1="-40" y1="-80" x2="-40" y2="60" stroke="#5e8b5e" stroke-width="4" />
+    <line x1="40" y1="-80" x2="40" y2="60" stroke="#5e8b5e" stroke-width="4" />
+    
+    <!-- Small decorative elements -->
+    <circle cx="-60" cy="-50" r="8" fill="#d9a79d" />
+    <circle cx="0" cy="-50" r="8" fill="#e6c441" />
+    <circle cx="60" cy="-50" r="8" fill="#5e8b5e" />
+  </g>
+</svg>

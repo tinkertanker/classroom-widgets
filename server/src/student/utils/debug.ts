@@ -4,36 +4,44 @@
  */
 
 // Check if debug mode is enabled
-const isDebugEnabled = import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true';
+const isDebugEnabled = (import.meta as any).env?.DEV && (import.meta as any).env?.VITE_DEBUG === 'true';
 
 // Create a no-op function for production
-const noop = () => {};
+const noop = (...args: any[]) => {};
 
-// Debug logger function
-export const debug = isDebugEnabled 
-  ? (...args: any[]) => console.log(...args)
-  : noop;
+// Debug logger function with additional methods
+interface DebugFunction {
+  (...args: any[]): void;
+  error: (...args: any[]) => void;
+  warn: (...args: any[]) => void;
+  info: (...args: any[]) => void;
+  group: (...args: any[]) => void;
+  groupEnd: () => void;
+}
 
-// Add other console methods
-debug.error = isDebugEnabled 
-  ? (...args: any[]) => console.error(...args)
-  : noop;
-
-debug.warn = isDebugEnabled 
-  ? (...args: any[]) => console.warn(...args)
-  : noop;
-
-debug.info = isDebugEnabled 
-  ? (...args: any[]) => console.info(...args)
-  : noop;
-
-debug.group = isDebugEnabled 
-  ? (...args: any[]) => console.group(...args)
-  : noop;
-
-debug.groupEnd = isDebugEnabled 
-  ? () => console.groupEnd()
-  : noop;
+// Create the debug function with proper typing
+export const debug: DebugFunction = Object.assign(
+  isDebugEnabled 
+    ? (...args: any[]) => console.log(...args)
+    : noop,
+  {
+    error: isDebugEnabled 
+      ? (...args: any[]) => console.error(...args)
+      : noop,
+    warn: isDebugEnabled 
+      ? (...args: any[]) => console.warn(...args)
+      : noop,
+    info: isDebugEnabled 
+      ? (...args: any[]) => console.info(...args)
+      : noop,
+    group: isDebugEnabled 
+      ? (...args: any[]) => console.group(...args)
+      : noop,
+    groupEnd: isDebugEnabled 
+      ? () => console.groupEnd()
+      : noop
+  }
+);
 
 // Export a flag to check debug status
 export const isDebug = isDebugEnabled;

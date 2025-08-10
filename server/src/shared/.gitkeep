@@ -1,0 +1,6 @@
+# This folder contains code shared across features:
+# - components/ (reusable UI components)
+# - hooks/ (shared React hooks)
+# - utils/ (utility functions)
+# - types/ (shared TypeScript types)
+# - constants/ (shared constants)

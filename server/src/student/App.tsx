@@ -53,7 +53,7 @@ const App: React.FC = () => {
   const SCROLL_THRESHOLD_ENTER = 100; // pixels before header becomes compact
   const SCROLL_THRESHOLD_EXIT = 50; // pixels before header exits compact mode (hysteresis)
   const COMPACT_HEADER_HEIGHT_MOBILE = 56; // height in pixels for mobile compact mode
-  const DEFAULT_HEADER_HEIGHT = 180; // default height estimate
+  // const DEFAULT_HEADER_HEIGHT = 180; // default height estimate - unused
 
   // Save student name to localStorage when it changes
   useEffect(() => {
@@ -73,7 +73,7 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {
-    setIsDarkMode(prev => !prev);
+    setIsDarkMode((prev: boolean) => !prev);
   };
   
   // Session recovery after hot reload
@@ -94,6 +94,7 @@ const App: React.FC = () => {
           code: currentSessionCode,
           type: roomData.roomType,
           studentName: studentName,
+          studentId: primarySocket?.id || '',
           socket: primarySocket!,
           joinedAt: Date.now(),
           initialData: roomData.room || {},
@@ -252,7 +253,7 @@ const App: React.FC = () => {
               code,
               type: roomData.roomType,
               studentName: name || studentName,
-              studentId: newSocket.id, // Populate studentId
+              studentId: newSocket.id || '', // Populate studentId
               socket: newSocket,
               joinedAt: Date.now(),
               initialData: roomData.room || {},
@@ -288,7 +289,7 @@ const App: React.FC = () => {
           code,
           type: data.roomType,
           studentName: name || studentName,
-          studentId: newSocket.id, // Populate studentId
+          studentId: newSocket.id || '',
           socket: newSocket,
           joinedAt: Date.now(),
           initialData: data.roomData || {},
@@ -371,7 +372,7 @@ const App: React.FC = () => {
         }
       });
       
-      newSocket.on('reconnect_attempt', (attemptNumber) => {
+      newSocket.on('reconnect_attempt', () => {
         // Reconnection attempts are now indicated by the warning icon
       });
 
@@ -399,19 +400,6 @@ const App: React.FC = () => {
     setPrimarySocket(null);
   };
 
-  const handleLeaveRoom = (roomId: string) => {
-    // Animate room leaving
-    animateRoomLeave(roomId, () => {
-      setJoinedRooms(prev => prev.filter(room => room.id !== roomId));
-    });
-    
-    // Close socket connection
-    const socket = socketRefs.current.get(roomId);
-    if (socket) {
-      socket.close();
-      socketRefs.current.delete(roomId);
-    }
-  };
 
   const toggleMinimizeRoom = (roomId: string) => {
     setMinimizedRooms(prev => {
