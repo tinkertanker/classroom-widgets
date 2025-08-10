@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { getStudentQuestionColor } from '../shared/constants/studentQuestionColors';
+import { getStudentQuestionColor } from '../../shared/constants/studentQuestionColors';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface Question {
