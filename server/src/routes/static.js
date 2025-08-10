@@ -39,12 +39,21 @@ if (serverConfig.IS_PRODUCTION) {
   });
 
   // Serve the main app for all other routes (SPA)
-  router.get('*', (req, res) => {
+  // But exclude API routes to prevent serving HTML for API calls
+  router.get('*', (req, res, next) => {
+    // Skip API routes and health check
+    if (req.path.startsWith('/api/') || req.path === '/health') {
+      return next();
+    }
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 } else {
   // Development mode - just return a message
-  router.get('*', (req, res) => {
+  router.get('*', (req, res, next) => {
+    // Skip API routes and health check
+    if (req.path.startsWith('/api/') || req.path === '/health') {
+      return next();
+    }
     res.json({
       message: 'Static file serving is disabled in development mode',
       hint: 'Use the development servers for the frontend apps'
