@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 📁 Documentation Policy
+
+**ALL documentation belongs in this `docs/` directory.**
+
+When creating new documentation:
+- ✅ Put it in `docs/`
+- ✅ Update links in root `CLAUDE.md` and `README.md`
+- ❌ Don't create `.md` files in the root directory (except README.md and CLAUDE.md)
+
+This keeps the project organized and documentation easy to find.
+
+---
+
 ## Project Overview
 
 This is a React-based classroom widgets application that provides interactive tools for classroom management and student engagement. The app allows users to add, position, resize, and remove various widget components on a shared workspace. The system includes both a teacher application and a student participation app for real-time interaction.
