@@ -85,7 +85,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
         !connected ? "animate-pulse" : "hover:scale-105",
-        isExpanded ? "px-10 py-5" : "px-3 py-1.5",
+        isExpanded ? "px-10 py-5" : "px-4 py-2",
         className
       )}
       title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
@@ -102,7 +102,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         {/* Session Info - Expandable */}
         <div className={clsx(
           "flex items-center gap-3 transition-all duration-500",
-          isExpanded ? "max-w-[1200px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden"
+          isExpanded ? "max-w-[1200px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden hidden"
         )}>
           {/* Connection status indicator */}
           {connected ? (
