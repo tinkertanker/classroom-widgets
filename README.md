@@ -187,24 +187,15 @@ See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development deta
 
 ### Environment Variables
 
-Create a `.env` file in the root directory for the Teacher App, and a `.env` file in `server/` for the server.
+```bash
+# Copy the example file to get started
+cp .env.example .env
 
-**Root `.env`:**
-```env
-# Optional - for Link Shortener widget
-VITE_SHORTIO_API_KEY=your_api_key
-
-# Server configuration
-VITE_SERVER_URL=http://localhost:3001
+# Edit .env to add your API keys (optional)
+nano .env
 ```
 
-**`server/.env`:**
-```env
-# Port for the server
-PORT=3001
-```
-
-See [Deployment Guide](./docs/DEPLOYMENT.md#environment-variables) for all configuration options.
+See **[ENV_SETUP.md](./ENV_SETUP.md)** for complete environment configuration guide.
 
 ### Adding New Widgets
 

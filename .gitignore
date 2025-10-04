@@ -13,18 +13,39 @@
 
 # misc
 .DS_Store
+
+# ============================================
+# Environment Files with Secrets
+# ============================================
+# NEVER commit these files - they contain secrets!
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 .env.staging
+.env.staging.local
 
+# Only .example files should be committed
+# .env.example ✓ (committed)
+# .env.production.example ✓ (committed)
+
+# ============================================
+# Logs
+# ============================================
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
-src/secrets/shortioKey.js
+# ============================================
+# Secrets (legacy)
+# ============================================
+src/secrets/
+secrets/
 
 # Student app shared symlinks (dev only)
 server/src/student/shared
