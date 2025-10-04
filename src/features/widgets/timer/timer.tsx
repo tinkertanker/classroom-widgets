@@ -41,16 +41,8 @@ const Timer = () => {
     }
   }, [playSound1, playSound2, playSound3]);
 
-  // Time segment editor hook
-  const segmentEditor = useTimeSegmentEditor({
-    initialValues: ['00', '00', '10'],
-    isRunning: false, // Will be updated by timer state
-    onValuesChange: (values, timeValues) => {
-      // When editing time segments, update the initial time for the timer
-      const totalSeconds = timeValues[0] * 3600 + timeValues[1] * 60 + timeValues[2];
-      // This will be used when starting the timer
-    }
-  });
+  // Store segment editor update function in ref to avoid circular dependency
+  const segmentEditorUpdateRef = React.useRef<((time: number) => void) | null>(null);
 
   // Timer countdown hook
   const {
@@ -67,9 +59,23 @@ const Timer = () => {
     onTimeUp: playRandomSound,
     onTick: (newTime) => {
       // Update the time segment editor when time changes
-      segmentEditor.updateFromTime(newTime);
+      segmentEditorUpdateRef.current?.(newTime);
     }
   });
+
+  // Time segment editor hook
+  const segmentEditor = useTimeSegmentEditor({
+    initialValues: ['00', '00', '10'],
+    isRunning: isRunning, // Disable editing when actively running (allow when paused)
+    onValuesChange: (values, timeValues) => {
+      // When editing time segments while paused, the new value will be used on resume
+      const totalSeconds = timeValues[0] * 3600 + timeValues[1] * 60 + timeValues[2];
+      // This will be used when starting/resuming the timer
+    }
+  });
+
+  // Store the update function in ref
+  segmentEditorUpdateRef.current = segmentEditor.updateFromTime;
 
   // Timer animation hook
   const { pulseAngle, arcPath, isHamsterOnColoredArc, isHamsterOnGreyArc } = useTimerAnimation({ 
@@ -82,15 +88,30 @@ const Timer = () => {
 
   // Handle start button click
   const handleStart = useCallback(() => {
-    const totalSeconds = 
-      segmentEditor.timeValues[0] * 3600 + 
-      segmentEditor.timeValues[1] * 60 + 
+    const totalSeconds =
+      segmentEditor.timeValues[0] * 3600 +
+      segmentEditor.timeValues[1] * 60 +
       segmentEditor.timeValues[2];
-    
+
     if (totalSeconds > 0) {
       startTimer(totalSeconds);
     }
   }, [segmentEditor.timeValues, startTimer]);
+
+  // Handle resume button click - use edited time if it was changed
+  const handleResume = useCallback(() => {
+    const editedSeconds =
+      segmentEditor.timeValues[0] * 3600 +
+      segmentEditor.timeValues[1] * 60 +
+      segmentEditor.timeValues[2];
+
+    // If the edited time differs from current time, use the edited value
+    if (editedSeconds !== time && editedSeconds > 0) {
+      startTimer(editedSeconds); // Restart with new time
+    } else {
+      resumeTimer(); // Resume with current time
+    }
+  }, [segmentEditor.timeValues, time, startTimer, resumeTimer]);
 
   // Determine which controls to show
   const showStartButton = !isRunning && !isPaused && !timerFinished;
@@ -252,7 +273,7 @@ const Timer = () => {
               {showResumeButton && (
                 <button
                   className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-                  onClick={resumeTimer}
+                  onClick={handleResume}
                 >
                   {'\u25B6'} Resume
                 </button>
