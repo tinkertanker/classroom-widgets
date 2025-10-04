@@ -8,70 +8,60 @@ This is a React-based classroom widgets application that provides interactive to
 
 ## Key Technologies
 
-- React 18.3.1 with Create React App
-- Mixed JavaScript/TypeScript (components use .tsx, main files use .js)
+- React 18.3.1 with Vite (build tool)
+- TypeScript (100% TypeScript codebase - all .ts/.tsx files)
 - Tailwind CSS 3.4.17 for styling
-- React-RND for drag-and-drop and resizing functionality
-- Face-api.js for face recognition features
-- React-Confetti for celebration effects
-- Socket.io for real-time communication (Poll widget)
-- Express.js for server-side functionality
+- React-RND 10.4.12 for drag-and-drop and resizing functionality
+- React-Confetti-Explosion for celebration effects
+- Socket.io for real-time communication
+- Express.js backend server
+- Zustand for state management
 
 ## Essential Commands
 
 ```bash
 # Development
-npm start          # Start development server on localhost:3000
+npm run dev        # Start teacher app dev server (Vite) on localhost:3000
+npm run dev:all    # Start all services (teacher + server + student)
 
 # Testing
-npm test           # Run tests in watch mode (Jest + React Testing Library)
+npm test           # Run tests with Vitest
 
 # Building
-npm build          # Create production build in ./build folder
+npm run build      # Build teacher app
+npm run build:all  # Build all applications (teacher + student)
 
-# Setup (optional - for Link Shortener widget)
-# Copy .env.example to .env and add your Short.io API key
-cp .env.example .env
-# Then edit .env and set VITE_SHORTIO_API_KEY to your API key
+# Setup
+npm run install:all  # Install dependencies for all workspaces
 ```
 
 ## Architecture
 
-### System Architecture: 2 Servers
+### System Architecture
 
-This application uses a **2-server architecture**:
+This is a **monorepo** with 3 main parts:
 
-1. **Frontend Server (Teacher App)**
-   - React application for the main classroom widgets interface
-   - Development: Webpack dev server on port 3000
-   - Production: Nginx container on port 80
-   - Deployed at: widgets.tk.sg
+1. **Teacher Frontend** (`src/`)
+   - React + TypeScript application with Vite
+   - Development: `localhost:3000`
+   - Production: Served by Nginx
 
-2. **Backend Server (Express with dual purpose)**
-   - **API & WebSocket Server**: Handles real-time features for Poll and Link Share widgets
-   - **Student App Server**: Serves the student React app at `/student` path
+2. **Backend Server** (`server/`)
+   - Express.js + Socket.io for real-time communication
    - Runs on port 3001
-   - Deployed at: go.tk.sg
+   - Handles API requests and WebSocket connections
 
-### Student App Architecture
-
-The student app is **embedded within the Express server**:
-- Source location: `/server/src/student/` (separate React app built with Vite)
-- Build output: `/server/public/`
-- Served at: `http://[server]:3001/student`
-- **Not a separate server** - served by the same Express instance
+3. **Student Frontend** (`server/src/student/`)
+   - Separate lightweight React + TypeScript app built with Vite
+   - Build output: `server/public/`
+   - Served at `/student` path by the Express server
+   - **Not a separate server** - embedded in Express
 
 ### Request Flow
-- Teacher accesses main app → `https://widgets.tk.sg` → Nginx serves React app
-- Teacher creates activity → React app calls → `https://go.tk.sg/api/*` → Express API
-- Student joins activity → `https://go.tk.sg/student` → Express serves student React app
-- Student WebSocket connection → `wss://go.tk.sg/socket.io` → Same Express server
-
-This design is efficient because it:
-- Reduces the number of services to manage (only 2 containers)
-- Eliminates CORS issues between student app and API
-- Simplifies SSL configuration and deployment
-- Shares resources between API and student app serving
+- Teacher app → Vite dev server (dev) or Nginx (production)
+- Real-time widgets → Socket.io connection to Express server
+- Student app → Express serves built React app at `/student`
+- Student interactions → Socket.io events to Express server
 
 ### Testing Checklist
 When making changes, ensure:
@@ -197,10 +187,8 @@ server/                     # Backend server for real-time features
 
 ## Known Issues
 
-- Link Shortener doesn't work when deployed due to CORS restrictions with Short.io API
-- The default test file (App.test.js) is outdated and doesn't test actual functionality
-- Mixed file extensions (.js/.tsx) without proper TypeScript configuration
-- Server must be running separately for Poll widget functionality
+- Link Shortener widget may have CORS restrictions with Short.io API when deployed
+- Server must be running separately for networked widgets (Poll, Questions, Link Share, RT Feedback)
 
 ## Styling Guidelines
 
@@ -289,21 +277,22 @@ Networked widgets (Poll, Link Share, RT Feedback) follow a consistent UI structu
 
 ## Development Notes
 
-- No custom linting beyond Create React App defaults
-- No TypeScript config file despite using .tsx files
-- Face detection models are stored in the public folder
-- Audio files for sound effects are in component folders
+- TypeScript configuration in `tsconfig.json` with strict mode enabled
+- Vite for fast development and optimized production builds
+- ESLint configuration extends react-app defaults
+- Audio files for sound effects are co-located with widget components
 
-## Server Features (for Poll Widget)
+## Server Features
 
 ### Running the Server
 ```bash
-# Start server and React app together
-./start-with-server.sh
+# Start all services concurrently (recommended)
+npm run dev:all
 
 # Or run separately:
-cd server && npm start  # Server on port 3001
-npm start              # React app on port 3000
+npm run dev         # Teacher app on port 3000
+npm run dev:server  # Server on port 3001
+npm run dev:student # Student app dev server
 ```
 
 ### Real-time Features

@@ -26,7 +26,6 @@ Classroom Widgets is a real-time classroom management system that enables teache
 - **Utility**: Timer, Randomiser, List, Task Cue, Traffic Light.
 - **Display**: Text Banner, Image Display, QR Code, Sound Effects, Stickers.
 
-See the complete [Features List](./FEATURES.md) for more details.
 
 ## 🚀 Quick Start
 
@@ -184,7 +183,7 @@ npm start
 npm test
 ```
 
-See [SCRIPTS.md](./SCRIPTS.md) for complete script documentation.
+See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development details.
 
 ### Environment Variables
 
@@ -205,11 +204,11 @@ VITE_SERVER_URL=http://localhost:3001
 PORT=3001
 ```
 
-See [ENVIRONMENT_VARIABLES.md](./ENVIRONMENT_VARIABLES.md) for all options.
+See [Deployment Guide](./docs/DEPLOYMENT.md#environment-variables) for all configuration options.
 
 ### Adding New Widgets
 
-See [ADDING_NEW_WIDGET.md](./ADDING_NEW_WIDGET.md) for a step-by-step guide.
+See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step guide.
 
 ## 📦 Deployment
 
@@ -220,7 +219,7 @@ See [ADDING_NEW_WIDGET.md](./ADDING_NEW_WIDGET.md) for a step-by-step guide.
 docker-compose up -d
 ```
 
-See [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) for detailed instructions.
+See [Deployment Guide](./docs/DEPLOYMENT.md) for detailed instructions.
 
 ### Manual Deployment
 
@@ -229,26 +228,23 @@ See [DOCKER_DEPLOYMENT.md](./DOCKER_DEPLOYMENT.md) for detailed instructions.
 3. Configure environment variables
 4. Start the Express server: `npm start`
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide.
+See [Deployment Guide](./docs/DEPLOYMENT.md) for complete deployment instructions.
 
 ## 📖 Documentation
 
-### Core Documentation
-- [Complete Features List](./FEATURES.md) - Comprehensive feature documentation
-- [Architecture Overview](./HARMONIZED_ARCHITECTURE.md) - System design and data flow
-- [Socket Events](./SOCKET_EVENTS.md) - Real-time communication protocol
-- [Environment Variables](./ENVIRONMENT_VARIABLES.md) - Configuration options
-- [Security Guidelines](./SECURITY.md) - Best practices and considerations
+All comprehensive documentation is in the [`docs/`](./docs) directory:
 
-### Development Guides
-- [Adding New Widgets](./ADDING_NEW_WIDGET.md) - Widget creation tutorial
-- [Testing Guide](./TESTING.md) - Testing strategies
-- [Troubleshooting](./TROUBLESHOOTING.md) - Common issues and solutions
+### For Developers
+- **[Getting Started](./docs/GETTING_STARTED.md)** - Quick developer onboarding
+- **[Architecture](./docs/ARCHITECTURE.md)** - In-depth technical documentation
+- **[Adding New Widget](./docs/ADDING_NEW_WIDGET.md)** - Widget creation guide
+- **[Socket Events](./docs/SOCKET_EVENTS.md)** - Real-time communication protocol
 
-### Deployment Guides
-- [Docker Deployment](./DOCKER_DEPLOYMENT.md) - Container-based deployment
-- [General Deployment](./DEPLOYMENT.md) - Various deployment options
-- [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) - Pre-deployment verification
+### For Deployment
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment (Docker, SSL, troubleshooting)
+
+### Reference
+- **[Main Documentation](./docs/CLAUDE.md)** - Comprehensive project reference
 
 ## 🤝 Contributing
 

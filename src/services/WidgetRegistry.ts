@@ -1,10 +1,10 @@
 // Widget Registry - Single source of truth for all widget configurations
 
 import { lazy } from 'react';
-import { 
-  FaClock, 
-  FaListCheck, 
-  FaDice, 
+import {
+  FaClock,
+  FaListCheck,
+  FaDice,
   FaTrafficLight,
   FaVolumeHigh,
   FaLink,
@@ -19,9 +19,9 @@ import {
   FaSliders,
   FaGamepad,
   FaCircleQuestion,
-  FaPersonChalkboard,
-  FaSpellCheck
+  FaPersonChalkboard
 } from 'react-icons/fa6';
+import { GiSnake } from 'react-icons/gi';
 
 import { WidgetType, WidgetConfig, WidgetCategory, Size } from '../shared/types';
 import { WIDGET_TYPES } from '../shared/constants/widgetTypes';
@@ -46,6 +46,7 @@ const LazyWidgets = {
   RTFeedback: lazy(() => import('../features/widgets/rtFeedback')),
   TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
   Questions: lazy(() => import('../features/widgets/questions')),
+  Snake: lazy(() => import('../features/widgets/snake'))
   // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
@@ -321,6 +322,23 @@ export class WidgetRegistry {
       }
     });
 
+    // Snake
+    this.register({
+      type: WidgetType.SNAKE,
+      name: 'Snake',
+      icon: GiSnake,
+      component: LazyWidgets.Snake,
+      defaultSize: { width: 350, height: 450 },
+      minSize: { width: 350, height: 450 },
+      maxSize: { width: 350, height: 450 },
+      category: WidgetCategory.FUN,
+      description: 'Classic snake game with arrow key controls',
+      features: {
+        hasStateManagement: true,
+        isResizable: false
+      }
+    });
+
     // Wordle - TEMPORARILY DISABLED FOR PRODUCTION
     // this.register({
     //   type: WidgetType.WORDLE,
@@ -516,7 +534,8 @@ export class WidgetRegistry {
       [WIDGET_TYPES.RT_FEEDBACK]: WidgetType.RT_FEEDBACK,
       [WIDGET_TYPES.TIC_TAC_TOE]: WidgetType.TIC_TAC_TOE,
       [WIDGET_TYPES.QUESTIONS]: WidgetType.QUESTIONS,
-      [WIDGET_TYPES.WORDLE]: WidgetType.WORDLE
+      [WIDGET_TYPES.WORDLE]: WidgetType.WORDLE,
+      [WIDGET_TYPES.SNAKE]: WidgetType.SNAKE
     };
     return mapping[legacyType];
   }
@@ -541,7 +560,8 @@ export class WidgetRegistry {
       [WidgetType.RT_FEEDBACK]: WIDGET_TYPES.RT_FEEDBACK,
       [WidgetType.TIC_TAC_TOE]: WIDGET_TYPES.TIC_TAC_TOE,
       [WidgetType.QUESTIONS]: WIDGET_TYPES.QUESTIONS,
-      [WidgetType.WORDLE]: WIDGET_TYPES.WORDLE
+      [WidgetType.WORDLE]: WIDGET_TYPES.WORDLE,
+      [WidgetType.SNAKE]: WIDGET_TYPES.SNAKE
     };
     return mapping[type];
   }
