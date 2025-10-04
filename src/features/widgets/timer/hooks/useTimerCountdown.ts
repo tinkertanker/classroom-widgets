@@ -16,34 +16,41 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
   const [isPaused, setIsPaused] = useState(false);
   const [timerFinished, setTimerFinished] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const startTimeRef = useRef<number | null>(null);
+  const pausedTimeRef = useRef<number>(0);
+
   // Store callbacks in refs to avoid dependency issues
   const onTimeUpRef = useRef(onTimeUp);
   const onTickRef = useRef(onTick);
-  
+
   useEffect(() => {
     onTimeUpRef.current = onTimeUp;
     onTickRef.current = onTick;
   }, [onTimeUp, onTick]);
 
-  // Handle countdown tick
+  // Handle countdown tick using timestamp-based timing
   useEffect(() => {
-    if (isRunning) {
+    if (isRunning && startTimeRef.current !== null) {
       intervalRef.current = setInterval(() => {
-        setTime(prevTime => {
-          if (prevTime <= 1) {
-            setIsRunning(false);
-            setTimerFinished(true);
-            onTimeUpRef.current?.();
-            onTickRef.current?.(0);
-            return 0;
+        const now = Date.now();
+        const elapsed = Math.floor((now - startTimeRef.current!) / 1000);
+        const newTime = Math.max(0, pausedTimeRef.current - elapsed);
+
+        setTime(newTime);
+
+        if (newTime <= 0) {
+          setIsRunning(false);
+          setTimerFinished(true);
+          onTimeUpRef.current?.();
+          onTickRef.current?.(0);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
           }
-          
-          const newTime = prevTime - 1;
+        } else {
           onTickRef.current?.(newTime);
-          return newTime;
-        });
-      }, 1000);
+        }
+      }, 100); // Check every 100ms for smoother updates
     } else {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -57,7 +64,7 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
         intervalRef.current = null;
       }
     };
-  }, [isRunning]); // Only depend on isRunning, not time
+  }, [isRunning]); // Only depend on isRunning
 
   const startTimer = useCallback((totalSeconds: number) => {
     setInitialTime(totalSeconds);
@@ -65,17 +72,25 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     setIsRunning(true);
     setIsPaused(false);
     setTimerFinished(false);
+    startTimeRef.current = Date.now();
+    pausedTimeRef.current = totalSeconds;
   }, []);
 
   const pauseTimer = useCallback(() => {
     setIsRunning(false);
     setIsPaused(true);
-  }, []);
+    // Store the current time when pausing
+    pausedTimeRef.current = time;
+    startTimeRef.current = null;
+  }, [time]);
 
   const resumeTimer = useCallback(() => {
     if (time > 0) {
       setIsRunning(true);
       setIsPaused(false);
+      // Reset the start time when resuming
+      startTimeRef.current = Date.now();
+      pausedTimeRef.current = time;
     }
   }, [time]);
 
@@ -84,6 +99,8 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     setIsRunning(false);
     setIsPaused(false);
     setTimerFinished(false);
+    startTimeRef.current = null;
+    pausedTimeRef.current = initialTime;
   }, [initialTime]);
 
   const resetTimer = useCallback((newInitialTime: number) => {
@@ -92,6 +109,8 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     setIsRunning(false);
     setIsPaused(false);
     setTimerFinished(false);
+    startTimeRef.current = null;
+    pausedTimeRef.current = newInitialTime;
   }, []);
 
   // Calculate progress percentage
