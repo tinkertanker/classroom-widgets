@@ -108,7 +108,7 @@ const Timer = () => {
 
     // If the edited time differs from current time, use the edited value
     if (editedSeconds !== time && editedSeconds > 0) {
-      startTimer(editedSeconds); // Restart with new time
+      startTimer(editedSeconds, false); // Restart with new time, but don't update original
     } else {
       resumeTimer(); // Resume with current time
     }

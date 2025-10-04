@@ -18,6 +18,7 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const pausedTimeRef = useRef<number>(0);
+  const originalTimeRef = useRef<number>(10); // Store the very first time set
 
   // Store callbacks in refs to avoid dependency issues
   const onTimeUpRef = useRef(onTimeUp);
@@ -66,7 +67,7 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     };
   }, [isRunning]); // Only depend on isRunning
 
-  const startTimer = useCallback((totalSeconds: number) => {
+  const startTimer = useCallback((totalSeconds: number, updateOriginal: boolean = true) => {
     setInitialTime(totalSeconds);
     setTime(totalSeconds);
     setIsRunning(true);
@@ -74,6 +75,10 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     setTimerFinished(false);
     startTimeRef.current = Date.now();
     pausedTimeRef.current = totalSeconds;
+    // Only update the original time on the very first start, not on resume with edits
+    if (updateOriginal) {
+      originalTimeRef.current = totalSeconds;
+    }
   }, []);
 
   const pauseTimer = useCallback(() => {
@@ -95,13 +100,16 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
   }, [time]);
 
   const restartTimer = useCallback(() => {
-    setTime(initialTime);
+    // Restart always goes back to the original time, not edited time
+    const timeToRestore = originalTimeRef.current;
+    setTime(timeToRestore);
+    setInitialTime(timeToRestore);
     setIsRunning(false);
     setIsPaused(false);
     setTimerFinished(false);
     startTimeRef.current = null;
-    pausedTimeRef.current = initialTime;
-  }, [initialTime]);
+    pausedTimeRef.current = timeToRestore;
+  }, []);
 
   const resetTimer = useCallback((newInitialTime: number) => {
     setInitialTime(newInitialTime);
@@ -111,6 +119,7 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     setTimerFinished(false);
     startTimeRef.current = null;
     pausedTimeRef.current = newInitialTime;
+    originalTimeRef.current = newInitialTime;
   }, []);
 
   // Calculate progress percentage
