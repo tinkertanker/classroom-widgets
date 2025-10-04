@@ -47,6 +47,7 @@ const Timer = () => {
   // Timer countdown hook
   const {
     time,
+    initialTime,
     isRunning,
     isPaused,
     timerFinished,
@@ -112,6 +113,13 @@ const Timer = () => {
       resumeTimer(); // Resume with current time
     }
   }, [segmentEditor.timeValues, time, startTimer, resumeTimer]);
+
+  // Handle restart button click - go back to original initial time
+  const handleRestart = useCallback(() => {
+    restartTimer();
+    // Update segment editor to show the original initial time
+    segmentEditor.updateFromTime(initialTime);
+  }, [restartTimer, segmentEditor.updateFromTime, initialTime]);
 
   // Determine which controls to show
   const showStartButton = !isRunning && !isPaused && !timerFinished;
@@ -249,7 +257,7 @@ const Timer = () => {
           {timerFinished ? (
             <button
               className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-              onClick={restartTimer}
+              onClick={handleRestart}
             >
               {'\u21BB'} Restart
             </button>
@@ -280,7 +288,7 @@ const Timer = () => {
               )}
               <button
                 className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-                onClick={restartTimer}
+                onClick={handleRestart}
               >
                 {'\u21BB'} Restart
               </button>
