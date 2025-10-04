@@ -43,7 +43,7 @@
     "build:student": "cd server/src/student && npm install && npm run build",
     "build:all": "npm run build && npm run build:student",
     "// Setup Scripts": "",
-    "check": "node check-setup.js",
+    "check": "node scripts/check-setup.js",
     "install:all": "npm install && cd server && npm install && cd src/student && npm install",
     "clean": "rm -rf build server/public node_modules server/node_modules server/src/student/node_modules",
     "clean:install": "npm run clean && npm run install:all",
