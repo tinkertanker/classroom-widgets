@@ -102,7 +102,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         {/* Session Info - Expandable */}
         <div className={clsx(
           "flex items-center gap-3 transition-all duration-500",
-          isExpanded ? "max-w-[500px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden"
+          isExpanded ? "max-w-[1200px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden"
         )}>
           {/* Connection status indicator */}
           {connected ? (
