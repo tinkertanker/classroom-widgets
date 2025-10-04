@@ -48,6 +48,7 @@ const Timer = () => {
   const {
     time,
     initialTime,
+    originalTime,
     isRunning,
     isPaused,
     timerFinished,
@@ -117,9 +118,9 @@ const Timer = () => {
   // Handle restart button click - go back to original initial time
   const handleRestart = useCallback(() => {
     restartTimer();
-    // Update segment editor to show the original initial time
-    segmentEditor.updateFromTime(initialTime);
-  }, [restartTimer, segmentEditor.updateFromTime, initialTime]);
+    // Update segment editor to show the original time (not the edited time)
+    segmentEditor.updateFromTime(originalTime);
+  }, [restartTimer, segmentEditor.updateFromTime, originalTime]);
 
   // Determine which controls to show
   const showStartButton = !isRunning && !isPaused && !timerFinished;

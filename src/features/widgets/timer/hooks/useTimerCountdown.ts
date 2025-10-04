@@ -128,6 +128,7 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
   return {
     time,
     initialTime,
+    originalTime: originalTimeRef.current,
     isRunning,
     isPaused,
     timerFinished,
