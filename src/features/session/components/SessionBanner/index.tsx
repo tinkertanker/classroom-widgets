@@ -85,7 +85,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
         !connected ? "animate-pulse" : "hover:scale-105",
-        isExpanded ? "px-8 py-4" : "px-4 py-2",
+        isExpanded ? "px-10 py-5" : "px-4 py-2",
         className
       )}
       title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
@@ -118,15 +118,15 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
           )}
           
           {/* Session Code */}
-          <code className="text-3xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider">
+          <code className="text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider">
             {sessionCode}
           </code>
 
           {/* Separator */}
-          <div className="w-px h-6 bg-warm-gray-300 dark:bg-warm-gray-600" />
+          <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
 
           {/* URL */}
-          <span className="text-lg font-medium text-warm-gray-600 dark:text-warm-gray-300 truncate">
+          <span className="text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate">
             {serverUrl?.replace(/^https?:\/\//, '')}/student
           </span>
           
