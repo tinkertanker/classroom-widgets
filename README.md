@@ -55,7 +55,8 @@ npm run dev
 ```
 This starts:
 - Teacher app: http://localhost:3000
-- Server + Student app: http://localhost:3001
+- Student app: http://localhost:3002/student (Vite dev server)
+- Server: http://localhost:3001 (Express + Socket.io)
 
 ### Production Build
 
@@ -73,7 +74,7 @@ The project is a monorepo consisting of three main parts that run concurrently d
 ┌─────────────────┐         ┌─────────────────┐
 │   Teacher App   │         │  Student App    │
 │   (Vite + React)│         │ (Vite + React)  │
-│  localhost:3000 │         │ localhost:3001  │
+│  localhost:3000 │         │ localhost:3002  │
 └────────┬────────┘         └────────┬────────┘
          │                           │
          └─────────┬─────────────────┘
@@ -84,6 +85,8 @@ The project is a monorepo consisting of three main parts that run concurrently d
            │ localhost:3001 │
            └────────────────┘
 ```
+
+**Note:** In development, each frontend runs on its own Vite dev server for hot module replacement (HMR). In production, both are served as static files by the Express server.
 
 ### Project Structure
 

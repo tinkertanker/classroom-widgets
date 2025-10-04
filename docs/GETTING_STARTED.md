@@ -67,7 +67,7 @@ npm run dev:all
 
 This starts:
 - **Teacher App**: http://localhost:3000 (Vite dev server)
-- **Student App**: http://localhost:3001/student (served by Express)
+- **Student App**: http://localhost:3002/student (Vite dev server)
 - **Server**: http://localhost:3001 (Express + Socket.io)
 
 ### Or Run Services Separately
@@ -88,10 +88,12 @@ npm run dev:student
 1. Open teacher app: http://localhost:3000
 2. Click "Session" in toolbar → "Start New Session"
 3. Note the 5-character session code
-4. Open student app: http://localhost:3001/student
+4. Open student app: http://localhost:3002/student
 5. Enter the session code
 6. Add widgets (Poll, Timer, etc.) in teacher app
 7. Students will see them automatically!
+
+**Note:** In development, the student app runs on its own Vite dev server (port 3002). In production, it's served by the Express server at `http://localhost:3001/student`.
 
 ## Project Structure
 
