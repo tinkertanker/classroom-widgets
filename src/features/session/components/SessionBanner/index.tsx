@@ -85,12 +85,12 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
         !connected ? "animate-pulse" : "hover:scale-105",
-        isExpanded ? "px-10 py-5" : "px-4 py-2",
+        isExpanded ? "px-10 py-5" : "h-10 px-3",
         className
       )}
       title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
     >
-      <div className="flex items-center">
+      <div className="flex items-center justify-center h-full">
         {/* WiFi Icon - Always visible */}
         <div className={clsx(
           'transition-colors duration-200',
