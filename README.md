@@ -195,7 +195,7 @@ cp .env.example .env
 nano .env
 ```
 
-See **[ENV_SETUP.md](./ENV_SETUP.md)** for complete environment configuration guide.
+See **[Environment Setup Guide](./docs/ENV_SETUP.md)** for complete environment configuration guide.
 
 ### Adding New Widgets
 
