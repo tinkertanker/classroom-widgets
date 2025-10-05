@@ -4,7 +4,6 @@ import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { buttons } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
@@ -43,9 +42,6 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
     }
   );
   const [isWidgetActive, setIsWidgetActive] = useState(false);
-  const [showResults, setShowResults] = useState(
-    savedState?.showResults !== undefined ? savedState.showResults : true
-  );
   
   // Hooks
   const { showModal, hideModal } = useModal();
@@ -109,19 +105,14 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
     if (!hasRoom) return;
     toggleActive(!isWidgetActive);
   }, [isWidgetActive, hasRoom, toggleActive]);
-  
-  const handleToggleResults = useCallback(() => {
-    setShowResults(!showResults);
-  }, [showResults]);
-  
+
   // Save state
   useEffect(() => {
     onStateChange?.({
       feedbackData,
-      isActive: isWidgetActive,
-      showResults
+      isActive: isWidgetActive
     });
-  }, [feedbackData, isWidgetActive, showResults, onStateChange]);
+  }, [feedbackData, isWidgetActive, onStateChange]);
   
   // Handle recovery data
   useEffect(() => {
@@ -152,34 +143,15 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-      {/* Header */}
-      <NetworkedWidgetHeader 
-        title="RT Feedback"
-        code={session.sessionCode || ''}
-        participantCount={session.participantCount}
-        icon={FaGauge}
-      >
-        <div className="flex gap-2">
-          <button
-            onClick={handleToggleActive}
-            disabled={!session.isConnected}
-            className={`${
-              isWidgetActive ? buttons.danger : buttons.primary
-            } p-2 disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={isWidgetActive ? "Pause feedback" : "Start feedback"}
-          >
-            {isWidgetActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}
-          </button>
-        </div>
-      </NetworkedWidgetHeader>
-      
-      {/* Response count */}
-      <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-3 mt-4">
-        {feedbackData.totalResponses} responses
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      {/* Statistics - Floating top-right */}
+      <div className="absolute top-3 right-3 z-20">
+        <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+          {feedbackData.totalResponses} response{feedbackData.totalResponses !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative p-4 pt-8">
         {/* Paused overlay */}
         {!isWidgetActive && session.isConnected && (
           <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
@@ -191,58 +163,32 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         )}
         
         <div className="flex-1 flex flex-col">
-          {showResults ? (
-            <>
-              <div className="flex-1 flex items-end justify-around gap-1 pb-1">
-                {feedbackData.understanding.map((count, index) => {
-                  const maxCount = Math.max(...feedbackData.understanding, 1);
-                  const percentage = (count / maxCount) * 100 || 0;
-                  return (
-                    <div key={index} className="flex-1 flex flex-col items-center">
-                      <div className="relative w-full h-32 flex items-end">
-                        <div 
-                          className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
-                          style={{ height: `${percentage}%`, minHeight: '1px' }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* Descriptive labels */}
-              <div className="flex justify-between px-4 text-xs text-warm-gray-500">
-                <span>Too Easy</span>
-                <span>Easy</span>
-                <span>Just Right</span>
-                <span>Hard</span>
-                <span>Too Hard</span>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-warm-gray-600 dark:text-warm-gray-400">
-                  Results hidden
-                </p>
-              </div>
-            </div>
-          )}
+          <div className="flex-1 flex items-end justify-around gap-1 pb-1">
+            {feedbackData.understanding.map((count, index) => {
+              const maxCount = Math.max(...feedbackData.understanding, 1);
+              const percentage = (count / maxCount) * 100 || 0;
+              return (
+                <div key={index} className="flex-1 flex flex-col items-center">
+                  <div className="relative w-full h-32 flex items-end">
+                    <div
+                      className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
+                      style={{ height: `${percentage}%`, minHeight: '1px' }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Descriptive labels */}
+          <div className="flex justify-between px-4 text-xs text-warm-gray-500">
+            <span>Too Easy</span>
+            <span>Easy</span>
+            <span>Just Right</span>
+            <span>Hard</span>
+            <span>Too Hard</span>
+          </div>
         </div>
 
-        <div className="flex justify-between gap-2 mt-1">
-          <button
-            onClick={handleToggleResults}
-            className="flex-1 px-3 py-1.5 text-sm bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 rounded transition-colors"
-          >
-            {showResults ? 'Hide' : 'Show'} Results
-          </button>
-          <button
-            onClick={handleReset}
-            className="flex-1 px-3 py-1.5 text-sm bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 rounded transition-colors"
-          >
-            Reset
-          </button>
-        </div>
       </div>
       
       {/* Connection status for debugging */}
@@ -251,6 +197,38 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
           Disconnected
         </div>
       )}
+
+      {/* Bottom controls */}
+      <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+        <button
+          onClick={handleToggleActive}
+          disabled={!session.isConnected}
+          className={`${
+            isWidgetActive ? buttons.danger : buttons.primary
+          } px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
+          title={isWidgetActive ? "Pause feedback" : "Start feedback"}
+        >
+          {isWidgetActive ? (
+            <>
+              <FaPause className="text-xs" />
+              Pause
+            </>
+          ) : (
+            <>
+              <FaPlay className="text-xs" />
+              Start
+            </>
+          )}
+        </button>
+        {feedbackData.totalResponses > 0 && (
+          <button
+            onClick={handleReset}
+            className="text-sm text-warm-gray-500 hover:text-dusty-rose-600 dark:text-warm-gray-400 dark:hover:text-dusty-rose-400 transition-colors px-2 py-1"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
     </div>
   );
 }

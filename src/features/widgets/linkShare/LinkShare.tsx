@@ -4,7 +4,6 @@ import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { buttons } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
@@ -142,45 +141,16 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-      {/* Header */}
-      <NetworkedWidgetHeader 
-        title="Link Share"
-        code={session.sessionCode || ''}
-        participantCount={session.participantCount}
-        icon={FaLink}
-      >
-        <div className="flex gap-2">
-          <button
-            onClick={handleToggleActive}
-            disabled={!session.isConnected}
-            className={`${
-              isWidgetActive ? buttons.danger : buttons.primary
-            } p-2 disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={isWidgetActive ? "Pause accepting links" : "Start accepting links"}
-          >
-            {isWidgetActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}
-          </button>
-        </div>
-      </NetworkedWidgetHeader>
-      
-      {/* Submissions count */}
-      <div className="flex justify-between items-center mb-2 mt-4">
-        <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      {/* Statistics - Floating top-right */}
+      <div className="absolute top-3 right-3 z-20">
+        <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
           {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
-        </div>
-        {submissions.length > 0 && (
-          <button
-            onClick={handleClearAll}
-            className="text-xs text-warm-gray-500 hover:text-dusty-rose-600 dark:text-warm-gray-400 dark:hover:text-dusty-rose-400 transition-colors"
-          >
-            Clear all
-          </button>
-        )}
+        </span>
       </div>
-      
+
       {/* Submissions list */}
-      <div className="flex-1 overflow-y-auto space-y-2 relative">
+      <div className="flex-1 overflow-y-auto space-y-2 relative p-4 pt-8">
         {/* Paused overlay */}
         {!isWidgetActive && session.isConnected && (
           <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
@@ -238,6 +208,40 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
           Disconnected
         </div>
       )}
+
+      {/* Bottom controls */}
+      <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={handleToggleActive}
+            disabled={!session.isConnected}
+            className={`${
+              isWidgetActive ? buttons.danger : buttons.primary
+            } px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
+            title={isWidgetActive ? "Pause accepting links" : "Start accepting links"}
+          >
+            {isWidgetActive ? (
+              <>
+                <FaPause className="text-xs" />
+                Pause
+              </>
+            ) : (
+              <>
+                <FaPlay className="text-xs" />
+                Start
+              </>
+            )}
+          </button>
+        </div>
+        {submissions.length > 0 && (
+          <button
+            onClick={handleClearAll}
+            className="text-sm text-warm-gray-500 hover:text-dusty-rose-600 dark:text-warm-gray-400 dark:hover:text-dusty-rose-400 transition-colors px-2 py-1"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
     </div>
   );
 }

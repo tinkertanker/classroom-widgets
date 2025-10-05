@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaPlay, FaPause, FaChartColumn, FaGear, FaArrowRotateLeft } from 'react-icons/fa6';
+import { FaPlay, FaPause, FaGear, FaArrowRotateLeft, FaChartColumn } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { NetworkedWidgetHeader } from '../shared/NetworkedWidgetHeader';
 import { buttons } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
@@ -324,55 +323,20 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-      {/* Header */}
-      <NetworkedWidgetHeader 
-        title="Poll"
-        code={session.sessionCode || ''}
-        participantCount={session.participantCount}
-        icon={FaChartColumn}
-      >
-        <div className="flex gap-2">
-          <button
-            onClick={handleToggleActive}
-            disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
-            className={`${
-              isWidgetActive ? buttons.danger : buttons.primary
-            } p-2 disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={isWidgetActive ? "Pause poll" : "Start poll"}
-          >
-            {isWidgetActive ? <FaPause className="text-base" /> : <FaPlay className="text-base" />}
-          </button>
-          {results.totalVotes > 0 && (
-            <button
-              onClick={resetVotes}
-              className="p-2 rounded text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors"
-              title="Reset votes"
-            >
-              <FaArrowRotateLeft className="text-base" />
-            </button>
-          )}
-          <button
-            onClick={openSettings}
-            className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
-            title="Settings"
-          >
-            <FaGear className="text-base" />
-          </button>
-        </div>
-      </NetworkedWidgetHeader>
-      
-      {/* Vote count */}
-      <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mb-1">
-        {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      {/* Statistics - Floating top-right */}
+      <div className="absolute top-3 right-3 z-20">
+        <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+          {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
+        </span>
       </div>
 
       {/* Poll content */}
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative p-4 pt-8">
         {/* Paused overlay */}
         {!isWidgetActive && session.isConnected && (
-          <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 rounded-lg flex items-center justify-center z-10">
-            <div className="text-center bg-white dark:bg-warm-gray-800 rounded-lg px-6 py-4 shadow-lg border border-warm-gray-200 dark:border-warm-gray-700">
+          <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+            <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
               <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Poll is paused</p>
               <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
             </div>
@@ -427,7 +391,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           </div>
         </div>
       )}
-      
+
       {!session.isConnected && !session.isRecovering && (
         <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
           <div className="text-center">
@@ -436,6 +400,48 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           </div>
         </div>
       )}
+
+      {/* Bottom controls */}
+      <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={handleToggleActive}
+            disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
+            className={`${
+              isWidgetActive ? buttons.danger : buttons.primary
+            } px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
+            title={isWidgetActive ? "Pause poll" : "Start poll"}
+          >
+            {isWidgetActive ? (
+              <>
+                <FaPause className="text-xs" />
+                Pause
+              </>
+            ) : (
+              <>
+                <FaPlay className="text-xs" />
+                Start
+              </>
+            )}
+          </button>
+          {results.totalVotes > 0 && (
+            <button
+              onClick={resetVotes}
+              className={`${buttons.secondary} px-3 py-1.5 text-sm`}
+              title="Reset votes"
+            >
+              <FaArrowRotateLeft className="text-xs" />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={openSettings}
+          className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+          title="Settings"
+        >
+          <FaGear className="text-base" />
+        </button>
+      </div>
     </div>
   );
 }
