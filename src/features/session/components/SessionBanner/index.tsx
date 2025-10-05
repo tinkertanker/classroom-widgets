@@ -84,39 +84,31 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl shadow-md",
         "border border-warm-gray-300/70 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
-        !connected ? "animate-pulse" : "hover:scale-105",
-        isExpanded ? "px-10 py-5 rounded-full" : "h-10 px-3 rounded-lg",
+        !connected ? "animate-pulse" : "hover:scale-125",
+        isExpanded ? "px-4 py-2 rounded-full" : "h-10 px-3 rounded-lg",
+        "relative z-[999] hover:z-[1000]",
         className
       )}
       title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
     >
       <div className="flex items-center justify-center h-full">
-        {/* WiFi Icon - Always visible */}
+        {/* WiFi Icon - Shows connection status */}
         <div className={clsx(
           'transition-colors duration-200',
-          connected ? 'text-sage-600 dark:text-sage-400' : 'text-warm-gray-400 dark:text-warm-gray-500'
+          connected
+            ? 'text-sage-600 dark:text-sage-400 animate-pulse'
+            : isReconnecting
+            ? 'text-amber-600 dark:text-amber-400 animate-pulse'
+            : 'text-warm-gray-400 dark:text-warm-gray-500'
         )}>
           <FaWifi className="text-base" />
         </div>
-        
+
         {/* Session Info - Expandable */}
         <div className={clsx(
           "flex items-center gap-3 transition-all duration-500",
           isExpanded ? "max-w-[1200px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden hidden"
         )}>
-          {/* Connection status indicator */}
-          {connected ? (
-            <div className="w-2 h-2 bg-sage-500 dark:bg-sage-400 rounded-full animate-pulse" />
-          ) : isReconnecting ? (
-            <div className="text-xs text-amber-600 dark:text-amber-400 whitespace-nowrap animate-pulse">
-              Reconnecting...
-            </div>
-          ) : (
-            <div className="text-xs text-warm-gray-600 dark:text-warm-gray-400 whitespace-nowrap">
-              Disconnected - Click to retry
-            </div>
-          )}
-          
           {/* Session Code */}
           <code className="text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider">
             {sessionCode}
@@ -127,7 +119,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
 
           {/* URL */}
           <span className="text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate">
-            {serverUrl?.replace(/^https?:\/\//, '')}/student
+            {serverUrl?.replace(/^https?:\/\//, '')}
           </span>
           
           {/* Close Session Button */}

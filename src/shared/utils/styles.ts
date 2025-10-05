@@ -33,29 +33,32 @@ export const text = {
 // Common button styles
 export const buttons = {
   primary: cn(
-    "bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40",
+    "bg-gradient-to-br from-sage-300 to-sage-200/50 hover:from-sage-400 hover:to-sage-300/50",
+    "dark:bg-gradient-to-br dark:from-sage-900/70 dark:to-sage-900/30 dark:hover:from-sage-900/80 dark:hover:to-sage-900/40",
     "border border-sage-500 dark:border-sage-400",
     "text-sage-700 dark:text-sage-300 rounded",
-    transitions.colors
+    "shadow hover:shadow-lg transition-all duration-200"
   ),
   secondary: cn(
-    "bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-800 dark:hover:bg-warm-gray-700",
+    "bg-gradient-to-br from-warm-gray-300 to-warm-gray-200/50 hover:from-warm-gray-400 hover:to-warm-gray-300/50",
+    "dark:bg-gradient-to-br dark:from-warm-gray-700 dark:to-warm-gray-700/50 dark:hover:from-warm-gray-600 dark:hover:to-warm-gray-600/50",
     "border border-warm-gray-400 dark:border-warm-gray-500",
     text.primary,
     "rounded",
-    transitions.colors
+    "shadow hover:shadow-lg transition-all duration-200"
   ),
   danger: cn(
-    "bg-dusty-rose-100 hover:bg-dusty-rose-200 dark:bg-dusty-rose-900/30 dark:hover:bg-dusty-rose-900/40",
+    "bg-gradient-to-br from-dusty-rose-300 to-dusty-rose-200/50 hover:from-dusty-rose-400 hover:to-dusty-rose-300/50",
+    "dark:bg-gradient-to-br dark:from-dusty-rose-900/70 dark:to-dusty-rose-900/30 dark:hover:from-dusty-rose-900/80 dark:hover:to-dusty-rose-900/40",
     "border border-dusty-rose-500 dark:border-dusty-rose-400",
     "text-dusty-rose-700 dark:text-dusty-rose-300 rounded",
-    transitions.colors
+    "shadow hover:shadow-lg transition-all duration-200"
   ),
   ghost: cn(
-    "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
+    "hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600",
     text.primary,
     "rounded",
-    transitions.colors
+    "shadow hover:shadow-lg transition-all duration-200"
   )
 } as const;
 

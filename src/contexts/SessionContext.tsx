@@ -51,6 +51,32 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export const useSession = () => {
   const context = useContext(SessionContext);
   if (!context) {
+    // During HMR, provide a fallback to prevent errors during hot reload
+    if (import.meta.env.DEV) {
+      console.warn('useSession called during HMR reload, context temporarily unavailable');
+      // Return a minimal fallback context to prevent crashes
+      return {
+        sessionCode: null,
+        sessionCreatedAt: null,
+        isHost: false,
+        socket: null,
+        isConnected: false,
+        isConnecting: false,
+        isRecovering: false,
+        hasAttemptedRecovery: false,
+        serverUrl: '',
+        activeRooms: new Map(),
+        participantCounts: new Map(),
+        createSession: async () => null,
+        recoverSession: async () => false,
+        closeSession: () => {},
+        createRoom: async () => false,
+        closeRoom: () => {},
+        updateRoomState: () => {},
+        getWidgetRecoveryData: () => null,
+        error: null
+      } as SessionContextValue;
+    }
     throw new Error('useSession must be used within SessionProvider');
   }
   return context;

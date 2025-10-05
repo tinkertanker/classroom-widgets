@@ -7,12 +7,13 @@ import { useConfetti } from "../../../contexts/ConfettiContext";
 import { RandomiserProps } from "./types";
 import { FaDice, FaRotate, FaGear } from 'react-icons/fa6';
 import celebrateSoundFile from "./celebrate.mp3";
-import { 
-  useChoiceManager, 
-  useSlotMachineAnimation, 
-  useRandomiserAudio, 
-  useResponsiveHeight 
+import {
+  useChoiceManager,
+  useSlotMachineAnimation,
+  useRandomiserAudio,
+  useResponsiveHeight
 } from './hooks';
+import { cn, buttons } from '../../../shared/utils/styles';
 
 function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
@@ -221,7 +222,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
         {buttonSettings === "normal" ? (
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
             <button
-              className="px-3 py-1.5 bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              className={cn(buttons.primary, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5")}
               onClick={handleRandomise}
               disabled={isLoading}
             >
@@ -240,7 +241,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
           <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <button
-                className="px-3 py-1.5 bg-dusty-rose-100 hover:bg-dusty-rose-200 dark:bg-dusty-rose-900/30 dark:hover:bg-dusty-rose-900/40 border border-dusty-rose-500 dark:border-dusty-rose-400 text-dusty-rose-700 dark:text-dusty-rose-300 text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className={cn(buttons.danger, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed")}
                 onClick={handleRemoveResult}
                 disabled={removedChoices.includes(result)}
               >
@@ -249,7 +250,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
               <button
                 disabled={isLoading}
                 ref={initialResultFocus}
-                className="px-3 py-1.5 bg-sage-100 hover:bg-sage-200 dark:bg-sage-900/30 dark:hover:bg-sage-900/40 border border-sage-500 dark:border-sage-400 text-sage-700 dark:text-sage-300 text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                className={cn(buttons.primary, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5")}
                 onClick={handleRandomise}
               >
                 <FaRotate className="text-xs" />
