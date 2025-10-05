@@ -16,10 +16,10 @@ export const transitions = {
 
 // Common background styles
 export const backgrounds = {
-  card: "bg-soft-white dark:bg-warm-gray-800",
+  card: "bg-warm-gray-50 dark:bg-warm-gray-800",
   surface: "bg-warm-gray-100 dark:bg-warm-gray-700",
   hover: "hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600",
-  border: "border border-warm-gray-200 dark:border-warm-gray-700"
+  border: "border border-warm-gray-300 dark:border-warm-gray-700"
 } as const;
 
 // Common text styles
@@ -63,7 +63,7 @@ export const buttons = {
 export const widgetContainer = cn(
   backgrounds.card,
   backgrounds.border,
-  "rounded-lg shadow-sm w-full h-full overflow-hidden flex flex-col"
+  "rounded-lg shadow-md w-full h-full overflow-hidden flex flex-col"
 );
 
 // Status colors for lists, tasks, etc.

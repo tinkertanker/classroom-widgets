@@ -81,8 +81,8 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         }
       }}
       className={clsx(
-        "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl shadow-sm",
-        "border border-warm-gray-200/50 dark:border-warm-gray-600/50",
+        "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl shadow-md",
+        "border border-warm-gray-300/70 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
         !connected ? "animate-pulse" : "hover:scale-105",
         isExpanded ? "px-10 py-5 rounded-full" : "h-10 px-3 rounded-lg",

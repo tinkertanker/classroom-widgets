@@ -83,7 +83,7 @@ const TopControls: React.FC = () => {
         /* Regular WiFi button when no session */
         <button
           className={clsx(
-            "flex items-center justify-center h-10 px-3 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm",
+            "flex items-center justify-center h-10 px-3 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50",
             "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
           )}
           title={connected ? 'Connected to server' : 'Disconnected from server'}
@@ -98,7 +98,7 @@ const TopControls: React.FC = () => {
       )}
 
       {/* Zoom Controls */}
-      <div className="flex items-center space-x-1 px-2 py-1 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm h-10">
+      <div className="flex items-center space-x-1 px-2 py-1 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50 h-10">
         <button
           onClick={handleZoomOut}
           className="p-1.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 transition-colors"
@@ -127,7 +127,7 @@ const TopControls: React.FC = () => {
       {/* Fullscreen Button */}
       <button
         onClick={handleFullscreen}
-        className="flex items-center justify-center h-10 w-10 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-sm backdrop-blur-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
+        className="flex items-center justify-center h-10 w-10 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
         title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
       >
         {isFullscreen ? (
