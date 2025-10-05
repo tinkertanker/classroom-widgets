@@ -24,27 +24,6 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     }
   }, [initialIsActive]);
 
-  // Send feedback when value changes (only when active)
-  useEffect(() => {
-    if (currentValue !== lastSentValue && !isSending && isActive) {
-      setIsSending(true);
-      
-      // Send the updated value
-      socket.emit('session:rtfeedback:submit', {
-        sessionCode: roomCode,
-        widgetId,
-        value: currentValue
-      });
-      
-      setLastSentValue(currentValue);
-      
-      // Reset sending state after a short delay
-      setTimeout(() => {
-        setIsSending(false);
-      }, 100);
-    }
-  }, [currentValue, lastSentValue, socket, roomCode, isSending, isActive]);
-
   // Listen for room state changes using shared hook
   useWidgetStateChange({
     socket,
@@ -82,6 +61,27 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isActive) {
       setCurrentValue(Number(e.target.value));
+    }
+  };
+
+  const handleSliderRelease = () => {
+    // Send feedback on mouse-up only (not on every value change)
+    if (currentValue !== lastSentValue && !isSending && isActive) {
+      setIsSending(true);
+
+      // Send the updated value
+      socket.emit('session:rtfeedback:submit', {
+        sessionCode: roomCode,
+        widgetId,
+        value: currentValue
+      });
+
+      setLastSentValue(currentValue);
+
+      // Reset sending state after a short delay
+      setTimeout(() => {
+        setIsSending(false);
+      }, 100);
     }
   };
 
@@ -153,15 +153,17 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
             step="0.2"
             value={currentValue}
             onChange={handleSliderChange}
+            onMouseUp={handleSliderRelease}
+            onTouchEnd={handleSliderRelease}
             disabled={!isActive}
             className={`w-full h-3 rounded-lg appearance-none cursor-pointer ${getSliderColorClass(currentValue)} transition-all duration-300`}
             style={{
-              background: `linear-gradient(to right, 
-                #a8c3a8 0%, 
-                #a8c3a8 25%, 
-                #d6d2cc 40%, 
-                #d6d2cc 60%, 
-                #d9a79d 75%, 
+              background: `linear-gradient(to right,
+                #a8c3a8 0%,
+                #a8c3a8 25%,
+                #d6d2cc 40%,
+                #d6d2cc 60%,
+                #d9a79d 75%,
                 #e39b93 100%)`
             }}
           />
