@@ -22,7 +22,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const [buttonSettings, setButtonSettings] = useState("normal");
 
   // Use global modal and confetti
-  const { showModal } = useModal();
+  const { showModal, hideModal } = useModal();
   const { triggerConfetti } = useConfetti();
 
   // Choice management
@@ -83,22 +83,29 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
           onUpdateRemovedChoices={(newRemovedChoices) => {
             updateRemovedChoices(newRemovedChoices);
           }}
+          onSave={(activeChoices) => {
+            // Update displayChoices to show items immediately if there are active choices
+            if (activeChoices.length > 0) {
+              setDisplayChoices(activeChoices);
+              // Reset animation state to prepare for next randomisation
+              resetAnimation();
+              setButtonSettings("normal");
+            } else {
+              // Clear display choices if no active choices
+              setDisplayChoices([]);
+              setResult("Enter a list to randomise!");
+              setButtonSettings("normal");
+            }
+            // Close the modal
+            hideModal();
+          }}
+          onClose={() => {
+            // Just close without updating display
+            hideModal();
+          }}
         />
       ),
-      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl",
-      onClose: () => {
-        // Update displayChoices to show items immediately if there are active choices
-        const activeChoices = getActiveChoices();
-        if (activeChoices.length > 0) {
-          setDisplayChoices(activeChoices);
-          // Reset animation state
-          resetAnimation();
-        } else {
-          // Clear display choices if no active choices
-          setDisplayChoices([]);
-          setResult("Enter a list to randomise!");
-        }
-      }
+      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl"
     });
   };
 
@@ -149,6 +156,17 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
       }
     }
   };
+
+  // Initialize display choices on mount if there are saved choices
+  useEffect(() => {
+    if (savedState?.choices && savedState.choices.length > 0) {
+      const activeChoices = getActiveChoices();
+      if (activeChoices.length > 0) {
+        setDisplayChoices(activeChoices);
+        setResult("Ready to randomise!");
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update result message when choices change
   useEffect(() => {

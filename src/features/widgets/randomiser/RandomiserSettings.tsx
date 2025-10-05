@@ -5,13 +5,17 @@ interface RandomiserSettingsProps {
   removedChoices: string[];
   onUpdateChoices: (choices: string[]) => void;
   onUpdateRemovedChoices: (removedChoices: string[]) => void;
+  onSave?: (activeChoices: string[]) => void;
+  onClose?: () => void;
 }
 
 const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   choices,
   removedChoices,
   onUpdateChoices,
-  onUpdateRemovedChoices
+  onUpdateRemovedChoices,
+  onSave,
+  onClose
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [input, setInput] = useState(choices.join('\n'));
@@ -46,6 +50,30 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
     processedRemoved = processedRemoved.filter(value => value !== '');
     onUpdateRemovedChoices(processedRemoved);
   }, [removedInput, onUpdateRemovedChoices]);
+
+  // Helper to process choices from input string
+  const processChoicesFromInput = (inputStr: string) => {
+    let processed = inputStr.split('\n');
+    processed = processed.map(value => value.trim());
+    processed = processed.filter((value, index, array) => {
+      if (value === '') return false;
+      if (array.indexOf(value) !== index) return false;
+      return true;
+    });
+    return processed;
+  };
+
+  // Helper to get active choices (excluding removed)
+  const getActiveChoicesFromInputs = () => {
+    const currentChoices = processChoicesFromInput(input);
+    const currentRemoved = processChoicesFromInput(removedInput);
+    return currentChoices.filter(choice => !currentRemoved.includes(choice));
+  };
+
+  const handleSave = () => {
+    const activeChoices = getActiveChoicesFromInputs();
+    onSave?.(activeChoices);
+  };
 
   return (
     <div className="w-[700px] max-w-full">
@@ -154,6 +182,21 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
           <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
             Note: All leading and trailing spaces, empty rows, and duplicates in the list are automatically removed when generating.
           </p>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-warm-gray-200 dark:border-warm-gray-600">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200"
+            >
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </div>
