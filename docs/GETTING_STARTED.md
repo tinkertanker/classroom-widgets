@@ -62,25 +62,28 @@ cp .env.example .env
 **Recommended: Run everything together**
 
 ```bash
-npm run dev:all
+npm run dev
 ```
 
-This starts:
+This **automatically** starts:
 - **Teacher App**: http://localhost:3000 (Vite dev server)
 - **Student App**: http://localhost:3002/student (Vite dev server)
 - **Server**: http://localhost:3001 (Express + Socket.io)
 
-### Or Run Services Separately
+### Or Run Services Separately (Advanced)
 
 ```bash
-# Terminal 1: Teacher app
-npm run dev
+# Terminal 1: Teacher app only
+npm run dev:teacher
 
-# Terminal 2: Server + Student app
+# Terminal 2: Server only
 npm run dev:server
 
-# Terminal 3: Student app (dev mode with HMR)
+# Terminal 3: Student app only (dev mode with HMR)
 npm run dev:student
+
+# OR use concurrently (runs all in one terminal):
+npm run dev:concurrent
 ```
 
 ### Testing the Application
@@ -215,10 +218,12 @@ test('renders timer', () => {
 
 #### Development
 ```bash
-npm run dev              # Start teacher app (Vite dev server)
-npm run dev:server       # Start backend server
-npm run dev:student      # Start student app (Vite dev server)
-npm run dev:all          # Start everything (recommended)
+npm run dev              # Start everything (recommended)
+npm run dev:all          # Same as npm run dev
+npm run dev:teacher      # Start teacher app only
+npm run dev:server       # Start backend server only
+npm run dev:student      # Start student app only
+npm run dev:concurrent   # Start everything with concurrently
 ```
 
 #### Building

@@ -48,15 +48,16 @@ npm run install:all
 
 ### Development
 
-To run all services concurrently (recommended):
+To run all services (recommended):
 
 ```bash
 npm run dev
 ```
-This starts:
-- Teacher app: http://localhost:3000
-- Student app: http://localhost:3002/student (Vite dev server)
-- Server: http://localhost:3001 (Express + Socket.io)
+
+This **automatically** starts:
+- **Teacher app**: http://localhost:3000 (Vite dev server)
+- **Student app**: http://localhost:3002/student (Vite dev server)
+- **Server**: http://localhost:3001 (Express + Socket.io)
 
 ### Production Build
 
