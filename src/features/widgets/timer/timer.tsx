@@ -130,7 +130,33 @@ const Timer = () => {
 
   return (
     <>
-      <div className={cn(widgetContainer)} style={{ containerType: 'size' }}>
+      <style>{`
+        @keyframes pulse-scale {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
+        }
+        @keyframes border-pulse {
+          0%, 100% {
+            border-color: rgb(153, 27, 27);
+            box-shadow: 0 0 0 0 rgba(153, 27, 27, 0.7);
+          }
+          50% {
+            border-color: rgb(185, 28, 28);
+            box-shadow: 0 0 0 8px rgba(153, 27, 27, 0);
+          }
+        }
+      `}</style>
+      <div
+        className={cn(widgetContainer)}
+        style={{
+          containerType: 'size',
+          ...(timerFinished && {
+            animation: 'border-pulse 1.5s ease-in-out infinite',
+            borderWidth: '3px',
+            borderColor: 'rgb(153, 27, 27)'
+          })
+        }}
+      >
         <div className="flex-1 relative flex items-center justify-center p-4">
           <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
                 {/* Background circle (gray) */}
@@ -180,9 +206,12 @@ const Timer = () => {
                 {timerFinished ? (
                   /* TIME'S UP DISPLAY */
                   <div className="flex items-center justify-center w-full h-full">
-                    <span 
-                      style={{ fontSize: 'clamp(1.5rem, 15cqmin, 4rem)' }} 
-                      className={cn("font-bold text-center", text.primary)}
+                    <span
+                      style={{
+                        fontSize: 'clamp(1.5rem, 15cqmin, 4rem)',
+                        animation: 'pulse-scale 1s ease-in-out infinite'
+                      }}
+                      className={cn("font-bold text-center text-red-800 dark:text-red-500")}
                     >
                       Time's Up!
                     </span>

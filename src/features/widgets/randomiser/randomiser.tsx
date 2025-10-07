@@ -218,14 +218,14 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
               ) : (
                 <div className="flex flex-col justify-center items-center w-[95%] gap-3">
                   <p
-                    className="whitespace-normal break-words text-2xl text-center text-warm-gray-800 dark:text-warm-gray-200"
+                    className="whitespace-normal break-words text-lg font-medium text-center text-warm-gray-700 dark:text-warm-gray-300"
                     ref={textRef}
                   >
                     {result}
                   </p>
                   {result === "Enter a list to randomise!" && (
                     <button
-                      className="px-3 py-1.5 bg-terracotta-100 hover:bg-terracotta-200 dark:bg-terracotta-900/30 dark:hover:bg-terracotta-900/40 border border-terracotta-500 dark:border-terracotta-400 text-terracotta-700 dark:text-terracotta-300 text-sm rounded transition-colors duration-200 flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-gradient-to-r from-terracotta-500 to-transparent hover:from-terracotta-600 hover:to-terracotta-100 dark:from-terracotta-600 dark:to-transparent dark:hover:from-terracotta-700 dark:hover:to-terracotta-900/20 border border-terracotta-500 dark:border-terracotta-400 text-terracotta-700 dark:text-terracotta-300 font-medium text-sm rounded transition-all duration-200 flex items-center gap-1.5"
                       onClick={openSettings}
                     >
                       <FaGear className="text-xs" />

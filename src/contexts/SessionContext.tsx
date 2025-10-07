@@ -111,6 +111,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const isCreatingSession = useRef(false);
   const sessionCodeRef = useRef(sessionCode);
   const isInitialRecoveryComplete = useRef(false);
+  const recoveryPromiseRef = useRef<Promise<void> | null>(null);
+  const recoveryResolveRef = useRef<(() => void) | null>(null);
   
   // Constants
   const TWO_HOURS = 2 * 60 * 60 * 1000;
@@ -244,14 +246,27 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     if (!sessionCode || !sessionCreatedAt || !socket?.connected || isRecovering || hasAttemptedRecovery.current) {
       return;
     }
-    
+
+    // Create a promise that resolves when recovery completes
+    if (!recoveryPromiseRef.current) {
+      recoveryPromiseRef.current = new Promise((resolve) => {
+        recoveryResolveRef.current = resolve;
+      });
+    }
+
     // Add timeout for recovery attempt
     const recoveryTimeout = setTimeout(() => {
       debug('[Session] Recovery timeout - falling back to normal state');
       setIsRecovering(false);
       hasAttemptedRecovery.current = true;
-    }, 10000); // 10 second timeout
-    
+      // Resolve the promise on timeout
+      if (recoveryResolveRef.current) {
+        recoveryResolveRef.current();
+        recoveryResolveRef.current = null;
+        recoveryPromiseRef.current = null;
+      }
+    }, 2000); // 2 second timeout
+
     hasAttemptedRecovery.current = true;
     setIsRecovering(true);
     debug('[UnifiedSession] Attempting session recovery for:', sessionCode);
@@ -262,39 +277,39 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       if (sessionAge > TWO_HOURS) {
         debug('[UnifiedSession] Session too old, clearing');
         clearSession();
-        return;
-      }
-      
-      // Check if session still exists on server
-      try {
-        const response = await api.get(`/api/sessions/${sessionCode}/exists`);
-        if (!response.data.exists) {
-          debug('[UnifiedSession] Session no longer exists on server');
-          clearSession();
-          return;
+        setIsRecovering(false);
+        clearTimeout(recoveryTimeout);
+        // Resolve the promise when session is too old
+        if (recoveryResolveRef.current) {
+          recoveryResolveRef.current();
+          recoveryResolveRef.current = null;
+          recoveryPromiseRef.current = null;
         }
-      } catch (error) {
-        debug.error('[UnifiedSession] Error checking session existence:', error);
-        clearSession();
         return;
       }
-      
-      // Rejoin session
+
+      // Rejoin session directly via socket - let the server determine if it exists
       socket.emit('session:create', { existingCode: sessionCode }, (response: any) => {
         if (!response.success) {
           debug.error('[UnifiedSession] Failed to recover session:', response.error);
           clearSession();
           setIsRecovering(false);
           clearTimeout(recoveryTimeout);
+          // Resolve the promise on failure
+          if (recoveryResolveRef.current) {
+            recoveryResolveRef.current();
+            recoveryResolveRef.current = null;
+            recoveryPromiseRef.current = null;
+          }
           return;
         }
-        
+
         debug('[Session] Recovery - Session rejoined successfully');
-        
+
         // Store recovery data separately - this is a snapshot from the server
         const recoveryMap = new Map<string, ActiveRoom>();
         const roomsMap = new Map<string, ActiveRoom>();
-        
+
         (response.activeRooms || []).forEach((roomInfo: any) => {
           if (roomInfo.widgetId) {
             const room: ActiveRoom = {
@@ -308,22 +323,34 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             recoveryMap.set(roomInfo.widgetId, room);
           }
         });
-        
+
         setActiveRooms(roomsMap);
         setRecoveryData(recoveryMap); // This won't change after recovery
-        
+
         // Don't clean up orphaned rooms during initial recovery
         // This prevents closing rooms before widgets are loaded
         // cleanupOrphanedRooms(response.activeRooms || []);
-        
+
         setIsRecovering(false);
         isInitialRecoveryComplete.current = true;
         clearTimeout(recoveryTimeout);
+        // Resolve the promise on success
+        if (recoveryResolveRef.current) {
+          recoveryResolveRef.current();
+          recoveryResolveRef.current = null;
+          recoveryPromiseRef.current = null;
+        }
       });
     } catch (error) {
       debug.error('[UnifiedSession] Recovery error:', error);
       setIsRecovering(false);
       clearTimeout(recoveryTimeout);
+      // Resolve the promise on error
+      if (recoveryResolveRef.current) {
+        recoveryResolveRef.current();
+        recoveryResolveRef.current = null;
+        recoveryPromiseRef.current = null;
+      }
     }
   }, [sessionCode, sessionCreatedAt, socket, isRecovering]);
   
@@ -456,20 +483,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const createRoom = useCallback(async (roomType: string, widgetId: string): Promise<boolean> => {
     // Use ref to always get the current session code
     const currentCode = sessionCodeRef.current;
-    
-    
-    // Wait for recovery to complete if in progress
-    if (isRecovering && !isInitialRecoveryComplete.current) {
-      await new Promise<void>((resolve) => {
-        const checkInterval = setInterval(() => {
-          if (!isRecovering || isInitialRecoveryComplete.current) {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        }, 100);
-      });
+
+    // Wait for recovery to complete if in progress (use promise-based approach)
+    if (isRecovering && recoveryPromiseRef.current) {
+      debug('[UnifiedSession] Waiting for recovery to complete before creating room');
+      await recoveryPromiseRef.current;
     }
-    
+
     if (!socket?.connected || !currentCode) {
       debug.error('[UnifiedSession] Cannot create room - no session or not connected', { currentCode, connected: socket?.connected });
       return false;

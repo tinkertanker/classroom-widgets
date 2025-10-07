@@ -45,16 +45,19 @@ export function useNetworkedWidget({
   const [isStarting, setIsStarting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   
-  // Check for recovery data on mount
+  // Check for recovery data on mount and when recovery completes
   useEffect(() => {
     if (!widgetId) return;
-    
+
     // Check if this widget has recovery data
     const roomData = session.getWidgetRecoveryData(widgetId);
     if (roomData) {
       setHasRoom(true);
+    } else if (session.hasAttemptedRecovery && !session.isRecovering) {
+      // Recovery has completed and there's no room for this widget
+      setHasRoom(false);
     }
-  }, [widgetId, session.getWidgetRecoveryData]); // Only depends on widgetId and the getter function
+  }, [widgetId, session.getWidgetRecoveryData, session.hasAttemptedRecovery, session.isRecovering]);
   
   // Watch for session being cleared
   useEffect(() => {
