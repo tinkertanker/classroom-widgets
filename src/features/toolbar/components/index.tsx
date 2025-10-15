@@ -192,7 +192,7 @@ const Toolbar: React.FC = () => {
   
   return (
     <>
-      <div className="inline-flex flex-col space-y-4 px-4 pt-4 pb-2 transition-colors duration-200 max-w-full">
+      <div className="toolbar-content inline-flex flex-col space-y-4 px-4 pt-4 pb-2 transition-colors duration-200 max-w-full">
         {/* Main widget buttons */}
         <div className="flex space-x-3 items-center">
           {/* Left section - always visible */}

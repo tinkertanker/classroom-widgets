@@ -12,11 +12,16 @@ import {
 } from './hooks';
 
 interface AudioVolumeMonitorProps {
+  savedState?: {
+    threshold?: number;
+    isEnabled?: boolean;
+  };
+  onStateChange?: (state: any) => void;
 }
 
-const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
-    const [threshold, setThreshold] = useState<number>(20); // Default threshold
-    const [isEnabled, setIsEnabled] = useState<boolean>(true); // Widget enabled state
+const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onStateChange }) => {
+    const [threshold, setThreshold] = useState<number>(savedState?.threshold ?? 20); // Default threshold
+    const [isEnabled, setIsEnabled] = useState<boolean>(savedState?.isEnabled ?? true); // Widget enabled state
 
     // Sound management
     const { playSound } = useAlertSound({ soundFile: ramBellSoundFile, volume: 0.3 });
@@ -51,6 +56,14 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
     useEffect(() => {
         setCooldown(isInCooldown);
     }, [isInCooldown, setCooldown]);
+
+    // Save state changes
+    useEffect(() => {
+        onStateChange?.({
+            threshold,
+            isEnabled
+        });
+    }, [threshold, isEnabled, onStateChange]);
 
     // Audio stream management
     const { analyser } = useAudioStream({
@@ -130,7 +143,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = () => {
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         aria-label='Volume Threshold'
-                        className="flex-1"
+                        className="flex-1 clickable"
                     />
                 </div>
                 <div className="flex flex-row mt-4 items-center justify-between w-64">

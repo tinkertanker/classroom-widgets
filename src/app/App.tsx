@@ -16,6 +16,7 @@ import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '../shared/components/SmallScreenWarning';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
+import { APP_VERSION } from '../version';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
@@ -235,6 +236,11 @@ function App() {
           {/* Toolbar at bottom */}
           <div className="toolbar-container">
             <Toolbar />
+          </div>
+
+          {/* Version label */}
+          <div className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 pointer-events-none select-none z-10">
+            v{APP_VERSION}
           </div>
               </div>
             </ModalProvider>

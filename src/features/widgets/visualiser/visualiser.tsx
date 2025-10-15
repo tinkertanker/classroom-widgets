@@ -69,17 +69,22 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
     }
   };
 
-  // Initialize webcam on mount
+  // Initialize webcam on mount (auto-restart on page reload)
   useEffect(() => {
-    startVideo(selectedDeviceId);
+    // Always request camera on mount, even after page reload
+    // This will use the saved deviceId if available, or default camera otherwise
+    const deviceToUse = selectedDeviceId || undefined;
+    console.log('[Visualiser] Auto-starting camera on mount with device:', deviceToUse);
+    startVideo(deviceToUse);
 
     // Cleanup on unmount
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+        console.log('[Visualiser] Stopped camera stream on unmount');
       }
     };
-  }, []);
+  }, []); // Only run once on mount
 
   // Handle device change
   useEffect(() => {
