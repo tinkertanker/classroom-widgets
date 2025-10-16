@@ -107,7 +107,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
   return (
     <div
       ref={containerRef}
-      className={`w-full h-full rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
+      className={`w-full h-full rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
         isDragging 
           ? 'bg-sage-100 dark:bg-sage-900/30' 
           : imageUrl 

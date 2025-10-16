@@ -18,7 +18,7 @@ Everything else (guides, architecture, setup instructions, etc.) belongs in `doc
 - **[Socket Events](docs/SOCKET_EVENTS.md)** - Real-time communication protocol reference
 - **[Deployment](docs/DEPLOYMENT.md)** - Production deployment guide
 - **[Environment Setup](docs/ENV_SETUP.md)** - Environment variables and configuration
-- **[Main Documentation](docs/CLAUDE.md)** - Comprehensive project reference
+- **[Main Documentation](docs/AGENTS.md)** - Comprehensive project reference
 
 ## Quick Links
 

@@ -87,7 +87,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
 
     return (
         <div
-            className="w-full h-full border border-warm-gray-200 dark:border-warm-gray-700 rounded-md shadow-sm flex flex-col bg-soft-white dark:bg-warm-gray-800"
+            className="w-full h-full border border-warm-gray-200 dark:border-warm-gray-700 rounded-md flex flex-col bg-soft-white dark:bg-warm-gray-800"
         >
             <div className="flex-1 p-4 flex flex-col items-center justify-center overflow-visible">
                 {/* Oscilloscope-style waveform visualization */}

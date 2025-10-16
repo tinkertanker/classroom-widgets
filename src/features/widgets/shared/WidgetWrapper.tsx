@@ -83,10 +83,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   
   const wrapperClasses = clsx(
     'widget-wrapper',
-    'transition-shadow duration-200',
+    'transition-all duration-200',
     {
-      'shadow-lg ring-2 ring-sage-500': isBeingDragged && !isTransparent,
-      'hover:shadow-md': !isBeingDragged && !isTransparent
+      'ring-2 ring-sage-500': isBeingDragged && !isTransparent,
+      'hover:scale-[1.01]': !isBeingDragged && !isTransparent
     }
   );
 

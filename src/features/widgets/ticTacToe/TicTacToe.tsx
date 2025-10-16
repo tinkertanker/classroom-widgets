@@ -104,7 +104,7 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
       {/* Score Display */}
       <div className="flex justify-center mb-2">
         <div className="flex items-center gap-4 text-sm font-medium">

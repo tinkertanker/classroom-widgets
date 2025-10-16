@@ -112,7 +112,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
       {isLoading && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">

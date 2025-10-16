@@ -85,7 +85,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   return (
     <div 
       ref={containerRef}
-      className={`w-full h-full ${currentColors.bg} rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer`}
+      className={`w-full h-full ${currentColors.bg} rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer`}
       onDoubleClick={handleDoubleClick}
       onClick={handleClick}
     >

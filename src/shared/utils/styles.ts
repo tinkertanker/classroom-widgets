@@ -62,11 +62,32 @@ export const buttons = {
   )
 } as const;
 
-// Widget container styles
+// Widget container styles (main content area) - no shadow
 export const widgetContainer = cn(
   backgrounds.card,
   backgrounds.border,
-  "rounded-lg shadow-md w-full h-full overflow-hidden flex flex-col"
+  "rounded-lg w-full h-full overflow-hidden flex flex-col"
+);
+
+// Widget container styles with shadow (legacy)
+export const widgetContainerWithShadow = cn(
+  backgrounds.card,
+  backgrounds.border,
+  "rounded-lg shadow-sm w-full h-full overflow-hidden flex flex-col"
+);
+
+// Widget wrapper for full widget including controls
+export const widgetWrapper = cn(
+  "w-full h-full flex flex-col relative"
+);
+
+// Widget controls section (emerging from below with prominent shadow)
+export const widgetControls = cn(
+  "flex items-center p-3",
+  "min-h-16 max-h-16",
+  "bg-gray-200/70 dark:bg-gray-700/70",
+  "border-t border-warm-gray-200/30 dark:border-warm-gray-700/30",
+  "rounded-b-lg"
 );
 
 // Status colors for lists, tasks, etc.

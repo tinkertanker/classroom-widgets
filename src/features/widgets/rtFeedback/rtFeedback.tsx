@@ -4,7 +4,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { buttons } from '../../../shared/utils/styles';
+import { buttons, widgetControls, cn } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
 
@@ -143,7 +143,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
       {/* Statistics - Floating top-right */}
       <div className="absolute top-3 right-3 z-20">
         <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
@@ -199,7 +199,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
       )}
 
       {/* Bottom controls */}
-      <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+      <div className={cn(widgetControls, "justify-between")}>
         <button
           onClick={handleToggleActive}
           disabled={!session.isConnected}

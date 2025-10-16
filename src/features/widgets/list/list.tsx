@@ -18,7 +18,7 @@ import {
   useResponsiveSize,
   useListKeyboardHandlers
 } from './hooks';
-import { cn, getStatusColor, transitions, widgetContainer, buttons, text } from '../../../shared/utils/styles';
+import { cn, getStatusColor, transitions, widgetContainer, buttons, text, widgetControls } from '../../../shared/utils/styles';
 
 interface ListItem {
   id: string;
@@ -281,7 +281,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
             </DndContext>
           </div>
         </div>
-        <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center">
+        <div className={widgetControls}>
           <button
             className={cn(
               buttons.primary,

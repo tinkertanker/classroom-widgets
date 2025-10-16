@@ -75,7 +75,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
+    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
       {!shortenedLink ? (
         // Input state
         <form onSubmit={handleSubmit} className="flex flex-col h-full">

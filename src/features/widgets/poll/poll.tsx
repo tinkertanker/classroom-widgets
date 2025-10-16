@@ -4,7 +4,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { buttons } from '../../../shared/utils/styles';
+import { buttons, widgetControls, widgetWrapper, cn } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
 import { getPollColor } from '../../../shared/constants/pollColors';
@@ -323,86 +323,88 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
-      {/* Statistics - Floating top-right */}
-      <div className="absolute top-3 right-3 z-20">
-        <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-          {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
-        </span>
-      </div>
+    <div className={widgetWrapper}>
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+        {/* Statistics - Floating top-right */}
+        <div className="absolute top-3 right-3 z-20">
+          <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+            {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
+          </span>
+        </div>
 
-      {/* Poll content */}
-      <div className="flex-1 flex flex-col relative p-4 pt-8">
-        {/* Paused overlay */}
-        {!isWidgetActive && session.isConnected && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-            <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
-              <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Poll is paused</p>
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+        {/* Poll content */}
+        <div className="flex-1 flex flex-col relative p-4 pt-8 pb-16">
+          {/* Paused overlay */}
+          {!isWidgetActive && session.isConnected && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+              <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
+                <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Poll is paused</p>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+              </div>
             </div>
-          </div>
-        )}
-        
-        {pollData.question ? (
-          <div className="mt-4 flex flex-col h-full">
-            <h3 className="text-lg font-medium text-warm-gray-800 dark:text-warm-gray-200 mb-4">
-              {pollData.question}
-            </h3>
-            
-            <div className={`space-y-3 ${pollData.options.length > 6 ? 'overflow-y-auto pr-2 max-h-[400px]' : ''} flex-1`}>
-              {pollData.options.map((option, index) => {
-                const color = getPollColor(index);
-                return (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-warm-gray-700 dark:text-warm-gray-300">{option}</span>
-                      <span className="text-warm-gray-500 dark:text-warm-gray-400">
-                        {results.votes[index] || 0} votes
-                      </span>
-                    </div>
-                    <div className="h-6 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${color.progress} ${color.progressDark} transition-all duration-500`}
-                        style={{
-                          width: `${results.totalVotes > 0 ? ((results.votes[index] || 0) / results.totalVotes) * 100 : 0}%`
-                        }}
-                      />
+          )}
+
+          {pollData.question ? (
+            <div className="mt-4 flex flex-col h-full">
+              <h3 className="text-lg font-medium text-warm-gray-800 dark:text-warm-gray-200 mb-4">
+                {pollData.question}
+              </h3>
+
+              <div className={`space-y-3 ${pollData.options.length > 6 ? 'overflow-y-auto pr-2 max-h-[400px]' : ''} flex-1`}>
+                {pollData.options.map((option, index) => {
+                  const color = getPollColor(index);
+                  return (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-warm-gray-700 dark:text-warm-gray-300">{option}</span>
+                        <span className="text-warm-gray-500 dark:text-warm-gray-400">
+                          {results.votes[index] || 0} votes
+                        </span>
+                      </div>
+                      <div className="h-6 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full ${color.progress} ${color.progressDark} transition-all duration-500`}
+                          style={{
+                            width: `${results.totalVotes > 0 ? ((results.votes[index] || 0) / results.totalVotes) * 100 : 0}%`
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-warm-gray-500 dark:text-warm-gray-400">
+              Click settings to create your poll
+            </div>
+          )}
+        </div>
+
+        {/* Connection status overlays */}
+        {session.isRecovering && (
+          <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sage-500 border-t-transparent mb-2"></div>
+              <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">Reconnecting to session...</p>
             </div>
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-warm-gray-500 dark:text-warm-gray-400">
-            Click settings to create your poll
+        )}
+
+        {!session.isConnected && !session.isRecovering && (
+          <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
+            <div className="text-center">
+              <p className="text-dusty-rose-600 dark:text-dusty-rose-400 text-sm font-medium mb-1">Disconnected</p>
+              <p className="text-warm-gray-600 dark:text-warm-gray-400 text-xs">Check your connection</p>
+            </div>
           </div>
         )}
       </div>
-      
-      {/* Connection status overlays */}
-      {session.isRecovering && (
-        <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sage-500 border-t-transparent mb-2"></div>
-            <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">Reconnecting to session...</p>
-          </div>
-        </div>
-      )}
 
-      {!session.isConnected && !session.isRecovering && (
-        <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-          <div className="text-center">
-            <p className="text-dusty-rose-600 dark:text-dusty-rose-400 text-sm font-medium mb-1">Disconnected</p>
-            <p className="text-warm-gray-600 dark:text-warm-gray-400 text-xs">Check your connection</p>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom controls */}
-      <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+      {/* Control bar emerging from below */}
+      <div className={cn(widgetControls, "justify-between")}>
         <div className="flex gap-2">
           <button
             onClick={handleToggleActive}

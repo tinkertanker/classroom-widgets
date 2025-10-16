@@ -13,7 +13,7 @@ import {
   useRandomiserAudio,
   useResponsiveHeight
 } from './hooks';
-import { cn, buttons } from '../../../shared/utils/styles';
+import { cn, buttons, widgetControls } from '../../../shared/utils/styles';
 
 function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
@@ -181,15 +181,16 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
     <>
       <div
         ref={widgetRef}
-        className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative"
+        className="rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative"
         id="jason"
       >
+        {/* Content area - background will be applied to the inner div */}
         <div className="flex-1 overflow-hidden p-4">
           <div
             className={`w-full h-full p-0 rounded transition-colors duration-200 cursor-pointer ${
-              displayChoices.length > 0 
-                ? 'bg-transparent hover:bg-white/10' 
-                : 'bg-warm-gray-100 dark:bg-warm-gray-700 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
+              displayChoices.length > 0
+                ? 'bg-soft-white dark:bg-warm-gray-800 hover:bg-white/10'
+                : 'bg-soft-white dark:bg-warm-gray-800 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
             }`}
             onDoubleClick={() => {
               if (!isLoading) {
@@ -238,7 +239,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
           </div>
         </div>
         {buttonSettings === "normal" ? (
-          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+          <div className={cn(widgetControls, "justify-between")}>
             <button
               className={cn(buttons.primary, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5")}
               onClick={handleRandomise}
@@ -256,7 +257,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
             </button>
           </div>
         ) : buttonSettings === "result" ? (
-          <div className="p-3 border-t border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-between">
+          <div className={cn(widgetControls, "justify-between")}>
             <div className="flex items-center gap-2">
               <button
                 className={cn(buttons.danger, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed")}

@@ -84,7 +84,6 @@
   display: flex;
   justify-content: center; /* Center the toolbar */
   pointer-events: none; /* Allow clicks to pass through empty space */
-  border: 2px solid red; /* Debug: visualize container boundaries */
 }
 
 /* Toolbar content wrapper also needs to pass through clicks in padding areas */
