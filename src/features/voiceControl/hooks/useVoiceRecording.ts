@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { UseVoiceRecordingReturn, TranscriptionResult, VoiceRecordingState } from '../types/voiceControl';
+import { getBrowserInfo, getBrowserSupportMessage, checkMicrophonePermission } from '../utils/browserCompatibility';
 
 // Web Speech API interface declaration
 declare global {
@@ -8,6 +9,27 @@ declare global {
     webkitSpeechRecognition: any;
   }
 }
+
+// Browser detection
+const isFirefox = () => navigator.userAgent.toLowerCase().includes('firefox');
+const isChrome = () => navigator.userAgent.toLowerCase().includes('chrome');
+const isEdge = () => navigator.userAgent.toLowerCase().includes('edg/');
+
+// Check Web Speech API support
+const isWebSpeechAPISupported = () => {
+  return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
+};
+
+// Check Firefox Web Speech API setting
+const isFirefoxWebSpeechEnabled = () => {
+  if (!isFirefox()) return true; // Not Firefox, so assume supported
+  try {
+    // Try to access the preference
+    return (window as any).speechSynthesis !== undefined;
+  } catch (e) {
+    return false;
+  }
+};
 
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [state, setState] = useState<VoiceRecordingState>({
@@ -22,17 +44,35 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Check if Web Speech API is available
-  const isWebSpeechAPISupported = () => {
-    return 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window;
-  };
+  // Check browser compatibility on mount
+  useEffect(() => {
+    const browserInfo = getBrowserInfo();
 
-  // Initialize Web Speech API
-  const initializeWebSpeechAPI = useCallback(() => {
-    if (!isWebSpeechAPISupported()) {
+    if (!browserInfo.isSupported) {
       setState(prev => ({
         ...prev,
-        error: 'Speech recognition is not supported in this browser. Please use Chrome or Edge.'
+        error: getBrowserSupportMessage(browserInfo)
+      }));
+    }
+  }, []);
+
+  // Initialize Web Speech API with browser-specific handling
+  const initializeWebSpeechAPI = useCallback(async () => {
+    // Check microphone permission first
+    const hasPermission = await checkMicrophonePermission();
+    if (!hasPermission) {
+      setState(prev => ({
+        ...prev,
+        error: 'Microphone access is required for voice control. Please allow microphone access and try again.'
+      }));
+      return null;
+    }
+
+    if (!isWebSpeechAPISupported()) {
+      const browserInfo = getBrowserInfo();
+      setState(prev => ({
+        ...prev,
+        error: getBrowserSupportMessage(browserInfo)
       }));
       return null;
     }

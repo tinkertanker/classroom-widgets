@@ -236,7 +236,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         {/* Error Display */}
         {error && (
           <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-            <p className="text-sm text-red-700 dark:text-red-300">
+            <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-line">
               {error}
             </p>
           </div>
@@ -255,12 +255,30 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           )}
 
           {(voiceState === 'error' || voiceState === 'success') && (
-            <button
-              onClick={handleClose}
-              className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded-lg transition-colors duration-200"
-            >
-              Close
-            </button>
+            <div className="flex gap-3 justify-center">
+              {voiceState === 'error' && (
+                <button
+                  onClick={() => {
+                    resetState();
+                    setVoiceState('activating');
+                    setTimeout(() => {
+                      startRecording();
+                      setVoiceState('listening');
+                    }, 300);
+                  }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
+                >
+                  <FaMicrophone />
+                  Retry
+                </button>
+              )}
+              <button
+                onClick={handleClose}
+                className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded-lg transition-colors duration-200"
+              >
+                Close
+              </button>
+            </div>
           )}
 
           {voiceState === 'processing' && (
