@@ -80,11 +80,11 @@ const Timer = () => {
   segmentEditorUpdateRef.current = segmentEditor.updateFromTime;
 
   // Timer animation hook
-  const { pulseAngle, arcPath, isHamsterOnColoredArc, isHamsterOnGreyArc } = useTimerAnimation({ 
-    isRunning, 
-    progress 
+  const { pulseAngle, arcPath, isHamsterOnColoredArc, isHamsterOnGreyArc } = useTimerAnimation({
+    isRunning,
+    progress
   });
-  
+
   // You can now use isHamsterOnColoredArc and isHamsterOnGreyArc
   // These values update in real-time as the hamster moves around the circle
 
@@ -163,7 +163,68 @@ const Timer = () => {
             {/* Content area with card background - full coverage */}
             <div className="w-full h-full bg-soft-white dark:bg-warm-gray-800 rounded-t-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
               <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
-                  {/* Background circle (gray) */}
+                  {/* Gradient definition for rainbow arc */}
+                  <defs>
+                    <linearGradient id="rainbowGradient" gradientUnits="userSpaceOnUse" x1="50" y1="5" x2="50" y2="95">
+                      <stop offset="0%" stopColor="#ff0000" />
+                      <stop offset="16.66%" stopColor="#ff8800" />
+                      <stop offset="33.33%" stopColor="#ffff00" />
+                      <stop offset="50%" stopColor="#00ff00" />
+                      <stop offset="66.66%" stopColor="#00ffff" />
+                      <stop offset="83.33%" stopColor="#0088ff" />
+                      <stop offset="100%" stopColor="#ff00ff" />
+                    </linearGradient>
+
+                    {/* Moderate glow filter */}
+                    <filter id="rainbowGlow" x="-200%" y="-200%" width="500%" height="500%">
+                      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                      <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+
+                    {/* Enhanced glow filter - more subtle */}
+                    <filter id="enhancedRainbowGlow" x="-200%" y="-200%" width="500%" height="500%">
+                      <feGaussianBlur stdDeviation="4" result="bigBlur"/>
+                      <feGaussianBlur stdDeviation="2" result="mediumBlur"/>
+                      <feColorMatrix in="bigBlur" type="saturate" values="1.5" result="saturatedBigBlur"/>
+                      <feMerge>
+                        <feMergeNode in="saturatedBigBlur"/>
+                        <feMergeNode in="mediumBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+
+                    {/* Gentle animated glow filter */}
+                    <filter id="animatedGlow" x="-200%" y="-200%" width="500%" height="500%">
+                      <feGaussianBlur stdDeviation="5" result="blur1">
+                        <animate attributeName="stdDeviation"
+                          values="5;10;5"
+                          dur="2s"
+                          repeatCount="indefinite"/>
+                      </feGaussianBlur>
+                      <feGaussianBlur stdDeviation="8" result="blur2">
+                        <animate attributeName="stdDeviation"
+                          values="8;15;8"
+                          dur="2s"
+                          begin="0.5s"
+                          repeatCount="indefinite"/>
+                      </feGaussianBlur>
+                      <feMerge>
+                        <feMergeNode in="blur2"/>
+                        <feMergeNode in="blur1"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+
+                    {/* Simple drop shadow for extra definition */}
+                    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+                      <feDropShadow dx="0" dy="0" stdDeviation="3" floodOpacity="0.3"/>
+                    </filter>
+                  </defs>
+
+                  {/* 2. Background circle (gray) - shows full timer path */}
                   <circle
                     cx="50"
                     cy="50"
@@ -173,34 +234,21 @@ const Timer = () => {
                     fill="none"
                     className="dark:stroke-warm-gray-700"
                   />
-                  {/* Gradient definition for rainbow arc */}
-                  <defs>
-                    <linearGradient id="rainbowGradient" gradientUnits="userSpaceOnUse" x1="50" y1="5" x2="50" y2="95">
-                      <stop offset="0%" stopColor="#ff6b6b" />
-                      <stop offset="16.66%" stopColor="#ff9a44" />
-                      <stop offset="33.33%" stopColor="#ffd93d" />
-                      <stop offset="50%" stopColor="#6bcf7f" />
-                      <stop offset="66.66%" stopColor="#4ecdc4" />
-                      <stop offset="83.33%" stopColor="#5c7cfa" />
-                      <stop offset="100%" stopColor="#a864fd" />
-                    </linearGradient>
-                    {/* Mask to show only the active portion */}
-                    <mask id="progressMask">
-                      <rect x="0" y="0" width="100" height="100" fill="black" />
-                      <path
-                        d={arcPath}
-                        fill="white"
-                      />
-                    </mask>
-                  </defs>
 
-                  {/* Full rainbow circle (always present but masked) */}
-                  <g mask="url(#progressMask)">
-                    <path
-                      d={useTimerAnimation({ isRunning: false, progress: 1 }).arcPath}
-                      fill="url(#rainbowGradient)"
-                    />
-                  </g>
+                  {/* 3. Main rainbow arc on top - shows progress */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    stroke="url(#rainbowGradient)"
+                    strokeWidth="3"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 45}
+                    strokeDashoffset={(2 * Math.PI * 45) * (1 - progress)}
+                    filter="url(#enhancedRainbowGlow) url(#dropShadow)"
+                    transform="rotate(-90 50 50)"
+                  />
 
                   {isRunning && time > 0 && <HamsterAnimation pulseAngle={pulseAngle} isOnColoredArc={isHamsterOnColoredArc} />}
                 </svg>
