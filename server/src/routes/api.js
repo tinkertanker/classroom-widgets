@@ -2,6 +2,7 @@ const express = require('express');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { ValidationError, NotFoundError } = require('../middleware/errorHandler');
 const { isValidSessionCode, isValidRoomCode } = require('../middleware/validation');
+const voiceCommandRoutes = require('./voiceCommand');
 
 /**
  * API routes for RESTful endpoints
@@ -143,6 +144,11 @@ module.exports = (sessionManager) => {
       }
     });
   });
+
+  /**
+   * Voice command processing endpoint
+   */
+  router.use('/voice-command', voiceCommandRoutes);
 
   /**
    * Clean up inactive sessions (admin endpoint)

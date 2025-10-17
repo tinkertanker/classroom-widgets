@@ -14,6 +14,7 @@ import TopControls from '../features/toolbar/components/TopControls';
 import WidgetRenderer from '../features/board/components/WidgetRenderer';
 import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '../shared/components/SmallScreenWarning';
+import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { APP_VERSION } from '../version';
@@ -40,6 +41,11 @@ function App() {
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
   const [screenTooSmall, setScreenTooSmall] = useState(window.innerWidth < 768);
+
+  // Voice control state
+  const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
+  const [lastCommandPress, setLastCommandPress] = useState<number | null>(null);
+  const [voiceTimeout, setVoiceTimeout] = useState<NodeJS.Timeout | null>(null);
   
   // Note: Session code management is now handled by the networked widgets themselves
   // via the useNetworkedWidget hook. They will set/clear the session code as needed.
@@ -88,7 +94,42 @@ function App() {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
-      
+
+      // Handle Command/Ctrl key press for voice activation
+      if (e.metaKey || e.ctrlKey) {
+        const now = Date.now();
+
+        if (lastCommandPress && (now - lastCommandPress) < 500) {
+          // Double press detected - activate voice control
+          e.preventDefault();
+          setIsVoiceControlActive(true);
+          setLastCommandPress(null);
+
+          // Clear any existing timeout
+          if (voiceTimeout) {
+            clearTimeout(voiceTimeout);
+            setVoiceTimeout(null);
+          }
+        } else {
+          // First press - set up timeout to detect double press
+          setLastCommandPress(now);
+
+          // Clear previous timeout if exists
+          if (voiceTimeout) {
+            clearTimeout(voiceTimeout);
+          }
+
+          // Set new timeout
+          const timeout = setTimeout(() => {
+            setLastCommandPress(null);
+            setVoiceTimeout(null);
+          }, 500);
+
+          setVoiceTimeout(timeout);
+        }
+        return;
+      }
+
       // Exit sticker mode with S or Escape key
       if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
         e.preventDefault();
@@ -96,22 +137,30 @@ function App() {
         setSelectedStickerType(null);
         return;
       }
-      
+
       // Open widget launcher with Cmd/Ctrl + K
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        // Trigger the LaunchpadDialog by clicking the More button
-        const moreButton = document.querySelector('[title*="More widgets"]') as HTMLButtonElement;
-        if (moreButton) {
-          moreButton.click();
+        // Check if this wasn't a double press (handled above)
+        if (!lastCommandPress || (Date.now() - lastCommandPress) >= 500) {
+          e.preventDefault();
+          // Trigger the LaunchpadDialog by clicking the More button
+          const moreButton = document.querySelector('[title*="More widgets"]') as HTMLButtonElement;
+          if (moreButton) {
+            moreButton.click();
+          }
         }
         return;
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [stickerMode]);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      if (voiceTimeout) {
+        clearTimeout(voiceTimeout);
+      }
+    };
+  }, [stickerMode, lastCommandPress, voiceTimeout]);
 
   // Global paste handler for creating image widgets when no widget is focused
   useEffect(() => {
@@ -176,6 +225,84 @@ function App() {
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
   }, [focusedWidgetId, scale, addWidget, updateWidgetState, setFocusedWidget]);
+
+  // Voice command processing handler
+  const handleVoiceCommand = async (transcript: string) => {
+    try {
+      console.log('Voice command received:', transcript);
+
+      // Import services dynamically to avoid server-side rendering issues
+      const { voiceCommandService } = await import('../features/voiceControl/services/VoiceCommandService');
+      const { voiceCommandExecutor } = await import('../features/voiceControl/services/VoiceCommandExecutor');
+
+      // Get current widget context
+      const context = {
+        activeWidgets: widgets.map(widget => ({
+          id: widget.id,
+          type: widget.type,
+          state: widget.state,
+          isFocused: widget.id === focusedWidgetId
+        })),
+        availableWidgets: ['timer', 'list', 'poll', 'randomiser', 'questions', 'image'],
+        screenPosition: { x: 0, y: 0 }
+      };
+
+      // Process command through LLM service
+      const commandResponse = await voiceCommandService.processCommand(transcript, context);
+
+      // Execute the command
+      if (commandResponse.command.action !== 'UNKNOWN' && commandResponse.command.action !== 'ERROR') {
+        const executionResult = await voiceCommandExecutor.executeCommand(commandResponse);
+
+        if (executionResult.success) {
+          console.log('Voice command executed successfully:', executionResult);
+
+          // Focus the newly created widget if applicable
+          if (executionResult.widgetId) {
+            setFocusedWidget(executionResult.widgetId);
+          }
+
+          return {
+            ...commandResponse,
+            feedback: {
+              ...commandResponse.feedback,
+              message: commandResponse.feedback.message || 'Command executed successfully'
+            }
+          };
+        } else {
+          console.error('Voice command execution failed:', executionResult.error);
+
+          return {
+            ...commandResponse,
+            feedback: {
+              message: executionResult.error || 'Failed to execute command',
+              type: 'error' as const,
+              shouldSpeak: true
+            }
+          };
+        }
+      } else {
+        // Return the LLM response for unknown/error commands
+        return commandResponse;
+      }
+    } catch (error) {
+      console.error('Voice command processing failed:', error);
+
+      return {
+        command: {
+          action: 'ERROR',
+          target: 'unknown',
+          parameters: {},
+          confidence: 0
+        },
+        feedback: {
+          message: error instanceof Error ? error.message : 'Failed to process voice command',
+          type: 'error' as const,
+          shouldSpeak: false
+        }
+      };
+    }
+  };
 
   // Prevent swipe navigation
   useEffect(() => {
@@ -308,6 +435,13 @@ function App() {
           <div className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 pointer-events-none select-none z-10">
             v{APP_VERSION}
           </div>
+
+          {/* Voice Control Interface */}
+          <VoiceInterface
+            isOpen={isVoiceControlActive}
+            onClose={() => setIsVoiceControlActive(false)}
+            onTranscriptComplete={handleVoiceCommand}
+          />
               </div>
             </ModalProvider>
           </ConfettiProvider>
