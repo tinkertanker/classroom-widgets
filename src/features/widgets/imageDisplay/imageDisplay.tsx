@@ -3,9 +3,10 @@ import React, { useState, useRef, useEffect } from 'react';
 interface ImageDisplayProps {
   savedState?: { imageUrl: string | null };
   onStateChange?: (state: { imageUrl: string | null }) => void;
+  isActive?: boolean; // Whether this widget is currently focused
 }
 
-const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }) => {
+const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange, isActive = false }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(savedState?.imageUrl || null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -69,11 +70,11 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
     }
   };
 
-  // Handle paste events
+  // Handle paste events (only when this widget is active/focused)
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      // Only handle paste if this widget is focused or if there's no image yet
-      if (!containerRef.current?.contains(document.activeElement) && imageUrl) {
+      // Only handle paste if this widget is active/focused
+      if (!isActive) {
         return;
       }
 
@@ -95,7 +96,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [imageUrl]);
+  }, [isActive]);
 
   // Handle double-click to change image
   const handleDoubleClick = () => {
@@ -108,11 +109,11 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange }
     <div
       ref={containerRef}
       className={`w-full h-full rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 flex items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
-        isDragging 
-          ? 'bg-sage-100 dark:bg-sage-900/30' 
-          : imageUrl 
-          ? 'bg-warm-gray-100 dark:bg-warm-gray-800' 
-          : 'bg-warm-gray-200 dark:bg-warm-gray-700'
+        isDragging
+          ? 'bg-sage-100 dark:bg-sage-900/30'
+          : imageUrl
+          ? 'bg-soft-white/90 dark:bg-warm-gray-800/90'
+          : 'bg-warm-gray-200/90 dark:bg-warm-gray-700/90'
       }`}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}

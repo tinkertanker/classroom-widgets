@@ -34,6 +34,8 @@ function App() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
   const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
   const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
+  const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
+  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -110,7 +112,71 @@ function App() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [stickerMode]);
-  
+
+  // Global paste handler for creating image widgets when no widget is focused
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      // Don't handle if typing in input field or if any widget is focused
+      if (e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          focusedWidgetId !== null) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+
+            // Convert image to data URL
+            const reader = new FileReader();
+            reader.onload = (loadEvent) => {
+              const imageUrl = loadEvent.target?.result as string;
+
+              // Create new image widget at center of viewport
+              const scrollContainer = document.querySelector('.board-scroll-container') as HTMLElement;
+              if (scrollContainer) {
+                const scrollRect = scrollContainer.getBoundingClientRect();
+
+                // Calculate center position relative to the board
+                const centerX = (scrollContainer.scrollLeft + scrollRect.width / 2) / scale;
+                const centerY = (scrollContainer.scrollTop + scrollRect.height / 2) / scale;
+
+                // Get default size for image widget from registry
+                const imageWidgetConfig = widgetRegistry.get(WidgetType.IMAGE_DISPLAY);
+                const widgetWidth = imageWidgetConfig?.defaultSize.width || 400;
+                const widgetHeight = imageWidgetConfig?.defaultSize.height || 300;
+
+                // Adjust position to center the widget
+                const x = centerX - widgetWidth / 2;
+                const y = centerY - widgetHeight / 2;
+
+                // Create the image widget
+                const widgetId = addWidget(WidgetType.IMAGE_DISPLAY, { x, y });
+
+                // Set the image data in the widget's state
+                updateWidgetState(widgetId, { imageUrl });
+
+                // Set the new widget as focused
+                setFocusedWidget(widgetId);
+              }
+            };
+            reader.readAsDataURL(file);
+            break;
+          }
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [focusedWidgetId, scale, addWidget, updateWidgetState, setFocusedWidget]);
+
   // Prevent swipe navigation
   useEffect(() => {
     window.history.pushState(null, '', window.location.href);
