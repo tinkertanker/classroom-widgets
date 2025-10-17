@@ -42,6 +42,22 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
   }, [isOpen, voiceState, startRecording]);
 
+  // Handle keyboard shortcuts for closing voice interface
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      // Escape or Enter to close
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   // Handle transcript completion
   useEffect(() => {
     if (transcript && !isListening && !isProcessing) {
@@ -247,7 +263,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             Try saying things like:<br />
             "Start a timer for 5 minutes"<br />
             "Create a new poll"<br />
-            "Add eggs to the shopping list"
+            "Add eggs to the shopping list"<br />
+            <br />
+            Press <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Esc</kbd> or <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Enter</kbd> to close
           </p>
         </div>
       </div>
