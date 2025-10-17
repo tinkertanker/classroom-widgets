@@ -217,21 +217,21 @@ const Timer = () => {
 
                     {/* Light Mode Glow Filters */}
                     <filter id="lightModeGlow" x="-200%" y="-200%" width="500%" height="500%">
-                      <feGaussianBlur stdDeviation="3" result="blur"/>
-                      <feColorMatrix type="saturate" values="1.5" result="saturatedBlur"/>
+                      <feColorMatrix type="saturate" values="0.6" result="desaturatedSource"/>
+                      <feGaussianBlur in="desaturatedSource" stdDeviation="3" result="blur"/>
                       <feMerge>
-                        <feMergeNode in="saturatedBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="desaturatedSource"/>
                       </feMerge>
                     </filter>
                     <filter id="lightModePulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
-                      <feGaussianBlur stdDeviation="3" result="blur">
+                      <feColorMatrix type="saturate" values="0.6" result="desaturatedSource"/>
+                      <feGaussianBlur in="desaturatedSource" stdDeviation="3" result="blur">
                         <animate attributeName="stdDeviation" values="3;5;3" dur="2s" repeatCount="indefinite"/>
                       </feGaussianBlur>
-                      <feColorMatrix type="saturate" values="1.5" result="saturatedBlur"/>
                       <feMerge>
-                        <feMergeNode in="saturatedBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
+                        <feMergeNode in="blur"/>
+                        <feMergeNode in="desaturatedSource"/>
                       </feMerge>
                     </filter>
 
