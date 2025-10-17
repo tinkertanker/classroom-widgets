@@ -15,6 +15,10 @@ interface TimerControlBarProps {
   onRestart: () => void;
   disabled?: boolean;
   className?: string;
+  soundMode?: 'quiet' | 'short' | 'long';
+  onSoundModeToggle?: () => void;
+  soundModeIcon?: React.ReactNode;
+  soundModeTitle?: string;
 }
 
 /**
@@ -32,7 +36,11 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
   onResume,
   onRestart,
   disabled = false,
-  className
+  className,
+  soundMode,
+  onSoundModeToggle,
+  soundModeIcon,
+  soundModeTitle
 }) => {
   return (
     <WidgetControlBar className={className}>
@@ -80,6 +88,18 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
             {'\u21BB'} Restart
           </button>
         </div>
+      )}
+
+      {/* Sound mode toggle button */}
+      {onSoundModeToggle && soundModeIcon && (
+        <button
+          onClick={onSoundModeToggle}
+          disabled={disabled}
+          className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
+          title={soundModeTitle || 'Toggle sound mode'}
+        >
+          {soundModeIcon}
+        </button>
       )}
     </WidgetControlBar>
   );

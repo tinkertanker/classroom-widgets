@@ -246,7 +246,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   return (
     <>
       <div ref={containerRef} className={widgetWrapper}>
-        <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg flex-1 overflow-y-auto px-4 pt-4">
+        <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg flex-1 overflow-y-auto px-4 pt-4">
           <div className="pt-0">
             <DndContext
               sensors={sensors}

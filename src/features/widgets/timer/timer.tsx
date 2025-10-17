@@ -1,5 +1,6 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useTheme } from "../../../shared/hooks/useWorkspace";
+import { FaVolumeXmark, FaVolumeLow, FaVolumeHigh } from 'react-icons/fa6';
 import { 
   useTimeSegmentEditor, 
   useTimerCountdown, 
@@ -14,36 +15,82 @@ import timerEndSound1 from "./timer-end.mp3";
 import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
+type SoundMode = 'quiet' | 'short' | 'long';
+
 const Timer = () => {
   const { isDark } = useTheme();
+  const [soundMode, setSoundMode] = useState<SoundMode>('short');
 
   // Timer audio hooks for all three sounds
-  const { playSound: playSound1 } = useTimerAudio({ 
+  const { playSound: playSound1 } = useTimerAudio({
     soundUrl: timerEndSound1,
-    enabled: true 
-  });
-  
-  const { playSound: playSound2 } = useTimerAudio({ 
-    soundUrl: timerEndSound2,
-    enabled: true 
-  });
-  
-  const { playSound: playSound3 } = useTimerAudio({ 
-    soundUrl: timerEndSound3,
-    enabled: true 
+    enabled: soundMode !== 'quiet'
   });
 
-  // Randomly play one of the three sounds
-  const playRandomSound = useCallback(() => {
-    const randomChoice = Math.random();
-    if (randomChoice < 0.33) {
-      playSound1();
-    } else if (randomChoice < 0.67) {
-      playSound2();
-    } else {
-      playSound3();
+  const { playSound: playSound2 } = useTimerAudio({
+    soundUrl: timerEndSound2,
+    enabled: soundMode === 'short'
+  });
+
+  const { playSound: playSound3 } = useTimerAudio({
+    soundUrl: timerEndSound3,
+    enabled: soundMode === 'long'
+  });
+
+  // Play sound based on selected mode
+  const playTimerSound = useCallback(() => {
+    switch (soundMode) {
+      case 'quiet':
+        // No sound
+        break;
+      case 'short':
+        playSound2();
+        break;
+      case 'long':
+        playSound3();
+        break;
     }
-  }, [playSound1, playSound2, playSound3]);
+  }, [soundMode, playSound2, playSound3]);
+
+  // Cycle through sound modes
+  const cycleSoundMode = useCallback(() => {
+    setSoundMode(prev => {
+      switch (prev) {
+        case 'quiet':
+          return 'short';
+        case 'short':
+          return 'long';
+        case 'long':
+          return 'quiet';
+        default:
+          return 'short';
+      }
+    });
+  }, []);
+
+  // Get sound mode icon
+  const getSoundModeIcon = () => {
+    switch (soundMode) {
+      case 'quiet':
+        return <FaVolumeXmark className="text-xs" />;
+      case 'short':
+        return <FaVolumeLow className="text-xs" />;
+      case 'long':
+        return <FaVolumeHigh className="text-xs" />;
+    }
+  };
+
+  // Get sound mode title
+  const getSoundModeTitle = () => {
+    switch (soundMode) {
+      case 'quiet':
+        return 'Sound: Off (Click to cycle: Short → Long → Off)';
+      case 'short':
+        return 'Sound: Short (Click to cycle: Long → Off → Short)';
+      case 'long':
+        return 'Sound: Long (Click to cycle: Off → Short → Long)';
+    }
+  };
 
   // Store segment editor update function in ref to avoid circular dependency
   const segmentEditorUpdateRef = React.useRef<((time: number) => void) | null>(null);
@@ -62,7 +109,7 @@ const Timer = () => {
     resumeTimer,
     restartTimer
   } = useTimerCountdown({
-    onTimeUp: playRandomSound,
+    onTimeUp: playTimerSound,
     onTick: (newTime) => {
       // Update the time segment editor when time changes
       segmentEditorUpdateRef.current?.(newTime);
@@ -165,7 +212,7 @@ const Timer = () => {
           {/* Content area - fills remaining vertical space */}
           <div className="flex-1 flex items-center justify-center relative">
             {/* Content area with card background - full coverage */}
-            <div className="w-full h-full bg-soft-white dark:bg-warm-gray-800 rounded-t-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
+            <div className="w-full h-full bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
               <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
                   {/* Gradient definition for rainbow arc */}
                   <defs>
@@ -371,6 +418,10 @@ const Timer = () => {
           onPause={pauseTimer}
           onResume={handleResume}
           onRestart={handleRestart}
+          soundMode={soundMode}
+          onSoundModeToggle={cycleSoundMode}
+          soundModeIcon={getSoundModeIcon()}
+          soundModeTitle={getSoundModeTitle()}
         />
       </div>
     </>

@@ -50,7 +50,7 @@ const Wordle: React.FC<WordleProps> = ({ savedState, onStateChange }) => {
   }, [gameStatus, addLetter, removeLetter, submitGuess]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700">
+    <div className="w-full h-full flex flex-col bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700">
       {/* Header */}
       <div className="p-3 border-b border-warm-gray-200 dark:border-warm-gray-700">
         <div className="flex items-center justify-between">

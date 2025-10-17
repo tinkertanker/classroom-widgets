@@ -78,7 +78,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
+    <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
       {!url ? (
         // Initial state - show input form
         <form onSubmit={handleSubmit} className="flex flex-col h-full">

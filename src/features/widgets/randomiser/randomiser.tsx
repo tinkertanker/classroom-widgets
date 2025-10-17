@@ -180,7 +180,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
 
   return (
     <div className={widgetWrapper} ref={widgetRef}>
-      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
         {/* Main content area */}
         <div className="flex-1 overflow-hidden p-4">
           <div

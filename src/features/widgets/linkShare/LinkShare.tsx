@@ -142,7 +142,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   // Active state
   return (
     <div className={widgetWrapper}>
-      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
         {/* Statistics - Floating top-right */}
         <div className="absolute top-3 right-3 z-20">
           <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
