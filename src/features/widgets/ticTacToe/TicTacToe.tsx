@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cn, buttons, widgetControls, widgetWrapper } from '../../../shared/utils/styles';
 
 interface TicTacToeProps {
   savedState?: GameState;
@@ -104,78 +105,80 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
-      {/* Score Display */}
-      <div className="flex justify-center mb-2">
-        <div className="flex items-center gap-4 text-sm font-medium">
-          <div className="flex items-center gap-1">
-            <span className="text-sage-600 dark:text-sage-400 text-lg">X</span>
-            <span className="text-warm-gray-600 dark:text-warm-gray-400">{gameState.score.X}</span>
-          </div>
-          <span className="text-warm-gray-400 dark:text-warm-gray-600 text-xs">vs</span>
-          <div className="flex items-center gap-1">
-            <span className="text-warm-gray-600 dark:text-warm-gray-400">{gameState.score.O}</span>
-            <span className="text-terracotta-600 dark:text-terracotta-400 text-lg">O</span>
+    <div className={widgetWrapper}>
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
+        {/* Score Display */}
+        <div className="flex justify-center mb-2">
+          <div className="flex items-center gap-4 text-sm font-medium">
+            <div className="flex items-center gap-1">
+              <span className="text-sage-600 dark:text-sage-400 text-lg">X</span>
+              <span className="text-warm-gray-600 dark:text-warm-gray-400">{gameState.score.X}</span>
+            </div>
+            <span className="text-warm-gray-400 dark:text-warm-gray-600 text-xs">vs</span>
+            <div className="flex items-center gap-1">
+              <span className="text-warm-gray-600 dark:text-warm-gray-400">{gameState.score.O}</span>
+              <span className="text-terracotta-600 dark:text-terracotta-400 text-lg">O</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Game Status */}
-      <div className="text-center mb-2 h-6">
-        {gameState.winner && (
-          <div className="text-base font-medium">
-            <span className={getCellStyle(gameState.winner)}>{gameState.winner}</span>
-            <span className="text-warm-gray-600 dark:text-warm-gray-400"> wins!</span>
-          </div>
-        )}
-        {gameState.isDraw && !gameState.winner && (
-          <div className="text-base font-medium text-warm-gray-600 dark:text-warm-gray-400">
-            It's a draw!
-          </div>
-        )}
-        {!gameState.winner && !gameState.isDraw && (
-          <div className="text-xs text-warm-gray-600 dark:text-warm-gray-400">
-            Current player: <span className={getCellStyle(gameState.currentPlayer)}>{gameState.currentPlayer}</span>
-          </div>
-        )}
-      </div>
+        {/* Game Status */}
+        <div className="text-center mb-2 h-6">
+          {gameState.winner && (
+            <div className="text-base font-medium">
+              <span className={getCellStyle(gameState.winner)}>{gameState.winner}</span>
+              <span className="text-warm-gray-600 dark:text-warm-gray-400"> wins!</span>
+            </div>
+          )}
+          {gameState.isDraw && !gameState.winner && (
+            <div className="text-base font-medium text-warm-gray-600 dark:text-warm-gray-400">
+              It's a draw!
+            </div>
+          )}
+          {!gameState.winner && !gameState.isDraw && (
+            <div className="text-xs text-warm-gray-600 dark:text-warm-gray-400">
+              Current player: <span className={getCellStyle(gameState.currentPlayer)}>{gameState.currentPlayer}</span>
+            </div>
+          )}
+        </div>
 
-      {/* Game Board */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="grid grid-cols-3 gap-1 w-full max-w-[200px] aspect-square">
-          {gameState.board.map((value, index) => (
-            <button
-              key={index}
-              onClick={() => handleCellClick(index)}
-              className={`
-                aspect-square rounded font-bold text-2xl
-                transition-all duration-200
-                ${value 
-                  ? 'bg-warm-gray-100 dark:bg-warm-gray-700 cursor-default' 
-                  : 'bg-warm-gray-50 dark:bg-warm-gray-750 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 cursor-pointer'
-                }
-                ${getCellStyle(value)}
-                border border-warm-gray-300 dark:border-warm-gray-600
-              `}
-              disabled={!!value || !!gameState.winner || gameState.isDraw}
-            >
-              {value}
-            </button>
-          ))}
+        {/* Game Board */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="grid grid-cols-3 gap-1 w-full max-w-[200px] aspect-square">
+            {gameState.board.map((value, index) => (
+              <button
+                key={index}
+                onClick={() => handleCellClick(index)}
+                className={`
+                  aspect-square rounded font-bold text-2xl
+                  transition-all duration-200
+                  ${value 
+                    ? 'bg-warm-gray-100 dark:bg-warm-gray-700 cursor-default' 
+                    : 'bg-warm-gray-50 dark:bg-warm-gray-750 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 cursor-pointer'
+                  }
+                  ${getCellStyle(value)}
+                  border border-warm-gray-300 dark:border-warm-gray-600
+                `}
+                disabled={!!value || !!gameState.winner || gameState.isDraw}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Control Buttons */}
-      <div className="flex justify-center gap-2 mt-2">
+      <div className={cn(widgetControls, "gap-2", "justify-between")}>
         <button
           onClick={resetGame}
-          className="px-3 py-1.5 text-sm bg-sage-500 hover:bg-sage-600 text-white rounded transition-colors duration-200"
+          className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
         >
           New Game
         </button>
         <button
           onClick={resetScore}
-          className="px-3 py-1.5 text-sm bg-warm-gray-300 hover:bg-warm-gray-400 dark:bg-warm-gray-600 dark:hover:bg-warm-gray-500 text-warm-gray-700 dark:text-warm-gray-200 rounded transition-colors duration-200"
+          className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
         >
           Reset Score
         </button>

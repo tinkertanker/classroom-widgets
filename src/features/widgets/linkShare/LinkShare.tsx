@@ -4,7 +4,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { buttons, widgetControls, cn } from '../../../shared/utils/styles';
+import { buttons, widgetControls, widgetWrapper, cn } from '../../../shared/utils/styles';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
 
@@ -141,78 +141,79 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
-      {/* Statistics - Floating top-right */}
-      <div className="absolute top-3 right-3 z-20">
-        <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-          {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
-        </span>
-      </div>
-
-      {/* Submissions list */}
-      <div className="flex-1 overflow-y-auto space-y-2 relative p-4 pt-8">
-        {/* Paused overlay */}
-        {!isWidgetActive && session.isConnected && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-            <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
-              <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Link sharing is paused</p>
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
-            </div>
-          </div>
-        )}
-        
-        {submissions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-warm-gray-400 dark:text-warm-gray-600">
-            <FaLink className="text-4xl mb-2" />
-            <p className="text-sm">Waiting for student submissions...</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {submissions.map((submission) => (
-              <div
-                key={submission.id}
-                className="bg-white dark:bg-warm-gray-700 rounded-lg p-3 shadow-sm border border-warm-gray-200 dark:border-warm-gray-600"
-              >
-                <div className="flex justify-between items-start gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
-                      {submission.studentName || 'Anonymous'}
-                    </p>
-                    <a
-                      href={submission.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 break-all inline-flex items-center gap-1 mt-1"
-                    >
-                      {submission.link}
-                      <FaArrowUpRightFromSquare className="text-[10px] flex-shrink-0" />
-                    </a>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteSubmission(submission.id)}
-                    className="text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors p-1"
-                    title="Delete submission"
-                  >
-                    <FaTrash className="text-xs" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      
-      {/* Connection status for debugging */}
-      {!session.isConnected && (
-        <div className="absolute bottom-2 right-2 text-xs text-warm-gray-400">
-          Disconnected
+    <div className={widgetWrapper}>
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+        {/* Statistics - Floating top-right */}
+        <div className="absolute top-3 right-3 z-20">
+          <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+            {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
+          </span>
         </div>
-      )}
+
+        {/* Submissions list */}
+        <div className="flex-1 overflow-y-auto space-y-2 relative p-4 pt-8">
+          {/* Paused overlay */}
+          {!isWidgetActive && session.isConnected && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+              <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
+                <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Link sharing is paused</p>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+              </div>
+            </div>
+          )}
+
+          {submissions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-warm-gray-400 dark:text-warm-gray-600">
+              <FaLink className="text-4xl mb-2" />
+              <p className="text-sm">Waiting for student submissions...</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {submissions.map((submission) => (
+                <div
+                  key={submission.id}
+                  className="bg-white dark:bg-warm-gray-700 rounded-lg p-3 shadow-sm border border-warm-gray-200 dark:border-warm-gray-600"
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
+                        {submission.studentName || 'Anonymous'}
+                      </p>
+                      <a
+                        href={submission.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 break-all inline-flex items-center gap-1 mt-1"
+                      >
+                        {submission.link}
+                        <FaArrowUpRightFromSquare className="text-[10px] flex-shrink-0" />
+                      </a>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteSubmission(submission.id)}
+                      className="text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors p-1"
+                      title="Delete submission"
+                    >
+                      <FaTrash className="text-xs" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Connection status for debugging */}
+        {!session.isConnected && (
+          <div className="absolute bottom-2 right-2 text-xs text-warm-gray-400">
+            Disconnected
+          </div>
+        )}
+      </div>
 
       {/* Bottom controls */}
-      <div className={cn(widgetControls, "justify-between")}>
-        <div className="flex gap-2">
-          <button
+      <div className={cn(widgetControls, "gap-2", "justify-between")}>
+        <button
             onClick={handleToggleActive}
             disabled={!session.isConnected}
             className={`${
@@ -232,11 +233,10 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
               </>
             )}
           </button>
-        </div>
         {submissions.length > 0 && (
           <button
             onClick={handleClearAll}
-            className="text-sm text-warm-gray-500 hover:text-dusty-rose-600 dark:text-warm-gray-400 dark:hover:text-dusty-rose-400 transition-colors px-2 py-1"
+            className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
           >
             Clear all
           </button>
