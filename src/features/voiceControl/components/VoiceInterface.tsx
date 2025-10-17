@@ -42,25 +42,38 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
   }, [isOpen, voiceState, startRecording]);
 
-  // Handle keyboard shortcuts for closing voice interface
+  // Handle keyboard shortcuts for voice interface
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
 
-      // Escape or Enter to close
-      if (e.key === 'Escape' || e.key === 'Enter') {
+      // Escape to close immediately
+      if (e.key === 'Escape') {
         e.preventDefault();
         handleClose();
+        return;
+      }
+
+      // Enter to stop recording and process
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (isListening) {
+          // Stop recording when Enter is pressed
+          stopRecording();
+        } else if (voiceState === 'success' || voiceState === 'error') {
+          // Close interface if command is complete
+          handleClose();
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, isListening, voiceState, stopRecording]);
 
-  // Handle transcript completion
+  // Handle transcript completion when recording stops
   useEffect(() => {
-    if (transcript && !isListening && !isProcessing) {
+    if (transcript && !isListening && !isProcessing && voiceState !== 'idle') {
       setVoiceState('processing');
       onTranscriptComplete(transcript)
         .then((response) => {
@@ -79,7 +92,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           console.error('Command processing failed:', err);
         });
     }
-  }, [transcript, isListening, isProcessing, onTranscriptComplete]);
+  }, [transcript, isListening, isProcessing, onTranscriptComplete, voiceState]);
 
   // Handle recording state changes
   useEffect(() => {
@@ -137,7 +150,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       case 'activating':
         return 'Activating voice control...';
       case 'listening':
-        return 'Listening... Speak now!';
+        return 'Listening... Speak now! (Press Enter when done)';
       case 'processing':
         return 'Processing your command...';
       case 'success':
@@ -237,7 +250,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
             >
               <FaMicrophoneSlash />
-              Stop Recording
+              Done (Press Enter)
             </button>
           )}
 
@@ -265,7 +278,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             "Create a new poll"<br />
             "Add eggs to the shopping list"<br />
             <br />
-            Press <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Esc</kbd> or <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Enter</kbd> to close
+            Press <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Enter</kbd> when done speaking<br />
+            Press <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Esc</kbd> to cancel
           </p>
         </div>
       </div>

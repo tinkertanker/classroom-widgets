@@ -40,8 +40,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 3;
 
@@ -57,15 +57,16 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
     recognition.onresult = (event: any) => {
       console.log('Speech recognition result:', event);
-      const result = event.results[0][0];
+      const result = event.results[event.results.length - 1][0]; // Get latest result
       const transcript = result.transcript;
       const confidence = result.confidence;
 
+      // Update with latest transcript (but keep listening)
       setState(prev => ({
         ...prev,
         transcript,
         confidence,
-        isListening: false,
+        isListening: true, // Keep listening until manually stopped
         isProcessing: false
       }));
 
