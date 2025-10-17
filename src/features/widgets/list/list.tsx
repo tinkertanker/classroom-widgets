@@ -1,7 +1,6 @@
 import { useRef, useCallback } from "react";
 import * as React from "react";
-import { 
-  FaPlus,
+import {
   FaBullseye,
   FaTriangleExclamation,
   FaBan,
@@ -18,7 +17,8 @@ import {
   useResponsiveSize,
   useListKeyboardHandlers
 } from './hooks';
-import { cn, getStatusColor, transitions, widgetContainer, buttons, text, widgetControls } from '../../../shared/utils/styles';
+import { cn, getStatusColor, transitions, widgetWrapper, buttons, text } from '../../../shared/utils/styles';
+import { ListControlBar } from '../shared/components';
 
 interface ListItem {
   id: string;
@@ -245,8 +245,8 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
 
   return (
     <>
-      <div ref={containerRef} className={widgetContainer}>
-        <div className="flex-1 overflow-y-auto px-4 pt-4">
+      <div ref={containerRef} className={widgetWrapper}>
+        <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg flex-1 overflow-y-auto px-4 pt-4">
           <div className="pt-0">
             <DndContext
               sensors={sensors}
@@ -281,19 +281,10 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
             </DndContext>
           </div>
         </div>
-        <div className={widgetControls}>
-          <button
-            className={cn(
-              buttons.primary,
-              "flex items-center gap-1.5",
-              isLarge ? "text-base py-2 px-3" : "text-sm py-1.5 px-3"
-            )}
-            onClick={handleAddInput}
-          >
-            <FaPlus className={isLarge ? "text-sm" : "text-xs"} />
-            Add Item
-          </button>
-        </div>
+        <ListControlBar
+          onAddItem={handleAddInput}
+          isLarge={isLarge}
+        />
       </div>
     </>
   );

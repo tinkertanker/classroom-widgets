@@ -6,7 +6,8 @@ import {
   useTimerAnimation, 
   useTimerAudio 
 } from "./hooks";
-import { cn, widgetWrapper, widgetContainer, widgetControls, buttons, text, transitions, backgrounds } from '../../../shared/utils/styles';
+import { cn, widgetWrapper, widgetContainer, text, transitions, backgrounds } from '../../../shared/utils/styles';
+import { TimerControlBar } from '../shared/components';
 import { HamsterAnimation } from './components/HamsterAnimation';
 import { TimeDisplay } from './components/TimeDisplay';
 import timerEndSound1 from "./timer-end.mp3";
@@ -359,49 +360,18 @@ const Timer = () => {
             </div>
           </div>
 
-        {/* Control bar emerging from below */}
-        <div className={cn(widgetControls, "gap-2 justify-between")}>
-          {timerFinished ? (
-            <button
-              className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-              onClick={handleRestart}
-            >
-              {'\u21BB'} Restart
-            </button>
-          ) : showStartButton ? (
-            <button
-              className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-              onClick={handleStart}
-            >
-              {'\u25B6'} Start
-            </button>
-          ) : (
-            <>
-              {showPauseButton && (
-                <button
-                  className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-                  onClick={pauseTimer}
-                >
-                  {'\u23F8'} Pause
-                </button>
-              )}
-              {showResumeButton && (
-                <button
-                  className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-                  onClick={handleResume}
-                >
-                  {'\u25B6'} Resume
-                </button>
-              )}
-              <button
-                className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
-                onClick={handleRestart}
-              >
-                {'\u21BB'} Restart
-              </button>
-            </>
-          )}
-        </div>
+        {/* Control bar */}
+        <TimerControlBar
+          timerFinished={timerFinished}
+          showStartButton={showStartButton}
+          showPauseButton={showPauseButton}
+          showResumeButton={showResumeButton}
+          isRunning={isRunning}
+          onStart={handleStart}
+          onPause={pauseTimer}
+          onResume={handleResume}
+          onRestart={handleRestart}
+        />
       </div>
     </>
   );

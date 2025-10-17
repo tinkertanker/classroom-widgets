@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaPlay, FaPause, FaGauge } from 'react-icons/fa6';
+import { FaGauge } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { buttons, widgetControls, cn } from '../../../shared/utils/styles';
+import { widgetWrapper, cn } from '../../../shared/utils/styles';
+import { NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
 
@@ -143,92 +144,75 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   
   // Active state
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
-      {/* Statistics - Floating top-right */}
-      <div className="absolute top-3 right-3 z-20">
-        <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-          {feedbackData.totalResponses} response{feedbackData.totalResponses !== 1 ? 's' : ''}
-        </span>
-      </div>
+    <div className={widgetWrapper}>
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+        {/* Statistics - Floating top-right */}
+        <div className="absolute top-3 right-3 z-20">
+          <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+            {feedbackData.totalResponses} response{feedbackData.totalResponses !== 1 ? 's' : ''}
+          </span>
+        </div>
 
-      <div className="flex-1 flex flex-col relative p-4 pt-8">
-        {/* Paused overlay */}
-        {!isWidgetActive && session.isConnected && (
-          <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-            <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
-              <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Feedback is paused</p>
-              <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+        <div className="flex-1 flex flex-col relative p-4 pt-8">
+          {/* Paused overlay */}
+          {!isWidgetActive && session.isConnected && (
+            <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
+              <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
+                <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Feedback is paused</p>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex items-end justify-around gap-1 pb-1">
+              {feedbackData.understanding.map((count, index) => {
+                const maxCount = Math.max(...feedbackData.understanding, 1);
+                const percentage = (count / maxCount) * 100 || 0;
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center">
+                    <div className="relative w-full h-32 flex items-end">
+                      <div
+                        className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
+                        style={{ height: `${percentage}%`, minHeight: '1px' }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Descriptive labels */}
+            <div className="flex justify-between px-4 text-xs text-warm-gray-500">
+              <span>Too Easy</span>
+              <span>Easy</span>
+              <span>Just Right</span>
+              <span>Hard</span>
+              <span>Too Hard</span>
             </div>
           </div>
-        )}
-        
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 flex items-end justify-around gap-1 pb-1">
-            {feedbackData.understanding.map((count, index) => {
-              const maxCount = Math.max(...feedbackData.understanding, 1);
-              const percentage = (count / maxCount) * 100 || 0;
-              return (
-                <div key={index} className="flex-1 flex flex-col items-center">
-                  <div className="relative w-full h-32 flex items-end">
-                    <div
-                      className={`absolute bottom-0 w-full bg-gradient-to-t ${barColors[index]} rounded-t-md transition-all duration-300`}
-                      style={{ height: `${percentage}%`, minHeight: '1px' }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {/* Descriptive labels */}
-          <div className="flex justify-between px-4 text-xs text-warm-gray-500">
-            <span>Too Easy</span>
-            <span>Easy</span>
-            <span>Just Right</span>
-            <span>Hard</span>
-            <span>Too Hard</span>
-          </div>
         </div>
 
-      </div>
-      
-      {/* Connection status for debugging */}
-      {!session.isConnected && (
-        <div className="absolute bottom-2 right-2 text-xs text-warm-gray-400">
-          Disconnected
-        </div>
-      )}
-
-      {/* Bottom controls */}
-      <div className={cn(widgetControls, "justify-between")}>
-        <button
-          onClick={handleToggleActive}
-          disabled={!session.isConnected}
-          className={`${
-            isWidgetActive ? buttons.danger : buttons.primary
-          } px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
-          title={isWidgetActive ? "Pause feedback" : "Start feedback"}
-        >
-          {isWidgetActive ? (
-            <>
-              <FaPause className="text-xs" />
-              Pause
-            </>
-          ) : (
-            <>
-              <FaPlay className="text-xs" />
-              Start
-            </>
-          )}
-        </button>
-        {feedbackData.totalResponses > 0 && (
-          <button
-            onClick={handleReset}
-            className="text-sm text-warm-gray-500 hover:text-dusty-rose-600 dark:text-warm-gray-400 dark:hover:text-dusty-rose-400 transition-colors px-2 py-1"
-          >
-            Clear all
-          </button>
+        {/* Connection status for debugging */}
+        {!session.isConnected && (
+          <div className="absolute bottom-2 right-2 text-xs text-warm-gray-400">
+            Disconnected
+          </div>
         )}
       </div>
+
+      {/* Control bar */}
+      <NetworkedWidgetControlBar
+        isActive={isWidgetActive}
+        isConnected={session.isConnected}
+        onToggleActive={handleToggleActive}
+        onClear={handleReset}
+        clearCount={feedbackData.totalResponses}
+        clearLabel="Clear all"
+        activeLabel="Pause feedback"
+        inactiveLabel="Start feedback"
+        showSettings={false}
+        clearVariant="clear"
+      />
     </div>
   );
 }

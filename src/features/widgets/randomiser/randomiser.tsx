@@ -5,7 +5,7 @@ import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../../contexts/ModalContext";
 import { useConfetti } from "../../../contexts/ConfettiContext";
 import { RandomiserProps } from "./types";
-import { FaDice, FaRotate, FaGear } from 'react-icons/fa6';
+import { FaGear } from 'react-icons/fa6';
 import celebrateSoundFile from "./celebrate.mp3";
 import {
   useChoiceManager,
@@ -13,7 +13,8 @@ import {
   useRandomiserAudio,
   useResponsiveHeight
 } from './hooks';
-import { cn, buttons, widgetControls } from '../../../shared/utils/styles';
+import { cn, buttons, widgetWrapper } from '../../../shared/utils/styles';
+import { RandomiserControlBar } from '../shared/components';
 
 function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
@@ -178,19 +179,15 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   }, [choices, result]);
 
   return (
-    <>
-      <div
-        ref={widgetRef}
-        className="rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative"
-        id="jason"
-      >
-        {/* Content area - background will be applied to the inner div */}
+    <div className={widgetWrapper} ref={widgetRef}>
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+        {/* Main content area */}
         <div className="flex-1 overflow-hidden p-4">
           <div
-            className={`w-full h-full p-0 rounded transition-colors duration-200 cursor-pointer ${
+            className={`w-full h-full rounded transition-colors duration-200 cursor-pointer ${
               displayChoices.length > 0
-                ? 'bg-soft-white dark:bg-warm-gray-800 hover:bg-white/10'
-                : 'bg-soft-white dark:bg-warm-gray-800 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
+                ? 'hover:bg-white/10'
+                : 'hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600'
             }`}
             onDoubleClick={() => {
               if (!isLoading) {
@@ -238,55 +235,18 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
             </div>
           </div>
         </div>
-        {buttonSettings === "normal" ? (
-          <div className={cn(widgetControls, "justify-between")}>
-            <button
-              className={cn(buttons.primary, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5")}
-              onClick={handleRandomise}
-              disabled={isLoading}
-            >
-              <FaDice className="text-xs" />
-              Randomise!!
-            </button>
-            <button
-              className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
-              onClick={openSettings}
-              title="Settings"
-            >
-              <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
-            </button>
-          </div>
-        ) : buttonSettings === "result" ? (
-          <div className={cn(widgetControls, "justify-between")}>
-            <div className="flex items-center gap-2">
-              <button
-                className={cn(buttons.danger, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed")}
-                onClick={handleRemoveResult}
-                disabled={removedChoices.includes(result)}
-              >
-                {removedChoices.includes(result) ? "Already removed" : "Remove option"}
-              </button>
-              <button
-                disabled={isLoading}
-                ref={initialResultFocus}
-                className={cn(buttons.primary, "px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5")}
-                onClick={handleRandomise}
-              >
-                <FaRotate className="text-xs" />
-                Again!
-              </button>
-            </div>
-            <button
-              className="p-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
-              onClick={openSettings}
-              title="Settings"
-            >
-              <FaGear className="text-warm-gray-600 dark:text-warm-gray-400 hover:text-warm-gray-700 dark:hover:text-warm-gray-300 text-sm" />
-            </button>
-          </div>
-        ) : null}
       </div>
-    </>
+      <RandomiserControlBar
+        buttonSettings={buttonSettings}
+        isSpinning={isSpinning}
+        isLoading={isLoading}
+        result={result}
+        removedChoices={removedChoices}
+        onRandomise={handleRandomise}
+        onRemoveResult={handleRemoveResult}
+        onSettings={openSettings}
+      />
+    </div>
   );
 }
 

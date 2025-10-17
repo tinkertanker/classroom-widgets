@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaPlay, FaPause, FaGear, FaArrowRotateLeft, FaChartColumn } from 'react-icons/fa6';
+import { FaChartColumn } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { buttons, widgetControls, widgetWrapper, cn } from '../../../shared/utils/styles';
+import { widgetWrapper, cn } from '../../../shared/utils/styles';
+import { NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
 import { getPollColor } from '../../../shared/constants/pollColors';
@@ -324,7 +325,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   // Active state
   return (
     <div className={widgetWrapper}>
-      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      <div className="bg-soft-white dark:bg-warm-gray-800 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
         {/* Statistics - Floating top-right */}
         <div className="absolute top-3 right-3 z-20">
           <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
@@ -333,7 +334,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         </div>
 
         {/* Poll content */}
-        <div className="flex-1 flex flex-col relative p-4 pt-8 pb-16">
+        <div className="flex-1 flex flex-col relative p-4 pt-8">
           {/* Paused overlay */}
           {!isWidgetActive && session.isConnected && (
             <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
@@ -403,47 +404,20 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         )}
       </div>
 
-      {/* Control bar emerging from below */}
-      <div className={cn(widgetControls, "justify-between")}>
-        <div className="flex gap-2">
-          <button
-            onClick={handleToggleActive}
-            disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
-            className={`${
-              isWidgetActive ? buttons.danger : buttons.primary
-            } px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5`}
-            title={isWidgetActive ? "Pause poll" : "Start poll"}
-          >
-            {isWidgetActive ? (
-              <>
-                <FaPause className="text-xs" />
-                Pause
-              </>
-            ) : (
-              <>
-                <FaPlay className="text-xs" />
-                Start
-              </>
-            )}
-          </button>
-          {results.totalVotes > 0 && (
-            <button
-              onClick={resetVotes}
-              className={`${buttons.secondary} px-3 py-1.5 text-sm`}
-              title="Reset votes"
-            >
-              <FaArrowRotateLeft className="text-xs" />
-            </button>
-          )}
-        </div>
-        <button
-          onClick={openSettings}
-          className="p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors"
-          title="Settings"
-        >
-          <FaGear className="text-base" />
-        </button>
-      </div>
+      {/* Control bar */}
+      <NetworkedWidgetControlBar
+        isActive={isWidgetActive}
+        isConnected={session.isConnected}
+        onToggleActive={handleToggleActive}
+        onSettings={openSettings}
+        onClear={resetVotes}
+        clearCount={results.totalVotes}
+        clearLabel="Reset votes"
+        activeLabel="Pause poll"
+        inactiveLabel="Start poll"
+        disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
+        clearVariant="reset"
+      />
     </div>
   );
 }
