@@ -1,4 +1,5 @@
 import React, { useCallback, useRef } from "react";
+import { useTheme } from "../../../shared/hooks/useWorkspace";
 import { 
   useTimeSegmentEditor, 
   useTimerCountdown, 
@@ -13,6 +14,8 @@ import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
 const Timer = () => {
+  const { isDark } = useTheme();
+
   // Timer audio hooks for all three sounds
   const { playSound: playSound1 } = useTimerAudio({ 
     soundUrl: timerEndSound1,
@@ -196,24 +199,38 @@ const Timer = () => {
                       </feMerge>
                     </filter>
 
-                    {/* Gentle animated glow filter */}
-                    <filter id="animatedGlow" x="-200%" y="-200%" width="500%" height="500%">
-                      <feGaussianBlur stdDeviation="5" result="blur1">
-                        <animate attributeName="stdDeviation"
-                          values="5;10;5"
-                          dur="2s"
-                          repeatCount="indefinite"/>
+                    {/* Pulsing glow for running state (Dark Mode) */}
+                    <filter id="pulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
+                      <feGaussianBlur stdDeviation="4" result="blur1">
+                        <animate attributeName="stdDeviation" values="4;8;4" dur="2s" repeatCount="indefinite"/>
                       </feGaussianBlur>
-                      <feGaussianBlur stdDeviation="8" result="blur2">
-                        <animate attributeName="stdDeviation"
-                          values="8;15;8"
-                          dur="2s"
-                          begin="0.5s"
-                          repeatCount="indefinite"/>
+                      <feGaussianBlur stdDeviation="2" result="blur2">
+                        <animate attributeName="stdDeviation" values="2;4;2" dur="2s" begin="0.5s" repeatCount="indefinite"/>
                       </feGaussianBlur>
+                      <feColorMatrix in="blur1" type="saturate" values="1.5" result="saturatedBlur"/>
                       <feMerge>
+                        <feMergeNode in="saturatedBlur"/>
                         <feMergeNode in="blur2"/>
-                        <feMergeNode in="blur1"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+
+                    {/* Light Mode Glow Filters */}
+                    <filter id="lightModeGlow" x="-200%" y="-200%" width="500%" height="500%">
+                      <feGaussianBlur stdDeviation="3" result="blur"/>
+                      <feColorMatrix type="saturate" values="1.5" result="saturatedBlur"/>
+                      <feMerge>
+                        <feMergeNode in="saturatedBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                      </feMerge>
+                    </filter>
+                    <filter id="lightModePulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
+                      <feGaussianBlur stdDeviation="3" result="blur">
+                        <animate attributeName="stdDeviation" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+                      </feGaussianBlur>
+                      <feColorMatrix type="saturate" values="1.5" result="saturatedBlur"/>
+                      <feMerge>
+                        <feMergeNode in="saturatedBlur"/>
                         <feMergeNode in="SourceGraphic"/>
                       </feMerge>
                     </filter>
@@ -246,7 +263,11 @@ const Timer = () => {
                     strokeLinecap="round"
                     strokeDasharray={2 * Math.PI * 45}
                     strokeDashoffset={(2 * Math.PI * 45) * (1 - progress)}
-                    filter="url(#enhancedRainbowGlow) url(#dropShadow)"
+                    filter={
+                      isRunning
+                        ? isDark ? "url(#pulsingGlow) url(#dropShadow)" : "url(#lightModePulsingGlow) url(#dropShadow)"
+                        : isDark ? "url(#enhancedRainbowGlow) url(#dropShadow)" : "url(#lightModeGlow) url(#dropShadow)"
+                    }
                     transform="rotate(-90 50 50)"
                   />
 
