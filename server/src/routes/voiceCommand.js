@@ -8,8 +8,8 @@ const router = express.Router();
 // TODO: Replace with actual LLM integration (OpenAI, Claude, etc.)
 class MockLLMService {
   async processVoiceCommand(transcript, context) {
-    console.log(`Processing voice command: "${transcript}"`);
-    console.log('Context:', context);
+    console.log(`🤖 MockLLMService processing: "${transcript}"`);
+    console.log('🗂️ Context provided:', context);
 
     const lowerTranscript = transcript.toLowerCase().trim();
 
@@ -106,7 +106,8 @@ class MockLLMService {
     for (const { pattern, action, parameters, message } of patterns) {
       const match = lowerTranscript.match(pattern);
       if (match) {
-        return {
+        console.log(`✅ Pattern matched: ${pattern.toString()} -> ${action}`);
+        const result = {
           command: {
             action,
             target: 'timer',
@@ -119,6 +120,8 @@ class MockLLMService {
             shouldSpeak: true
           }
         };
+        console.log('📋 Generated result:', result);
+        return result;
       }
     }
 
@@ -144,7 +147,8 @@ class MockLLMService {
     }
 
     // Unknown command
-    return {
+    console.log('❌ No patterns matched, returning unknown command response');
+    const result = {
       command: {
         action: 'UNKNOWN',
         target: 'unknown',
@@ -174,6 +178,8 @@ class MockLLMService {
         }
       ]
     };
+    console.log('📋 Generated unknown command result:', result);
+    return result;
   }
 }
 
@@ -182,27 +188,40 @@ const llmService = new MockLLMService();
 
 // POST /api/voice-command
 router.post('/', async (req, res) => {
+  const requestId = Math.random().toString(36).slice(2, 11);
+  const startTime = Date.now();
+
   try {
     const { transcript, context, userPreferences } = req.body;
 
+    console.log(`[${new Date().toISOString()}] [${requestId}] 📨 Received voice command request:`, JSON.stringify({
+      transcript,
+      context,
+      userPreferences
+    }, null, 2));
+
     // Validate request
     if (!transcript || typeof transcript !== 'string') {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ❌ Invalid request - missing or invalid transcript`);
       return res.status(400).json({
         error: 'Transcript is required and must be a string'
       });
     }
 
     // Process the command
+    console.log(`[${new Date().toISOString()}] [${requestId}] ⚙️ Processing voice command...`);
     const result = await llmService.processVoiceCommand(transcript, {
       context: context || {},
       userPreferences: userPreferences || {}
     });
 
-    console.log('Voice command processed:', result);
+    const processingTime = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Voice command processed in ${processingTime}ms:`, JSON.stringify(result, null, 2));
 
     res.json(result);
   } catch (error) {
-    console.error('Voice command processing error:', error);
+    const processingTime = Date.now() - startTime;
+    console.error(`[${new Date().toISOString()}] [${requestId}] 💥 Voice command processing error after ${processingTime}ms:`, error);
     res.status(500).json({
       error: 'Failed to process voice command',
       details: error.message

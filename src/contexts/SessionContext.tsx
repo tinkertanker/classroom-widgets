@@ -505,12 +505,45 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           resolve(true);
         } else {
           debug.error('[UnifiedSession] Failed to create room:', response.error);
-          setError(response.error || 'Failed to create room');
-          resolve(false);
+
+          // Check if the error is because the session doesn't exist
+          if (response.error === 'Session not found' || response.error === 'Invalid session or not host') {
+            debug.info('[UnifiedSession] Session not found, creating new session and retrying...');
+            setError('Session expired. Creating new session...'); // Clear any previous error and show informative message
+
+            // Create a new session and retry
+            createSession().then(newSessionCode => {
+              if (newSessionCode) {
+                debug.info('[UnifiedSession] New session created, retrying room creation...');
+                setError(null); // Clear the temporary message
+                // Retry the room creation with the new session code
+                socket.emit('session:createRoom', {
+                  sessionCode: newSessionCode,
+                  roomType,
+                  widgetId
+                }, (retryResponse: any) => {
+                  if (retryResponse.success) {
+                    resolve(true);
+                  } else {
+                    debug.error('[UnifiedSession] Failed to create room even with new session:', retryResponse.error);
+                    setError(retryResponse.error || 'Failed to create room');
+                    resolve(false);
+                  }
+                });
+              } else {
+                debug.error('[UnifiedSession] Failed to create new session');
+                setError('Failed to create session. Please refresh the page.');
+                resolve(false);
+              }
+            });
+          } else {
+            setError(response.error || 'Failed to create room');
+            resolve(false);
+          }
         }
       });
     });
-  }, [socket, isRecovering]);
+  }, [socket, isRecovering, createSession]);
   
   // Close room
   const closeRoom = useCallback((roomType: string, widgetId: string) => {

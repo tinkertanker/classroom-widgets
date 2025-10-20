@@ -1,4 +1,5 @@
 // Browser compatibility utilities for voice control
+// Simplified since annyang handles most cross-browser compatibility
 
 export interface BrowserInfo {
   name: string;
@@ -12,9 +13,9 @@ export const getBrowserInfo = (): BrowserInfo => {
   const userAgent = navigator.userAgent.toLowerCase();
 
   // Detect browser
-  const isFirefox = userAgent.includes('firefox');
   const isChrome = userAgent.includes('chrome') && !userAgent.includes('edg');
   const isEdge = userAgent.includes('edg/');
+  const isFirefox = userAgent.includes('firefox');
   const isSafari = userAgent.includes('safari') && !userAgent.includes('chrome');
 
   // Extract version
@@ -23,38 +24,8 @@ export const getBrowserInfo = (): BrowserInfo => {
     return match ? match[1] : 'unknown';
   };
 
-  if (isFirefox) {
-    const version = getVersion('firefox');
-    const versionNum = parseInt(version.split('.')[0]);
-
-    // Firefox 142+ disabled Web Speech API by default
-    if (versionNum >= 142) {
-      return {
-        name: 'Firefox',
-        version,
-        isSupported: false,
-        supportLevel: 'none' as const,
-        recommendations: [
-          'Enable Web Speech API in Firefox:',
-          '1. Type "about:config" in address bar',
-          '2. Search for "media.webspeech.recognition.enable"',
-          '3. Set the value to "true"',
-          '4. Restart Firefox',
-          '',
-          'Or use Chrome/Edge for best experience'
-        ]
-      };
-    }
-
-    return {
-      name: 'Firefox',
-      version,
-      isSupported: true,
-      supportLevel: 'full' as const,
-      recommendations: []
-    };
-  }
-
+  // Annyang supports Chrome, Edge, and Firefox progressively
+  // Safari has limited support
   if (isChrome) {
     return {
       name: 'Chrome',
@@ -75,16 +46,32 @@ export const getBrowserInfo = (): BrowserInfo => {
     };
   }
 
+  if (isFirefox) {
+    const version = getVersion('firefox');
+    return {
+      name: 'Firefox',
+      version,
+      isSupported: true,
+      supportLevel: 'full' as const,
+      recommendations: [
+        'For best voice control experience in Firefox:',
+        '1. Ensure microphone permissions are granted',
+        '2. Use HTTPS connection (required for voice recognition)',
+        '3. If needed, enable Web Speech API in about:config'
+      ]
+    };
+  }
+
   if (isSafari) {
     return {
       name: 'Safari',
       version: getVersion('version'),
       isSupported: false,
-      supportLevel: 'none' as const,
+      supportLevel: 'limited' as const,
       recommendations: [
-        'Safari does not support Web Speech API',
-        'Use Chrome, Edge, or Firefox for voice control',
-        'Consider using a different browser'
+        'Safari has limited voice control support',
+        'For full voice control features, use Chrome, Edge, or Firefox',
+        'Voice control may not work in Safari'
       ]
     };
   }
@@ -104,11 +91,7 @@ export const getBrowserInfo = (): BrowserInfo => {
 
 export const getBrowserSupportMessage = (browserInfo: BrowserInfo): string => {
   if (browserInfo.isSupported) {
-    return '';
-  }
-
-  if (browserInfo.name === 'Firefox') {
-    return browserInfo.recommendations.join('\n');
+    return browserInfo.recommendations.join('\n\n');
   }
 
   return browserInfo.recommendations.join('\n\n');

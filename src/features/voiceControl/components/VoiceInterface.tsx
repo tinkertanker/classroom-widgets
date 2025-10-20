@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaMicrophone, FaMicrophoneSlash, FaSpinner, FaVolumeXmark, FaCheck, FaTriangleExclamation } from 'react-icons/fa6';
 import { useVoiceRecording } from '../hooks/useVoiceRecording';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
@@ -19,9 +19,13 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 }) => {
   const [voiceState, setVoiceState] = useState<VoiceInterfaceState>('idle');
   const [parsedCommand, setParsedCommand] = useState<VoiceCommandResponse | null>(null);
+  const [processedTranscript, setProcessedTranscript] = useState<string | null>(null);
+  const isProcessingRef = useRef<boolean>(false); // Track if we're currently processing
+  const processedRequestIdsRef = useRef<Set<string>>(new Set()); // Track processed request IDs
   const {
     isListening,
     isProcessing,
+    isGathering,
     transcript,
     confidence,
     error,
@@ -37,7 +41,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       // Small delay for smooth animation
       setTimeout(() => {
         startRecording();
-        setVoiceState('listening');
+        // Don't set to 'listening' yet - wait for isGathering from the hook
       }, 300);
     }
   }, [isOpen, voiceState, startRecording]);
@@ -71,14 +75,49 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isListening, voiceState, stopRecording]);
 
-  // Handle transcript completion when recording stops
+  // Handle transcript completion when recording stops and transcript is available
   useEffect(() => {
-    if (transcript && !isListening && !isProcessing && voiceState !== 'idle') {
+    console.log(`[${new Date().toISOString()}] 🔍 useEffect fired: transcript="${transcript}", isGathering=${isGathering}, isListening=${isListening}, voiceState=${voiceState}, processedTranscript=${processedTranscript}, confidence=${confidence}, isProcessingRef=${isProcessingRef.current}`);
+
+    // Process when we have a transcript and we're no longer gathering input
+    if (transcript && !isGathering && !isListening && voiceState !== 'idle') {
+      // Only process transcripts with reasonable confidence and length
+      if (confidence < 0.5 || transcript.trim().length < 3) {
+        console.log(`[${new Date().toISOString()}] 🚫 Skipping low-quality transcript: "${transcript}" (confidence: ${confidence})`);
+        return;
+      }
+
+      console.log(`[${new Date().toISOString()}] ✅ Passed quality check for transcript: "${transcript}" (confidence: ${confidence})`);
+
+      // Create a unique identifier for this transcript processing request
+      const transcriptRequestId = `${transcript}_${confidence}`;
+
+      // Check if we've already processed this exact transcript
+      if (transcriptRequestId === processedTranscript || isProcessingRef.current || processedRequestIdsRef.current.has(transcriptRequestId)) {
+        console.log(`[${new Date().toISOString()}] 🚫 Skipping duplicate transcript processing: "${transcript}"`);
+        return;
+      }
+
+      const processingId = Math.random().toString(36).slice(2, 11);
+      console.log(`[${new Date().toISOString()}] [${processingId}] 🎯 Processing transcript: "${transcript}" (confidence: ${confidence})`);
+      console.log(`[${new Date().toISOString()}] [${processingId}] 📊 State check: isGathering=${isGathering}, isListening=${isListening}, voiceState=${voiceState}, processedTranscript=${processedTranscript}, isProcessingRef=${isProcessingRef.current}`);
+
+      // Mark as processing immediately to prevent duplicate processing
+      isProcessingRef.current = true;
+      setProcessedTranscript(transcriptRequestId); // Mark as processed
+      processedRequestIdsRef.current.add(transcriptRequestId); // Add to processed set
       setVoiceState('processing');
+
       onTranscriptComplete(transcript)
         .then((response) => {
+          console.log(`[${new Date().toISOString()}] [${processingId}] ✅ Transcript processing complete:`, response);
+          console.log(`[${new Date().toISOString()}] [${processingId}] 🔍 Response analysis: feedback.type=${response.feedback.type}, command.action=${response.command.action}`);
           setParsedCommand(response);
-          setVoiceState(response.feedback.type === 'error' ? 'error' : 'success');
+
+          // Determine if this should be treated as an error
+          const isError = response.feedback.type === 'error' || response.command.action === 'UNKNOWN';
+          console.log(`[${new Date().toISOString()}] [${processingId}] 🎯 Setting voice state to: ${isError ? 'error' : 'success'}`);
+          setVoiceState(isError ? 'error' : 'success');
 
           // Auto-close after success
           if (response.feedback.type === 'success') {
@@ -90,23 +129,47 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         .catch((err) => {
           setVoiceState('error');
           console.error('Command processing failed:', err);
+        })
+        .finally(() => {
+          // Clear processing flag when done
+          isProcessingRef.current = false;
         });
     }
-  }, [transcript, isListening, isProcessing, onTranscriptComplete, voiceState]);
+  }, [transcript, isListening, isGathering, voiceState, onTranscriptComplete, processedTranscript, confidence]);
+
+  // Clear processing state when interface closes
+  useEffect(() => {
+    if (!isOpen) {
+      isProcessingRef.current = false;
+      setProcessedTranscript(null);
+      setParsedCommand(null);
+      processedRequestIdsRef.current.clear(); // Clear processed request IDs
+    }
+  }, [isOpen]);
 
   // Handle recording state changes
   useEffect(() => {
-    if (isListening && voiceState === 'listening') {
-      // Already in correct state
+    if (error && voiceState !== 'error') {
+      // If there's an error, transition to error state
+      setVoiceState('error');
+    } else if (isGathering && voiceState !== 'listening') {
+      // When gathering starts, transition to listening state
+      setVoiceState('listening');
     } else if (isProcessing && voiceState !== 'processing') {
       setVoiceState('processing');
+    } else if (!isListening && !isGathering && !isProcessing && (voiceState === 'activating' || voiceState === 'listening')) {
+      // If recording stopped unexpectedly but no error, go back to activating
+      setVoiceState('activating');
     }
-  }, [isListening, isProcessing, voiceState]);
+  }, [isListening, isProcessing, isGathering, voiceState, error]);
 
   const handleClose = () => {
     stopRecording();
     resetState();
     setParsedCommand(null);
+    setProcessedTranscript(null); // Clear processed transcript
+    isProcessingRef.current = false; // Clear processing flag
+    processedRequestIdsRef.current.clear(); // Clear processed request IDs
     setVoiceState('idle');
     onClose();
   };
@@ -146,17 +209,22 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   };
 
   const getStatusText = () => {
+    // If we're gathering input, show that message regardless of voiceState
+    if (isGathering) {
+      return 'Listening for your command... (Press Enter when done speaking)';
+    }
+
     switch (voiceState) {
       case 'activating':
         return 'Activating voice control...';
       case 'listening':
-        return 'Listening... Speak now! (Press Enter when done)';
+        return 'Preparing microphone...';
       case 'processing':
         return 'Processing your command...';
       case 'success':
         return parsedCommand?.feedback.message || 'Command executed!';
       case 'error':
-        return error || 'Something went wrong';
+        return parsedCommand?.feedback.message || error || 'Something went wrong';
       default:
         return 'Voice Control';
     }
@@ -180,7 +248,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         {/* Voice Status Indicator */}
         <div className="flex justify-center mb-6">
           <div className={`relative w-24 h-24 rounded-full flex items-center justify-center ${getStatusColor()} transition-all duration-300`}>
-            <div className="text-4xl">
+              <div className="text-4xl">
               {getStatusIcon()}
             </div>
 
@@ -206,7 +274,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         </div>
 
         {/* Transcript Display */}
-        {transcript && (
+        {/* Only show transcript after user stops gathering (presses Enter) */}
+        {transcript && !isGathering && (
           <div className="mb-4 p-3 bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg">
             <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300">
               "{transcript}"
@@ -216,6 +285,18 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                 Confidence: {Math.round(confidence * 100)}%
               </p>
             )}
+          </div>
+        )}
+
+        {/* Gathering Input Indicator */}
+        {isGathering && (
+          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+            <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
+              🎤 Listening... Speak your command naturally
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 text-center mt-1">
+              Press <kbd className="bg-blue-100 dark:bg-blue-800 px-1 rounded">Enter</kbd> when done speaking
+            </p>
           </div>
         )}
 
@@ -244,7 +325,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
-          {voiceState === 'listening' && (
+          {isGathering && (
             <button
               onClick={stopRecording}
               className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-2"

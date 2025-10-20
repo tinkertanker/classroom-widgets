@@ -24,7 +24,8 @@ export class VoiceCommandService {
         userPreferences
       };
 
-      console.log('Sending voice command request:', request);
+      const requestId = Math.random().toString(36).slice(2, 11);
+      console.log(`[${new Date().toISOString()}] [${requestId}] 🚀 Sending voice command request:`, JSON.stringify(request, null, 2));
 
       const response = await fetch(`${this.baseUrl}/voice-command`, {
         method: 'POST',
@@ -42,7 +43,7 @@ export class VoiceCommandService {
       }
 
       const result: VoiceCommandResponse = await response.json();
-      console.log('Voice command response:', result);
+      console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Voice command response:`, JSON.stringify(result, null, 2));
 
       return result;
     } catch (error) {

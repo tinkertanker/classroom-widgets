@@ -3,6 +3,7 @@
 export interface VoiceRecordingState {
   isListening: boolean;
   isProcessing: boolean;
+  isGathering: boolean; // True when gathering voice input (before user presses Enter)
   transcript: string;
   confidence: number;
   error: string | null;
