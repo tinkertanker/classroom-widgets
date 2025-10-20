@@ -235,13 +235,18 @@ function App() {
       const { voiceCommandService } = await import('../features/voiceControl/services/VoiceCommandService');
       const { voiceCommandExecutor } = await import('../features/voiceControl/services/VoiceCommandExecutor');
 
+      // 🚀 OPTIMIZATION: Read current state on demand instead of dependencies
+      const currentWidgets = useWorkspaceStore.getState().widgets;
+      const currentFocusedId = useWorkspaceStore.getState().focusedWidgetId;
+      const setFocusedWidget = useWorkspaceStore.getState().setFocusedWidget;
+
       // Get current widget context
       const context = {
-        activeWidgets: widgets.map(widget => ({
+        activeWidgets: currentWidgets.map(widget => ({
           id: widget.id,
           type: widget.type,
           state: widget.state,
-          isFocused: widget.id === focusedWidgetId
+          isFocused: widget.id === currentFocusedId
         })),
         availableWidgets: ['timer', 'list', 'poll', 'randomiser', 'questions', 'image'],
         screenPosition: { x: 0, y: 0 }
@@ -302,7 +307,7 @@ function App() {
         }
       };
     }
-  }, [widgets, focusedWidgetId, setFocusedWidget]);
+  }, []); // 🎉 Empty dependency array - function never recreates!
 
   // Prevent swipe navigation
   useEffect(() => {

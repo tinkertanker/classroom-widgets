@@ -77,7 +77,10 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
   // Handle transcript completion when recording stops and transcript is available
   useEffect(() => {
-    console.log(`[${new Date().toISOString()}] 🔍 useEffect fired: transcript="${transcript}", isGathering=${isGathering}, isListening=${isListening}, voiceState=${voiceState}, processedTranscript=${processedTranscript}, confidence=${confidence}, isProcessingRef=${isProcessingRef.current}`);
+    // Early return: don't process if voice interface is closed
+    if (!isOpen) {
+      return;
+    }
 
     // Process when we have a transcript and we're no longer gathering input
     if (transcript && !isGathering && !isListening && voiceState !== 'idle') {
@@ -135,7 +138,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           isProcessingRef.current = false;
         });
     }
-  }, [transcript, isListening, isGathering, voiceState, onTranscriptComplete, processedTranscript, confidence]);
+  }, [transcript, isListening, isGathering, voiceState, processedTranscript, confidence, isOpen, onTranscriptComplete]);
 
   // Clear processing state when interface closes
   useEffect(() => {
