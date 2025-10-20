@@ -120,7 +120,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
           // Determine if this should be treated as an error
           const isError = response.feedback.type === 'error' || response.command.action === 'UNKNOWN';
           console.log(`[${new Date().toISOString()}] [${processingId}] 🎯 Setting voice state to: ${isError ? 'error' : 'success'}`);
+          console.log(`[${new Date().toISOString()}] [${processingId}] 📝 Error message: ${response.feedback.message}`);
           setVoiceState(isError ? 'error' : 'success');
+          console.log(`[${new Date().toISOString()}] [${processingId}] ✅ Voice state set to: ${isError ? 'error' : 'success'}`);
 
           // Auto-close after success
           if (response.feedback.type === 'success') {
@@ -152,17 +154,32 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
   // Handle recording state changes
   useEffect(() => {
+    console.log(`[${new Date().toISOString()}] 🔄 State transition useEffect: isListening=${isListening}, isGathering=${isGathering}, isProcessing=${isProcessing}, voiceState=${voiceState}, error=${error}`);
+
+    // 🎯 PRIORITY: Never override error or success states with processing states
+    if (voiceState === 'error' || voiceState === 'success') {
+      console.log(`[${new Date().toISOString()}] 🔄 Keeping current ${voiceState} state - not overriding with processing state`);
+      return;
+    }
+
     if (error && voiceState !== 'error') {
       // If there's an error, transition to error state
+      console.log(`[${new Date().toISOString()}] 🔄 Transitioning to error state due to error: ${error}`);
       setVoiceState('error');
     } else if (isGathering && voiceState !== 'listening') {
       // When gathering starts, transition to listening state
+      console.log(`[${new Date().toISOString()}] 🔄 Transitioning to listening state`);
       setVoiceState('listening');
     } else if (isProcessing && voiceState !== 'processing') {
+      console.log(`[${new Date().toISOString()}] 🔄 Transitioning to processing state`);
       setVoiceState('processing');
     } else if (!isListening && !isGathering && !isProcessing && (voiceState === 'activating' || voiceState === 'listening')) {
       // If recording stopped unexpectedly but no error, go back to activating
+      // Only apply to activating/listening states, don't override error/success
+      console.log(`[${new Date().toISOString()}] 🔄 Transitioning back to activating state`);
       setVoiceState('activating');
+    } else {
+      console.log(`[${new Date().toISOString()}] 🔄 No state transition needed`);
     }
   }, [isListening, isProcessing, isGathering, voiceState, error]);
 
