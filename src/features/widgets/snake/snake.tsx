@@ -166,7 +166,7 @@ const Snake: React.FC = () => {
   };
 
   return (
-    <div className={`${widgetContainer} flex flex-col items-center justify-center p-4 gap-4`}>
+    <div className={`${widgetContainer} items-center justify-center p-4 gap-4`}>
       {/* Header */}
       <div className="w-full flex justify-between items-center">
         <div className={`${text.primary} text-lg font-bold`}>

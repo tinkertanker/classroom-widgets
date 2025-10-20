@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BaseWidgetProps } from '../../../shared/types/widget.types';
+import { widgetContainer } from '../../../shared/utils/styles';
 
 interface VisualiserProps extends BaseWidgetProps {
   savedState?: {
@@ -112,7 +113,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+    <div className={`${widgetContainer} relative`}>
       {isLoading && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">

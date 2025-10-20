@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
+import { WidgetInput } from '../../../shared/components/WidgetInput';
+import { widgetContainer } from '../../../shared/utils/styles';
 
 interface QRCodeWidgetProps {
   savedState?: {
@@ -78,7 +80,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   };
 
   return (
-    <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-2">
+    <div className={`${widgetContainer} p-2`}>
       {!url ? (
         // Initial state - show input form
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -87,11 +89,11 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
               <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
                 Enter URL to generate QR Code
               </label>
-              <input
+              <WidgetInput
                 type="url"
                 name="url"
                 placeholder="https://example.com"
-                className="w-full px-3 py-2 text-sm border border-warm-gray-300 dark:border-warm-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sage-500 bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200"
+                className="text-sm"
                 autoFocus
                 required
               />

@@ -53,8 +53,8 @@ export const WordleGrid: React.FC<WordleGridProps> = ({
                 'w-12 h-12 border-2 flex items-center justify-center font-bold text-lg rounded',
                 'transition-all duration-300',
                 {
-                  'border-warm-gray-300 dark:border-warm-gray-600': status === 'empty' && !letter,
-                  'border-warm-gray-400 dark:border-warm-gray-500': status === 'empty' && letter,
+                  'border-warm-gray-200 dark:border-warm-gray-700': status === 'empty' && !letter,
+                  'border-warm-gray-300 dark:border-warm-gray-600': status === 'empty' && letter,
                   'bg-emerald-500 text-white border-emerald-500': status === 'correct',
                   'bg-yellow-500 text-white border-yellow-500': status === 'present',
                   'bg-warm-gray-400 dark:bg-warm-gray-600 text-white border-warm-gray-400 dark:border-warm-gray-600': status === 'absent',

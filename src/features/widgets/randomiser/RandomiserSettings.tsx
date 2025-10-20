@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { WidgetTextarea } from '../../../shared/components/WidgetInput';
 
 interface RandomiserSettingsProps {
   choices: string[];
@@ -144,12 +145,13 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
               <label className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2 block">
                 Active Items
               </label>
-              <textarea
+              <WidgetTextarea
                 onChange={(e) => setInput(e.target.value)}
                 value={input}
                 id="textarea"
                 placeholder="Start typing a list to randomise..."
-                className="w-full h-[300px] px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 text-sm placeholder-warm-gray-500 dark:placeholder-warm-gray-400"
+                className="h-[300px] text-sm"
+                style={{ resize: 'none' }}
               />
             </div>
             
@@ -170,11 +172,12 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
               <label className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2 block">
                 Removed Items
               </label>
-              <textarea
+              <WidgetTextarea
                 value={removedInput}
                 onChange={(e) => setRemovedInput(e.target.value)}
                 placeholder="Removed items will appear here..."
-                className="w-full h-[300px] px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 text-sm placeholder-warm-gray-500 dark:placeholder-warm-gray-400"
+                className="h-[300px] text-sm"
+                style={{ resize: 'none' }}
               />
             </div>
           </div>

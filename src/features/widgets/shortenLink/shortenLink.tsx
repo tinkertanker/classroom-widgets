@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import QRCode from 'react-qr-code';
+import { WidgetInput } from '../../../shared/components/WidgetInput';
+import { widgetContainer } from '../../../shared/utils/styles';
 
 // Use environment variables for API configuration
 const API_KEY = import.meta.env.VITE_SHORTIO_API_KEY || '';
@@ -75,7 +77,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
   };
 
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4">
+    <div className={`${widgetContainer} p-4`}>
       {!shortenedLink ? (
         // Input state
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -84,7 +86,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
               <h2 className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-4 text-center">
                 Shorten Your Link
               </h2>
-              <input
+              <WidgetInput
                 type="url"
                 value={link}
                 onChange={(e) => {
@@ -92,7 +94,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
                   setError(null);
                 }}
                 placeholder="https://example.com"
-                className="w-full px-3 py-2 text-sm border border-warm-gray-300 dark:border-warm-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sage-500 bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200"
+                className="text-sm"
                 autoFocus
                 disabled={isLoading}
               />

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { WidgetInput } from '../../../shared/components/WidgetInput';
 
 interface PollSettingsProps {
   onClose: () => void;
@@ -40,11 +41,10 @@ const PollSettings: React.FC<PollSettingsProps> = ({
             <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
               Question
             </label>
-            <input
+            <WidgetInput
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              className="w-full px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200"
               placeholder="What's your poll question?"
             />
           </div>
@@ -55,11 +55,11 @@ const PollSettings: React.FC<PollSettingsProps> = ({
             </label>
             {options.map((option, index) => (
               <div key={index} className="flex gap-2 mb-2">
-                <input
+                <WidgetInput
                   type="text"
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
-                  className="flex-1 px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200"
+                  className="flex-1"
                   placeholder={`Option ${index + 1}`}
                 />
                 {options.length > 2 && (

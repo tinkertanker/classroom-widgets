@@ -3,6 +3,7 @@ import { WordleGrid } from './components/WordleGrid';
 import { WordleKeyboard } from './components/WordleKeyboard';
 import { useWordleGame } from './hooks/useWordleGame';
 import { FaRotate, FaLightbulb } from 'react-icons/fa6';
+import { widgetContainer } from '../../../shared/utils/styles';
 
 interface WordleProps {
   savedState?: {
@@ -50,7 +51,7 @@ const Wordle: React.FC<WordleProps> = ({ savedState, onStateChange }) => {
   }, [gameStatus, addLetter, removeLetter, submitGuess]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700">
+    <div className={widgetContainer}>
       {/* Header */}
       <div className="p-3 border-b border-warm-gray-200 dark:border-warm-gray-700">
         <div className="flex items-center justify-between">

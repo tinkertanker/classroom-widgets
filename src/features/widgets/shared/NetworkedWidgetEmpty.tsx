@@ -1,6 +1,6 @@
 import React from 'react';
 import { IconType } from 'react-icons';
-import { buttons } from '../../../shared/utils/styles';
+import { buttons, widgetContainer } from '../../../shared/utils/styles';
 
 interface NetworkedWidgetEmptyProps {
   title: string;
@@ -22,7 +22,7 @@ export const NetworkedWidgetEmpty: React.FC<NetworkedWidgetEmptyProps> = ({
   buttonText = 'Start'
 }) => {
   return (
-    <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col items-center justify-center p-6">
+    <div className={`${widgetContainer} items-center justify-center p-6`}>
       <div className="text-center space-y-4">
         <div className="mb-4 flex justify-center">
           <Icon className="text-5xl text-warm-gray-400" />

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
-import { 
+import {
   FaTrophy,        // Victory
   FaXmark,         // Wrong (X icon)
   FaBell,          // Attention
@@ -13,6 +13,7 @@ import {
   FaHandsClapping  // Applause
 } from 'react-icons/fa6';
 import { IconType } from 'react-icons';
+import { widgetContainer } from '../../../shared/utils/styles';
 
 // Sound file imports
 import victorySoundFile from "./sounds/victory.mp3";
@@ -137,7 +138,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   };
 
   return (
-    <div className="w-full h-full bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-lg border border-warm-gray-200 dark:border-warm-gray-700 flex flex-col">
+    <div className={widgetContainer}>
       {/* Drag handle area */}
       <div className="sound-effects-drag-handle px-2 py-2 border-b border-warm-gray-200 dark:border-warm-gray-700 cursor-move hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group">
         <div className="flex justify-center">

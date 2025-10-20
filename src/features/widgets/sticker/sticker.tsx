@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
-import { 
+import { widgetContainer } from '../../../shared/utils/styles';
+import {
   CustomThumbsUp,
   CustomHeart,
   CustomStar,
@@ -142,8 +143,8 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
   };
 
   return (
-    <div 
-      className="w-full h-full cursor-pointer p-4"
+    <div
+      className={`${widgetContainer} cursor-pointer p-4`}
       onClick={handleClick}
       title="Click to change color and rotation"
       style={{

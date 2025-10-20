@@ -3,12 +3,13 @@ import React, { useState, useCallback, useEffect } from 'react';
 // @ts-ignore
 import { FaBell, FaMicrophone } from 'react-icons/fa6';
 import ramBellSoundFile from './Ram-Bell-Sound.mp3';
-import { 
-  useAudioStream, 
-  useVolumeAnalyzer, 
-  useAudioVisualization, 
+import { widgetContainer } from '../../../shared/utils/styles';
+import {
+  useAudioStream,
+  useVolumeAnalyzer,
+  useAudioVisualization,
   useCooldownTimer,
-  useAlertSound 
+  useAlertSound
 } from './hooks';
 
 interface AudioVolumeMonitorProps {
@@ -86,9 +87,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
     });
 
     return (
-        <div
-            className="w-full h-full border border-warm-gray-200 dark:border-warm-gray-700 rounded-md flex flex-col bg-soft-white dark:bg-warm-gray-800"
-        >
+        <div className={widgetContainer}>
             <div className="flex-1 p-4 flex flex-col items-center justify-center overflow-visible">
                 {/* Oscilloscope-style waveform visualization */}
                 <div className={`relative w-64 h-24 ${!isEnabled ? 'opacity-50' : ''} transition-opacity duration-300`}>

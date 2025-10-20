@@ -4,7 +4,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { widgetWrapper, cn } from '../../../shared/utils/styles';
+import { widgetWrapper, widgetContainer, cn } from '../../../shared/utils/styles';
 import { NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { useSession } from '../../../contexts/SessionContext';
@@ -185,7 +185,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   // Active state
   return (
     <div className={widgetWrapper}>
-      <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col relative">
+      <div className={`${widgetContainer} relative`}>
         {/* Statistics - Floating top-right */}
         <div className="absolute top-3 right-3 z-20">
           <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">

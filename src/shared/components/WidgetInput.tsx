@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { cn, text, backgrounds, transitions } from '../utils/styles';
+import { cn, text, backgrounds, transitions, borderStyles } from '../utils/styles';
 
 interface WidgetInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: boolean;
@@ -12,7 +12,9 @@ export const WidgetInput = forwardRef<HTMLInputElement, WidgetInputProps>(
       <input
         ref={ref}
         className={cn(
-          "rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-sage-500",
+          borderStyles.input,
+          borderStyles.focus,
+          "px-3 py-2 outline-none",
           text.primary,
           text.placeholder,
           backgrounds.surface,
@@ -41,7 +43,9 @@ export const WidgetTextarea = forwardRef<HTMLTextAreaElement, WidgetTextareaProp
       <textarea
         ref={ref}
         className={cn(
-          "rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-sage-500",
+          borderStyles.input,
+          borderStyles.focus,
+          "px-3 py-2 outline-none",
           text.primary,
           text.placeholder,
           backgrounds.surface,
