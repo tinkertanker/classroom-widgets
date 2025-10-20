@@ -156,8 +156,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   useEffect(() => {
     console.log(`[${new Date().toISOString()}] 🔄 State transition useEffect: isListening=${isListening}, isGathering=${isGathering}, isProcessing=${isProcessing}, voiceState=${voiceState}, error=${error}`);
 
-    // 🎯 PRIORITY: Never override error or success states with processing states
-    if (voiceState === 'error' || voiceState === 'success') {
+    // 🎯 PRIORITY: Never override error or success states with PROCESSING states from recording hook
+    // But allow explicit state changes from button clicks (which set state directly)
+    if ((voiceState === 'error' || voiceState === 'success') && isProcessing) {
       console.log(`[${new Date().toISOString()}] 🔄 Keeping current ${voiceState} state - not overriding with processing state`);
       return;
     }
@@ -184,6 +185,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   }, [isListening, isProcessing, isGathering, voiceState, error]);
 
   const handleClose = () => {
+    console.log(`[${new Date().toISOString()}] 🔘 Close button clicked`);
     stopRecording();
     resetState();
     setParsedCommand(null);
@@ -191,6 +193,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     isProcessingRef.current = false; // Clear processing flag
     processedRequestIdsRef.current.clear(); // Clear processed request IDs
     setVoiceState('idle');
+    console.log(`[${new Date().toISOString()}] 🔘 Voice interface closed`);
     onClose();
   };
 
@@ -360,9 +363,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               {voiceState === 'error' && (
                 <button
                   onClick={() => {
+                    console.log(`[${new Date().toISOString()}] 🔘 Retry button clicked`);
                     resetState();
                     setVoiceState('activating');
+                    console.log(`[${new Date().toISOString()}] 🔘 Reset state and set to activating`);
                     setTimeout(() => {
+                      console.log(`[${new Date().toISOString()}] 🔘 Starting recording after timeout`);
                       startRecording();
                       setVoiceState('listening');
                     }, 300);
