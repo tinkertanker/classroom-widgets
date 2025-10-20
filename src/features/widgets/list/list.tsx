@@ -17,7 +17,7 @@ import {
   useResponsiveSize,
   useListKeyboardHandlers
 } from './hooks';
-import { cn, getStatusColor, transitions, widgetWrapper, buttons, text } from '../../../shared/utils/styles';
+import { cn, getStatusColor, transitions, widgetWrapper, buttons, text, widgetContainer } from '../../../shared/utils/styles';
 import { ListControlBar } from '../shared/components';
 
 interface ListItem {
@@ -244,9 +244,9 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   };
 
   return (
-    <>
-      <div ref={containerRef} className={widgetWrapper}>
-        <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg flex-1 overflow-y-auto px-4 pt-4">
+    <div ref={containerRef} className={widgetWrapper}>
+      <div className={`${widgetContainer} relative`}>
+        <div className="flex-1 overflow-y-auto px-4 pt-4">
           <div className="pt-0">
             <DndContext
               sensors={sensors}
@@ -281,12 +281,12 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
             </DndContext>
           </div>
         </div>
-        <ListControlBar
-          onAddItem={handleAddInput}
-          isLarge={isLarge}
-        />
       </div>
-    </>
+      <ListControlBar
+        onAddItem={handleAddInput}
+        isLarge={isLarge}
+      />
+    </div>
   );
 };
 

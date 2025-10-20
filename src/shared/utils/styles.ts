@@ -16,10 +16,59 @@ export const transitions = {
 
 // Common background styles
 export const backgrounds = {
-  card: "bg-warm-gray-50 dark:bg-warm-gray-800",
+  card: "bg-soft-white dark:bg-warm-gray-800",
   surface: "bg-warm-gray-100 dark:bg-warm-gray-700",
   hover: "hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600",
   border: "border border-warm-gray-300 dark:border-warm-gray-700"
+} as const;
+
+// Standardized border styles
+export const borders = {
+  // Primary borders (most common)
+  primary: "border border-warm-gray-200 dark:border-warm-gray-700",
+  // Input/secondary borders (slightly more prominent)
+  secondary: "border border-warm-gray-300 dark:border-warm-gray-600",
+  // Tertiary borders (even more prominent)
+  tertiary: "border border-warm-gray-400 dark:border-warm-gray-500",
+  // Brand borders
+  sage: "border border-sage-500 dark:border-sage-400",
+  terracotta: "border border-terracotta-200 dark:border-terracotta-700",
+  dustyRose: "border border-dusty-rose-300 dark:border-dusty-rose-700",
+  // No border
+  none: "border-0"
+} as const;
+
+// Standardized border radius
+export const borderRadius = {
+  sm: "rounded-sm",    // 2px
+  md: "rounded-md",    // 6px
+  lg: "rounded-lg",    // 8px - PRIMARY STANDARD
+  xl: "rounded-xl",    // 12px
+  full: "rounded-full" // circular
+} as const;
+
+// Standardized border width
+export const borderWidth = {
+  none: "border-0",
+  thin: "border",      // 1px - PRIMARY STANDARD
+  medium: "border-2",  // 2px
+  thick: "border-4"    // 4px
+} as const;
+
+// Combined border utilities
+export const borderStyles = {
+  // Standard widget container
+  widget: cn(borders.primary, borderRadius.lg, borderWidth.thin),
+  // Input fields and form controls
+  input: cn(borders.secondary, borderRadius.md, borderWidth.thin),
+  // Modal/dialog borders
+  modal: cn(borders.primary, borderRadius.lg, borderWidth.thin),
+  // Button borders
+  button: cn(borders.tertiary, borderRadius.md, borderWidth.thin),
+  // Card borders
+  card: cn(borders.primary, borderRadius.lg, borderWidth.thin),
+  // Focus rings
+  focus: "focus:ring-2 focus:ring-sage-500 focus:ring-offset-1"
 } as const;
 
 // Common text styles
@@ -63,10 +112,12 @@ export const buttons = {
 } as const;
 
 // Widget container styles (main content area) - no shadow
+// Standard widget container (current standard - all widgets should use this)
 export const widgetContainer = cn(
-  backgrounds.card,
-  backgrounds.border,
-  "rounded-lg w-full h-full overflow-hidden flex flex-col"
+  "bg-soft-white/90 dark:bg-warm-gray-800/90",
+  "rounded-t-lg",
+  borders.primary,
+  "w-full h-full overflow-hidden flex flex-col"
 );
 
 // Widget container styles with shadow (legacy)
@@ -74,6 +125,21 @@ export const widgetContainerWithShadow = cn(
   backgrounds.card,
   backgrounds.border,
   "rounded-lg shadow-sm w-full h-full overflow-hidden flex flex-col"
+);
+
+// Legacy widget container (deprecated - use widgetContainer instead)
+export const widgetContainerLegacy = cn(
+  backgrounds.card,
+  borderStyles.widget,
+  "w-full h-full overflow-hidden flex flex-col"
+);
+
+// Standard widget border pattern (explicit export for clarity)
+export const widgetBorderStandard = cn(
+  "bg-soft-white/90 dark:bg-warm-gray-800/90",
+  "rounded-t-lg",
+  borders.primary,
+  "w-full h-full flex flex-col"
 );
 
 // Widget wrapper for full widget including controls
@@ -87,6 +153,7 @@ export const widgetControls = cn(
   "min-h-16 max-h-16",
   "bg-gray-200/85 dark:bg-gray-700/85",
   "border-t border-warm-gray-200/30 dark:border-warm-gray-700/30",
+  "border-l border-r border-b border-warm-gray-200 dark:border-warm-gray-700",
   "rounded-b-lg"
 );
 

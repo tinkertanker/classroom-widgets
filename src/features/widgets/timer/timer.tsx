@@ -180,35 +180,18 @@ const Timer = () => {
   const inEditMode = !isRunning;
 
   return (
-    <>
-      <style>{`
-        @keyframes pulse-scale {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-        }
-        @keyframes border-pulse {
-          0%, 100% {
-            border-color: rgb(153, 27, 27);
-            box-shadow: 0 0 0 0 rgba(153, 27, 27, 0.7);
-          }
-          50% {
-            border-color: rgb(185, 28, 28);
-            box-shadow: 0 0 0 8px rgba(153, 27, 27, 0);
-          }
-        }
-      `}</style>
-      <div className={widgetWrapper}>
-        <div
-          className="rounded-lg  dark:border-warm-gray-700 w-full h-full flex flex-col relative"
-          style={{
-            containerType: 'size',
-            ...(timerFinished && {
-              animation: 'border-pulse 1.5s ease-in-out infinite',
-              borderWidth: '3px',
-              borderColor: 'rgb(153, 27, 27)'
-            })
-          }}
-        >
+    <div className={widgetWrapper}>
+      <div
+        className={`${widgetContainer} relative`}
+        style={{
+          containerType: 'size',
+          ...(timerFinished && {
+            animation: 'border-pulse 1.5s ease-in-out infinite',
+            borderWidth: '3px',
+            borderColor: 'rgb(153, 27, 27)'
+          })
+        }}
+      >
           {/* Content area - fills remaining vertical space */}
           <div className="flex-1 flex items-center justify-center relative">
             {/* Content area with card background - full coverage */}
@@ -407,24 +390,22 @@ const Timer = () => {
             </div>
           </div>
 
-        {/* Control bar */}
-        <TimerControlBar
-          timerFinished={timerFinished}
-          showStartButton={showStartButton}
-          showPauseButton={showPauseButton}
-          showResumeButton={showResumeButton}
-          isRunning={isRunning}
-          onStart={handleStart}
-          onPause={pauseTimer}
-          onResume={handleResume}
-          onRestart={handleRestart}
-          soundMode={soundMode}
-          onSoundModeToggle={cycleSoundMode}
-          soundModeIcon={getSoundModeIcon()}
-          soundModeTitle={getSoundModeTitle()}
-        />
-      </div>
-    </>
+            <TimerControlBar
+        timerFinished={timerFinished}
+        showStartButton={showStartButton}
+        showPauseButton={showPauseButton}
+        showResumeButton={showResumeButton}
+        isRunning={isRunning}
+        onStart={handleStart}
+        onPause={pauseTimer}
+        onResume={handleResume}
+        onRestart={handleRestart}
+        soundMode={soundMode}
+        onSoundModeToggle={cycleSoundMode}
+        soundModeIcon={getSoundModeIcon()}
+        soundModeTitle={getSoundModeTitle()}
+      />
+    </div>
   );
 }
 

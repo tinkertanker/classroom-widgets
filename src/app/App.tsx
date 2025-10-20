@@ -1,6 +1,6 @@
 // Main App component - Refactored for better architecture
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './App.css';
 import { ModalProvider } from '../contexts/ModalContext';
 import { SocketProvider } from '../contexts/SocketProvider';
@@ -95,8 +95,30 @@ function App() {
         return;
       }
 
-      // Handle Command/Ctrl key press for voice activation
-      if (e.metaKey || e.ctrlKey) {
+      // Open widget launcher with Cmd/Ctrl + K (handle this first to avoid triggering voice control)
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        // Trigger the LaunchpadDialog by clicking the More button
+        const moreButton = document.querySelector('[title*="More widgets"]') as HTMLButtonElement;
+        if (moreButton) {
+          moreButton.click();
+        }
+        return;
+      }
+
+      // Exit sticker mode with S or Escape key
+      if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
+        e.preventDefault();
+        setStickerMode(false);
+        setSelectedStickerType(null);
+        return;
+      }
+
+      // Handle Command/Ctrl key press for voice activation (only when Cmd is pressed alone)
+      // This should NOT trigger for Cmd+letter combinations
+      if ((e.metaKey || e.ctrlKey) &&
+          (e.key === 'Meta' || e.key === 'Control' || e.key === 'OS') &&
+          !e.altKey && !e.shiftKey) {
         const now = Date.now();
 
         if (lastCommandPress && (now - lastCommandPress) < 500) {
@@ -126,28 +148,6 @@ function App() {
           }, 500);
 
           setVoiceTimeout(timeout);
-        }
-        return;
-      }
-
-      // Exit sticker mode with S or Escape key
-      if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
-        e.preventDefault();
-        setStickerMode(false);
-        setSelectedStickerType(null);
-        return;
-      }
-
-      // Open widget launcher with Cmd/Ctrl + K
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        // Check if this wasn't a double press (handled above)
-        if (!lastCommandPress || (Date.now() - lastCommandPress) >= 500) {
-          e.preventDefault();
-          // Trigger the LaunchpadDialog by clicking the More button
-          const moreButton = document.querySelector('[title*="More widgets"]') as HTMLButtonElement;
-          if (moreButton) {
-            moreButton.click();
-          }
         }
         return;
       }
@@ -227,7 +227,7 @@ function App() {
   }, [focusedWidgetId, scale, addWidget, updateWidgetState, setFocusedWidget]);
 
   // Voice command processing handler
-  const handleVoiceCommand = async (transcript: string) => {
+  const handleVoiceCommand = useCallback(async (transcript: string) => {
     try {
       console.log('Voice command received:', transcript);
 
@@ -302,7 +302,7 @@ function App() {
         }
       };
     }
-  };
+  }, [widgets, focusedWidgetId, setFocusedWidget]);
 
   // Prevent swipe navigation
   useEffect(() => {
