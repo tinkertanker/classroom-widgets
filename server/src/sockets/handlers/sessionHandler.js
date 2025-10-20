@@ -213,13 +213,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   
   // Host creates a room within session
   socket.on(EVENTS.SESSION.CREATE_ROOM, async (data, callback) => {
-    console.log('[server] Received session:createRoom:', data);
     try {
       const { sessionCode, roomType, widgetId } = data;
-      const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
-      
+      const actualSessionCode = sessionCode || getCurrentSessionCode();
+      const session = sessionManager.getSession(actualSessionCode);
+
       if (!session || !session.isHost(socket.id)) {
-        callback({ success: false, error: 'Invalid session or not host' });
+        callback({ success: false, error: 'Session not found' });
         return;
       }
       
@@ -276,16 +276,16 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       });
       
       // Return room data to the teacher
-      callback({ 
-        success: true, 
+      callback({
+        success: true,
         isExisting: false,
         roomData: room.toJSON()
       });
     } catch (error) {
       console.error('Error creating room:', error);
-      callback({ 
-        success: false, 
-        error: error.message 
+      callback({
+        success: false,
+        error: error.message
       });
     }
   });
