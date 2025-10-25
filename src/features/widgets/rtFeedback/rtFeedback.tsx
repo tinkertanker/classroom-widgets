@@ -115,10 +115,18 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
     });
   }, [feedbackData, isWidgetActive, onStateChange]);
   
-  // Handle recovery data
+  // Handle recovery data - restore widget state after page refresh
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      // TODO: Apply recovered state if needed
+      // Restore feedback data from recovery
+      if (recoveryData.roomData.feedbackData) {
+        setFeedbackData(recoveryData.roomData.feedbackData);
+      }
+
+      // Restore active state
+      if (typeof recoveryData.roomData.isActive === 'boolean') {
+        setIsWidgetActive(recoveryData.roomData.isActive);
+      }
     }
   }, [recoveryData]);
   

@@ -1,0 +1,70 @@
+# Docker Compose for Ollama LLM Service with GPU Support
+# This runs Ollama with NVIDIA GPU acceleration
+#
+# Prerequisites:
+#   - NVIDIA GPU with CUDA support
+#   - NVIDIA Container Toolkit installed
+#   - Docker 19.03+
+#
+# Quick Start:
+#   docker-compose -f docker-compose.ollama-gpu.yml up -d
+#   docker-compose -f docker-compose.ollama-gpu.yml exec ollama ollama pull phi4
+#
+# See docs/OLLAMA_DOCKER_SETUP.md for complete guide
+
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: classroom-widgets-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - classroom-widgets
+
+    # GPU configuration
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1  # Use 1 GPU (or 'all' for all GPUs)
+              capabilities: [gpu]
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          cpus: '4'
+          memory: 8G
+
+    # NVIDIA environment variables
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ollama-data:
+    driver: local
+
+networks:
+  classroom-widgets:
+    driver: bridge

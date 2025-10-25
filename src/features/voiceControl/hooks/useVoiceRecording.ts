@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { UseVoiceRecordingReturn, TranscriptionResult, VoiceRecordingState } from '../types/voiceControl';
 import { getBrowserInfo, getBrowserSupportMessage, checkMicrophonePermission } from '../utils/browserCompatibility';
+import { debug } from '../../../shared/utils/debug';
 
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [state, setState] = useState<VoiceRecordingState>({
@@ -30,7 +31,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
     // Get browser info for debugging
     const browserInfo = getBrowserInfo();
-    console.log('Browser info:', browserInfo);
+    debug('Browser info:', browserInfo);
 
     // Check microphone permission
     checkMicrophonePermission().then(hasPermission => {
@@ -40,10 +41,10 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
           error: 'Microphone access is required for voice control. Please allow microphone access and refresh the page.'
         }));
       } else {
-        console.log('Microphone permission granted');
+        debug('Microphone permission granted');
       }
     }).catch(err => {
-      console.error('Permission check failed:', err);
+      debug.error('Permission check failed:', err);
       setState(prev => ({
         ...prev,
         error: 'Failed to check microphone permissions. Please refresh the page and try again.'
@@ -66,7 +67,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      console.log('🎤 START: Speech Recognition engine started listening');
+      debug('🎤 START: Speech Recognition engine started listening');
       isGatheringInputRef.current = true;
       setState(prev => ({
         ...prev,
@@ -83,12 +84,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
     // Add soundstart detection (annyang equivalent)
     recognition.onsoundstart = () => {
-      console.log('🔊 SOUNDSTART: Sound detected, possibly speech');
+      debug('🔊 SOUNDSTART: Sound detected, possibly speech');
       // We're already in gathering state, so no change needed
     };
 
     recognition.onresult = (event: any) => {
-      console.log('🎯 RESULT: Speech identified');
+      debug('🎯 RESULT: Speech identified');
       const result = event.results[event.results.length - 1][0];
       const transcript = result.transcript;
       const confidence = result.confidence;
@@ -98,49 +99,49 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       currentTranscriptRef.current = transcript;
       currentConfidenceRef.current = confidence;
 
-      console.log(`📝 Final result: "${transcript}" (Confidence: ${confidence}, IsFinal: ${isFinal})`);
+      debug(`📝 Final result: "${transcript}" (Confidence: ${confidence}, IsFinal: ${isFinal})`);
 
       // Since we're using wildcard command, this is always a "resultMatch"
       // For annyang compatibility, we could simulate resultMatch here
       if (isFinal) {
-        console.log('✅ RESULTMATCH: Command matched with wildcard pattern');
+        debug('✅ RESULTMATCH: Command matched with wildcard pattern');
         // In annyang, this would trigger command execution
         // But we wait for user to press Enter
       }
     };
 
     recognition.onerror = (event: any) => {
-      console.error('❌ ERROR: Speech recognition failed');
+      debug.error('❌ ERROR: Speech recognition failed');
       let errorMessage = 'Voice recognition failed';
 
       // Annyang-style specific error handling
       switch (event.error) {
         case 'network':
-          console.error('❌ ERRORNETWORK: Speech Recognition failed because of a network error');
+          debug.error('❌ ERRORNETWORK: Speech Recognition failed because of a network error');
           errorMessage = 'Network error. Please check your internet connection and try again.';
           break;
         case 'not-allowed':
-          console.error('❌ ERRORPERMISSIONDENIED: User blocked the permission request to use Speech Recognition');
+          debug.error('❌ ERRORPERMISSIONDENIED: User blocked the permission request to use Speech Recognition');
           errorMessage = 'Microphone permission denied. Please allow microphone access in your browser settings and refresh the page.';
           break;
         case 'service-not-allowed':
-          console.error('❌ ERRORPERMISSIONBLOCKED: Browser blocks the permission request to use Speech Recognition');
+          debug.error('❌ ERRORPERMISSIONBLOCKED: Browser blocks the permission request to use Speech Recognition');
           errorMessage = 'Microphone access blocked by browser. Please check your browser settings and allow microphone access.';
           break;
         case 'no-speech':
-          console.error('❌ No speech detected');
+          debug.error('❌ No speech detected');
           errorMessage = 'No speech detected. Please try speaking more clearly or check your microphone.';
           break;
         case 'audio-capture':
-          console.error('❌ Audio capture failed');
+          debug.error('❌ Audio capture failed');
           errorMessage = 'Microphone not available. Please check if your microphone is connected and working.';
           break;
         case 'aborted':
-          console.error('❌ Speech recognition was aborted');
+          debug.error('❌ Speech recognition was aborted');
           errorMessage = 'Voice recognition was stopped. Please try again.';
           break;
         default:
-          console.error(`❌ Unknown error: ${event.error}`);
+          debug.error(`❌ Unknown error: ${event.error}`);
           errorMessage = `Speech recognition error: ${event.error}`;
       }
 
@@ -155,12 +156,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onend = () => {
-      console.log('⏹️ END: Speech Recognition engine stopped');
+      debug('⏹️ END: Speech Recognition engine stopped');
       isGatheringInputRef.current = false;
 
       // If we have a transcript, set it in the state and mark as processing
       if (currentTranscriptRef.current.trim()) {
-        console.log('📝 Setting transcript from automatic stop:', currentTranscriptRef.current);
+        debug('📝 Setting transcript from automatic stop:', currentTranscriptRef.current);
         setState(prev => ({
           ...prev,
           isListening: false,
@@ -183,7 +184,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   }, []);
 
   const startRecording = useCallback(async () => {
-    console.log('🎤 Starting voice recording...');
+    debug('🎤 Starting voice recording...');
     setState(prev => ({
       ...prev,
       isProcessing: false, // Don't set processing yet - we're starting to gather
@@ -191,22 +192,22 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     }));
 
     try {
-      console.log('🔧 Initializing native Web Speech API...');
+      debug('🔧 Initializing native Web Speech API...');
       const recognition = initializeWebSpeechAPI();
       if (!recognition) {
         throw new Error('Failed to initialize speech recognition');
       }
 
-      console.log('✅ Speech Recognition initialized successfully');
+      debug('✅ Speech Recognition initialized successfully');
       recognitionRef.current = recognition;
 
       // Start recognition
-      console.log('🚀 Starting speech recognition...');
+      debug('🚀 Starting speech recognition...');
       recognition.start();
-      console.log('✅ Speech recognition started successfully');
+      debug('✅ Speech recognition started successfully');
 
     } catch (error) {
-      console.error('Failed to start voice recognition:', error);
+      debug.error('Failed to start voice recognition:', error);
       setState(prev => ({
         ...prev,
         isProcessing: false,
@@ -217,7 +218,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
   const stopRecording = useCallback(() => {
     if (recognitionRef.current) {
-      console.log('Stopping speech recognition and processing captured speech...');
+      debug('Stopping speech recognition and processing captured speech...');
 
       // Stop recognition
       recognitionRef.current.stop();

@@ -1,6 +1,8 @@
 // Browser compatibility utilities for voice control
 // Simplified since annyang handles most cross-browser compatibility
 
+import { debug } from '../../../shared/utils/debug';
+
 export interface BrowserInfo {
   name: string;
   version: string;
@@ -104,7 +106,7 @@ export const checkMicrophonePermission = async (): Promise<boolean> => {
     stream.getTracks().forEach(track => track.stop());
     return true;
   } catch (error) {
-    console.error('Microphone permission check failed:', error);
+    debug.error('Microphone permission check failed:', error);
     return false;
   }
 };

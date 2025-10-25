@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FaMicrophone, FaMicrophoneSlash, FaSpinner, FaVolumeXmark, FaCheck, FaTriangleExclamation } from 'react-icons/fa6';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { FaMicrophone, FaMicrophoneSlash, FaSpinner, FaCheck, FaTriangleExclamation, FaXmark, FaLightbulb, FaRotate } from 'react-icons/fa6';
 import { useVoiceRecording } from '../hooks/useVoiceRecording';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
+import { debug } from '../../../shared/utils/debug';
+import { cn, buttons, text, borders, borderRadius } from '../../../shared/utils/styles';
 import '../styles/voiceAnimations.css';
 
 interface VoiceInterfaceProps {
@@ -20,8 +22,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   const [voiceState, setVoiceState] = useState<VoiceInterfaceState>('idle');
   const [parsedCommand, setParsedCommand] = useState<VoiceCommandResponse | null>(null);
   const [processedTranscript, setProcessedTranscript] = useState<string | null>(null);
-  const isProcessingRef = useRef<boolean>(false); // Track if we're currently processing
-  const processedRequestIdsRef = useRef<Set<string>>(new Set()); // Track processed request IDs
+  const isProcessingRef = useRef<boolean>(false);
+  const processedRequestIdsRef = useRef<Set<string>>(new Set());
+
   const {
     isListening,
     isProcessing,
@@ -38,36 +41,34 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   useEffect(() => {
     if (isOpen && voiceState === 'idle') {
       setVoiceState('activating');
-      // Small delay for smooth animation
       setTimeout(() => {
         startRecording();
-        // Don't set to 'listening' yet - wait for isGathering from the hook
       }, 300);
     }
   }, [isOpen, voiceState, startRecording]);
 
-  // Handle keyboard shortcuts for voice interface
+  // Handle keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+    if (!isOpen) return;
 
-      // Escape to close immediately
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         handleClose();
         return;
       }
 
-      // Enter to stop recording and process
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && isListening) {
         e.preventDefault();
-        if (isListening) {
-          // Stop recording when Enter is pressed
-          stopRecording();
-        } else if (voiceState === 'success' || voiceState === 'error') {
-          // Close interface if command is complete
-          handleClose();
-        }
+        stopRecording();
+      } else if (e.key === 'Enter' && (voiceState === 'success' || voiceState === 'error')) {
+        e.preventDefault();
+        handleClose();
+      }
+
+      if ((e.key === 'r' || e.key === 'R') && voiceState === 'error') {
+        e.preventDefault();
+        handleRetry();
       }
     };
 
@@ -75,337 +76,326 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isListening, voiceState, stopRecording]);
 
-  // Handle transcript completion when recording stops and transcript is available
+  // Handle transcript completion
   useEffect(() => {
-    // Early return: don't process if voice interface is closed
-    if (!isOpen) {
+    if (!isOpen || !transcript || isGathering || isListening || voiceState === 'idle') {
       return;
     }
 
-    // Process when we have a transcript and we're no longer gathering input
-    if (transcript && !isGathering && !isListening && voiceState !== 'idle') {
-      // Only process transcripts with reasonable confidence and length
-      if (confidence < 0.5 || transcript.trim().length < 3) {
-        console.log(`[${new Date().toISOString()}] 🚫 Skipping low-quality transcript: "${transcript}" (confidence: ${confidence})`);
-        return;
-      }
-
-      console.log(`[${new Date().toISOString()}] ✅ Passed quality check for transcript: "${transcript}" (confidence: ${confidence})`);
-
-      // Create a unique identifier for this transcript processing request
-      const transcriptRequestId = `${transcript}_${confidence}`;
-
-      // Check if we've already processed this exact transcript
-      if (transcriptRequestId === processedTranscript || isProcessingRef.current || processedRequestIdsRef.current.has(transcriptRequestId)) {
-        console.log(`[${new Date().toISOString()}] 🚫 Skipping duplicate transcript processing: "${transcript}"`);
-        return;
-      }
-
-      const processingId = Math.random().toString(36).slice(2, 11);
-      console.log(`[${new Date().toISOString()}] [${processingId}] 🎯 Processing transcript: "${transcript}" (confidence: ${confidence})`);
-      console.log(`[${new Date().toISOString()}] [${processingId}] 📊 State check: isGathering=${isGathering}, isListening=${isListening}, voiceState=${voiceState}, processedTranscript=${processedTranscript}, isProcessingRef=${isProcessingRef.current}`);
-
-      // Mark as processing immediately to prevent duplicate processing
-      isProcessingRef.current = true;
-      setProcessedTranscript(transcriptRequestId); // Mark as processed
-      processedRequestIdsRef.current.add(transcriptRequestId); // Add to processed set
-      setVoiceState('processing');
-
-      onTranscriptComplete(transcript)
-        .then((response) => {
-          console.log(`[${new Date().toISOString()}] [${processingId}] ✅ Transcript processing complete:`, response);
-          console.log(`[${new Date().toISOString()}] [${processingId}] 🔍 Response analysis: feedback.type=${response.feedback.type}, command.action=${response.command.action}`);
-          setParsedCommand(response);
-
-          // Determine if this should be treated as an error
-          const isError = response.feedback.type === 'error' || response.command.action === 'UNKNOWN';
-          console.log(`[${new Date().toISOString()}] [${processingId}] 🎯 Setting voice state to: ${isError ? 'error' : 'success'}`);
-          console.log(`[${new Date().toISOString()}] [${processingId}] 📝 Error message: ${response.feedback.message}`);
-          setVoiceState(isError ? 'error' : 'success');
-          console.log(`[${new Date().toISOString()}] [${processingId}] ✅ Voice state set to: ${isError ? 'error' : 'success'}`);
-
-          // Auto-close after success
-          if (response.feedback.type === 'success') {
-            setTimeout(() => {
-              handleClose();
-            }, 2000);
-          }
-        })
-        .catch((err) => {
-          setVoiceState('error');
-          console.error('Command processing failed:', err);
-        })
-        .finally(() => {
-          // Clear processing flag when done
-          isProcessingRef.current = false;
-        });
-    }
-  }, [transcript, isListening, isGathering, voiceState, processedTranscript, confidence, isOpen, onTranscriptComplete]);
-
-  // Clear processing state when interface closes
-  useEffect(() => {
-    if (!isOpen) {
-      isProcessingRef.current = false;
-      setProcessedTranscript(null);
-      setParsedCommand(null);
-      processedRequestIdsRef.current.clear(); // Clear processed request IDs
-    }
-  }, [isOpen]);
-
-  // Handle recording state changes
-  useEffect(() => {
-    console.log(`[${new Date().toISOString()}] 🔄 State transition useEffect: isListening=${isListening}, isGathering=${isGathering}, isProcessing=${isProcessing}, voiceState=${voiceState}, error=${error}`);
-
-    // 🎯 PRIORITY: Never override error or success states with PROCESSING states from recording hook
-    // But allow explicit state changes from button clicks (which set state directly)
-    if ((voiceState === 'error' || voiceState === 'success') && isProcessing) {
-      console.log(`[${new Date().toISOString()}] 🔄 Keeping current ${voiceState} state - not overriding with processing state`);
-      return;
-    }
-
-    if (error && voiceState !== 'error') {
-      // If there's an error, transition to error state
-      console.log(`[${new Date().toISOString()}] 🔄 Transitioning to error state due to error: ${error}`);
-      setVoiceState('error');
-    } else if (isGathering && voiceState !== 'listening') {
-      // When gathering starts, transition to listening state
-      console.log(`[${new Date().toISOString()}] 🔄 Transitioning to listening state`);
-      setVoiceState('listening');
-    } else if (isProcessing && voiceState !== 'processing') {
-      console.log(`[${new Date().toISOString()}] 🔄 Transitioning to processing state`);
-      setVoiceState('processing');
-    } else if (!isListening && !isGathering && !isProcessing && (voiceState === 'activating' || voiceState === 'listening')) {
-      // If recording stopped unexpectedly but no error, go back to activating
-      // Only apply to activating/listening states, don't override error/success
-      console.log(`[${new Date().toISOString()}] 🔄 Transitioning back to activating state`);
+    if (confidence < 0.5 || transcript.trim().length < 3) {
+      debug(`🚫 Skipping low-quality transcript: "${transcript}"`);
       setVoiceState('activating');
-    } else {
-      console.log(`[${new Date().toISOString()}] 🔄 No state transition needed`);
+      setTimeout(() => startRecording(), 500);
+      return;
+    }
+
+    const processingId = `${transcript}_${Date.now()}`;
+    if (processedRequestIdsRef.current.has(transcript)) {
+      return;
+    }
+
+    processedRequestIdsRef.current.add(transcript);
+    isProcessingRef.current = true;
+    setVoiceState('processing');
+
+    onTranscriptComplete(transcript)
+      .then((response) => {
+        setParsedCommand(response);
+        setProcessedTranscript(transcript);
+        const isError = response.feedback.type === 'error' || response.feedback.type === 'not_understood' || !response.success;
+        setVoiceState(isError ? 'error' : 'success');
+      })
+      .catch((err) => {
+        debug.error('Command processing failed:', err);
+        setVoiceState('error');
+      })
+      .finally(() => {
+        isProcessingRef.current = false;
+      });
+  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete]);
+
+  // State transitions
+  useEffect(() => {
+    if (voiceState === 'success' || voiceState === 'error' || voiceState === 'processing') {
+      return;
+    }
+
+    if (error) {
+      setVoiceState('error');
+    } else if (isGathering) {
+      setVoiceState('listening');
+    } else if (isProcessing) {
+      setVoiceState('processing');
     }
   }, [isListening, isProcessing, isGathering, voiceState, error]);
 
-  const handleClose = () => {
-    console.log(`[${new Date().toISOString()}] 🔘 Close button clicked`);
+  const handleClose = useCallback(() => {
     stopRecording();
     resetState();
     setParsedCommand(null);
-    setProcessedTranscript(null); // Clear processed transcript
-    isProcessingRef.current = false; // Clear processing flag
-    processedRequestIdsRef.current.clear(); // Clear processed request IDs
+    setProcessedTranscript(null);
+    isProcessingRef.current = false;
+    processedRequestIdsRef.current.clear();
     setVoiceState('idle');
-    console.log(`[${new Date().toISOString()}] 🔘 Voice interface closed`);
     onClose();
+  }, [stopRecording, resetState, onClose]);
+
+  const handleRetry = useCallback(() => {
+    resetState();
+    setParsedCommand(null);
+    setProcessedTranscript(null);
+    setVoiceState('activating');
+    setTimeout(() => {
+      startRecording();
+      setVoiceState('listening');
+    }, 300);
+  }, [resetState, startRecording]);
+
+  // Audio visualizer
+  const AudioVisualizer = () => {
+    if (!isGathering) return null;
+    return (
+      <div className="flex items-center justify-center gap-1 h-8 mb-3">
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={i}
+            className="w-1 bg-sage-500 dark:bg-sage-400 rounded-full voice-wave-bar"
+            style={{ animationDelay: `${i * 0.1}s` }}
+          />
+        ))}
+      </div>
+    );
   };
 
-  const getStatusIcon = () => {
+  const StatusContent = () => {
     switch (voiceState) {
       case 'activating':
-        return <FaSpinner className="animate-spin" />;
-      case 'listening':
-        return <FaMicrophone className="animate-pulse" />;
-      case 'processing':
-        return <FaSpinner className="animate-spin" />;
-      case 'success':
-        return <FaCheck />;
-      case 'error':
-        return <FaTriangleExclamation />;
-      default:
-        return <FaMicrophone />;
-    }
-  };
+        return (
+          <div className="text-center py-6">
+            <FaSpinner className="text-4xl text-sage-500 dark:text-sage-400 animate-spin mx-auto mb-3" />
+            <p className={cn(text.secondary, "text-sm")}>Activating microphone...</p>
+          </div>
+        );
 
-  const getStatusColor = () => {
-    switch (voiceState) {
-      case 'activating':
-        return 'text-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400';
       case 'listening':
-        return 'text-red-500 bg-red-50 dark:bg-red-900/20 dark:text-red-400';
-      case 'processing':
-        return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 dark:text-yellow-400';
-      case 'success':
-        return 'text-green-500 bg-green-50 dark:bg-green-900/20 dark:text-green-400';
-      case 'error':
-        return 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400';
-      default:
-        return 'text-gray-500 bg-gray-50 dark:bg-gray-900/20 dark:text-gray-400';
-    }
-  };
+        return (
+          <div className="text-center py-4">
+            {/* Microphone icon with subtle pulse rings */}
+            <div className="relative inline-flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center relative">
+                <FaMicrophone className="text-2xl text-sage-600 dark:text-sage-400" />
+                {/* Simple pulse rings */}
+                <div className="absolute inset-0 rounded-full border-2 border-sage-300 dark:border-sage-600 animate-ping opacity-50" />
+                <div className="absolute inset-0 rounded-full border-2 border-sage-400 dark:border-sage-500 animate-ping opacity-30" style={{ animationDelay: '200ms' }} />
+              </div>
+            </div>
 
-  const getStatusText = () => {
-    // If we're gathering input, show that message regardless of voiceState
-    if (isGathering) {
-      return 'Listening for your command... (Press Enter when done speaking)';
-    }
+            <p className={cn(text.primary, "font-medium mb-2")}>Listening...</p>
+            <p className={cn(text.secondary, "text-sm mb-3")}>Speak your command</p>
 
-    switch (voiceState) {
-      case 'activating':
-        return 'Activating voice control...';
-      case 'listening':
-        return 'Preparing microphone...';
+            <AudioVisualizer />
+
+            {transcript && isGathering && (
+              <div className={cn("mt-2 px-3 py-2 rounded", "bg-warm-gray-100 dark:bg-warm-gray-700", text.secondary, "text-sm italic")}>
+                "{transcript}"
+              </div>
+            )}
+          </div>
+        );
+
       case 'processing':
-        return 'Processing your command...';
+        return (
+          <div className="text-center py-6">
+            <FaSpinner className="text-4xl text-sage-500 dark:text-sage-400 animate-spin mx-auto mb-3" />
+            <p className={cn(text.primary, "font-medium mb-2")}>Processing command...</p>
+            {processedTranscript && (
+              <div className={cn("mt-3 px-3 py-2 rounded", "bg-warm-gray-100 dark:bg-warm-gray-700", text.secondary, "text-sm")}>
+                "{processedTranscript}"
+              </div>
+            )}
+            {confidence > 0 && (
+              <div className="mt-3 px-4">
+                <div className="flex justify-between text-xs mb-1" style={{ color: 'var(--tw-text-opacity)' }}>
+                  <span className={text.secondary}>Confidence</span>
+                  <span className={text.secondary}>{Math.round(confidence * 100)}%</span>
+                </div>
+                <div className="h-1.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-sage-500 dark:bg-sage-400 rounded-full transition-all duration-300"
+                    style={{ width: `${confidence * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
       case 'success':
-        return parsedCommand?.feedback.message || 'Command executed!';
+        return (
+          <div className="text-center py-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center mb-3">
+              <FaCheck className="text-2xl text-sage-600 dark:text-sage-400" />
+            </div>
+            <p className={cn(text.primary, "font-medium mb-2")}>
+              {parsedCommand?.feedback.message || 'Command executed'}
+            </p>
+            {processedTranscript && (
+              <p className={cn(text.secondary, "text-sm mb-3")}>"{processedTranscript}"</p>
+            )}
+            {parsedCommand && (
+              <div className={cn("mt-3 p-3 rounded text-left", "bg-sage-50 dark:bg-sage-900/20", borders.primary)}>
+                <p className={cn(text.primary, "text-sm font-medium mb-1")}>
+                  {parsedCommand.command.action.replace(/_/g, ' ')}
+                  {parsedCommand.command.target && ` ${parsedCommand.command.target}`}
+                </p>
+                {parsedCommand.command.parameters && Object.keys(parsedCommand.command.parameters).length > 0 && (
+                  <p className={cn(text.secondary, "text-xs")}>
+                    {Object.entries(parsedCommand.command.parameters).map(([key, value]) => (
+                      <span key={key} className="mr-2">{key}: {String(value)}</span>
+                    ))}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
       case 'error':
-        return parsedCommand?.feedback.message || error || 'Something went wrong';
+        return (
+          <div className="text-center py-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-dusty-rose-100 dark:bg-dusty-rose-900/30 flex items-center justify-center mb-3">
+              <FaTriangleExclamation className="text-2xl text-dusty-rose-600 dark:text-dusty-rose-400" />
+            </div>
+            <p className={cn("font-medium mb-2 text-dusty-rose-700 dark:text-dusty-rose-400")}>
+              {parsedCommand?.feedback.message || error || 'Could not understand command'}
+            </p>
+            {processedTranscript && (
+              <p className={cn(text.secondary, "text-sm mb-3")}>"{processedTranscript}"</p>
+            )}
+            <div className={cn("mt-3 p-3 rounded text-left", "bg-warm-gray-100 dark:bg-warm-gray-700/50", borders.primary)}>
+              <div className="flex items-start gap-2">
+                <FaLightbulb className="text-sage-500 dark:text-sage-400 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className={cn(text.primary, "font-medium mb-1")}>Try saying:</p>
+                  <ul className={cn(text.secondary, "text-xs space-y-0.5")}>
+                    <li>• "Start a 5 minute timer"</li>
+                    <li>• "Create a poll"</li>
+                    <li>• "Reset the timer"</li>
+                    <li>• "Trigger the randomiser"</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
-        return 'Voice Control';
+        return null;
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-warm-gray-800 rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-warm-gray-200 dark:border-warm-gray-700">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+    >
+      <div className={cn(
+        "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4",
+        borders.primary,
+        "overflow-hidden animate-in zoom-in-95 duration-200"
+      )}>
         {/* Header */}
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200 mb-2">
-            Voice Control
-          </h2>
-          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
-            Speak your command naturally
-          </p>
+        <div className="flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">
+          <div>
+            <h2 className={cn(text.primary, "text-lg font-semibold flex items-center gap-2")}>
+              <FaMicrophone className={text.secondary} />
+              Voice Control
+            </h2>
+            <p className={cn(text.secondary, "text-xs mt-0.5")}>Speak naturally to control widgets</p>
+          </div>
+          <button
+            onClick={handleClose}
+            className={cn(
+              text.secondary,
+              "hover:text-warm-gray-700 dark:hover:text-warm-gray-200",
+              "p-1 rounded hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
+              "transition-colors"
+            )}
+            aria-label="Close"
+          >
+            <FaXmark className="text-xl" />
+          </button>
         </div>
 
-        {/* Voice Status Indicator */}
-        <div className="flex justify-center mb-6">
-          <div className={`relative w-24 h-24 rounded-full flex items-center justify-center ${getStatusColor()} transition-all duration-300`}>
-              <div className="text-4xl">
-              {getStatusIcon()}
-            </div>
+        {/* Content */}
+        <div className="px-6">
+          <StatusContent />
+        </div>
 
-            {/* Listening animation rings */}
-            {voiceState === 'listening' && (
+        {/* Actions */}
+        <div className="px-6 pb-6">
+          <div className="flex gap-2">
+            {isGathering && (
+              <button
+                onClick={stopRecording}
+                className={cn(
+                  buttons.danger,
+                  "flex-1 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2"
+                )}
+              >
+                <FaMicrophoneSlash />
+                Stop Recording
+              </button>
+            )}
+
+            {voiceState === 'error' && (
               <>
-                <div className="absolute inset-0 rounded-full border-4 border-red-200 dark:border-red-800 animate-ping" />
-                <div className="absolute inset-0 rounded-full border-4 border-red-300 dark:border-red-700 animate-ping animation-delay-200" />
+                <button
+                  onClick={handleRetry}
+                  className={cn(
+                    buttons.primary,
+                    "flex-1 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2"
+                  )}
+                >
+                  <FaRotate />
+                  Try Again
+                </button>
+                <button
+                  onClick={handleClose}
+                  className={cn(
+                    buttons.secondary,
+                    "flex-1 px-4 py-2 text-sm font-medium"
+                  )}
+                >
+                  Close
+                </button>
               </>
             )}
-          </div>
-        </div>
 
-        {/* Status Text */}
-        <div className="text-center mb-4">
-          <p className={`text-lg font-medium ${
-            voiceState === 'error' ? 'text-red-600 dark:text-red-400' :
-            voiceState === 'success' ? 'text-green-600 dark:text-green-400' :
-            'text-warm-gray-800 dark:text-warm-gray-200'
-          }`}>
-            {getStatusText()}
-          </p>
-        </div>
-
-        {/* Transcript Display */}
-        {/* Only show transcript after user stops gathering (presses Enter) */}
-        {transcript && !isGathering && (
-          <div className="mb-4 p-3 bg-warm-gray-100 dark:bg-warm-gray-700 rounded-lg">
-            <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300">
-              "{transcript}"
-            </p>
-            {confidence > 0 && (
-              <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-1">
-                Confidence: {Math.round(confidence * 100)}%
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Gathering Input Indicator */}
-        {isGathering && (
-          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-            <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
-              🎤 Listening... Speak your command naturally
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 text-center mt-1">
-              Press <kbd className="bg-blue-100 dark:bg-blue-800 px-1 rounded">Enter</kbd> when done speaking
-            </p>
-          </div>
-        )}
-
-        {/* Parsed Command Display */}
-        {parsedCommand && (
-          <div className="mb-4 p-3 bg-sage-100 dark:bg-sage-900/30 rounded-lg">
-            <p className="text-sm font-medium text-sage-700 dark:text-sage-300 mb-1">
-              Command: {parsedCommand.command.action} {parsedCommand.command.target}
-            </p>
-            {Object.keys(parsedCommand.command.parameters).length > 0 && (
-              <p className="text-xs text-sage-600 dark:text-sage-400">
-                Parameters: {JSON.stringify(parsedCommand.command.parameters, null, 2)}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
-            <p className="text-sm text-red-700 dark:text-red-300 whitespace-pre-line">
-              {error}
-            </p>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 justify-center">
-          {isGathering && (
-            <button
-              onClick={stopRecording}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
-            >
-              <FaMicrophoneSlash />
-              Done (Press Enter)
-            </button>
-          )}
-
-          {(voiceState === 'error' || voiceState === 'success') && (
-            <div className="flex gap-3 justify-center">
-              {voiceState === 'error' && (
-                <button
-                  onClick={() => {
-                    console.log(`[${new Date().toISOString()}] 🔘 Retry button clicked`);
-                    resetState();
-                    setVoiceState('activating');
-                    console.log(`[${new Date().toISOString()}] 🔘 Reset state and set to activating`);
-                    setTimeout(() => {
-                      console.log(`[${new Date().toISOString()}] 🔘 Starting recording after timeout`);
-                      startRecording();
-                      setVoiceState('listening');
-                    }, 300);
-                  }}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-200 flex items-center gap-2"
-                >
-                  <FaMicrophone />
-                  Retry
-                </button>
-              )}
+            {voiceState === 'success' && (
               <button
                 onClick={handleClose}
-                className="px-4 py-2 bg-sage-500 hover:bg-sage-600 text-white rounded-lg transition-colors duration-200"
+                className={cn(
+                  buttons.primary,
+                  "flex-1 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2"
+                )}
               >
-                Close
+                <FaCheck />
+                Done
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
-          {voiceState === 'processing' && (
-            <div className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-              Processing your request...
-            </div>
-          )}
-        </div>
-
-        {/* Help Text */}
-        <div className="mt-6 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700">
-          <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 text-center">
-            Try saying things like:<br />
-            "Start a timer for 5 minutes"<br />
-            "Create a new poll"<br />
-            "Add eggs to the shopping list"<br />
-            <br />
-            Press <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Enter</kbd> when done speaking<br />
-            Press <kbd className="bg-warm-gray-200 dark:bg-warm-gray-600 px-1 rounded">Esc</kbd> to cancel
-          </p>
+          {/* Keyboard hints */}
+          <div className={cn("mt-3 text-center text-xs", text.secondary, "space-y-1")}>
+            {isGathering && <div>Press <kbd className="px-1.5 py-0.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded font-mono">Enter</kbd> to finish</div>}
+            {voiceState === 'error' && <div>Press <kbd className="px-1.5 py-0.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded font-mono">R</kbd> to retry</div>}
+            <div>Press <kbd className="px-1.5 py-0.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded font-mono">Esc</kbd> to close</div>
+          </div>
         </div>
       </div>
     </div>

@@ -175,10 +175,28 @@ export class ErrorService {
   }
   
   private sendToMonitoring(error: AppError): void {
-    // TODO: Integrate with monitoring service (e.g., Sentry)
-    // For now, just log to console in production
-    if (process.env.NODE_ENV === 'production') {
-      console.error('Production error:', error);
+    // Integration point for monitoring services (Sentry, Rollbar, etc.)
+    // To integrate with Sentry:
+    // 1. Install: npm install @sentry/react
+    // 2. Initialize in src/main.tsx with Sentry.init({ dsn: '...' })
+    // 3. Uncomment below:
+    //
+    // if (import.meta.env.PROD) {
+    //   Sentry.captureException(new Error(error.message), {
+    //     level: 'error',
+    //     tags: { code: error.code },
+    //     extra: error.context,
+    //     contexts: { error: { timestamp: error.timestamp } }
+    //   });
+    // }
+
+    // For now, log to console in production for debugging
+    if (import.meta.env.PROD) {
+      console.error('[Production Error]', error.message, {
+        code: error.code,
+        context: error.context,
+        timestamp: new Date(error.timestamp).toISOString()
+      });
     }
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 // @ts-ignore
 import {
   FaTrophy,        // Victory
@@ -41,8 +41,8 @@ interface SoundEffectsProps {
 const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   const [audioElements, setAudioElements] = useState<Map<string, HTMLAudioElement>>(new Map());
 
-  // Sound effect definitions with our color palette
-  const soundButtons: SoundButton[] = [
+  // Memoize sound effect definitions to prevent recreation on every render
+  const soundButtons: SoundButton[] = useMemo(() => [
     { name: 'Victory', icon: FaTrophy, color: 'bg-sage-500 hover:bg-sage-600', soundFile: victorySoundFile },
     { name: 'Wrong', icon: FaXmark, color: 'bg-dusty-rose-500 hover:bg-dusty-rose-600', soundFile: wrongSoundFile },
     { name: 'Attention', icon: FaBell, color: 'bg-terracotta-500 hover:bg-terracotta-600', soundFile: attentionSoundFile  },
@@ -53,7 +53,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
     { name: 'Transition', icon: FaArrowRightArrowLeft, color: 'bg-terracotta-400 hover:bg-terracotta-500', soundFile: transitionSoundFile },
     { name: 'Drumroll', icon: FaDrum, color: 'bg-terracotta-500 hover:bg-terracotta-600', soundFile: drumrollSoundFile },
     { name: 'Applause', icon: FaHandsClapping, color: 'bg-sage-500 hover:bg-sage-600', soundFile: applauseSoundFile },
-  ];
+  ], []);
 
   // Initialize audio elements when sound files are available
   useEffect(() => {
@@ -76,7 +76,29 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
         audio.src = '';
       });
     };
-  }, []);
+  }, [soundButtons]);
+
+  // Memoize playSound function to prevent recreation on every render
+  const playSound = useCallback((soundName: string) => {
+    // Play the sound if available
+    const audio = audioElements.get(soundName);
+    if (audio) {
+      // Reset and play
+      audio.currentTime = 0;
+      audio.play().catch(error => {
+        // Error playing sound - silently fail
+      });
+    }
+
+    // Visual feedback - button press animation
+    const button = document.getElementById(`sound-${soundName}`);
+    if (button) {
+      button.classList.add('scale-95');
+      setTimeout(() => {
+        button.classList.remove('scale-95');
+      }, 100);
+    }
+  }, [audioElements]);
 
   // Keyboard shortcuts (1-9 for first 9 sounds, 0 for 10th sound)
   useEffect(() => {
@@ -86,13 +108,13 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
       // Check if it's a number key (1-9 or 0)
       const key = e.key;
       let index = -1;
-      
+
       if (key >= '1' && key <= '9') {
         index = parseInt(key) - 1;
       } else if (key === '0') {
         index = 9; // 0 key represents the 10th sound
       }
-      
+
       // Also support numpad keys
       if (e.code.startsWith('Numpad')) {
         const numpadKey = e.code.replace('Numpad', '');
@@ -102,7 +124,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
           index = 9;
         }
       }
-      
+
       // Play the sound if valid index
       if (index >= 0 && index < soundButtons.length) {
         e.preventDefault();
@@ -112,30 +134,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isActive, soundButtons, audioElements]);
-
-  const playSound = (soundName: string) => {
-    // Play the sound if available
-    const audio = audioElements.get(soundName);
-    if (audio) {
-      // Reset and play
-      audio.currentTime = 0;
-      audio.play().catch(error => {
-        // Error playing sound
-      });
-    } else {
-      // Fallback for when sound files aren't loaded yet
-    }
-    
-    // Visual feedback - button press animation
-    const button = document.getElementById(`sound-${soundName}`);
-    if (button) {
-      button.classList.add('scale-95');
-      setTimeout(() => {
-        button.classList.remove('scale-95');
-      }, 100);
-    }
-  };
+  }, [isActive, soundButtons, playSound]);
 
   return (
     <div className={widgetContainer}>

@@ -1,4 +1,5 @@
 import { VoiceCommandRequest, VoiceCommandResponse, VoiceContext } from '../types/voiceControl';
+import { debug } from '../../../shared/utils/debug';
 
 export class VoiceCommandService {
   private baseUrl: string;
@@ -25,7 +26,7 @@ export class VoiceCommandService {
       };
 
       const requestId = Math.random().toString(36).slice(2, 11);
-      console.log(`[${new Date().toISOString()}] [${requestId}] 🚀 Sending voice command request:`, JSON.stringify(request, null, 2));
+      debug(`[${new Date().toISOString()}] [${requestId}] 🚀 Sending voice command request:`, JSON.stringify(request, null, 2));
 
       const response = await fetch(`${this.baseUrl}/voice-command`, {
         method: 'POST',
@@ -43,11 +44,11 @@ export class VoiceCommandService {
       }
 
       const result: VoiceCommandResponse = await response.json();
-      console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Voice command response:`, JSON.stringify(result, null, 2));
+      debug(`[${new Date().toISOString()}] [${requestId}] ✅ Voice command response:`, JSON.stringify(result, null, 2));
 
       return result;
     } catch (error) {
-      console.error('Voice command service error:', error);
+      debug.error('Voice command service error:', error);
 
       // Return a fallback error response
       return {
@@ -90,7 +91,7 @@ export class VoiceCommandService {
       const response = await fetch(`${this.baseUrl}/voice-command/health`);
       return response.ok;
     } catch (error) {
-      console.error('Voice command service health check failed:', error);
+      debug.error('Voice command service health check failed:', error);
       return false;
     }
   }

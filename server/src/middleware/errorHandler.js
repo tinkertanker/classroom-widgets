@@ -169,7 +169,14 @@ const logError = (error, context = {}) => {
   
   // In production, send to logging service
   if (process.env.NODE_ENV === 'production') {
-    // TODO: Send to logging service (e.g., Sentry, LogRocket)
+    // Integration point for logging services (Sentry, LogRocket, etc.)
+    // To integrate:
+    // 1. Install: npm install @sentry/node
+    // 2. Initialize in server.js
+    // 3. Uncomment below:
+    // if (global.errorLogger) {
+    //   global.errorLogger.log(errorLog);
+    // }
     console.error('Error Log:', JSON.stringify(errorLog));
   } else {
     console.error('Error Log:', errorLog);

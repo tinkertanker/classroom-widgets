@@ -151,7 +151,7 @@ export const widgetWrapper = cn(
 export const widgetControls = cn(
   "flex items-center p-3",
   "min-h-16 max-h-16",
-  "bg-gray-200/85 dark:bg-gray-700/85",
+  "bg-warm-gray-100/85 dark:bg-warm-gray-700/85",
   "border-t border-warm-gray-200/30 dark:border-warm-gray-700/30",
   "border-l border-r border-b border-warm-gray-200 dark:border-warm-gray-700",
   "rounded-b-lg"

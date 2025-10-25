@@ -95,7 +95,8 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   const handleClearAll = useCallback(() => {
     if (window.confirm('Are you sure you want to clear all submissions?')) {
       setSubmissions([]);
-      // TODO: Emit clear all event if needed
+      // Note: Server maintains submission state, clearing here only affects local display
+      // If server-side clearing is needed, implement session:linkShare:clearAll event
     }
   }, []);
   
@@ -112,10 +113,18 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
     });
   }, [submissions, isWidgetActive, onStateChange]);
   
-  // Handle recovery data
+  // Handle recovery data - restore widget state after page refresh
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      // TODO: Apply recovered state if needed
+      // Restore submissions from recovery data
+      if (recoveryData.roomData.submissions && Array.isArray(recoveryData.roomData.submissions)) {
+        setSubmissions(recoveryData.roomData.submissions);
+      }
+
+      // Restore active state
+      if (typeof recoveryData.roomData.isActive === 'boolean') {
+        setIsWidgetActive(recoveryData.roomData.isActive);
+      }
     }
   }, [recoveryData]);
   

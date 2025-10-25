@@ -208,3 +208,6 @@ export interface PerformanceMetrics {
   renderTime: number;
   memoryUsage?: number;
 }
+
+// Export socket event types
+export * from './socket.types';

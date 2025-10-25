@@ -155,10 +155,25 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     });
   }, [questions, isWidgetActive, onStateChange]);
   
-  // Handle recovery data
+  // Handle recovery data - restore widget state after page refresh
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      // TODO: Apply recovered state if needed
+      // Restore questions from recovery data
+      if (recoveryData.roomData.questions && Array.isArray(recoveryData.roomData.questions)) {
+        setQuestions(recoveryData.roomData.questions.map((q: any) => ({
+          id: q.id,
+          text: q.text,
+          timestamp: new Date(q.timestamp),
+          studentId: q.studentId || '',
+          studentName: q.studentName,
+          answered: q.answered || false
+        })));
+      }
+
+      // Restore active state
+      if (typeof recoveryData.roomData.isActive === 'boolean') {
+        setIsWidgetActive(recoveryData.roomData.isActive);
+      }
     }
   }, [recoveryData]);
   
