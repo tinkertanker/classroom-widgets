@@ -1,0 +1,46 @@
+{
+  "files" : {
+    "src\/features\/widgets\/list\/list.tsx" : {
+      "fileModificationTime" : 1760838097.5655134,
+      "ranges" : [
+        {
+          "description" : "List component imports and interface to understand state management",
+          "end" : 50,
+          "start" : 1
+        }
+      ]
+    },
+    "src\/features\/widgets\/randomiser\/randomiser.tsx" : {
+      "fileModificationTime" : 1760836118.6211686,
+      "ranges" : [
+        {
+          "description" : "Randomiser component imports and state handling to understand action patterns",
+          "end" : 50,
+          "start" : 1
+        }
+      ]
+    },
+    "src\/features\/widgets\/timer\/hooks\/useTimerCountdown.ts" : {
+      "fileModificationTime" : 1759570728.6540885,
+      "ranges" : [
+        {
+          "description" : "Timer countdown hook to understand how timers handle state changes",
+          "end" : 50,
+          "start" : 1
+        }
+      ]
+    },
+    "src\/features\/widgets\/timer\/timer.tsx" : {
+      "fileModificationTime" : 1760839720.428042,
+      "ranges" : [
+        {
+          "description" : "Timer component imports and initial setup to understand widget structure",
+          "end" : 50,
+          "start" : 1
+        }
+      ]
+    }
+  },
+  "updatedAt" : "2025-10-25T02:11:01Z",
+  "version" : 1
+}

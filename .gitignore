@@ -49,3 +49,5 @@ secrets/
 
 # Student app shared symlinks (dev only)
 server/src/student/shared
+
+.repopromt/
