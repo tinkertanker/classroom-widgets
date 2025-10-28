@@ -49,6 +49,9 @@
     "install:all": "npm install && cd server && npm install && cd src/student && npm install",
     "clean": "rm -rf build server/public node_modules server/node_modules server/src/student/node_modules",
     "clean:install": "npm run clean && npm run install:all",
+    "generate:voice-types": "node scripts/generateVoiceCommandTypes.cjs",
+    "prebuild": "npm run generate:voice-types",
+    "prebuild:all": "npm run generate:voice-types",
     "// Deployment Scripts": "",
     "deploy:prepare": "npm run build:all",
     "serve:production": "cd server && NODE_ENV=production npm start"

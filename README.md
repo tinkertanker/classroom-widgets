@@ -159,10 +159,24 @@ classroom-widgets/
 
 - **Drag & Drop**: Position widgets anywhere on the workspace
 - **Resize**: Adjust widget sizes with aspect ratio constraints
+- **Voice Commands**: Hands-free widget control using speech recognition + AI
 - **Backgrounds**: Multiple pattern options
 - **Dark Mode**: System-aware theme switching
 - **Toolbar Customization**: Choose which widgets to display
 - **Workspace Persistence**: Auto-saves layout
+
+### Voice Command System
+
+Control widgets hands-free using natural language:
+
+- **Speech Recognition**: Uses Annyang library for voice input
+- **Hybrid Processing**: Fast pattern matching (~5ms) + AI fallback via Ollama (~200-800ms)
+- **Single Source of Truth**: All commands defined in `shared/voiceCommandDefinitions.json`
+- **Auto-Sync**: TypeScript/JavaScript generated automatically to keep frontend/backend in sync
+
+**Example commands**: "start a 5 minute timer", "launch the poll widget", "pick someone at random"
+
+See [VOICE_COMMAND_SHARED_DEFINITIONS.md](./docs/VOICE_COMMAND_SHARED_DEFINITIONS.md) for details.
 
 ## 💻 Development
 
@@ -177,8 +191,11 @@ npm run install:all
 # Run Teacher App, Student App, and Server concurrently
 npm run dev
 
-# Build all applications for production
+# Build all applications for production (auto-generates voice types)
 npm run build:all
+
+# Regenerate voice command type definitions (TypeScript/JavaScript)
+npm run generate:voice-types
 
 # Start the production server
 npm start
@@ -234,6 +251,7 @@ All comprehensive documentation is in the [`docs/`](./docs) directory:
 - **[Architecture](./docs/ARCHITECTURE.md)** - In-depth technical documentation
 - **[Adding New Widget](./docs/ADDING_NEW_WIDGET.md)** - Widget creation guide
 - **[Socket Events](./docs/SOCKET_EVENTS.md)** - Real-time communication protocol
+- **[Voice Command Shared Definitions](./docs/VOICE_COMMAND_SHARED_DEFINITIONS.md)** - Voice command synchronization system
 
 ### For Deployment
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment (Docker, SSL, troubleshooting)

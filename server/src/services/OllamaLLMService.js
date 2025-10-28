@@ -28,6 +28,7 @@
  */
 
 const { Ollama } = require('ollama');
+const { generateOllamaWidgetDocs } = require('../shared/constants/voiceCommandDefinitions');
 
 class OllamaLLMService {
   constructor() {
@@ -81,60 +82,15 @@ class OllamaLLMService {
     }
 
     // System prompt for the LLM
+    // Widget documentation is auto-generated from shared definitions
+    const widgetDocs = generateOllamaWidgetDocs();
+
     const systemPrompt = `You are a voice command processor for a classroom widget application.
 Your job is to convert natural language commands into structured JSON commands.
 
 Available widgets and their commands:
 
-**TIMER WIDGET:**
-- CREATE_TIMER: { duration: number (in seconds) }
-  Examples: "start timer for 5 minutes" → duration: 300
-- RESET_TIMER, PAUSE_TIMER, STOP_TIMER (no parameters)
-
-**RANDOMISER WIDGET:**
-- RANDOMISE: Pick random item/person (no parameters)
-  Examples: "pick someone at random", "choose next person randomly"
-- CREATE_RANDOMISER: Create new randomiser
-
-**LIST WIDGET:**
-- CREATE_LIST: { items: string[] }
-  Examples: "create list with Math, Science, English" → items: ["Math", "Science", "English"]
-  Complex: "list with tasks (1) homework (2) project" → items: ["homework", "project"]
-
-**POLL WIDGET:**
-- CREATE_POLL: { options: string[] }
-- START_POLL, STOP_POLL (no parameters)
-
-**QUESTIONS WIDGET:**
-- CREATE_QUESTIONS, START_QUESTIONS, STOP_QUESTIONS
-
-**RT FEEDBACK WIDGET:**
-- CREATE_RT_FEEDBACK, START_RT_FEEDBACK, PAUSE_RT_FEEDBACK
-
-**TEXT BANNER WIDGET:**
-- CREATE_TEXT_BANNER: { text: string }
-  Examples: "create banner saying 'Welcome'" → text: "Welcome"
-
-**SOUND EFFECTS WIDGET:**
-- CREATE_SOUND_EFFECTS
-- PLAY_SOUND: { soundName: string }
-  Available sounds: "victory", "applause", "wrong", "tada", "drum roll", "whistle", "bell", "airhorn"
-
-**TASK CUE WIDGET:**
-- CREATE_TASK_CUE: { mode?: "individual"|"pair"|"group"|"class" }
-- SET_TASK_CUE_MODE: { mode: "individual"|"pair"|"group"|"class" }
-
-**TRAFFIC LIGHT WIDGET:**
-- CREATE_TRAFFIC_LIGHT: { state?: "red"|"yellow"|"green" }
-- SET_TRAFFIC_LIGHT: { state: "red"|"yellow"|"green" }
-
-**OTHER WIDGETS:**
-- CREATE_LINK_SHARE, CREATE_IMAGE_DISPLAY, CREATE_QRCODE, CREATE_STICKER
-- CREATE_VISUALISER, CREATE_VOLUME_MONITOR, CREATE_LINK_SHORTENER
-- CREATE_TIC_TAC_TOE, CREATE_WORDLE, CREATE_SNAKE
-
-**GENERIC:**
-- LAUNCH_WIDGET: { target: "widget_name" }
+${widgetDocs}
 
 **Response Format (MUST be valid JSON):**
 {

@@ -2,6 +2,7 @@ import { VoiceCommandResponse, ExecutionResult } from '../types/voiceControl';
 import { WidgetType } from '../../../shared/types';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { debug } from '../../../shared/utils/debug';
+import { VOICE_WIDGET_TARGET_MAP } from '../../../shared/constants/voiceCommandDefinitions';
 
 /**
  * Helper Functions for Widget Lookup
@@ -748,31 +749,29 @@ export class VoiceCommandExecutor {
 
   /**
    * Launch a widget by name (generic launcher)
+   * Uses auto-generated widget target map from shared definitions
    */
   private async executeLaunchWidget(command: any): Promise<ExecutionResult> {
     const widgetName = command.target.toLowerCase();
 
-    // Map widget names to types
-    const widgetTypeMap: Record<string, WidgetType> = {
-      'timer': WidgetType.TIMER,
-      'randomiser': WidgetType.RANDOMISER,
-      'randomizer': WidgetType.RANDOMISER,
-      'list': WidgetType.LIST,
-      'poll': WidgetType.POLL,
-      'questions': WidgetType.QUESTIONS,
-      'feedback': WidgetType.RT_FEEDBACK,
-      'banner': WidgetType.TEXT_BANNER,
-      'sound': WidgetType.SOUND_EFFECTS,
-      'qr': WidgetType.QRCODE,
-      'sticker': WidgetType.STAMP,
-      'game': WidgetType.TIC_TAC_TOE
-    };
+    // Use auto-generated map from shared definitions
+    // This ensures frontend and backend stay in sync
+    const widgetTypeString = VOICE_WIDGET_TARGET_MAP[widgetName];
 
-    const widgetType = widgetTypeMap[widgetName];
-    if (!widgetType) {
+    if (!widgetTypeString) {
       return {
         success: false,
         error: `Unknown widget type: ${widgetName}`
+      };
+    }
+
+    // Map the string to WidgetType enum
+    const widgetType = WidgetType[widgetTypeString as keyof typeof WidgetType];
+
+    if (!widgetType) {
+      return {
+        success: false,
+        error: `Widget type not found in enum: ${widgetTypeString}`
       };
     }
 

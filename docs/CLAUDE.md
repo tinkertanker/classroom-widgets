@@ -41,11 +41,14 @@ npm run dev:all    # Start all services (teacher + server + student)
 npm test           # Run tests with Vitest
 
 # Building
-npm run build      # Build teacher app
+npm run build      # Build teacher app (auto-generates voice types)
 npm run build:all  # Build all applications (teacher + student)
 
 # Setup
 npm run install:all  # Install dependencies for all workspaces
+
+# Voice Command System
+npm run generate:voice-types  # Generate TypeScript/JS from shared/voiceCommandDefinitions.json
 ```
 
 ## Architecture
@@ -115,10 +118,39 @@ The application uses a dynamic widget system where widgets are:
 - **Link Share** (`src/components/linkShare/`) - Collect link submissions from students
 - **RT Feedback** (`src/components/rtFeedback/`) - Real-time feedback slider (1-5 scale) for gauging student understanding
 
+### Voice Command System
+The application includes a sophisticated voice command system for hands-free widget control.
+
+**Key Features**:
+- Speech recognition using Annyang library
+- Hybrid processing: Fast pattern matching + AI fallback (Ollama)
+- Single source of truth: `shared/voiceCommandDefinitions.json`
+- Auto-generated type definitions for frontend/backend sync
+
+**Important Files**:
+- `shared/voiceCommandDefinitions.json` - **Edit this** to add/modify voice commands
+- `scripts/generateVoiceCommandTypes.cjs` - Auto-generates TypeScript/JavaScript from JSON
+- `src/features/voiceControl/` - Voice interface and command execution
+- `server/src/services/OllamaLLMService.js` - AI-powered natural language processing
+
+**Adding Voice Commands**:
+1. Edit `shared/voiceCommandDefinitions.json`
+2. Run `npm run generate:voice-types` (or just build - runs automatically)
+3. Implement command handlers in `VoiceCommandExecutor.ts`
+
+**Processing Flow**:
+1. Speech → Text (Annyang)
+2. Pattern matching (~5ms) - Most commands match here
+3. If confidence < 80% → Ollama AI fallback (~200-800ms)
+4. Command execution (create/control widgets)
+
+See [VOICE_COMMAND_SHARED_DEFINITIONS.md](./VOICE_COMMAND_SHARED_DEFINITIONS.md) for complete documentation.
+
 ### Toolbar Features
 - Widget creation buttons (customizable selection with transparent backgrounds)
 - "More" button for accessing all widgets
 - Sticker mode for placing decorative elements
+- Voice control button (microphone icon) for hands-free operation
 - Menu with:
   - Reset workspace
   - Background selection (geometric, gradient, lines, dots)
@@ -329,6 +361,23 @@ npm run dev:student # Student app dev server
 - **Auto-sync**: Receives room state updates (active/paused) from teacher
 
 ## Recent Updates
+
+### Voice Command Shared Definitions System (January 2025)
+- Implemented single source of truth for voice commands: `shared/voiceCommandDefinitions.json`
+- Auto-generation script creates TypeScript and JavaScript from JSON definitions
+- Frontend and backend widget names now perfectly synchronized
+- Ollama AI prompts auto-generated from shared definitions
+- Build process automatically regenerates type files
+- Eliminates naming mismatch bugs between frontend executor and backend services
+- See [VOICE_COMMAND_SHARED_DEFINITIONS.md](./VOICE_COMMAND_SHARED_DEFINITIONS.md)
+
+### Voice Command System (January 2025)
+- Hybrid approach: Fast pattern matching (~5ms) + AI fallback via Ollama (~200-800ms)
+- Confidence threshold (80%) determines when to use AI
+- Pattern matching tries first for speed, Ollama handles edge cases
+- Success feedback with beep sound, text-to-speech, and auto-close modal
+- Server-side dotenv configuration for Ollama integration
+- Fixed hook initialization order in VoiceInterface component
 
 ### Focus System Implementation (August 2025)
 - Added `focusedWidgetId` tracking to workspace store

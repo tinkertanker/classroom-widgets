@@ -3,36 +3,42 @@
 
 const express = require('express');
 const router = express.Router();
+const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDefinitions');
 
 /**
  * LLM Integration Guide
  *
- * Currently using MockLLMService for development/testing (pattern matching only).
+ * Hybrid Approach (Current Implementation):
+ * 1. PatternMatchingService - Fast regex-based matching (~5ms)
+ * 2. OllamaLLMService - AI fallback for low-confidence matches (~200-800ms)
  *
- * To integrate with a real LLM provider:
+ * The system tries pattern matching first, then falls back to Ollama if confidence < 0.80
+ *
+ * IMPORTANT: Widget Definitions
+ * - All widget names, actions, and parameters are defined in shared/voiceCommandDefinitions.json
+ * - Run `npm run generate:voice-types` to regenerate TypeScript/JavaScript files
+ * - This ensures frontend and backend stay perfectly synchronized
+ * - Both Ollama prompts and widget target maps are auto-generated from this source
+ *
+ * To integrate other LLM providers:
  *
  * Option 1: OpenAI GPT
  *   1. Install: npm install openai
  *   2. Set env var: OPENAI_API_KEY=sk-...
  *   3. Create services/OpenAILLMService.js with processVoiceCommand(transcript, context)
- *   4. Replace MockLLMService with OpenAILLMService below
+ *   4. Replace OllamaLLMService with OpenAILLMService below
  *
  * Option 2: Anthropic Claude
  *   1. Install: npm install @anthropic-ai/sdk
  *   2. Set env var: ANTHROPIC_API_KEY=sk-ant-...
  *   3. Create services/ClaudeLLMService.js
- *   4. Replace MockLLMService with ClaudeLLMService below
+ *   4. Replace OllamaLLMService with ClaudeLLMService below
  *
- * Option 3: Azure OpenAI or Custom Endpoint
- *   1. Configure your endpoint and auth
- *   2. Implement the same interface: processVoiceCommand(transcript, context)
- *   3. Return format: { command: {action, parameters}, feedback: {type, message}, success: bool }
- *
- * See MockLLMService below for the interface contract.
+ * See PatternMatchingService below for the interface contract.
  */
-class MockLLMService {
+class PatternMatchingService {
   async processVoiceCommand(transcript, context) {
-    console.log(`🤖 MockLLMService processing: "${transcript}"`);
+    console.log(`🔍 PatternMatchingService processing: "${transcript}"`);
     console.log('🗂️ Context provided:', context);
 
     const lowerTranscript = transcript.toLowerCase().trim();
@@ -441,7 +447,7 @@ class MockLLMService {
       // GENERIC LAUNCH COMMANDS
       // ========================================
       {
-        pattern: /launch\s+(timer|randomiser|list|poll|questions|feedback|banner|sound|game|qr|sticker)/i,
+        pattern: /launch\s+(?:the\s+)?(timer|randomiser|list|poll|questions|feedback|banner|sound|game|qr|sticker)\s*(?:widget)?/i,
         action: 'LAUNCH_WIDGET',
         target: (match) => match[1],
         parameters: () => ({}),
@@ -489,7 +495,7 @@ class MockLLMService {
         confidence: 0.10
       },
       feedback: {
-        message: `I'm not sure how to handle "${transcript}". Try saying "start a timer for 5 minutes" or "create a new list".`,
+        message: `I'm not sure how to handle "${transcript}".`,
         type: 'error',
         shouldSpeak: true
       },
@@ -516,12 +522,13 @@ class MockLLMService {
   }
 }
 
-// Initialize the LLM service with hybrid approach
-// Uses Ollama if available, falls back to MockLLMService
+// Initialize the LLM services with intelligent hybrid approach
+// Strategy: Try fast pattern matching first, fall back to AI for low-confidence matches
 
 // Attempt to load OllamaLLMService if USE_LOCAL_LLM is enabled
 let OllamaLLMService;
 const USE_LOCAL_LLM = process.env.USE_LOCAL_LLM === 'true';
+const CONFIDENCE_THRESHOLD = 0.80; // Use Ollama for matches below this confidence
 
 if (USE_LOCAL_LLM) {
   try {
@@ -533,10 +540,10 @@ if (USE_LOCAL_LLM) {
   }
 }
 
-const mockService = new MockLLMService();
+const patternService = new PatternMatchingService();
 const ollamaService = USE_LOCAL_LLM && OllamaLLMService ? new OllamaLLMService() : null;
 
-console.log(`🤖 LLM Service Mode: ${ollamaService ? 'Ollama (with MockLLM fallback)' : 'MockLLMService (pattern matching)'}`);
+console.log(`🤖 Voice Command Processing Mode: ${ollamaService ? `Pattern matching first (${CONFIDENCE_THRESHOLD * 100}% threshold), Ollama fallback` : 'Pattern matching only'}`);
 
 // POST /api/voice-command
 router.post('/', async (req, res) => {
@@ -560,36 +567,38 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Process the command with hybrid approach (Ollama → MockLLM fallback)
+    // Process the command with intelligent hybrid approach (Pattern → Ollama if needed)
     console.log(`[${new Date().toISOString()}] [${requestId}] ⚙️ Processing voice command...`);
 
     let result;
-    let usedService = 'MockLLMService';
+    let usedService = 'PatternMatchingService';
 
-    if (ollamaService) {
+    // Step 1: Try fast pattern matching first
+    result = await patternService.processVoiceCommand(transcript, {
+      context: context || {},
+      userPreferences: userPreferences || {}
+    });
+
+    // Step 2: If confidence is low and Ollama is available, use AI fallback
+    if (result.command.confidence < CONFIDENCE_THRESHOLD && ollamaService) {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ⚠️ Low confidence (${(result.command.confidence * 100).toFixed(0)}%), trying Ollama...`);
       try {
-        // Try Ollama first
-        console.log(`[${new Date().toISOString()}] [${requestId}] 🤖 Attempting Ollama...`);
-        result = await ollamaService.processVoiceCommand(transcript, {
+        const ollamaResult = await ollamaService.processVoiceCommand(transcript, {
           context: context || {},
           userPreferences: userPreferences || {}
         });
-        usedService = 'OllamaLLMService';
+        // Use Ollama result if it has better confidence
+        if (ollamaResult.command.confidence > result.command.confidence) {
+          result = ollamaResult;
+          usedService = 'OllamaLLMService (AI fallback)';
+        } else {
+          usedService = 'PatternMatchingService (Ollama not better)';
+        }
       } catch (ollamaError) {
-        // Fallback to MockLLM if Ollama fails
-        console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️ Ollama failed, falling back to MockLLM:`, ollamaError.message);
-        result = await mockService.processVoiceCommand(transcript, {
-          context: context || {},
-          userPreferences: userPreferences || {}
-        });
-        usedService = 'MockLLMService (fallback)';
+        console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️ Ollama failed:`, ollamaError.message);
+        usedService = 'PatternMatchingService (Ollama failed)';
+        // Keep pattern matching result
       }
-    } else {
-      // Use MockLLM by default
-      result = await mockService.processVoiceCommand(transcript, {
-        context: context || {},
-        userPreferences: userPreferences || {}
-      });
     }
 
     const processingTime = Date.now() - startTime;
@@ -612,8 +621,9 @@ router.get('/health', async (req, res) => {
     status: 'healthy',
     service: 'voice-command-processor',
     llmService: {
-      active: ollamaService ? 'Ollama (with MockLLM fallback)' : 'MockLLMService',
-      mockLLMAvailable: true
+      active: ollamaService ? `Pattern matching first (${CONFIDENCE_THRESHOLD * 100}% threshold), Ollama fallback` : 'Pattern matching only',
+      patternMatchingAvailable: true,
+      confidenceThreshold: CONFIDENCE_THRESHOLD
     }
   };
 
