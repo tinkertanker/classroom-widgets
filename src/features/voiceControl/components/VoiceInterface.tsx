@@ -37,6 +37,29 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     resetState
   } = useVoiceRecording();
 
+  // Define handlers before useEffects
+  const handleClose = useCallback(() => {
+    stopRecording();
+    resetState();
+    setParsedCommand(null);
+    setProcessedTranscript(null);
+    isProcessingRef.current = false;
+    processedRequestIdsRef.current.clear();
+    setVoiceState('idle');
+    onClose();
+  }, [stopRecording, resetState, onClose]);
+
+  const handleRetry = useCallback(() => {
+    resetState();
+    setParsedCommand(null);
+    setProcessedTranscript(null);
+    setVoiceState('activating');
+    setTimeout(() => {
+      startRecording();
+      setVoiceState('listening');
+    }, 300);
+  }, [resetState, startRecording]);
+
   // Auto-start recording when interface opens
   useEffect(() => {
     if (isOpen && voiceState === 'idle') {
@@ -46,6 +69,23 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       }, 300);
     }
   }, [isOpen, voiceState, startRecording]);
+
+  // Cleanup: Stop recording and release microphone when modal closes or component unmounts
+  useEffect(() => {
+    if (!isOpen) {
+      // Modal is closed - ensure we stop recording and release microphone
+      debug('🚪 Voice interface closed - releasing microphone resources');
+      stopRecording();
+      resetState();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      debug('🧹 Voice interface unmounting - releasing microphone resources');
+      stopRecording();
+      resetState();
+    };
+  }, [isOpen, stopRecording, resetState]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -74,7 +114,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isListening, voiceState, stopRecording]);
+  }, [isOpen, isListening, voiceState, stopRecording, handleClose, handleRetry]);
 
   // Handle transcript completion
   useEffect(() => {
@@ -104,6 +144,28 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         setProcessedTranscript(transcript);
         const isError = response.feedback.type === 'error' || response.feedback.type === 'not_understood' || !response.success;
         setVoiceState(isError ? 'error' : 'success');
+
+        // On success: play beep, speak feedback, and auto-close
+        if (!isError) {
+          // Play success beep
+          const beep = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIF2S57OibUhELTKXh8bllHAU2jdXuy3gsBSp+y/DdkUELFV+06+unVRQLRqDf8r1nIAUresvw2ok3CRZmvOrqm1ERDEyn4fG2YxwEN4/V7st2LQUgfMrw3Y9AChVduurmplYVCUOe3/O9Zh8FK3jJ7tiJOQgVY7nr65xSEQxNo+Hxt2McBDiQ1O7LdS0GIH3J7d2RQQoUXrvq5aVWFQlFod7zv2cdBStzyO3XiTkHFGS56+ybURELTaPh8bVjHAUzjtTuy3YtBSp9yO7bkUELFGC76+uqVhULR6Pd871jHgUreMnv2og4CBVjuezsnlIRC06n4e6yZB0FM5DW8Mh0LAUrfsnw3I9BChRduuznqFgUCkeh4PO9Zx8GK3nJ7tiJOQcUYrnr7J1REQNPM+by8jEh');
+          beep.volume = 0.3;
+          beep.play().catch(() => {});
+
+          // Speak feedback if available and shouldSpeak is true
+          if (response.feedback.shouldSpeak && response.feedback.message && 'speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(response.feedback.message);
+            utterance.rate = 1.1;
+            utterance.pitch = 1.0;
+            utterance.volume = 0.8;
+            window.speechSynthesis.speak(utterance);
+          }
+
+          // Auto-close after brief delay
+          setTimeout(() => {
+            handleClose();
+          }, 1500);
+        }
       })
       .catch((err) => {
         debug.error('Command processing failed:', err);
@@ -112,7 +174,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       .finally(() => {
         isProcessingRef.current = false;
       });
-  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete]);
+  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose]);
 
   // State transitions
   useEffect(() => {
@@ -128,28 +190,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       setVoiceState('processing');
     }
   }, [isListening, isProcessing, isGathering, voiceState, error]);
-
-  const handleClose = useCallback(() => {
-    stopRecording();
-    resetState();
-    setParsedCommand(null);
-    setProcessedTranscript(null);
-    isProcessingRef.current = false;
-    processedRequestIdsRef.current.clear();
-    setVoiceState('idle');
-    onClose();
-  }, [stopRecording, resetState, onClose]);
-
-  const handleRetry = useCallback(() => {
-    resetState();
-    setParsedCommand(null);
-    setProcessedTranscript(null);
-    setVoiceState('activating');
-    setTimeout(() => {
-      startRecording();
-      setVoiceState('listening');
-    }, 300);
-  }, [resetState, startRecording]);
 
   // Audio visualizer
   const AudioVisualizer = () => {
@@ -278,10 +318,10 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                 <div className="text-sm">
                   <p className={cn(text.primary, "font-medium mb-1")}>Try saying:</p>
                   <ul className={cn(text.secondary, "text-xs space-y-0.5")}>
-                    <li>• "Start a 5 minute timer"</li>
                     <li>• "Create a poll"</li>
-                    <li>• "Reset the timer"</li>
+                    <li>• "Add a text banner"</li>
                     <li>• "Trigger the randomiser"</li>
+                    <li>• "Show the traffic light"</li>
                   </ul>
                 </div>
               </div>
@@ -349,6 +389,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               >
                 <FaMicrophoneSlash />
                 Stop Recording
+                <kbd className="ml-1 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-xs font-mono">Enter</kbd>
               </button>
             )}
 
@@ -363,15 +404,17 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                 >
                   <FaRotate />
                   Try Again
+                  <kbd className="ml-1 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-xs font-mono">R</kbd>
                 </button>
                 <button
                   onClick={handleClose}
                   className={cn(
                     buttons.secondary,
-                    "flex-1 px-4 py-2 text-sm font-medium"
+                    "flex-1 px-4 py-2 text-sm font-medium flex items-center justify-center gap-1"
                   )}
                 >
                   Close
+                  <kbd className="ml-1 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-xs font-mono">Esc</kbd>
                 </button>
               </>
             )}
@@ -386,15 +429,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               >
                 <FaCheck />
                 Done
+                <kbd className="ml-1 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-xs font-mono">Esc</kbd>
               </button>
             )}
-          </div>
-
-          {/* Keyboard hints */}
-          <div className={cn("mt-3 text-center text-xs", text.secondary, "space-y-1")}>
-            {isGathering && <div>Press <kbd className="px-1.5 py-0.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded font-mono">Enter</kbd> to finish</div>}
-            {voiceState === 'error' && <div>Press <kbd className="px-1.5 py-0.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded font-mono">R</kbd> to retry</div>}
-            <div>Press <kbd className="px-1.5 py-0.5 bg-warm-gray-200 dark:bg-warm-gray-700 rounded font-mono">Esc</kbd> to close</div>
           </div>
         </div>
       </div>

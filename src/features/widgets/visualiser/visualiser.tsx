@@ -25,14 +25,20 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
     try {
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+      console.log('📹 [Visualiser] Available cameras:', videoDevices.length, videoDevices.map(d => d.label || 'Unknown device'));
       setDevices(videoDevices);
-      
+
       // If no device selected, use the first one
       if (!selectedDeviceId && videoDevices.length > 0) {
         setSelectedDeviceId(videoDevices[0].deviceId);
       }
+
+      // Check if there are no cameras at all
+      if (videoDevices.length === 0) {
+        console.warn('⚠️ [Visualiser] No video input devices found');
+      }
     } catch (err) {
-      console.error('Error enumerating devices:', err);
+      console.error('❌ [Visualiser] Error enumerating devices:', err);
     }
   };
 
@@ -41,30 +47,78 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
     try {
       // Stop any existing stream
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        console.log('🛑 [Visualiser] Stopping existing camera stream');
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('🛑 [Visualiser] Stopped video track:', track.label);
+        });
       }
 
+      // Check if there are any cameras available first
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
+      console.log('📹 [Visualiser] Checking available cameras:', videoDevices.length);
+
+      if (videoDevices.length === 0) {
+        throw new Error('NO_CAMERA_FOUND');
+      }
+
+      // Use 'ideal' instead of 'exact' to allow fallback to default camera
+      // if the specified deviceId doesn't exist or is unavailable
       const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : true,
+        video: deviceId ? { deviceId: { ideal: deviceId } } : true,
         audio: false
       };
 
+      console.log('📹 [Visualiser] Requesting camera access...', deviceId ? `Device: ${deviceId}` : 'Default device');
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
+      console.log('✅ [Visualiser] Camera access granted');
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
       }
-      
+
       setHasPermission(true);
       setError('');
       setIsLoading(false);
-      
+
       // Get devices after permission is granted
       await getVideoDevices();
-    } catch (err) {
-      console.error('Error accessing webcam:', err);
-      setError('Unable to access camera. Please check permissions.');
+    } catch (err: any) {
+      console.error('❌ [Visualiser] Error accessing webcam:', err);
+
+      // Provide more specific error messages
+      let errorMessage = 'Unable to access camera. ';
+
+      if (err.message === 'NO_CAMERA_FOUND') {
+        errorMessage = '📹 No camera detected.\n\n';
+        errorMessage += 'Please check:\n';
+        errorMessage += '• Camera is connected\n';
+        errorMessage += '• Camera is enabled in system settings\n';
+        errorMessage += '• Camera drivers are installed';
+      } else if (err.name === 'NotAllowedError') {
+        errorMessage += 'Permission denied. Please allow camera access in your browser settings.';
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = '📹 No camera found.\n\n';
+        errorMessage += 'This could mean:\n';
+        errorMessage += '• No camera is connected to your device\n';
+        errorMessage += '• Camera is disabled in system settings\n';
+        errorMessage += '• Browser cannot detect the camera';
+      } else if (err.name === 'NotReadableError') {
+        errorMessage += 'Camera is already in use by another application. Please close other apps using the camera.';
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage += 'Camera device not available. Trying default camera...';
+        // If device constraint failed, try again without specific device
+        if (deviceId) {
+          console.log('⚠️ [Visualiser] Specified device not available, retrying with default...');
+          return startVideo(); // Retry without deviceId
+        }
+      } else {
+        errorMessage += err.message || 'Unknown error occurred.';
+      }
+
+      setError(errorMessage);
       setHasPermission(false);
       setIsLoading(false);
     }
@@ -75,14 +129,18 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
     // Always request camera on mount, even after page reload
     // This will use the saved deviceId if available, or default camera otherwise
     const deviceToUse = selectedDeviceId || undefined;
-    console.log('[Visualiser] Auto-starting camera on mount with device:', deviceToUse);
+    console.log('🚀 [Visualiser] Auto-starting camera on mount with device:', deviceToUse);
     startVideo(deviceToUse);
 
-    // Cleanup on unmount
+    // Cleanup on unmount - ensure camera is released
     return () => {
+      console.log('🧹 [Visualiser] Component unmounting - releasing camera');
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        console.log('[Visualiser] Stopped camera stream on unmount');
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('🛑 [Visualiser] Stopped video track on unmount:', track.label);
+        });
+        streamRef.current = null;
       }
     };
   }, []); // Only run once on mount

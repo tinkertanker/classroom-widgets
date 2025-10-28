@@ -17,8 +17,12 @@ export function useAudioStream({ isEnabled, onStreamReady }: UseAudioStreamOptio
   useEffect(() => {
     if (!isEnabled) {
       // Clean up when disabled
+      console.log('🔇 [Volume Monitor] Disabled - releasing microphone');
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('🛑 [Volume Monitor] Stopped audio track:', track.label);
+        });
         mediaStreamRef.current = null;
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
@@ -31,7 +35,10 @@ export function useAudioStream({ isEnabled, onStreamReady }: UseAudioStreamOptio
 
     const setupAudio = async () => {
       try {
+        console.log('🎤 [Volume Monitor] Requesting microphone access...');
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('✅ [Volume Monitor] Microphone access granted');
+
         const audioContext = new AudioContext();
         const source = audioContext.createMediaStreamSource(stream);
         const analyser = audioContext.createAnalyser();
@@ -45,19 +52,25 @@ export function useAudioStream({ isEnabled, onStreamReady }: UseAudioStreamOptio
 
         onStreamReady?.(stream, audioContext, analyser);
       } catch (err) {
-        console.error('Error accessing the microphone', err);
+        console.error('❌ [Volume Monitor] Error accessing the microphone', err);
       }
     };
 
     setupAudio();
 
+    // Cleanup on unmount or when isEnabled changes
     return () => {
+      console.log('🧹 [Volume Monitor] Cleaning up - releasing microphone');
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('🛑 [Volume Monitor] Stopped audio track on cleanup:', track.label);
+        });
         mediaStreamRef.current = null;
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
+        console.log('🔌 [Volume Monitor] Closed audio context');
         audioContextRef.current = null;
       }
       analyserRef.current = null;

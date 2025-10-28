@@ -218,10 +218,15 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
   const stopRecording = useCallback(() => {
     if (recognitionRef.current) {
-      debug('Stopping speech recognition and processing captured speech...');
+      debug('🛑 Stopping speech recognition and releasing microphone...');
 
-      // Stop recognition
-      recognitionRef.current.stop();
+      try {
+        // Stop recognition - this releases the microphone
+        recognitionRef.current.stop();
+      } catch (error) {
+        debug.error('Error stopping recognition:', error);
+      }
+
       recognitionRef.current = null;
 
       // Now show the captured transcript and set processing state
@@ -239,7 +244,18 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   }, []);
 
   const resetState = useCallback(() => {
-    stopRecording();
+    debug('🔄 Resetting voice recording state and releasing resources...');
+
+    // Abort any active recognition immediately
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort(); // Use abort() instead of stop() for immediate cleanup
+      } catch (error) {
+        debug.error('Error aborting recognition:', error);
+      }
+      recognitionRef.current = null;
+    }
+
     isGatheringInputRef.current = false;
     setState({
       isListening: false,
@@ -251,13 +267,18 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     });
     currentTranscriptRef.current = '';
     currentConfidenceRef.current = 0;
-  }, [stopRecording]);
+  }, []);
 
-  // Cleanup on unmount
+  // Cleanup on unmount - ensure microphone is released
   useEffect(() => {
     return () => {
+      debug('🧹 Cleaning up voice recording on unmount...');
       if (recognitionRef.current) {
-        recognitionRef.current.abort();
+        try {
+          recognitionRef.current.abort(); // Immediately stop and release microphone
+        } catch (error) {
+          debug.error('Error during unmount cleanup:', error);
+        }
         recognitionRef.current = null;
       }
     };
