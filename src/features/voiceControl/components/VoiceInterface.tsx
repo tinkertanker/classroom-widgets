@@ -163,10 +163,10 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             window.speechSynthesis.speak(utterance);
           }
 
-          // Auto-close after brief delay
+          // Auto-close after 3 seconds
           setTimeout(() => {
             handleClose();
-          }, 1500);
+          }, 3000);
         }
       })
       .catch((err) => {
@@ -276,31 +276,13 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
       case 'success':
         return (
-          <div className="text-center py-4">
+          <div className="text-center py-6">
             <div className="w-16 h-16 mx-auto rounded-full bg-sage-100 dark:bg-sage-900/30 flex items-center justify-center mb-3">
               <FaCheck className="text-2xl text-sage-600 dark:text-sage-400" />
             </div>
-            <p className={cn(text.primary, "font-medium mb-2")}>
+            <p className={cn(text.primary, "font-medium text-lg")}>
               {parsedCommand?.feedback.message || 'Command executed'}
             </p>
-            {processedTranscript && (
-              <p className={cn(text.secondary, "text-sm mb-3")}>"{processedTranscript}"</p>
-            )}
-            {parsedCommand && (
-              <div className={cn("mt-3 p-3 rounded text-left", "bg-sage-50 dark:bg-sage-900/20", borders.primary)}>
-                <p className={cn(text.primary, "text-sm font-medium mb-1")}>
-                  {parsedCommand.command.action.replace(/_/g, ' ')}
-                  {parsedCommand.command.target && ` ${parsedCommand.command.target}`}
-                </p>
-                {parsedCommand.command.parameters && Object.keys(parsedCommand.command.parameters).length > 0 && (
-                  <p className={cn(text.secondary, "text-xs")}>
-                    {Object.entries(parsedCommand.command.parameters).map(([key, value]) => (
-                      <span key={key} className="mr-2">{key}: {String(value)}</span>
-                    ))}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         );
 

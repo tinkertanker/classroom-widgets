@@ -269,6 +269,7 @@ function App() {
 
           return {
             ...commandResponse,
+            success: true,
             feedback: {
               ...commandResponse.feedback,
               message: commandResponse.feedback.message || 'Command executed successfully'
@@ -279,6 +280,7 @@ function App() {
 
           return {
             ...commandResponse,
+            success: false,
             feedback: {
               message: executionResult.error || 'Failed to execute command',
               type: 'error' as const,
@@ -294,6 +296,7 @@ function App() {
       console.error('Voice command processing failed:', error);
 
       return {
+        success: false,
         command: {
           action: 'ERROR',
           target: 'unknown',

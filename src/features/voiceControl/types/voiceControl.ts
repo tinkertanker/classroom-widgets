@@ -17,10 +17,11 @@ export interface VoiceCommand {
 }
 
 export interface VoiceCommandResponse {
+  success: boolean;
   command: VoiceCommand;
   feedback: {
     message: string;
-    type: 'success' | 'confirm' | 'info' | 'error';
+    type: 'success' | 'confirm' | 'info' | 'error' | 'not_understood';
     shouldSpeak?: boolean;
   };
   alternatives?: Array<{

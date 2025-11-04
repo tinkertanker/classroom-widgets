@@ -52,6 +52,7 @@ export class VoiceCommandService {
 
       // Return a fallback error response
       return {
+        success: false,
         command: {
           action: 'ERROR',
           target: 'unknown',
