@@ -16,6 +16,7 @@
   "license": "ISC",
   "description": "Real-time server for classroom widgets",
   "dependencies": {
+    "@boundaryml/baml": "^0.212.0",
     "axios": "^1.11.0",
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",
