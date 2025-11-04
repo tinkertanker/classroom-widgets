@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
-import { FaBars, FaBug } from 'react-icons/fa6';
+import { FaBars, FaBug, FaMicrophone } from 'react-icons/fa6';
 import { StackedStickersIcon } from './StackedStickersIcon';
 import { useToolbar } from '../../../shared/hooks/useWorkspace';
 import { useCreateWidget } from '../../../shared/hooks/useWidget';
@@ -99,6 +99,10 @@ const Toolbar: React.FC = () => {
       ),
       className: 'max-w-2xl bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl'
     });
+  };
+
+  const handleActivateVoiceControl = () => {
+    (window as any).activateVoiceControl?.();
   };
   
   // Debug function to launch all widgets
@@ -265,7 +269,7 @@ const Toolbar: React.FC = () => {
             title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >
         
-            <StackedStickersIcon 
+            <StackedStickersIcon
               className={clsx(
                 "w-6 h-6 transform transition-transform duration-300",
                 stickerMode ? "scale-110" : "hover:scale-105"
@@ -274,7 +278,30 @@ const Toolbar: React.FC = () => {
             />
             <span className="text-xs text-center leading-tight">Stickers</span>
           </button>
-            
+
+            {/* Voice Control button */}
+            <button
+              onClick={handleActivateVoiceControl}
+              className={clsx(
+                'px-3 py-2 rounded-lg transition-all duration-200 group',
+                'flex flex-col items-center gap-1 min-w-[80px]',
+                'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300',
+                'hover:bg-sage-100 dark:hover:bg-sage-900/30',
+                'hover:text-sage-700 dark:hover:text-sage-300',
+                'relative',
+                stickerMode ? 'opacity-50 cursor-not-allowed' : ''
+              )}
+              disabled={stickerMode}
+              title={`Voice Control${isMac ? ' (⌘⌘)' : ' (Ctrl Ctrl)'}`}
+            >
+              <FaMicrophone className="text-lg" />
+              <span className="text-xs text-center leading-tight">Voice</span>
+              {/* Keyboard shortcut indicator */}
+              <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {isMac ? '⌘⌘' : 'Ctrl Ctrl'}
+              </div>
+            </button>
+
             {/* Debug button - only in development */}
             {process.env.NODE_ENV === 'development' && (
               <button
@@ -301,16 +328,16 @@ const Toolbar: React.FC = () => {
             
             {/* Clock */}
             {showClock && (
-              <div className="flex items-center p-2 bg-white/50 dark:bg-warm-gray-700/50 rounded-lg shadow-sm">
+              <div className="flex items-center justify-center px-3 py-2 bg-white/50 dark:bg-warm-gray-700/50 rounded-lg shadow-sm min-h-[68px]">
                 <Clock />
               </div>
             )}
-            
+
             {/* Menu button */}
             <div className="relative">
               <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-colors"
+              className="px-3 py-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-colors min-h-[68px] flex items-center justify-center"
               title="Menu"
             >
               <FaBars className="w-5 h-5" />

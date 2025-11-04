@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FaMicrophone, FaMicrophoneSlash, FaSpinner, FaCheck, FaTriangleExclamation, FaXmark, FaLightbulb, FaRotate } from 'react-icons/fa6';
+import { FaMicrophone, FaMicrophoneSlash, FaSpinner, FaCheck, FaTriangleExclamation, FaXmark, FaLightbulb, FaRotate, FaTurnDown } from 'react-icons/fa6';
 import { useVoiceRecording } from '../hooks/useVoiceRecording';
 import { useVoiceFeedbackSound } from '../hooks/useVoiceFeedbackSound';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
@@ -336,13 +336,10 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       )}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">
-          <div>
-            <h2 className={cn(text.primary, "text-lg font-semibold flex items-center gap-2")}>
-              <FaMicrophone className={text.secondary} />
-              Voice Control
-            </h2>
-            <p className={cn(text.secondary, "text-xs mt-0.5")}>Speak naturally to control widgets</p>
-          </div>
+          <h2 className={cn(text.primary, "text-lg font-semibold flex items-center gap-2")}>
+            <FaMicrophone className={text.secondary} />
+            Voice Control
+          </h2>
           <button
             onClick={handleClose}
             className={cn(
@@ -365,7 +362,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         {/* Actions */}
         <div className="px-6 pb-6">
           <div className="flex gap-2">
-            {isGathering && (
+            {isGathering && voiceState !== 'processing' && (
               <button
                 onClick={stopRecording}
                 className={cn(
@@ -375,7 +372,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
               >
                 <FaMicrophoneSlash />
                 Stop Recording
-                <kbd className="ml-1 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-xs font-mono">Enter</kbd>
+                <kbd className="ml-1 px-1.5 py-0.5 bg-black/10 dark:bg-white/10 rounded text-xs flex items-center">
+                  <FaTurnDown className="rotate-90" />
+                </kbd>
               </button>
             )}
 

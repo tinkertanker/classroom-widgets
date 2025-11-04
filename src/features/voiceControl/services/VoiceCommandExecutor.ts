@@ -3,11 +3,42 @@ import { WidgetType } from '../../../shared/types';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { debug } from '../../../shared/utils/debug';
 import { VOICE_WIDGET_TARGET_MAP } from '../../../shared/constants/voiceCommandDefinitions';
+import { widgetRegistry } from '../../../services/WidgetRegistry';
 
 /**
  * Helper Functions for Widget Lookup
  * These functions get fresh state each time to avoid stale references
  */
+
+// Get viewport center position for new widgets
+const getViewportCenterPosition = (widgetType: WidgetType): { x: number; y: number } => {
+  const scrollContainer = document.querySelector('.board-scroll-container') as HTMLElement;
+  const scale = useWorkspaceStore.getState().scale || 1;
+
+  if (!scrollContainer) {
+    debug.warn('Could not find scroll container, using default position');
+    return { x: 400, y: 300 };
+  }
+
+  const scrollRect = scrollContainer.getBoundingClientRect();
+
+  // Calculate center position relative to the board
+  const centerX = (scrollContainer.scrollLeft + scrollRect.width / 2) / scale;
+  const centerY = (scrollContainer.scrollTop + scrollRect.height / 2) / scale;
+
+  // Get widget size from registry
+  const widgetConfig = widgetRegistry.get(widgetType);
+  const widgetWidth = widgetConfig?.defaultSize.width || 350;
+  const widgetHeight = widgetConfig?.defaultSize.height || 350;
+
+  // Adjust position to center the widget
+  const x = centerX - widgetWidth / 2;
+  const y = centerY - widgetHeight / 2;
+
+  debug('📍 Calculated viewport center position:', { x, y, centerX, centerY, widgetWidth, widgetHeight });
+
+  return { x, y };
+};
 
 // Generic widget finder
 const findWidgetByType = (type: WidgetType, preferFocused = true) => {
@@ -182,13 +213,8 @@ export class VoiceCommandExecutor {
       const store = useWorkspaceStore.getState();
       const duration = command.parameters.duration || 300; // Default 5 minutes
 
-      // Calculate center position for new widget
-      const centerX = 400;
-      const centerY = 300;
-      const widgetWidth = 350;
-      const widgetHeight = 415;
-      const x = centerX - widgetWidth / 2;
-      const y = centerY - widgetHeight / 2;
+      // Get viewport center position
+      const { x, y } = getViewportCenterPosition(WidgetType.TIMER);
 
       // Create timer widget
       const widgetId = store.addWidget(WidgetType.TIMER, { x, y });
@@ -327,13 +353,8 @@ export class VoiceCommandExecutor {
       const store = useWorkspaceStore.getState();
       const items = command.parameters.items || [];
 
-      // Calculate center position
-      const centerX = 400;
-      const centerY = 300;
-      const widgetWidth = 350;
-      const widgetHeight = 350;
-      const x = centerX - widgetWidth / 2;
-      const y = centerY - widgetHeight / 2;
+      // Get viewport center position
+      const { x, y } = getViewportCenterPosition(WidgetType.LIST);
 
       // Create list widget
       const widgetId = store.addWidget(WidgetType.LIST, { x, y });
@@ -374,13 +395,8 @@ export class VoiceCommandExecutor {
       const store = useWorkspaceStore.getState();
       const options = command.parameters.options || ['Option 1', 'Option 2'];
 
-      // Calculate center position
-      const centerX = 400;
-      const centerY = 300;
-      const widgetWidth = 400;
-      const widgetHeight = 400;
-      const x = centerX - widgetWidth / 2;
-      const y = centerY - widgetHeight / 2;
+      // Get viewport center position
+      const { x, y } = getViewportCenterPosition(WidgetType.POLL);
 
       // Create poll widget
       const widgetId = store.addWidget(WidgetType.POLL, { x, y });
@@ -721,13 +737,8 @@ export class VoiceCommandExecutor {
     try {
       const store = useWorkspaceStore.getState();
 
-      // Calculate center position for new widget
-      const centerX = 400;
-      const centerY = 300;
-      const widgetWidth = 350;
-      const widgetHeight = 350;
-      const x = centerX - widgetWidth / 2;
-      const y = centerY - widgetHeight / 2;
+      // Get viewport center position
+      const { x, y } = getViewportCenterPosition(widgetType);
 
       // Create widget
       const widgetId = store.addWidget(widgetType, { x, y });

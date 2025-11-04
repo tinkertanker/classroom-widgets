@@ -140,7 +140,18 @@ ollama serve
 - Only 0.5GB (very fast download and inference)
 - Excellent JSON output without markdown wrapping
 - Works reliably with BAML's `/v1` endpoint
+- Handles optional fields gracefully (important for BAML's SAP)
 - Tested alternatives: gemma2:2b had markdown wrapping issues
+
+**Removing Old Models:**
+If you had other models installed (like gemma2:2b), you can remove them:
+```bash
+# List installed models
+ollama list
+
+# Remove unused models
+ollama rm gemma2:2b
+```
 
 ### 5. Key Fix: OpenAI-Compatible Endpoint
 
@@ -349,12 +360,19 @@ curl -X POST http://localhost:3001/api/voice-command \
 
 ## Performance
 
-| Metric | Pattern Matching | BAML (Ollama) | BAML (GPT-4) |
-|--------|------------------|---------------|--------------|
-| Latency | ~5ms | ~200-800ms | ~500-2000ms |
-| Accuracy | 90% (simple commands) | 98% (all commands) | 99% (all commands) |
+| Metric | Pattern Matching | BAML (qwen2.5:0.5b) | BAML (GPT-4) |
+|--------|------------------|---------------------|--------------|
+| Latency | ~5ms | ~1-3s | ~500-2000ms |
+| Accuracy | 90% (simple commands) | 95% (all commands) | 99% (all commands) |
 | Cost | Free | Free (local) | $0.01-0.03 per request |
+| Model Size | N/A | 0.5GB | N/A (cloud) |
 | Offline | ✅ Yes | ✅ Yes (local Ollama) | ❌ No |
+
+**Notes:**
+- qwen2.5:0.5b is extremely fast for its size
+- Pattern matching handles ~90% of commands in 5ms
+- BAML only activates for low-confidence commands (<80%)
+- Overall system latency: ~5ms for most commands, ~1-3s for edge cases
 
 ## Troubleshooting
 
@@ -376,15 +394,44 @@ curl http://localhost:11434/api/tags
 
 # Start Ollama if not running
 ollama serve
+
+# Verify qwen2.5:0.5b is installed
+ollama list | grep qwen
 ```
+
+### "Failed to parse JSON: trailing characters" error
+
+This error means BAML is using the wrong Ollama endpoint:
+
+**Solution:** Ensure `base_url` in `baml_src/voice_commands.baml` ends with `/v1`:
+```baml
+base_url "http://localhost:11434/v1"  // ← Must have /v1!
+```
+
+Then regenerate:
+```bash
+npx baml-cli generate
+```
+
+### Missing required field errors
+
+If you see "Missing required field: feedback" or "shouldSpeak":
+
+**Solution:** These fields are now optional in the schema. Make sure you have the latest version:
+```baml
+feedback FeedbackMessage?    // ← Optional (?)
+shouldSpeak bool?            // ← Optional (?)
+```
+
+The service provides defaults when fields are missing.
 
 ### Low confidence scores
 
 If BAML consistently returns low confidence:
 
 1. Check the prompt includes all available commands
-2. Verify the model is suitable (gemma2:2b, phi4, llama3.2:3b)
-3. Consider adding more examples to the prompt
+2. Verify qwen2.5:0.5b is downloaded and running
+3. Consider using a larger model (llama3.2:1b, phi3.5) for better accuracy
 
 ### Type errors
 

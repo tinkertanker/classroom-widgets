@@ -575,7 +575,38 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Process the command with intelligent hybrid approach (Pattern → Ollama if needed)
+    // Quick validation: Filter out obviously invalid transcripts
+    const trimmedTranscript = transcript.trim();
+    const isObviouslyInvalid = (
+      trimmedTranscript.length < 3 ||                    // Too short
+      /^[^a-zA-Z]*$/.test(trimmedTranscript) ||         // No letters at all
+      /^(uh+|um+|ah+|er+|mm+)$/i.test(trimmedTranscript) || // Just filler words
+      trimmedTranscript === 'thank you' ||               // Politeness after command
+      trimmedTranscript === 'thanks'
+    );
+
+    if (isObviouslyInvalid) {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ⚡ Fast reject: obviously invalid transcript`);
+      const processingTime = Date.now() - startTime;
+      const result = {
+        success: false,
+        command: {
+          action: 'UNKNOWN',
+          target: 'unknown',
+          parameters: {},
+          confidence: 0.10
+        },
+        feedback: {
+          message: "I didn't catch that. Try saying something like 'create a timer' or 'launch the poll'.",
+          type: 'not_understood',
+          shouldSpeak: false  // Don't speak for obvious noise
+        }
+      };
+      console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Fast rejected in ${processingTime}ms`);
+      return res.json(result);
+    }
+
+    // Process the command with intelligent hybrid approach (Pattern → BAML if needed)
     console.log(`[${new Date().toISOString()}] [${requestId}] ⚙️ Processing voice command...`);
 
     let result;

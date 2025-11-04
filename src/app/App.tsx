@@ -373,15 +373,29 @@ function App() {
         setSelectedStickerType(null);
       }
     };
-    
+
     // Also expose a getter for the toolbar to check state
     (window as any).getStickerMode = () => stickerMode;
-    
+
     return () => {
       delete (window as any).setStickerMode;
       delete (window as any).getStickerMode;
     };
   }, [stickerMode]);
+
+  // Make voice control functions available globally for toolbar
+  useEffect(() => {
+    (window as any).activateVoiceControl = () => {
+      setIsVoiceControlActive(true);
+    };
+
+    (window as any).getVoiceControlActive = () => isVoiceControlActive;
+
+    return () => {
+      delete (window as any).activateVoiceControl;
+      delete (window as any).getVoiceControlActive;
+    };
+  }, [isVoiceControlActive]);
   
   return (
     <GlobalErrorBoundary>

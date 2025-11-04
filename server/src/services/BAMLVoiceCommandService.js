@@ -59,16 +59,21 @@ class BAMLVoiceCommandService {
       const processingTime = Date.now() - startTime;
       console.log(`✅ BAML parsed in ${processingTime}ms:`, JSON.stringify(result, null, 2));
 
+      // Check if the command is UNKNOWN or confidence is too low
+      const isUnknown = result.action === 'UNKNOWN' || result.confidence < 0.5;
+
       // Transform BAML result to match our API format
       // Provide default feedback if LLM didn't include it
       const feedback = result.feedback || {
-        message: `${result.action.replace(/_/g, ' ').toLowerCase()} on ${result.target}`,
-        type: 'success',
+        message: isUnknown
+          ? `I didn't understand "${transcript}". Try saying something like "create a timer" or "launch the poll".`
+          : `${result.action.replace(/_/g, ' ').toLowerCase()} on ${result.target}`,
+        type: isUnknown ? 'not_understood' : 'success',
         shouldSpeak: true
       };
 
       return {
-        success: true,
+        success: !isUnknown,
         command: {
           action: result.action,
           target: result.target,
