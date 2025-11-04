@@ -61,7 +61,7 @@ export interface CommandParameters {
 export interface FeedbackMessage {
   message: string
   type: string
-  shouldSpeak: boolean
+  shouldSpeak?: boolean | null
   
 }
 
@@ -70,6 +70,6 @@ export interface VoiceCommand {
   target: string
   confidence: number
   parameters?: CommandParameters | null
-  feedback: FeedbackMessage
+  feedback?: FeedbackMessage | null
   
 }

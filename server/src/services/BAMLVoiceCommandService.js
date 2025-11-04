@@ -1,7 +1,22 @@
 // BAML-powered Voice Command Service
 // Uses BAML for type-safe LLM command parsing with Ollama
 
-const { b } = require('../../../baml_client');
+// Note: BAML generates TypeScript files, so we need to use dynamic import
+// or install tsx/ts-node. For now, we'll lazy-load it.
+let bamlClient = null;
+async function getBamlClient() {
+  if (!bamlClient) {
+    try {
+      // Try to use tsx to load TypeScript files
+      require('tsx/cjs');
+      const baml = require('../../baml_client');
+      bamlClient = baml.b;
+    } catch (error) {
+      throw new Error('BAML client requires tsx to load TypeScript files. Install with: npm install --save-dev tsx');
+    }
+  }
+  return bamlClient;
+}
 
 /**
  * BAMLVoiceCommandService
@@ -18,7 +33,7 @@ const { b } = require('../../../baml_client');
  */
 class BAMLVoiceCommandService {
   constructor() {
-    this.client = b;
+    this.client = null;
     console.log('🎯 BAMLVoiceCommandService initialized');
   }
 
@@ -33,6 +48,11 @@ class BAMLVoiceCommandService {
     console.log(`🎯 BAML processing: "${transcript}"`);
 
     try {
+      // Lazy-load the BAML client
+      if (!this.client) {
+        this.client = await getBamlClient();
+      }
+
       // Call the BAML-generated ParseVoiceCommand function
       const result = await this.client.ParseVoiceCommand(transcript);
 
@@ -40,7 +60,15 @@ class BAMLVoiceCommandService {
       console.log(`✅ BAML parsed in ${processingTime}ms:`, JSON.stringify(result, null, 2));
 
       // Transform BAML result to match our API format
+      // Provide default feedback if LLM didn't include it
+      const feedback = result.feedback || {
+        message: `${result.action.replace(/_/g, ' ').toLowerCase()} on ${result.target}`,
+        type: 'success',
+        shouldSpeak: true
+      };
+
       return {
+        success: true,
         command: {
           action: result.action,
           target: result.target,
@@ -48,9 +76,9 @@ class BAMLVoiceCommandService {
           confidence: result.confidence
         },
         feedback: {
-          message: result.feedback.message,
-          type: result.feedback.type,
-          shouldSpeak: result.feedback.shouldSpeak
+          message: feedback.message,
+          type: feedback.type,
+          shouldSpeak: feedback.shouldSpeak !== undefined ? feedback.shouldSpeak : true
         }
       };
     } catch (error) {
@@ -97,6 +125,11 @@ class BAMLVoiceCommandService {
    */
   async healthCheck() {
     try {
+      // Lazy-load the BAML client
+      if (!this.client) {
+        this.client = await getBamlClient();
+      }
+
       // Try a simple test parse
       const testResult = await this.client.ParseVoiceCommand('test');
       return {
