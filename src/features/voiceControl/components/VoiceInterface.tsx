@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FaMicrophone, FaMicrophoneSlash, FaSpinner, FaCheck, FaTriangleExclamation, FaXmark, FaLightbulb, FaRotate } from 'react-icons/fa6';
 import { useVoiceRecording } from '../hooks/useVoiceRecording';
+import { useVoiceFeedbackSound } from '../hooks/useVoiceFeedbackSound';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
 import { debug } from '../../../shared/utils/debug';
 import { cn, buttons, text, borders, borderRadius } from '../../../shared/utils/styles';
@@ -36,6 +37,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     stopRecording,
     resetState
   } = useVoiceRecording();
+
+  const { playFeedback } = useVoiceFeedbackSound();
 
   // Define handlers before useEffects
   const handleClose = useCallback(() => {
@@ -137,6 +140,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     processedRequestIdsRef.current.add(transcript);
     isProcessingRef.current = true;
     setVoiceState('processing');
+    playFeedback('processing');
 
     onTranscriptComplete(transcript)
       .then((response) => {
@@ -145,12 +149,10 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         const isError = response.feedback.type === 'error' || response.feedback.type === 'not_understood' || !response.success;
         setVoiceState(isError ? 'error' : 'success');
 
-        // On success: play beep, speak feedback, and auto-close
+        // On success: play feedback sound, speak feedback, and auto-close
         if (!isError) {
-          // Play success beep
-          const beep = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIF2S57OibUhELTKXh8bllHAU2jdXuy3gsBSp+y/DdkUELFV+06+unVRQLRqDf8r1nIAUresvw2ok3CRZmvOrqm1ERDEyn4fG2YxwEN4/V7st2LQUgfMrw3Y9AChVduurmplYVCUOe3/O9Zh8FK3jJ7tiJOQgVY7nr65xSEQxNo+Hxt2McBDiQ1O7LdS0GIH3J7d2RQQoUXrvq5aVWFQlFod7zv2cdBStzyO3XiTkHFGS56+ybURELTaPh8bVjHAUzjtTuy3YtBSp9yO7bkUELFGC76+uqVhULR6Pd871jHgUreMnv2og4CBVjuezsnlIRC06n4e6yZB0FM5DW8Mh0LAUrfsnw3I9BChRduuznqFgUCkeh4PO9Zx8GK3nJ7tiJOQcUYrnr7J1REQNPM+by8jEh');
-          beep.volume = 0.3;
-          beep.play().catch(() => {});
+          // Play done feedback sound
+          playFeedback('done');
 
           // Speak feedback if available and shouldSpeak is true
           if (response.feedback.shouldSpeak && response.feedback.message && 'speechSynthesis' in window) {
@@ -174,7 +176,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       .finally(() => {
         isProcessingRef.current = false;
       });
-  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose]);
+  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose, playFeedback]);
 
   // State transitions
   useEffect(() => {
@@ -186,10 +188,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       setVoiceState('error');
     } else if (isGathering) {
       setVoiceState('listening');
+      // Play feedback sound when we start listening
+      playFeedback('listening');
     } else if (isProcessing) {
       setVoiceState('processing');
     }
-  }, [isListening, isProcessing, isGathering, voiceState, error]);
+  }, [isListening, isProcessing, isGathering, voiceState, error, playFeedback]);
 
   // Audio visualizer
   const AudioVisualizer = () => {
