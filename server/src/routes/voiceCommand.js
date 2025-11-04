@@ -10,9 +10,9 @@ const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDef
  *
  * Hybrid Approach (Current Implementation):
  * 1. PatternMatchingService - Fast regex-based matching (~5ms)
- * 2. OllamaLLMService - AI fallback for low-confidence matches (~200-800ms)
+ * 2. BAMLVoiceCommandService - Type-safe AI fallback for low-confidence matches (~1-3s)
  *
- * The system tries pattern matching first, then falls back to Ollama if confidence < 0.80
+ * The system tries pattern matching first, then falls back to BAML if confidence < 0.80
  *
  * IMPORTANT: Widget Definitions
  * - All widget names, actions, and parameters are defined in shared/voiceCommandDefinitions.json
@@ -22,19 +22,11 @@ const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDef
  *
  * To integrate other LLM providers:
  *
- * Option 1: OpenAI GPT
- *   1. Install: npm install openai
- *   2. Set env var: OPENAI_API_KEY=sk-...
- *   3. Create services/OpenAILLMService.js with processVoiceCommand(transcript, context)
- *   4. Replace OllamaLLMService with OpenAILLMService below
- *
- * Option 2: Anthropic Claude
- *   1. Install: npm install @anthropic-ai/sdk
- *   2. Set env var: ANTHROPIC_API_KEY=sk-ant-...
- *   3. Create services/ClaudeLLMService.js
- *   4. Replace OllamaLLMService with ClaudeLLMService below
- *
- * See PatternMatchingService below for the interface contract.
+ * BAML Configuration:
+ * - Model: qwen2.5:0.5b (fast, lightweight, good JSON output)
+ * - Endpoint: http://localhost:11434/v1 (OpenAI-compatible API)
+ * - Optional fields: feedback and shouldSpeak (handles incomplete LLM responses)
+ * - SAP algorithm: Schema-Aligned Parsing for flexible LLM outputs
  */
 class PatternMatchingService {
   async processVoiceCommand(transcript, context) {
@@ -532,29 +524,16 @@ class PatternMatchingService {
   }
 }
 
-// Initialize the LLM services with intelligent hybrid approach
-// Strategy: Try fast pattern matching first, fall back to AI for low-confidence matches
+// Initialize the voice command services
+// Strategy: Try fast pattern matching first, fall back to BAML AI for low-confidence matches
 
-// Service options: PatternMatching, Ollama (raw), BAML (type-safe)
-const USE_LOCAL_LLM = process.env.USE_LOCAL_LLM === 'true';
-const USE_BAML = process.env.USE_BAML === 'true'; // New flag for BAML
-const CONFIDENCE_THRESHOLD = 0.80; // Use AI for matches below this confidence
+const USE_BAML = process.env.USE_BAML === 'true';
+const CONFIDENCE_THRESHOLD = 0.80; // Use BAML AI for matches below this confidence
 
-let OllamaLLMService;
 let BAMLVoiceCommandService;
 
-// Load AI services based on configuration
-if (USE_LOCAL_LLM && !USE_BAML) {
-  // Traditional Ollama service (raw API calls)
-  try {
-    OllamaLLMService = require('../services/OllamaLLMService');
-  } catch (error) {
-    console.warn('⚠️ OllamaLLMService not available:', error.message);
-    console.log('💡 To use local LLM, install ollama package: npm install ollama');
-    console.log('💡 See docs/LOCAL_LLM_SETUP.md for setup guide');
-  }
-} else if (USE_BAML) {
-  // BAML service (type-safe LLM parsing)
+// Load BAML service if enabled
+if (USE_BAML) {
   try {
     BAMLVoiceCommandService = require('../services/BAMLVoiceCommandService');
   } catch (error) {
@@ -565,16 +544,12 @@ if (USE_LOCAL_LLM && !USE_BAML) {
 }
 
 const patternService = new PatternMatchingService();
-const ollamaService = USE_LOCAL_LLM && !USE_BAML && OllamaLLMService ? new OllamaLLMService() : null;
 const bamlService = USE_BAML && BAMLVoiceCommandService ? new BAMLVoiceCommandService() : null;
 
-// Determine active AI service
-let aiServiceName = 'Pattern matching only';
-if (bamlService) {
-  aiServiceName = `Pattern matching first (${CONFIDENCE_THRESHOLD * 100}% threshold), BAML fallback (type-safe)`;
-} else if (ollamaService) {
-  aiServiceName = `Pattern matching first (${CONFIDENCE_THRESHOLD * 100}% threshold), Ollama fallback`;
-}
+// Determine active mode
+const aiServiceName = bamlService
+  ? `Pattern matching first (${CONFIDENCE_THRESHOLD * 100}% threshold), BAML fallback (type-safe)`
+  : 'Pattern matching only';
 
 console.log(`🤖 Voice Command Processing Mode: ${aiServiceName}`);
 
@@ -612,48 +587,25 @@ router.post('/', async (req, res) => {
       userPreferences: userPreferences || {}
     });
 
-    // Step 2: If confidence is low, try AI fallback (BAML or Ollama)
-    if (result.command.confidence < CONFIDENCE_THRESHOLD) {
-      if (bamlService) {
-        // Try BAML (type-safe AI parsing)
-        console.log(`[${new Date().toISOString()}] [${requestId}] ⚠️ Low confidence (${(result.command.confidence * 100).toFixed(0)}%), trying BAML...`);
-        try {
-          const bamlResult = await bamlService.processVoiceCommand(transcript, {
-            context: context || {},
-            userPreferences: userPreferences || {}
-          });
-          // Use BAML result if it has better confidence
-          if (bamlResult.command.confidence > result.command.confidence) {
-            result = bamlResult;
-            usedService = 'BAMLVoiceCommandService (type-safe AI fallback)';
-          } else {
-            usedService = 'PatternMatchingService (BAML not better)';
-          }
-        } catch (bamlError) {
-          console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️ BAML failed:`, bamlError.message);
-          usedService = 'PatternMatchingService (BAML failed)';
-          // Keep pattern matching result
+    // Step 2: If confidence is low, try BAML AI fallback
+    if (result.command.confidence < CONFIDENCE_THRESHOLD && bamlService) {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ⚠️ Low confidence (${(result.command.confidence * 100).toFixed(0)}%), trying BAML...`);
+      try {
+        const bamlResult = await bamlService.processVoiceCommand(transcript, {
+          context: context || {},
+          userPreferences: userPreferences || {}
+        });
+        // Use BAML result if it has better confidence
+        if (bamlResult.command.confidence > result.command.confidence) {
+          result = bamlResult;
+          usedService = 'BAMLVoiceCommandService (type-safe AI fallback)';
+        } else {
+          usedService = 'PatternMatchingService (BAML not better)';
         }
-      } else if (ollamaService) {
-        // Fall back to raw Ollama
-        console.log(`[${new Date().toISOString()}] [${requestId}] ⚠️ Low confidence (${(result.command.confidence * 100).toFixed(0)}%), trying Ollama...`);
-        try {
-          const ollamaResult = await ollamaService.processVoiceCommand(transcript, {
-            context: context || {},
-            userPreferences: userPreferences || {}
-          });
-          // Use Ollama result if it has better confidence
-          if (ollamaResult.command.confidence > result.command.confidence) {
-            result = ollamaResult;
-            usedService = 'OllamaLLMService (AI fallback)';
-          } else {
-            usedService = 'PatternMatchingService (Ollama not better)';
-          }
-        } catch (ollamaError) {
-          console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️ Ollama failed:`, ollamaError.message);
-          usedService = 'PatternMatchingService (Ollama failed)';
-          // Keep pattern matching result
-        }
+      } catch (bamlError) {
+        console.warn(`[${new Date().toISOString()}] [${requestId}] ⚠️ BAML failed:`, bamlError.message);
+        usedService = 'PatternMatchingService (BAML failed)';
+        // Keep pattern matching result
       }
     }
 

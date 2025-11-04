@@ -12,16 +12,18 @@ BAML is a domain-specific language (DSL) for defining LLM interactions with:
 - **Provider flexibility**: Easy switching between Ollama, OpenAI, Claude, etc.
 - **Better error handling**: Built-in retries and fallback mechanisms
 
-## Benefits Over Raw LLM Calls
+## Why BAML?
 
-| Feature | Raw LLM (OllamaLLMService) | BAML |
-|---------|----------------------------|------|
-| Type Safety | ❌ Manual JSON parsing | ✅ Auto-generated types |
-| Output Validation | ❌ Manual checks | ✅ Built-in schema validation |
-| Provider Switching | ❌ Rewrite code | ✅ Change config only |
-| Error Handling | ❌ Manual try/catch | ✅ Built-in retries |
-| IDE Autocomplete | ❌ No hints | ✅ Full IntelliSense |
-| Maintenance | ❌ Scattered logic | ✅ Centralized schema |
+BAML provides a type-safe, maintainable solution for LLM integration:
+
+| Feature | BAML Advantage |
+|---------|----------------|
+| Type Safety | ✅ Auto-generated types from schemas |
+| Output Validation | ✅ Schema-Aligned Parsing (SAP) handles incomplete responses |
+| Flexibility | ✅ Optional fields with sensible defaults |
+| Error Handling | ✅ Graceful degradation when LLM output is partial |
+| IDE Support | ✅ Full IntelliSense and autocomplete |
+| Maintenance | ✅ Centralized schema in BAML files |
 
 ## Architecture
 
@@ -41,8 +43,9 @@ BAML is a domain-specific language (DSL) for defining LLM interactions with:
            │
            ▼ (confidence < 0.80?)
 ┌─────────────────────┐
-│  BAML Service       │ (~200-800ms)
-│  Type-safe LLM      │
+│  BAML Service       │ (~1-3s)
+│  Type-safe AI       │
+│  qwen2.5:0.5b       │
 └──────────┬──────────┘
            │
            ▼
@@ -109,28 +112,59 @@ This creates type-safe client code in `server/baml_client/`.
 Edit `server/.env`:
 
 ```bash
-# Enable BAML (recommended for production)
+# Enable BAML
 USE_BAML=true
-
-# Ollama configuration (used by BAML)
-OLLAMA_MODEL=gemma2:2b
-OLLAMA_HOST=http://localhost:11434
 ```
+
+**Key Configuration Notes:**
+- BAML model is hardcoded to `qwen2.5:0.5b` in `baml_src/voice_commands.baml`
+- BAML endpoint: `http://localhost:11434/v1` (OpenAI-compatible API)
+- This differs from Ollama's native API which caused "Failed to parse JSON" errors
 
 ### 4. Start Ollama
 
-BAML uses Ollama as the LLM provider:
+BAML uses Ollama's OpenAI-compatible endpoint:
 
 ```bash
 # Install Ollama (https://ollama.com/)
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Pull the model
-ollama pull gemma2:2b
+# Pull the recommended model (fast, lightweight, good JSON output)
+ollama pull qwen2.5:0.5b
 
-# Start Ollama server (runs on localhost:11434)
+# Start Ollama server (automatically serves on localhost:11434)
 ollama serve
 ```
+
+**Why qwen2.5:0.5b?**
+- Only 0.5GB (very fast download and inference)
+- Excellent JSON output without markdown wrapping
+- Works reliably with BAML's `/v1` endpoint
+- Tested alternatives: gemma2:2b had markdown wrapping issues
+
+### 5. Key Fix: OpenAI-Compatible Endpoint
+
+**Critical Implementation Detail:**
+
+BAML's Ollama provider requires the `/v1` suffix for the OpenAI-compatible API:
+
+```baml
+client OllamaClient {
+  provider ollama
+  options {
+    model "qwen2.5:0.5b"
+    base_url "http://localhost:11434/v1"  // ← /v1 is required!
+  }
+}
+```
+
+**Without `/v1`, BAML gets errors:**
+- "Failed to parse JSON: trailing characters at line 1 column 5"
+- This happens because the native Ollama API returns a different response format
+
+**With `/v1`, BAML works perfectly:**
+- Ollama's OpenAI-compatible endpoint returns clean JSON
+- BAML's SAP algorithm can parse it reliably
 
 ### 5. Run the Server
 
