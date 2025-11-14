@@ -20,6 +20,7 @@ type SoundMode = 'quiet' | 'short' | 'long';
 const Timer = () => {
   const { isDark } = useTheme();
   const [soundMode, setSoundMode] = useState<SoundMode>('short');
+  const [showJitter, setShowJitter] = useState(false);
 
   // Timer audio hooks for all three sounds
   const { playSound: playSound1 } = useTimerAudio({
@@ -130,6 +131,19 @@ const Timer = () => {
   // Store the update function in ref
   segmentEditorUpdateRef.current = segmentEditor.updateFromTime;
 
+  // Handle jitter animation - show for 5 seconds when timer finishes
+  React.useEffect(() => {
+    if (timerFinished) {
+      setShowJitter(true);
+      const timer = setTimeout(() => {
+        setShowJitter(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowJitter(false);
+    }
+  }, [timerFinished]);
+
   // Timer animation hook
   const { pulseAngle, arcPath, isHamsterOnColoredArc, isHamsterOnGreyArc } = useTimerAnimation({
     isRunning,
@@ -185,8 +199,8 @@ const Timer = () => {
         className={`${widgetContainer} relative`}
         style={{
           containerType: 'size',
-          ...(timerFinished && {
-            animation: 'border-pulse 1.5s ease-in-out infinite',
+          ...(showJitter && {
+            animation: 'jitter 0.1s ease-in-out infinite',
             borderWidth: '3px',
             borderColor: 'rgb(153, 27, 27)'
           })
@@ -313,7 +327,9 @@ const Timer = () => {
                       <span
                         style={{
                           fontSize: 'clamp(1.5rem, 15cqmin, 4rem)',
-                          animation: 'pulse-scale 1s ease-in-out infinite'
+                          ...(showJitter && {
+                            animation: 'jitter 0.1s ease-in-out infinite'
+                          })
                         }}
                         className={cn("font-bold text-center text-red-800 dark:text-red-500")}
                       >
