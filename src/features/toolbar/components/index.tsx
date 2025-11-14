@@ -337,10 +337,11 @@ const Toolbar: React.FC = () => {
             <div className="relative">
               <button
               onClick={() => setShowMenu(!showMenu)}
-              className="px-3 py-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-colors min-h-[68px] flex items-center justify-center"
+              className="px-3 py-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px]"
               title="Menu"
             >
-              <FaBars className="w-5 h-5" />
+              <FaBars className="text-lg" />
+              <span className="text-xs text-center leading-tight">Menu</span>
             </button>
               
               {/* Menu dropdown */}
