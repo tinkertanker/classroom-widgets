@@ -25,7 +25,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     (set, get) => ({
   // Initial State
   widgets: [],
-  background: BackgroundType.NONE,
+  background: BackgroundType.LOWPOLY,
   theme: 'light',
   scale: 1,
   scrollPosition: { x: 0, y: 0 },
@@ -125,9 +125,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     set({ focusedWidgetId: widgetId });
   },
   resetWorkspace: () => {
-    set({ 
+    set({
       widgets: [],
-      background: BackgroundType.NONE,
+      background: BackgroundType.LOWPOLY,
       theme: 'light',
       scale: 1,
       scrollPosition: { x: 0, y: 0 }
