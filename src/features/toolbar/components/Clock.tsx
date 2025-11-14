@@ -25,14 +25,18 @@ const Clock: React.FC = () => {
   const hours = time.getHours();
   const minutes = time.getMinutes();
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
+  const displayHours = (hours % 12 || 12).toString().padStart(2, '0');
   const displayMinutes = minutes.toString().padStart(2, '0');
   
   return (
-    <div className="text-warm-gray-600 dark:text-warm-gray-400 font-mono text-sm">
-      {displayHours}
-      <span className={showColon ? 'opacity-100' : 'opacity-0'}>:</span>
-      {displayMinutes} {ampm}
+    <div className="flex items-center justify-center gap-1 text-warm-gray-600 dark:text-warm-gray-400 font-mono">
+      <div className="flex flex-col leading-none gap-0.5">
+        <div className="text-lg font-semibold">{displayHours}</div>
+        <div className="text-lg font-semibold">{displayMinutes}</div>
+      </div>
+      <div className="flex items-center text-[8px] font-medium self-center">
+        {ampm}
+      </div>
     </div>
   );
 };

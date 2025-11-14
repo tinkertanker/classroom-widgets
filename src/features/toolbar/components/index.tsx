@@ -328,7 +328,7 @@ const Toolbar: React.FC = () => {
             
             {/* Clock */}
             {showClock && (
-              <div className="flex items-center justify-center px-3 py-2 bg-white/50 dark:bg-warm-gray-700/50 rounded-lg shadow-sm min-h-[68px]">
+              <div className="flex items-center justify-center px-3 py-2 bg-white/50 dark:bg-warm-gray-700/50 rounded-lg shadow-sm">
                 <Clock />
               </div>
             )}
