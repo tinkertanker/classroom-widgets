@@ -1,17 +1,16 @@
 // ToolbarMenu - Dropdown menu for toolbar settings
 
 import React, { useRef, useEffect } from 'react';
-import { 
-  FaRotateLeft, 
-  FaPalette, 
-  FaWrench, 
-  FaMoon, 
+import {
+  FaRotateLeft,
+  FaPalette,
+  FaWrench,
+  FaMoon,
   FaSun,
   FaCircle,
   FaShapes,
   FaBrush,
   FaGripLines,
-  FaBorderNone,
   FaMountain,
   FaWater,
   FaCircleInfo
@@ -87,15 +86,7 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
       <div className="px-4 py-1 text-xs font-medium text-warm-gray-500 dark:text-warm-gray-400">
         Background
       </div>
-      
-      <button
-        onClick={() => handleBackgroundChange(BackgroundType.NONE)}
-        className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
-      >
-        <FaBorderNone className="mr-3" />
-        None
-      </button>
-      
+
       <button
         onClick={() => handleBackgroundChange(BackgroundType.GEOMETRIC)}
         className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"

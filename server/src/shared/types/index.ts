@@ -95,7 +95,6 @@ export interface WorkspaceState {
 }
 
 export enum BackgroundType {
-  NONE = 'none',
   GEOMETRIC = 'geometric',
   GRADIENT = 'gradient',
   LINES = 'lines',

@@ -84,17 +84,19 @@ export function migrateComponentList(componentList: any[]): WidgetInstance[] {
 export function migrateBackground(oldBackground: any): BackgroundType {
   if (typeof oldBackground === 'string') {
     const mapping: Record<string, BackgroundType> = {
-      'none': BackgroundType.NONE,
+      'none': BackgroundType.LOWPOLY,
       'geometric': BackgroundType.GEOMETRIC,
       'gradient': BackgroundType.GRADIENT,
       'lines': BackgroundType.LINES,
-      'dots': BackgroundType.DOTS
+      'dots': BackgroundType.DOTS,
+      'lowpoly': BackgroundType.LOWPOLY,
+      'seawave': BackgroundType.SEAWAVE
     };
-    
-    return mapping[oldBackground] ?? BackgroundType.NONE;
+
+    return mapping[oldBackground] ?? BackgroundType.LOWPOLY;
   }
-  
-  return BackgroundType.NONE;
+
+  return BackgroundType.LOWPOLY;
 }
 
 // Migrate old workspace data
@@ -178,7 +180,7 @@ export function migrateFromOldFormat(): void {
     const migratedData: any = {
       state: {
         widgets: [],
-        background: BackgroundType.NONE,
+        background: BackgroundType.LOWPOLY,
         theme: 'light',
         scale: 1,
         scrollPosition: { x: 0, y: 0 }
