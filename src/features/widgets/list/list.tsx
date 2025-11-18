@@ -49,7 +49,8 @@ interface SortableItemProps {
   onMouseDown: (e: React.MouseEvent) => void;
   handleInput: (e: React.FormEvent<HTMLTextAreaElement>) => void;
   handleFocus: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
-  createTextareaRef: (id: string, index: number) => (el: HTMLTextAreaElement) => void;
+  handleClick: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
+  textareaRef: (el: HTMLTextAreaElement | null) => void;
   index: number;
 }
 
@@ -65,7 +66,8 @@ const SortableItem: React.FC<SortableItemProps> = ({
   onMouseDown,
   handleInput,
   handleFocus,
-  createTextareaRef,
+  handleClick,
+  textareaRef,
   index
 }) => {
   const {
@@ -121,25 +123,32 @@ const SortableItem: React.FC<SortableItemProps> = ({
       <div className="relative flex-1">
         {item.isEditing ? (
           <textarea
-            ref={createTextareaRef(item.id, index)}
+            ref={textareaRef}
+            data-item-id={item.id}
             value={item.text}
             onChange={(e) => onUpdateText(item.id, e.target.value)}
             onBlur={() => onStopEditing(item.id)}
             onKeyDown={(e) => onKeyDown(e, item.id, index)}
             onMouseDown={onMouseDown}
+            onClick={handleClick}
             placeholder="Type away!"
             className={cn(
-              "w-full px-3 pr-10 rounded resize-none overflow-hidden",
+              "w-full px-3 pr-10 rounded resize-none box-border",
+              "border-2 border-transparent focus:border-warm-gray-400 dark:focus:border-warm-gray-500",
+              "focus:outline-none",
               text.primary,
               text.placeholder,
               transitions.colors,
               getStatusColor(item.status, 'surface'),
-              isLarge ? "text-2xl py-3" : "text-sm py-2"
+              isLarge ? "text-2xl py-2.5" : "text-sm pt-1.5 pb-1"
             )}
             rows={1}
             style={{
-              height: 'auto',
-              minHeight: isLarge ? '3rem' : '2rem'
+              minHeight: isLarge ? '3rem' : '2.375rem',
+              height: isLarge ? '3rem' : 'auto',
+              lineHeight: isLarge ? '1.5' : '1.25',
+              verticalAlign: 'middle',
+              overflow: 'hidden'
             }}
             onInput={handleInput}
             onFocus={handleFocus}
@@ -149,12 +158,17 @@ const SortableItem: React.FC<SortableItemProps> = ({
             onClick={() => onStartEditing(item.id)}
             onMouseDown={onMouseDown}
             className={cn(
-              "w-full px-3 pr-10 rounded cursor-text break-words",
+              "w-full px-3 pr-10 rounded cursor-text break-words box-border",
+              "border-2 border-transparent flex items-center",
               transitions.colors,
               getStatusColor(item.status, 'surface'),
               text.primary,
-              isLarge ? "text-2xl py-3 min-h-[3rem]" : "text-sm py-2 min-h-[2rem]"
+              isLarge ? "text-2xl py-2.5" : "text-sm py-1.5"
             )}
+            style={{
+              height: isLarge ? '3rem' : '2.375rem',
+              lineHeight: isLarge ? '1.5' : '1.25'
+            }}
           >
             {item.text || <span className="text-warm-gray-500 dark:text-warm-gray-400">Type away!</span>}
           </div>
@@ -202,8 +216,16 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   const {
     handleInput,
     handleFocus,
-    createTextareaRef
+    handleClick,
+    textareaRef,
+    cleanupTextarea
   } = useAutoResizeTextarea();
+
+  // Wrap stopEditing to include cleanup
+  const handleStopEditing = useCallback((id: string) => {
+    stopEditing(id);
+    cleanupTextarea(id);
+  }, [stopEditing, cleanupTextarea]);
 
   // Add item with focus management
   const handleAddInput = useCallback(() => {
@@ -215,7 +237,7 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
 
   // Keyboard handlers
   const { handleKeyDown, handleMouseDown } = useListKeyboardHandlers({
-    onStopEditing: stopEditing,
+    onStopEditing: handleStopEditing,
     onAddItem: handleAddInput,
     items
   });
@@ -267,13 +289,14 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
                       onCycleStatus={cycleItemStatus}
                       onUpdateText={updateItemText}
                       onStartEditing={startEditing}
-                      onStopEditing={stopEditing}
+                      onStopEditing={handleStopEditing}
                       onDelete={deleteItem}
                       onKeyDown={handleKeyDown}
                       onMouseDown={handleMouseDown}
                       handleInput={handleInput}
                       handleFocus={handleFocus}
-                      createTextareaRef={createTextareaRef}
+                      handleClick={handleClick}
+                      textareaRef={textareaRef}
                     />
                   ))}
                 </div>
