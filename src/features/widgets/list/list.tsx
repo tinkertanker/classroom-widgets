@@ -145,9 +145,8 @@ const SortableItem: React.FC<SortableItemProps> = ({
             rows={1}
             style={{
               minHeight: isLarge ? '3rem' : '2.375rem',
-              height: isLarge ? '3rem' : 'auto',
+              height: 'auto',
               lineHeight: isLarge ? '1.5' : '1.25',
-              verticalAlign: 'middle',
               overflow: 'hidden'
             }}
             onInput={handleInput}

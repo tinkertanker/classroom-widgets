@@ -30,11 +30,11 @@ export function useAutoResizeTextarea() {
     }
   }, [adjustHeight]);
 
-  // Handle focus event - no height adjustment needed
+  // Handle focus event to ensure proper height
   const handleFocus = useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
-    // Focus event doesn't need height adjustment
-    // Let CSS min-height handle the initial height
-  }, []);
+    const target = e.target as HTMLTextAreaElement;
+    adjustHeight(target);
+  }, [adjustHeight]);
 
   // Handle click to save cursor position
   const handleClick = useCallback((e: React.MouseEvent<HTMLTextAreaElement>) => {
@@ -63,21 +63,23 @@ export function useAutoResizeTextarea() {
         const cursorPos = el.value.length; // End of text
         el.setSelectionRange(cursorPos, cursorPos);
         cursorPositions.current.set(id, cursorPos);
-        // Don't adjust height on mount - let CSS min-height handle it
+        // Adjust height on mount to handle existing multi-line content
+        adjustHeight(el);
       } else {
         // Re-render during editing - restore cursor position
         const savedPosition = cursorPositions.current.get(id);
         if (savedPosition !== undefined) {
           el.setSelectionRange(savedPosition, savedPosition);
         }
-        // Don't adjust height on re-render either - only on input
+        // Adjust height on re-render to maintain correct size
+        adjustHeight(el);
       }
     } else {
       // Cleanup - element is being removed from DOM (exiting edit mode)
       // We'll get the id from the keys when iterating, but for now just clear all removed ones
       // This happens when switching from editing to non-editing mode
     }
-  }, []);
+  }, [adjustHeight]);
 
   // Get textarea element by item ID
   const getTextarea = useCallback((id: string) => {
