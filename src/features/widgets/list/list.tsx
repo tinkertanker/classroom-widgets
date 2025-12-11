@@ -158,14 +158,14 @@ const SortableItem: React.FC<SortableItemProps> = ({
             onMouseDown={onMouseDown}
             className={cn(
               "w-full px-3 pr-10 rounded cursor-text break-words box-border",
-              "border-2 border-transparent flex items-center",
+              "border-2 border-transparent",
               transitions.colors,
               getStatusColor(item.status, 'surface'),
               text.primary,
               isLarge ? "text-2xl py-2.5" : "text-sm py-1.5"
             )}
             style={{
-              height: isLarge ? '3rem' : '2.375rem',
+              minHeight: isLarge ? '3rem' : '2.375rem',
               lineHeight: isLarge ? '1.5' : '1.25'
             }}
           >
