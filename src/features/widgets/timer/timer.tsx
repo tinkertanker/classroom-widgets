@@ -196,7 +196,7 @@ const Timer = () => {
   return (
     <div className={widgetWrapper}>
       <div
-        className={`${widgetContainer} relative`}
+        className={cn(widgetContainer, "bg-transparent dark:bg-warm-gray-800/90 border-0 relative")}
         style={{
           containerType: 'size',
           ...(showJitter && {
@@ -209,7 +209,7 @@ const Timer = () => {
           {/* Content area - fills remaining vertical space */}
           <div className="flex-1 flex items-center justify-center relative">
             {/* Content area with card background - full coverage */}
-            <div className="w-full h-full bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
+            <div className="w-full h-full bg-transparent dark:bg-warm-gray-800/90 rounded-t-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
               <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
                   {/* Gradient definition for rainbow arc */}
                   <defs>
@@ -286,13 +286,22 @@ const Timer = () => {
                     </filter>
                   </defs>
 
+                  {/* 1. Inner fill circle - background for center area */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="43"
+                    fill="rgba(250, 250, 249, 0.9)"
+                    className="dark:fill-warm-gray-800/90"
+                  />
+
                   {/* 2. Background circle (gray) - shows full timer path */}
                   <circle
                     cx="50"
                     cy="50"
                     r="45"
                     stroke="rgb(229, 231, 235)"
-                    strokeWidth="3"
+                    strokeWidth="4"
                     fill="none"
                     className="dark:stroke-warm-gray-700"
                   />
@@ -303,7 +312,7 @@ const Timer = () => {
                     cy="50"
                     r="45"
                     stroke="url(#rainbowGradient)"
-                    strokeWidth="3"
+                    strokeWidth="4"
                     fill="none"
                     strokeLinecap="round"
                     strokeDasharray={2 * Math.PI * 45}
