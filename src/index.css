@@ -35,15 +35,15 @@ code {
 
 /* Sticker button hover animations - fanning out effect */
 .group:hover .smile-sticker {
-  transform: translateX(-10px) translateY(2px) rotate(-10deg) scale(1.05) !important;
+  transform: translateX(-4px) translateY(1px) rotate(-5deg) scale(1.02) !important;
 }
 
 .group:hover .rainbow-sticker {
-  transform: translateY(-8px) translateX(0px) rotate(0deg) scale(1.05) !important;
+  transform: translateY(-4px) translateX(0px) rotate(0deg) scale(1.02) !important;
 }
 
 .group:hover .star-sticker {
-  transform: translateX(10px) translateY(2px) rotate(30deg) scale(1.05) !important;
+  transform: translateX(4px) translateY(1px) rotate(25deg) scale(1.02) !important;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */

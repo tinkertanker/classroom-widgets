@@ -26,15 +26,17 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
   onClose
 }) => {
   const stickerTypes = [
-    { type: 'thumbsup', icon: CustomThumbsUp, label: 'Thumbs Up', color: 'text-blue-500' },
-    { type: 'heart', icon: CustomHeart, label: 'Heart', color: 'text-pink-500' },
-    { type: 'star', icon: CustomStar, label: 'Star', color: 'text-yellow-500' },
-    { type: 'smile', icon: CustomSmile, label: 'Smile', color: 'text-orange-500' },
-    { type: 'arrow', icon: CustomArrowUp, label: 'Arrow', color: 'text-emerald-500' },
-    { type: 'marker', icon: CustomLocationDot, label: 'Marker', color: 'text-purple-500' },
-    { type: 'fire', icon: CustomRainbow, label: 'Rainbow', color: 'text-blue-500' },
-    { type: 'check', icon: CustomCheck, label: 'Check', color: 'text-emerald-500' },
+    { type: 'thumbsup', icon: CustomThumbsUp, label: 'Thumbs Up' },
+    { type: 'heart', icon: CustomHeart, label: 'Heart' },
+    { type: 'star', icon: CustomStar, label: 'Star' },
+    { type: 'smile', icon: CustomSmile, label: 'Smile' },
+    { type: 'arrow', icon: CustomArrowUp, label: 'Arrow' },
+    { type: 'marker', icon: CustomLocationDot, label: 'Marker' },
+    { type: 'fire', icon: CustomRainbow, label: 'Rainbow' },
+    { type: 'check', icon: CustomCheck, label: 'Check' },
   ];
+
+  const iconColor = 'text-warm-gray-600 dark:text-warm-gray-400';
 
   return (
     <div className="p-6 max-w-2xl">
@@ -45,7 +47,7 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
         Click a sticker to start decorating!
       </p>
       <div className="grid grid-cols-4 gap-4 mb-6">
-        {stickerTypes.map(({ type, icon: Icon, label, color }) => (
+        {stickerTypes.map(({ type, icon: Icon, label }) => (
           <button
             key={type}
             onClick={() => {
@@ -63,16 +65,10 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
             title={label}
           >
             <div className="transition-transform duration-200 group-hover:rotate-12">
-              {type === 'fire' ? (
-                // Special handling for rainbow to show its colors
-                <div className="w-12 h-12 flex items-center justify-center">
-                  {React.createElement(Icon as any, { className: "w-12 h-12" })}
-                </div>
-              ) : (
-                React.createElement(Icon as any, { 
-                  className: `w-12 h-12 ${color} transition-all duration-200 group-hover:drop-shadow-lg` 
-                })
-              )}
+              {React.createElement(Icon as any, {
+                className: `w-12 h-12 ${iconColor} transition-all duration-200 group-hover:drop-shadow-lg`,
+                style: (type === 'fire' || type === 'smile') ? { filter: 'grayscale(100%)' } : undefined
+              })}
             </div>
             {selectedStickerType === type && stickerMode && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">
