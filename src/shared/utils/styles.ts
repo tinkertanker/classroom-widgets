@@ -115,7 +115,7 @@ export const buttons = {
 // Standard widget container (current standard - all widgets should use this)
 export const widgetContainer = cn(
   "bg-soft-white/90 dark:bg-warm-gray-800/90",
-  "rounded-t-lg",
+  "rounded-lg",
   borders.primary,
   "w-full h-full overflow-hidden flex flex-col"
 );
@@ -137,7 +137,7 @@ export const widgetContainerLegacy = cn(
 // Standard widget border pattern (explicit export for clarity)
 export const widgetBorderStandard = cn(
   "bg-soft-white/90 dark:bg-warm-gray-800/90",
-  "rounded-t-lg",
+  "rounded-lg",
   borders.primary,
   "w-full h-full flex flex-col"
 );
@@ -147,14 +147,15 @@ export const widgetWrapper = cn(
   "w-full h-full flex flex-col relative"
 );
 
-// Widget controls section (emerging from below with prominent shadow)
+// Widget controls section (glassmorphic style)
 export const widgetControls = cn(
   "flex items-center p-3",
   "min-h-16 max-h-16",
-  "bg-warm-gray-100/85 dark:bg-warm-gray-700/85",
-  "border-t border-warm-gray-200/30 dark:border-warm-gray-700/30",
-  "border-l border-r border-b border-warm-gray-200 dark:border-warm-gray-700",
-  "rounded-b-lg"
+  "bg-white/50 dark:bg-warm-gray-800/50",
+  "backdrop-blur-md",
+  "border border-white/40 dark:border-warm-gray-600/40",
+  "rounded-lg",
+  "shadow-sm"
 );
 
 // Status colors for lists, tasks, etc.
