@@ -24,6 +24,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const rndRef = useRef<any>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
@@ -53,7 +54,13 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     stopDrag();
   }, [move, stopDrag, dropTarget, remove, widgetId]);
 
+  const handleResizeStart = useCallback(() => {
+    setIsResizing(true);
+    focus();
+  }, [focus]);
+
   const handleResizeStop = useCallback((e: any, direction: any, ref: any, delta: any, position: Position) => {
+    setIsResizing(false);
     const newSize: Size = {
       width: ref.offsetWidth,
       height: ref.offsetHeight
@@ -78,6 +85,24 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       }
     };
   }, []);
+
+  // Global mouseUp safety listener to clear stuck drag/resize states
+  // This handles edge cases where mouseUp fires outside the widget bounds
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      // Clear resize state if stuck
+      if (isResizing) {
+        setIsResizing(false);
+      }
+      // Clear drag state if stuck (only for this widget)
+      if (isBeingDragged) {
+        stopDrag();
+      }
+    };
+
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isResizing, isBeingDragged, stopDrag]);
 
   const isTransparent = config.features?.isTransparent || false;
   
@@ -131,7 +156,9 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
         size={widget.size}
         onDragStart={handleDragStart}
         onDragStop={handleDragStop}
+        onResizeStart={handleResizeStart}
         onResizeStop={handleResizeStop}
+        disableDragging={isResizing}
         bounds=".board"
         scale={scale}
         minWidth={config.minSize?.width}
@@ -141,7 +168,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
         lockAspectRatio={config.maintainAspectRatio}
         style={{
           zIndex: widget.zIndex + 100,
-          cursor: isBeingDragged ? 'grabbing' : 'grab'
+          cursor: isResizing ? 'nwse-resize' : isBeingDragged ? 'grabbing' : 'grab'
         }}
         className={wrapperClasses}
         // IMPORTANT: The 'cancel' prop prevents react-rnd from starting a drag operation

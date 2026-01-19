@@ -34,6 +34,7 @@ function App() {
   const widgets = useWorkspaceStore((state) => state.widgets);
   const addWidget = useWorkspaceStore((state) => state.addWidget);
   const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
+  const resizeWidget = useWorkspaceStore((state) => state.resizeWidget);
   const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
   const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
@@ -165,7 +166,7 @@ function App() {
     };
   }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled]);
 
-  // Global paste handler for creating image widgets when no widget is focused
+  // Global paste handler for creating widgets from clipboard content
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       // Don't handle if typing in input field or if any widget is focused
@@ -178,6 +179,22 @@ function App() {
       const items = e.clipboardData?.items;
       if (!items) return;
 
+      // Helper to get center position for new widget
+      const getCenterPosition = (widgetWidth: number, widgetHeight: number) => {
+        const scrollContainer = document.querySelector('.board-scroll-container') as HTMLElement;
+        if (scrollContainer) {
+          const scrollRect = scrollContainer.getBoundingClientRect();
+          const centerX = (scrollContainer.scrollLeft + scrollRect.width / 2) / scale;
+          const centerY = (scrollContainer.scrollTop + scrollRect.height / 2) / scale;
+          return {
+            x: centerX - widgetWidth / 2,
+            y: centerY - widgetHeight / 2
+          };
+        }
+        return { x: 100, y: 100 };
+      };
+
+      // Check for image first (higher priority)
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.type.startsWith('image/')) {
@@ -190,44 +207,94 @@ function App() {
             reader.onload = (loadEvent) => {
               const imageUrl = loadEvent.target?.result as string;
 
-              // Create new image widget at center of viewport
-              const scrollContainer = document.querySelector('.board-scroll-container') as HTMLElement;
-              if (scrollContainer) {
-                const scrollRect = scrollContainer.getBoundingClientRect();
-
-                // Calculate center position relative to the board
-                const centerX = (scrollContainer.scrollLeft + scrollRect.width / 2) / scale;
-                const centerY = (scrollContainer.scrollTop + scrollRect.height / 2) / scale;
-
-                // Get default size for image widget from registry
+              // Load image to get dimensions for aspect ratio
+              const img = new Image();
+              img.onload = () => {
+                // Get default/max size constraints
                 const imageWidgetConfig = widgetRegistry.get(WidgetType.IMAGE_DISPLAY);
-                const widgetWidth = imageWidgetConfig?.defaultSize.width || 400;
-                const widgetHeight = imageWidgetConfig?.defaultSize.height || 300;
+                const maxWidth = imageWidgetConfig?.defaultSize.width || 350;
+                const maxHeight = imageWidgetConfig?.defaultSize.height || 350;
 
-                // Adjust position to center the widget
-                const x = centerX - widgetWidth / 2;
-                const y = centerY - widgetHeight / 2;
+                // Calculate size maintaining aspect ratio, fitting within max bounds
+                const aspectRatio = img.width / img.height;
+                let widgetWidth: number;
+                let widgetHeight: number;
+
+                if (aspectRatio > 1) {
+                  // Landscape: constrain by width
+                  widgetWidth = Math.min(img.width, maxWidth);
+                  widgetHeight = widgetWidth / aspectRatio;
+                  // If height still exceeds max, constrain by height instead
+                  if (widgetHeight > maxHeight) {
+                    widgetHeight = maxHeight;
+                    widgetWidth = widgetHeight * aspectRatio;
+                  }
+                } else {
+                  // Portrait or square: constrain by height
+                  widgetHeight = Math.min(img.height, maxHeight);
+                  widgetWidth = widgetHeight * aspectRatio;
+                  // If width still exceeds max, constrain by width instead
+                  if (widgetWidth > maxWidth) {
+                    widgetWidth = maxWidth;
+                    widgetHeight = widgetWidth / aspectRatio;
+                  }
+                }
+
+                // Ensure minimum size
+                const minSize = imageWidgetConfig?.minSize || { width: 200, height: 200 };
+                widgetWidth = Math.max(widgetWidth, minSize.width);
+                widgetHeight = Math.max(widgetHeight, minSize.height);
+
+                // Get center position for the calculated size
+                const position = getCenterPosition(widgetWidth, widgetHeight);
 
                 // Create the image widget
-                const widgetId = addWidget(WidgetType.IMAGE_DISPLAY, { x, y });
+                const widgetId = addWidget(WidgetType.IMAGE_DISPLAY, position);
+
+                // Resize to match image aspect ratio
+                resizeWidget(widgetId, { width: widgetWidth, height: widgetHeight });
 
                 // Set the image data in the widget's state
                 updateWidgetState(widgetId, { imageUrl });
 
                 // Set the new widget as focused
                 setFocusedWidget(widgetId);
-              }
+              };
+              img.src = imageUrl;
             };
             reader.readAsDataURL(file);
-            break;
+            return; // Exit after handling image
           }
         }
+      }
+
+      // Check for text if no image found
+      const text = e.clipboardData?.getData('text/plain');
+      if (text && text.trim()) {
+        e.preventDefault();
+
+        // Get text banner config
+        const textBannerConfig = widgetRegistry.get(WidgetType.TEXT_BANNER);
+        const widgetWidth = textBannerConfig?.defaultSize.width || 400;
+        const widgetHeight = textBannerConfig?.defaultSize.height || 300;
+
+        // Get center position
+        const position = getCenterPosition(widgetWidth, widgetHeight);
+
+        // Create the text banner widget
+        const widgetId = addWidget(WidgetType.TEXT_BANNER, position);
+
+        // Set the text in the widget's state
+        updateWidgetState(widgetId, { text: text.trim(), colorIndex: 0 });
+
+        // Set the new widget as focused
+        setFocusedWidget(widgetId);
       }
     };
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [focusedWidgetId, scale, addWidget, updateWidgetState, setFocusedWidget]);
+  }, [focusedWidgetId, scale, addWidget, updateWidgetState, resizeWidget, setFocusedWidget]);
 
   // Voice command processing handler
   const handleVoiceCommand = useCallback(async (transcript: string) => {
