@@ -206,6 +206,23 @@ npm test
 
 See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development details.
 
+### Development with Claude Code
+
+If you're using Claude Code to assist with development, ask it to check for a running tmux session. Claude Code can read the dev server logs directly from tmux using:
+
+```bash
+# List tmux sessions
+tmux list-sessions
+
+# Capture recent logs (last 100 lines)
+tmux capture-pane -t 0 -p -S -100
+```
+
+**Recommended setup:**
+1. Start a tmux session: `tmux new -s dev`
+2. Run the dev servers: `npm run dev` (or `npm run dev:concurrent`)
+3. Claude Code can then monitor logs alongside you
+
 ### Environment Variables
 
 ```bash

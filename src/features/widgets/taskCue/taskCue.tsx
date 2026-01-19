@@ -11,7 +11,6 @@ import {
   FaBroom            // Clean up
 } from 'react-icons/fa6';
 import changeSoundFile from './change.wav';
-import { widgetContainer } from '../../../shared/utils/styles';
 
 interface TaskCueProps {
     isActive?: boolean;
@@ -67,7 +66,7 @@ function TaskCue({ isActive = false }: TaskCueProps) {
     }, [handleClick]);
 
     return (
-        <div className={widgetContainer} id="widget1">
+        <div className="w-full h-full overflow-hidden flex flex-col rounded-lg" id="widget1">
             <div className="flex-1 flex flex-col justify-center items-center px-3 pt-3">
                 <div 
                     className="clickable w-full h-full flex flex-col items-center justify-center space-y-4 cursor-pointer hover:opacity-80 transition-opacity"

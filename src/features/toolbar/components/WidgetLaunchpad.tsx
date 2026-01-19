@@ -48,22 +48,27 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
   // Filter widgets based on search and category
   const filteredWidgets = useMemo(() => {
     const allWidgets = widgetRegistry.getAll();
-    
+
     return allWidgets.filter(widget => {
+      // Hide widgets marked as hidden
+      if (widget.features?.hidden) {
+        return false;
+      }
+
       // Category filter
       if (selectedCategory && widget.category !== selectedCategory) {
         return false;
       }
-      
+
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const name = widget.name.toLowerCase();
         const category = widget.category?.toLowerCase() || '';
-        
+
         return name.includes(query) || category.includes(query);
       }
-      
+
       return true;
     });
   }, [searchQuery, selectedCategory]);

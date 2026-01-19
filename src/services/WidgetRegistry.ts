@@ -318,7 +318,8 @@ export class WidgetRegistry {
       features: {
         hasSettings: true,
         hasStateManagement: true,
-        isResizable: false
+        isResizable: false,
+        hidden: true
       }
     });
 
@@ -335,7 +336,8 @@ export class WidgetRegistry {
       description: 'Classic snake game with arrow key controls',
       features: {
         hasStateManagement: true,
-        isResizable: false
+        isResizable: false,
+        hidden: true
       }
     });
 

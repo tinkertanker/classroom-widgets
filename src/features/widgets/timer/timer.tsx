@@ -209,7 +209,7 @@ const Timer = () => {
           {/* Content area - fills remaining vertical space */}
           <div className="flex-1 flex items-center justify-center relative">
             {/* Content area with card background - full coverage */}
-            <div className="w-full h-full bg-transparent dark:bg-warm-gray-800/90 rounded-t-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
+            <div className="w-full h-full bg-transparent dark:bg-warm-gray-800/90 rounded-lg flex items-center justify-center absolute shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)]">
               <svg className="w-full h-full pointer-events-none" viewBox="0 0 100 100">
                   {/* Gradient definition for rainbow arc */}
                   <defs>

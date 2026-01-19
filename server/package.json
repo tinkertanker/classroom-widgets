@@ -1,6 +1,6 @@
 {
   "name": "classroom-widgets-server",
-  "version": "1.0.0",
+  "version": "0.9.3",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

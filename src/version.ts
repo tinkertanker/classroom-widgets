@@ -1,9 +1,10 @@
-// Application version configuration
-export const APP_VERSION = '0.9';
+// Application version configuration - reads directly from package.json
+import packageJson from '../package.json';
+
+export const APP_VERSION = packageJson.version;
 
 // You can also export additional version-related information
 export const VERSION_INFO = {
   version: APP_VERSION,
-  releaseDate: '2025-01-15',
   codename: 'Classroom Widgets'
 };

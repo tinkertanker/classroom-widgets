@@ -1,7 +1,6 @@
 // Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import actionClickSoundFile from '../../../sounds/action_click.mp3';
-import { widgetContainer } from '../../../shared/utils/styles';
 
 function TrafficLight() {
   const [state, setState] = useState({
@@ -64,7 +63,7 @@ function TrafficLight() {
 
   return (
     <>
-      <div className={`${widgetContainer} p-2`} id="baller">
+      <div className="w-full h-full overflow-hidden flex flex-col rounded-lg p-2" id="baller">
         <div
           className="rounded-xl flex flex-col w-full h-full"
           ref={boxRef}

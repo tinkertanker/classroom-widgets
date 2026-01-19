@@ -98,10 +98,12 @@ const SortableWidget: React.FC<SortableWidgetProps> = ({ id, widget }) => {
 const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onClose }) => {
   const { visibleWidgets } = useToolbar();
   const updateToolbar = useWorkspaceStore((state) => state.updateToolbar);
-  const allWidgets = widgetRegistry.getAll();
-  
+  const allWidgets = widgetRegistry.getAll().filter(w => !w.features?.hidden);
+
   // Initialize state
-  const [toolbarWidgets, setToolbarWidgets] = useState<WidgetType[]>(visibleWidgets);
+  const [toolbarWidgets, setToolbarWidgets] = useState<WidgetType[]>(
+    visibleWidgets.filter(type => allWidgets.some(w => w.type === type))
+  );
   const [availableWidgets, setAvailableWidgets] = useState<WidgetType[]>(
     allWidgets.filter(w => !visibleWidgets.includes(w.type)).map(w => w.type)
   );
