@@ -166,26 +166,57 @@ The application includes a sophisticated voice command system for hands-free wid
 See [VOICE_COMMAND_SHARED_DEFINITIONS.md](./VOICE_COMMAND_SHARED_DEFINITIONS.md) for complete documentation.
 
 ### Toolbar Features
-- Widget creation buttons (customizable selection with transparent backgrounds)
-- "More" button for accessing all widgets
+- **Recent Widgets**: Shows the 5 most recently launched widgets (automatically updates)
+- "More" button for accessing all widgets via launchpad
 - Sticker mode for placing decorative elements
-- Voice control button (microphone icon) for hands-free operation
+- Voice control button (microphone icon) - only visible when enabled in Alpha Features
 - Menu with:
   - Reset workspace
-  - Background selection (geometric, gradient, lines, dots)
-  - Toolbar customization
+  - Background selection (geometric, gradient, lines, dots, low poly, sea wave)
   - Dark/light mode toggle
+  - **Alpha Features** section with Voice Control toggle
 - Server connection indicator (WiFi icon - green when connected, gray when offline)
 - Integrated clock display (shows current time in 12-hour format with blinking colon)
 - Trash icon for widget deletion (appears on hover with 1.5s delay before hiding)
 
+### Global Keyboard Shortcuts & Paste Handling
+- **Paste Image**: Paste an image from clipboard to create an Image Display widget (auto-sized to aspect ratio, max 350x350)
+- **Paste Text**: Paste text to create a Text Banner widget with the pasted content
+- **Voice Activation**: Double-tap Cmd (Mac) or Ctrl (Windows/Linux) to activate voice control (when enabled)
+
 ### State Management
-- Widget instances stored in `componentList` array with `{id, index}` structure
-- `activeIndex` tracks currently selected widget for z-index management
-- Uses React hooks for local state (no global state management)
-- Workspace persistence via localStorage
+- **Zustand store** (`src/store/workspaceStore.simple.ts`) - Central state management
+- Widget instances stored in `widgets` array with full widget data
+- `focusedWidgetId` tracks currently focused widget
+- Workspace persistence via localStorage with **versioned storage format**
 - Widget-specific state saved in `widgetStates` Map
 - Global modal system via ModalContext
+
+### Storage Format (Multi-Workspace Ready)
+The app uses a versioned storage format to support future multi-workspace features:
+
+- **Storage Key**: `classroom-widgets-storage-v2`
+- **Version 2** (current): Multi-workspace structure with named workspaces
+- **Version 1** (deprecated): Legacy single-workspace format - auto-migrates to v2
+
+**Storage Structure**:
+```typescript
+{
+  version: 2,
+  currentWorkspaceId: string,
+  workspaces: {
+    [id]: { id, name, widgets, background, scale, widgetStates, ... }
+  },
+  globalSettings: { theme, toolbar },
+  session: { code, createdAt }
+}
+```
+
+**Key Files**:
+- `src/shared/types/storage.ts` - Storage format type definitions
+- `src/shared/utils/storageMigration.ts` - Migration utilities and workspace helpers
+
+**Migration**: V1 format automatically migrates to V2 on first load. Backup saved to `workspace-storage-backup-{timestamp}`. V1 support ends April 2026.
 
 ### File Structure
 ```
@@ -428,6 +459,26 @@ Access by entering "ADMIN" as the session code in the student app.
 - LinkShare now uses `NetworkedWidgetControlBar` for consistency
 - Consistent overlay behavior (paused, reconnecting, disconnected) across all widgets
 - ~200 lines of code removed through consolidation
+
+### Alpha Features & Storage Format V2 (January 2026)
+- **Voice Control Alpha Flag**: Voice control is now an opt-in alpha feature
+  - Disabled by default, enable via Menu → Alpha Features → Voice Control
+  - Voice button only appears in toolbar when enabled
+  - Keyboard shortcut (Cmd+Cmd / Ctrl+Ctrl) only works when enabled
+- **Recent Widgets Toolbar**: Toolbar now shows the 5 most recently launched widgets
+  - Automatically updates when widgets are added
+  - Replaces the old customizable toolbar (hidden but code preserved)
+- **Storage Format V2**: New versioned storage format for future multi-workspace support
+  - Automatic migration from V1 to V2 with backup
+  - V1 support deprecated, ends April 2026
+  - See `src/shared/types/storage.ts` for format details
+- **Global Paste Handler**: Paste from clipboard to create widgets
+  - Paste images → creates Image Display widget (auto-sized to aspect ratio)
+  - Paste text → creates Text Banner widget with the content
+- **Widget Resize Bug Fix**: Fixed issue where widgets could follow mouse after resize
+  - Added `isResizing` state tracking
+  - Disabled dragging during resize operations
+  - Added global mouseUp safety listener
 
 ### Voice Command Shared Definitions System (January 2025)
 - Implemented single source of truth for voice commands: `shared/voiceCommandDefinitions.json`
