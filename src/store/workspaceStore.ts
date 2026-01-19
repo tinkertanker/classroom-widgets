@@ -5,6 +5,9 @@ export interface ToolbarConfig {
   pinnedWidgets: WidgetType[];
   showClock: boolean;
   showConnectionStatus: boolean;
+  voiceControlEnabled?: boolean;  // Alpha feature
+  recentWidgets?: WidgetType[];  // Recently launched widget types (most recent first)
+  recentWidgetsLimit?: number;  // Max number of recent widgets to show (default: 5)
 }
 
 export interface ServerStatus {

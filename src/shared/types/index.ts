@@ -69,6 +69,7 @@ export interface WidgetFeatures {
   isResizable?: boolean;
   canTriggerConfetti?: boolean;
   isTransparent?: boolean;
+  hidden?: boolean;
 }
 
 // Networked Widget Configuration
@@ -110,6 +111,9 @@ export interface ToolbarConfig {
   pinnedWidgets: WidgetType[];
   showClock: boolean;
   showConnectionStatus: boolean;
+  voiceControlEnabled?: boolean;  // Alpha feature - optional for backwards compatibility
+  recentWidgets?: WidgetType[];  // Recently launched widget types (most recent first)
+  recentWidgetsLimit?: number;  // Max number of recent widgets to show (default: 5)
 }
 
 // Event Types
@@ -210,3 +214,6 @@ export interface PerformanceMetrics {
 
 // Export socket event types
 export * from './socket.types';
+
+// Export storage format types (for multi-workspace support)
+export * from './storage';

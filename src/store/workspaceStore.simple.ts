@@ -1,10 +1,31 @@
 // Simplified store for testing
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { BackgroundType, WidgetType } from '../shared/types';
 import { WorkspaceStore } from './workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { debug } from '../shared/utils/debug';
+import {
+  StorageFormatV2,
+  STORAGE_KEY,
+  LEGACY_STORAGE_KEY,
+  CURRENT_STORAGE_VERSION,
+  isStorageV1,
+  isStorageV2,
+  createDefaultStorageV2,
+  createDefaultWorkspace,
+  V1_DEPRECATION_DATE
+} from '../shared/types/storage';
+import { migrateV1ToV2 } from '../shared/utils/storageMigration';
+
+// Default recent widgets shown in toolbar (most recent first)
+const defaultRecentWidgets = [
+  WidgetType.RANDOMISER,
+  WidgetType.TIMER,
+  WidgetType.LIST,
+  WidgetType.TASK_CUE,
+  WidgetType.TRAFFIC_LIGHT
+];
 
 const defaultToolbar = {
   visibleWidgets: [
@@ -17,8 +38,156 @@ const defaultToolbar = {
   ],
   pinnedWidgets: [],
   showClock: true,
-  showConnectionStatus: true
+  showConnectionStatus: true,
+  voiceControlEnabled: false,  // Alpha feature - default OFF
+  recentWidgets: defaultRecentWidgets,  // Track recently launched widgets
+  recentWidgetsLimit: 5  // Number of recent widgets to show in toolbar
 };
+
+// =============================================================================
+// Custom Storage Adapter for V2 Format
+// =============================================================================
+
+/**
+ * Custom storage adapter that handles the multi-workspace V2 format.
+ * Automatically migrates from V1 format if needed.
+ *
+ * Storage Format Versions:
+ * - V1 (deprecated): Single workspace, Zustand default format
+ * - V2 (current): Multi-workspace support with named workspaces
+ *
+ * @deprecated V1 format support will be removed after April 2026
+ */
+const workspaceStorage: StateStorage = {
+  getItem: (name: string): string | null => {
+    try {
+      // First, try to load V2 format
+      const v2Raw = localStorage.getItem(STORAGE_KEY);
+      if (v2Raw) {
+        const v2Data = JSON.parse(v2Raw) as StorageFormatV2;
+        if (isStorageV2(v2Data)) {
+          // Convert V2 format back to Zustand's expected format
+          const currentWorkspace = v2Data.workspaces[v2Data.currentWorkspaceId];
+          if (currentWorkspace) {
+            return JSON.stringify({
+              state: {
+                widgets: currentWorkspace.widgets,
+                background: currentWorkspace.background,
+                scale: currentWorkspace.scale,
+                scrollPosition: currentWorkspace.scrollPosition,
+                widgetStates: currentWorkspace.widgetStates,
+                theme: v2Data.globalSettings.theme,
+                toolbar: v2Data.globalSettings.toolbar,
+                sessionCode: v2Data.session.code,
+                sessionCreatedAt: v2Data.session.createdAt
+              },
+              version: 0  // Zustand's internal version
+            });
+          }
+        }
+      }
+
+      // Try to load and migrate V1 format (deprecated)
+      const v1Raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (v1Raw) {
+        const v1Data = JSON.parse(v1Raw);
+        if (isStorageV1(v1Data)) {
+          console.warn(
+            `[Storage] Migrating from deprecated V1 format. ` +
+            `V1 support will be removed after ${V1_DEPRECATION_DATE.toDateString()}.`
+          );
+
+          // Migrate to V2
+          const v2Data = migrateV1ToV2(v1Data);
+
+          // Save in new format
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(v2Data));
+
+          // Backup old format
+          localStorage.setItem(`${LEGACY_STORAGE_KEY}-backup-${Date.now()}`, v1Raw);
+
+          // Return in Zustand format (will be processed normally)
+          return v1Raw;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('[Storage] Error reading storage:', error);
+      return null;
+    }
+  },
+
+  setItem: (name: string, value: string): void => {
+    try {
+      const zustandData = JSON.parse(value);
+      const state = zustandData.state;
+
+      // Load existing V2 data or create new
+      let v2Data: StorageFormatV2;
+      const existingRaw = localStorage.getItem(STORAGE_KEY);
+
+      if (existingRaw) {
+        const existing = JSON.parse(existingRaw);
+        if (isStorageV2(existing)) {
+          v2Data = existing;
+        } else {
+          v2Data = createDefaultStorageV2();
+        }
+      } else {
+        v2Data = createDefaultStorageV2();
+      }
+
+      // Update current workspace with new state
+      const currentWorkspaceId = v2Data.currentWorkspaceId;
+      const currentWorkspace = v2Data.workspaces[currentWorkspaceId] ||
+        createDefaultWorkspace(currentWorkspaceId);
+
+      v2Data.workspaces[currentWorkspaceId] = {
+        ...currentWorkspace,
+        updatedAt: Date.now(),
+        widgets: state.widgets || [],
+        background: state.background || BackgroundType.LOWPOLY,
+        scale: state.scale ?? 1,
+        scrollPosition: state.scrollPosition || { x: 0, y: 0 },
+        widgetStates: state.widgetStates || []
+      };
+
+      // Update global settings
+      v2Data.globalSettings = {
+        theme: state.theme || 'light',
+        toolbar: state.toolbar || defaultToolbar
+      };
+
+      // Update session
+      v2Data.session = {
+        code: state.sessionCode || null,
+        createdAt: state.sessionCreatedAt || null
+      };
+
+      // Save V2 format
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(v2Data));
+
+      // Also save in legacy format for backward compatibility during transition
+      // This can be removed after V1 deprecation date
+      localStorage.setItem(LEGACY_STORAGE_KEY, value);
+
+    } catch (error) {
+      console.error('[Storage] Error writing storage:', error);
+      // Fallback: save directly to legacy key
+      localStorage.setItem(LEGACY_STORAGE_KEY, value);
+    }
+  },
+
+  removeItem: (name: string): void => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  }
+};
+
+// =============================================================================
+// Store Creation
+// =============================================================================
 
 export const useWorkspaceStore = create<WorkspaceStore>()(
   persist(
@@ -78,7 +247,19 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       size: config?.defaultSize || { width: 350, height: 350 },
       zIndex: get().widgets.length
     };
-    set((state) => ({ widgets: [...state.widgets, newWidget] }));
+
+    // Update recent widgets: move this type to the front, remove duplicates, limit to N
+    const currentRecent = get().toolbar.recentWidgets || [];
+    const limit = get().toolbar.recentWidgetsLimit || 5;
+    const updatedRecent = [
+      type,
+      ...currentRecent.filter(t => t !== type)
+    ].slice(0, limit);
+
+    set((state) => ({
+      widgets: [...state.widgets, newWidget],
+      toolbar: { ...state.toolbar, recentWidgets: updatedRecent }
+    }));
     return id;
   },
   removeWidget: (widgetId) => {
@@ -178,7 +359,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   redo: () => {}
     }),
     {
-      name: 'workspace-storage', // unique name for localStorage key
+      name: 'workspace-storage', // Storage key name (used by custom adapter)
+      storage: createJSONStorage(() => workspaceStorage), // Use custom V2-aware storage adapter
       partialize: (state) => ({
         // Only persist essential data
         widgets: state.widgets,
@@ -191,9 +373,30 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         sessionCreatedAt: state.sessionCreatedAt
       }),
       onRehydrateStorage: () => (state) => {
-        // Convert arrays back to Maps after loading from storage
-        if (state && state.widgetStates && Array.isArray(state.widgetStates)) {
-          state.widgetStates = new Map(state.widgetStates);
+        try {
+          // Convert arrays back to Maps after loading from storage
+          if (state && state.widgetStates && Array.isArray(state.widgetStates)) {
+            state.widgetStates = new Map(state.widgetStates);
+          }
+
+          // Ensure toolbar has all required properties with defaults for missing ones
+          // This handles old localStorage formats that may not have new properties
+          if (state && state.toolbar) {
+            state.toolbar = {
+              ...defaultToolbar,  // Start with defaults
+              ...state.toolbar,   // Override with stored values
+              // Ensure recentWidgets is valid array, fallback to default if not
+              recentWidgets: Array.isArray(state.toolbar.recentWidgets)
+                ? state.toolbar.recentWidgets
+                : defaultToolbar.recentWidgets,
+              recentWidgetsLimit: typeof state.toolbar.recentWidgetsLimit === 'number'
+                ? state.toolbar.recentWidgetsLimit
+                : defaultToolbar.recentWidgetsLimit
+            };
+          }
+        } catch (error) {
+          // If rehydration fails, log error but don't crash - defaults will be used
+          console.error('[WorkspaceStore] Error during rehydration, using defaults:', error);
         }
       }
     }

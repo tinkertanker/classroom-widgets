@@ -3,8 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import {
   FaRotateLeft,
-  FaPalette,
-  FaWrench,
+  // FaWrench,  // HIDDEN: Used by Customize Toolbar option
   FaMoon,
   FaSun,
   FaCircle,
@@ -13,13 +12,16 @@ import {
   FaGripLines,
   FaMountain,
   FaWater,
-  FaCircleInfo
+  FaCircleInfo,
+  FaMicrophone
 } from 'react-icons/fa6';
-import { useWorkspace, useTheme } from '../../../shared/hooks/useWorkspace';
+import { useWorkspace, useTheme, useToolbar } from '../../../shared/hooks/useWorkspace';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useWidgets } from '../../../shared/hooks/useWidget';
 import { BackgroundType } from '../../../shared/types';
-import { useModal } from '../../../contexts/ModalContext';
-import CustomizeToolbarDragDrop from './CustomizeToolbarDragDrop';
+// HIDDEN: Customize Toolbar feature - kept for potential future use
+// import { useModal } from '../../../contexts/ModalContext';
+// import CustomizeToolbarDragDrop from './CustomizeToolbarDragDrop';
 
 interface ToolbarMenuProps {
   onClose: () => void;
@@ -29,8 +31,17 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   const { setBackground } = useWorkspace();
   const { theme, toggleTheme } = useTheme();
   const { removeAll } = useWidgets();
-  const { showModal, hideModal } = useModal();
+  // HIDDEN: Used by Customize Toolbar feature
+  // const { showModal, hideModal } = useModal();
   const menuRef = useRef<HTMLDivElement>(null);
+  const toolbar = useWorkspaceStore((state) => state.toolbar);
+  const updateToolbar = useWorkspaceStore((state) => state.updateToolbar);
+
+  const voiceControlEnabled = toolbar.voiceControlEnabled ?? false;
+
+  const handleToggleVoiceControl = () => {
+    updateToolbar({ voiceControlEnabled: !voiceControlEnabled });
+  };
   
   
   useEffect(() => {
@@ -55,15 +66,16 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
     setBackground(type);
     onClose();
   };
-  
-  const handleCustomize = () => {
-    onClose();
-    showModal({
-      content: <CustomizeToolbarDragDrop onClose={hideModal} />,
-      className: 'max-w-4xl',
-      noPadding: true
-    });
-  };
+
+  // HIDDEN: Customize Toolbar feature - kept for potential future use
+  // const handleCustomize = () => {
+  //   onClose();
+  //   showModal({
+  //     content: <CustomizeToolbarDragDrop onClose={hideModal} />,
+  //     className: 'max-w-4xl',
+  //     noPadding: true
+  //   });
+  // };
   
   
   return (
@@ -138,14 +150,20 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
       <div className="h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1" />
       
       {/* Actions */}
-      <button
-        onClick={handleCustomize}
-        className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
-      >
-        <FaWrench className="mr-3" />
-        Customize Toolbar
-      </button>
-      
+
+      {/* HIDDEN: Customize Toolbar option - kept for potential future use
+       * The toolbar now automatically shows the N most recently launched widgets.
+       * To restore this feature, uncomment the button below and the handleCustomize function.
+       *
+       * <button
+       *   onClick={handleCustomize}
+       *   className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
+       * >
+       *   <FaWrench className="mr-3" />
+       *   Customize Toolbar
+       * </button>
+       */}
+
       <button
         onClick={handleReset}
         className="w-full flex items-center px-4 py-2 text-sm text-dusty-rose-600 dark:text-dusty-rose-400 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
@@ -155,7 +173,35 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
       </button>
       
       <div className="h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1" />
-      
+
+      {/* Alpha Features */}
+      <div className="px-4 py-1 text-xs font-medium text-warm-gray-500 dark:text-warm-gray-400">
+        Alpha Features
+      </div>
+
+      <button
+        onClick={handleToggleVoiceControl}
+        className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700"
+      >
+        <FaMicrophone className="mr-3" />
+        Voice Control
+        <div
+          className={`ml-auto w-9 h-5 rounded-full transition-colors duration-200 relative ${
+            voiceControlEnabled
+              ? 'bg-sage-500 dark:bg-sage-600'
+              : 'bg-warm-gray-300 dark:bg-warm-gray-600'
+          }`}
+        >
+          <div
+            className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+              voiceControlEnabled ? 'translate-x-4' : 'translate-x-0.5'
+            }`}
+          />
+        </div>
+      </button>
+
+      <div className="h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1" />
+
       {/* About Link */}
       <a
         href="/about"
@@ -165,7 +211,7 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
         <FaCircleInfo className="mr-3" />
         About
       </a>
-      
+
     </div>
   );
 };

@@ -37,6 +37,7 @@ function App() {
   const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
   const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const voiceControlEnabled = useWorkspaceStore((state) => state.toolbar.voiceControlEnabled ?? false);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -116,7 +117,9 @@ function App() {
 
       // Handle Command/Ctrl key press for voice activation (only when Cmd is pressed alone)
       // This should NOT trigger for Cmd+letter combinations
-      if ((e.metaKey || e.ctrlKey) &&
+      // Only enable when voice control alpha feature is enabled
+      if (voiceControlEnabled &&
+          (e.metaKey || e.ctrlKey) &&
           (e.key === 'Meta' || e.key === 'Control' || e.key === 'OS') &&
           !e.altKey && !e.shiftKey) {
         const now = Date.now();
@@ -160,7 +163,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled]);
 
   // Global paste handler for creating image widgets when no widget is focused
   useEffect(() => {

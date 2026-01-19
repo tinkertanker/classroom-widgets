@@ -19,8 +19,17 @@ import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
+// Default recent widgets if none are set
+const defaultRecentWidgets = [
+  WidgetType.RANDOMISER,
+  WidgetType.TIMER,
+  WidgetType.LIST,
+  WidgetType.TASK_CUE,
+  WidgetType.TRAFFIC_LIGHT
+];
+
 const Toolbar: React.FC = () => {
-  const { visibleWidgets, showClock } = useToolbar();
+  const { recentWidgets, showClock, voiceControlEnabled } = useToolbar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();
   const [showMenu, setShowMenu] = useState(false);
@@ -190,7 +199,12 @@ const Toolbar: React.FC = () => {
     });
   };
   
-  const visibleConfigs = visibleWidgets
+  // Use recent widgets for the toolbar, fallback to defaults
+  const widgetsToShow = recentWidgets && recentWidgets.length > 0
+    ? recentWidgets
+    : defaultRecentWidgets;
+
+  const recentConfigs = widgetsToShow
     .map(type => widgetRegistry.get(type))
     .filter(Boolean);
   
@@ -237,9 +251,9 @@ const Toolbar: React.FC = () => {
             <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
           </div>
           
-          {/* Middle section - scrollable widget buttons */}
+          {/* Middle section - recent widget buttons */}
           <div className="flex space-x-3 items-center overflow-x-auto scrollbar-hide flex-1 min-w-0">
-            {visibleConfigs.map((config) => (
+            {recentConfigs.map((config) => (
               <WidgetButton
                 key={config!.type}
                 config={config!}
@@ -279,28 +293,30 @@ const Toolbar: React.FC = () => {
             <span className="text-xs text-center leading-tight">Stickers</span>
           </button>
 
-            {/* Voice Control button */}
-            <button
-              onClick={handleActivateVoiceControl}
-              className={clsx(
-                'px-3 py-2 rounded-lg transition-all duration-200 group',
-                'flex flex-col items-center gap-1 min-w-[80px]',
-                'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300',
-                'hover:bg-sage-100 dark:hover:bg-sage-900/30',
-                'hover:text-sage-700 dark:hover:text-sage-300',
-                'relative',
-                stickerMode ? 'opacity-50 cursor-not-allowed' : ''
-              )}
-              disabled={stickerMode}
-              title={`Voice Control${isMac ? ' (⌘⌘)' : ' (Ctrl Ctrl)'}`}
-            >
-              <FaMicrophone className="text-lg" />
-              <span className="text-xs text-center leading-tight">Voice</span>
-              {/* Keyboard shortcut indicator */}
-              <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                {isMac ? '⌘⌘' : 'Ctrl Ctrl'}
-              </div>
-            </button>
+            {/* Voice Control button (Alpha feature) */}
+            {voiceControlEnabled && (
+              <button
+                onClick={handleActivateVoiceControl}
+                className={clsx(
+                  'px-3 py-2 rounded-lg transition-all duration-200 group',
+                  'flex flex-col items-center gap-1 min-w-[80px]',
+                  'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300',
+                  'hover:bg-sage-100 dark:hover:bg-sage-900/30',
+                  'hover:text-sage-700 dark:hover:text-sage-300',
+                  'relative',
+                  stickerMode ? 'opacity-50 cursor-not-allowed' : ''
+                )}
+                disabled={stickerMode}
+                title={`Voice Control${isMac ? ' (⌘⌘)' : ' (Ctrl Ctrl)'}`}
+              >
+                <FaMicrophone className="text-lg" />
+                <span className="text-xs text-center leading-tight">Voice</span>
+                {/* Keyboard shortcut indicator */}
+                <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  {isMac ? '⌘⌘' : 'Ctrl Ctrl'}
+                </div>
+              </button>
+            )}
 
             {/* Debug button - only in development */}
             {process.env.NODE_ENV === 'development' && (
