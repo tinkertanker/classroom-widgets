@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAutoFontSize } from './hooks';
-import { widgetContainer } from '../../../shared/utils/styles';
+import { cn, widgetContainer } from '../../../shared/utils/styles';
 
 interface TextBannerProps {
   savedState?: { text: string; colorIndex?: number };
@@ -86,7 +86,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   return (
     <div
       ref={containerRef}
-      className={`${widgetContainer} ${currentColors.bg} items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer`}
+      className={cn(widgetContainer, currentColors.bg, "items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer")}
       onDoubleClick={handleDoubleClick}
       onClick={handleClick}
     >
