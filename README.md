@@ -272,6 +272,7 @@ All comprehensive documentation is in the [`docs/`](./docs) directory:
 
 ### For Deployment
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment (Docker, SSL, troubleshooting)
+- **[Analytics Setup](./docs/ANALYTICS.md)** - Privacy-focused analytics with Umami
 
 ### Reference
 - **[Main Documentation](./docs/CLAUDE.md)** - Comprehensive project reference

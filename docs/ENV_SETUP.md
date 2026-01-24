@@ -63,6 +63,9 @@ docker-compose -f docker-compose.prod.yml up -d
 | `VITE_SERVER_URL` | Backend server URL | `http://localhost:3001` |
 | `VITE_SHORTIO_API_KEY` | Short.io API key (optional) | `pk_abc123...` |
 | `VITE_SHORTIO_BASE_URL` | Short.io base URL | `https://api.short.io/links` |
+| `VITE_UMAMI_SCRIPT_URL` | Umami tracking script URL | `http://localhost:3003/script.js` |
+| `VITE_UMAMI_WEBSITE_ID` | Umami website ID (leave empty to disable) | `a1b2c3d4-...` |
+| `UMAMI_APP_SECRET` | Secret for Umami (docker-compose) | `random-string` |
 
 ### Production Variables (.env.production)
 
@@ -75,6 +78,10 @@ All development variables PLUS:
 | `BACKEND_DOMAIN` | Backend domain for nginx-proxy | `api.example.com` |
 | `FRONTEND_EMAIL` | Email for SSL cert (Let's Encrypt) | `admin@example.com` |
 | `BACKEND_EMAIL` | Email for SSL cert (Let's Encrypt) | `admin@example.com` |
+| `UMAMI_DOMAIN` | Umami analytics domain | `analytics.example.com` |
+| `UMAMI_EMAIL` | Email for Umami SSL cert | `admin@example.com` |
+| `UMAMI_DB_USER` | Umami database username | `umami` |
+| `UMAMI_DB_PASSWORD` | Umami database password | `secure-password` |
 
 ## 🔒 Security Best Practices
 
