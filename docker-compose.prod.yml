@@ -66,6 +66,51 @@ services:
       timeout: 10s
       retries: 3
 
+  # ============================================
+  # Umami Analytics (Privacy-focused)
+  # ============================================
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: classroom-widgets-umami
+    expose:
+      - 3000
+    environment:
+      DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
+      DATABASE_TYPE: postgresql
+      APP_SECRET: ${UMAMI_APP_SECRET}
+      # nginx-proxy configuration
+      - VIRTUAL_PORT=3000
+      - VIRTUAL_HOST=${UMAMI_DOMAIN}
+      - LETSENCRYPT_HOST=${UMAMI_DOMAIN}
+      - LETSENCRYPT_EMAIL=${UMAMI_EMAIL}
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    networks:
+      - devtksg
+    restart: unless-stopped
+
+  umami-db:
+    image: postgres:15-alpine
+    container_name: classroom-widgets-umami-db
+    environment:
+      POSTGRES_DB: umami
+      POSTGRES_USER: ${UMAMI_DB_USER:-umami}
+      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+    volumes:
+      - umami-db-data:/var/lib/postgresql/data
+    networks:
+      - devtksg
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${UMAMI_DB_USER:-umami}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 networks:
   devtksg:
     external: true
+
+volumes:
+  umami-db-data:
