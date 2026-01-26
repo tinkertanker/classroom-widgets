@@ -188,6 +188,22 @@ docker-compose logs umami-db
 docker-compose restart umami umami-db
 ```
 
+### "Password authentication failed"
+
+This usually means the password in your env doesn't match what's stored in the database.
+
+**Important**: Use alphanumeric passwords only (no special characters like `#`, `$`, `{`). Special characters break the database URL parsing.
+
+```bash
+# Generate a safe password
+openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 24
+
+# If you need to change the password, delete the volume first
+docker-compose -f docker-compose.prod.yml down -v
+# Then update .env.production and restart
+docker-compose -f docker-compose.prod.yml up -d
+```
+
 ### "Can't access Umami dashboard"
 
 ```bash

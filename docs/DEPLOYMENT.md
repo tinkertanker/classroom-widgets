@@ -55,9 +55,15 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ### Architecture
 
-Two services run in Docker:
+Core services run in Docker:
 - **`frontend`**: Teacher App (React + Vite) served by Nginx
 - **`backend`**: Express server (API + WebSocket + serves Student App)
+
+Optional services:
+- **`umami`**: Privacy-focused analytics dashboard
+- **`umami-db`**: PostgreSQL database for Umami
+
+See [Analytics Setup](./ANALYTICS.md) for Umami configuration.
 
 ### Production Deployment
 
@@ -120,6 +126,10 @@ VITE_SERVER_URL=https://your-backend-domain.com
 
 # Optional: Link Shortener widget API key
 VITE_SHORTIO_API_KEY=your_api_key
+
+# Optional: Umami Analytics (see docs/ANALYTICS.md)
+VITE_UMAMI_SCRIPT_URL=https://your-umami-domain.com/script.js
+VITE_UMAMI_WEBSITE_ID=your-website-id
 ```
 
 ### Backend Server (`server/.env.production`)
