@@ -75,9 +75,9 @@ services:
     expose:
       - 3000
     environment:
-      DATABASE_URL: postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
-      DATABASE_TYPE: postgresql
-      APP_SECRET: ${UMAMI_APP_SECRET}
+      - DATABASE_URL=postgresql://${UMAMI_DB_USER:-umami}:${UMAMI_DB_PASSWORD}@umami-db:5432/umami
+      - DATABASE_TYPE=postgresql
+      - APP_SECRET=${UMAMI_APP_SECRET}
       # nginx-proxy configuration
       - VIRTUAL_PORT=3000
       - VIRTUAL_HOST=${UMAMI_DOMAIN}
@@ -94,9 +94,9 @@ services:
     image: postgres:15-alpine
     container_name: classroom-widgets-umami-db
     environment:
-      POSTGRES_DB: umami
-      POSTGRES_USER: ${UMAMI_DB_USER:-umami}
-      POSTGRES_PASSWORD: ${UMAMI_DB_PASSWORD}
+      - POSTGRES_DB=umami
+      - POSTGRES_USER=${UMAMI_DB_USER:-umami}
+      - POSTGRES_PASSWORD=${UMAMI_DB_PASSWORD}
     volumes:
       - umami-db-data:/var/lib/postgresql/data
     networks:
