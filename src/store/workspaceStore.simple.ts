@@ -16,7 +16,17 @@ import {
   createDefaultWorkspace,
   V1_DEPRECATION_DATE
 } from '../shared/types/storage';
-import { migrateV1ToV2 } from '../shared/utils/storageMigration';
+import {
+  migrateV1ToV2,
+  loadStorage,
+  saveStorage,
+  addWorkspace as addWorkspaceToStorage,
+  deleteWorkspace as deleteWorkspaceFromStorage,
+  renameWorkspace as renameWorkspaceInStorage,
+  switchWorkspace as switchWorkspaceInStorage,
+  generateWorkspaceId
+} from '../shared/utils/storageMigration';
+import { WorkspaceMetadata } from './workspaceStore';
 
 // Default recent widgets shown in toolbar (most recent first)
 const defaultRecentWidgets = [
@@ -26,6 +36,42 @@ const defaultRecentWidgets = [
   WidgetType.TASK_CUE,
   WidgetType.TRAFFIC_LIGHT
 ];
+
+// =============================================================================
+// Workspace Management Helpers
+// =============================================================================
+
+/**
+ * Get workspace metadata list from V2 storage
+ */
+function getWorkspaceListFromStorage(): { currentId: string; list: WorkspaceMetadata[] } {
+  const v2Data = loadStorage();
+  if (!v2Data) {
+    return { currentId: '', list: [] };
+  }
+
+  const list: WorkspaceMetadata[] = Object.values(v2Data.workspaces)
+    .map(ws => ({
+      id: ws.id,
+      name: ws.name,
+      widgetCount: ws.widgets.length,
+      updatedAt: ws.updatedAt
+    }))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return { currentId: v2Data.currentWorkspaceId, list };
+}
+
+/**
+ * Count existing workspaces with default naming pattern to generate next name
+ */
+function getNextWorkspaceName(): string {
+  const v2Data = loadStorage();
+  if (!v2Data) return 'Workspace 1';
+
+  const workspaceCount = Object.keys(v2Data.workspaces).length;
+  return `Workspace ${workspaceCount + 1}`;
+}
 
 const defaultToolbar = {
   visibleWidgets: [
@@ -217,7 +263,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   canUndo: false,
   canRedo: false,
   focusedWidgetId: null,
-  
+
+  // Workspace management state (populated on rehydration)
+  currentWorkspaceId: '',
+  workspaceList: [],
+
   // Simple action implementations
   setSessionCode: (code) => set({ 
     sessionCode: code,
@@ -356,7 +406,128 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   removeEventListener: () => {},
   saveSnapshot: () => {},
   undo: () => {},
-  redo: () => {}
+  redo: () => {},
+
+  // Workspace management actions
+  refreshWorkspaceList: () => {
+    const { currentId, list } = getWorkspaceListFromStorage();
+    set({ currentWorkspaceId: currentId, workspaceList: list });
+  },
+
+  switchWorkspace: (workspaceId: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data || !v2Data.workspaces[workspaceId]) {
+      console.warn('[WorkspaceStore] Cannot switch: workspace not found:', workspaceId);
+      return;
+    }
+
+    // Update storage to point to new workspace
+    const updatedStorage = switchWorkspaceInStorage(v2Data, workspaceId);
+    saveStorage(updatedStorage);
+
+    // Load the new workspace's data into the store
+    const workspace = updatedStorage.workspaces[workspaceId];
+    const { list } = getWorkspaceListFromStorage();
+
+    set({
+      currentWorkspaceId: workspaceId,
+      workspaceList: list,
+      widgets: workspace.widgets,
+      background: workspace.background,
+      scale: workspace.scale,
+      scrollPosition: workspace.scrollPosition,
+      widgetStates: new Map(workspace.widgetStates),
+      focusedWidgetId: null
+    });
+  },
+
+  createWorkspace: (name?: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data) {
+      console.warn('[WorkspaceStore] Cannot create workspace: no storage found');
+      return '';
+    }
+
+    const workspaceName = name || getNextWorkspaceName();
+    const { storage: updatedStorage, workspaceId } = addWorkspaceToStorage(v2Data, workspaceName);
+
+    // Switch to the new workspace
+    const finalStorage = switchWorkspaceInStorage(updatedStorage, workspaceId);
+    saveStorage(finalStorage);
+
+    // Load the new workspace (empty) into the store
+    const workspace = finalStorage.workspaces[workspaceId];
+    const { list } = getWorkspaceListFromStorage();
+
+    set({
+      currentWorkspaceId: workspaceId,
+      workspaceList: list,
+      widgets: workspace.widgets,
+      background: workspace.background,
+      scale: workspace.scale,
+      scrollPosition: workspace.scrollPosition,
+      widgetStates: new Map(workspace.widgetStates),
+      focusedWidgetId: null
+    });
+
+    return workspaceId;
+  },
+
+  deleteWorkspace: (workspaceId: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data) {
+      console.warn('[WorkspaceStore] Cannot delete workspace: no storage found');
+      return false;
+    }
+
+    const updatedStorage = deleteWorkspaceFromStorage(v2Data, workspaceId);
+    if (!updatedStorage) {
+      // Cannot delete the last workspace
+      return false;
+    }
+
+    saveStorage(updatedStorage);
+
+    // If we deleted the current workspace, we've been switched to another
+    const currentWorkspace = updatedStorage.workspaces[updatedStorage.currentWorkspaceId];
+    const { list } = getWorkspaceListFromStorage();
+
+    // Only update state if we deleted the current workspace
+    if (workspaceId === get().currentWorkspaceId) {
+      set({
+        currentWorkspaceId: updatedStorage.currentWorkspaceId,
+        workspaceList: list,
+        widgets: currentWorkspace.widgets,
+        background: currentWorkspace.background,
+        scale: currentWorkspace.scale,
+        scrollPosition: currentWorkspace.scrollPosition,
+        widgetStates: new Map(currentWorkspace.widgetStates),
+        focusedWidgetId: null
+      });
+    } else {
+      set({ workspaceList: list });
+    }
+
+    return true;
+  },
+
+  renameWorkspace: (workspaceId: string, newName: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data) {
+      console.warn('[WorkspaceStore] Cannot rename workspace: no storage found');
+      return;
+    }
+
+    const trimmedName = newName.trim().slice(0, 50); // Max 50 chars
+    if (!trimmedName) return;
+
+    const updatedStorage = renameWorkspaceInStorage(v2Data, workspaceId, trimmedName);
+    saveStorage(updatedStorage);
+
+    // Update workspace list
+    const { list } = getWorkspaceListFromStorage();
+    set({ workspaceList: list });
+  }
     }),
     {
       name: 'workspace-storage', // Storage key name (used by custom adapter)
@@ -393,6 +564,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
                 ? state.toolbar.recentWidgetsLimit
                 : defaultToolbar.recentWidgetsLimit
             };
+          }
+
+          // Populate workspace management state
+          if (state) {
+            const { currentId, list } = getWorkspaceListFromStorage();
+            state.currentWorkspaceId = currentId;
+            state.workspaceList = list;
           }
         } catch (error) {
           // If rehydration fails, log error but don't crash - defaults will be used

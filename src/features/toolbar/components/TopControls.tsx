@@ -4,6 +4,7 @@ import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection } from '../../../shared/hooks/useWorkspace';
 import { useSession } from '../../../contexts/SessionContext';
 import SessionBanner from '../../session/components/SessionBanner';
+import { WorkspaceSwitcher } from '../../workspace';
 
 const TopControls: React.FC = () => {
   const { scale, setScale } = useWorkspace();
@@ -75,68 +76,73 @@ const TopControls: React.FC = () => {
   
 
   return (
-    <div className="fixed top-4 right-4 flex items-start space-x-2 z-[998]">
-      {/* Dynamic Island-style Session Status */}
-      {sessionCode ? (
-        <SessionBanner />
-      ) : (
-        /* Regular WiFi button when no session */
-        <button
-          className={clsx(
-            "flex items-center justify-center h-10 px-3 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50",
-            "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
-          )}
-          title={connected ? 'Connected to server' : 'Disconnected from server'}
-        >
-          <div className={clsx(
-            'transition-colors duration-200',
-            connected ? 'text-sage-600' : 'text-warm-gray-400'
-          )}>
-            <FaWifi className="text-lg" />
-          </div>
-        </button>
-      )}
+    <div className="fixed top-4 left-4 right-4 flex items-start justify-between z-[998]">
+      {/* Left side - Workspace Switcher */}
+      <WorkspaceSwitcher />
 
-      {/* Zoom Controls */}
-      <div className="flex items-center space-x-1 px-2 py-1 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50 h-10">
+      {/* Right side - Session, Zoom, Fullscreen */}
+      <div className="flex items-start space-x-2">
+        {/* Dynamic Island-style Session Status */}
+        {sessionCode ? (
+          <SessionBanner />
+        ) : (
+          /* Regular WiFi button when no session */
+          <button
+            className={clsx(
+              "flex items-center justify-center h-10 px-3 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50",
+              "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
+            )}
+            title={connected ? 'Connected to server' : 'Disconnected from server'}
+          >
+            <div className={clsx(
+              'transition-colors duration-200',
+              connected ? 'text-sage-600' : 'text-warm-gray-400'
+            )}>
+              <FaWifi className="text-lg" />
+            </div>
+          </button>
+        )}
+
+        {/* Zoom Controls */}
+        <div className="flex items-center space-x-1 px-2 py-1 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50 h-10">
+          <button
+            onClick={handleZoomOut}
+            className="p-1.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 transition-colors"
+            title="Zoom out"
+          >
+            <FaMinus className="w-3 h-3 text-warm-gray-600 dark:text-warm-gray-300" />
+          </button>
+
+          <button
+            onClick={handleZoomReset}
+            className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors"
+            title="Reset zoom"
+          >
+            {Math.round(scale * 100)}%
+          </button>
+
+          <button
+            onClick={handleZoomIn}
+            className="p-1.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 transition-colors"
+            title="Zoom in"
+          >
+            <FaPlus className="w-3 h-3 text-warm-gray-600 dark:text-warm-gray-300" />
+          </button>
+        </div>
+
+        {/* Fullscreen Button */}
         <button
-          onClick={handleZoomOut}
-          className="p-1.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 transition-colors"
-          title="Zoom out"
+          onClick={handleFullscreen}
+          className="flex items-center justify-center h-10 w-10 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
         >
-          <FaMinus className="w-3 h-3 text-warm-gray-600 dark:text-warm-gray-300" />
-        </button>
-        
-        <button
-          onClick={handleZoomReset}
-          className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors"
-          title="Reset zoom"
-        >
-          {Math.round(scale * 100)}%
-        </button>
-        
-        <button
-          onClick={handleZoomIn}
-          className="p-1.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 transition-colors"
-          title="Zoom in"
-        >
-          <FaPlus className="w-3 h-3 text-warm-gray-600 dark:text-warm-gray-300" />
+          {isFullscreen ? (
+            <FaCompress className="w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" />
+          ) : (
+            <FaExpand className="w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" />
+          )}
         </button>
       </div>
-
-      {/* Fullscreen Button */}
-      <button
-        onClick={handleFullscreen}
-        className="flex items-center justify-center h-10 w-10 bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm border border-warm-gray-300/50 dark:border-warm-gray-600/50 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
-        title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-      >
-        {isFullscreen ? (
-          <FaCompress className="w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" />
-        ) : (
-          <FaExpand className="w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" />
-        )}
-      </button>
-
     </div>
   );
 };

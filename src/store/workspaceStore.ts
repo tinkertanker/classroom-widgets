@@ -21,6 +21,13 @@ export interface DragState {
   dropTarget: string | null;
 }
 
+export interface WorkspaceMetadata {
+  id: string;
+  name: string;
+  widgetCount: number;
+  updatedAt: number;
+}
+
 export interface WorkspaceStore {
   // State
   widgets: Widget[];
@@ -40,6 +47,10 @@ export interface WorkspaceStore {
   canUndo: boolean;
   canRedo: boolean;
   focusedWidgetId: string | null;
+
+  // Workspace management state
+  currentWorkspaceId: string;
+  workspaceList: WorkspaceMetadata[];
   
   // Actions
   setSessionCode: (code: string | null) => void;
@@ -84,4 +95,11 @@ export interface WorkspaceStore {
   saveSnapshot: () => void;
   undo: () => void;
   redo: () => void;
+
+  // Workspace management
+  switchWorkspace: (workspaceId: string) => void;
+  createWorkspace: (name?: string) => string;
+  deleteWorkspace: (workspaceId: string) => boolean;
+  renameWorkspace: (workspaceId: string, newName: string) => void;
+  refreshWorkspaceList: () => void;
 }
