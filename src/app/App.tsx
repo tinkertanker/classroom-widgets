@@ -9,9 +9,9 @@ import { useWorkspace, useServerConnection } from '../shared/hooks/useWorkspace'
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '../shared/utils/migration';
 import Board from '../features/board/components';
-import Toolbar from '../features/toolbar/components';
-import TopControls from '../features/toolbar/components/TopControls';
-import WidgetRenderer from '../features/board/components/WidgetRenderer';
+import BottomBar from '../features/hud/components';
+import TopControls from '../features/hud/components/TopControls';
+import WidgetList from '../features/board/components/WidgetList';
 import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '../shared/components/SmallScreenWarning';
 import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
@@ -32,14 +32,14 @@ function App() {
   const { url, setServerStatus } = useServerConnection();
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);
   const setSessionCode = useWorkspaceStore((state) => state.setSessionCode);
-  const widgets = useWorkspaceStore((state) => state.widgets);
+  // Removed: widgets subscription moved to WidgetList component
   const addWidget = useWorkspaceStore((state) => state.addWidget);
   const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
   const resizeWidget = useWorkspaceStore((state) => state.resizeWidget);
   const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
-  const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
+  // Removed: focusedWidgetId subscription - use getState() where needed
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
-  const voiceControlEnabled = useWorkspaceStore((state) => state.toolbar.voiceControlEnabled ?? false);
+  const voiceControlEnabled = useWorkspaceStore((state) => state.bottomBar.voiceControlEnabled ?? false);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -171,9 +171,10 @@ function App() {
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       // Don't handle if typing in input field or if any widget is focused
+      const currentFocusedWidgetId = useWorkspaceStore.getState().focusedWidgetId;
       if (e.target instanceof HTMLInputElement ||
           e.target instanceof HTMLTextAreaElement ||
-          focusedWidgetId !== null) {
+          currentFocusedWidgetId !== null) {
         return;
       }
 
@@ -295,7 +296,7 @@ function App() {
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [focusedWidgetId, scale, addWidget, updateWidgetState, resizeWidget, setFocusedWidget]);
+  }, [scale, addWidget, updateWidgetState, resizeWidget, setFocusedWidget]);
 
   // Voice command processing handler
   const handleVoiceCommand = useCallback(async (transcript: string) => {
@@ -514,15 +515,13 @@ function App() {
           {/* Main Board */}
           <div className="h-full relative overflow-hidden">
             <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
-                  {widgets.map((widget) => (
-                    <WidgetRenderer key={widget.id} widgetId={widget.id} />
-                  ))}
+                  <WidgetList />
                 </Board>
           </div>
           
           {/* Toolbar at bottom */}
           <div className="toolbar-container">
-            <Toolbar />
+            <BottomBar />
           </div>
 
           {/* Version label */}

@@ -1,4 +1,4 @@
-// ToolbarMenu - Dropdown menu for toolbar settings
+// BottomBarMenu - Dropdown menu for bottom bar settings
 
 import React, { useRef, useEffect } from 'react';
 import {
@@ -15,29 +15,29 @@ import {
   FaMicrophone
 } from 'react-icons/fa6';
 import { clsx } from 'clsx';
-import { useWorkspace, useTheme, useToolbar } from '../../../shared/hooks/useWorkspace';
+import { useWorkspace, useTheme, useBottomBar } from '../../../shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useWidgets } from '../../../shared/hooks/useWidget';
 import { BackgroundType } from '../../../shared/types';
 import { dropdownContainer, zIndex } from '../../../shared/utils/styles';
 import { MenuItem, MenuDivider, MenuSectionHeader } from '../../../components/ui';
 
-interface ToolbarMenuProps {
+interface BottomBarMenuProps {
   onClose: () => void;
 }
 
-const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
+const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
   const { setBackground } = useWorkspace();
   const { theme, toggleTheme } = useTheme();
   const { removeAll } = useWidgets();
   const menuRef = useRef<HTMLDivElement>(null);
-  const toolbar = useWorkspaceStore((state) => state.toolbar);
-  const updateToolbar = useWorkspaceStore((state) => state.updateToolbar);
+  const bottomBar = useWorkspaceStore((state) => state.bottomBar);
+  const updateBottomBar = useWorkspaceStore((state) => state.updateBottomBar);
 
-  const voiceControlEnabled = toolbar.voiceControlEnabled ?? false;
+  const voiceControlEnabled = bottomBar.voiceControlEnabled ?? false;
 
   const handleToggleVoiceControl = () => {
-    updateToolbar({ voiceControlEnabled: !voiceControlEnabled });
+    updateBottomBar({ voiceControlEnabled: !voiceControlEnabled });
   };
 
   useEffect(() => {
@@ -185,4 +185,4 @@ const ToolbarMenu: React.FC<ToolbarMenuProps> = ({ onClose }) => {
   );
 };
 
-export default ToolbarMenu;
+export default BottomBarMenu;

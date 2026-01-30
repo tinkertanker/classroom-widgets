@@ -51,22 +51,24 @@ export function migrateV1ToV2(v1Data: StorageFormatV1): StorageFormatV2 {
   };
 
   // Extract global settings from v1 state
+  // Note: V1 format used 'toolbar', we migrate to 'bottomBar'
   const defaultSettings = createDefaultGlobalSettings();
+  const v1BottomBar = (state as any).toolbar || (state as any).bottomBar || {};
   const globalSettings: GlobalSettings = {
     theme: state.theme || 'light',
-    toolbar: {
-      ...defaultSettings.toolbar,
-      ...(state.toolbar || {}),
+    bottomBar: {
+      ...defaultSettings.bottomBar,
+      ...v1BottomBar,
       // Ensure arrays are valid
-      visibleWidgets: Array.isArray(state.toolbar?.visibleWidgets)
-        ? state.toolbar.visibleWidgets
-        : defaultSettings.toolbar.visibleWidgets,
-      pinnedWidgets: Array.isArray(state.toolbar?.pinnedWidgets)
-        ? state.toolbar.pinnedWidgets
-        : defaultSettings.toolbar.pinnedWidgets,
-      recentWidgets: Array.isArray(state.toolbar?.recentWidgets)
-        ? state.toolbar.recentWidgets
-        : defaultSettings.toolbar.recentWidgets
+      visibleWidgets: Array.isArray(v1BottomBar?.visibleWidgets)
+        ? v1BottomBar.visibleWidgets
+        : defaultSettings.bottomBar.visibleWidgets,
+      pinnedWidgets: Array.isArray(v1BottomBar?.pinnedWidgets)
+        ? v1BottomBar.pinnedWidgets
+        : defaultSettings.bottomBar.pinnedWidgets,
+      recentWidgets: Array.isArray(v1BottomBar?.recentWidgets)
+        ? v1BottomBar.recentWidgets
+        : defaultSettings.bottomBar.recentWidgets
     }
   };
 

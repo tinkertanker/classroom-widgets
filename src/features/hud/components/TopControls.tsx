@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus } from 'react-icons/fa6';
 import { clsx } from 'clsx';
-import { useWorkspace, useServerConnection, useToolbar } from '../../../shared/hooks/useWorkspace';
+import { useWorkspace, useServerConnection, useBottomBar } from '../../../shared/hooks/useWorkspace';
 import { useSession } from '../../../contexts/SessionContext';
 import SessionBanner from '../../session/components/SessionBanner';
 import { WorkspaceSwitcher } from '../../workspace';
@@ -14,7 +14,7 @@ const TopControls: React.FC = () => {
   const { scale, setScale } = useWorkspace();
   const { connected } = useServerConnection();
   const { sessionCode } = useSession();
-  const { showClock } = useToolbar();
+  const { showClock } = useBottomBar();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isNear, registerHudElement } = useHudProximityContext();
 

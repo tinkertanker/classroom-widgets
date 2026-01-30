@@ -73,7 +73,7 @@ function getNextWorkspaceName(): string {
   return `Workspace ${workspaceCount + 1}`;
 }
 
-const defaultToolbar = {
+const defaultBottomBar = {
   visibleWidgets: [
     WidgetType.RANDOMISER,
     WidgetType.TIMER,
@@ -123,7 +123,7 @@ const workspaceStorage: StateStorage = {
                 scrollPosition: currentWorkspace.scrollPosition,
                 widgetStates: currentWorkspace.widgetStates,
                 theme: v2Data.globalSettings.theme,
-                toolbar: v2Data.globalSettings.toolbar,
+                bottomBar: (v2Data.globalSettings as any).bottomBar || (v2Data.globalSettings as any).toolbar,
                 sessionCode: v2Data.session.code,
                 sessionCreatedAt: v2Data.session.createdAt
               },
@@ -202,7 +202,7 @@ const workspaceStorage: StateStorage = {
       // Update global settings
       v2Data.globalSettings = {
         theme: state.theme || 'light',
-        toolbar: state.toolbar || defaultToolbar
+        bottomBar: state.bottomBar || defaultBottomBar
       };
 
       // Update session
@@ -251,7 +251,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     draggedWidgetId: null,
     dropTarget: null
   },
-  toolbar: defaultToolbar,
+  bottomBar: defaultBottomBar,
   serverStatus: {
     connected: false,
     url: import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
@@ -299,8 +299,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     };
 
     // Update recent widgets: move this type to the front, remove duplicates, limit to N
-    const currentRecent = get().toolbar.recentWidgets || [];
-    const limit = get().toolbar.recentWidgetsLimit || 5;
+    const currentRecent = get().bottomBar.recentWidgets || [];
+    const limit = get().bottomBar.recentWidgetsLimit || 5;
     const updatedRecent = [
       type,
       ...currentRecent.filter(t => t !== type)
@@ -308,7 +308,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
     set((state) => ({
       widgets: [...state.widgets, newWidget],
-      toolbar: { ...state.toolbar, recentWidgets: updatedRecent }
+      bottomBar: { ...state.bottomBar, recentWidgets: updatedRecent }
     }));
     return id;
   },
@@ -364,9 +364,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       scrollPosition: { x: 0, y: 0 }
     });
   },
-  updateToolbar: (updates) => {
+  updateBottomBar: (updates) => {
     set((state) => ({
-      toolbar: { ...state.toolbar, ...updates }
+      bottomBar: { ...state.bottomBar, ...updates }
     }));
   },
   toggleWidgetVisibility: () => {},
@@ -538,7 +538,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         background: state.background,
         theme: state.theme,
         scale: state.scale,
-        toolbar: state.toolbar,
+        bottomBar: state.bottomBar,
         widgetStates: Array.from(state.widgetStates.entries()),
         sessionCode: state.sessionCode,
         sessionCreatedAt: state.sessionCreatedAt
@@ -552,17 +552,17 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
           // Ensure toolbar has all required properties with defaults for missing ones
           // This handles old localStorage formats that may not have new properties
-          if (state && state.toolbar) {
-            state.toolbar = {
-              ...defaultToolbar,  // Start with defaults
-              ...state.toolbar,   // Override with stored values
+          if (state && state.bottomBar) {
+            state.bottomBar = {
+              ...defaultBottomBar,  // Start with defaults
+              ...state.bottomBar,   // Override with stored values
               // Ensure recentWidgets is valid array, fallback to default if not
-              recentWidgets: Array.isArray(state.toolbar.recentWidgets)
-                ? state.toolbar.recentWidgets
-                : defaultToolbar.recentWidgets,
-              recentWidgetsLimit: typeof state.toolbar.recentWidgetsLimit === 'number'
-                ? state.toolbar.recentWidgetsLimit
-                : defaultToolbar.recentWidgetsLimit
+              recentWidgets: Array.isArray(state.bottomBar.recentWidgets)
+                ? state.bottomBar.recentWidgets
+                : defaultBottomBar.recentWidgets,
+              recentWidgetsLimit: typeof state.bottomBar.recentWidgetsLimit === 'number'
+                ? state.bottomBar.recentWidgetsLimit
+                : defaultBottomBar.recentWidgetsLimit
             };
           }
 

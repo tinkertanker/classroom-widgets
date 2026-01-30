@@ -26,7 +26,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
+  // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
+  // This prevents re-renders when other widgets get focused
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   
   if (!widget) return null;
@@ -87,17 +88,13 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   }, []);
 
   // Global mouseUp safety listener to clear stuck drag/resize states
-  // This handles edge cases where mouseUp fires outside the widget bounds
+  // Only attach listener when actually dragging/resizing (not for every widget)
   useEffect(() => {
+    if (!isResizing && !isBeingDragged) return;
+
     const handleGlobalMouseUp = () => {
-      // Clear resize state if stuck
-      if (isResizing) {
-        setIsResizing(false);
-      }
-      // Clear drag state if stuck (only for this widget)
-      if (isBeingDragged) {
-        stopDrag();
-      }
+      if (isResizing) setIsResizing(false);
+      if (isBeingDragged) stopDrag();
     };
 
     window.addEventListener('mouseup', handleGlobalMouseUp);

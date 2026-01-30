@@ -1,4 +1,4 @@
-// CustomizeToolbarDragDrop - Simple drag and drop toolbar customization
+// CustomizeBottomBarDragDrop - Simple drag and drop bottom bar customization
 
 import React, { useState } from 'react';
 import { DndContext, DragEndEvent, closestCenter, DragStartEvent, useDroppable, DragOverlay, rectIntersection } from '@dnd-kit/core';
@@ -7,12 +7,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { WidgetType } from '../../../shared/types';
-import { useToolbar } from '../../../shared/hooks/useWorkspace';
+import { useBottomBar } from '../../../shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import ModalDialog from '../../../shared/components/ModalDialog';
 import { FaTrash, FaPlus } from 'react-icons/fa6';
 
-interface CustomizeToolbarDragDropProps {
+interface CustomizeBottomBarDragDropProps {
   onClose: () => void;
 }
 
@@ -95,13 +95,13 @@ const SortableWidget: React.FC<SortableWidgetProps> = ({ id, widget }) => {
   );
 };
 
-const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onClose }) => {
-  const { visibleWidgets } = useToolbar();
-  const updateToolbar = useWorkspaceStore((state) => state.updateToolbar);
+const CustomizeBottomBarDragDrop: React.FC<CustomizeBottomBarDragDropProps> = ({ onClose }) => {
+  const { visibleWidgets } = useBottomBar();
+  const updateBottomBar = useWorkspaceStore((state) => state.updateBottomBar);
   const allWidgets = widgetRegistry.getAll().filter(w => !w.features?.hidden);
 
   // Initialize state
-  const [toolbarWidgets, setToolbarWidgets] = useState<WidgetType[]>(
+  const [bottomBarWidgets, setBottomBarWidgets] = useState<WidgetType[]>(
     visibleWidgets.filter(type => allWidgets.some(w => w.type === type))
   );
   const [availableWidgets, setAvailableWidgets] = useState<WidgetType[]>(
@@ -114,8 +114,8 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
     setActiveId(event.active.id as string);
     // Determine which container the drag started from
     const widgetType = parseInt(event.active.id as string);
-    if (toolbarWidgets.includes(widgetType)) {
-      setActiveContainer('toolbar');
+    if (bottomBarWidgets.includes(widgetType)) {
+      setActiveContainer('bottombar');
     } else if (availableWidgets.includes(widgetType)) {
       setActiveContainer('available');
     }
@@ -132,23 +132,23 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
     
     const activeWidgetType = parseInt(active.id as string);
     
-    // Handle drops on remove zone (from toolbar)
-    if (over.id === 'remove-zone' && activeContainer === 'toolbar') {
-      setToolbarWidgets(prev => prev.filter(w => w !== activeWidgetType));
+    // Handle drops on remove zone (from bottom bar)
+    if (over.id === 'remove-zone' && activeContainer === 'bottombar') {
+      setBottomBarWidgets(prev => prev.filter(w => w !== activeWidgetType));
       setAvailableWidgets(prev => [...prev, activeWidgetType]);
     }
     // Handle drops on add zone (from available)
     else if (over.id === 'add-zone' && activeContainer === 'available') {
       setAvailableWidgets(prev => prev.filter(w => w !== activeWidgetType));
-      setToolbarWidgets(prev => [...prev, activeWidgetType]);
+      setBottomBarWidgets(prev => [...prev, activeWidgetType]);
     }
-    // Handle reordering within toolbar
-    else if (activeContainer === 'toolbar' && toolbarWidgets.includes(parseInt(over.id as string))) {
-      const oldIndex = toolbarWidgets.indexOf(activeWidgetType);
-      const newIndex = toolbarWidgets.indexOf(parseInt(over.id as string));
+    // Handle reordering within bottom bar
+    else if (activeContainer === 'bottombar' && bottomBarWidgets.includes(parseInt(over.id as string))) {
+      const oldIndex = bottomBarWidgets.indexOf(activeWidgetType);
+      const newIndex = bottomBarWidgets.indexOf(parseInt(over.id as string));
       
       if (oldIndex !== newIndex && oldIndex !== -1 && newIndex !== -1) {
-        setToolbarWidgets(arrayMove(toolbarWidgets, oldIndex, newIndex));
+        setBottomBarWidgets(arrayMove(bottomBarWidgets, oldIndex, newIndex));
       }
     }
     // Handle reordering within available
@@ -166,7 +166,7 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
   };
   
   const handleSave = () => {
-    updateToolbar({ visibleWidgets: toolbarWidgets });
+    updateBottomBar({ visibleWidgets: bottomBarWidgets });
     onClose();
   };
   
@@ -198,7 +198,7 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
   
   return (
     <ModalDialog
-      title="Customize Toolbar"
+      title="Customize Bottom Bar"
       subtitle={
         <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
           Drag widgets to the drop zones to move them between sections
@@ -213,25 +213,25 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Toolbar Section */}
+        {/* Bottom Bar Section */}
         <div className="mb-8">
           <h3 className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-3">
-            Your Toolbar
+            Your Bottom Bar
           </h3>
           <div className="space-y-3">
             <div className="rounded-lg border-2 border-dashed border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-100 dark:bg-warm-gray-900 p-4 min-h-[100px]">
               <SortableContext
-                id="toolbar"
-                items={toolbarWidgets.map(w => w.toString())}
+                id="bottombar"
+                items={bottomBarWidgets.map(w => w.toString())}
                 strategy={horizontalListSortingStrategy}
               >
                 <div className="flex items-center gap-3 flex-wrap">
-                  {toolbarWidgets.length === 0 ? (
+                  {bottomBarWidgets.length === 0 ? (
                     <p className="text-warm-gray-500 text-sm w-full text-center py-4">
-                      No widgets in toolbar. Drag from available widgets below.
+                      No widgets in bottom bar. Drag from available widgets below.
                     </p>
                   ) : (
-                    toolbarWidgets.map((widgetType) => {
+                    bottomBarWidgets.map((widgetType) => {
                       const widget = allWidgets.find(w => w.type === widgetType);
                       if (!widget) return null;
                       
@@ -248,12 +248,12 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
               </SortableContext>
             </div>
             {/* Remove drop zone */}
-            {toolbarWidgets.length > 0 && (
+            {bottomBarWidgets.length > 0 && (
               <DropZone
                 id="remove-zone"
-                label="Drag here to remove from toolbar"
+                label="Drag here to remove from bottom bar"
                 icon={<FaTrash className="text-dusty-rose-500" />}
-                isActive={activeId !== null && activeContainer === 'toolbar'}
+                isActive={activeId !== null && activeContainer === 'bottombar'}
               />
             )}
           </div>
@@ -269,7 +269,7 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
             {availableWidgets.length > 0 && (
               <DropZone
                 id="add-zone"
-                label="Drag here to add to toolbar"
+                label="Drag here to add to bottom bar"
                 icon={<FaPlus className="text-sage-500" />}
                 isActive={activeId !== null && activeContainer === 'available'}
               />
@@ -283,7 +283,7 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
                 <div className="flex items-center gap-3 flex-wrap">
                   {availableWidgets.length === 0 ? (
                     <p className="text-warm-gray-500 text-sm w-full text-center py-4">
-                      All widgets are in your toolbar
+                      All widgets are in your bottom bar
                     </p>
                   ) : (
                     availableWidgets.map((widgetType) => {
@@ -321,4 +321,4 @@ const CustomizeToolbarDragDrop: React.FC<CustomizeToolbarDragDropProps> = ({ onC
   );
 };
 
-export default CustomizeToolbarDragDrop;
+export default CustomizeBottomBarDragDrop;

@@ -56,9 +56,9 @@ export interface StoredWidget {
 }
 
 /**
- * Toolbar configuration (global across workspaces)
+ * Bottom bar configuration (global across workspaces)
  */
-export interface StoredToolbarConfig {
+export interface StoredBottomBarConfig {
   visibleWidgets: WidgetType[];
   pinnedWidgets: WidgetType[];
   showClock: boolean;
@@ -73,7 +73,7 @@ export interface StoredToolbarConfig {
  */
 export interface GlobalSettings {
   theme: 'light' | 'dark';
-  toolbar: StoredToolbarConfig;
+  bottomBar: StoredBottomBarConfig;
 }
 
 /**
@@ -117,7 +117,7 @@ export interface StorageFormatV1 {
     theme: 'light' | 'dark';
     scale: number;
     scrollPosition: { x: number; y: number };
-    toolbar: StoredToolbarConfig;
+    bottomBar: StoredBottomBarConfig;
     widgetStates: Array<[string, any]>;
     sessionCode: string | null;
     sessionCreatedAt: number | null;
@@ -179,7 +179,7 @@ export function createDefaultWorkspace(id: string, name: string = DEFAULT_WORKSP
 export function createDefaultGlobalSettings(): GlobalSettings {
   return {
     theme: 'light',
-    toolbar: {
+    bottomBar: {
       visibleWidgets: [
         WidgetType.RANDOMISER,
         WidgetType.TIMER,

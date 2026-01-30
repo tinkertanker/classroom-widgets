@@ -1,15 +1,15 @@
-// Refactored Toolbar component using the centralized store
+// BottomBar - The bottom HUD with widget launcher buttons
 
 import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { FaBars, FaBug, FaMicrophone } from 'react-icons/fa6';
 import { StackedStickersIcon } from './StackedStickersIcon';
-import { useToolbar } from '../../../shared/hooks/useWorkspace';
+import { useBottomBar } from '../../../shared/hooks/useWorkspace';
 import { useCreateWidget } from '../../../shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { WidgetType } from '../../../shared/types';
 import WidgetButton from './WidgetButton';
-import ToolbarMenu from './ToolbarMenu';
+import BottomBarMenu from './BottomBarMenu';
 import WidgetLaunchpad from './WidgetLaunchpad';
 import Button from '../../../components/ui/Button';
 import { useModal } from '../../../contexts/ModalContext';
@@ -29,8 +29,8 @@ const defaultRecentWidgets = [
   WidgetType.TRAFFIC_LIGHT
 ];
 
-const Toolbar: React.FC = () => {
-  const { recentWidgets, voiceControlEnabled } = useToolbar();
+const BottomBar: React.FC = () => {
+  const { recentWidgets, voiceControlEnabled } = useBottomBar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();
   const [showMenu, setShowMenu] = useState(false);
@@ -43,7 +43,7 @@ const Toolbar: React.FC = () => {
   const bottomRef = React.useCallback((node: HTMLDivElement | null) => {
     registerHudElement('bottom', node);
   }, [registerHudElement]);
-  
+
   // Sync with global sticker mode state
   useEffect(() => {
     const checkStickerMode = () => {
@@ -52,19 +52,19 @@ const Toolbar: React.FC = () => {
         setStickerMode(globalStickerMode);
       }
     };
-    
+
     // Check periodically for state changes
     const interval = setInterval(checkStickerMode, 100);
-    
+
     return () => clearInterval(interval);
   }, [stickerMode]);
-  
+
   // Add keyboard shortcut for debug launch all (only in development)
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') {
       return;
     }
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Check for Cmd/Ctrl + Shift + D
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'D') {
@@ -72,15 +72,15 @@ const Toolbar: React.FC = () => {
         handleDebugLaunchAll();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  
+
   const handleAddWidget = (type: WidgetType) => {
     createWidget(type);
   };
-  
+
   const handleShowMoreWidgets = () => {
     showModal({
       title: 'Add Widget',
@@ -96,7 +96,7 @@ const Toolbar: React.FC = () => {
       noPadding: true
     });
   };
-  
+
   const handleShowStickers = () => {
     showModal({
       title: 'Place Stickers',
@@ -120,17 +120,17 @@ const Toolbar: React.FC = () => {
   const handleActivateVoiceControl = () => {
     (window as any).activateVoiceControl?.();
   };
-  
+
   // Debug function to launch all widgets
   const handleDebugLaunchAll = () => {
     const addWidget = useWorkspaceStore.getState().addWidget;
     const allWidgetTypes = widgetRegistry.getAll();
-    
+
     // Grid configuration
     const MARGIN = 50; // Margin from edges
     const SPACING = 30; // Spacing between widgets
     const COLUMNS = 5; // Number of columns
-    
+
     // Sort widgets by category for better organization
     const sortedWidgets = [...allWidgetTypes].sort((a, b) => {
       const categoryOrder = ['TEACHING_TOOLS', 'INTERACTIVE', 'FUN', 'NETWORKED'];
@@ -138,45 +138,45 @@ const Toolbar: React.FC = () => {
       const bIndex = categoryOrder.indexOf(b.category || '');
       return aIndex - bIndex;
     });
-    
+
     // Track row heights for proper vertical spacing
     let currentY = MARGIN;
     let rowMaxHeight = 0;
     let currentRow = -1;
-    
+
     // Calculate positions for all widgets
     sortedWidgets.forEach((config, index) => {
       const row = Math.floor(index / COLUMNS);
       const col = index % COLUMNS;
-      
+
       // Get the widget's default size
       const size = config.defaultSize || { width: 350, height: 350 };
-      
+
       // Start new row if needed
       if (row !== currentRow) {
         currentY += rowMaxHeight + SPACING;
         rowMaxHeight = 0;
         currentRow = row;
       }
-      
+
       // Track max height in current row
       rowMaxHeight = Math.max(rowMaxHeight, size.height);
-      
+
       // Calculate position
       const x = MARGIN + col * (Math.max(size.width, 350) + SPACING);
       const y = currentY;
-      
+
       // Add the widget at the calculated position
       // Use setTimeout to ensure unique timestamps even with the improved ID generation
       setTimeout(() => {
         addWidget(config.type, { x, y });
       }, index * 10); // Small delay between each widget
     });
-    
+
     // Calculate total area needed
     const totalWidth = MARGIN * 2 + COLUMNS * (350 + SPACING);
     const totalHeight = currentY + rowMaxHeight + MARGIN;
-    
+
     // Show a notification
     showModal({
       title: 'Debug: All Widgets Launched',
@@ -205,7 +205,7 @@ const Toolbar: React.FC = () => {
       className: 'max-w-md bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl'
     });
   };
-  
+
   // Use recent widgets for the toolbar, fallback to defaults
   const widgetsToShow = recentWidgets && recentWidgets.length > 0
     ? recentWidgets
@@ -214,7 +214,7 @@ const Toolbar: React.FC = () => {
   const recentConfigs = widgetsToShow
     .map(type => widgetRegistry.get(type))
     .filter(Boolean);
-  
+
   return (
     <>
       <div
@@ -230,7 +230,7 @@ const Toolbar: React.FC = () => {
           <div className="flex space-x-3 items-center flex-shrink-0">
             {/* Trash icon */}
             <TrashZone />
-            
+
             {/* More widgets button */}
             <button
             onClick={handleShowMoreWidgets}
@@ -259,11 +259,11 @@ const Toolbar: React.FC = () => {
               {isMac ? '⌘K' : 'Ctrl+K'}
             </div>
           </button>
-            
+
             {/* Separator */}
             <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
           </div>
-          
+
           {/* Middle section - recent widget buttons */}
           <div className="flex space-x-3 items-center overflow-x-auto scrollbar-hide flex-1 min-w-0">
             {recentConfigs.map((config) => (
@@ -278,7 +278,7 @@ const Toolbar: React.FC = () => {
               />
             ))}
           </div>
-          
+
           {/* Right section - always visible */}
           <div className="flex space-x-3 items-center flex-shrink-0">
             <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
@@ -295,7 +295,7 @@ const Toolbar: React.FC = () => {
             )}
             title={stickerMode ? "Exit sticker mode" : "Enter sticker mode"}
           >
-        
+
             <StackedStickersIcon
               className={clsx(
                 "w-6 h-6 transform transition-transform duration-300",
@@ -354,7 +354,7 @@ const Toolbar: React.FC = () => {
               </div>
             </button>
             )}
-            
+
             {/* Menu button */}
             <div className="relative">
               <button
@@ -365,10 +365,10 @@ const Toolbar: React.FC = () => {
               <FaBars className="text-lg" />
               <span className="text-xs text-center leading-tight">Menu</span>
             </button>
-              
+
               {/* Menu dropdown */}
               {showMenu && (
-                <ToolbarMenu onClose={() => setShowMenu(false)} />
+                <BottomBarMenu onClose={() => setShowMenu(false)} />
               )}
             </div>
           </div>
@@ -378,4 +378,4 @@ const Toolbar: React.FC = () => {
   );
 };
 
-export default Toolbar;
+export default BottomBar;

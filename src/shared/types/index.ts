@@ -108,8 +108,8 @@ export enum BackgroundType {
   SEAWAVE = 'seawave'
 }
 
-// Toolbar Types
-export interface ToolbarConfig {
+// Bottom Bar Types
+export interface BottomBarConfig {
   visibleWidgets: WidgetType[];
   pinnedWidgets: WidgetType[];
   showClock: boolean;
@@ -197,7 +197,7 @@ export interface SavedWorkspace {
   version: number;
   timestamp: number;
   state: WorkspaceState;
-  toolbar: ToolbarConfig;
+  bottomBar: BottomBarConfig;
 }
 
 // Error Types

@@ -41,14 +41,14 @@ export function useWidget(widgetId: string) {
 
 // Hook for widget drag state
 export function useWidgetDrag(widgetId: string) {
-  const { isDragging, draggedWidgetId } = useWorkspaceStore(
-    useShallow((state) => state.dragState)
+  // Subscribe only to whether THIS widget is being dragged
+  // This prevents all widgets from re-rendering when any widget starts/stops dragging
+  const isBeingDragged = useWorkspaceStore(
+    (state) => state.dragState.isDragging && state.dragState.draggedWidgetId === widgetId
   );
-  
+
   const startDragging = useWorkspaceStore((state) => state.startDragging);
   const stopDragging = useWorkspaceStore((state) => state.stopDragging);
-
-  const isBeingDragged = isDragging && draggedWidgetId === widgetId;
 
   return {
     isBeingDragged,

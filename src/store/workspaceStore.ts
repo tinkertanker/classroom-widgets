@@ -1,6 +1,6 @@
 import { BackgroundType, WidgetType, Widget, Position, Size } from '../shared/types';
 
-export interface ToolbarConfig {
+export interface BottomBarConfig {
   visibleWidgets: WidgetType[];
   pinnedWidgets: WidgetType[];
   showClock: boolean;
@@ -39,7 +39,7 @@ export interface WorkspaceStore {
   sessionCode: string | null;
   sessionCreatedAt: number | null;
   dragState: DragState;
-  toolbar: ToolbarConfig;
+  bottomBar: BottomBarConfig;
   serverStatus: ServerStatus;
   widgetStates: Map<string, any>;
   eventListeners: Map<string, Function[]>;
@@ -72,8 +72,8 @@ export interface WorkspaceStore {
   setFocusedWidget: (widgetId: string | null) => void;
   resetWorkspace: () => void;
   
-  // Toolbar actions
-  updateToolbar: (updates: Partial<ToolbarConfig>) => void;
+  // Bottom bar actions
+  updateBottomBar: (updates: Partial<BottomBarConfig>) => void;
   toggleWidgetVisibility: (widgetType: WidgetType) => void;
   pinWidget: (widgetType: WidgetType) => void;
   unpinWidget: (widgetType: WidgetType) => void;

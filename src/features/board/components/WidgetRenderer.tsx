@@ -23,25 +23,27 @@ const WidgetLoader: React.FC = () => (
 
 const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
   const { widget, state, setState } = useWidget(widgetId);
-  const focusedWidgetId = useWorkspaceStore((state) => state.focusedWidgetId);
-  
+  // Subscribe only to whether THIS widget is focused, not the focusedWidgetId value
+  // This prevents all widgets from re-rendering when focus changes
+  const isActive = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
+
   if (!widget) return null;
-  
+
   const config = widgetRegistry.get(widget.type);
   if (!config) {
     console.error(`Widget type ${widget.type} not found in registry`);
     return null;
   }
-  
+
   const Component = config.component;
   const widgetName = config.name;
-  
+
   // Props to pass to the widget
   const widgetProps = {
     widgetId,
     savedState: state,
     onStateChange: setState,
-    isActive: focusedWidgetId === widgetId
+    isActive
   };
   
   return (

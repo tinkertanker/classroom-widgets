@@ -1,6 +1,6 @@
 // TrashZone - Drop zone for deleting widgets
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { FaTrash } from 'react-icons/fa6';
 import { useDragAndDrop } from '../../../shared/hooks/useWorkspace';
@@ -8,19 +8,22 @@ import { useDragAndDrop } from '../../../shared/hooks/useWorkspace';
 const TrashZone: React.FC = () => {
   const { isDragging, isOverTrash, setDropTarget } = useDragAndDrop();
   const trashRef = useRef<HTMLDivElement>(null);
-  
+  const cachedRectRef = useRef<DOMRect | null>(null);
+  const isOverRef = useRef(false);
+  const lastCheckRef = useRef(0);
+
   const handleMouseEnter = () => {
     if (isDragging) {
       setDropTarget('trash');
     }
   };
-  
+
   const handleMouseLeave = () => {
     if (isDragging) {
       setDropTarget(null);
     }
   };
-  
+
   // Play trash sound when widget is dropped
   useEffect(() => {
     if (isOverTrash && !isDragging) {
@@ -28,35 +31,48 @@ const TrashZone: React.FC = () => {
       (window as any).playTrashSound?.();
     }
   }, [isOverTrash, isDragging]);
-  
+
   // Track mouse position during drag to detect if over trash
+  // Throttled to reduce re-renders and forced reflows
   useEffect(() => {
-    if (!isDragging || !trashRef.current) return;
-    
+    if (!isDragging || !trashRef.current) {
+      cachedRectRef.current = null;
+      return;
+    }
+
+    // Cache the bounding rect at drag start (it won't change during drag)
+    cachedRectRef.current = trashRef.current.getBoundingClientRect();
+    isOverRef.current = isOverTrash;
+
     const handleMouseMove = (e: MouseEvent) => {
-      if (!trashRef.current) return;
-      
-      const rect = trashRef.current.getBoundingClientRect();
-      const isOver = e.clientX >= rect.left && 
-                     e.clientX <= rect.right && 
-                     e.clientY >= rect.top && 
+      // Throttle to max ~20 checks per second (every 50ms)
+      const now = Date.now();
+      if (now - lastCheckRef.current < 50) return;
+      lastCheckRef.current = now;
+
+      const rect = cachedRectRef.current;
+      if (!rect) return;
+
+      const isOver = e.clientX >= rect.left &&
+                     e.clientX <= rect.right &&
+                     e.clientY >= rect.top &&
                      e.clientY <= rect.bottom;
-      
-      if (isOver && !isOverTrash) {
-        setDropTarget('trash');
-      } else if (!isOver && isOverTrash) {
-        setDropTarget(null);
+
+      // Only update state if changed (avoid unnecessary Zustand updates)
+      if (isOver !== isOverRef.current) {
+        isOverRef.current = isOver;
+        setDropTarget(isOver ? 'trash' : null);
       }
     };
-    
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('dragover', handleMouseMove);
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('dragover', handleMouseMove);
     };
-  }, [isDragging, isOverTrash, setDropTarget]);
+  }, [isDragging, setDropTarget]); // Removed isOverTrash from deps to prevent re-subscription
   
   const classes = clsx(
     'w-16 h-16 cursor-pointer transition-all duration-200',

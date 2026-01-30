@@ -31,29 +31,29 @@ export function useWorkspace() {
   };
 }
 
-// Toolbar hook
-export function useToolbar() {
-  const toolbar = useWorkspaceStore((state) => state.toolbar);
-  const updateToolbar = useWorkspaceStore((state) => state.updateToolbar);
+// Bottom bar hook
+export function useBottomBar() {
+  const bottomBar = useWorkspaceStore((state) => state.bottomBar);
+  const updateBottomBar = useWorkspaceStore((state) => state.updateBottomBar);
   const toggleWidgetVisibility = useWorkspaceStore((state) => state.toggleWidgetVisibility);
   const pinWidget = useWorkspaceStore((state) => state.pinWidget);
   const unpinWidget = useWorkspaceStore((state) => state.unpinWidget);
 
-  const setVisibleWidgets = useCallback((widgets: WidgetType[]) => 
-    updateToolbar({ visibleWidgets: widgets }), [updateToolbar]);
-  const toggleWidget = useCallback((type: WidgetType) => 
+  const setVisibleWidgets = useCallback((widgets: WidgetType[]) =>
+    updateBottomBar({ visibleWidgets: widgets }), [updateBottomBar]);
+  const toggleWidget = useCallback((type: WidgetType) =>
     toggleWidgetVisibility(type), [toggleWidgetVisibility]);
-  const pin = useCallback((type: WidgetType) => 
+  const pin = useCallback((type: WidgetType) =>
     pinWidget(type), [pinWidget]);
-  const unpin = useCallback((type: WidgetType) => 
+  const unpin = useCallback((type: WidgetType) =>
     unpinWidget(type), [unpinWidget]);
-  const toggleClock = useCallback(() => 
-    updateToolbar({ showClock: !toolbar.showClock }), [toolbar.showClock, updateToolbar]);
-  const toggleConnectionStatus = useCallback(() => 
-    updateToolbar({ showConnectionStatus: !toolbar.showConnectionStatus }), [toolbar.showConnectionStatus, updateToolbar]);
+  const toggleClock = useCallback(() =>
+    updateBottomBar({ showClock: !bottomBar.showClock }), [bottomBar.showClock, updateBottomBar]);
+  const toggleConnectionStatus = useCallback(() =>
+    updateBottomBar({ showConnectionStatus: !bottomBar.showConnectionStatus }), [bottomBar.showConnectionStatus, updateBottomBar]);
 
   return {
-    ...toolbar,
+    ...bottomBar,
     setVisibleWidgets,
     toggleWidget,
     pin,
