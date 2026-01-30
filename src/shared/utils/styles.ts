@@ -227,7 +227,121 @@ export function getStatusColor(status: number | string, type: 'bg' | 'surface' |
     'error': 'red',
     'disabled': 'gray'
   };
-  
+
   const colorKey = colorMap[status] || 'default';
   return statusColors[colorKey][type];
 }
+
+// ============================================================================
+// HUD (Heads-Up Display) Styles
+// ============================================================================
+
+// Z-index layers (standardized hierarchy)
+export const zIndex = {
+  dropdown: "z-50",           // Dropdown menus
+  hud: "z-[100]",             // HUD elements (top controls, toolbar)
+  hudDropdown: "z-[150]",     // Dropdowns within HUD
+  modal: "z-[200]",           // Modal dialogs
+  tooltip: "z-[300]",         // Tooltips (highest)
+  stickerBanner: "z-[999]"    // Sticker mode banner (special case)
+} as const;
+
+// HUD glass-morphism container styles
+export const hudContainer = {
+  // Base glass container (standard)
+  base: cn(
+    "bg-soft-white/80 dark:bg-warm-gray-800/80",
+    "rounded-lg shadow-md backdrop-blur-sm",
+    "border border-warm-gray-300/50 dark:border-warm-gray-600/50"
+  ),
+  // Hover state for interactive containers
+  hover: "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors",
+  // Complete button style (base + hover)
+  button: cn(
+    "flex items-center justify-center h-10",
+    "bg-soft-white/80 dark:bg-warm-gray-800/80",
+    "rounded-lg shadow-md backdrop-blur-sm",
+    "border border-warm-gray-300/50 dark:border-warm-gray-600/50",
+    "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
+    "transition-colors"
+  ),
+  // Grouped control container (like zoom controls)
+  group: cn(
+    "flex items-center space-x-1 px-2 py-1 h-10",
+    "bg-soft-white/80 dark:bg-warm-gray-800/80",
+    "rounded-lg shadow-md backdrop-blur-sm",
+    "border border-warm-gray-300/50 dark:border-warm-gray-600/50"
+  )
+} as const;
+
+// HUD proximity-based opacity styles
+export const hudProximity = {
+  visible: "opacity-100",
+  hidden: "opacity-30 hover:opacity-100",
+  transition: "transition-opacity duration-300 ease-in-out",
+  // Combined class for proximity wrapper (opacity only)
+  wrapper: (isNear: boolean) => cn(
+    "transition-opacity duration-300 ease-in-out pointer-events-auto",
+    isNear ? "opacity-100" : "opacity-30 hover:opacity-100"
+  ),
+  // Peek wrapper - toolbar slides down when hidden, up when visible
+  // Uses both opacity and transform for the "peek" effect
+  peekWrapper: (isNear: boolean) => cn(
+    "transition-all duration-300 ease-in-out pointer-events-auto",
+    isNear
+      ? "opacity-100 translate-y-0"
+      : "opacity-30 translate-y-[50%] hover:opacity-100 hover:translate-y-0"
+  )
+} as const;
+
+// Dropdown menu container styles
+export const dropdownContainer = cn(
+  "bg-soft-white/95 dark:bg-warm-gray-800/95",
+  "backdrop-blur-sm",
+  "rounded-lg shadow-lg",
+  "border border-warm-gray-200 dark:border-warm-gray-700",
+  "overflow-hidden"
+);
+
+// Menu item styles (for dropdown menus)
+export const menuItem = {
+  base: cn(
+    "w-full flex items-center px-4 py-2 text-sm",
+    "text-warm-gray-700 dark:text-warm-gray-300",
+    "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
+    "transition-colors"
+  ),
+  danger: cn(
+    "w-full flex items-center px-4 py-2 text-sm",
+    "text-dusty-rose-600 dark:text-dusty-rose-400",
+    "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
+    "transition-colors"
+  ),
+  // Section header styling
+  sectionHeader: "px-4 py-1 text-xs font-medium text-warm-gray-500 dark:text-warm-gray-400",
+  // Divider between sections
+  divider: "h-px bg-warm-gray-200 dark:bg-warm-gray-700 my-1"
+} as const;
+
+// HUD button inner elements
+export const hudButtonIcon = "w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" as const;
+export const hudButtonIconSmall = "w-3 h-3 text-warm-gray-600 dark:text-warm-gray-300" as const;
+
+// Toolbar-specific button styles
+export const toolbarButton = {
+  base: cn(
+    "px-3 py-2 rounded-lg",
+    "flex flex-col items-center gap-1 min-w-[80px]",
+    "transition-all duration-200"
+  ),
+  default: cn(
+    "text-warm-gray-700 dark:text-warm-gray-300",
+    "bg-white/50 dark:bg-warm-gray-700/50",
+    "hover:bg-white/70 dark:hover:bg-warm-gray-600/70"
+  ),
+  active: cn(
+    "bg-terracotta-500 text-white",
+    "hover:bg-terracotta-600"
+  ),
+  label: "text-xs text-center leading-tight"
+} as const;

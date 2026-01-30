@@ -5,12 +5,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaWifi, FaXmark } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useSession } from '../../../../contexts/SessionContext';
+import { zIndex } from '../../../../shared/utils/styles';
 
 interface SessionBannerProps {
   className?: string;
 }
 
-const SessionBanner: React.FC<SessionBannerProps> = ({ 
+const SessionBanner: React.FC<SessionBannerProps> = ({
   className = ''
 }) => {
   const session = useSession();
@@ -18,7 +19,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
-  
+
   // Auto-expand when session starts or when disconnected
   useEffect(() => {
     if (sessionCode && !isExpanded) {
@@ -27,21 +28,21 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
       setIsExpanded(false);
     }
   }, [sessionCode]);
-  
+
   // Auto-expand when disconnected to show status
   useEffect(() => {
     if (!connected && sessionCode) {
       setIsExpanded(true);
     }
   }, [connected, sessionCode]);
-  
+
   // Handle reconnection attempt
   const handleReconnect = React.useCallback(() => {
     if (!connected && sessionCode) {
       if (session.socket && !session.socket.connected) {
         setIsReconnecting(true);
         session.socket.connect();
-        
+
         // Reset reconnecting state after a timeout
         setTimeout(() => {
           setIsReconnecting(false);
@@ -49,14 +50,14 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
       }
     }
   }, [connected, sessionCode, session.socket]);
-  
+
   // Reset reconnecting state when connection status changes
   useEffect(() => {
     if (connected) {
       setIsReconnecting(false);
     }
   }, [connected]);
-  
+
   const handleCloseSession = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to close this session? All students will be disconnected.')) {
@@ -66,11 +67,14 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
       onClose();
     }
   };
-  
+
   if (!sessionCode) return null;
-  
+
+  // Use consistent styling with other HUD elements
+  // Base: bg-soft-white/80, backdrop-blur-sm, shadow-md
+  // SessionBanner keeps slightly stronger blur for readability of session code
   return (
-    <div 
+    <div
       ref={sessionIslandRef}
       onClick={() => {
         // If disconnected, attempt reconnection on click
@@ -81,12 +85,15 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         }
       }}
       className={clsx(
-        "bg-soft-white/90 dark:bg-warm-gray-800/90 backdrop-blur-xl shadow-md",
-        "border border-warm-gray-300/70 dark:border-warm-gray-600/50",
+        // Consistent with hudContainer.base but with slightly stronger blur for session info readability
+        "bg-soft-white/80 dark:bg-warm-gray-800/80",
+        "backdrop-blur-md shadow-md",
+        "border border-warm-gray-300/50 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
-        !connected ? "animate-pulse" : "hover:scale-125",
+        !connected ? "animate-pulse" : "hover:scale-105",
         isExpanded ? "px-4 py-2 rounded-full" : "h-10 px-3 rounded-lg",
-        "relative z-[999] hover:z-[1000]",
+        "relative",
+        zIndex.hud,
         className
       )}
       title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
@@ -121,7 +128,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
           <span className="text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate">
             {serverUrl?.replace(/^https?:\/\//, '')}
           </span>
-          
+
           {/* Close Session Button */}
           {connected && (
             <>

@@ -10,7 +10,6 @@ import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { WidgetType } from '../../../shared/types';
 import WidgetButton from './WidgetButton';
 import ToolbarMenu from './ToolbarMenu';
-import Clock from './Clock';
 import WidgetLaunchpad from './WidgetLaunchpad';
 import Button from '../../../components/ui/Button';
 import { useModal } from '../../../contexts/ModalContext';
@@ -18,6 +17,8 @@ import TrashZone from '../../board/components/TrashZone';
 import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useHudProximityContext } from '../../../shared/hooks/useHudProximity';
+import { hudProximity } from '../../../shared/utils/styles';
 
 // Default recent widgets if none are set
 const defaultRecentWidgets = [
@@ -29,13 +30,19 @@ const defaultRecentWidgets = [
 ];
 
 const Toolbar: React.FC = () => {
-  const { recentWidgets, showClock, voiceControlEnabled } = useToolbar();
+  const { recentWidgets, voiceControlEnabled } = useToolbar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();
   const [showMenu, setShowMenu] = useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string>('');
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const { isNear, registerHudElement } = useHudProximityContext();
+
+  // Ref callback for registering bottom HUD region
+  const bottomRef = React.useCallback((node: HTMLDivElement | null) => {
+    registerHudElement('bottom', node);
+  }, [registerHudElement]);
   
   // Sync with global sticker mode state
   useEffect(() => {
@@ -210,7 +217,13 @@ const Toolbar: React.FC = () => {
   
   return (
     <>
-      <div className="toolbar-content inline-flex flex-col space-y-4 px-4 pt-4 pb-2 transition-colors duration-200 max-w-full">
+      <div
+        ref={bottomRef}
+        className={clsx(
+          "toolbar-content inline-flex flex-col space-y-4 px-4 pt-4 pb-2 max-w-full",
+          hudProximity.peekWrapper(isNear.bottom)
+        )}
+      >
         {/* Main widget buttons */}
         <div className="flex space-x-3 items-center">
           {/* Left section - always visible */}
@@ -342,13 +355,6 @@ const Toolbar: React.FC = () => {
             </button>
             )}
             
-            {/* Clock */}
-            {showClock && (
-              <div className="flex items-center justify-center px-3 py-2 bg-white/50 dark:bg-warm-gray-700/50 rounded-lg shadow-sm">
-                <Clock />
-              </div>
-            )}
-
             {/* Menu button */}
             <div className="relative">
               <button

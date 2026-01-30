@@ -15,6 +15,7 @@ import WidgetRenderer from '../features/board/components/WidgetRenderer';
 import GlobalErrorBoundary from '../shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '../shared/components/SmallScreenWarning';
 import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
+import { HudProximityProvider } from '../shared/hooks/useHudProximity';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { APP_VERSION } from '../version';
@@ -476,6 +477,7 @@ function App() {
           <SessionProvider>
             <ConfettiProvider>
               <ModalProvider>
+              <HudProximityProvider>
                 <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
           
           {/* Top Controls */}
@@ -535,6 +537,7 @@ function App() {
             onTranscriptComplete={handleVoiceCommand}
           />
               </div>
+              </HudProximityProvider>
             </ModalProvider>
           </ConfettiProvider>
           </SessionProvider>
