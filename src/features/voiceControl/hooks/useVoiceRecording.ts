@@ -216,7 +216,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     }
   }, [initializeWebSpeechAPI]);
 
-  const stopRecording = useCallback(() => {
+  const stopRecording = useCallback(async () => {
     if (recognitionRef.current) {
       debug('🛑 Stopping speech recognition and releasing microphone...');
 

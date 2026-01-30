@@ -38,9 +38,10 @@ export function enableRenderTracking() {
  * Logs all prop changes to console
  */
 export function useRenderTracker(componentName: string, props: Record<string, any>) {
-  const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require('react') as typeof import('react');
   const renderCount = React.useRef(0);
-  const prevPropsRef = React.useRef<Record<string, any>>();
+  const prevPropsRef = React.useRef<Record<string, any>>(undefined);
   
   renderCount.current += 1;
   

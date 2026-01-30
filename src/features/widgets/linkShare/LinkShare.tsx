@@ -86,7 +86,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: LinkShareProps) {
   const handleDeleteSubmission = useCallback((submissionId: string) => {
     if (!widgetId || !hasRoom) return;
     emit('session:linkShare:delete', {
-      sessionCode: session.sessionCode,
+      sessionCode: session.sessionCode!,
       widgetId,
       submissionId
     });

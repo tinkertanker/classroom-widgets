@@ -176,14 +176,14 @@ const Snake: React.FC = () => {
           {!gameOver && (
             <button
               onClick={togglePause}
-              className={`${buttons.primary} ${transitions.smooth} px-3 py-1`}
+              className={`${buttons.primary} ${transitions.all} px-3 py-1`}
             >
               {isPaused ? 'Start' : 'Pause'}
             </button>
           )}
           <button
             onClick={resetGame}
-            className={`${buttons.secondary} ${transitions.smooth} px-3 py-1`}
+            className={`${buttons.secondary} ${transitions.all} px-3 py-1`}
           >
             New Game
           </button>

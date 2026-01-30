@@ -34,7 +34,7 @@ export interface VoiceCommandResponse {
 export interface VoiceContext {
   activeWidgets: Array<{
     id: string;
-    type: string;
+    type: string | number;  // Can be WidgetType enum or string
     state?: any;
     isFocused: boolean;
   }>;

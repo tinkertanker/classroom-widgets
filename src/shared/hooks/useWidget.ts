@@ -1,9 +1,8 @@
 // Widget-specific hooks for easy state management
 
 import { useCallback, useEffect } from 'react';
-import { shallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
-import { selectWidget } from '../../store/workspaceStore';
 import { WidgetInstance, Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { widgetRegistry } from '../../services/WidgetRegistry';
@@ -43,8 +42,7 @@ export function useWidget(widgetId: string) {
 // Hook for widget drag state
 export function useWidgetDrag(widgetId: string) {
   const { isDragging, draggedWidgetId } = useWorkspaceStore(
-    (state) => state.dragState,
-    shallow
+    useShallow((state) => state.dragState)
   );
   
   const startDragging = useWorkspaceStore((state) => state.startDragging);
@@ -101,7 +99,7 @@ export function useWidgetEvents(widgetId: string, handlers: {
 // Hook for creating a new widget
 export function useCreateWidget() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
-  const widgets = useWorkspaceStore((state) => state.widgets, shallow);
+  const widgets = useWorkspaceStore(useShallow((state) => state.widgets));
   const scale = useWorkspaceStore((state) => state.scale);
   
   const createWidget = useCallback((type: WidgetType, position?: Position) => {
@@ -164,7 +162,7 @@ export function useCreateWidget() {
 
 // Hook for workspace-wide widget operations
 export function useWidgets() {
-  const widgets = useWorkspaceStore((state) => state.widgets, shallow);
+  const widgets = useWorkspaceStore(useShallow((state) => state.widgets));
   const removeWidget = useWorkspaceStore((state) => state.removeWidget);
   const resetWorkspace = useWorkspaceStore((state) => state.resetWorkspace);
   

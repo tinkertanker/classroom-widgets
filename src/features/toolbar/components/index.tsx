@@ -194,10 +194,10 @@ const Toolbar: React.FC = () => {
           <div className="mt-3 text-xs text-warm-gray-500 dark:text-warm-gray-400">
             <p className="font-semibold">Widgets by category:</p>
             <ul className="mt-1 space-y-1">
-              <li>• Teaching Tools: {sortedWidgets.filter(w => w.category === 'TEACHING_TOOLS').length}</li>
-              <li>• Interactive: {sortedWidgets.filter(w => w.category === 'INTERACTIVE').length}</li>
-              <li>• Fun: {sortedWidgets.filter(w => w.category === 'FUN').length}</li>
-              <li>• Networked: {sortedWidgets.filter(w => w.category === 'NETWORKED').length}</li>
+              <li>• Teaching Tools: {sortedWidgets.filter(w => w.category === 'teaching_tools').length}</li>
+              <li>• Interactive: {sortedWidgets.filter(w => w.category === 'interactive').length}</li>
+              <li>• Fun: {sortedWidgets.filter(w => w.category === 'fun').length}</li>
+              <li>• Networked: {sortedWidgets.filter(w => w.category === 'networked').length}</li>
             </ul>
           </div>
         </div>

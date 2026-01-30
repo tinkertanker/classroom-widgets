@@ -1,13 +1,16 @@
 import { WidgetPosition, WidgetPositionsMap } from '../types/app.types';
 
+// Simple position type for function returns (just x, y coordinates)
+type Point = { x: number; y: number };
+
 // Find a non-overlapping position for a new widget
 export const findAvailablePosition = (
-  widgetWidth: number, 
-  widgetHeight: number, 
-  widgetPositions: WidgetPositionsMap, 
+  widgetWidth: number,
+  widgetHeight: number,
+  widgetPositions: WidgetPositionsMap,
   scale: number = 1,
   viewport?: { x: number; y: number; width: number; height: number }
-): WidgetPosition => {
+): Point => {
   const padding = 20; // Minimum space between widgets
   
   // The canvas is always 3000x2000 in logical coordinates

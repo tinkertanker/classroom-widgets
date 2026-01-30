@@ -1,4 +1,4 @@
-import { RoomType } from '../../features/session/hooks/useSession';
+import { RoomType } from '../types/socket.types';
 
 /**
  * Generate standard event names for a networked widget

@@ -194,7 +194,7 @@ export class ErrorService {
     if (import.meta.env.PROD) {
       console.error('[Production Error]', error.message, {
         code: error.code,
-        context: error.context,
+        details: error.details,
         timestamp: new Date(error.timestamp).toISOString()
       });
     }

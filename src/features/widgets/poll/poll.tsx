@@ -23,6 +23,7 @@ interface PollProps {
 interface PollData {
   question: string;
   options: string[];
+  isActive?: boolean;
 }
 
 interface PollResults {
@@ -131,7 +132,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   const reset = useCallback(() => {
     if (!widgetId || !hasRoom) return;
     emit('session:reset', {
-      sessionCode: session.sessionCode,
+      sessionCode: session.sessionCode!,
       widgetId
     });
   }, [widgetId, hasRoom, emit, session.sessionCode]);
@@ -143,9 +144,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     
     if (hasRoom) {
       emit('session:poll:update', {
-        sessionCode: session.sessionCode,
-        widgetId,
-        pollData: newPollData
+        sessionCode: session.sessionCode!,
+        widgetId: widgetId!,
+        pollData: newPollData as any
       });
     }
   }, [pollData, hasRoom, emit, session.sessionCode, widgetId]);
@@ -173,9 +174,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     // Always send the poll data when toggling state
     debug('[Poll] Sending poll data with state change');
     emit('session:poll:update', {
-      sessionCode: session.sessionCode,
-      widgetId,
-      pollData
+      sessionCode: session.sessionCode!,
+      widgetId: widgetId!,
+      pollData: pollData as any
     });
   }, [pollData, isWidgetActive, hasRoom, toggleActive, emit, session.sessionCode, widgetId]);
   
@@ -292,9 +293,9 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         if (!recoveryData && pollData.question && pollData.options.length > 0) {
           debug('[Poll] New room detected, sending initial poll data');
           emit('session:poll:update', {
-            sessionCode: session.sessionCode,
-            widgetId,
-            pollData
+            sessionCode: session.sessionCode!,
+            widgetId: widgetId!,
+            pollData: pollData as any
           });
         }
       }, 100);

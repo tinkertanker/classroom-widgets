@@ -97,7 +97,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   const handleReset = useCallback(() => {
     if (!widgetId || !hasRoom) return;
     emit('session:rtfeedback:reset', {
-      sessionCode: session.sessionCode,
+      sessionCode: session.sessionCode!,
       widgetId
     });
   }, [widgetId, hasRoom, emit, session.sessionCode]);

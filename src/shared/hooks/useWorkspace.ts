@@ -1,7 +1,7 @@
 // Workspace-level hooks for managing the overall workspace state
 
 import { useCallback } from 'react';
-import { shallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { BackgroundType, WidgetType } from '../types';
 
@@ -89,7 +89,7 @@ export function useServerConnection() {
 
 // Drag and drop hook
 export function useDragAndDrop() {
-  const dragState = useWorkspaceStore((state) => state.dragState, shallow);
+  const dragState = useWorkspaceStore(useShallow((state) => state.dragState));
   const setDropTarget = useWorkspaceStore((state) => state.setDropTarget);
   
   const { isDragging, draggedWidgetId, dropTarget } = dragState;

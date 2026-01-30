@@ -13,6 +13,7 @@ export interface ToolbarConfig {
 export interface ServerStatus {
   connected: boolean;
   url: string;
+  error?: string;
 }
 
 export interface DragState {

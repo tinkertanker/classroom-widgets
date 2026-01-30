@@ -69,7 +69,7 @@ export const getBrowserInfo = (): BrowserInfo => {
       name: 'Safari',
       version: getVersion('version'),
       isSupported: false,
-      supportLevel: 'limited' as const,
+      supportLevel: 'partial' as const,
       recommendations: [
         'Safari has limited voice control support',
         'For full voice control features, use Chrome, Edge, or Firefox',

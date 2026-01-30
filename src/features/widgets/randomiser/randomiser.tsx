@@ -20,7 +20,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
   const widgetRef = React.useRef<HTMLDivElement>(null);
   const [result, setResult] = useState("Enter a list to randomise!");
-  const [buttonSettings, setButtonSettings] = useState("normal");
+  const [buttonSettings, setButtonSettings] = useState<"normal" | "result">("normal");
 
   // Use global modal and confetti
   const { showModal, hideModal } = useModal();

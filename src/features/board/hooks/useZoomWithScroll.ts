@@ -233,6 +233,7 @@ export const useZoomWithScroll = (
         
         // Calculate where the debug marker will be in visual coordinates at new scale
         // Visual coords = board coords × scale
+        if (!zoomOriginBoard.current) return;
         const markerVisualX = zoomOriginBoard.current.x * newScale;
         const markerVisualY = zoomOriginBoard.current.y * newScale;
         

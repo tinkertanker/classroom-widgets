@@ -109,7 +109,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   const handleMarkAnswered = useCallback((questionId: string) => {
     if (!widgetId || !hasRoom) return;
     emit('session:questions:markAnswered', {
-      sessionCode: session.sessionCode,
+      sessionCode: session.sessionCode!,
       widgetId,
       questionId
     });
@@ -118,7 +118,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   const handleDeleteQuestion = useCallback((questionId: string) => {
     if (!widgetId || !hasRoom) return;
     emit('session:questions:delete', {
-      sessionCode: session.sessionCode,
+      sessionCode: session.sessionCode!,
       widgetId,
       questionId
     });
@@ -128,7 +128,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     if (!widgetId || !hasRoom) return;
     if (window.confirm('Are you sure you want to clear all questions?')) {
       emit('session:questions:clearAll', {
-        sessionCode: session.sessionCode,
+        sessionCode: session.sessionCode!,
         widgetId
       });
     }

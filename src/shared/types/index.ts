@@ -10,6 +10,9 @@ export interface WidgetInstance {
   state?: any; // Will be replaced with generic type
 }
 
+// Alias for backwards compatibility
+export type Widget = WidgetInstance;
+
 export interface Position {
   x: number;
   y: number;

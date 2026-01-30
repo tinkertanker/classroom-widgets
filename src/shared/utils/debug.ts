@@ -16,33 +16,49 @@
 const isDebugEnabled = import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true';
 
 // Create a no-op function for production
-const noop = () => {};
+const noop = (..._args: any[]) => {};
+
+// Debug logger interface
+interface DebugLogger {
+  (...args: any[]): void;
+  error: (...args: any[]) => void;
+  warn: (...args: any[]) => void;
+  info: (...args: any[]) => void;
+  group: (...args: any[]) => void;
+  groupEnd: () => void;
+}
+
+// Create debug logger with methods
+const createDebugLogger = (): DebugLogger => {
+  const logger = (isDebugEnabled
+    ? (...args: any[]) => console.log(...args)
+    : noop) as DebugLogger;
+
+  logger.error = isDebugEnabled
+    ? (...args: any[]) => console.error(...args)
+    : noop;
+
+  logger.warn = isDebugEnabled
+    ? (...args: any[]) => console.warn(...args)
+    : noop;
+
+  logger.info = isDebugEnabled
+    ? (...args: any[]) => console.info(...args)
+    : noop;
+
+  logger.group = isDebugEnabled
+    ? (...args: any[]) => console.group(...args)
+    : noop;
+
+  logger.groupEnd = isDebugEnabled
+    ? () => console.groupEnd()
+    : noop;
+
+  return logger;
+};
 
 // Debug logger function
-export const debug = isDebugEnabled 
-  ? (...args: any[]) => console.log(...args)
-  : noop;
-
-// Add other console methods
-debug.error = isDebugEnabled 
-  ? (...args: any[]) => console.error(...args)
-  : noop;
-
-debug.warn = isDebugEnabled 
-  ? (...args: any[]) => console.warn(...args)
-  : noop;
-
-debug.info = isDebugEnabled 
-  ? (...args: any[]) => console.info(...args)
-  : noop;
-
-debug.group = isDebugEnabled 
-  ? (...args: any[]) => console.group(...args)
-  : noop;
-
-debug.groupEnd = isDebugEnabled 
-  ? () => console.groupEnd()
-  : noop;
+export const debug = createDebugLogger();
 
 // Export a flag to check debug status
 export const isDebug = isDebugEnabled;

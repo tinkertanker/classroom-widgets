@@ -114,9 +114,9 @@ export function generateToolbarItems(): {
 /**
  * Get room type for networked widget
  */
-export function getWidgetRoomType(widgetType: number): string | null {
+export function getWidgetRoomType(widgetType: number): string | undefined {
   const enumType = widgetRegistry.fromLegacyType(widgetType);
-  return enumType ? widgetRegistry.getRoomType(enumType) : null;
+  return enumType ? widgetRegistry.getRoomType(enumType) : undefined;
 }
 
 /**

@@ -1,7 +1,7 @@
 // Performance optimization hooks
 
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { useWorkspaceStore } from '../../store/workspaceStore';
+import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { WidgetInstance } from '../types';
 
 // Hook for memoizing expensive widget calculations
@@ -106,35 +106,33 @@ export function useThrottledPosition(widgetId: string, delay: number = 16) {
 
 // Hook for batching multiple widget updates
 export function useBatchedUpdates() {
-  const store = useWorkspaceStore();
   const pendingUpdatesRef = useRef<Map<string, any>>(new Map());
   const rafRef = useRef<number>();
-  
+
   const batchUpdate = useCallback((widgetId: string, updates: any) => {
     pendingUpdatesRef.current.set(widgetId, {
       ...pendingUpdatesRef.current.get(widgetId),
       ...updates
     });
-    
+
     if (!rafRef.current) {
       rafRef.current = requestAnimationFrame(() => {
-        const updates = pendingUpdatesRef.current;
+        const pendingUpdates = pendingUpdatesRef.current;
         pendingUpdatesRef.current = new Map();
-        
+
         // Apply all updates in a single transaction
-        store.setState((state) => {
-          updates.forEach((update, widgetId) => {
-            const widget = state.widgets.find(w => w.id === widgetId);
-            if (widget) {
-              Object.assign(widget, update);
-            }
+        useWorkspaceStore.setState((state) => {
+          const newWidgets = state.widgets.map((widget: WidgetInstance) => {
+            const update = pendingUpdates.get(widget.id);
+            return update ? { ...widget, ...update } : widget;
           });
+          return { widgets: newWidgets };
         });
-        
+
         rafRef.current = undefined;
       });
     }
-  }, [store]);
+  }, []);
   
   return batchUpdate;
 }
