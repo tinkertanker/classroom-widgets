@@ -5,7 +5,7 @@ import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
 import { FaTrash } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '../../../shared/hooks/useWidget';
-import { useWorkspace, useDragAndDrop } from '../../../shared/hooks/useWorkspace';
+import { useWorkspace } from '../../../shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '../../../shared/types';
 import { debug } from '../../../shared/utils/debug';
@@ -20,7 +20,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const { widget, move, resize, focus, remove } = useWidget(widgetId);
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();
-  const { dropTarget } = useDragAndDrop();
   const rndRef = useRef<any>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
@@ -41,7 +40,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   }, [startDrag, focus]);
 
   const handleDragStop = useCallback((e: any, d: any) => {
-    if (dropTarget === 'trash') {
+    // Read dropTarget directly from store to avoid subscribing to it
+    // This prevents re-renders when dropTarget changes during drag
+    const currentDropTarget = useWorkspaceStore.getState().dragState.dropTarget;
+    if (currentDropTarget === 'trash') {
       debug('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
       // Play trash sound
       (window as any).playTrashSound?.();
@@ -53,7 +55,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       move(newPosition);
     }
     stopDrag();
-  }, [move, stopDrag, dropTarget, remove, widgetId]);
+  }, [move, stopDrag, remove, widgetId]);
 
   const handleResizeStart = useCallback(() => {
     setIsResizing(true);
@@ -105,8 +107,9 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   
   const wrapperClasses = clsx(
     'widget-wrapper',
-    'transition-all duration-200',
     {
+      // Only apply transitions when NOT dragging - transitions cause input lag during drag
+      'transition-all duration-200': !isBeingDragged && !isResizing,
       'ring-2 ring-sage-500': isBeingDragged && !isTransparent,
       'hover:scale-[1.01]': !isBeingDragged && !isTransparent
     }
