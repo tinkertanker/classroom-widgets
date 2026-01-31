@@ -373,8 +373,38 @@ npm run dev:student # Student app dev server
 - **Dark Mode**: Toggle between light and dark themes
 - **Connection Status**: Visual indicators for connection state
 - **Auto-sync**: Receives room state updates (active/paused) from teacher
+- **Admin Dashboard**: Enter "ADMIN" as session code to view all active sessions (read-only)
+
+### Admin Dashboard
+Access by entering "ADMIN" as the session code in the student app.
+
+**Features:**
+- View all active sessions with participant counts
+- See which widgets are active per session
+- Widget-specific data (poll questions, vote counts, etc.)
+- Auto-refresh every 10 seconds
+- Read-only (no destructive actions)
+
+**Security Note**: Protected only by knowledge of the "ADMIN" code. All operations are read-only by design.
+
+### Server Security
+- **Host verification**: All destructive actions verify `session.hostSocketId === socket.id`
+- **Rate limiting**: Per-event limits prevent abuse (see `server/src/middleware/socketAuth.js`)
+- **Input validation**: All socket events validated server-side (see `server/src/utils/validation.js`)
+- **Error handling**: Standardized error codes and responses (see `server/src/utils/errors.js`)
 
 ## Recent Updates
+
+### Network API Reliability & Admin Dashboard (January 2025)
+- Fixed `useSocketEvents` cleanup bug (now removes only specific handlers)
+- Fixed session recovery with AbortController, retry, and exponential backoff
+- Added input validation for all socket events (`server/src/utils/validation.js`)
+- Added standardized error codes and responses (`server/src/utils/errors.js`)
+- Enabled per-event rate limiting to prevent abuse
+- Added `session:cleanupRooms` handler for orphaned room cleanup
+- Added read-only admin dashboard (access via "ADMIN" code in student app)
+- See [SOCKET_EVENTS.md](./SOCKET_EVENTS.md) for updated API documentation
+- See [ARCHITECTURE.md](./ARCHITECTURE.md) for security documentation
 
 ### Networked Widget Common Base Architecture (January 2025)
 - Created shared infrastructure to reduce code duplication across networked widgets

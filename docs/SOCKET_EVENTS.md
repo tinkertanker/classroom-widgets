@@ -66,8 +66,75 @@ The flow ensures that when a widget is removed on the teacher's side, all connec
 
 All widgets support a state request pattern for synchronizing late-joining students:
 
-*   `Student → Server`: `[widgetType]:requestState` with `{ code, widgetId }` (note: uses 'code' not 'sessionCode')
+*   `Student → Server`: `[widgetType]:requestState` with `{ sessionCode, widgetId }`
 *   `Server → Student`: Widget-specific response (varies by widget type)
+
+**Note**: All events now use `sessionCode` (not `code`) for consistency.
+
+## Input Validation
+
+All socket events are validated server-side. Invalid input returns an error response.
+
+### Validators (`server/src/utils/validation.js`)
+
+| Field | Validation |
+|-------|------------|
+| `sessionCode` | 4-6 alphanumeric characters (case-insensitive) |
+| `widgetId` | Non-empty string, max 100 characters |
+| `link` | Valid URL format |
+| `question` | 1-500 characters |
+| `feedbackValue` | Integer 1-5 |
+| `studentName` | 1-50 characters |
+| `pollOption` | Integer 0 to (options.length - 1) |
+
+### Error Response Format
+
+All errors follow a standardized format:
+
+```typescript
+interface ErrorResponse {
+  success: false;
+  error: {
+    code: string;      // e.g., 'INVALID_SESSION', 'RATE_LIMITED'
+    message: string;   // Human-readable message
+  };
+}
+```
+
+### Error Codes (`server/src/utils/errors.js`)
+
+| Code | Description |
+|------|-------------|
+| `INVALID_SESSION` | Session not found or expired |
+| `NOT_HOST` | Only the host can perform this action |
+| `NOT_PARTICIPANT` | Must be a session participant |
+| `ROOM_NOT_FOUND` | Widget room not found |
+| `WIDGET_PAUSED` | Widget is currently paused |
+| `RATE_LIMITED` | Too many requests |
+| `INVALID_INPUT` | Invalid input provided |
+| `SESSION_FULL` | Session at maximum capacity |
+
+## Rate Limiting
+
+Per-event rate limits prevent abuse. When rate limited, the response includes `retryAfter` (milliseconds).
+
+| Event | Limit |
+|-------|-------|
+| `session:poll:vote` | 2 requests per 1 second |
+| `session:linkShare:submit` | 3 requests per 5 seconds |
+| `session:rtfeedback:submit` | 5 requests per 500ms |
+| `session:questions:submit` | 2 requests per 3 seconds |
+
+Rate limit response:
+```typescript
+{
+  success: false,
+  error: {
+    code: 'RATE_LIMITED',
+    message: 'Too many requests. Please wait before trying again.',
+    retryAfter: 1500  // milliseconds
+  }
+}
 
 ## Widget-Specific Events
 
@@ -154,6 +221,44 @@ Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for b
 *   `Server → All`: `questions:questionDeleted` with `{ questionId, widgetId }`
 *   `Teacher → Server`: `session:questions:clearAll` with `{ sessionCode, widgetId }`
 *   `Server → All`: `questions:allCleared` with `{ widgetId }`
+
+## Admin Events (Read-Only)
+
+The admin interface is accessed via the student app by entering "ADMIN" as the session code.
+
+**Note**: Admin access is protected only by knowledge of the "ADMIN" code. All admin operations are read-only by design.
+
+### Get Sessions Data
+
+*   `Admin → Server`: `admin:getSessions` with `{}`
+*   `Server → Admin`: (callback) with:
+```typescript
+{
+  success: true,
+  sessions: SessionInfo[],
+  stats: {
+    activeSessions: number,
+    totalParticipants: number,
+    totalRooms: number
+  }
+}
+```
+
+Where `SessionInfo` includes:
+- `code`: Session code
+- `createdAt`: Timestamp
+- `lastActivity`: Timestamp
+- `hasHost`: Boolean
+- `participantCount`: Number
+- `participants`: Array of `{ name, joinedAt }`
+- `activeRooms`: Array of room summaries with widget-specific data
+
+### Subscribe to Updates
+
+*   `Admin → Server`: `admin:subscribe`
+*   `Admin → Server`: `admin:unsubscribe`
+
+Subscribing joins the `admin:updates` room for potential future real-time updates.
 
 ## Data Structures
 
