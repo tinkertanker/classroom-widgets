@@ -1,24 +1,19 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaChartColumn } from 'react-icons/fa6';
 import { useModal } from '../../../contexts/ModalContext';
-import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { widgetWrapper, widgetContainer, cn } from '../../../shared/utils/styles';
-import { NetworkedWidgetControlBar } from '../shared/components';
+import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
+import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { useSession } from '../../../contexts/SessionContext';
 import { getPollColor } from '../../../shared/constants/pollColors';
 import PollSettings from './PollSettings';
 import { getRandomPollQuestion } from './pollQuestions';
 import { useWidget } from '../../../shared/hooks/useWidget';
 import { debug } from '../../../shared/utils/debug';
-
-interface PollProps {
-  widgetId?: string;
-  savedState?: any;
-  onStateChange?: (state: any) => void;
-}
+import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 
 interface PollData {
   question: string;
@@ -32,7 +27,7 @@ interface PollResults {
   participantCount: number;
 }
 
-function Poll({ widgetId, savedState, onStateChange }: PollProps) {
+function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [pollData, setPollData] = useState<PollData>(() => {
     if (savedState?.pollData) {
@@ -45,27 +40,25 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       options: randomQuestion.options
     };
   });
-  
+
   const [results, setResults] = useState<PollResults>(() => savedState?.results || {
     votes: {},
     totalVotes: 0,
     participantCount: 0
   });
-  
+
   const [hasAutoResized, setHasAutoResized] = useState(false);
-  const [isWidgetActive, setIsWidgetActive] = useState(false); // Track actual widget active state
-  
+
   // Hooks
   const { showModal, hideModal } = useModal();
   const { widget, resize } = useWidget(widgetId || '');
-  
+
   // Networked widget hook
   const {
     hasRoom,
     isStarting,
     error,
     handleStart,
-    handleStop,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -74,11 +67,16 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
     savedState,
     onStateChange
   });
-  
-  // Get unified session for additional methods
-  const unifiedSession = useSession();
-  
-  // Socket event handlers
+
+  // Active state management
+  const { isActive: isWidgetActive, toggleActive, setIsActive: setIsWidgetActive } = useNetworkedWidgetState({
+    widgetId,
+    roomType: 'poll',
+    hasRoom,
+    recoveryData
+  });
+
+  // Socket event handlers (widget-specific only, state change handled by useNetworkedWidgetState)
   const socketEvents = useMemo(() => ({
     'poll:dataUpdate': (data: any) => {
       debug('[Poll] Received poll:dataUpdate:', data, 'for widget:', widgetId);
@@ -106,28 +104,15 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
           totalVotes: data.totalVotes,
         }));
       }
-    },
-    'session:widgetStateChanged': (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      debug('[Poll] Received session:widgetStateChanged:', data, 'for widget:', widgetId);
-      if (data.roomType === 'poll' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        debug('[Poll] Updating widget active state to:', data.isActive);
-        setIsWidgetActive(data.isActive);
-      }
     }
   }), [widgetId]);
-  
+
   // Use socket events hook for automatic event management
   const { emit } = useSocketEvents({
     events: socketEvents,
-    isActive: hasRoom // Only listen to events when room exists
+    isActive: hasRoom
   });
-  
-  // Toggle active state using unified session
-  const toggleActive = useCallback((newState: boolean) => {
-    if (!widgetId || !hasRoom) return;
-    unifiedSession.updateRoomState('poll', widgetId, newState);
-  }, [widgetId, hasRoom, unifiedSession]);
-  
+
   // Reset votes
   const reset = useCallback(() => {
     if (!widgetId || !hasRoom) return;
@@ -136,12 +121,12 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       widgetId
     });
   }, [widgetId, hasRoom, emit, session.sessionCode]);
-  
+
   // Actions
   const updatePoll = useCallback((data: Partial<PollData>) => {
     const newPollData = { ...pollData, ...data };
     setPollData(newPollData);
-    
+
     if (hasRoom) {
       emit('session:poll:update', {
         sessionCode: session.sessionCode!,
@@ -150,27 +135,23 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       });
     }
   }, [pollData, hasRoom, emit, session.sessionCode, widgetId]);
-  
+
   const handleToggleActive = useCallback(() => {
     debug('[Poll] handleToggleActive called, current state:', isWidgetActive, 'hasRoom:', hasRoom);
-    
-    // Check if we have a room first
+
     if (!hasRoom) {
       debug('[Poll] Cannot toggle - no room exists');
       return;
     }
-    
+
     if (!pollData.question || pollData.options.filter(o => o).length < 2) {
       debug('[Poll] Cannot toggle - invalid question or options');
       return;
     }
-    
-    const newState = !isWidgetActive;
-    debug('[Poll] Toggling active state to:', newState);
-    
-    // Use the toggleActive function from useActiveState hook
-    toggleActive(newState);
-    
+
+    debug('[Poll] Toggling active state');
+    toggleActive();
+
     // Always send the poll data when toggling state
     debug('[Poll] Sending poll data with state change');
     emit('session:poll:update', {
@@ -179,11 +160,11 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       pollData: pollData as any
     });
   }, [pollData, isWidgetActive, hasRoom, toggleActive, emit, session.sessionCode, widgetId]);
-  
+
   const openSettings = useCallback(() => {
     showModal({
       title: 'Poll Settings',
-      content: <PollSettings 
+      content: <PollSettings
         initialData={{
           question: pollData.question,
           options: pollData.options
@@ -191,7 +172,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         onSave={(data) => {
           updatePoll(data);
           hideModal();
-          
+
           // Auto-resize if number of options changed
           if (data.options.length !== pollData.options.length && widget && resize) {
             const baseHeight = 200;
@@ -199,23 +180,23 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
             const maxOptions = 6;
             const visibleOptions = Math.min(data.options.length, maxOptions);
             const calculatedHeight = baseHeight + (visibleOptions * optionHeight);
-            
+
             debug(`[Poll] Auto-resizing after settings change to height: ${calculatedHeight} for ${data.options.length} options`);
             resize({ width: widget.size.width, height: calculatedHeight });
           }
-        }} 
-        onClose={hideModal} 
+        }}
+        onClose={hideModal}
       />,
       onClose: hideModal
     });
   }, [showModal, hideModal, updatePoll, pollData]);
-  
+
   const resetVotes = useCallback(() => {
     if (!hasRoom) return;
-    
+
     debug('[Poll] Resetting votes');
     reset();
-    
+
     // Clear local results immediately for responsive UI
     setResults({
       votes: {},
@@ -223,60 +204,50 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       participantCount: 0
     });
   }, [hasRoom, reset]);
-  
+
   // Auto-resize only on initial widget creation
   useEffect(() => {
     if (!widget || !resize || !widgetId || hasAutoResized) return;
-    
+
     // Only auto-resize once when the widget is first created (not loaded from saved state)
     if (!savedState && widget.size) {
-      // Calculate height based on number of options
-      const baseHeight = 200; // Header + question + buttons + padding
-      const optionHeight = 60; // Height per option including gap
-      const maxOptions = 6; // Maximum visible options before it becomes too tall
-      
+      const baseHeight = 200;
+      const optionHeight = 60;
+      const maxOptions = 6;
+
       const visibleOptions = Math.min(pollData.options.length, maxOptions);
       const calculatedHeight = baseHeight + (visibleOptions * optionHeight);
-      
+
       debug(`[Poll] Auto-resizing new widget to height: ${calculatedHeight} for ${pollData.options.length} options`);
       resize({ width: widget.size.width, height: calculatedHeight });
       setHasAutoResized(true);
     }
   }, [widget, resize, widgetId, savedState, hasAutoResized, pollData.options.length]);
-  
-  
-  // Cleanup handled by workspace when widget is deleted
-  // No need to handle it here as it can cause issues with re-renders
-  
+
+  // Save state
   useEffect(() => {
     onStateChange?.({
       pollData,
       results
     });
   }, [onStateChange, pollData, results]);
-  
-  // Handle recovery data from SessionContext
+
+  // Handle recovery data - restore poll data after page refresh
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
       debug('[Poll] Recovery data available:', recoveryData);
-      
-      // Apply recovered widget state
-      if (recoveryData.isActive !== undefined) {
-        setIsWidgetActive(recoveryData.isActive);
-      }
-      
+
       // Only apply recovered poll data if it has meaningful content
-      // (not empty question/options which indicates a new widget)
-      if (recoveryData.roomData.pollData && 
-          recoveryData.roomData.pollData.question && 
-          recoveryData.roomData.pollData.options && 
+      if (recoveryData.roomData.pollData &&
+          recoveryData.roomData.pollData.question &&
+          recoveryData.roomData.pollData.options &&
           recoveryData.roomData.pollData.options.length > 0) {
         debug('[Poll] Applying recovered poll data');
         setPollData(recoveryData.roomData.pollData);
       } else {
         debug('[Poll] Recovery data has empty poll data, keeping random question');
       }
-      
+
       // Apply recovered results if available
       if (recoveryData.roomData.results) {
         setResults(recoveryData.roomData.results);
@@ -287,7 +258,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   // Handle room establishment - send data for new rooms only
   useEffect(() => {
     if (hasRoom && session.socket && session.sessionCode) {
-      // Small delay to ensure room is fully established on server
       const timer = setTimeout(() => {
         // For new rooms (no recovery data), send our local data if we have any
         if (!recoveryData && pollData.question && pollData.options.length > 0) {
@@ -302,7 +272,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
       return () => clearTimeout(timer);
     }
   }, [hasRoom]); // Only trigger when hasRoom changes
-  
+
   // Empty state - show when no room exists
   if (!hasRoom) {
     return (
@@ -310,41 +280,41 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
         icon={FaChartColumn}
         title="Poll"
         description="Create interactive polls for your students"
-        buttonText={
-          isStarting ? "Starting..." : 
-          session.isRecovering ? "Reconnecting..." :
-          !session.isConnected ? "Connecting..." : 
-          "Start Poll"
-        }
+        buttonText={getEmptyStateButtonText({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected,
+          defaultText: "Start Poll"
+        })}
         onStart={handleStart}
-        disabled={isStarting || !session.isConnected || session.isRecovering}
+        disabled={getEmptyStateDisabled({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected
+        })}
         error={error || undefined}
       />
     );
   }
-  
+
   // Active state
   return (
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
-        {/* Statistics - Floating top-right */}
-        <div className="absolute top-3 right-3 z-20">
-          <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
-          </span>
-        </div>
+        {/* Statistics */}
+        <NetworkedWidgetStats>
+          {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
+        </NetworkedWidgetStats>
 
         {/* Poll content */}
         <div className="flex-1 flex flex-col relative p-4 pt-8">
-          {/* Paused overlay */}
-          {!isWidgetActive && session.isConnected && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-              <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
-                <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Poll is paused</p>
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
-              </div>
-            </div>
-          )}
+          {/* Overlays */}
+          <NetworkedWidgetOverlays
+            isActive={isWidgetActive}
+            isConnected={session.isConnected}
+            isRecovering={session.isRecovering}
+            pausedMessage="Poll is paused"
+          />
 
           {pollData.question ? (
             <div className="mt-4 flex flex-col h-full">
@@ -384,25 +354,6 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
             </div>
           )}
         </div>
-
-        {/* Connection status overlays */}
-        {session.isRecovering && (
-          <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sage-500 border-t-transparent mb-2"></div>
-              <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">Reconnecting to session...</p>
-            </div>
-          </div>
-        )}
-
-        {!session.isConnected && !session.isRecovering && (
-          <div className="absolute inset-0 bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-sm rounded-lg flex items-center justify-center z-10">
-            <div className="text-center">
-              <p className="text-dusty-rose-600 dark:text-dusty-rose-400 text-sm font-medium mb-1">Disconnected</p>
-              <p className="text-warm-gray-600 dark:text-warm-gray-400 text-xs">Check your connection</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Control bar */}
@@ -423,13 +374,4 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   );
 }
 
-// Export wrapped component to ensure WidgetProvider is available
-const PollWithProvider = (props: PollProps) => {
-  return (
-    <WidgetProvider {...props}>
-      <Poll {...props} />
-    </WidgetProvider>
-  );
-};
-
-export default PollWithProvider;
+export default withWidgetProvider(Poll, 'Poll');

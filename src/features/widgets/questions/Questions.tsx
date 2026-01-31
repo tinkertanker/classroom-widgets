@@ -1,20 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaQuestion, FaTrash, FaCheck } from 'react-icons/fa6';
-import { useModal } from '../../../contexts/ModalContext';
-import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { widgetWrapper, widgetContainer, cn } from '../../../shared/utils/styles';
-import { NetworkedWidgetControlBar } from '../shared/components';
+import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
+import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { useSession } from '../../../contexts/SessionContext';
 import { getQuestionColor } from '../../../shared/constants/questionColors';
-
-interface QuestionsProps {
-  widgetId?: string;
-  savedState?: any;
-  onStateChange?: (state: any) => void;
-}
+import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 
 interface Question {
   id: string;
@@ -25,23 +19,18 @@ interface Question {
   answered?: boolean;
 }
 
-function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
+function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [questions, setQuestions] = useState<Question[]>(
     savedState?.questions || []
   );
-  const [isWidgetActive, setIsWidgetActive] = useState(false);
-  
-  // Hooks
-  const { showModal, hideModal } = useModal();
-  
+
   // Networked widget hook
   const {
     hasRoom,
     isStarting,
     error,
     handleStart,
-    handleStop,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -50,11 +39,16 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     savedState,
     onStateChange
   });
-  
-  // Get unified session for additional methods
-  const unifiedSession = useSession();
-  
-  // Socket event handlers
+
+  // Active state management
+  const { isActive: isWidgetActive, toggleActive } = useNetworkedWidgetState({
+    widgetId,
+    roomType: 'questions',
+    hasRoom,
+    recoveryData
+  });
+
+  // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
     'questions:newQuestion': (data: any) => {
       if (data.widgetId === widgetId) {
@@ -71,7 +65,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     },
     'questions:questionAnswered': (data: { questionId: string; widgetId?: string }) => {
       if (data.widgetId === widgetId) {
-        setQuestions(prev => prev.map(q => 
+        setQuestions(prev => prev.map(q =>
           q.id === data.questionId ? { ...q, answered: true } : q
         ));
       }
@@ -85,26 +79,15 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       if (data.widgetId === widgetId) {
         setQuestions([]);
       }
-    },
-    'session:widgetStateChanged': (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      if (data.roomType === 'questions' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        setIsWidgetActive(data.isActive);
-      }
     }
   }), [widgetId]);
-  
+
   // Use socket events hook for automatic event management
   const { emit } = useSocketEvents({
     events: socketEvents,
     isActive: hasRoom
   });
-  
-  // Toggle active state using unified session
-  const toggleActive = useCallback((newState: boolean) => {
-    if (!widgetId || !hasRoom) return;
-    unifiedSession.updateRoomState('questions', widgetId, newState);
-  }, [widgetId, hasRoom, unifiedSession]);
-  
+
   // Actions
   const handleMarkAnswered = useCallback((questionId: string) => {
     if (!widgetId || !hasRoom) return;
@@ -123,22 +106,20 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
       questionId
     });
   }, [widgetId, hasRoom, emit, session.sessionCode]);
-  
+
   const handleClearAll = useCallback(() => {
     if (!widgetId || !hasRoom) return;
-    if (window.confirm('Are you sure you want to clear all questions?')) {
-      emit('session:questions:clearAll', {
-        sessionCode: session.sessionCode!,
-        widgetId
-      });
-    }
+    emit('session:questions:clearAll', {
+      sessionCode: session.sessionCode!,
+      widgetId
+    });
   }, [widgetId, hasRoom, emit, session.sessionCode]);
-  
+
   const handleToggleActive = useCallback(() => {
     if (!hasRoom) return;
-    toggleActive(!isWidgetActive);
-  }, [isWidgetActive, hasRoom, toggleActive]);
-  
+    toggleActive();
+  }, [hasRoom, toggleActive]);
+
   // Sort questions: unanswered first, then by timestamp
   const sortedQuestions = useMemo(() => [...questions].sort((a, b) => {
     if (a.answered !== b.answered) {
@@ -146,19 +127,17 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
     }
     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   }), [questions]);
-  
+
   // Save state
   useEffect(() => {
     onStateChange?.({
-      questions,
-      isActive: isWidgetActive
+      questions
     });
-  }, [questions, isWidgetActive, onStateChange]);
-  
-  // Handle recovery data - restore widget state after page refresh
+  }, [questions, onStateChange]);
+
+  // Handle recovery data - restore questions after page refresh
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      // Restore questions from recovery data
       if (recoveryData.roomData.questions && Array.isArray(recoveryData.roomData.questions)) {
         setQuestions(recoveryData.roomData.questions.map((q: any) => ({
           id: q.id,
@@ -169,14 +148,9 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
           answered: q.answered || false
         })));
       }
-
-      // Restore active state
-      if (typeof recoveryData.roomData.isActive === 'boolean') {
-        setIsWidgetActive(recoveryData.roomData.isActive);
-      }
     }
   }, [recoveryData]);
-  
+
   // Empty state - show when no room exists
   if (!hasRoom) {
     return (
@@ -184,45 +158,45 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
         icon={FaQuestion}
         title="Questions"
         description="Collect questions from students in real-time"
-        buttonText={
-          isStarting ? "Starting..." : 
-          session.isRecovering ? "Reconnecting..." :
-          !session.isConnected ? "Connecting..." : 
-          "Start Questions"
-        }
+        buttonText={getEmptyStateButtonText({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected,
+          defaultText: "Start Questions"
+        })}
         onStart={handleStart}
-        disabled={isStarting || !session.isConnected || session.isRecovering}
+        disabled={getEmptyStateDisabled({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected
+        })}
         error={error || undefined}
       />
     );
   }
-  
+
   // Active state
   return (
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
-        {/* Statistics - Floating top-right */}
-        <div className="absolute top-3 right-3 z-20">
-          <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            {questions.length} question{questions.length !== 1 ? 's' : ''}
-            {questions.filter(q => !q.answered).length > 0 &&
-              ` (${questions.filter(q => !q.answered).length} unanswered)`
-            }
-          </span>
-        </div>
+        {/* Statistics */}
+        <NetworkedWidgetStats>
+          {questions.length} question{questions.length !== 1 ? 's' : ''}
+          {questions.filter(q => !q.answered).length > 0 &&
+            ` (${questions.filter(q => !q.answered).length} unanswered)`
+          }
+        </NetworkedWidgetStats>
+
+        {/* Overlays - outside scrollable area */}
+        <NetworkedWidgetOverlays
+          isActive={isWidgetActive}
+          isConnected={session.isConnected}
+          isRecovering={session.isRecovering}
+          pausedMessage="Questions are paused"
+        />
 
         {/* Questions list */}
-        <div className="flex-1 overflow-y-auto space-y-2 relative p-4 pt-8">
-          {/* Paused overlay */}
-          {!isWidgetActive && session.isConnected && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-              <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
-                <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Questions are paused</p>
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
-              </div>
-            </div>
-          )}
-
+        <div className="flex-1 overflow-y-auto space-y-2 p-4 pt-8">
           {questions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-warm-gray-400 dark:text-warm-gray-600">
               <FaQuestion className="text-4xl mb-2" />
@@ -230,7 +204,7 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedQuestions.map((question, index) => {
+              {sortedQuestions.map((question) => {
                 const colorIndex = questions.indexOf(question) % 10;
                 const bgColor = getQuestionColor(colorIndex);
 
@@ -281,13 +255,6 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
             </div>
           )}
         </div>
-
-        {/* Connection status for debugging */}
-        {!session.isConnected && (
-          <div className="absolute bottom-2 right-2 text-xs text-warm-gray-400">
-            Disconnected
-          </div>
-        )}
       </div>
 
       {/* Control bar */}
@@ -309,13 +276,4 @@ function Questions({ widgetId, savedState, onStateChange }: QuestionsProps) {
   );
 }
 
-// Export wrapped component to ensure WidgetProvider is available
-const QuestionsWithProvider = (props: QuestionsProps) => {
-  return (
-    <WidgetProvider {...props}>
-      <Questions {...props} />
-    </WidgetProvider>
-  );
-};
-
-export default QuestionsWithProvider;
+export default withWidgetProvider(Questions, 'Questions');

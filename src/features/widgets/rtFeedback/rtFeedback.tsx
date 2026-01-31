@@ -1,19 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FaGauge } from 'react-icons/fa6';
-import { useModal } from '../../../contexts/ModalContext';
-import { WidgetProvider } from '../../../contexts/WidgetContext';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
-import { widgetWrapper, widgetContainer, cn } from '../../../shared/utils/styles';
-import { NetworkedWidgetControlBar } from '../shared/components';
+import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
+import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { useSession } from '../../../contexts/SessionContext';
-
-interface RTFeedbackProps {
-  widgetId?: string;
-  savedState?: any;
-  onStateChange?: (state: any) => void;
-}
+import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 
 interface FeedbackData {
   understanding: number[];
@@ -33,7 +27,7 @@ const barColors = [
   'from-red-700 to-red-600'          // 5 - Too Hard (dark red)
 ];
 
-function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
+function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [feedbackData, setFeedbackData] = useState<FeedbackData>(
     savedState?.feedbackData || {
@@ -42,18 +36,13 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
       average: 0
     }
   );
-  const [isWidgetActive, setIsWidgetActive] = useState(false);
-  
-  // Hooks
-  const { showModal, hideModal } = useModal();
-  
+
   // Networked widget hook
   const {
     hasRoom,
     isStarting,
     error,
     handleStart,
-    handleStop,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -62,37 +51,31 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
     savedState,
     onStateChange
   });
-  
-  // Get unified session for additional methods
-  const unifiedSession = useSession();
-  
-  // Socket event handlers
+
+  // Active state management
+  const { isActive: isWidgetActive, toggleActive } = useNetworkedWidgetState({
+    widgetId,
+    roomType: 'rtfeedback',
+    hasRoom,
+    recoveryData
+  });
+
+  // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
     'rtfeedback:update': (data: any) => {
       if (data.widgetId === widgetId) {
         const { widgetId: _, ...feedback } = data;
         setFeedbackData(feedback as FeedbackData);
       }
-    },
-    'session:widgetStateChanged': (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
-      if (data.roomType === 'rtfeedback' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        setIsWidgetActive(data.isActive);
-      }
     }
   }), [widgetId]);
-  
+
   // Use socket events hook for automatic event management
   const { emit } = useSocketEvents({
     events: socketEvents,
     isActive: hasRoom
   });
-  
-  // Toggle active state using unified session
-  const toggleActive = useCallback((newState: boolean) => {
-    if (!widgetId || !hasRoom) return;
-    unifiedSession.updateRoomState('rtfeedback', widgetId, newState);
-  }, [widgetId, hasRoom, unifiedSession]);
-  
+
   // Actions
   const handleReset = useCallback(() => {
     if (!widgetId || !hasRoom) return;
@@ -101,35 +84,28 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
       widgetId
     });
   }, [widgetId, hasRoom, emit, session.sessionCode]);
-  
+
   const handleToggleActive = useCallback(() => {
     if (!hasRoom) return;
-    toggleActive(!isWidgetActive);
-  }, [isWidgetActive, hasRoom, toggleActive]);
+    toggleActive();
+  }, [hasRoom, toggleActive]);
 
   // Save state
   useEffect(() => {
     onStateChange?.({
-      feedbackData,
-      isActive: isWidgetActive
+      feedbackData
     });
-  }, [feedbackData, isWidgetActive, onStateChange]);
-  
-  // Handle recovery data - restore widget state after page refresh
+  }, [feedbackData, onStateChange]);
+
+  // Handle recovery data - restore feedback data after page refresh
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
-      // Restore feedback data from recovery
       if (recoveryData.roomData.feedbackData) {
         setFeedbackData(recoveryData.roomData.feedbackData);
       }
-
-      // Restore active state
-      if (typeof recoveryData.roomData.isActive === 'boolean') {
-        setIsWidgetActive(recoveryData.roomData.isActive);
-      }
     }
   }, [recoveryData]);
-  
+
   // Empty state - show when no room exists
   if (!hasRoom) {
     return (
@@ -137,40 +113,40 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
         icon={FaGauge}
         title="RT Feedback"
         description="Get real-time feedback on lesson difficulty"
-        buttonText={
-          isStarting ? "Starting..." : 
-          session.isRecovering ? "Reconnecting..." :
-          !session.isConnected ? "Connecting..." : 
-          "Start RT Feedback"
-        }
+        buttonText={getEmptyStateButtonText({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected,
+          defaultText: "Start RT Feedback"
+        })}
         onStart={handleStart}
-        disabled={isStarting || !session.isConnected || session.isRecovering}
+        disabled={getEmptyStateDisabled({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected
+        })}
         error={error || undefined}
       />
     );
   }
-  
+
   // Active state
   return (
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
-        {/* Statistics - Floating top-right */}
-        <div className="absolute top-3 right-3 z-20">
-          <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            {feedbackData.totalResponses} response{feedbackData.totalResponses !== 1 ? 's' : ''}
-          </span>
-        </div>
+        {/* Statistics */}
+        <NetworkedWidgetStats>
+          {feedbackData.totalResponses} response{feedbackData.totalResponses !== 1 ? 's' : ''}
+        </NetworkedWidgetStats>
 
         <div className="flex-1 flex flex-col relative p-4 pt-8">
-          {/* Paused overlay */}
-          {!isWidgetActive && session.isConnected && (
-            <div className="absolute inset-0 bg-white/60 dark:bg-warm-gray-800/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10">
-              <div className="text-center bg-white/90 dark:bg-warm-gray-800/90 rounded-lg px-6 py-4 shadow-lg">
-                <p className="text-warm-gray-700 dark:text-warm-gray-300 font-medium mb-2">Feedback is paused</p>
-                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">Click play to resume</p>
-              </div>
-            </div>
-          )}
+          {/* Overlays */}
+          <NetworkedWidgetOverlays
+            isActive={isWidgetActive}
+            isConnected={session.isConnected}
+            isRecovering={session.isRecovering}
+            pausedMessage="Feedback is paused"
+          />
 
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex items-end justify-around gap-1 pb-1">
@@ -199,13 +175,6 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
             </div>
           </div>
         </div>
-
-        {/* Connection status for debugging */}
-        {!session.isConnected && (
-          <div className="absolute bottom-2 right-2 text-xs text-warm-gray-400">
-            Disconnected
-          </div>
-        )}
       </div>
 
       {/* Control bar */}
@@ -225,13 +194,4 @@ function RTFeedback({ widgetId, savedState, onStateChange }: RTFeedbackProps) {
   );
 }
 
-// Export wrapped component to ensure WidgetProvider is available
-const RTFeedbackWithProvider = (props: RTFeedbackProps) => {
-  return (
-    <WidgetProvider {...props}>
-      <RTFeedback {...props} />
-    </WidgetProvider>
-  );
-};
-
-export default RTFeedbackWithProvider;
+export default withWidgetProvider(RTFeedback, 'RTFeedback');
