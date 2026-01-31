@@ -16,16 +16,21 @@ module.exports = {
   LIMITS: {
     MAX_SESSIONS: 1000,
     MAX_ROOMS_PER_SESSION: 10,
-    MAX_PARTICIPANTS_PER_ROOM: 500,
+    MAX_PARTICIPANTS_PER_SESSION: 1000, // Maximum participants per session
+    MAX_PARTICIPANTS_PER_ROOM: 500,     // Maximum participants per widget room
+    MAX_TOTAL_PARTICIPANTS: 50000,      // Server-wide participant limit
     MAX_SUBMISSIONS_PER_ROOM: 1000,
     MAX_QUESTIONS_PER_ROOM: 500,
     ROOM_CODE_LENGTH: 5,
-    MAX_QUESTION_LENGTH: 1000,
+    MAX_QUESTION_LENGTH: 500,           // Reduced from 1000 for better UX
     MAX_LINK_LENGTH: 2000,
     MAX_POLL_QUESTION_LENGTH: 500,
     MAX_POLL_OPTION_LENGTH: 200,
     MIN_POLL_OPTIONS: 2,
-    MAX_POLL_OPTIONS: 10
+    MAX_POLL_OPTIONS: 10,
+    MAX_STUDENT_NAME_LENGTH: 50,
+    FEEDBACK_MIN_VALUE: 1,
+    FEEDBACK_MAX_VALUE: 5
   },
 
   // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U)
@@ -40,6 +45,9 @@ module.exports = {
   },
 
   // Socket event namespaces
+  // Naming convention: {namespace}:{action}
+  // - namespace: session, poll, linkShare, rtfeedback, questions
+  // - action: descriptive action name in camelCase
   EVENTS: {
     SESSION: {
       // Client -> Server events
@@ -49,6 +57,7 @@ module.exports = {
       CREATE_ROOM: 'session:createRoom',
       CLOSE_ROOM: 'session:closeRoom',
       UPDATE_WIDGET_STATE: 'session:updateWidgetState',
+      CLEANUP_ROOMS: 'session:cleanupRooms',
       // Server -> Client events
       CREATED: 'session:created',
       JOINED: 'session:joined',
@@ -67,9 +76,11 @@ module.exports = {
       REQUEST_STATE: 'poll:requestState',
       // Server -> Client events
       VOTE_CONFIRMED: 'session:poll:voteConfirmed',
-      DATA_UPDATE: 'poll:dataUpdate',
-      STATE_CHANGED: 'poll:stateChanged',
-      VOTE_UPDATE: 'poll:voteUpdate'
+      STATE_UPDATE: 'poll:stateUpdate',        // Renamed from DATA_UPDATE
+      VOTE_UPDATE: 'poll:voteUpdate',
+      // Legacy events (keep for backwards compatibility during migration)
+      DATA_UPDATE: 'poll:dataUpdate',          // @deprecated - use STATE_UPDATE
+      STATE_CHANGED: 'poll:stateChanged'       // @deprecated
     },
     LINK_SHARE: {
       // Client -> Server events
@@ -78,9 +89,12 @@ module.exports = {
       REQUEST_STATE: 'linkShare:requestState',
       // Server -> Client events
       SUBMITTED: 'session:linkShare:submitted',
-      NEW_SUBMISSION: 'linkShare:newSubmission',
+      STATE_UPDATE: 'linkShare:stateUpdate',           // Renamed from STATE_CHANGED
+      SUBMISSION_ADDED: 'linkShare:submissionAdded',   // Renamed from NEW_SUBMISSION
       SUBMISSION_DELETED: 'linkShare:submissionDeleted',
-      STATE_CHANGED: 'linkShare:stateChanged'
+      // Legacy events (keep for backwards compatibility during migration)
+      NEW_SUBMISSION: 'linkShare:newSubmission',       // @deprecated - use SUBMISSION_ADDED
+      STATE_CHANGED: 'linkShare:stateChanged'          // @deprecated - use STATE_UPDATE
     },
     RT_FEEDBACK: {
       // Client -> Server events
@@ -89,8 +103,11 @@ module.exports = {
       REQUEST_STATE: 'rtfeedback:requestState',
       // Server -> Client events
       SUBMITTED: 'session:rtfeedback:submitted',
-      STATE_CHANGED: 'rtfeedback:stateChanged',
-      DATA_UPDATE: 'rtfeedback:update'
+      STATE_UPDATE: 'rtfeedback:stateUpdate',   // Renamed from STATE_CHANGED
+      DATA_UPDATE: 'rtfeedback:dataUpdate',     // Renamed from 'rtfeedback:update'
+      // Legacy events (keep for backwards compatibility during migration)
+      STATE_CHANGED: 'rtfeedback:stateChanged', // @deprecated - use STATE_UPDATE
+      UPDATE: 'rtfeedback:update'               // @deprecated - use DATA_UPDATE
     },
     QUESTIONS: {
       // Client -> Server events
@@ -101,12 +118,15 @@ module.exports = {
       REQUEST_STATE: 'questions:requestState',
       // Server -> Client events
       SUBMITTED: 'session:questions:submitted',
-      STATE_CHANGED: 'questions:stateChanged',
-      LIST: 'questions:list',
-      NEW_QUESTION: 'questions:newQuestion',
+      STATE_UPDATE: 'questions:stateUpdate',           // Renamed from STATE_CHANGED + LIST combined
+      QUESTION_ADDED: 'questions:questionAdded',       // Renamed from NEW_QUESTION
       QUESTION_ANSWERED: 'questions:questionAnswered',
       QUESTION_DELETED: 'questions:questionDeleted',
-      ALL_CLEARED: 'questions:allCleared'
+      ALL_CLEARED: 'questions:allCleared',
+      // Legacy events (keep for backwards compatibility during migration)
+      STATE_CHANGED: 'questions:stateChanged',         // @deprecated - use STATE_UPDATE
+      LIST: 'questions:list',                          // @deprecated - use STATE_UPDATE
+      NEW_QUESTION: 'questions:newQuestion'            // @deprecated - use QUESTION_ADDED
     }
   }
 };

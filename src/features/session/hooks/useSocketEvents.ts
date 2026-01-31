@@ -15,6 +15,10 @@ interface UseSocketEventsReturn {
 /**
  * Hook to manage socket event listeners using the session
  * Automatically cleans up listeners on unmount or when events change
+ *
+ * IMPORTANT: This hook stores handler references and only removes OUR specific
+ * handlers on cleanup. This allows multiple widgets of the same type to coexist
+ * without interfering with each other's event listeners.
  */
 export function useSocketEvents({
   events,
@@ -22,24 +26,34 @@ export function useSocketEvents({
 }: UseSocketEventsProps): UseSocketEventsReturn {
   const { socket, isConnected } = useSession();
   const eventsRef = useRef(events);
-  
+
+  // Store handler references so we can remove only our handlers on cleanup
+  const handlersRef = useRef<Map<string, (...args: any[]) => void>>(new Map());
+
   // Update events ref to avoid stale closures
   eventsRef.current = events;
-  
+
   // Register/unregister event listeners
   useEffect(() => {
     if (!socket || !isActive) return;
-    
-    // Register all event listeners
+
+    // Clear previous handlers before registering new ones
+    handlersRef.current.clear();
+
+    // Register all event listeners and store handler references
     Object.entries(events).forEach(([eventName, handler]) => {
-      socket.on(eventName, handler);
+      if (handler) {
+        handlersRef.current.set(eventName, handler);
+        socket.on(eventName, handler);
+      }
     });
-    
-    // Cleanup function
+
+    // Cleanup function - remove only OUR handlers, not all listeners for the event
     return () => {
-      Object.keys(events).forEach(eventName => {
-        socket.off(eventName);
+      handlersRef.current.forEach((handler, eventName) => {
+        socket.off(eventName, handler);
       });
+      handlersRef.current.clear();
     };
   }, [socket, events, isActive]);
   

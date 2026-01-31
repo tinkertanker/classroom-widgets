@@ -1,4 +1,7 @@
 const { EVENTS, LIMITS } = require('../../config/constants');
+const { validators } = require('../../utils/validation');
+const { logger } = require('../../utils/logger');
+const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 
 /**
  * Handle session-related socket events
@@ -97,11 +100,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
       
-      // Check participant limit
-      if (session.getParticipantCount() >= LIMITS.MAX_PARTICIPANTS_PER_ROOM) {
-        socket.emit('session:joined', { 
-          success: false, 
-          error: 'Session is full' 
+      // Check session-level participant limit
+      if (session.getParticipantCount() >= LIMITS.MAX_PARTICIPANTS_PER_SESSION) {
+        socket.emit('session:joined', {
+          success: false,
+          error: 'SESSION_FULL',
+          message: 'Session has reached maximum participants'
         });
         return;
       }
@@ -497,5 +501,85 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       console.error('Error handling reset:', error);
     }
   });
-  
+
+  // Handle orphaned room cleanup (host only)
+  // Called after recovery to clean up rooms for widgets that no longer exist
+  socket.on(EVENTS.SESSION.CLEANUP_ROOMS, async (data) => {
+    logger.info('session:cleanupRooms', 'Received cleanup request', {
+      sessionCode: data.sessionCode,
+      activeWidgetIds: data.activeWidgetIds?.length
+    });
+
+    try {
+      const { sessionCode, activeWidgetIds } = data;
+
+      // Validate input
+      const sessionValidation = validators.sessionCode(sessionCode);
+      if (!sessionValidation.valid) {
+        logger.warn('session:cleanupRooms', sessionValidation.error);
+        return;
+      }
+
+      if (!Array.isArray(activeWidgetIds)) {
+        logger.warn('session:cleanupRooms', 'activeWidgetIds must be an array');
+        return;
+      }
+
+      const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
+
+      if (!session || session.hostSocketId !== socket.id) {
+        logger.warn('session:cleanupRooms', 'Unauthorized cleanup attempt');
+        return;
+      }
+
+      // Find rooms to close (rooms not in activeWidgetIds list)
+      const roomsToClose = [];
+      session.activeRooms.forEach((room, roomKey) => {
+        // Extract widgetId from room key or room instance
+        const widgetId = room.widgetId || roomKey.split(':')[1];
+        if (widgetId && !activeWidgetIds.includes(widgetId)) {
+          roomsToClose.push({
+            roomKey,
+            widgetId,
+            roomType: room.getType ? room.getType() : roomKey.split(':')[0]
+          });
+        }
+      });
+
+      // Close orphaned rooms
+      for (const roomInfo of roomsToClose) {
+        logger.info('session:cleanupRooms', 'Closing orphaned room', {
+          widgetId: roomInfo.widgetId,
+          roomType: roomInfo.roomType
+        });
+
+        session.closeRoom(roomInfo.roomType, roomInfo.widgetId);
+
+        // Notify all participants
+        io.to(`session:${session.code}`).emit('session:roomClosed', {
+          roomType: roomInfo.roomType,
+          widgetId: roomInfo.widgetId
+        });
+
+        // Clear the room namespace
+        const roomNamespace = `${session.code}:${roomInfo.roomKey}`;
+        const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
+        if (socketsInRoom) {
+          socketsInRoom.forEach(socketId => {
+            const s = io.sockets.sockets.get(socketId);
+            if (s) s.leave(roomNamespace);
+          });
+        }
+      }
+
+      logger.info('session:cleanupRooms', 'Cleanup complete', {
+        closedRooms: roomsToClose.length
+      });
+
+      session.updateActivity();
+    } catch (error) {
+      logger.error('session:cleanupRooms', error);
+    }
+  });
+
 };

@@ -54,36 +54,61 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   });
 
   useEffect(() => {
-    // Request current state when joining
-    socket.emit('questions:requestState', { code: sessionCode, widgetId });
+    // Request current state when joining - use sessionCode (new) format
+    socket.emit('questions:requestState', { sessionCode: sessionCode, widgetId });
 
-    // Handle existing questions list
-    socket.on('questions:list', (data: { questions: Question[]; widgetId?: string }) => {
+    // Handle combined state update (new event)
+    const handleStateUpdate = (data: { isActive: boolean; questions: Question[]; widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setIsActive(data.isActive);
+        setQuestions(data.questions || []);
+      }
+    };
+
+    // Handle existing questions list (legacy event)
+    const handleQuestionsList = (data: { questions: Question[]; widgetId?: string }) => {
       // Only handle if it's for this widget
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         setQuestions(data.questions || []);
       }
-    });
+    };
+
+    // Handle new question added
+    const handleQuestionAdded = (data: { id: string; text: string; timestamp: Date; answered: boolean; widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setQuestions(prev => {
+          // Avoid duplicates
+          if (prev.some(q => q.id === data.id)) return prev;
+          return [...prev, { id: data.id, text: data.text, timestamp: data.timestamp, answered: data.answered }];
+        });
+      }
+    };
 
     // Handle question being answered
-    socket.on('questionAnswered', (data: { questionId: string }) => {
-      setQuestions(prev => prev.map(q => 
-        q.id === data.questionId ? { ...q, answered: true } : q
-      ));
-    });
+    const handleQuestionAnswered = (data: { questionId: string; widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setQuestions(prev => prev.map(q =>
+          q.id === data.questionId ? { ...q, answered: true } : q
+        ));
+      }
+    };
 
     // Handle question being deleted
-    socket.on('questionDeleted', (data: { questionId: string }) => {
-      setQuestions(prev => prev.filter(q => q.id !== data.questionId));
-    });
+    const handleQuestionDeleted = (data: { questionId: string; widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setQuestions(prev => prev.filter(q => q.id !== data.questionId));
+      }
+    };
 
     // Handle all questions being cleared
-    socket.on('allQuestionsCleared', () => {
-      setQuestions([]);
-    });
+    const handleAllCleared = (data: { widgetId?: string }) => {
+      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+        setQuestions([]);
+      }
+    };
 
     // Handle submission response
-    socket.on('session:questions:submitted', (data: { success: boolean; error?: string }) => {
+    const handleSubmitted = (data: { success: boolean; error?: string }) => {
       setIsSubmitting(false);
       if (data.success) {
         setQuestionText('');
@@ -91,23 +116,51 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       } else if (data.error) {
-        setError(data.error);
+        // Handle both old and new error formats
+        const errorMessage = typeof data.error === 'object' ? (data.error as any).message : data.error;
+        setError(errorMessage);
       }
-    });
+    };
 
     // Handle submission error
-    socket.on('questions:error', (data: { error: string }) => {
+    const handleError = (data: { error: string }) => {
       setError(data.error);
       setIsSubmitting(false);
-    });
+    };
+
+    // Register new event listeners
+    socket.on('questions:stateUpdate', handleStateUpdate);
+    socket.on('questions:questionAdded', handleQuestionAdded);
+    socket.on('questions:questionAnswered', handleQuestionAnswered);
+    socket.on('questions:questionDeleted', handleQuestionDeleted);
+    socket.on('questions:allCleared', handleAllCleared);
+
+    // Register legacy event listeners for backwards compatibility
+    socket.on('questions:list', handleQuestionsList);
+    socket.on('questions:newQuestion', handleQuestionAdded);
+    socket.on('questionAnswered', handleQuestionAnswered);
+    socket.on('questionDeleted', handleQuestionDeleted);
+    socket.on('allQuestionsCleared', () => handleAllCleared({ widgetId }));
+
+    // Submission response
+    socket.on('session:questions:submitted', handleSubmitted);
+    socket.on('questions:error', handleError);
 
     return () => {
-      socket.off('questions:list');
-      socket.off('questionAnswered');
-      socket.off('questionDeleted');
+      // Clean up new events
+      socket.off('questions:stateUpdate', handleStateUpdate);
+      socket.off('questions:questionAdded', handleQuestionAdded);
+      socket.off('questions:questionAnswered', handleQuestionAnswered);
+      socket.off('questions:questionDeleted', handleQuestionDeleted);
+      socket.off('questions:allCleared', handleAllCleared);
+      // Clean up legacy events
+      socket.off('questions:list', handleQuestionsList);
+      socket.off('questions:newQuestion', handleQuestionAdded);
+      socket.off('questionAnswered', handleQuestionAnswered);
+      socket.off('questionDeleted', handleQuestionDeleted);
       socket.off('allQuestionsCleared');
-      socket.off('session:questions:submitted');
-      socket.off('questions:error');
+      socket.off('session:questions:submitted', handleSubmitted);
+      socket.off('questions:error', handleError);
     };
   }, [socket, sessionCode, studentId, widgetId]);
 

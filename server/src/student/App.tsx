@@ -9,6 +9,7 @@ import PollActivity from './components/PollActivity';
 import LinkShareActivity from './components/LinkShareActivity';
 import RTFeedbackActivity from './components/RTFeedbackActivity';
 import QuestionsActivity from './components/QuestionsActivity';
+import AdminPanel from './components/AdminPanel';
 
 export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
 
@@ -29,6 +30,8 @@ const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
   const [currentSessionCode, setCurrentSessionCode] = useState<string>(''); // Track current session
   const [minimizedRooms, setMinimizedRooms] = useState<Set<string>>(new Set());
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminSocket, setAdminSocket] = useState<Socket | null>(null);
   const { enteringRooms, leavingRooms, animateRoomEnter, animateRoomLeave, animateAllRoomsLeave } = useRoomAnimations();
   const [studentName, setStudentName] = useState(() => {
     // Try to get saved name from localStorage
@@ -191,6 +194,14 @@ const App: React.FC = () => {
 
   const handleJoin = async (code: string, name: string) => {
     try {
+      // Check for admin mode
+      if (code.toUpperCase() === 'ADMIN') {
+        const socket = getSocket();
+        setAdminSocket(socket);
+        setIsAdminMode(true);
+        return;
+      }
+
       // Check if already joined this session
       if (joinedRooms.some(room => room.code === code)) {
         throw new Error('Already joined this session');
@@ -209,7 +220,7 @@ const App: React.FC = () => {
       // Check if session exists
       const response = await fetch(`/api/sessions/${code}/exists`);
       const data = await response.json();
-      
+
       if (!data.exists) {
         throw new Error('Invalid session code');
       }
@@ -412,6 +423,19 @@ const App: React.FC = () => {
       return newSet;
     });
   };
+
+  const handleCloseAdmin = () => {
+    setIsAdminMode(false);
+    if (adminSocket) {
+      adminSocket.close();
+      setAdminSocket(null);
+    }
+  };
+
+  // Render admin panel if in admin mode
+  if (isAdminMode && adminSocket) {
+    return <AdminPanel socket={adminSocket} onClose={handleCloseAdmin} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 font-sans flex flex-col">

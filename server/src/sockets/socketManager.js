@@ -6,6 +6,7 @@ const pollHandler = require('./handlers/pollHandler');
 const linkShareHandler = require('./handlers/linkShareHandler');
 const rtFeedbackHandler = require('./handlers/rtFeedbackHandler');
 const questionsHandler = require('./handlers/questionsHandler');
+const adminHandler = require('./handlers/adminHandler');
 
 /**
  * Setup all socket handlers
@@ -28,6 +29,7 @@ function setupSocketHandlers(io, sessionManager) {
     linkShareHandler(io, socket, sessionManager, () => currentSessionCode);
     rtFeedbackHandler(io, socket, sessionManager, () => currentSessionCode);
     questionsHandler(io, socket, sessionManager, () => currentSessionCode);
+    adminHandler(io, socket, sessionManager);
 
     // Handle disconnection
     socket.on('disconnect', () => {

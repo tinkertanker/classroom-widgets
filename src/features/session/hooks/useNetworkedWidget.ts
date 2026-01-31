@@ -145,27 +145,47 @@ export function useNetworkedWidget({
   }, [widgetId, roomType, session]);
   
   // Track if component is truly unmounting vs just re-rendering
+  // Uses a cleanup flag pattern instead of setTimeout for more reliable detection
   const isMountedRef = useRef(true);
-  
+  const isCleaningUpRef = useRef(false);
+  const cleanupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     isMountedRef.current = true;
+    isCleaningUpRef.current = false;
+
+    // Cancel any pending cleanup if remounting quickly
+    if (cleanupTimeoutRef.current) {
+      clearTimeout(cleanupTimeoutRef.current);
+      cleanupTimeoutRef.current = null;
+    }
+
     return () => {
       isMountedRef.current = false;
+      isCleaningUpRef.current = true;
     };
   }, []);
-  
-  // Cleanup on unmount only
+
+  // Cleanup on unmount only - with debounce to handle rapid mount/unmount cycles
   useEffect(() => {
+    const currentWidgetId = widgetId;
+    const currentRoomType = roomType;
+    const currentHasRoom = hasRoom;
+    const closeRoom = session.closeRoom;
+
     return () => {
-      // Small delay to check if this is a real unmount or just a re-render
-      setTimeout(() => {
-        if (!isMountedRef.current && widgetId && hasRoom) {
-          debug(`[NetworkedWidget] Widget ${widgetId} truly unmounting, closing room`);
-          session.closeRoom(roomType, widgetId);
+      // Debounce cleanup to handle rapid mount/unmount cycles
+      // This prevents closing rooms during React Strict Mode double-render
+      cleanupTimeoutRef.current = setTimeout(() => {
+        // Double-check that we're still unmounted after the delay
+        if (isCleaningUpRef.current && !isMountedRef.current && currentWidgetId && currentHasRoom) {
+          debug(`[NetworkedWidget] Widget ${currentWidgetId} truly unmounting, closing room`);
+          closeRoom(currentRoomType, currentWidgetId);
         }
-      }, 0);
+        cleanupTimeoutRef.current = null;
+      }, 100); // 100ms debounce to handle rapid remounts
     };
-  }, [widgetId, roomType, session, hasRoom]);
+  }, [widgetId, roomType, session.closeRoom, hasRoom]);
   
   // Get recovery data
   const recoveryData = widgetId ? session.getWidgetRecoveryData(widgetId) : null;

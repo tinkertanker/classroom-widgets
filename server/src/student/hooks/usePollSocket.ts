@@ -115,18 +115,19 @@ export const usePollSocket = ({
       }
     };
 
-    // Register listeners
-    socket.on('poll:dataUpdate', handleDataUpdate);
+    // Register listeners - listen to both new and legacy event names for backwards compatibility
+    socket.on('poll:stateUpdate', handleDataUpdate);   // New event name
+    socket.on('poll:dataUpdate', handleDataUpdate);    // Legacy event name
     socket.on('poll:voteUpdate', handleVoteUpdate);
     socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
 
-    // Request initial state if needed
+    // Request initial state if needed - use sessionCode (new) format
     let timer: NodeJS.Timeout | undefined;
     const hasInitialData = initialPollData && initialPollData.question && initialPollData.options;
     if (!hasInitialData) {
       timer = setTimeout(() => {
         if (socket) {
-          socket.emit('poll:requestState', { code: roomCode, widgetId });
+          socket.emit('poll:requestState', { sessionCode: roomCode, widgetId });
         }
       }, 100);
     }
@@ -134,6 +135,7 @@ export const usePollSocket = ({
     // Cleanup
     return () => {
       if (timer) clearTimeout(timer);
+      socket.off('poll:stateUpdate', handleDataUpdate);
       socket.off('poll:dataUpdate', handleDataUpdate);
       socket.off('poll:voteUpdate', handleVoteUpdate);
       socket.off('session:poll:voteConfirmed', handleVoteConfirmed);

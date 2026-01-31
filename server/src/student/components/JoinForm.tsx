@@ -72,10 +72,17 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Don't allow changes if currently in a session
     if (currentSessionCode) return;
-    
-    // Only allow safe characters
-    const value = e.target.value.toUpperCase().replace(/[^23456789ACDEFHJKMNPQRTUWXY]/g, '');
-    setCode(value);
+
+    const rawValue = e.target.value.toUpperCase();
+
+    // Allow "ADMIN" as a special code (contains I and M which are normally excluded)
+    if (rawValue === 'ADMIN' || 'ADMIN'.startsWith(rawValue)) {
+      setCode(rawValue);
+    } else {
+      // Only allow safe characters for normal codes
+      const value = rawValue.replace(/[^23456789ACDEFHJKMNPQRTUWXY]/g, '');
+      setCode(value);
+    }
     // Clear error when user starts typing
     if (error) setError('');
   };
@@ -168,7 +175,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               id="code"
               className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${currentSessionCode ? 'bg-warm-gray-100 dark:bg-warm-gray-600 cursor-not-allowed' : 'bg-[#fafafa] dark:bg-warm-gray-700'} ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
               maxLength={5}
-              pattern="[23456789ACDEFHJKMNPQRTUWXY]{5}"
+              pattern="(ADMIN|[23456789ACDEFHJKMNPQRTUWXY]{5})"
               placeholder={currentSessionCode ? currentSessionCode : "123AB"}
               value={currentSessionCode || code}
               onChange={handleCodeChange}

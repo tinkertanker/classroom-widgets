@@ -116,6 +116,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   
   // Constants
   const TWO_HOURS = 2 * 60 * 60 * 1000;
+  const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
+  const MAX_RECOVERY_ATTEMPTS = 3;
+  const recoveryAbortControllerRef = useRef<AbortController | null>(null);
   
   // Sync with store
   useEffect(() => {
@@ -241,164 +244,20 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     };
   }, [socket]);
   
-  // Session recovery
-  const attemptSessionRecovery = useCallback(async () => {
-    if (!sessionCode || !sessionCreatedAt || !socket?.connected || isRecovering || hasAttemptedRecovery.current) {
-      return;
-    }
-
-    // Create a promise that resolves when recovery completes
-    if (!recoveryPromiseRef.current) {
-      recoveryPromiseRef.current = new Promise((resolve) => {
-        recoveryResolveRef.current = resolve;
-      });
-    }
-
-    // Add timeout for recovery attempt
-    const recoveryTimeout = setTimeout(() => {
-      debug('[Session] Recovery timeout - falling back to normal state');
-      setIsRecovering(false);
-      hasAttemptedRecovery.current = true;
-      // Resolve the promise on timeout
-      if (recoveryResolveRef.current) {
-        recoveryResolveRef.current();
-        recoveryResolveRef.current = null;
-        recoveryPromiseRef.current = null;
-      }
-    }, 2000); // 2 second timeout
-
-    hasAttemptedRecovery.current = true;
-    setIsRecovering(true);
-    debug('[UnifiedSession] Attempting session recovery for:', sessionCode);
-    
-    try {
-      // Check session age
-      const sessionAge = Date.now() - sessionCreatedAt;
-      if (sessionAge > TWO_HOURS) {
-        debug('[UnifiedSession] Session too old, clearing');
-        clearSession();
-        setIsRecovering(false);
-        clearTimeout(recoveryTimeout);
-        // Resolve the promise when session is too old
-        if (recoveryResolveRef.current) {
-          recoveryResolveRef.current();
-          recoveryResolveRef.current = null;
-          recoveryPromiseRef.current = null;
-        }
-        return;
-      }
-
-      // Rejoin session directly via socket - let the server determine if it exists
-      socket.emit('session:create', { existingCode: sessionCode }, (response: any) => {
-        if (!response.success) {
-          debug.error('[UnifiedSession] Failed to recover session:', response.error);
-          clearSession();
-          setIsRecovering(false);
-          clearTimeout(recoveryTimeout);
-          // Resolve the promise on failure
-          if (recoveryResolveRef.current) {
-            recoveryResolveRef.current();
-            recoveryResolveRef.current = null;
-            recoveryPromiseRef.current = null;
-          }
-          return;
-        }
-
-        debug('[Session] Recovery - Session rejoined successfully');
-
-        // Store recovery data separately - this is a snapshot from the server
-        const recoveryMap = new Map<string, ActiveRoom>();
-        const roomsMap = new Map<string, ActiveRoom>();
-
-        (response.activeRooms || []).forEach((roomInfo: any) => {
-          if (roomInfo.widgetId) {
-            const room: ActiveRoom = {
-              roomType: roomInfo.roomType,
-              widgetId: roomInfo.widgetId,
-              isActive: roomInfo.room?.isActive || false,
-              roomData: roomInfo.room
-            };
-            // Store in both maps
-            roomsMap.set(roomInfo.widgetId, room);
-            recoveryMap.set(roomInfo.widgetId, room);
-          }
+  // Helper function for delay with abort support
+  const delay = (ms: number, signal?: AbortSignal): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(resolve, ms);
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          clearTimeout(timeout);
+          reject(new Error('Aborted'));
         });
-
-        setActiveRooms(roomsMap);
-        setRecoveryData(recoveryMap); // This won't change after recovery
-
-        // Don't clean up orphaned rooms during initial recovery
-        // This prevents closing rooms before widgets are loaded
-        // cleanupOrphanedRooms(response.activeRooms || []);
-
-        setIsRecovering(false);
-        isInitialRecoveryComplete.current = true;
-        clearTimeout(recoveryTimeout);
-        // Resolve the promise on success
-        if (recoveryResolveRef.current) {
-          recoveryResolveRef.current();
-          recoveryResolveRef.current = null;
-          recoveryPromiseRef.current = null;
-        }
-      });
-    } catch (error) {
-      debug.error('[UnifiedSession] Recovery error:', error);
-      setIsRecovering(false);
-      clearTimeout(recoveryTimeout);
-      // Resolve the promise on error
-      if (recoveryResolveRef.current) {
-        recoveryResolveRef.current();
-        recoveryResolveRef.current = null;
-        recoveryPromiseRef.current = null;
-      }
-    }
-  }, [sessionCode, sessionCreatedAt, socket, isRecovering]);
-  
-  // Clean up orphaned rooms - should be called when widgets are deleted
-  // Not called automatically to prevent closing rooms during page refresh
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const cleanupOrphanedRooms = useCallback(async () => {
-    if (!socket?.connected || !sessionCode) return;
-    
-    
-    // Get current widgets from store
-    const currentWidgets = useWorkspaceStore.getState().widgets;
-    const networkedWidgetIds = currentWidgets
-      .filter((w: any) => ['poll', 'questions', 'rtfeedback', 'linkShare'].includes(w.type))
-      .map((w: any) => w.id);
-    
-    // Check each active room
-    const roomsToClose: string[] = [];
-    activeRooms.forEach((_, widgetId) => {
-      if (!networkedWidgetIds.includes(widgetId)) {
-        debug('[UnifiedSession] Found orphaned room:', widgetId);
-        roomsToClose.push(widgetId);
       }
     });
-    
-    // Close orphaned rooms
-    for (const widgetId of roomsToClose) {
-      const room = activeRooms.get(widgetId);
-      if (room) {
-        debug('[UnifiedSession] Closing orphaned room:', widgetId);
-        socket.emit('session:closeRoom', {
-          sessionCode,
-          roomType: room.roomType,
-          widgetId
-        });
-        // Remove from local state immediately
-        activeRooms.delete(widgetId);
-      }
-    }
-    
-    debug('[UnifiedSession] Orphaned room cleanup complete');
-  }, [socket, sessionCode, activeRooms]);
-  
-  // Don't trigger automatic cleanup after recovery
-  // Cleanup should only happen when widgets are explicitly deleted
-  // This prevents closing rooms during page refresh when widgets haven't loaded yet
-  
-  // Clear session
+  };
+
+  // Clear session - defined before attemptSessionRecovery to avoid circular dependency
   const clearSession = useCallback(() => {
     setSessionCode(null);
     setSessionCreatedAt(null);
@@ -408,7 +267,229 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setParticipantCounts(new Map());
     hasAttemptedRecovery.current = false;
   }, [setStoreSessionCode]);
-  
+
+  // Session recovery with retry and exponential backoff
+  const attemptSessionRecovery = useCallback(async () => {
+    if (!sessionCode || !sessionCreatedAt || !socket?.connected || isRecovering || hasAttemptedRecovery.current) {
+      return;
+    }
+
+    // Cancel any previous recovery attempt
+    if (recoveryAbortControllerRef.current) {
+      recoveryAbortControllerRef.current.abort();
+    }
+    recoveryAbortControllerRef.current = new AbortController();
+    const signal = recoveryAbortControllerRef.current.signal;
+
+    // Create a promise that resolves when recovery completes
+    if (!recoveryPromiseRef.current) {
+      recoveryPromiseRef.current = new Promise((resolve) => {
+        recoveryResolveRef.current = resolve;
+      });
+    }
+
+    hasAttemptedRecovery.current = true;
+    setIsRecovering(true);
+    debug('[UnifiedSession] Attempting session recovery for:', sessionCode);
+
+    // Helper to complete recovery (success or failure)
+    const completeRecovery = (success: boolean) => {
+      if (signal.aborted) return;
+      setIsRecovering(false);
+      if (success) {
+        isInitialRecoveryComplete.current = true;
+      }
+      if (recoveryResolveRef.current) {
+        recoveryResolveRef.current();
+        recoveryResolveRef.current = null;
+        recoveryPromiseRef.current = null;
+      }
+      recoveryAbortControllerRef.current = null;
+    };
+
+    try {
+      // Check session age
+      const sessionAge = Date.now() - sessionCreatedAt;
+      if (sessionAge > TWO_HOURS) {
+        debug('[UnifiedSession] Session too old, clearing');
+        clearSession();
+        completeRecovery(false);
+        return;
+      }
+
+      // Attempt recovery with retries
+      let lastError: Error | null = null;
+
+      for (let attempt = 1; attempt <= MAX_RECOVERY_ATTEMPTS; attempt++) {
+        if (signal.aborted) return;
+
+        debug(`[Session] Recovery attempt ${attempt}/${MAX_RECOVERY_ATTEMPTS}`);
+
+        try {
+          const response = await new Promise<any>((resolve, reject) => {
+            // Set up timeout for this attempt
+            const timeoutId = setTimeout(() => {
+              reject(new Error(`Recovery attempt ${attempt} timed out`));
+            }, RECOVERY_TIMEOUT);
+
+            // Handle abort
+            const abortHandler = () => {
+              clearTimeout(timeoutId);
+              reject(new Error('Aborted'));
+            };
+            signal.addEventListener('abort', abortHandler);
+
+            // Attempt to rejoin session
+            socket.emit('session:create', { existingCode: sessionCode }, (result: any) => {
+              clearTimeout(timeoutId);
+              signal.removeEventListener('abort', abortHandler);
+
+              if (signal.aborted) {
+                reject(new Error('Aborted'));
+                return;
+              }
+
+              resolve(result);
+            });
+          });
+
+          // Handle successful response
+          if (response.success) {
+            // Check if this is actually recovery of existing session
+            // If isExisting is false, the server created a new session (old one was gone)
+            if (!response.isExisting) {
+              debug('[Session] Old session not found, server created new session. Clearing stale state.');
+              // Update to use the new session code from server
+              setSessionCode(response.code);
+              setSessionCreatedAt(Date.now());
+              setStoreSessionCode(response.code);
+              sessionCodeRef.current = response.code;
+              setActiveRooms(new Map());
+              setRecoveryData(new Map());
+              completeRecovery(true);
+              return;
+            }
+
+            debug('[Session] Recovery - Session rejoined successfully');
+
+            // Store recovery data separately - this is a snapshot from the server
+            const recoveryMap = new Map<string, ActiveRoom>();
+            const roomsMap = new Map<string, ActiveRoom>();
+
+            (response.activeRooms || []).forEach((roomInfo: any) => {
+              if (roomInfo.widgetId) {
+                const room: ActiveRoom = {
+                  roomType: roomInfo.roomType,
+                  widgetId: roomInfo.widgetId,
+                  isActive: roomInfo.room?.isActive || false,
+                  roomData: roomInfo.room
+                };
+                roomsMap.set(roomInfo.widgetId, room);
+                recoveryMap.set(roomInfo.widgetId, room);
+              }
+            });
+
+            setActiveRooms(roomsMap);
+            setRecoveryData(recoveryMap);
+            completeRecovery(true);
+            return;
+          } else {
+            // Server responded but with error
+            debug.error('[UnifiedSession] Failed to recover session:', response.error);
+            clearSession();
+            completeRecovery(false);
+            return;
+          }
+        } catch (attemptError: any) {
+          if (signal.aborted || attemptError.message === 'Aborted') {
+            return;
+          }
+
+          lastError = attemptError;
+          debug(`[Session] Recovery attempt ${attempt} failed:`, attemptError.message);
+
+          // If not the last attempt, wait with exponential backoff before retrying
+          if (attempt < MAX_RECOVERY_ATTEMPTS) {
+            const backoffMs = 1000 * attempt; // 1s, 2s, 3s
+            debug(`[Session] Waiting ${backoffMs}ms before retry...`);
+            try {
+              await delay(backoffMs, signal);
+            } catch {
+              // Aborted during delay
+              return;
+            }
+          }
+        }
+      }
+
+      // All attempts failed - clear the stale session
+      debug.error('[UnifiedSession] All recovery attempts failed:', lastError?.message);
+      debug('[Session] Recovery timeout - clearing stale session');
+      clearSession();
+      completeRecovery(false);
+
+    } catch (error) {
+      if (signal.aborted) return;
+      debug.error('[UnifiedSession] Recovery error:', error);
+      clearSession();
+      completeRecovery(false);
+    }
+  }, [sessionCode, sessionCreatedAt, socket, isRecovering, clearSession]);
+
+  // Clean up orphaned rooms - called after recovery or when widgets are deleted
+  // Uses the new session:cleanupRooms event for more efficient server-side cleanup
+  const cleanupOrphanedRooms = useCallback(() => {
+    if (!socket?.connected || !sessionCode) return;
+
+    // Get current widgets from store
+    const currentWidgets = useWorkspaceStore.getState().widgets;
+    const networkedWidgetIds = currentWidgets
+      .filter((w: any) => ['poll', 'questions', 'rtfeedback', 'linkShare'].includes(w.type))
+      .map((w: any) => w.id);
+
+    debug('[UnifiedSession] Sending cleanup request with active widgets:', networkedWidgetIds);
+
+    // Send cleanup request to server with list of active widget IDs
+    // Server will close any rooms not in this list
+    socket.emit('session:cleanupRooms', {
+      sessionCode,
+      activeWidgetIds: networkedWidgetIds
+    });
+
+    // Update local state to remove orphaned rooms
+    setActiveRooms(prev => {
+      const next = new Map(prev);
+      let hasChanges = false;
+      prev.forEach((_, widgetId) => {
+        if (!networkedWidgetIds.includes(widgetId)) {
+          debug('[UnifiedSession] Removing orphaned room from local state:', widgetId);
+          next.delete(widgetId);
+          hasChanges = true;
+        }
+      });
+      return hasChanges ? next : prev;
+    });
+
+    debug('[UnifiedSession] Orphaned room cleanup complete');
+  }, [socket, sessionCode]);
+
+  // Schedule cleanup after recovery completes and widgets have had time to mount
+  // This handles the case where widgets were deleted while offline
+  useEffect(() => {
+    // Only run after initial recovery is complete
+    if (!isInitialRecoveryComplete.current || isRecovering) return;
+    if (!socket?.connected || !sessionCode) return;
+
+    // Wait for widgets to mount before cleaning up orphaned rooms
+    // This delay ensures React has rendered all widgets before we check
+    const cleanupTimer = setTimeout(() => {
+      debug('[UnifiedSession] Running post-recovery cleanup');
+      cleanupOrphanedRooms();
+    }, 2000); // 2 second delay to allow widgets to mount
+
+    return () => clearTimeout(cleanupTimer);
+  }, [isRecovering, socket?.connected, sessionCode, cleanupOrphanedRooms]);
+
   // Create session
   const createSession = useCallback(async (): Promise<string | null> => {
     if (!socket?.connected || isCreatingSession.current) {

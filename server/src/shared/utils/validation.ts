@@ -3,8 +3,13 @@
 /**
  * Validates a session code format
  * Valid codes are 5 characters using specific letters/numbers to avoid confusion
+ * Also allows "ADMIN" as a special code for admin access
  */
 export const isValidSessionCode = (code: string): boolean => {
+  // Allow ADMIN as a special code
+  if (code.toUpperCase() === 'ADMIN') {
+    return true;
+  }
   return /^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code);
 };
 
