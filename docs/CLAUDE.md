@@ -92,7 +92,14 @@ When making changes, ensure:
 2. NetworkedWidgetEmpty component handles the pre-session state
 3. Widget focus is managed through the workspace store
 4. Canvas clicks should clear widget focus
-5. All networked widgets use `useNetworkedWidget` hook for connection management
+5. Networked widgets use shared infrastructure:
+   - `useNetworkedWidget` - Room lifecycle management
+   - `useNetworkedWidgetState` - Active state with socket sync
+   - `NetworkedWidgetOverlays` - Paused/reconnecting/disconnected states
+   - `NetworkedWidgetStats` - Floating stats display
+   - `NetworkedWidgetControlBar` - Play/pause and clear buttons
+   - `withWidgetProvider` - HOC for WidgetProvider wrapper
+   - `getEmptyStateButtonText/Disabled` - Button state helpers
 
 ### Widget System
 The application uses a dynamic widget system where widgets are:
@@ -278,47 +285,54 @@ server/                     # Backend server for real-time features
 - **Padding**: Use consistent padding (p-4, px-6 py-4 for modals)
 
 ### Networked Widget Pattern
-Networked widgets (Poll, Link Share, RT Feedback) follow a consistent UI structure:
+Networked widgets (Poll, Questions, Link Share, RT Feedback) use a shared component architecture:
 
-1. **Container Structure**:
-   ```jsx
-   <div className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col p-4 relative">
-   ```
+**Shared Hooks** (`src/features/session/hooks/`):
+- `useNetworkedWidget` - Room lifecycle, recovery data, session management
+- `useNetworkedWidgetState` - Active/paused state with automatic socket sync
+- `useSocketEvents` - Socket event listener management with cleanup
 
-2. **Empty State**: Use `NetworkedWidgetEmpty` component
-   - Title and description
-   - Large icon (5xl size, warm-gray-400/500)
-   - "Create Room" button (sage-500 background)
-   - Connection error display with server start instructions
+**Shared Components** (`src/features/widgets/shared/`):
+- `NetworkedWidgetEmpty` - Empty state before room exists
+- `NetworkedWidgetControlBar` - Play/pause, settings, clear buttons
+- `NetworkedWidgetOverlays` - Paused, reconnecting, disconnected overlays
+- `NetworkedWidgetStats` - Floating statistics display (top-right)
+- `withWidgetProvider` - HOC to wrap with WidgetProvider
 
-3. **Active State**: Use `NetworkedWidgetHeader` with room code display
-   - Activity code display (large text)
-   - Student URL information
-   - Control buttons in header
+**Shared Utilities** (`src/features/widgets/shared/utils/`):
+- `getEmptyStateButtonText()` - Returns button text based on connection state
+- `getEmptyStateDisabled()` - Returns whether button should be disabled
 
-4. **Common Patterns**: 
-   - Start/Stop toggle button (single button that changes color/icon)
-   - Settings gear icon (optional - RT Feedback doesn't use it)
-   - Status indicators for connection state
-   - Participant count display
-   - Widget cleanup on deletion notifies connected students
+**Standard Structure**:
+```tsx
+function MyWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
+  // Room lifecycle
+  const { hasRoom, isStarting, error, handleStart, session, recoveryData } =
+    useNetworkedWidget({ widgetId, roomType: 'myWidget', ... });
 
-5. **Socket Management**: Use `useNetworkedWidget` hook for:
-   - Room creation and connection
-   - Socket event handling
-   - Cleanup on unmount
-   - `NetworkedWidgetHeader` at top showing:
-     - Activity code (large, bold)
-     - Student URL
-     - Action buttons in header children
-   - Main content area with `flex-1 overflow-y-auto`
+  // Active state with socket sync
+  const { isActive, toggleActive } = useNetworkedWidgetState({
+    widgetId, roomType: 'myWidget', hasRoom, recoveryData
+  });
 
-4. **Common Patterns**:
-   - Start/Stop button toggles between sage-500 (start) and dusty-rose-500 (stop)
-   - Settings gear icon in top right
-   - Status indicators (connection, participant count)
-   - Real-time updates via Socket.io
-   - useNetworkedWidget hook for connection management
+  if (!hasRoom) {
+    return <NetworkedWidgetEmpty ... />;
+  }
+
+  return (
+    <div className={widgetWrapper}>
+      <div className={`${widgetContainer} relative`}>
+        <NetworkedWidgetStats>{count} items</NetworkedWidgetStats>
+        <NetworkedWidgetOverlays isActive={isActive} ... />
+        <div className="flex-1 p-4 pt-8">{/* Content */}</div>
+      </div>
+      <NetworkedWidgetControlBar isActive={isActive} onToggleActive={toggleActive} ... />
+    </div>
+  );
+}
+
+export default withWidgetProvider(MyWidget, 'MyWidget');
+```
 
 ## Development Notes
 
@@ -361,6 +375,17 @@ npm run dev:student # Student app dev server
 - **Auto-sync**: Receives room state updates (active/paused) from teacher
 
 ## Recent Updates
+
+### Networked Widget Common Base Architecture (January 2025)
+- Created shared infrastructure to reduce code duplication across networked widgets
+- New hooks: `useNetworkedWidgetState` for active state management with socket sync
+- New components: `NetworkedWidgetOverlays`, `NetworkedWidgetStats`
+- New utilities: `getEmptyStateButtonText()`, `getEmptyStateDisabled()`
+- New HOC: `withWidgetProvider` to extract WidgetProvider wrapper pattern
+- All 4 networked widgets (Poll, Questions, RTFeedback, LinkShare) refactored
+- LinkShare now uses `NetworkedWidgetControlBar` for consistency
+- Consistent overlay behavior (paused, reconnecting, disconnected) across all widgets
+- ~200 lines of code removed through consolidation
 
 ### Voice Command Shared Definitions System (January 2025)
 - Implemented single source of truth for voice commands: `shared/voiceCommandDefinitions.json`

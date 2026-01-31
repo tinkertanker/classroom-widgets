@@ -119,13 +119,22 @@ classroom-widgets/
 │   │   │   └── shared/               # Shared widget components
 │   │   │       ├── WidgetWrapper.tsx
 │   │   │       ├── NetworkedWidgetHeader.tsx
-│   │   │       └── NetworkedWidgetEmpty.tsx
+│   │   │       ├── NetworkedWidgetEmpty.tsx
+│   │   │       ├── withWidgetProvider.tsx      # HOC for WidgetProvider
+│   │   │       ├── components/
+│   │   │       │   ├── NetworkedWidgetControlBar.tsx
+│   │   │       │   ├── NetworkedWidgetOverlays.tsx  # Paused/reconnecting/disconnected
+│   │   │       │   └── NetworkedWidgetStats.tsx     # Floating stats display
+│   │   │       └── utils/
+│   │   │           └── networkedWidgetHelpers.ts    # Button text/disabled helpers
 │   │   │
 │   │   └── session/                  # Session management
 │   │       ├── components/
 │   │       │   └── SessionBanner/
 │   │       ├── hooks/
-│   │       │   └── useNetworkedWidget.ts
+│   │       │   ├── useNetworkedWidget.ts       # Room lifecycle management
+│   │       │   ├── useNetworkedWidgetState.ts  # Active state with socket sync
+│   │       │   └── useSocketEvents.ts          # Socket event management
 │   │       └── contexts/
 │   │           └── UnifiedSessionProvider.tsx
 │   │
@@ -391,7 +400,7 @@ Manages:
 - Session recovery after page refresh
 - Room lifecycle
 
-**2. useNetworkedWidgetUnified** (Per Widget)
+**2. useNetworkedWidget** (Per Widget - Room Lifecycle)
 ```typescript
 const {
   hasRoom,        // Widget has active room
@@ -399,13 +408,15 @@ const {
   error,          // Error message
   handleStart,    // Create room
   handleStop,     // Close room
+  recoveryData,   // Recovery data from server
   session: {
     socket,
     sessionCode,
     participantCount,
-    isConnected
+    isConnected,
+    isRecovering
   }
-} = useNetworkedWidgetUnified({
+} = useNetworkedWidget({
   widgetId,
   roomType: 'poll',
   savedState,
@@ -413,9 +424,23 @@ const {
 });
 ```
 
-**3. useUnifiedSocketEvents** (Event Management)
+**3. useNetworkedWidgetState** (Active State Management)
 ```typescript
-const { emit } = useUnifiedSocketEvents({
+const { isActive, toggleActive, setIsActive } = useNetworkedWidgetState({
+  widgetId,
+  roomType: 'poll',
+  hasRoom,
+  recoveryData
+});
+// Automatically:
+// - Listens for session:widgetStateChanged socket events
+// - Restores isActive from recovery data
+// - Provides toggleActive() to update state via socket
+```
+
+**4. useSocketEvents** (Event Management)
+```typescript
+const { emit } = useSocketEvents({
   events: {
     'poll:dataUpdate': (data) => { /* handle */ },
     'poll:voteUpdate': (data) => { /* handle */ }
@@ -651,11 +676,43 @@ className="border-warm-gray-200 dark:border-warm-gray-700"
 
 ### Networked Widget UI Pattern
 
+All networked widgets use shared components for consistency. The architecture provides:
+
+**Shared Hooks:**
+- `useNetworkedWidget` - Room lifecycle, recovery data, session management
+- `useNetworkedWidgetState` - Active/paused state with automatic socket sync
+- `useSocketEvents` - Socket event listener management with cleanup
+
+**Shared Components:**
+- `NetworkedWidgetEmpty` - Empty state before room exists
+- `NetworkedWidgetControlBar` - Play/pause, settings, clear buttons
+- `NetworkedWidgetOverlays` - Paused, reconnecting, disconnected overlays
+- `NetworkedWidgetStats` - Floating statistics display
+- `withWidgetProvider` - HOC to wrap with WidgetProvider
+
+**Shared Utilities:**
+- `getEmptyStateButtonText()` - Returns button text based on connection state
+- `getEmptyStateDisabled()` - Returns whether button should be disabled
+
 Consistent structure across all networked widgets:
 
 ```tsx
-function NetworkedWidget() {
-  const { hasRoom, session, handleStart } = useNetworkedWidgetUnified(...);
+import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
+import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
+import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
+import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
+
+function NetworkedWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
+  // Room lifecycle management
+  const { hasRoom, isStarting, error, handleStart, session, recoveryData } =
+    useNetworkedWidget({ widgetId, roomType: 'myWidget', savedState, onStateChange });
+
+  // Active state with automatic socket sync and recovery
+  const { isActive, toggleActive } = useNetworkedWidgetState({
+    widgetId, roomType: 'myWidget', hasRoom, recoveryData
+  });
 
   if (!hasRoom) {
     return (
@@ -663,30 +720,55 @@ function NetworkedWidget() {
         icon={FaIcon}
         title="Widget Name"
         description="Description"
-        buttonText="Start"
+        buttonText={getEmptyStateButtonText({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected,
+          defaultText: "Start Widget"
+        })}
         onStart={handleStart}
+        disabled={getEmptyStateDisabled({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected
+        })}
         error={error}
       />
     );
   }
 
   return (
-    <div className="bg-soft-white rounded-lg shadow-sm border w-full h-full flex flex-col p-4">
-      <NetworkedWidgetHeader
-        title="Widget"
-        code={session.sessionCode}
-        participantCount={session.participantCount}
-        icon={FaIcon}
-      >
-        {/* Control buttons */}
-      </NetworkedWidgetHeader>
+    <div className={widgetWrapper}>
+      <div className={`${widgetContainer} relative`}>
+        <NetworkedWidgetStats>
+          {count} items
+        </NetworkedWidgetStats>
 
-      <div className="flex-1 overflow-y-auto">
-        {/* Main content */}
+        <NetworkedWidgetOverlays
+          isActive={isActive}
+          isConnected={session.isConnected}
+          isRecovering={session.isRecovering}
+          pausedMessage="Widget is paused"
+        />
+
+        <div className="flex-1 overflow-y-auto p-4 pt-8">
+          {/* Main content */}
+        </div>
       </div>
+
+      <NetworkedWidgetControlBar
+        isActive={isActive}
+        isConnected={session.isConnected}
+        onToggleActive={toggleActive}
+        onClear={handleClear}
+        clearCount={count}
+        showSettings={false}
+      />
     </div>
   );
 }
+
+export default withWidgetProvider(NetworkedWidget, 'NetworkedWidget');
 ```
 
 ## Testing Strategy

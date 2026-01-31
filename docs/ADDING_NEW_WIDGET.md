@@ -128,7 +128,160 @@ For widgets that require real-time communication with students:
 }
 ```
 
-### 2. Create Student Component
+### 2. Create Widget Component Using Shared Infrastructure
+
+Networked widgets use shared components to reduce code duplication. Create your widget in `/src/features/widgets/myWidget/myWidget.tsx`:
+
+```typescript
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { FaYourIcon } from 'react-icons/fa6';
+import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
+import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
+import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
+import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
+import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
+import { useSocketEvents } from '../../session/hooks/useSocketEvents';
+import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
+
+function MyWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
+  // Your widget-specific state
+  const [data, setData] = useState(savedState?.data || initialData);
+
+  // Networked widget hook - manages room lifecycle
+  const {
+    hasRoom,
+    isStarting,
+    error,
+    handleStart,
+    session,
+    recoveryData
+  } = useNetworkedWidget({
+    widgetId,
+    roomType: 'myWidget',
+    savedState,
+    onStateChange
+  });
+
+  // Active state management - handles pause/resume with socket sync
+  const { isActive: isWidgetActive, toggleActive } = useNetworkedWidgetState({
+    widgetId,
+    roomType: 'myWidget',
+    hasRoom,
+    recoveryData
+  });
+
+  // Widget-specific socket events (state change handled by useNetworkedWidgetState)
+  const socketEvents = useMemo(() => ({
+    'myWidget:dataUpdate': (eventData: any) => {
+      if (eventData.widgetId === widgetId) {
+        setData(eventData.data);
+      }
+    }
+  }), [widgetId]);
+
+  const { emit } = useSocketEvents({
+    events: socketEvents,
+    isActive: hasRoom
+  });
+
+  // Handle toggle with any widget-specific logic
+  const handleToggleActive = useCallback(() => {
+    if (!hasRoom) return;
+    toggleActive();
+  }, [hasRoom, toggleActive]);
+
+  // Recovery data restoration for widget-specific data
+  useEffect(() => {
+    if (recoveryData?.roomData?.data) {
+      setData(recoveryData.roomData.data);
+    }
+  }, [recoveryData]);
+
+  // Empty state - before room is created
+  if (!hasRoom) {
+    return (
+      <NetworkedWidgetEmpty
+        icon={FaYourIcon}
+        title="My Widget"
+        description="Description of what this widget does"
+        buttonText={getEmptyStateButtonText({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected,
+          defaultText: "Start My Widget"
+        })}
+        onStart={handleStart}
+        disabled={getEmptyStateDisabled({
+          isStarting,
+          isRecovering: session.isRecovering,
+          isConnected: session.isConnected
+        })}
+        error={error || undefined}
+      />
+    );
+  }
+
+  // Active state - room exists
+  return (
+    <div className={widgetWrapper}>
+      <div className={`${widgetContainer} relative`}>
+        {/* Statistics display */}
+        <NetworkedWidgetStats>
+          {data.count} item{data.count !== 1 ? 's' : ''}
+        </NetworkedWidgetStats>
+
+        {/* Overlays for paused/reconnecting/disconnected states */}
+        <NetworkedWidgetOverlays
+          isActive={isWidgetActive}
+          isConnected={session.isConnected}
+          isRecovering={session.isRecovering}
+          pausedMessage="Widget is paused"
+        />
+
+        {/* Your widget content */}
+        <div className="flex-1 p-4 pt-8">
+          {/* Main content here */}
+        </div>
+      </div>
+
+      {/* Control bar with play/pause and clear buttons */}
+      <NetworkedWidgetControlBar
+        isActive={isWidgetActive}
+        isConnected={session.isConnected}
+        onToggleActive={handleToggleActive}
+        onClear={handleClear}
+        clearCount={data.count}
+        clearLabel="Clear all"
+        activeLabel="Pause widget"
+        inactiveLabel="Start widget"
+        showSettings={false}
+        clearVariant="clear"
+      />
+    </div>
+  );
+}
+
+// Export with WidgetProvider wrapper
+export default withWidgetProvider(MyWidget, 'MyWidget');
+```
+
+### Shared Components Reference
+
+| Component | Purpose |
+|-----------|---------|
+| `useNetworkedWidget` | Room lifecycle, recovery, session management |
+| `useNetworkedWidgetState` | Active state with socket sync and recovery |
+| `useSocketEvents` | Socket event listener management with cleanup |
+| `NetworkedWidgetEmpty` | Empty state UI before room exists |
+| `NetworkedWidgetControlBar` | Play/pause, settings, clear buttons |
+| `NetworkedWidgetOverlays` | Paused, reconnecting, disconnected overlays |
+| `NetworkedWidgetStats` | Floating stats display (top-right) |
+| `withWidgetProvider` | HOC to wrap with WidgetProvider |
+| `getEmptyStateButtonText` | Button text based on connection state |
+| `getEmptyStateDisabled` | Button disabled state logic |
+
+### 3. Create Student Component
 
 Create `/server/src/student/components/MyWidgetActivity.tsx`:
 
@@ -143,11 +296,11 @@ interface MyWidgetActivityProps {
   initialIsActive?: boolean;
 }
 
-const MyWidgetActivity: React.FC<MyWidgetActivityProps> = ({ 
-  socket, 
-  sessionCode, 
+const MyWidgetActivity: React.FC<MyWidgetActivityProps> = ({
+  socket,
+  sessionCode,
   widgetId,
-  initialIsActive 
+  initialIsActive
 }) => {
   // Students are automatically part of all session rooms
   // No need to explicitly join/leave individual widget rooms
@@ -163,7 +316,7 @@ const MyWidgetActivity: React.FC<MyWidgetActivityProps> = ({
 export default MyWidgetActivity;
 ```
 
-### 3. Add Server Event Handlers
+### 4. Add Server Event Handlers
 
 Add event handlers in `/server/src/index.js` for your widget-specific events:
 
@@ -175,7 +328,7 @@ socket.on('session:myWidget:action', (data) => {
 });
 ```
 
-### 4. Update Student App
+### 5. Update Student App
 
 Add your activity component to the student app in `/server/src/student/App.tsx`:
 
@@ -184,8 +337,8 @@ import MyWidgetActivity from './components/MyWidgetActivity';
 
 // In the render section where activities are shown:
 {room.type === 'myWidget' && (
-  <MyWidgetActivity 
-    socket={room.socket} 
+  <MyWidgetActivity
+    socket={room.socket}
     sessionCode={room.code}
     widgetId={room.widgetId}
     initialIsActive={room.initialData?.isActive}
