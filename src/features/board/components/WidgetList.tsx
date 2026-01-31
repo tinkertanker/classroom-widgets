@@ -5,6 +5,7 @@ import React, { memo } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import WidgetRenderer from './WidgetRenderer';
+import { useRenderLogger } from '../../../shared/utils/renderLogger';
 
 const WidgetList: React.FC = () => {
   // Subscribe only to widget IDs using shallow comparison
@@ -13,6 +14,8 @@ const WidgetList: React.FC = () => {
   const widgetIds = useWorkspaceStore(
     useShallow((state) => state.widgets.map(w => w.id))
   );
+
+  useRenderLogger('WidgetList', { widgetCount: widgetIds.length });
 
   return (
     <>

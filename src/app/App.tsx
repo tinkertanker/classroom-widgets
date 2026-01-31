@@ -19,6 +19,7 @@ import { HudProximityProvider } from '../shared/hooks/useHudProximity';
 import { WidgetType, WidgetCategory } from '../shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { APP_VERSION } from '../version';
+import { useRenderLogger } from '../shared/utils/renderLogger';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
@@ -28,6 +29,8 @@ const trashAudio = new Audio(trashSound);
 
 
 function App() {
+  useRenderLogger('App');
+
   const { theme, scale } = useWorkspace();
   const { url, setServerStatus } = useServerConnection();
   const sessionCode = useWorkspaceStore((state) => state.sessionCode);

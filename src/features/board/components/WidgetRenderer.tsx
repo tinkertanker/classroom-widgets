@@ -7,6 +7,7 @@ import WidgetWrapper from '../../widgets/shared/WidgetWrapper';
 import ErrorBoundary from '../../../shared/components/ErrorBoundary';
 import { Card } from '../../../components/ui';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWidgetRenderLogger } from '../../../shared/utils/renderLogger';
 
 interface WidgetRendererProps {
   widgetId: string;
@@ -26,6 +27,8 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
   // Subscribe only to whether THIS widget is focused, not the focusedWidgetId value
   // This prevents all widgets from re-rendering when focus changes
   const isActive = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
+
+  useWidgetRenderLogger('WidgetRenderer', widgetId, { isActive });
 
   if (!widget) return null;
 

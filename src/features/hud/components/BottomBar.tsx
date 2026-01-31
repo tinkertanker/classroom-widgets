@@ -19,6 +19,7 @@ import LaunchpadIcon from './LaunchpadIcon';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useHudProximityContext } from '../../../shared/hooks/useHudProximity';
 import { hudProximity } from '../../../shared/utils/styles';
+import { useRenderLogger } from '../../../shared/utils/renderLogger';
 
 // Default recent widgets if none are set
 const defaultRecentWidgets = [
@@ -30,6 +31,8 @@ const defaultRecentWidgets = [
 ];
 
 const BottomBar: React.FC = () => {
+  useRenderLogger('BottomBar');
+
   const { recentWidgets, voiceControlEnabled } = useBottomBar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();

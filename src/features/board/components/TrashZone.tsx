@@ -4,9 +4,12 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { FaTrash } from 'react-icons/fa6';
 import { useDragAndDrop } from '../../../shared/hooks/useWorkspace';
+import { useRenderLogger } from '../../../shared/utils/renderLogger';
 
 const TrashZone: React.FC = () => {
   const { isDragging, isOverTrash, setDropTarget } = useDragAndDrop();
+
+  useRenderLogger('TrashZone', { isDragging, isOverTrash });
   const trashRef = useRef<HTMLDivElement>(null);
   const cachedRectRef = useRef<DOMRect | null>(null);
   const isOverRef = useRef(false);

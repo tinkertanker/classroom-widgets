@@ -9,8 +9,11 @@ import { useHudProximityContext } from '../../../shared/hooks/useHudProximity';
 import { hudContainer, hudProximity, zIndex } from '../../../shared/utils/styles';
 import { HudButton, HudButtonGroup, HudGroupButton } from '../../../components/ui';
 import Clock from './Clock';
+import { useRenderLogger } from '../../../shared/utils/renderLogger';
 
 const TopControls: React.FC = () => {
+  useRenderLogger('TopControls');
+
   const { scale, setScale } = useWorkspace();
   const { connected } = useServerConnection();
   const { sessionCode } = useSession();
