@@ -19,5 +19,6 @@ export const WIDGET_TYPES = {
   TIC_TAC_TOE: 16,
   QUESTIONS: 17,
   WORDLE: 18,
-  SNAKE: 19
+  SNAKE: 19,
+  HANDOUT: 20
 };

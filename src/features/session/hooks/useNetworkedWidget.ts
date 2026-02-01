@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
 import { debug } from '../../../shared/utils/debug';
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout';
 
 interface UseNetworkedWidgetProps {
   widgetId?: string;

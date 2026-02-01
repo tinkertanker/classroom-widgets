@@ -60,7 +60,7 @@ export interface SessionCloseData {
 // Room (Widget) Management Events
 // ============================================================================
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout';
 
 export interface SessionCreateRoomData {
   sessionCode: string;
@@ -313,6 +313,53 @@ export interface QuestionsAllClearedData {
 }
 
 // ============================================================================
+// Handout Widget Events
+// ============================================================================
+
+export interface HandoutItem {
+  id: string;
+  content: string;
+  isLink: boolean;
+  timestamp: number;
+}
+
+export interface SessionHandoutAddData {
+  sessionCode: string;
+  widgetId: string;
+  content: string;
+}
+
+export interface SessionHandoutDeleteData {
+  sessionCode: string;
+  widgetId: string;
+  itemId: string;
+}
+
+export interface HandoutItemAddedData {
+  id: string;
+  content: string;
+  isLink: boolean;
+  timestamp: number;
+  widgetId: string;
+}
+
+export interface HandoutItemDeletedData {
+  itemId: string;
+  widgetId: string;
+}
+
+export interface HandoutStateUpdateData {
+  items: HandoutItem[];
+  isActive: boolean;
+  widgetId: string;
+}
+
+export interface HandoutRequestStateData {
+  sessionCode: string;
+  widgetId: string;
+}
+
+// ============================================================================
 // Generic Widget Events
 // ============================================================================
 
@@ -360,6 +407,11 @@ export interface ServerToClientEvents {
   'questions:questionDeleted': (data: QuestionsQuestionDeletedData) => void;
   'questions:allCleared': (data: QuestionsAllClearedData) => void;
   'session:questions:submitted': (data: SessionQuestionsSubmittedResponse) => void;
+
+  // Handout events
+  'handout:stateUpdate': (data: HandoutStateUpdateData) => void;
+  'handout:itemAdded': (data: HandoutItemAddedData) => void;
+  'handout:itemDeleted': (data: HandoutItemDeletedData) => void;
 }
 
 /** Request state data for RT Feedback */
@@ -413,6 +465,11 @@ export interface ClientToServerEvents {
   'session:questions:delete': (data: SessionQuestionsDeleteData) => void;
   'session:questions:clearAll': (data: SessionQuestionsClearAllData) => void;
   'questions:requestState': (data: QuestionsRequestStateData) => void;
+
+  // Handout events
+  'session:handout:add': (data: SessionHandoutAddData) => void;
+  'session:handout:delete': (data: SessionHandoutDeleteData) => void;
+  'handout:requestState': (data: HandoutRequestStateData) => void;
 }
 
 // ============================================================================

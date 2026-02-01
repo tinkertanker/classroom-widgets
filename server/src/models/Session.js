@@ -2,6 +2,7 @@ const PollRoom = require('./PollRoom');
 const LinkShareRoom = require('./LinkShareRoom');
 const RTFeedbackRoom = require('./RTFeedbackRoom');
 const QuestionsRoom = require('./QuestionsRoom');
+const HandoutRoom = require('./HandoutRoom');
 
 /**
  * Session class to manage multiple room types under one code
@@ -100,6 +101,9 @@ class Session {
         break;
       case 'questions':
         room = new QuestionsRoom(this.code, widgetId);
+        break;
+      case 'handout':
+        room = new HandoutRoom(this.code, widgetId);
         break;
       default:
         throw new Error(`Unknown room type: ${roomType}`);
