@@ -149,7 +149,7 @@ export const widgetWrapper = cn(
 
 // Widget controls section (glassmorphic style)
 export const widgetControls = cn(
-  "flex items-center p-3",
+  "flex items-center p-3 mt-1",
   "min-h-16 max-h-16",
   "bg-white/50 dark:bg-warm-gray-800/50",
   "backdrop-blur-md",
