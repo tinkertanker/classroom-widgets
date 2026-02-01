@@ -82,7 +82,7 @@ const validators = {
   },
 
   /**
-   * Validate feedback value (1-5 scale)
+   * Validate feedback value (1-5 scale, allows decimals)
    * @param {number} val - Feedback value to validate
    * @returns {ValidationResult}
    */
@@ -90,8 +90,8 @@ const validators = {
     if (val === undefined || val === null) {
       return { valid: false, error: 'Feedback value is required' };
     }
-    if (!Number.isInteger(val)) {
-      return { valid: false, error: 'Feedback value must be an integer' };
+    if (typeof val !== 'number' || isNaN(val)) {
+      return { valid: false, error: 'Feedback value must be a number' };
     }
     if (val < LIMITS.FEEDBACK_MIN_VALUE || val > LIMITS.FEEDBACK_MAX_VALUE) {
       return { valid: false, error: `Feedback value must be between ${LIMITS.FEEDBACK_MIN_VALUE} and ${LIMITS.FEEDBACK_MAX_VALUE}` };
