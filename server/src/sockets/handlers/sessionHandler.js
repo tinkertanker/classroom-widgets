@@ -2,6 +2,7 @@ const { EVENTS, LIMITS } = require('../../config/constants');
 const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
+const { clearHostDisconnectTimeout } = require('../socketManager');
 
 /**
  * Handle session-related socket events
@@ -28,6 +29,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         if (existingSession) {
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
+
+          // Clear host disconnected state and cancel timeout
+          if (existingSession.hostDisconnectedAt) {
+            existingSession.hostDisconnectedAt = null;
+            clearHostDisconnectTimeout(existingCode);
+          }
+
           // Notify students that host has reconnected
           io.to(`session:${existingSession.code}`).emit(EVENTS.SESSION.HOST_RECONNECTED);
         }

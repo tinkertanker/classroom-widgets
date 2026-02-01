@@ -12,8 +12,16 @@ class Session {
     this.hostSocketId = null;
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
+    this.hostDisconnectedAt = null; // Timestamp when host disconnected
     this.activeRooms = new Map(); // roomType -> room instance
     this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
+  }
+
+  /**
+   * Check if the host is currently disconnected
+   */
+  isHostDisconnected() {
+    return this.hostDisconnectedAt !== null;
   }
 
   /**

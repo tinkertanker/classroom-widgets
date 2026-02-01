@@ -362,9 +362,21 @@ const App: React.FC = () => {
       newSocket.on('session:hostDisconnected', () => {
         setHostConnected(false);
       });
-      
+
       newSocket.on('session:hostReconnected', () => {
         setHostConnected(true);
+      });
+
+      // Handle session closed (host disconnected for too long)
+      newSocket.on('session:closed', () => {
+        console.log('Session closed by server');
+        // Clear session state
+        setJoinedRooms([]);
+        setCurrentSessionCode('');
+        setHostConnected(true);
+        // Close socket connections
+        socketRefs.current.forEach((socket) => socket.close());
+        socketRefs.current.clear();
       });
       
       newSocket.on('disconnect', () => {
