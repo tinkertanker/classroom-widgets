@@ -7,7 +7,7 @@ interface UseWidgetStateChangeParams {
   roomType: string;
   widgetId?: string;
   initialIsActive?: boolean;
-  onStateChange: (isActive: boolean, wasInactive?: boolean) => void;
+  onStateChange: (isActive: boolean, data?: any) => void;
 }
 
 export const useWidgetStateChange = ({
@@ -22,13 +22,13 @@ export const useWidgetStateChange = ({
     const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
       // Only handle state changes for this specific widget type and instance
       if (data.roomType === roomType && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        onStateChange(data.isActive);
+        onStateChange(data.isActive, data);
       }
     };
 
-    const handleStateUpdate = (data: { isActive: boolean; widgetId?: string }) => {
+    const handleStateUpdate = (data: { isActive: boolean; widgetId?: string; [key: string]: any }) => {
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        onStateChange(data.isActive);
+        onStateChange(data.isActive, data);
       }
     };
 

@@ -587,13 +587,14 @@ const App: React.FC = () => {
                       />
                     )}
                     {room.type === 'linkShare' && (
-                      <LinkShareActivity 
-                        socket={room.socket} 
+                      <LinkShareActivity
+                        socket={room.socket}
                         roomCode={room.code}
                         studentName={studentName}
                         isSession={true}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
+                        initialAcceptMode={room.initialData?.acceptMode || 'all'}
                       />
                     )}
                     {room.type === 'rtfeedback' && (

@@ -19,7 +19,8 @@ import {
   FaSliders,
   FaGamepad,
   FaCircleQuestion,
-  FaPersonChalkboard
+  FaPersonChalkboard,
+  FaInbox
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
@@ -384,16 +385,16 @@ export class WidgetRegistry {
       }
     });
 
-    // Link Share
+    // Drop Box (formerly Link Share)
     this.register({
       type: WidgetType.LINK_SHARE,
-      name: 'Link Share',
-      icon: FaArrowUpRightFromSquare,
+      name: 'Drop Box',
+      icon: FaInbox,
       component: LazyWidgets.LinkShare,
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
-      description: 'Collect link submissions from students',
+      description: 'Collect links or text submissions from students',
       features: {
         hasStateManagement: true,
         isResizable: true

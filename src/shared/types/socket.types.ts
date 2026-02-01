@@ -204,6 +204,12 @@ export interface SessionLinkShareDeleteData {
   submissionId: string;
 }
 
+export interface SessionLinkShareSetAcceptModeData {
+  sessionCode: string;
+  widgetId: string;
+  acceptMode: 'links' | 'all';
+}
+
 export interface LinkShareSubmissionDeletedData {
   submissionId: string;
   widgetId: string;
@@ -393,6 +399,7 @@ export interface ClientToServerEvents {
   // Link Share events
   'session:linkShare:submit': (data: SessionLinkShareSubmitData, callback: (response: SessionLinkShareSubmittedResponse) => void) => void;
   'session:linkShare:delete': (data: SessionLinkShareDeleteData) => void;
+  'session:linkShare:setAcceptMode': (data: SessionLinkShareSetAcceptModeData) => void;
   'linkShare:requestState': (data: LinkShareRequestStateData) => void;
 
   // RT Feedback events

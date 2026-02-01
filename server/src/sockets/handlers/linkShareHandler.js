@@ -10,7 +10,7 @@ const { eventRateLimiter } = require('../../middleware/socketAuth');
  */
 module.exports = function linkShareHandler(io, socket, sessionManager, getCurrentSessionCode) {
 
-  // Handle link submission
+  // Handle link/text submission
   socket.on(EVENTS.LINK_SHARE.SUBMIT, (data) => {
     // Check rate limit
     const rateLimitResult = eventRateLimiter(socket, EVENTS.LINK_SHARE.SUBMIT);
@@ -44,17 +44,48 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    // Check if link sharing is active
+    // Check if submissions are active
     if (!room.isActive) {
       socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('WIDGET_PAUSED'));
       return;
     }
 
-    // Validate link URL
-    const linkValidation = validators.link(data.link);
-    if (!linkValidation.valid) {
-      socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('INVALID_INPUT', linkValidation.error));
+    // Get content - support both 'link' (legacy) and 'content' fields
+    const rawContent = data.content || data.link;
+    if (!rawContent) {
+      socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('INVALID_INPUT', 'Content is required'));
       return;
+    }
+
+    // Normalize URL (add https:// if it looks like a domain without protocol)
+    const content = validators.normalizeUrl(rawContent);
+
+    // Check if it's a link
+    const isLink = validators.isLink(content);
+
+    // Validate based on room accept mode
+    if (room.acceptMode === 'links') {
+      // Links only mode - must be valid URL
+      const linkValidation = validators.link(content);
+      if (!linkValidation.valid) {
+        socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('INVALID_INPUT', linkValidation.error));
+        return;
+      }
+    } else {
+      // All mode - accept links or text (max 280 chars)
+      if (isLink) {
+        const linkValidation = validators.link(content);
+        if (!linkValidation.valid) {
+          socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('INVALID_INPUT', linkValidation.error));
+          return;
+        }
+      } else {
+        const textValidation = validators.textSubmission(content);
+        if (!textValidation.valid) {
+          socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('INVALID_INPUT', textValidation.error));
+          return;
+        }
+      }
     }
 
     // Validate student name if provided
@@ -72,9 +103,9 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       participant.name = data.studentName;
     }
 
-    const submission = room.addSubmission(studentName, data.link);
+    const submission = room.addSubmission(studentName, content, isLink);
 
-    // Notify all in the room - emit both new and legacy events
+    // Notify all in the room
     const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
     const submissionData = {
       ...submission,
@@ -145,10 +176,51 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       if (room && room instanceof LinkShareRoom) {
         socket.emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
           isActive: room.isActive,
+          acceptMode: room.acceptMode,
           widgetId: widgetId
         });
       }
     }
+  });
+
+  // Handle accept mode change (host only)
+  socket.on(EVENTS.LINK_SHARE.SET_ACCEPT_MODE, (data) => {
+    const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
+    if (!session || session.hostSocketId !== socket.id) {
+      logger.warn('linkShare:setAcceptMode', 'Unauthorized attempt');
+      return;
+    }
+
+    // Validate widget ID
+    const widgetValidation = validators.widgetId(data.widgetId);
+    if (!widgetValidation.valid) {
+      logger.warn('linkShare:setAcceptMode', widgetValidation.error);
+      return;
+    }
+
+    const room = session.getRoom('linkShare', data.widgetId);
+    if (!room || !(room instanceof LinkShareRoom)) {
+      logger.warn('linkShare:setAcceptMode', 'Room not found', { widgetId: data.widgetId });
+      return;
+    }
+
+    // Validate accept mode
+    if (data.acceptMode !== 'links' && data.acceptMode !== 'all') {
+      logger.warn('linkShare:setAcceptMode', 'Invalid accept mode', { acceptMode: data.acceptMode });
+      return;
+    }
+
+    room.setAcceptMode(data.acceptMode);
+
+    // Notify all in the room about the mode change
+    const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
+    io.to(`${session.code}:${linkShareRoomId}`).emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
+      isActive: room.isActive,
+      acceptMode: room.acceptMode,
+      widgetId: data.widgetId
+    });
+
+    session.updateActivity();
   });
 
 };

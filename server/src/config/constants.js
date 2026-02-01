@@ -84,6 +84,7 @@ module.exports = {
       SUBMIT: 'session:linkShare:submit',
       DELETE: 'session:linkShare:delete',
       REQUEST_STATE: 'linkShare:requestState',
+      SET_ACCEPT_MODE: 'session:linkShare:setAcceptMode',
       // Server -> Client events
       SUBMITTED: 'session:linkShare:submitted',
       STATE_UPDATE: 'linkShare:stateUpdate',

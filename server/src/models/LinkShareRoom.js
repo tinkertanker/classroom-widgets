@@ -8,6 +8,17 @@ class LinkShareRoom extends Room {
     super(code, widgetId);
     this.submissions = [];
     this.isActive = false; // Link sharing starts paused by default
+    this.acceptMode = 'all'; // 'links' = links only, 'all' = links + text
+  }
+
+  /**
+   * Set the accept mode
+   */
+  setAcceptMode(mode) {
+    if (mode === 'links' || mode === 'all') {
+      this.acceptMode = mode;
+      this.updateActivity();
+    }
   }
 
   getType() {
@@ -15,13 +26,16 @@ class LinkShareRoom extends Room {
   }
 
   /**
-   * Add a new link submission
+   * Add a new submission (link or text)
    */
-  addSubmission(studentName, link) {
+  addSubmission(studentName, content, isLink = true) {
     const submission = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       studentName,
-      link,
+      content,
+      isLink,
+      // Keep 'link' for backward compatibility
+      link: isLink ? content : null,
       timestamp: Date.now()
     };
     this.submissions.push(submission);
@@ -71,7 +85,8 @@ class LinkShareRoom extends Room {
     return {
       ...super.toJSON(),
       submissions: this.submissions,
-      submissionCount: this.getSubmissionCount()
+      submissionCount: this.getSubmissionCount(),
+      acceptMode: this.acceptMode
     };
   }
 }
