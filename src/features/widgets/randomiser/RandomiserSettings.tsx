@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { WidgetTextarea } from '../../../shared/components/WidgetInput';
 import { normaliseChoiceList, stringifyChoiceList } from './utils/choiceList';
+import SavedCollectionsDialog from '../../../shared/components/SavedCollectionsDialog';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { SavedRandomiserList } from '../../../shared/types/storage';
 
 interface RandomiserSettingsProps {
   choices: string[];
@@ -22,6 +25,13 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [input, setInput] = useState(stringifyChoiceList(choices));
   const [removedInput, setRemovedInput] = useState(stringifyChoiceList(removedChoices));
+  const [showSavedDialog, setShowSavedDialog] = useState(false);
+
+  const {
+    saveRandomiserList,
+    getRandomiserLists,
+    deleteRandomiserList,
+  } = useWorkspaceStore();
 
   const updateInputAndNotify = (nextInput: string) => {
     setInput(nextInput);
@@ -60,6 +70,22 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
     onSave?.(activeChoices);
   };
 
+  const handleSaveToCollection = (name: string) => {
+    const activeChoices = getActiveChoicesFromInputs();
+    saveRandomiserList(name, activeChoices);
+    setShowSavedDialog(false);
+  };
+
+  const handleLoadFromCollection = (item: SavedRandomiserList) => {
+    setInput(item.choices.join('\n'));
+    setRemovedInput('');
+    setShowSavedDialog(false);
+  };
+
+  const handleDeleteFromCollection = (id: string) => {
+    deleteRandomiserList(id);
+  };
+
   return (
     <div className="w-[700px] max-w-full">
       <div className="px-6 py-4">
@@ -67,6 +93,15 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
           <div className="flex flex-row items-center justify-between">
             <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">Randomiser Lists</h3>
             <div className="flex space-x-2">
+              <button
+                className="px-3 py-1.5 bg-slate-blue-500 hover:bg-slate-blue-600 dark:bg-slate-blue-600 dark:hover:bg-slate-blue-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                onClick={() => setShowSavedDialog(true)}
+              >
+                <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Saved Lists
+              </button>
               <div className="relative">
                 <button
                   className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
@@ -186,6 +221,21 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Saved Lists Dialog */}
+      {showSavedDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]">
+          <SavedCollectionsDialog
+            type="randomiser"
+            items={getRandomiserLists()}
+            currentItemCount={getActiveChoicesFromInputs().length}
+            onSave={handleSaveToCollection}
+            onLoad={handleLoadFromCollection}
+            onDelete={handleDeleteFromCollection}
+            onClose={() => setShowSavedDialog(false)}
+          />
+        </div>
+      )}
     </div>
   );
 };

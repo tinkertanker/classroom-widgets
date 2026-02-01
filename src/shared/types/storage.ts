@@ -14,6 +14,44 @@
 import { BackgroundType, WidgetType } from './index';
 
 // =============================================================================
+// SAVED COLLECTIONS - Persistent storage for reusable content
+// =============================================================================
+
+/**
+ * Base interface for saved items
+ */
+export interface SavedItem {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Saved randomiser list
+ */
+export interface SavedRandomiserList extends SavedItem {
+  type: 'randomiser';
+  choices: string[];
+}
+
+/**
+ * Saved question bank
+ */
+export interface SavedQuestionBank extends SavedItem {
+  type: 'questions';
+  questions: Array<{ text: string; studentName?: string }>;
+}
+
+/**
+ * Collection of all saved items
+ */
+export interface SavedCollections {
+  randomiserLists: Record<string, SavedRandomiserList>;
+  questionBanks: Record<string, SavedQuestionBank>;
+}
+
+// =============================================================================
 // CURRENT FORMAT (Version 2) - Multi-workspace support
 // =============================================================================
 
@@ -98,6 +136,9 @@ export interface StorageFormatV2 {
     code: string | null;
     createdAt: number | null;
   };
+
+  // Saved collections for reusable content
+  savedCollections: SavedCollections;
 }
 
 // =============================================================================
@@ -204,6 +245,13 @@ export function createDefaultGlobalSettings(): GlobalSettings {
   };
 }
 
+export function createDefaultSavedCollections(): SavedCollections {
+  return {
+    randomiserLists: {},
+    questionBanks: {}
+  };
+}
+
 export function createDefaultStorageV2(): StorageFormatV2 {
   const defaultWorkspaceId = `workspace-${Date.now()}`;
   return {
@@ -216,6 +264,7 @@ export function createDefaultStorageV2(): StorageFormatV2 {
     session: {
       code: null,
       createdAt: null
-    }
+    },
+    savedCollections: createDefaultSavedCollections()
   };
 }

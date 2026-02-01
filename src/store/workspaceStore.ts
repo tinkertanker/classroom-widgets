@@ -1,4 +1,5 @@
 import { BackgroundType, WidgetType, Widget, Position, Size } from '../shared/types';
+import { SavedCollections, SavedRandomiserList, SavedQuestionBank } from '../shared/types/storage';
 
 export interface BottomBarConfig {
   visibleWidgets: WidgetType[];
@@ -48,10 +49,14 @@ export interface WorkspaceStore {
   canUndo: boolean;
   canRedo: boolean;
   focusedWidgetId: string | null;
+  classEndTime: number | null;  // Timestamp for class end time
 
   // Workspace management state
   currentWorkspaceId: string;
   workspaceList: WorkspaceMetadata[];
+
+  // Saved collections state
+  savedCollections: SavedCollections;
   
   // Actions
   setSessionCode: (code: string | null) => void;
@@ -70,6 +75,7 @@ export interface WorkspaceStore {
   resizeWidget: (widgetId: string, size: Size) => void;
   bringToFront: (widgetId: string) => void;
   setFocusedWidget: (widgetId: string | null) => void;
+  setClassEndTime: (time: number | null) => void;
   resetWorkspace: () => void;
   
   // Bottom bar actions
@@ -103,4 +109,12 @@ export interface WorkspaceStore {
   deleteWorkspace: (workspaceId: string) => boolean;
   renameWorkspace: (workspaceId: string, newName: string) => void;
   refreshWorkspaceList: () => void;
+
+  // Saved collections management
+  saveRandomiserList: (name: string, choices: string[]) => string;
+  getRandomiserLists: () => SavedRandomiserList[];
+  deleteRandomiserList: (id: string) => void;
+  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>) => string;
+  getQuestionBanks: () => SavedQuestionBank[];
+  deleteQuestionBank: (id: string) => void;
 }
