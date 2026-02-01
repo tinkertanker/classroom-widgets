@@ -47,7 +47,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
-    'linkShare:newSubmission': (data: any) => {
+    'linkShare:submissionAdded': (data: any) => {
       if (data.widgetId === widgetId) {
         const { widgetId: _, ...submission } = data;
         setSubmissions(prev => [...prev, submission as Submission]);

@@ -442,7 +442,7 @@ const { isActive, toggleActive, setIsActive } = useNetworkedWidgetState({
 ```typescript
 const { emit } = useSocketEvents({
   events: {
-    'poll:dataUpdate': (data) => { /* handle */ },
+    'poll:stateUpdate': (data) => { /* handle */ },
     'poll:voteUpdate': (data) => { /* handle */ }
   },
   isActive: hasRoom
@@ -505,11 +505,11 @@ All events follow `namespace:action` pattern:
 // Widget-specific (always include widgetId)
 'session:poll:vote'
 'session:poll:update'
-'poll:dataUpdate'
+'poll:stateUpdate'
 'poll:voteUpdate'
 
 'session:questions:submit'
-'questions:newQuestion'
+'questions:questionAdded'
 
 // Etc.
 ```

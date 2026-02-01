@@ -62,7 +62,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
-    'rtfeedback:update': (data: any) => {
+    'rtfeedback:dataUpdate': (data: any) => {
       if (data.widgetId === widgetId) {
         const { widgetId: _, ...feedback } = data;
         setFeedbackData(feedback as FeedbackData);

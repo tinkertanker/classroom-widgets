@@ -118,7 +118,6 @@ const requireParticipant = (socket, session) => {
 const EVENT_RATE_LIMITS = {
   // Poll voting - 2 requests per second (prevent rapid vote changes)
   'session:poll:vote': { windowMs: 1000, max: 2 },
-  'poll:vote': { windowMs: 1000, max: 2 },
 
   // Link submissions - 3 requests per 5 seconds
   'session:linkShare:submit': { windowMs: 5000, max: 3 },

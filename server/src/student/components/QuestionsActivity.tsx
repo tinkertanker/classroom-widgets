@@ -57,18 +57,10 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     // Request current state when joining - use sessionCode (new) format
     socket.emit('questions:requestState', { sessionCode: sessionCode, widgetId });
 
-    // Handle combined state update (new event)
+    // Handle combined state update
     const handleStateUpdate = (data: { isActive: boolean; questions: Question[]; widgetId?: string }) => {
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         setIsActive(data.isActive);
-        setQuestions(data.questions || []);
-      }
-    };
-
-    // Handle existing questions list (legacy event)
-    const handleQuestionsList = (data: { questions: Question[]; widgetId?: string }) => {
-      // Only handle if it's for this widget
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         setQuestions(data.questions || []);
       }
     };
@@ -128,37 +120,21 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       setIsSubmitting(false);
     };
 
-    // Register new event listeners
+    // Register event listeners
     socket.on('questions:stateUpdate', handleStateUpdate);
     socket.on('questions:questionAdded', handleQuestionAdded);
     socket.on('questions:questionAnswered', handleQuestionAnswered);
     socket.on('questions:questionDeleted', handleQuestionDeleted);
     socket.on('questions:allCleared', handleAllCleared);
-
-    // Register legacy event listeners for backwards compatibility
-    socket.on('questions:list', handleQuestionsList);
-    socket.on('questions:newQuestion', handleQuestionAdded);
-    socket.on('questionAnswered', handleQuestionAnswered);
-    socket.on('questionDeleted', handleQuestionDeleted);
-    socket.on('allQuestionsCleared', () => handleAllCleared({ widgetId }));
-
-    // Submission response
     socket.on('session:questions:submitted', handleSubmitted);
     socket.on('questions:error', handleError);
 
     return () => {
-      // Clean up new events
       socket.off('questions:stateUpdate', handleStateUpdate);
       socket.off('questions:questionAdded', handleQuestionAdded);
       socket.off('questions:questionAnswered', handleQuestionAnswered);
       socket.off('questions:questionDeleted', handleQuestionDeleted);
       socket.off('questions:allCleared', handleAllCleared);
-      // Clean up legacy events
-      socket.off('questions:list', handleQuestionsList);
-      socket.off('questions:newQuestion', handleQuestionAdded);
-      socket.off('questionAnswered', handleQuestionAnswered);
-      socket.off('questionDeleted', handleQuestionDeleted);
-      socket.off('allQuestionsCleared');
       socket.off('session:questions:submitted', handleSubmitted);
       socket.off('questions:error', handleError);
     };

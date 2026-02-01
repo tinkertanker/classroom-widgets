@@ -147,9 +147,7 @@ const validators = {
     if (!data || typeof data !== 'object') {
       return { valid: false, error: 'Request data is required' };
     }
-    // Support both 'sessionCode' (new) and 'code' (legacy)
-    const sessionCode = data.sessionCode || data.code;
-    const codeResult = validators.sessionCode(sessionCode);
+    const codeResult = validators.sessionCode(data.sessionCode);
     if (!codeResult.valid) {
       return codeResult;
     }

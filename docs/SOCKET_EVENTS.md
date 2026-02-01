@@ -145,7 +145,7 @@ Rate limit response:
 **Configuration**
 
 *   `Teacher → Server`: `session:poll:update` with `{ sessionCode, widgetId, pollData }`
-*   `Server → All`: `poll:dataUpdate` with `{ pollData, results, widgetId }`
+*   `Server → All`: `poll:stateUpdate` with `{ pollData, results, widgetId }`
     - `pollData`: Contains question, options, and isActive state (votes excluded)
     - `results`: Contains votes object, totalVotes, and participantCount
     - `widgetId`: Widget instance identifier
@@ -158,8 +158,8 @@ Rate limit response:
 
 **State Synchronization**
 
-*   `Student → Server`: `poll:requestState` with `{ code, widgetId }`
-*   `Server → Student`: `poll:dataUpdate` with `{ pollData, results, widgetId }`
+*   `Student → Server`: `poll:requestState` with `{ sessionCode, widgetId }`
+*   `Server → Student`: `poll:stateUpdate` with `{ pollData, results, widgetId }`
 
 **Widget Reset (Generic)**
 
@@ -173,23 +173,20 @@ For Poll widgets specifically:
 *   `Server → All`: `poll:voteUpdate` with `{ votes: {}, totalVotes: 0, widgetId }`
     - Students detect totalVotes=0 and clear their selection
 
-Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for backward compatibility.
-
 ### Link Share Widget
 
 **Submissions**
 
 *   `Student → Server`: `session:linkShare:submit` with `{ sessionCode, widgetId, studentName, link }`
 *   `Server → Student`: `session:linkShare:submitted` with `{ success, error? }`
-*   `Server → Teacher`: `linkShare:newSubmission` with `{ id, studentName, link, timestamp, widgetId }`
-    - Note: The submission data is spread with widgetId added
+*   `Server → All`: `linkShare:submissionAdded` with `{ id, studentName, link, timestamp, widgetId }`
 *   `Teacher → Server`: `session:linkShare:delete` with `{ sessionCode, widgetId, submissionId }`
 *   `Server → All`: `linkShare:submissionDeleted` with `{ submissionId, widgetId }`
 
 **State Synchronization**
 
-*   `Student → Server`: `linkShare:requestState` with `{ code, widgetId }`
-*   `Server → Student`: `linkShare:stateChanged` with `{ isActive, widgetId }`
+*   `Student → Server`: `linkShare:requestState` with `{ sessionCode, widgetId }`
+*   `Server → Student`: `linkShare:stateUpdate` with `{ isActive, widgetId }`
 
 ### Real-Time Feedback Widget
 
@@ -197,12 +194,12 @@ Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for b
 
 *   `Student → Server`: `session:rtfeedback:submit` with `{ sessionCode, widgetId, value }`
 *   `Server → Student`: `session:rtfeedback:submitted` with `{ success, error? }`
-*   `Server → All`: `rtfeedback:update` with `{ understanding, totalResponses, widgetId }`
+*   `Server → All`: `rtfeedback:dataUpdate` with `{ understanding, totalResponses, widgetId }`
 
 **Reset**
 
 *   `Teacher → Server`: `session:rtfeedback:reset` with `{ sessionCode, widgetId }`
-*   `Server → All`: `rtfeedback:update` with `{ understanding, totalResponses, widgetId }`
+*   `Server → All`: `rtfeedback:dataUpdate` with `{ understanding, totalResponses, widgetId }`
 
 ### Questions Widget
 
@@ -210,7 +207,7 @@ Note: Legacy endpoints `poll:vote` and `vote:confirmed` are also supported for b
 
 *   `Student → Server`: `session:questions:submit` with `{ sessionCode, widgetId, question, studentName }`
 *   `Server → Student`: `session:questions:submitted` with `{ success, error? }`
-*   `Server → Teacher`: `questions:newQuestion` with `{ id, studentName, text, timestamp, answered, widgetId }`
+*   `Server → All`: `questions:questionAdded` with `{ id, studentName, text, timestamp, answered, widgetId }`
     - Note: Student sends `question` field, but server broadcasts as `text` field
 
 **Management**
@@ -356,7 +353,7 @@ Manages socket event listeners with automatic cleanup:
 ```typescript
 const { emit, emitWithAck } = useUnifiedSocketEvents({
   events: {
-    'poll:dataUpdate': (data) => { /* Handle update */ },
+    'poll:stateUpdate': (data) => { /* Handle update */ },
     'poll:voteUpdate': (data) => { /* Handle votes */ },
     'session:widgetStateChanged': (data) => { /* Handle state */ }
   },
@@ -394,7 +391,7 @@ function Poll({ widgetId, savedState, onStateChange }: PollProps) {
   
   // 4. Socket Event Handlers
   const socketEvents = useMemo(() => ({
-    'poll:dataUpdate': (data) => { /* Update poll data */ },
+    'poll:stateUpdate': (data) => { /* Update poll data */ },
     'poll:voteUpdate': (data) => { /* Update vote results */ },
     'session:widgetStateChanged': (data) => { /* Update active state */ }
   }), [widgetId]);

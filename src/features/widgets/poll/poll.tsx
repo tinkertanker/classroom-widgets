@@ -78,10 +78,10 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only, state change handled by useNetworkedWidgetState)
   const socketEvents = useMemo(() => ({
-    'poll:dataUpdate': (data: any) => {
-      debug('[Poll] Received poll:dataUpdate:', data, 'for widget:', widgetId);
+    'poll:stateUpdate': (data: any) => {
+      debug('[Poll] Received poll:stateUpdate:', data, 'for widget:', widgetId);
       if (data.widgetId === widgetId) {
-        debug('[Poll] Processing dataUpdate for our widget');
+        debug('[Poll] Processing stateUpdate for our widget');
         if (data.pollData) {
           setPollData(data.pollData);
         }

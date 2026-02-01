@@ -50,7 +50,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
-    'questions:newQuestion': (data: any) => {
+    'questions:questionAdded': (data: any) => {
       if (data.widgetId === widgetId) {
         const question: Question = {
           id: data.id,

@@ -26,24 +26,19 @@ export const useWidgetStateChange = ({
       }
     };
 
-    // Also listen for the legacy event for backward compatibility
-    const handleLegacyStateChanged = (data: { isActive: boolean; widgetId?: string }) => {
+    const handleStateUpdate = (data: { isActive: boolean; widgetId?: string }) => {
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         onStateChange(data.isActive);
       }
     };
 
     socket.on('session:widgetStateChanged', handleWidgetStateChanged);
-    // Listen for new stateUpdate event
-    socket.on(`${roomType}:stateUpdate`, handleLegacyStateChanged);
-    // Also listen for legacy stateChanged event for backward compatibility
-    socket.on(`${roomType}:stateChanged`, handleLegacyStateChanged);
+    socket.on(`${roomType}:stateUpdate`, handleStateUpdate);
 
     // Request current state if we don't have initial state
     let timer: NodeJS.Timeout | undefined;
     if (initialIsActive === undefined) {
       timer = setTimeout(() => {
-        // Use sessionCode (new) instead of code (legacy)
         socket.emit(`${roomType}:requestState`, { sessionCode: roomCode, widgetId });
       }, 100);
     }
@@ -51,8 +46,7 @@ export const useWidgetStateChange = ({
     return () => {
       if (timer) clearTimeout(timer);
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
-      socket.off(`${roomType}:stateUpdate`, handleLegacyStateChanged);
-      socket.off(`${roomType}:stateChanged`, handleLegacyStateChanged);
+      socket.off(`${roomType}:stateUpdate`, handleStateUpdate);
     };
   }, [socket, roomCode, roomType, widgetId, initialIsActive, onStateChange]);
 };

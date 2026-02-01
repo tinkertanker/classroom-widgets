@@ -76,11 +76,8 @@ module.exports = {
       REQUEST_STATE: 'poll:requestState',
       // Server -> Client events
       VOTE_CONFIRMED: 'session:poll:voteConfirmed',
-      STATE_UPDATE: 'poll:stateUpdate',        // Renamed from DATA_UPDATE
-      VOTE_UPDATE: 'poll:voteUpdate',
-      // Legacy events (keep for backwards compatibility during migration)
-      DATA_UPDATE: 'poll:dataUpdate',          // @deprecated - use STATE_UPDATE
-      STATE_CHANGED: 'poll:stateChanged'       // @deprecated
+      STATE_UPDATE: 'poll:stateUpdate',
+      VOTE_UPDATE: 'poll:voteUpdate'
     },
     LINK_SHARE: {
       // Client -> Server events
@@ -89,12 +86,9 @@ module.exports = {
       REQUEST_STATE: 'linkShare:requestState',
       // Server -> Client events
       SUBMITTED: 'session:linkShare:submitted',
-      STATE_UPDATE: 'linkShare:stateUpdate',           // Renamed from STATE_CHANGED
-      SUBMISSION_ADDED: 'linkShare:submissionAdded',   // Renamed from NEW_SUBMISSION
-      SUBMISSION_DELETED: 'linkShare:submissionDeleted',
-      // Legacy events (keep for backwards compatibility during migration)
-      NEW_SUBMISSION: 'linkShare:newSubmission',       // @deprecated - use SUBMISSION_ADDED
-      STATE_CHANGED: 'linkShare:stateChanged'          // @deprecated - use STATE_UPDATE
+      STATE_UPDATE: 'linkShare:stateUpdate',
+      SUBMISSION_ADDED: 'linkShare:submissionAdded',
+      SUBMISSION_DELETED: 'linkShare:submissionDeleted'
     },
     RT_FEEDBACK: {
       // Client -> Server events
@@ -103,11 +97,8 @@ module.exports = {
       REQUEST_STATE: 'rtfeedback:requestState',
       // Server -> Client events
       SUBMITTED: 'session:rtfeedback:submitted',
-      STATE_UPDATE: 'rtfeedback:stateUpdate',   // Renamed from STATE_CHANGED
-      DATA_UPDATE: 'rtfeedback:dataUpdate',     // Renamed from 'rtfeedback:update'
-      // Legacy events (keep for backwards compatibility during migration)
-      STATE_CHANGED: 'rtfeedback:stateChanged', // @deprecated - use STATE_UPDATE
-      UPDATE: 'rtfeedback:update'               // @deprecated - use DATA_UPDATE
+      STATE_UPDATE: 'rtfeedback:stateUpdate',
+      DATA_UPDATE: 'rtfeedback:dataUpdate'
     },
     QUESTIONS: {
       // Client -> Server events
@@ -118,15 +109,11 @@ module.exports = {
       REQUEST_STATE: 'questions:requestState',
       // Server -> Client events
       SUBMITTED: 'session:questions:submitted',
-      STATE_UPDATE: 'questions:stateUpdate',           // Renamed from STATE_CHANGED + LIST combined
-      QUESTION_ADDED: 'questions:questionAdded',       // Renamed from NEW_QUESTION
+      STATE_UPDATE: 'questions:stateUpdate',
+      QUESTION_ADDED: 'questions:questionAdded',
       QUESTION_ANSWERED: 'questions:questionAnswered',
       QUESTION_DELETED: 'questions:questionDeleted',
-      ALL_CLEARED: 'questions:allCleared',
-      // Legacy events (keep for backwards compatibility during migration)
-      STATE_CHANGED: 'questions:stateChanged',         // @deprecated - use STATE_UPDATE
-      LIST: 'questions:list',                          // @deprecated - use STATE_UPDATE
-      NEW_QUESTION: 'questions:newQuestion'            // @deprecated - use QUESTION_ADDED
+      ALL_CLEARED: 'questions:allCleared'
     }
   }
 };

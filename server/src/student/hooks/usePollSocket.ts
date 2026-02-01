@@ -115,9 +115,8 @@ export const usePollSocket = ({
       }
     };
 
-    // Register listeners - listen to both new and legacy event names for backwards compatibility
-    socket.on('poll:stateUpdate', handleDataUpdate);   // New event name
-    socket.on('poll:dataUpdate', handleDataUpdate);    // Legacy event name
+    // Register listeners
+    socket.on('poll:stateUpdate', handleDataUpdate);
     socket.on('poll:voteUpdate', handleVoteUpdate);
     socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
 
@@ -136,7 +135,6 @@ export const usePollSocket = ({
     return () => {
       if (timer) clearTimeout(timer);
       socket.off('poll:stateUpdate', handleDataUpdate);
-      socket.off('poll:dataUpdate', handleDataUpdate);
       socket.off('poll:voteUpdate', handleVoteUpdate);
       socket.off('session:poll:voteConfirmed', handleVoteConfirmed);
     };

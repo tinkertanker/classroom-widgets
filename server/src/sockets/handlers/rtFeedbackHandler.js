@@ -71,18 +71,14 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       widgetId: data.widgetId
     };
 
-    // Emit both new and legacy events
     io.to(`${session.code}:${rtfeedbackRoomId}`).emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, updateData);
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit(EVENTS.RT_FEEDBACK.UPDATE, updateData); // Legacy
 
     session.updateActivity();
   });
 
   // Student requests rtfeedback state (on join/refresh)
   socket.on(EVENTS.RT_FEEDBACK.REQUEST_STATE, (data) => {
-    // Support both 'sessionCode' (new) and 'code' (legacy)
-    const sessionCode = data.sessionCode || data.code;
-    const { widgetId } = data;
+    const { sessionCode, widgetId } = data;
 
     // Validate input
     const sessionValidation = validators.sessionCode(sessionCode);
@@ -107,9 +103,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
           widgetId: widgetId
         };
 
-        // Emit both new and legacy events
         socket.emit(EVENTS.RT_FEEDBACK.STATE_UPDATE, stateData);
-        socket.emit(EVENTS.RT_FEEDBACK.STATE_CHANGED, stateData); // Legacy
       }
     }
   });
@@ -144,9 +138,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       widgetId: data.widgetId
     };
 
-    // Emit both new and legacy events
     io.to(`${session.code}:${rtfeedbackRoomId}`).emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, updateData);
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit(EVENTS.RT_FEEDBACK.UPDATE, updateData); // Legacy
 
     session.updateActivity();
   });

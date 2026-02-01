@@ -89,9 +89,7 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
       widgetId: data.widgetId
     };
 
-    // Emit both new and legacy events
     io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.QUESTION_ADDED, questionData);
-    io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.NEW_QUESTION, questionData); // Legacy
 
     session.updateActivity();
   });
@@ -193,9 +191,7 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
 
   // Student requests questions state (on join/refresh)
   socket.on(EVENTS.QUESTIONS.REQUEST_STATE, (data) => {
-    // Support both 'sessionCode' (new) and 'code' (legacy)
-    const sessionCode = data.sessionCode || data.code;
-    const { widgetId } = data;
+    const { sessionCode, widgetId } = data;
 
     // Validate input
     const sessionValidation = validators.sessionCode(sessionCode);
@@ -215,20 +211,8 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     if (session) {
       const room = session.getRoom('questions', widgetId);
       if (room && room instanceof QuestionsRoom) {
-        // Emit the unified state update (new format)
         socket.emit(EVENTS.QUESTIONS.STATE_UPDATE, {
           isActive: room.isActive,
-          questions: room.getQuestions(),
-          widgetId: widgetId
-        });
-
-        // Also emit legacy events for backwards compatibility
-        socket.emit(EVENTS.QUESTIONS.STATE_CHANGED, {
-          isActive: room.isActive,
-          widgetId: widgetId
-        });
-
-        socket.emit(EVENTS.QUESTIONS.LIST, {
           questions: room.getQuestions(),
           widgetId: widgetId
         });

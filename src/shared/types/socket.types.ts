@@ -331,61 +331,41 @@ export interface ServerToClientEvents {
   'session:hostDisconnected': () => void;
   'session:hostReconnected': () => void;
 
-  // Poll events - new standardized names
+  // Poll events
   'poll:stateUpdate': (data: PollDataUpdateData) => void;
   'poll:voteUpdate': (data: PollVoteUpdateData) => void;
   'session:poll:voteConfirmed': (data: SessionPollVoteConfirmedResponse) => void;
-  /** @deprecated Use poll:stateUpdate instead */
-  'poll:dataUpdate': (data: PollDataUpdateData) => void;
 
-  // Link Share events - new standardized names
+  // Link Share events
   'linkShare:stateUpdate': (data: LinkShareStateChangedData) => void;
   'linkShare:submissionAdded': (data: LinkShareNewSubmissionData) => void;
   'linkShare:submissionDeleted': (data: LinkShareSubmissionDeletedData) => void;
   'session:linkShare:submitted': (data: SessionLinkShareSubmittedResponse) => void;
-  /** @deprecated Use linkShare:stateUpdate instead */
-  'linkShare:stateChanged': (data: LinkShareStateChangedData) => void;
-  /** @deprecated Use linkShare:submissionAdded instead */
-  'linkShare:newSubmission': (data: LinkShareNewSubmissionData) => void;
 
-  // RT Feedback events - new standardized names
+  // RT Feedback events
   'rtfeedback:stateUpdate': (data: LinkShareStateChangedData) => void;
   'rtfeedback:dataUpdate': (data: RTFeedbackUpdateData) => void;
   'session:rtfeedback:submitted': (data: SessionRTFeedbackSubmittedResponse) => void;
-  /** @deprecated Use rtfeedback:stateUpdate instead */
-  'rtfeedback:stateChanged': (data: LinkShareStateChangedData) => void;
-  /** @deprecated Use rtfeedback:dataUpdate instead */
-  'rtfeedback:update': (data: RTFeedbackUpdateData) => void;
 
-  // Questions events - new standardized names
+  // Questions events
   'questions:stateUpdate': (data: { isActive: boolean; questions: Question[]; widgetId: string }) => void;
   'questions:questionAdded': (data: QuestionsNewQuestionData) => void;
   'questions:questionAnswered': (data: QuestionsQuestionAnsweredData) => void;
   'questions:questionDeleted': (data: QuestionsQuestionDeletedData) => void;
   'questions:allCleared': (data: QuestionsAllClearedData) => void;
   'session:questions:submitted': (data: SessionQuestionsSubmittedResponse) => void;
-  /** @deprecated Use questions:stateUpdate instead */
-  'questions:stateChanged': (data: { isActive: boolean; widgetId: string }) => void;
-  /** @deprecated Use questions:stateUpdate instead */
-  'questions:list': (data: { questions: Question[]; widgetId: string }) => void;
-  /** @deprecated Use questions:questionAdded instead */
-  'questions:newQuestion': (data: QuestionsNewQuestionData) => void;
 }
 
 /** Request state data for RT Feedback */
 export interface RTFeedbackRequestStateData {
   sessionCode: string;
   widgetId: string;
-  /** @deprecated Use sessionCode instead */
-  code?: string;
 }
 
 /** Request state data for Questions */
 export interface QuestionsRequestStateData {
   sessionCode: string;
   widgetId: string;
-  /** @deprecated Use sessionCode instead */
-  code?: string;
 }
 
 /** Data for session:cleanupRooms event */

@@ -82,7 +82,6 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     };
 
     io.to(`${session.code}:${linkShareRoomId}`).emit(EVENTS.LINK_SHARE.SUBMISSION_ADDED, submissionData);
-    io.to(`${session.code}:${linkShareRoomId}`).emit(EVENTS.LINK_SHARE.NEW_SUBMISSION, submissionData); // Legacy
 
     // Send confirmation to submitter
     socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createSuccessResponse());
@@ -124,9 +123,7 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
 
   // Student requests linkShare state (on join/refresh)
   socket.on(EVENTS.LINK_SHARE.REQUEST_STATE, (data) => {
-    // Support both 'sessionCode' (new) and 'code' (legacy)
-    const sessionCode = data.sessionCode || data.code;
-    const { widgetId } = data;
+    const { sessionCode, widgetId } = data;
 
     // Validate input
     const sessionValidation = validators.sessionCode(sessionCode);
@@ -146,14 +143,10 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     if (session) {
       const room = session.getRoom('linkShare', widgetId);
       if (room && room instanceof LinkShareRoom) {
-        const stateData = {
+        socket.emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
           isActive: room.isActive,
           widgetId: widgetId
-        };
-
-        // Emit both new and legacy events
-        socket.emit(EVENTS.LINK_SHARE.STATE_UPDATE, stateData);
-        socket.emit(EVENTS.LINK_SHARE.STATE_CHANGED, stateData); // Legacy
+        });
       }
     }
   });

@@ -39,7 +39,6 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     // Use setPollData to ensure proper initialization
     room.setPollData(data.pollData);
 
-    // Emit to both new and legacy event names for backwards compatibility
     const roomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
     const { votes, ...pollDataWithoutVotes } = room.pollData;
 
@@ -50,10 +49,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     };
 
     logger.debug('poll:update', 'Broadcasting poll data', { roomId: `${session.code}:${roomId}` });
-
-    // Emit both new and legacy events
     io.to(`${session.code}:${roomId}`).emit(EVENTS.POLL.STATE_UPDATE, updateData);
-    io.to(`${session.code}:${roomId}`).emit(EVENTS.POLL.DATA_UPDATE, updateData); // Legacy
 
     session.updateActivity();
   });
@@ -61,9 +57,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
 
   // Student requests poll state (on join/refresh)
   socket.on(EVENTS.POLL.REQUEST_STATE, (data) => {
-    // Support both 'sessionCode' (new) and 'code' (legacy)
-    const sessionCode = data.sessionCode || data.code;
-    const { widgetId } = data;
+    const { sessionCode, widgetId } = data;
 
     // Validate input
     const sessionValidation = validators.sessionCode(sessionCode);
@@ -91,9 +85,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
           widgetId: widgetId
         };
 
-        // Emit both new and legacy events
         socket.emit(EVENTS.POLL.STATE_UPDATE, stateData);
-        socket.emit(EVENTS.POLL.DATA_UPDATE, stateData); // Legacy
 
         // Also emit the widget's active state
         socket.emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
@@ -105,65 +97,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     }
   });
 
-  // Handle student vote submission (legacy event)
-  socket.on('poll:vote', (data) => {
-    // Support both 'sessionCode' (new) and 'code' (legacy)
-    const sessionCode = data.sessionCode || data.code;
-    const { widgetId, optionIndex } = data;
-
-    const session = sessionManager.getSession(sessionCode);
-
-    if (!session) {
-      socket.emit('vote:confirmed', createErrorResponse('INVALID_SESSION'));
-      return;
-    }
-
-    const room = session.getRoom('poll', widgetId);
-    if (!room || !(room instanceof PollRoom)) {
-      socket.emit('vote:confirmed', createErrorResponse('ROOM_NOT_FOUND'));
-      return;
-    }
-
-    // Check if poll is active
-    if (!room.isActive) {
-      socket.emit('vote:confirmed', createErrorResponse('WIDGET_PAUSED'));
-      return;
-    }
-
-    // Validate option index
-    const optionCount = room.pollData?.options?.length || 0;
-    const optionValidation = validators.pollOption(optionIndex, optionCount);
-    if (!optionValidation.valid) {
-      socket.emit('vote:confirmed', createErrorResponse('INVALID_INPUT', optionValidation.error));
-      return;
-    }
-
-    // Check if participant has already voted
-    const participant = session.getParticipant(socket.id);
-    if (!participant) {
-      socket.emit('vote:confirmed', createErrorResponse('NOT_PARTICIPANT'));
-      return;
-    }
-
-    // Record vote
-    if (room.vote(socket.id, optionIndex)) {
-      socket.emit('vote:confirmed', createSuccessResponse());
-
-      // Emit updated vote counts to all in the room
-      const pollRoomId = widgetId ? `poll:${widgetId}` : 'poll';
-      io.to(`${session.code}:${pollRoomId}`).emit(EVENTS.POLL.VOTE_UPDATE, {
-        votes: room.getVoteCounts(),
-        totalVotes: room.getTotalVotes(),
-        widgetId: widgetId
-      });
-    } else {
-      socket.emit('vote:confirmed', createErrorResponse('ALREADY_VOTED'));
-    }
-
-    session.updateActivity();
-  });
-
-  // Handle session-based poll vote (primary event)
+  // Handle session-based poll vote
   socket.on(EVENTS.POLL.VOTE, (data) => {
     const { sessionCode, widgetId, optionIndex } = data;
     logger.debug('poll:vote', 'Received vote', { sessionCode, widgetId, optionIndex });

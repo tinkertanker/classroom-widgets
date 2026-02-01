@@ -19,7 +19,7 @@ export const createWidgetEventNames = (roomType: RoomType, widgetId?: string) =>
     started: `${roomId}:started`,
     stopped: `${roomId}:stopped`,
     updated: `${roomId}:updated`,
-    stateChanged: `${roomId}:stateChanged`,
+    stateUpdate: `${roomId}:stateUpdate`,
     
     // Student events
     submit: `session:${roomId}:submit`,
