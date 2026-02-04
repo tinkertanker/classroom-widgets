@@ -11,27 +11,32 @@ export function useWidgetState<T>({
   onStateChange, 
   savedState 
 }: UseWidgetStateOptions<T>) {
-  const [state, setState] = useState<T>(savedState || initialState);
+  const [state, setStateInternal] = useState<T>(savedState || initialState);
 
-  // Update parent when state changes
-  useEffect(() => {
-    onStateChange?.(state);
-  }, [state, onStateChange]);
+  const setState = useCallback((nextState: React.SetStateAction<T>) => {
+    setStateInternal((prevState) => {
+      const resolvedState = typeof nextState === 'function'
+        ? (nextState as (prev: T) => T)(prevState)
+        : nextState;
+      onStateChange?.(resolvedState);
+      return resolvedState;
+    });
+  }, [onStateChange]);
 
   // Update state when savedState changes
   useEffect(() => {
     if (savedState) {
       setState(savedState);
     }
-  }, [savedState]);
+  }, [savedState, setState]);
 
   const updateState = useCallback((updates: Partial<T>) => {
     setState(prev => ({ ...prev, ...updates }));
-  }, []);
+  }, [setState]);
 
   const resetState = useCallback(() => {
     setState(initialState);
-  }, [initialState]);
+  }, [setState, initialState]);
 
   return {
     state,

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useModal } from '../../contexts/ModalContext';
 
 interface UseWidgetSettingsOptions<T> {
@@ -30,22 +30,26 @@ export function useWidgetSettings<T extends object>(
   options: UseWidgetSettingsOptions<T>
 ): UseWidgetSettingsReturn<T> {
   const { showModal, hideModal } = useModal();
-  const [state, setState] = useState<T>(options.initialState || {} as T);
+  const { title, initialState, onStateChange, modalClassName } = options;
+  const [state, setStateInternal] = useState<T>(initialState || {} as T);
 
-  // Notify parent of state changes
-  useEffect(() => {
-    if (options.onStateChange) {
-      options.onStateChange(state);
-    }
-  }, [state, options]);
+  const setState = useCallback((nextState: React.SetStateAction<T>) => {
+    setStateInternal((prevState) => {
+      const resolvedState = typeof nextState === 'function'
+        ? (nextState as (prev: T) => T)(prevState)
+        : nextState;
+      onStateChange?.(resolvedState);
+      return resolvedState;
+    });
+  }, [onStateChange]);
 
   const updateState = useCallback((updates: Partial<T>) => {
     setState(prev => ({ ...prev, ...updates }));
-  }, []);
+  }, [setState]);
 
   const openSettings = useCallback(() => {
     showModal({
-      title: options.title,
+      title,
       content: (
         <SettingsComponent
           state={state}
@@ -53,9 +57,9 @@ export function useWidgetSettings<T extends object>(
           onClose={hideModal}
         />
       ),
-      className: options.modalClassName || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl"
+      className: modalClassName || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl"
     });
-  }, [showModal, hideModal, state, updateState, options.title, options.modalClassName, SettingsComponent]);
+  }, [showModal, hideModal, state, updateState, title, modalClassName, SettingsComponent]);
 
   return {
     state,
