@@ -1,11 +1,17 @@
 import { useState, useCallback, type SetStateAction } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
-interface ListItem {
+export interface ListItem {
   id: string;
   text: string;
   status: number;
   isEditing?: boolean;
+}
+
+export interface ListWidgetState {
+  items: ListItem[];
+  inputs: string[];
+  statuses: number[];
 }
 
 interface UseListItemsOptions {
@@ -15,7 +21,7 @@ interface UseListItemsOptions {
     statuses: number[];
     items?: ListItem[];
   };
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: ListWidgetState) => void;
 }
 
 /**
