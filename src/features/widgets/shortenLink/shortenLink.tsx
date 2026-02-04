@@ -3,6 +3,7 @@ import axios from 'axios';
 import QRCode from 'react-qr-code';
 import { WidgetInput } from '../../../shared/components/WidgetInput';
 import { widgetContainer } from '../../../shared/utils/styles';
+import { useTemporaryState } from '../../../shared/hooks/useTemporaryState';
 
 // Use environment variables for API configuration
 const API_KEY = import.meta.env.VITE_SHORTIO_API_KEY || '';
@@ -16,7 +17,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
   const [shortenedLink, setShortenedLink] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
+  const { value: copied, setTemporaryValue: showCopied, clear: clearCopied } = useTemporaryState(false, 2000);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,14 +67,14 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shortenedLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    showCopied(true);
   };
 
   const resetForm = () => {
     setLink('');
     setShortenedLink('');
     setError(null);
+    clearCopied();
   };
 
   return (
