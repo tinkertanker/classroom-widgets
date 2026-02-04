@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAutoFontSize } from './hooks';
 import { cn, widgetContainer } from '../../../shared/utils/styles';
+import { useWidgetState } from '../../../shared/hooks/useWidgetState';
 
 interface TextBannerProps {
   savedState?: { text: string; colorIndex?: number };
@@ -17,9 +18,25 @@ const colorCombinations = [
   { bg: 'bg-blue-600 dark:bg-blue-700', text: 'text-soft-white dark:text-white' }
 ];
 
+const PLACEHOLDER_TEXT = 'Double-click to edit';
+
+const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER_TEXT);
+
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
-  const [text, setText] = useState(savedState?.text || 'Double-click to edit');
-  const [colorIndex, setColorIndex] = useState(savedState?.colorIndex ?? 0);
+  const normalisedSavedState = savedState
+    ? {
+        text: normaliseText(savedState.text),
+        colorIndex: savedState.colorIndex ?? 0
+      }
+    : undefined;
+
+  const { state, updateState } = useWidgetState({
+    initialState: { text: PLACEHOLDER_TEXT, colorIndex: 0 },
+    savedState: normalisedSavedState,
+    onStateChange
+  });
+
+  const { text, colorIndex } = state;
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(text);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,27 +65,18 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     }
   }, [isEditing]);
 
-  // Update state and notify parent
-  const updateState = (newText?: string, newColorIndex?: number) => {
-    const finalText = newText !== undefined ? (newText || 'Double-click to edit') : text;
-    const finalColorIndex = newColorIndex !== undefined ? newColorIndex : colorIndex;
-    
-    if (newText !== undefined) setText(finalText);
-    if (newColorIndex !== undefined) setColorIndex(finalColorIndex);
-    
-    if (onStateChange) {
-      onStateChange({ text: finalText, colorIndex: finalColorIndex });
-    }
+  const commitText = (nextText: string) => {
+    updateState({ text: normaliseText(nextText) });
   };
 
   const handleBlur = () => {
-    updateState(editText);
+    commitText(editText);
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      updateState(editText);
+      commitText(editText);
       setIsEditing(false);
     }
   };
@@ -77,7 +85,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     // Only cycle colors on single click when not editing
     if (!isEditing && e.detail === 1) {
       const nextIndex = (colorIndex + 1) % colorCombinations.length;
-      updateState(undefined, nextIndex);
+      updateState({ colorIndex: nextIndex });
     }
   };
 
