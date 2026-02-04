@@ -8,11 +8,18 @@ interface UseWordleGameProps {
     currentGuess?: string;
     gameStatus?: 'playing' | 'won' | 'lost';
   };
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: WordleState) => void;
 }
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
+
+interface WordleState {
+  targetWord: string;
+  guesses: string[];
+  currentGuess: string;
+  gameStatus: 'playing' | 'won' | 'lost';
+}
 
 export const useWordleGame = ({
   initialState,
