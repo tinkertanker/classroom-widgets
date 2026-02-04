@@ -120,12 +120,17 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
     toggleActive();
   }, [hasRoom, toggleActive]);
 
+  const unansweredCount = useMemo(
+    () => questions.filter(question => !question.answered).length,
+    [questions]
+  );
+
   // Sort questions: unanswered first, then by timestamp
   const sortedQuestions = useMemo(() => [...questions].sort((a, b) => {
     if (a.answered !== b.answered) {
       return a.answered ? 1 : -1;
     }
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    return b.timestamp.getTime() - a.timestamp.getTime();
   }), [questions]);
 
   // Save state
@@ -182,8 +187,8 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
         {/* Statistics */}
         <NetworkedWidgetStats>
           {questions.length} question{questions.length !== 1 ? 's' : ''}
-          {questions.filter(q => !q.answered).length > 0 &&
-            ` (${questions.filter(q => !q.answered).length} unanswered)`
+          {unansweredCount > 0 &&
+            ` (${unansweredCount} unanswered)`
           }
         </NetworkedWidgetStats>
 
@@ -204,8 +209,8 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedQuestions.map((question) => {
-                const colorIndex = questions.indexOf(question) % 10;
+              {sortedQuestions.map((question, index) => {
+                const colorIndex = index % 10;
                 const bgColor = getQuestionColor(colorIndex);
 
                 return (
