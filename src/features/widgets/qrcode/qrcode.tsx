@@ -2,18 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { WidgetInput } from '../../../shared/components/WidgetInput';
 import { widgetContainer } from '../../../shared/utils/styles';
+import { useWidgetState } from '../../../shared/hooks/useWidgetState';
 
 interface QRCodeWidgetProps {
   savedState?: {
     url: string;
     title: string;
   };
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: { url: string; title: string }) => void;
 }
 
 function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
-  const [url, setUrl] = useState(savedState?.url || '');
-  const [title, setTitle] = useState(savedState?.title || '');
+  const { state, updateState } = useWidgetState<{ url: string; title: string }>({
+    initialState: { url: '', title: '' },
+    savedState,
+    onStateChange
+  });
+  const { url, title } = state;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -44,27 +49,19 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     }
   }, [url]);
 
-  // Update parent state when URL or title changes
-  useEffect(() => {
-    if (onStateChange) {
-      onStateChange({ url, title });
-    }
-  }, [url, title, onStateChange]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const urlInput = (e.target as HTMLFormElement).url.value;
     if (urlInput) {
-      setUrl(urlInput);
-      // Set title to URL if title is empty
-      if (!title) {
-        setTitle(urlInput);
-      }
+      updateState({
+        url: urlInput,
+        title: title || urlInput
+      });
     }
   };
 
   const handleTitleSave = () => {
-    setTitle(tempTitle);
+    updateState({ title: tempTitle });
     setIsEditingTitle(false);
   };
 
@@ -140,8 +137,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
             <div 
               className="bg-white p-2 rounded-lg shadow-inner cursor-pointer flex-1 flex items-center justify-center"
               onDoubleClick={(_e) => {
-                setUrl('');
-                setTitle('');
+                updateState({ url: '', title: '' });
               }}
               title="Double-click to change URL"
             >
