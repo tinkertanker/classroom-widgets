@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { cn, buttons, widgetControls, widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
+import { useWidgetState } from '../../../shared/hooks/useWidgetState';
 
 interface TicTacToeProps {
   savedState?: GameState;
@@ -37,17 +38,11 @@ const winningCombinations = [
 ];
 
 const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
-  const [gameState, setGameState] = useState<GameState>(savedState || initialState);
-
-  useEffect(() => {
-    if (savedState) {
-      setGameState(savedState);
-    }
-  }, [savedState]);
-
-  useEffect(() => {
-    onStateChange?.(gameState);
-  }, [gameState, onStateChange]);
+  const { state: gameState, setState: setGameState } = useWidgetState<GameState>({
+    initialState,
+    savedState,
+    onStateChange
+  });
 
   const checkWinner = (board: (string | null)[]): string | null => {
     for (const combination of winningCombinations) {
