@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useCallback, type SetStateAction } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 interface ListItem {
@@ -37,86 +37,83 @@ export function useListItems({ initialItems, savedState, onStateChange }: UseLis
     return [{ id: uuidv4(), text: "", status: 0 }];
   });
 
-  const isFirstRender = useRef(true);
+  const notifyStateChange = useCallback((nextItems: ListItem[]) => {
+    if (!onStateChange) return;
+    onStateChange({
+      items: nextItems,
+      // Keep backward compatibility
+      inputs: nextItems.map(item => item.text),
+      statuses: nextItems.map(item => item.status)
+    });
+  }, [onStateChange]);
 
-  // Notify parent of state changes
-  const updateState = useCallback(() => {
-    if (onStateChange) {
-      onStateChange({
-        items,
-        // Keep backward compatibility
-        inputs: items.map(item => item.text),
-        statuses: items.map(item => item.status)
-      });
-    }
-  }, [items, onStateChange]);
-
-  // Update state whenever items change (skip initial render)
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    updateState();
-  }, [items, updateState]);
+  const setItemsAndNotify = useCallback((nextItems: SetStateAction<ListItem[]>) => {
+    setItems(prevItems => {
+      const resolvedItems = typeof nextItems === 'function'
+        ? (nextItems as (prev: ListItem[]) => ListItem[])(prevItems)
+        : nextItems;
+      notifyStateChange(resolvedItems);
+      return resolvedItems;
+    });
+  }, [notifyStateChange]);
 
   // Add new item
   const addItem = useCallback(() => {
     const newItem = { id: uuidv4(), text: "", status: 0 };
-    setItems(prevItems => [...prevItems, newItem]);
+    setItemsAndNotify(prevItems => [...prevItems, newItem]);
     return newItem;
-  }, []);
+  }, [setItemsAndNotify]);
 
   // Update item text
   const updateItemText = useCallback((id: string, text: string) => {
-    setItems(prevItems => 
+    setItemsAndNotify(prevItems => 
       prevItems.map(item => 
         item.id === id ? { ...item, text } : item
       )
     );
-  }, []);
+  }, [setItemsAndNotify]);
 
   // Cycle item status (0-4)
   const cycleItemStatus = useCallback((id: string) => {
-    setItems(prevItems =>
+    setItemsAndNotify(prevItems =>
       prevItems.map(item =>
         item.id === id ? { ...item, status: (item.status + 1) % 5 } : item
       )
     );
-  }, []);
+  }, [setItemsAndNotify]);
 
   // Delete item
   const deleteItem = useCallback((id: string) => {
-    setItems(prevItems => prevItems.filter(item => item.id !== id));
-  }, []);
+    setItemsAndNotify(prevItems => prevItems.filter(item => item.id !== id));
+  }, [setItemsAndNotify]);
 
   // Start editing an item
   const startEditing = useCallback((id: string) => {
-    setItems(prevItems =>
+    setItemsAndNotify(prevItems =>
       prevItems.map(item =>
         item.id === id ? { ...item, isEditing: true } : { ...item, isEditing: false }
       )
     );
-  }, []);
+  }, [setItemsAndNotify]);
 
   // Stop editing an item
   const stopEditing = useCallback((id: string) => {
-    setItems(prevItems =>
+    setItemsAndNotify(prevItems =>
       prevItems.map(item =>
         item.id === id ? { ...item, isEditing: false } : item
       )
     );
-  }, []);
+  }, [setItemsAndNotify]);
 
   // Reorder items (for drag and drop)
   const reorderItems = useCallback((startIndex: number, endIndex: number) => {
-    setItems(prevItems => {
+    setItemsAndNotify(prevItems => {
       const result = Array.from(prevItems);
       const [removed] = result.splice(startIndex, 1);
       result.splice(endIndex, 0, removed);
       return result;
     });
-  }, []);
+  }, [setItemsAndNotify]);
 
   return {
     items,
