@@ -14,7 +14,11 @@ import {
   isStorageV2,
   createDefaultStorageV2,
   createDefaultWorkspace,
-  V1_DEPRECATION_DATE
+  createDefaultSavedCollections,
+  V1_DEPRECATION_DATE,
+  SavedCollections,
+  SavedRandomiserList,
+  SavedQuestionBank
 } from '../shared/types/storage';
 import {
   migrateV1ToV2,
@@ -263,10 +267,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   canUndo: false,
   canRedo: false,
   focusedWidgetId: null,
+  classEndTime: null,
 
   // Workspace management state (populated on rehydration)
   currentWorkspaceId: '',
   workspaceList: [],
+
+  // Saved collections state (populated on rehydration)
+  savedCollections: createDefaultSavedCollections(),
 
   // Simple action implementations
   setSessionCode: (code) => set({ 
@@ -354,6 +362,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
   setFocusedWidget: (widgetId) => {
     set({ focusedWidgetId: widgetId });
+  },
+  setClassEndTime: (time) => {
+    set({ classEndTime: time });
   },
   resetWorkspace: () => {
     set({
@@ -527,6 +538,110 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     // Update workspace list
     const { list } = getWorkspaceListFromStorage();
     set({ workspaceList: list });
+  },
+
+  // =============================================================================
+  // Saved Collections Management
+  // =============================================================================
+
+  saveRandomiserList: (name: string, choices: string[]): string => {
+    const v2Data = loadStorage();
+    if (!v2Data) {
+      console.warn('[WorkspaceStore] Cannot save randomiser list: no storage found');
+      return '';
+    }
+
+    // Ensure savedCollections exists
+    if (!v2Data.savedCollections) {
+      v2Data.savedCollections = createDefaultSavedCollections();
+    }
+
+    const id = `randomiser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+    const savedList: SavedRandomiserList = {
+      id,
+      name: name.trim().slice(0, 100),
+      type: 'randomiser',
+      choices,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    v2Data.savedCollections.randomiserLists[id] = savedList;
+    saveStorage(v2Data);
+
+    // Update state
+    set({ savedCollections: { ...v2Data.savedCollections } });
+
+    return id;
+  },
+
+  getRandomiserLists: (): SavedRandomiserList[] => {
+    const collections = get().savedCollections;
+    return Object.values(collections.randomiserLists).sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+
+  deleteRandomiserList: (id: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data || !v2Data.savedCollections) {
+      return;
+    }
+
+    delete v2Data.savedCollections.randomiserLists[id];
+    saveStorage(v2Data);
+
+    // Update state
+    set({ savedCollections: { ...v2Data.savedCollections } });
+  },
+
+  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>): string => {
+    const v2Data = loadStorage();
+    if (!v2Data) {
+      console.warn('[WorkspaceStore] Cannot save question bank: no storage found');
+      return '';
+    }
+
+    // Ensure savedCollections exists
+    if (!v2Data.savedCollections) {
+      v2Data.savedCollections = createDefaultSavedCollections();
+    }
+
+    const id = `questions-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+    const savedBank: SavedQuestionBank = {
+      id,
+      name: name.trim().slice(0, 100),
+      type: 'questions',
+      questions,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    v2Data.savedCollections.questionBanks[id] = savedBank;
+    saveStorage(v2Data);
+
+    // Update state
+    set({ savedCollections: { ...v2Data.savedCollections } });
+
+    return id;
+  },
+
+  getQuestionBanks: (): SavedQuestionBank[] => {
+    const collections = get().savedCollections;
+    return Object.values(collections.questionBanks).sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+
+  deleteQuestionBank: (id: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data || !v2Data.savedCollections) {
+      return;
+    }
+
+    delete v2Data.savedCollections.questionBanks[id];
+    saveStorage(v2Data);
+
+    // Update state
+    set({ savedCollections: { ...v2Data.savedCollections } });
   }
     }),
     {
@@ -541,7 +656,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         bottomBar: state.bottomBar,
         widgetStates: Array.from(state.widgetStates.entries()),
         sessionCode: state.sessionCode,
-        sessionCreatedAt: state.sessionCreatedAt
+        sessionCreatedAt: state.sessionCreatedAt,
+        classEndTime: state.classEndTime
       }),
       onRehydrateStorage: () => (state) => {
         try {
@@ -568,9 +684,26 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
           // Populate workspace management state
           if (state) {
+            let v2Data = loadStorage();
+
+            // If no storage exists, create default V2 storage with a workspace
+            if (!v2Data) {
+              console.log('[WorkspaceStore] No existing storage found, creating default workspace');
+              v2Data = createDefaultStorageV2();
+              saveStorage(v2Data);
+            }
+
+            // Handle missing savedCollections field (migration from older V2)
+            if (!v2Data.savedCollections) {
+              v2Data.savedCollections = createDefaultSavedCollections();
+              saveStorage(v2Data);
+            }
+
+            // Populate workspace list from storage
             const { currentId, list } = getWorkspaceListFromStorage();
             state.currentWorkspaceId = currentId;
             state.workspaceList = list;
+            state.savedCollections = v2Data.savedCollections;
           }
         } catch (error) {
           // If rehydration fails, log error but don't crash - defaults will be used

@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaQuestion, FaTrash, FaCheck } from 'react-icons/fa6';
+import { FaQuestion, FaTrash, FaCheck, FaBoxArchive } from 'react-icons/fa6';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
-import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
+import { NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { getQuestionColor, questionColors } from '../../../shared/constants/questionColors';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
+import SavedCollectionsDialog from '../../../shared/components/SavedCollectionsDialog';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { SavedQuestionBank } from '../../../shared/types/storage';
 
 interface Question {
   id: string;
@@ -33,6 +36,14 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   const [questions, setQuestions] = useState<Question[]>(
     savedState?.questions || []
   );
+  const [showSavedDialog, setShowSavedDialog] = useState(false);
+
+  // Saved collections store
+  const {
+    saveQuestionBank,
+    getQuestionBanks,
+    deleteQuestionBank,
+  } = useWorkspaceStore();
 
   // Networked widget hook
   const {
@@ -133,6 +144,35 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
     () => questions.filter(question => !question.answered).length,
     [questions]
   );
+
+  // Saved collections handlers
+  const handleSaveToCollection = useCallback((name: string) => {
+    // Extract question text and student name, stripping IDs, timestamps, answered status
+    const questionsToSave = questions.map(q => ({
+      text: q.text,
+      studentName: q.studentName,
+    }));
+    saveQuestionBank(name, questionsToSave);
+    setShowSavedDialog(false);
+  }, [questions, saveQuestionBank]);
+
+  const handleLoadFromCollection = useCallback((item: SavedQuestionBank) => {
+    // Create new questions from loaded texts
+    const loadedQuestions: Question[] = item.questions.map((q, index) => ({
+      id: `loaded-${Date.now()}-${index}`,
+      text: q.text,
+      timestamp: new Date(),
+      studentId: '',
+      studentName: q.studentName,
+      answered: false,
+    }));
+    setQuestions(loadedQuestions);
+    setShowSavedDialog(false);
+  }, []);
+
+  const handleDeleteFromCollection = useCallback((id: string) => {
+    deleteQuestionBank(id);
+  }, [deleteQuestionBank]);
 
   // Sort questions: unanswered first, then by timestamp
   const sortedQuestions = useMemo(() => [...questions].sort((a, b) => {
@@ -271,21 +311,59 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
         </div>
       </div>
 
-      {/* Control bar */}
-      <NetworkedWidgetControlBar
-        isActive={isWidgetActive}
-        isConnected={session.isConnected}
-        onToggleActive={handleToggleActive}
-        onClear={handleClearAll}
-        clearCount={questions.length}
-        clearLabel="Clear all"
-        activeLabel="Pause accepting questions"
-        inactiveLabel="Start accepting questions"
-        showSettings={false}
-        clearVariant="clear"
-        requireClearConfirmation={true}
-        clearConfirmationMessage="Are you sure you want to clear all questions?"
-      />
+      {/* Control bar with saved button */}
+      <div className="flex items-center justify-between px-3 py-2 bg-soft-white dark:bg-warm-gray-800 border-t border-warm-gray-200 dark:border-warm-gray-700 rounded-b-lg">
+        <div className="flex items-center gap-2">
+          {/* Play/Pause */}
+          <button
+            onClick={handleToggleActive}
+            disabled={!session.isConnected}
+            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+              isWidgetActive
+                ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400'
+                : 'bg-sage-100 text-sage-700 hover:bg-sage-200 dark:bg-sage-900/30 dark:text-sage-400'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={isWidgetActive ? 'Pause accepting questions' : 'Start accepting questions'}
+          >
+            {isWidgetActive ? 'Pause' : 'Resume'}
+          </button>
+
+          {/* Clear */}
+          <button
+            onClick={handleClearAll}
+            disabled={!session.isConnected || questions.length === 0}
+            className="px-3 py-1.5 text-sm font-medium text-warm-gray-600 dark:text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 hover:bg-dusty-rose-50 dark:hover:bg-dusty-rose-900/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Clear all questions"
+          >
+            Clear all
+          </button>
+        </div>
+
+        {/* Saved button */}
+        <button
+          onClick={() => setShowSavedDialog(true)}
+          className="px-3 py-1.5 text-sm font-medium text-warm-gray-600 dark:text-warm-gray-400 hover:text-slate-blue-600 dark:hover:text-slate-blue-400 hover:bg-slate-blue-50 dark:hover:bg-slate-blue-900/20 rounded transition-colors inline-flex items-center gap-1.5"
+          title="Save or load question banks"
+        >
+          <FaBoxArchive className="w-3.5 h-3.5" />
+          Saved
+        </button>
+      </div>
+
+      {/* Saved collections dialog */}
+      {showSavedDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]">
+          <SavedCollectionsDialog
+            type="questions"
+            items={getQuestionBanks()}
+            currentItemCount={questions.length}
+            onSave={handleSaveToCollection}
+            onLoad={handleLoadFromCollection}
+            onDelete={handleDeleteFromCollection}
+            onClose={() => setShowSavedDialog(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

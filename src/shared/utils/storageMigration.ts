@@ -15,6 +15,7 @@ import {
   createDefaultStorageV2,
   createDefaultGlobalSettings,
   createDefaultWorkspace,
+  createDefaultSavedCollections,
   CURRENT_STORAGE_VERSION,
   STORAGE_KEY,
   LEGACY_STORAGE_KEY,
@@ -84,7 +85,8 @@ export function migrateV1ToV2(v1Data: StorageFormatV1): StorageFormatV2 {
     session: {
       code: state.sessionCode || null,
       createdAt: state.sessionCreatedAt || null
-    }
+    },
+    savedCollections: createDefaultSavedCollections()
   };
 }
 

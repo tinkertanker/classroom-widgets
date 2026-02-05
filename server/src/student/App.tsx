@@ -9,9 +9,10 @@ import PollActivity from './components/PollActivity';
 import LinkShareActivity from './components/LinkShareActivity';
 import RTFeedbackActivity from './components/RTFeedbackActivity';
 import QuestionsActivity from './components/QuestionsActivity';
+import HandoutActivity from './components/HandoutActivity';
 import AdminPanel from './components/AdminPanel';
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout';
 
 interface JoinedRoom {
   id: string;
@@ -507,12 +508,14 @@ const App: React.FC = () => {
                   className={`flex justify-between items-center px-4 py-2.5 transition-all duration-300 cursor-pointer select-none border-b-2 ${
                     !room.isActive
                       ? 'border-warm-gray-400 dark:border-warm-gray-600 bg-warm-gray-100 dark:bg-warm-gray-800'
-                      : room.type === 'poll' 
-                      ? 'border-sage-500 dark:border-sage-400 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-900/40' 
-                      : room.type === 'linkShare' 
-                      ? 'border-terracotta-500 dark:border-terracotta-400 bg-terracotta-100 dark:bg-terracotta-900/30 hover:bg-terracotta-200 dark:hover:bg-terracotta-900/40' 
-                      : room.type === 'rtfeedback' 
-                      ? 'border-amber-500 dark:border-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/40' 
+                      : room.type === 'poll'
+                      ? 'border-sage-500 dark:border-sage-400 bg-sage-100 dark:bg-sage-900/30 hover:bg-sage-200 dark:hover:bg-sage-900/40'
+                      : room.type === 'linkShare'
+                      ? 'border-terracotta-500 dark:border-terracotta-400 bg-terracotta-100 dark:bg-terracotta-900/30 hover:bg-terracotta-200 dark:hover:bg-terracotta-900/40'
+                      : room.type === 'rtfeedback'
+                      ? 'border-amber-500 dark:border-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/40'
+                      : room.type === 'handout'
+                      ? 'border-slate-blue-500 dark:border-slate-blue-400 bg-slate-blue-100 dark:bg-slate-blue-900/30 hover:bg-slate-blue-200 dark:hover:bg-slate-blue-900/40'
                       : 'border-sky-500 dark:border-sky-400 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-200 dark:hover:bg-sky-900/40'
                   }`}
                   onClick={() => toggleMinimizeRoom(room.id)}
@@ -525,36 +528,40 @@ const App: React.FC = () => {
                     }
                   }}
                   aria-expanded={!minimizedRooms.has(room.id)}
-                  aria-label={`${room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
+                  aria-label={`${room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : 'Ask Questions'} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
                 >
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                     <span className={`text-base md:text-lg font-semibold ${
                       !room.isActive
                         ? 'text-warm-gray-600 dark:text-warm-gray-400'
-                        : room.type === 'poll' 
-                        ? 'text-sage-700 dark:text-sage-300' 
-                        : room.type === 'linkShare' 
-                        ? 'text-terracotta-700 dark:text-terracotta-300' 
-                        : room.type === 'rtfeedback' 
-                        ? 'text-amber-700 dark:text-amber-300' 
+                        : room.type === 'poll'
+                        ? 'text-sage-700 dark:text-sage-300'
+                        : room.type === 'linkShare'
+                        ? 'text-terracotta-700 dark:text-terracotta-300'
+                        : room.type === 'rtfeedback'
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : room.type === 'handout'
+                        ? 'text-slate-blue-700 dark:text-slate-blue-300'
                         : 'text-sky-700 dark:text-sky-300'
                     }`}>
-                      {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : 'Ask Questions'}
+                      {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : 'Ask Questions'}
                     </span>
                     <span className="text-warm-gray-600 dark:text-warm-gray-400 text-xs sm:text-sm">
-                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : '• Submit questions to your teacher'}
+                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : room.type === 'handout' ? '• View content shared by your teacher' : '• Submit questions to your teacher'}
                     </span>
                   </div>
-                  <div 
+                  <div
                     className={`${
                       !room.isActive
                         ? 'bg-warm-gray-500 dark:bg-warm-gray-600 text-white'
-                        : room.type === 'poll' 
-                        ? 'bg-sage-500 dark:bg-sage-600 text-white' 
-                        : room.type === 'linkShare' 
-                        ? 'bg-terracotta-500 dark:bg-terracotta-600 text-white' 
-                        : room.type === 'rtfeedback' 
-                        ? 'bg-amber-500 dark:bg-amber-600 text-white' 
+                        : room.type === 'poll'
+                        ? 'bg-sage-500 dark:bg-sage-600 text-white'
+                        : room.type === 'linkShare'
+                        ? 'bg-terracotta-500 dark:bg-terracotta-600 text-white'
+                        : room.type === 'rtfeedback'
+                        ? 'bg-amber-500 dark:bg-amber-600 text-white'
+                        : room.type === 'handout'
+                        ? 'bg-slate-blue-500 dark:bg-slate-blue-600 text-white'
                         : 'bg-sky-500 dark:bg-sky-600 text-white'
                     } w-6 h-6 rounded-full text-xs transition-all duration-200 flex items-center justify-center pointer-events-none shadow-sm`}
                   >
@@ -587,13 +594,14 @@ const App: React.FC = () => {
                       />
                     )}
                     {room.type === 'linkShare' && (
-                      <LinkShareActivity 
-                        socket={room.socket} 
+                      <LinkShareActivity
+                        socket={room.socket}
                         roomCode={room.code}
                         studentName={studentName}
                         isSession={true}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
+                        initialAcceptMode={room.initialData?.acceptMode || 'all'}
                       />
                     )}
                     {room.type === 'rtfeedback' && (
@@ -607,13 +615,23 @@ const App: React.FC = () => {
                       />
                     )}
                     {room.type === 'questions' && (
-                      <QuestionsActivity 
-                        socket={room.socket} 
+                      <QuestionsActivity
+                        socket={room.socket}
                         sessionCode={room.code}
                         studentId={room.studentId || ''}
                         studentName={room.studentName}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
+                      />
+                    )}
+                    {room.type === 'handout' && (
+                      <HandoutActivity
+                        socket={room.socket}
+                        roomCode={room.code}
+                        isSession={true}
+                        widgetId={room.widgetId}
+                        initialIsActive={room.initialData?.isActive}
+                        initialItems={room.initialData?.items || []}
                       />
                     )}
                   </div>

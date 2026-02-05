@@ -19,7 +19,9 @@ import {
   FaSliders,
   FaGamepad,
   FaCircleQuestion,
-  FaPersonChalkboard
+  FaPersonChalkboard,
+  FaInbox,
+  FaFileLines
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
@@ -46,7 +48,8 @@ const LazyWidgets = {
   RTFeedback: lazy(() => import('../features/widgets/rtFeedback')),
   TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
   Questions: lazy(() => import('../features/widgets/questions')),
-  Snake: lazy(() => import('../features/widgets/snake'))
+  Snake: lazy(() => import('../features/widgets/snake')),
+  Handout: lazy(() => import('../features/widgets/handout'))
   // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
@@ -384,16 +387,16 @@ export class WidgetRegistry {
       }
     });
 
-    // Link Share
+    // Drop Box (formerly Link Share)
     this.register({
       type: WidgetType.LINK_SHARE,
-      name: 'Link Share',
-      icon: FaArrowUpRightFromSquare,
+      name: 'Drop Box',
+      icon: FaInbox,
       component: LazyWidgets.LinkShare,
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
-      description: 'Collect link submissions from students',
+      description: 'Collect links or text submissions from students',
       features: {
         hasStateManagement: true,
         isResizable: true
@@ -447,6 +450,28 @@ export class WidgetRegistry {
         hasStartStop: true,
         startsActive: true,
         studentComponentName: 'QuestionsActivity'
+      }
+    });
+
+    // Handout
+    this.register({
+      type: WidgetType.HANDOUT,
+      name: 'Handout',
+      icon: FaFileLines,
+      component: LazyWidgets.Handout,
+      defaultSize: { width: 350, height: 350 },
+      minSize: { width: 350, height: 300 },
+      category: WidgetCategory.NETWORKED,
+      description: 'Push text or links to students',
+      features: {
+        hasStateManagement: true,
+        isResizable: true
+      },
+      networked: {
+        roomType: 'handout',
+        hasStartStop: true,
+        startsActive: true,
+        studentComponentName: 'HandoutActivity'
       }
     });
   }
@@ -537,7 +562,8 @@ export class WidgetRegistry {
       [WIDGET_TYPES.TIC_TAC_TOE]: WidgetType.TIC_TAC_TOE,
       [WIDGET_TYPES.QUESTIONS]: WidgetType.QUESTIONS,
       [WIDGET_TYPES.WORDLE]: WidgetType.WORDLE,
-      [WIDGET_TYPES.SNAKE]: WidgetType.SNAKE
+      [WIDGET_TYPES.SNAKE]: WidgetType.SNAKE,
+      [WIDGET_TYPES.HANDOUT]: WidgetType.HANDOUT
     };
     return mapping[legacyType];
   }
@@ -563,7 +589,8 @@ export class WidgetRegistry {
       [WidgetType.TIC_TAC_TOE]: WIDGET_TYPES.TIC_TAC_TOE,
       [WidgetType.QUESTIONS]: WIDGET_TYPES.QUESTIONS,
       [WidgetType.WORDLE]: WIDGET_TYPES.WORDLE,
-      [WidgetType.SNAKE]: WIDGET_TYPES.SNAKE
+      [WidgetType.SNAKE]: WIDGET_TYPES.SNAKE,
+      [WidgetType.HANDOUT]: WIDGET_TYPES.HANDOUT
     };
     return mapping[type];
   }

@@ -41,7 +41,8 @@ module.exports = {
     POLL: 'poll',
     LINK_SHARE: 'linkShare',
     RT_FEEDBACK: 'rtfeedback',
-    QUESTIONS: 'questions'
+    QUESTIONS: 'questions',
+    HANDOUT: 'handout'
   },
 
   // Socket event namespaces
@@ -84,6 +85,7 @@ module.exports = {
       SUBMIT: 'session:linkShare:submit',
       DELETE: 'session:linkShare:delete',
       REQUEST_STATE: 'linkShare:requestState',
+      SET_ACCEPT_MODE: 'session:linkShare:setAcceptMode',
       // Server -> Client events
       SUBMITTED: 'session:linkShare:submitted',
       STATE_UPDATE: 'linkShare:stateUpdate',
@@ -114,6 +116,16 @@ module.exports = {
       QUESTION_ANSWERED: 'questions:questionAnswered',
       QUESTION_DELETED: 'questions:questionDeleted',
       ALL_CLEARED: 'questions:allCleared'
+    },
+    HANDOUT: {
+      // Client -> Server events
+      ADD: 'session:handout:add',
+      DELETE: 'session:handout:delete',
+      REQUEST_STATE: 'handout:requestState',
+      // Server -> Client events
+      STATE_UPDATE: 'handout:stateUpdate',
+      ITEM_ADDED: 'handout:itemAdded',
+      ITEM_DELETED: 'handout:itemDeleted'
     }
   }
 };

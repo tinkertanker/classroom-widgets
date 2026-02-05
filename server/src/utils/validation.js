@@ -62,6 +62,93 @@ const validators = {
     }
   },
 
+  // Common file extensions to exclude from being treated as TLDs
+  _fileExtensions: ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'],
+
+  /**
+   * Normalize a URL by adding https:// if it looks like a domain without protocol.
+   * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
+   * @param {string} text - Text to normalize
+   * @returns {string} - Normalized text (with https:// if applicable)
+   */
+  normalizeUrl: (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const trimmed = text.trim();
+
+    // Already has a protocol
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    // Quick check: must contain a dot and start with alphanumeric
+    if (!/^[a-zA-Z0-9]/.test(trimmed) || !trimmed.includes('.')) {
+      return trimmed;
+    }
+
+    // Don't treat things that have spaces
+    if (trimmed.includes(' ') || trimmed.length > 2000) {
+      return trimmed;
+    }
+
+    // Try adding https:// and see if it's a valid URL
+    const withProtocol = `https://${trimmed}`;
+    try {
+      const url = new URL(withProtocol);
+      // Check: hostname should have at least one dot and valid TLD-like ending
+      if (url.hostname.includes('.') && /\.[a-zA-Z]{2,}$/.test(url.hostname)) {
+        // Exclude common file extensions from being treated as domains
+        // e.g., "file.txt" should not become "https://file.txt"
+        // but "domain.com/file.txt" is fine (the hostname is "domain.com")
+        const hostnameParts = url.hostname.split('.');
+        const hostnameExt = hostnameParts[hostnameParts.length - 1].toLowerCase();
+        if (validators._fileExtensions.includes(hostnameExt)) {
+          return trimmed;
+        }
+        return withProtocol;
+      }
+    } catch {
+      // Not a valid URL, return as-is
+    }
+
+    return trimmed;
+  },
+
+  /**
+   * Check if a string looks like a URL (after normalization)
+   * @param {string} text - Text to check
+   * @returns {boolean}
+   */
+  isLink: (text) => {
+    if (!text || typeof text !== 'string') return false;
+    // Normalize first to catch domains without protocol
+    const normalized = validators.normalizeUrl(text);
+    try {
+      new URL(normalized);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Validate text submission (for Drop Box)
+   * @param {string} text - Text to validate
+   * @returns {ValidationResult}
+   */
+  textSubmission: (text) => {
+    if (!text || typeof text !== 'string') {
+      return { valid: false, error: 'Text is required' };
+    }
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+      return { valid: false, error: 'Text cannot be empty' };
+    }
+    if (trimmed.length > 280) {
+      return { valid: false, error: 'Text must be 280 characters or less' };
+    }
+    return { valid: true };
+  },
+
   /**
    * Validate question text
    * @param {string} text - Question text to validate
