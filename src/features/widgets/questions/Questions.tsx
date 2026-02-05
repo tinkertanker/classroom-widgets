@@ -6,7 +6,7 @@ import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
 import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { getQuestionColor } from '../../../shared/constants/questionColors';
+import { getQuestionColor, questionColors } from '../../../shared/constants/questionColors';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 
@@ -18,6 +18,15 @@ interface Question {
   studentName?: string;
   answered?: boolean;
 }
+
+const getStableColourIndex = (id: string) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash) % questionColors.length;
+};
 
 function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
@@ -209,8 +218,8 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedQuestions.map((question, index) => {
-                const colorIndex = index % 10;
+              {sortedQuestions.map((question) => {
+                const colorIndex = getStableColourIndex(question.id);
                 const bgColor = getQuestionColor(colorIndex);
 
                 return (
