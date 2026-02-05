@@ -14,9 +14,6 @@ import { useWidget } from '../../../shared/hooks/useWidget';
 import { debug } from '../../../shared/utils/debug';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
-import SavedCollectionsDialog from '../../../shared/components/SavedCollectionsDialog';
-import { SavedPollQuestion } from '../../../shared/types/storage';
 
 interface PollData {
   question: string;
@@ -51,11 +48,9 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
   });
 
   const [hasAutoResized, setHasAutoResized] = useState(false);
-  const [showSavedDialog, setShowSavedDialog] = useState(false);
 
   // Hooks
   const { showModal, hideModal } = useModal();
-  const { savePollQuestion, getPollQuestions, deletePollQuestion } = useWorkspaceStore();
   const { widget, resize } = useWidget(widgetId || '');
 
   // Networked widget hook
@@ -209,45 +204,6 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
       participantCount: 0
     });
   }, [hasRoom, reset]);
-
-  // Saved collections handlers
-  const handleSaveToCollection = useCallback((name: string) => {
-    if (pollData.question && pollData.options.filter(o => o).length > 0) {
-      savePollQuestion(name, pollData.question, pollData.options.filter(o => o));
-    }
-  }, [pollData, savePollQuestion]);
-
-  const handleLoadFromCollection = useCallback((item: SavedPollQuestion) => {
-    const newPollData = {
-      question: item.question,
-      options: item.options
-    };
-    setPollData(newPollData);
-    setShowSavedDialog(false);
-
-    // If we have a room, sync the data
-    if (hasRoom) {
-      emit('session:poll:update', {
-        sessionCode: session.sessionCode!,
-        widgetId: widgetId!,
-        pollData: newPollData as any
-      });
-    }
-
-    // Auto-resize if number of options changed
-    if (item.options.length !== pollData.options.length && widget && resize) {
-      const baseHeight = 200;
-      const optionHeight = 60;
-      const maxOptions = 6;
-      const visibleOptions = Math.min(item.options.length, maxOptions);
-      const calculatedHeight = baseHeight + (visibleOptions * optionHeight);
-      resize({ width: widget.size.width, height: calculatedHeight });
-    }
-  }, [hasRoom, emit, session.sessionCode, widgetId, pollData.options.length, widget, resize]);
-
-  const handleDeleteFromCollection = useCallback((id: string) => {
-    deletePollQuestion(id);
-  }, [deletePollQuestion]);
 
   // Auto-resize only on initial widget creation
   useEffect(() => {
@@ -413,29 +369,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
         inactiveLabel="Start poll"
         disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
         clearVariant="reset"
-        rightContent={
-          <button
-            onClick={() => setShowSavedDialog(true)}
-            className="px-3 py-1.5 text-sm bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors"
-          >
-            Saved
-          </button>
-        }
       />
-
-      {/* Saved collections dialog */}
-      {showSavedDialog && (
-        <SavedCollectionsDialog
-          type="poll"
-          items={getPollQuestions()}
-          currentItemCount={pollData.question && pollData.options.filter(o => o).length > 0 ? 1 : 0}
-          defaultSaveName={pollData.question}
-          onSave={handleSaveToCollection}
-          onLoad={handleLoadFromCollection}
-          onDelete={handleDeleteFromCollection}
-          onClose={() => setShowSavedDialog(false)}
-        />
-      )}
     </div>
   );
 }

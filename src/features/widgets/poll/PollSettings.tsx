@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { WidgetInput } from '../../../shared/components/WidgetInput';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import SavedCollectionsDialog from '../../../shared/components/SavedCollectionsDialog';
+import { SavedPollQuestion } from '../../../shared/types/storage';
 
 interface PollSettingsProps {
   onClose: () => void;
@@ -17,6 +20,25 @@ const PollSettings: React.FC<PollSettingsProps> = ({
   
   const [question, setQuestion] = useState(pollData.question || '');
   const [options, setOptions] = useState(pollData.options?.length > 0 ? pollData.options : ['', '']);
+  const [showSavedDialog, setShowSavedDialog] = useState(false);
+
+  const { savePollQuestion, getPollQuestions, deletePollQuestion } = useWorkspaceStore();
+
+  const handleSaveToCollection = useCallback((name: string) => {
+    if (question && options.filter(o => o).length > 0) {
+      savePollQuestion(name, question, options.filter(o => o));
+    }
+  }, [question, options, savePollQuestion]);
+
+  const handleLoadFromCollection = useCallback((item: SavedPollQuestion) => {
+    setQuestion(item.question);
+    setOptions(item.options);
+    setShowSavedDialog(false);
+  }, []);
+
+  const handleDeleteFromCollection = useCallback((id: string) => {
+    deletePollQuestion(id);
+  }, [deletePollQuestion]);
 
   const updateOption = (index: number, value: string) => {
     const newOptions = [...options];
@@ -37,6 +59,16 @@ const PollSettings: React.FC<PollSettingsProps> = ({
     <div className="w-[500px] max-w-full">
       <div className="px-6 py-4">
         <div className="space-y-4">
+          {/* Saved Polls button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowSavedDialog(true)}
+              className="px-3 py-1.5 text-sm bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors"
+            >
+              Saved Polls
+            </button>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
               Question
@@ -98,6 +130,20 @@ const PollSettings: React.FC<PollSettingsProps> = ({
           Save Changes
         </button>
       </div>
+
+      {/* Saved collections dialog */}
+      {showSavedDialog && (
+        <SavedCollectionsDialog
+          type="poll"
+          items={getPollQuestions()}
+          currentItemCount={question && options.filter(o => o).length > 0 ? 1 : 0}
+          defaultSaveName={question}
+          onSave={handleSaveToCollection}
+          onLoad={handleLoadFromCollection}
+          onDelete={handleDeleteFromCollection}
+          onClose={() => setShowSavedDialog(false)}
+        />
+      )}
     </div>
   );
 };
