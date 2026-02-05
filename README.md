@@ -22,7 +22,7 @@ Classroom Widgets is a real-time classroom management system that enables teache
 
 ### Available Widgets
 
-- **Interactive**: Poll, Questions, Link Share, Real-time Feedback.
+- **Interactive**: Poll, Questions, Drop Box, Handout, Real-time Feedback.
 - **Utility**: Timer, Randomiser, List, Task Cue, Traffic Light.
 - **Display**: Text Banner, Image Display, QR Code, Sound Effects, Stickers.
 
@@ -131,7 +131,8 @@ classroom-widgets/
 #### Interactive Widgets
 - **Poll**: Real-time voting with live results
 - **Questions**: Q&A submission and management
-- **Link Share**: Collect and display shared links
+- **Drop Box**: Collect links and text submissions from students
+- **Handout**: Push content (links, text) to all students
 - **RT Feedback**: Real-time understanding gauge (1-5 scale)
 
 #### Utility Widgets
