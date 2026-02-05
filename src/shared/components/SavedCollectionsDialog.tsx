@@ -8,6 +8,7 @@ type SavedItem = SavedRandomiserList | SavedQuestionBank | SavedPollQuestion;
 
 interface SavedCollectionsDialogPropsBase {
   currentItemCount: number;
+  defaultSaveName?: string;
   onSave: (name: string) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
@@ -40,13 +41,14 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
   type,
   items,
   currentItemCount,
+  defaultSaveName,
   onSave,
   onLoad,
   onDelete,
   onClose,
 }) => {
   const [mode, setMode] = useState<'list' | 'save'>('list');
-  const [saveName, setSaveName] = useState('');
+  const [saveName, setSaveName] = useState(defaultSaveName || '');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const getLabels = () => {

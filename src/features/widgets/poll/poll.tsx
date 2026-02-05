@@ -429,6 +429,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
           type="poll"
           items={getPollQuestions()}
           currentItemCount={pollData.question && pollData.options.filter(o => o).length > 0 ? 1 : 0}
+          defaultSaveName={pollData.question}
           onSave={handleSaveToCollection}
           onLoad={handleLoadFromCollection}
           onDelete={handleDeleteFromCollection}
