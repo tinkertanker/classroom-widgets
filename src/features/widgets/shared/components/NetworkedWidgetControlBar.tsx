@@ -21,6 +21,8 @@ interface NetworkedWidgetControlBarProps {
   clearVariant?: 'reset' | 'delete' | 'clear';
   requireClearConfirmation?: boolean;
   clearConfirmationMessage?: string;
+  /** Custom content to render on the right side (replaces Settings button if showSettings is false) */
+  rightContent?: React.ReactNode;
 }
 
 /**
@@ -43,7 +45,8 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
   className,
   clearVariant = 'clear',
   requireClearConfirmation = false,
-  clearConfirmationMessage
+  clearConfirmationMessage,
+  rightContent
 }) => {
   return (
     <WidgetControlBar className={className}>
@@ -69,12 +72,15 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
         )}
       </div>
 
-      {showSettings && onSettings && (
-        <SettingsButton
-          onClick={onSettings}
-          disabled={disabled || !isConnected}
-        />
-      )}
+      <div className="flex items-center gap-2">
+        {rightContent}
+        {showSettings && onSettings && (
+          <SettingsButton
+            onClick={onSettings}
+            disabled={disabled || !isConnected}
+          />
+        )}
+      </div>
     </WidgetControlBar>
   );
 };

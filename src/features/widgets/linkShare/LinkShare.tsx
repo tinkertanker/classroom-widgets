@@ -4,7 +4,7 @@ import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
-import { NetworkedWidgetOverlays, NetworkedWidgetStats, WidgetControlBar, PlayPauseButton, ClearButton } from '../shared/components';
+import { NetworkedWidgetOverlays, NetworkedWidgetStats, NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
@@ -239,53 +239,45 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
       </div>
 
       {/* Control bar */}
-      <WidgetControlBar>
-        <div className="flex items-center gap-2">
-          <PlayPauseButton
-            isActive={isWidgetActive}
-            onToggle={handleToggleActive}
+      <NetworkedWidgetControlBar
+        isActive={isWidgetActive}
+        isConnected={session.isConnected}
+        onToggleActive={handleToggleActive}
+        onClear={handleClearAll}
+        clearCount={submissions.length}
+        clearLabel="Clear all"
+        showClear={submissions.length > 0}
+        activeLabel="Pause submissions"
+        inactiveLabel="Resume submissions"
+        showSettings={false}
+        clearVariant="clear"
+        requireClearConfirmation={true}
+        clearConfirmationMessage="Are you sure you want to clear all submissions?"
+        rightContent={
+          <button
+            onClick={handleToggleAcceptMode}
             disabled={!session.isConnected}
-            activeLabel="Pause submissions"
-            inactiveLabel="Resume submissions"
-          />
-
-          {submissions.length > 0 && (
-            <ClearButton
-              onClear={handleClearAll}
-              count={submissions.length}
-              label="Clear all"
-              disabled={!session.isConnected}
-              variant="clear"
-              requireConfirmation={true}
-              confirmationMessage="Are you sure you want to clear all submissions?"
-            />
-          )}
-        </div>
-
-        {/* Accept mode toggle */}
-        <button
-          onClick={handleToggleAcceptMode}
-          disabled={!session.isConnected}
-          className={`px-2 py-1 text-xs font-medium rounded transition-colors inline-flex items-center gap-1.5 ${
-            acceptMode === 'all'
-              ? 'bg-slate-blue-100 text-slate-blue-700 dark:bg-slate-blue-900/30 dark:text-slate-blue-400'
-              : 'bg-warm-gray-100 text-warm-gray-600 dark:bg-warm-gray-700 dark:text-warm-gray-400'
-          } hover:bg-slate-blue-200 dark:hover:bg-slate-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed`}
-          title={acceptMode === 'all' ? 'Accepting links and text' : 'Accepting links only'}
-        >
-          {acceptMode === 'all' ? (
-            <>
-              <FaFont className="text-[10px]" />
-              <span>Links + Text</span>
-            </>
-          ) : (
-            <>
-              <FaLink className="text-[10px]" />
-              <span>Links Only</span>
-            </>
-          )}
-        </button>
-      </WidgetControlBar>
+            className={`px-2 py-1 text-xs font-medium rounded transition-colors inline-flex items-center gap-1.5 ${
+              acceptMode === 'all'
+                ? 'bg-slate-blue-100 text-slate-blue-700 dark:bg-slate-blue-900/30 dark:text-slate-blue-400'
+                : 'bg-warm-gray-100 text-warm-gray-600 dark:bg-warm-gray-700 dark:text-warm-gray-400'
+            } hover:bg-slate-blue-200 dark:hover:bg-slate-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={acceptMode === 'all' ? 'Accepting links and text' : 'Accepting links only'}
+          >
+            {acceptMode === 'all' ? (
+              <>
+                <FaFont className="text-[10px]" />
+                <span>Links + Text</span>
+              </>
+            ) : (
+              <>
+                <FaLink className="text-[10px]" />
+                <span>Links Only</span>
+              </>
+            )}
+          </button>
+        }
+      />
     </div>
   );
 }
