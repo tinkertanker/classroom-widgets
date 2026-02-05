@@ -55,8 +55,10 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     if (urlInput) {
       updateState({
         url: urlInput,
-        title: title || urlInput
+        title: ''
       });
+      setTempTitle('');
+      setIsEditingTitle(true);
     }
   };
 
@@ -117,6 +119,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
                   onKeyDown={handleTitleKeyPress}
                   onBlur={handleTitleSave}
                   className="text-lg font-medium text-center w-full px-2 py-1 border-b-2 border-sage-500 bg-transparent focus:outline-none text-warm-gray-700 dark:text-warm-gray-300"
+                  placeholder="Title"
                   autoFocus
                 />
               ) : (
