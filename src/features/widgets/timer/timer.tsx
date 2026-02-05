@@ -225,7 +225,7 @@ const Timer = () => {
 
                     {/* Moderate glow filter */}
                     <filter id="rainbowGlow" x="-200%" y="-200%" width="500%" height="500%">
-                      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+                      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
                       <feMerge>
                         <feMergeNode in="coloredBlur"/>
                         <feMergeNode in="SourceGraphic"/>
@@ -234,8 +234,8 @@ const Timer = () => {
 
                     {/* Enhanced glow filter - more subtle */}
                     <filter id="enhancedRainbowGlow" x="-200%" y="-200%" width="500%" height="500%">
-                      <feGaussianBlur stdDeviation="4" result="bigBlur"/>
-                      <feGaussianBlur stdDeviation="2" result="mediumBlur"/>
+                      <feGaussianBlur stdDeviation="2.5" result="bigBlur"/>
+                      <feGaussianBlur stdDeviation="1.5" result="mediumBlur"/>
                       <feColorMatrix in="bigBlur" type="saturate" values="1.5" result="saturatedBigBlur"/>
                       <feMerge>
                         <feMergeNode in="saturatedBigBlur"/>
@@ -246,11 +246,11 @@ const Timer = () => {
 
                     {/* Pulsing glow for running state (Dark Mode) */}
                     <filter id="pulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
-                      <feGaussianBlur stdDeviation="4" result="blur1">
-                        <animate attributeName="stdDeviation" values="4;8;4" dur="2s" repeatCount="indefinite"/>
+                      <feGaussianBlur stdDeviation="2.5" result="blur1">
+                        <animate attributeName="stdDeviation" values="2.5;4;2.5" dur="2s" repeatCount="indefinite"/>
                       </feGaussianBlur>
-                      <feGaussianBlur stdDeviation="2" result="blur2">
-                        <animate attributeName="stdDeviation" values="2;4;2" dur="2s" begin="0.5s" repeatCount="indefinite"/>
+                      <feGaussianBlur stdDeviation="1.5" result="blur2">
+                        <animate attributeName="stdDeviation" values="1.5;2.5;1.5" dur="2s" begin="0.5s" repeatCount="indefinite"/>
                       </feGaussianBlur>
                       <feColorMatrix in="blur1" type="saturate" values="1.5" result="saturatedBlur"/>
                       <feMerge>
@@ -263,7 +263,7 @@ const Timer = () => {
                     {/* Light Mode Glow Filters */}
                     <filter id="lightModeGlow" x="-200%" y="-200%" width="500%" height="500%">
                       <feColorMatrix type="saturate" values="0.6" result="desaturatedSource"/>
-                      <feGaussianBlur in="desaturatedSource" stdDeviation="3" result="blur"/>
+                      <feGaussianBlur in="desaturatedSource" stdDeviation="2" result="blur"/>
                       <feMerge>
                         <feMergeNode in="blur"/>
                         <feMergeNode in="desaturatedSource"/>
@@ -271,8 +271,8 @@ const Timer = () => {
                     </filter>
                     <filter id="lightModePulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
                       <feColorMatrix type="saturate" values="0.6" result="desaturatedSource"/>
-                      <feGaussianBlur in="desaturatedSource" stdDeviation="3" result="blur">
-                        <animate attributeName="stdDeviation" values="3;5;3" dur="2s" repeatCount="indefinite"/>
+                      <feGaussianBlur in="desaturatedSource" stdDeviation="2" result="blur">
+                        <animate attributeName="stdDeviation" values="2;3.5;2" dur="2s" repeatCount="indefinite"/>
                       </feGaussianBlur>
                       <feMerge>
                         <feMergeNode in="blur"/>
@@ -290,7 +290,7 @@ const Timer = () => {
                   <circle
                     cx="50"
                     cy="50"
-                    r="43"
+                    r="40"
                     fill="rgba(250, 250, 249, 0.9)"
                     className="dark:fill-warm-gray-800/90"
                   />
@@ -299,7 +299,7 @@ const Timer = () => {
                   <circle
                     cx="50"
                     cy="50"
-                    r="45"
+                    r="42"
                     stroke="rgb(229, 231, 235)"
                     strokeWidth="4"
                     fill="none"
@@ -310,13 +310,13 @@ const Timer = () => {
                   <circle
                     cx="50"
                     cy="50"
-                    r="45"
+                    r="42"
                     stroke="url(#rainbowGradient)"
                     strokeWidth="4"
                     fill="none"
                     strokeLinecap="round"
-                    strokeDasharray={2 * Math.PI * 45}
-                    strokeDashoffset={(2 * Math.PI * 45) * (1 - progress)}
+                    strokeDasharray={2 * Math.PI * 42}
+                    strokeDashoffset={(2 * Math.PI * 42) * (1 - progress)}
                     filter={
                       isRunning
                         ? isDark ? "url(#pulsingGlow) url(#dropShadow)" : "url(#lightModePulsingGlow) url(#dropShadow)"
