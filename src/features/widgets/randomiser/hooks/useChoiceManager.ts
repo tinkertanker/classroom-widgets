@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { normaliseChoiceList, stringifyChoiceList } from '../utils/choiceList';
 
 interface UseChoiceManagerOptions {
   initialInput?: string;
@@ -16,39 +17,17 @@ export function useChoiceManager({
   initialRemovedChoices = [],
   onStateChange
 }: UseChoiceManagerOptions) {
-  const [input, setInput] = useState(initialInput);
-  const [choices, setChoices] = useState<string[]>(initialChoices);
+  const initialInputValue = initialInput || stringifyChoiceList(initialChoices);
+  const [input, setInput] = useState(initialInputValue);
   const [removedChoices, setRemovedChoices] = useState<string[]>(initialRemovedChoices);
-  
-  // Refs for accessing current values in callbacks
-  const choicesRef = useRef(choices);
-  const removedChoicesRef = useRef(removedChoices);
-  
+  const choices = normaliseChoiceList(input);
+
   // Track first render to skip initial state update
   const isFirstRender = useRef(true);
 
-  // Update refs when state changes
-  useEffect(() => {
-    choicesRef.current = choices;
-  }, [choices]);
-
-  useEffect(() => {
-    removedChoicesRef.current = removedChoices;
-  }, [removedChoices]);
-
   // Process raw input into clean choices array
   const processChoices = useCallback((rawInput: string): string[] => {
-    let temporaryChoices = rawInput.split('\n');
-    temporaryChoices = temporaryChoices.map((value) => value.trim());
-    temporaryChoices = temporaryChoices.filter((value, index, array) => {
-      if (value === '') {
-        return false;
-      } else {
-        // Remove duplicates
-        return array.indexOf(value) === index;
-      }
-    });
-    return temporaryChoices;
+    return normaliseChoiceList(rawInput);
   }, []);
 
   // Get active choices (excluding removed ones)
@@ -60,13 +39,10 @@ export function useChoiceManager({
   const removeChoice = useCallback((choice: string) => {
     if (!removedChoices.includes(choice)) {
       const newRemovedChoices = [...removedChoices, choice];
-      setRemovedChoices(newRemovedChoices);
-      
-      // Also remove from choices array
       const newChoices = choices.filter(c => c !== choice);
-      setChoices(newChoices);
-      setInput(newChoices.join('\n'));
-      
+      setRemovedChoices(newRemovedChoices);
+      setInput(stringifyChoiceList(newChoices));
+
       return {
         choices: newChoices,
         removedChoices: newRemovedChoices,
@@ -78,8 +54,7 @@ export function useChoiceManager({
 
   // Update choices and input together
   const updateChoices = useCallback((newChoices: string[]) => {
-    setChoices(newChoices);
-    setInput(newChoices.join('\n'));
+    setInput(stringifyChoiceList(newChoices));
   }, []);
 
   // Update removed choices
@@ -99,14 +74,6 @@ export function useChoiceManager({
       removedChoices
     });
   }, [input, choices, removedChoices, onStateChange]);
-
-  // Keep choices in sync with input
-  useEffect(() => {
-    const processedChoices = processChoices(input);
-    if (JSON.stringify(processedChoices) !== JSON.stringify(choices)) {
-      setChoices(processedChoices);
-    }
-  }, [input, processChoices]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     input,

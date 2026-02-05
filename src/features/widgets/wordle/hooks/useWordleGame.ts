@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { VALID_WORDS, TARGET_WORDS } from '../wordList';
+import { useTemporaryState } from '../../../../shared/hooks/useTemporaryState';
 
 interface UseWordleGameProps {
   initialState?: {
@@ -8,11 +9,18 @@ interface UseWordleGameProps {
     currentGuess?: string;
     gameStatus?: 'playing' | 'won' | 'lost';
   };
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: WordleState) => void;
 }
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
+
+interface WordleState {
+  targetWord: string;
+  guesses: string[];
+  currentGuess: string;
+  gameStatus: 'playing' | 'won' | 'lost';
+}
 
 export const useWordleGame = ({
   initialState,
@@ -31,7 +39,11 @@ export const useWordleGame = ({
   const [gameStatus, setGameStatus] = useState<'playing' | 'won' | 'lost'>(
     initialState?.gameStatus || 'playing'
   );
-  const [message, setMessage] = useState('');
+  const {
+    value: message,
+    setTemporaryValue: showMessage,
+    clear: clearMessage
+  } = useTemporaryState('', 3000);
 
   // Calculate letter statuses for keyboard
   const letterStatuses = guesses.reduce((acc, guess) => {
@@ -59,14 +71,6 @@ export const useWordleGame = ({
     }
   }, [targetWord, guesses, currentGuess, gameStatus, onStateChange]);
 
-  // Clear message after 3 seconds
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(''), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
   const addLetter = useCallback((letter: string) => {
     if (gameStatus !== 'playing') return;
     if (currentGuess.length >= WORD_LENGTH) return;
@@ -83,12 +87,12 @@ export const useWordleGame = ({
   const submitGuess = useCallback(() => {
     if (gameStatus !== 'playing') return;
     if (currentGuess.length !== WORD_LENGTH) {
-      setMessage('Not enough letters');
+      showMessage('Not enough letters');
       return;
     }
 
     if (!VALID_WORDS.includes(currentGuess.toLowerCase())) {
-      setMessage('Not in word list');
+      showMessage('Not in word list');
       return;
     }
 
@@ -99,12 +103,12 @@ export const useWordleGame = ({
     // Check win condition
     if (currentGuess === targetWord) {
       setGameStatus('won');
-      setMessage('Genius!');
+      showMessage('Genius!');
     } else if (newGuesses.length >= MAX_GUESSES) {
       setGameStatus('lost');
-      setMessage(`The word was ${targetWord}`);
+      showMessage(`The word was ${targetWord}`);
     }
-  }, [currentGuess, gameStatus, guesses, targetWord]);
+  }, [currentGuess, gameStatus, guesses, targetWord, showMessage]);
 
   const resetGame = useCallback(() => {
     const newWord = getRandomWord();
@@ -112,8 +116,8 @@ export const useWordleGame = ({
     setGuesses([]);
     setCurrentGuess('');
     setGameStatus('playing');
-    setMessage('');
-  }, []);
+    clearMessage();
+  }, [clearMessage]);
 
   return {
     targetWord,

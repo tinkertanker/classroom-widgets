@@ -15,6 +15,18 @@ This keeps the project organized and documentation easy to find.
 
 ---
 
+## Agent Guide
+
+Keep state derived where possible. Prefer computed values or `useMemo` over copying state with effects.
+Use `useWidgetState`/`useWidgetSettings` for persisted widget state and typed `onStateChange` payloads.
+For temporary UI flags or messages, prefer `useTemporaryState` rather than ad-hoc `setTimeout` calls.
+Avoid `any` in widget state callbacks. Declare explicit shapes for saved state and callbacks.
+Keep networked widgets on the shared patterns (`useNetworkedWidget`, `useNetworkedWidgetState`, `useSocketEvents`).
+Keep commits atomic and add files explicitly.
+Use `tmux` for long-running commands and `trash` instead of `rm` for deletions.
+
+---
+
 ## Project Overview
 
 This is a React-based classroom widgets application that provides interactive tools for classroom management and student engagement. The app allows users to add, position, resize, and remove various widget components on a shared workspace. The system includes both a teacher application and a student participation app for real-time interaction.

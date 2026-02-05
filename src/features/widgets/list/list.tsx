@@ -13,6 +13,8 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import {
   useListItems,
+  type ListItem,
+  type ListWidgetState,
   useAutoResizeTextarea,
   useResponsiveSize,
   useListKeyboardHandlers
@@ -20,20 +22,13 @@ import {
 import { cn, getStatusColor, transitions, widgetWrapper, buttons, text, widgetContainer } from '../../../shared/utils/styles';
 import { ListControlBar } from '../shared/components';
 
-interface ListItem {
-  id: string;
-  text: string;
-  status: number;
-  isEditing?: boolean;
-}
-
 interface ListProps {
   savedState?: {
     inputs: string[];
     statuses: number[];
     items?: ListItem[];
   };
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: ListWidgetState) => void;
 }
 
 // Sortable item component

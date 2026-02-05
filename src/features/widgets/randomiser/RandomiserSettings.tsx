@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { WidgetTextarea } from '../../../shared/components/WidgetInput';
+import { normaliseChoiceList, stringifyChoiceList } from './utils/choiceList';
 
 interface RandomiserSettingsProps {
   choices: string[];
@@ -19,49 +20,32 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   onClose
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [input, setInput] = useState(choices.join('\n'));
-  const [removedInput, setRemovedInput] = useState(removedChoices.join('\n'));
+  const [input, setInput] = useState(stringifyChoiceList(choices));
+  const [removedInput, setRemovedInput] = useState(stringifyChoiceList(removedChoices));
+
+  const updateInputAndNotify = (nextInput: string) => {
+    setInput(nextInput);
+    onUpdateChoices(normaliseChoiceList(nextInput));
+  };
+
+  const updateRemovedInputAndNotify = (nextInput: string) => {
+    setRemovedInput(nextInput);
+    onUpdateRemovedChoices(normaliseChoiceList(nextInput));
+  };
 
   const handleRestoreAll = () => {
     if (removedInput.trim()) {
       // Add removed items back to input
       const currentItems = input.trim() ? input + '\n' : '';
       const newInput = currentItems + removedInput;
-      setInput(newInput);
-      setRemovedInput('');
+      updateInputAndNotify(newInput);
+      updateRemovedInputAndNotify('');
     }
   };
 
-  // Process and update choices whenever input changes
-  useEffect(() => {
-    let processedChoices = input.split('\n');
-    processedChoices = processedChoices.map(value => value.trim());
-    processedChoices = processedChoices.filter((value, index, array) => {
-      if (value === '') return false;
-      if (array.indexOf(value) !== index) return false;
-      return true;
-    });
-    onUpdateChoices(processedChoices);
-  }, [input, onUpdateChoices]);
-
-  // Update removed choices whenever removedInput changes
-  useEffect(() => {
-    let processedRemoved = removedInput.split('\n');
-    processedRemoved = processedRemoved.map(value => value.trim());
-    processedRemoved = processedRemoved.filter(value => value !== '');
-    onUpdateRemovedChoices(processedRemoved);
-  }, [removedInput, onUpdateRemovedChoices]);
-
   // Helper to process choices from input string
   const processChoicesFromInput = (inputStr: string) => {
-    let processed = inputStr.split('\n');
-    processed = processed.map(value => value.trim());
-    processed = processed.filter((value, index, array) => {
-      if (value === '') return false;
-      if (array.indexOf(value) !== index) return false;
-      return true;
-    });
-    return processed;
+    return normaliseChoiceList(inputStr);
   };
 
   // Helper to get active choices (excluding removed)
@@ -99,7 +83,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                       className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                       onClick={() => {
                         const numbers = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30";
-                        setInput(numbers);
+                        updateInputAndNotify(numbers);
                         setMenuOpen(false);
                       }}
                     >
@@ -109,7 +93,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                       className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                       onClick={() => {
                         const alphabet = "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ";
-                        setInput(alphabet);
+                        updateInputAndNotify(alphabet);
                         setMenuOpen(false);
                       }}
                     >
@@ -119,7 +103,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                       className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
                       onClick={() => {
                         const fruits = "Apple\nBanana\nOrange\nMango\nStrawberry\nGrapes\nWatermelon\nPineapple\nPeach\nCherry";
-                        setInput(fruits);
+                        updateInputAndNotify(fruits);
                         setMenuOpen(false);
                       }}
                     >
@@ -131,8 +115,8 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
               <button
                 className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200"
                 onClick={() => {
-                  setInput("");
-                  setRemovedInput("");
+                  updateInputAndNotify("");
+                  updateRemovedInputAndNotify("");
                 }}
               >
                 Clear all
@@ -146,7 +130,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                 Active Items
               </label>
               <WidgetTextarea
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => updateInputAndNotify(e.target.value)}
                 value={input}
                 id="textarea"
                 placeholder="Start typing a list to randomise..."
@@ -174,7 +158,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
               </label>
               <WidgetTextarea
                 value={removedInput}
-                onChange={(e) => setRemovedInput(e.target.value)}
+                onChange={(e) => updateRemovedInputAndNotify(e.target.value)}
                 placeholder="Removed items will appear here..."
                 className="h-[300px] text-sm"
                 style={{ resize: 'none' }}

@@ -1,9 +1,10 @@
 // Removed Chakra UI imports
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 // @ts-ignore
 import { FaBell, FaMicrophone } from 'react-icons/fa6';
 import ramBellSoundFile from './Ram-Bell-Sound.mp3';
 import { widgetContainer } from '../../../shared/utils/styles';
+import { useWidgetState } from '../../../shared/hooks/useWidgetState';
 import {
   useAudioStream,
   useVolumeAnalyzer,
@@ -17,12 +18,24 @@ interface AudioVolumeMonitorProps {
     threshold?: number;
     isEnabled?: boolean;
   };
-  onStateChange?: (state: any) => void;
+  onStateChange?: (state: { threshold: number; isEnabled: boolean }) => void;
 }
 
 const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onStateChange }) => {
-    const [threshold, setThreshold] = useState<number>(savedState?.threshold ?? 20); // Default threshold
-    const [isEnabled, setIsEnabled] = useState<boolean>(savedState?.isEnabled ?? true); // Widget enabled state
+    const { state, updateState } = useWidgetState({
+        initialState: {
+            threshold: 20,
+            isEnabled: true
+        },
+        savedState: savedState
+            ? {
+                threshold: savedState.threshold ?? 20,
+                isEnabled: savedState.isEnabled ?? true
+            }
+            : undefined,
+        onStateChange
+    });
+    const { threshold, isEnabled } = state;
 
     // Sound management
     const { playSound } = useAlertSound({ soundFile: ramBellSoundFile, volume: 0.3 });
@@ -57,14 +70,6 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
     useEffect(() => {
         setCooldown(isInCooldown);
     }, [isInCooldown, setCooldown]);
-
-    // Save state changes
-    useEffect(() => {
-        onStateChange?.({
-            threshold,
-            isEnabled
-        });
-    }, [threshold, isEnabled, onStateChange]);
 
     // Audio stream management
     const { analyser } = useAudioStream({
@@ -138,7 +143,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
                         min='0'
                         max='100'
                         value={threshold}
-                        onChange={(e) => setThreshold(Number(e.target.value))}
+                        onChange={(e) => updateState({ threshold: Number(e.target.value) })}
                         onMouseDown={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
                         aria-label='Volume Threshold'
@@ -166,7 +171,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
                         
                         <button
                             onClick={(_e) => {
-                                setIsEnabled(!isEnabled);
+                                updateState({ isEnabled: !isEnabled });
                             }}
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}

@@ -21,7 +21,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();
   const rndRef = useRef<any>(null);
-  const [isHovered, setIsHovered] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -134,7 +133,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     <div 
       className="relative group"
       onMouseEnter={() => {
-        setIsHovered(true);
         setShowTrash(true);
         // Clear any pending timeout
         if (hideTrashTimeoutRef.current) {
@@ -143,7 +141,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
         }
       }}
       onMouseLeave={() => {
-        setIsHovered(false);
         // Delay hiding the trash button
         hideTrashTimeoutRef.current = setTimeout(() => {
           setShowTrash(false);
