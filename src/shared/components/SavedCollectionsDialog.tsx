@@ -1,10 +1,10 @@
 // SavedCollectionsDialog - Shared dialog for saving/loading reusable content
 
 import React, { useState } from 'react';
-import { SavedRandomiserList, SavedQuestionBank } from '../types/storage';
+import { SavedRandomiserList, SavedQuestionBank, SavedPollQuestion } from '../types/storage';
 import ModalDialog from './ModalDialog';
 
-type SavedItem = SavedRandomiserList | SavedQuestionBank;
+type SavedItem = SavedRandomiserList | SavedQuestionBank | SavedPollQuestion;
 
 interface SavedCollectionsDialogPropsBase {
   currentItemCount: number;
@@ -25,7 +25,16 @@ interface SavedCollectionsDialogPropsQuestions extends SavedCollectionsDialogPro
   onLoad: (item: SavedQuestionBank) => void;
 }
 
-type SavedCollectionsDialogProps = SavedCollectionsDialogPropsRandomiser | SavedCollectionsDialogPropsQuestions;
+interface SavedCollectionsDialogPropsPoll extends SavedCollectionsDialogPropsBase {
+  type: 'poll';
+  items: SavedPollQuestion[];
+  onLoad: (item: SavedPollQuestion) => void;
+}
+
+type SavedCollectionsDialogProps =
+  | SavedCollectionsDialogPropsRandomiser
+  | SavedCollectionsDialogPropsQuestions
+  | SavedCollectionsDialogPropsPoll;
 
 const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
   type,
@@ -40,9 +49,18 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
   const [saveName, setSaveName] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const title = type === 'randomiser' ? 'Saved Lists' : 'Saved Question Banks';
-  const itemLabel = type === 'randomiser' ? 'list' : 'question bank';
-  const itemLabelPlural = type === 'randomiser' ? 'lists' : 'question banks';
+  const getLabels = () => {
+    switch (type) {
+      case 'randomiser':
+        return { title: 'Saved Lists', itemLabel: 'list', itemLabelPlural: 'lists', saveHint: 'choices' };
+      case 'questions':
+        return { title: 'Saved Question Banks', itemLabel: 'question bank', itemLabelPlural: 'question banks', saveHint: 'questions' };
+      case 'poll':
+        return { title: 'Saved Poll Questions', itemLabel: 'poll', itemLabelPlural: 'polls', saveHint: 'poll question' };
+    }
+  };
+
+  const { title, itemLabel, itemLabelPlural, saveHint } = getLabels();
 
   const handleSave = () => {
     if (!saveName.trim()) return;
@@ -68,7 +86,19 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
     if (item.type === 'randomiser') {
       return (item as SavedRandomiserList).choices.length;
     }
-    return (item as SavedQuestionBank).questions.length;
+    if (item.type === 'questions') {
+      return (item as SavedQuestionBank).questions.length;
+    }
+    // Poll: show number of options
+    return (item as SavedPollQuestion).options.length;
+  };
+
+  const getItemDescription = (item: SavedItem) => {
+    const count = getItemCount(item);
+    if (item.type === 'poll') {
+      return `${count} option${count === 1 ? '' : 's'}`;
+    }
+    return `${count} item${count === 1 ? '' : 's'}`;
   };
 
   const footer = (
@@ -130,7 +160,7 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
             className="w-full px-3 py-2 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-100 placeholder-warm-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="mt-2 text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            Saving {currentItemCount} {currentItemCount === 1 ? 'item' : 'items'}
+            Saving current {saveHint}
           </p>
         </div>
       ) : (
@@ -139,7 +169,7 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
             <div className="p-8 text-center text-warm-gray-500 dark:text-warm-gray-400">
               <p className="mb-2">No saved {itemLabelPlural} yet</p>
               <p className="text-sm">
-                Click "Save Current" to save your current {type === 'randomiser' ? 'choices' : 'questions'}
+                Click "Save Current" to save your current {saveHint}
               </p>
             </div>
           ) : (
@@ -175,7 +205,7 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
                         {item.name}
                       </div>
                       <div className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-                        {getItemCount(item)} {getItemCount(item) === 1 ? 'item' : 'items'} &middot; {formatDate(item.updatedAt)}
+                        {getItemDescription(item)} &middot; {formatDate(item.updatedAt)}
                       </div>
                     </div>
                     <div className="flex gap-2">

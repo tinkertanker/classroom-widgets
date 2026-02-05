@@ -18,7 +18,8 @@ import {
   V1_DEPRECATION_DATE,
   SavedCollections,
   SavedRandomiserList,
-  SavedQuestionBank
+  SavedQuestionBank,
+  SavedPollQuestion
 } from '../shared/types/storage';
 import {
   migrateV1ToV2,
@@ -638,6 +639,66 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     }
 
     delete v2Data.savedCollections.questionBanks[id];
+    saveStorage(v2Data);
+
+    // Update state
+    set({ savedCollections: { ...v2Data.savedCollections } });
+  },
+
+  savePollQuestion: (name: string, question: string, options: string[]): string => {
+    const v2Data = loadStorage();
+    if (!v2Data) {
+      console.warn('[WorkspaceStore] Cannot save poll question: no storage found');
+      return '';
+    }
+
+    // Ensure savedCollections exists
+    if (!v2Data.savedCollections) {
+      v2Data.savedCollections = createDefaultSavedCollections();
+    }
+
+    // Ensure pollQuestions exists (for migration from older storage)
+    if (!v2Data.savedCollections.pollQuestions) {
+      v2Data.savedCollections.pollQuestions = {};
+    }
+
+    const id = `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const now = Date.now();
+    const savedPoll: SavedPollQuestion = {
+      id,
+      name: name.trim().slice(0, 100),
+      type: 'poll',
+      question,
+      options,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    v2Data.savedCollections.pollQuestions[id] = savedPoll;
+    saveStorage(v2Data);
+
+    // Update state
+    set({ savedCollections: { ...v2Data.savedCollections } });
+
+    return id;
+  },
+
+  getPollQuestions: (): SavedPollQuestion[] => {
+    const collections = get().savedCollections;
+    // Handle migration case where pollQuestions might not exist
+    if (!collections.pollQuestions) {
+      return [];
+    }
+    return Object.values(collections.pollQuestions).sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+
+  deletePollQuestion: (id: string) => {
+    const v2Data = loadStorage();
+    if (!v2Data || !v2Data.savedCollections || !v2Data.savedCollections.pollQuestions) {
+      return;
+    }
+
+    delete v2Data.savedCollections.pollQuestions[id];
     saveStorage(v2Data);
 
     // Update state

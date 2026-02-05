@@ -1,5 +1,5 @@
 import { BackgroundType, WidgetType, Widget, Position, Size } from '../shared/types';
-import { SavedCollections, SavedRandomiserList, SavedQuestionBank } from '../shared/types/storage';
+import { SavedCollections, SavedRandomiserList, SavedQuestionBank, SavedPollQuestion } from '../shared/types/storage';
 
 export interface BottomBarConfig {
   visibleWidgets: WidgetType[];
@@ -117,4 +117,7 @@ export interface WorkspaceStore {
   saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>) => string;
   getQuestionBanks: () => SavedQuestionBank[];
   deleteQuestionBank: (id: string) => void;
+  savePollQuestion: (name: string, question: string, options: string[]) => string;
+  getPollQuestions: () => SavedPollQuestion[];
+  deletePollQuestion: (id: string) => void;
 }

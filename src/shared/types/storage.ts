@@ -36,11 +36,20 @@ export interface SavedRandomiserList extends SavedItem {
 }
 
 /**
- * Saved question bank
+ * Saved question bank (for Questions widget - student submissions)
  */
 export interface SavedQuestionBank extends SavedItem {
   type: 'questions';
   questions: Array<{ text: string; studentName?: string }>;
+}
+
+/**
+ * Saved poll question (for Poll widget - teacher-created polls)
+ */
+export interface SavedPollQuestion extends SavedItem {
+  type: 'poll';
+  question: string;
+  options: string[];
 }
 
 /**
@@ -49,6 +58,7 @@ export interface SavedQuestionBank extends SavedItem {
 export interface SavedCollections {
   randomiserLists: Record<string, SavedRandomiserList>;
   questionBanks: Record<string, SavedQuestionBank>;
+  pollQuestions: Record<string, SavedPollQuestion>;
 }
 
 // =============================================================================
@@ -248,7 +258,8 @@ export function createDefaultGlobalSettings(): GlobalSettings {
 export function createDefaultSavedCollections(): SavedCollections {
   return {
     randomiserLists: {},
-    questionBanks: {}
+    questionBanks: {},
+    pollQuestions: {}
   };
 }
 
