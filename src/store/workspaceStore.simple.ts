@@ -684,22 +684,26 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
           // Populate workspace management state
           if (state) {
+            let v2Data = loadStorage();
+
+            // If no storage exists, create default V2 storage with a workspace
+            if (!v2Data) {
+              console.log('[WorkspaceStore] No existing storage found, creating default workspace');
+              v2Data = createDefaultStorageV2();
+              saveStorage(v2Data);
+            }
+
+            // Handle missing savedCollections field (migration from older V2)
+            if (!v2Data.savedCollections) {
+              v2Data.savedCollections = createDefaultSavedCollections();
+              saveStorage(v2Data);
+            }
+
+            // Populate workspace list from storage
             const { currentId, list } = getWorkspaceListFromStorage();
             state.currentWorkspaceId = currentId;
             state.workspaceList = list;
-
-            // Load saved collections
-            const v2Data = loadStorage();
-            if (v2Data) {
-              // Handle missing savedCollections field (migration)
-              if (!v2Data.savedCollections) {
-                v2Data.savedCollections = createDefaultSavedCollections();
-                saveStorage(v2Data);
-              }
-              state.savedCollections = v2Data.savedCollections;
-            } else {
-              state.savedCollections = createDefaultSavedCollections();
-            }
+            state.savedCollections = v2Data.savedCollections;
           }
         } catch (error) {
           // If rehydration fails, log error but don't crash - defaults will be used
