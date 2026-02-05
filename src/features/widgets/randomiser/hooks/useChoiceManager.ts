@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { normaliseChoiceList, stringifyChoiceList } from '../utils/choiceList';
 
 interface UseChoiceManagerOptions {
@@ -20,7 +20,7 @@ export function useChoiceManager({
   const initialInputValue = initialInput || stringifyChoiceList(initialChoices);
   const [input, setInput] = useState(initialInputValue);
   const [removedChoices, setRemovedChoices] = useState<string[]>(initialRemovedChoices);
-  const choices = normaliseChoiceList(input);
+  const choices = useMemo(() => normaliseChoiceList(input), [input]);
 
   // Track first render to skip initial state update
   const isFirstRender = useRef(true);
