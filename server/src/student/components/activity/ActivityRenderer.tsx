@@ -10,6 +10,7 @@ import type {
 } from '../../../../../src/shared/types/activity.types';
 import { ActivityProvider, useActivity } from './context/ActivityContext';
 import { BlockRenderer } from './BlockRenderer';
+import { playDropSound } from '../../utils/sounds';
 
 interface ActivityRendererProps {
   socket: Socket;
@@ -340,6 +341,7 @@ function ActivityContentWithDnd() {
     const { active, over } = event;
     if (over) {
       placeItem(active.id as string, over.id as string);
+      playDropSound();
     }
   };
 

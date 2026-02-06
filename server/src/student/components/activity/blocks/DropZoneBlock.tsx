@@ -44,14 +44,14 @@ export function DropZoneBlock({ block }: DropZoneBlockProps) {
         ref={setNodeRef}
         className={`
           inline-flex items-center justify-center
-          min-w-[80px] px-2 py-0.5 mx-1
-          border-b-2 border-dashed
+          min-w-[80px] px-1 py-0.5 mx-1
+          rounded
           transition-all duration-150
           ${filled
-            ? 'border-sage-500 dark:border-sage-400'
+            ? 'bg-transparent'
             : isOver
-              ? 'border-sage-400 dark:border-sage-500 bg-sage-100 dark:bg-sage-900/30'
-              : 'border-warm-gray-400 dark:border-warm-gray-500'
+              ? 'bg-sage-300 dark:bg-sage-600 scale-105'
+              : 'bg-warm-gray-300 dark:bg-warm-gray-600'
           }
           ${getFeedbackStyles()}
         `}
@@ -77,9 +77,7 @@ export function DropZoneBlock({ block }: DropZoneBlockProps) {
             {correctItem.content}
           </span>
         ) : (
-          <span className="text-warm-gray-400 dark:text-warm-gray-500 text-sm">
-            {isOver ? 'Drop!' : '___'}
-          </span>
+          <span className="inline-block w-16 h-5" />
         )}
       </span>
     );
