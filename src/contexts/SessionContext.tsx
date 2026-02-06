@@ -17,7 +17,7 @@ interface SessionContextValue {
   sessionCode: string | null;
   sessionCreatedAt: number | null;
   isHost: boolean;
-  
+
   // Connection state
   socket: any;
   isConnected: boolean;
@@ -25,6 +25,7 @@ interface SessionContextValue {
   isRecovering: boolean;
   hasAttemptedRecovery: boolean;
   serverUrl: string;
+  studentAppUrl: string | null;  // URL where students should connect
   
   // Room management
   activeRooms: Map<string, ActiveRoom>;
@@ -66,6 +67,7 @@ export const useSession = () => {
         isRecovering: false,
         hasAttemptedRecovery: false,
         serverUrl: '',
+        studentAppUrl: null,
         activeRooms: new Map(),
         participantCounts: new Map(),
         createSession: async () => null,
@@ -99,6 +101,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Local state
   const [sessionCode, setSessionCode] = useState<string | null>(storeSessionCode);
   const [sessionCreatedAt, setSessionCreatedAt] = useState<number | null>(storeSessionCreatedAt);
+  const [studentAppUrl, setStudentAppUrl] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isRecovering, setIsRecovering] = useState(false);
@@ -264,6 +267,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const clearSession = useCallback(() => {
     setSessionCode(null);
     setSessionCreatedAt(null);
+    setStudentAppUrl(null);
     setStoreSessionCode(null);
     setActiveRooms(new Map());
     setRecoveryData(new Map());
@@ -358,6 +362,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
           // Handle successful response
           if (response.success) {
+            // Update studentAppUrl from server response
+            if (response.studentAppUrl) {
+              setStudentAppUrl(response.studentAppUrl);
+            }
+
             // Check if this is actually recovery of existing session
             // If isExisting is false, the server created a new session (old one was gone)
             if (!response.isExisting) {
@@ -546,7 +555,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       return await new Promise((resolve) => {
         socket.emit('session:create', {}, (response: any) => {
           isCreatingSession.current = false;
-          
+
           if (response.success) {
             debug('[UnifiedSession] Session created:', response.code);
             setSessionCode(response.code);
@@ -555,6 +564,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             sessionCodeRef.current = response.code; // Update ref immediately
             isInitialRecoveryComplete.current = true; // No recovery needed for new session
             setRecoveryData(new Map()); // Clear any old recovery data
+            // Store the student app URL from server response
+            if (response.studentAppUrl) {
+              setStudentAppUrl(response.studentAppUrl);
+            }
             resolve(response.code);
           } else {
             debug.error('[UnifiedSession] Failed to create session:', response.error);
@@ -702,7 +715,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     sessionCode,
     sessionCreatedAt,
     isHost: true,
-    
+
     // Connection state
     socket,
     isConnected,
@@ -710,7 +723,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     isRecovering,
     hasAttemptedRecovery: hasAttemptedRecovery.current || isInitialRecoveryComplete.current,
     serverUrl,
-    
+    studentAppUrl,
+
     // Room management
     activeRooms,
     participantCounts,

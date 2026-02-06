@@ -15,7 +15,10 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
   className = ''
 }) => {
   const session = useSession();
-  const { sessionCode, isConnected: connected, closeSession: onClose, serverUrl } = session;
+  const { sessionCode, isConnected: connected, closeSession: onClose, serverUrl, studentAppUrl } = session;
+
+  // Use studentAppUrl if available (provided by server), fall back to serverUrl
+  const displayUrl = studentAppUrl || serverUrl;
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
@@ -126,7 +129,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
 
           {/* URL */}
           <span className="text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate">
-            {serverUrl?.replace(/^https?:\/\//, '')}
+            {displayUrl?.replace(/^https?:\/\//, '')}
           </span>
 
           {/* Close Session Button */}

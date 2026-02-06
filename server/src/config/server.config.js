@@ -54,8 +54,21 @@ module.exports = {
 
   // Development settings
   DEV: {
-    // Vite dev server URL
+    // Vite dev server URL (where student app runs in dev)
     VITE_URL: 'http://localhost:3002'
+  },
+
+  // Student app URL - where students should connect
+  // In development: the Vite dev server for student app
+  // In production: derived from server origin + '/student' path
+  getStudentAppUrl: function(serverOrigin) {
+    if (this.IS_PRODUCTION) {
+      // In production, student app is served from /student path
+      return serverOrigin ? `${serverOrigin}/student` : '/student';
+    } else {
+      // In development, student app runs on separate Vite dev server
+      return process.env.STUDENT_APP_URL || this.DEV.VITE_URL;
+    }
   },
 
   // Logging

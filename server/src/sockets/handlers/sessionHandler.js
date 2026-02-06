@@ -3,12 +3,31 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../socketManager');
+const serverConfig = require('../../config/server.config');
+
+/**
+ * Get the server origin from socket handshake or use default
+ */
+function getServerOrigin(socket) {
+  // Try to get origin from handshake headers
+  const origin = socket.handshake.headers.origin;
+  if (origin) {
+    return origin;
+  }
+  // Fallback to constructing from host header
+  const host = socket.handshake.headers.host;
+  if (host) {
+    const protocol = socket.handshake.secure ? 'https' : 'http';
+    return `${protocol}://${host}`;
+  }
+  return null;
+}
 
 /**
  * Handle session-related socket events
  */
 module.exports = function sessionHandler(io, socket, sessionManager, getCurrentSessionCode) {
-  
+
   // Host creates or gets existing session
   socket.on(EVENTS.SESSION.CREATE, async (data, callback) => {
     try {
@@ -41,31 +60,37 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         }
       }
       
+      // Get the student app URL for this server
+      const serverOrigin = getServerOrigin(socket);
+      const studentAppUrl = serverConfig.getStudentAppUrl(serverOrigin);
+
       if (existingSession) {
         // Rejoin session room
         socket.join(`session:${existingSession.code}`);
-        
+
         // Rejoin all active widget rooms for the host
         existingSession.activeRooms.forEach((room, roomId) => {
           socket.join(`${existingSession.code}:${roomId}`);
         });
 
-        callback({ 
-          success: true, 
-          code: existingSession.code, 
+        callback({
+          success: true,
+          code: existingSession.code,
           isExisting: true,
-          activeRooms: existingSession.getActiveRooms()
+          activeRooms: existingSession.getActiveRooms(),
+          studentAppUrl
         });
       } else {
         // Create new session
         const session = sessionManager.createSession();
         session.hostSocketId = socket.id;
-        
+
         socket.join(`session:${session.code}`);
-        callback({ 
-          success: true, 
-          code: session.code, 
-          isExisting: false 
+        callback({
+          success: true,
+          code: session.code,
+          isExisting: false,
+          studentAppUrl
         });
       }
     } catch (error) {
