@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaPenNib, FaEye, FaEyeSlash } from 'react-icons/fa6';
+import { FaPenNib, FaClipboardCheck } from 'react-icons/fa6';
 import { useModal } from '../../../../contexts/ModalContext';
 import { useNetworkedWidget } from '../../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../../session/hooks/useNetworkedWidgetState';
@@ -106,7 +106,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     });
 
     // Generate UI recipe using the SAME shuffled items
-    const parts = template.split(/___[^_]+___/);
+    const parts = template.split(/\{\{[^}]+\}\}/);
     const recipe: UIBlock[] = [];
 
     // Build inline container for the sentence with blanks
@@ -287,17 +287,6 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   // Empty state - show when no room OR no valid session
   // This catches cases where hasRoom is stale but session is gone
   if (!hasRoom || !session.sessionCode) {
-    // Debug logging
-    console.log('[FillBlank] Empty state debug:', {
-      widgetId,
-      isStarting,
-      isRecovering: session.isRecovering,
-      isConnected: session.isConnected,
-      hasRoom,
-      sessionCode: session.sessionCode,
-      error
-    });
-
     return (
       <NetworkedWidgetEmpty
         icon={FaPenNib}
@@ -322,7 +311,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Preview of the sentence with blanks
   const previewText = activityData.template
-    ? activityData.template.replace(/___([^_]+)___/g, '______')
+    ? activityData.template.replace(/\{\{([^}]+)\}\}/g, '______')
     : 'No activity configured';
 
   return (
@@ -334,7 +323,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
         </NetworkedWidgetStats>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col relative p-4 pt-8">
+        <div className="flex-1 flex flex-col relative p-4 pt-8 overflow-y-auto">
           {/* Overlays */}
           <NetworkedWidgetOverlays
             isActive={isWidgetActive}
@@ -445,9 +434,9 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
                 ? 'bg-sage-500 text-white'
                 : 'bg-warm-gray-200 dark:bg-warm-gray-700 text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-600'
             }`}
-            title={answersRevealed ? 'Hide answers' : 'Reveal answers'}
+            title={answersRevealed ? 'Hide answers' : 'Show answers'}
           >
-            {answersRevealed ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+            <FaClipboardCheck className="w-4 h-4" />
           </button>
         }
       />

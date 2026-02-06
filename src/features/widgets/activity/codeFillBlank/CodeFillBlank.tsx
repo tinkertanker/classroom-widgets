@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaCode, FaEye, FaEyeSlash } from 'react-icons/fa6';
+import { FaCode, FaClipboardCheck } from 'react-icons/fa6';
 import { useModal } from '../../../../contexts/ModalContext';
 import { useNetworkedWidget } from '../../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../../session/hooks/useNetworkedWidgetState';
@@ -111,8 +111,8 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
       // Split line by blank markers
-      const parts = line.split(/___[^_]+___/);
-      const blankMatches = line.match(/___[^_]+___/g) || [];
+      const parts = line.split(/\{\{[^}]+\}\}/);
+      const blankMatches = line.match(/\{\{[^}]+\}\}/g) || [];
 
       const lineChildren: UIBlock[] = [];
 
@@ -313,7 +313,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Preview of the code with blanks
   const previewText = activityData.template
-    ? activityData.template.replace(/___([^_]+)___/g, '______')
+    ? activityData.template.replace(/\{\{([^}]+)\}\}/g, '______')
     : 'No activity configured';
 
   const languageLabel = {
@@ -331,7 +331,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
         </NetworkedWidgetStats>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col relative p-4 pt-8">
+        <div className="flex-1 flex flex-col relative p-4 pt-8 overflow-y-auto">
           {/* Overlays */}
           <NetworkedWidgetOverlays
             isActive={isWidgetActive}
@@ -434,9 +434,9 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
                 ? 'bg-sage-500 text-white'
                 : 'bg-warm-gray-200 dark:bg-warm-gray-700 text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-600'
             }`}
-            title={answersRevealed ? 'Hide answers' : 'Reveal answers'}
+            title={answersRevealed ? 'Hide answers' : 'Show answers'}
           >
-            {answersRevealed ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+            <FaClipboardCheck className="w-4 h-4" />
           </button>
         }
       />

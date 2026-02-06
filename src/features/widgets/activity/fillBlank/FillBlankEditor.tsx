@@ -26,15 +26,13 @@ interface FillBlankEditorProps {
  * Example: "The ___mitochondria___ is the powerhouse of the ___cell___."
  */
 export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEditorProps) {
-  const [title, setTitle] = useState(initialData?.title || '');
-  const [instructions, setInstructions] = useState(initialData?.instructions || 'Drag the words to fill in the blanks.');
   const [template, setTemplate] = useState(initialData?.template || '');
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
   const [newDistractor, setNewDistractor] = useState('');
 
   // Parse answers from template
   const parseAnswers = useCallback((text: string): string[] => {
-    const pattern = /___([^_]+)___/g;
+    const pattern = /\{\{([^}]+)\}\}/g;
     const matches = [...text.matchAll(pattern)];
     return matches.map(m => m[1].trim());
   }, []);
@@ -54,64 +52,36 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
 
   const handleSave = () => {
     if (answers.length === 0) {
-      alert('Please add at least one blank using ___answer___ syntax');
+      alert('Please add at least one blank using {{answer}} syntax');
       return;
     }
     onSave({
       template,
       answers,
       distractors,
-      title: title || 'Fill in the Blanks',
-      instructions
+      title: 'Fill in the Blanks',
+      instructions: 'Drag the words to fill in the blanks.'
     });
   };
 
   // Preview with blanks shown as underlines
-  const previewText = template.replace(/___([^_]+)___/g, '______');
+  const previewText = template.replace(/\{\{([^}]+)\}\}/g, '______');
 
   return (
     <div className="space-y-4 p-4 max-w-2xl">
-      {/* Title */}
-      <div>
-        <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
-          Title
-        </label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., Cell Biology Quiz"
-          className="w-full px-3 py-2 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200"
-        />
-      </div>
-
-      {/* Instructions */}
-      <div>
-        <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
-          Instructions
-        </label>
-        <input
-          type="text"
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Instructions for students"
-          className="w-full px-3 py-2 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200"
-        />
-      </div>
-
       {/* Template Input */}
       <div>
         <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
           Sentence with Blanks
         </label>
         <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mb-2">
-          Use <code className="bg-warm-gray-100 dark:bg-warm-gray-700 px-1 rounded">___answer___</code> to mark blanks.
-          Example: The ___mitochondria___ is the powerhouse of the ___cell___.
+          Use <code className="bg-warm-gray-100 dark:bg-warm-gray-700 px-1 rounded">{"{{answer}}"}</code> to mark blanks.
+          Example: The {"{{mitochondria}}"} is the powerhouse of the {"{{cell}}"}.
         </p>
         <textarea
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
-          placeholder="The ___mitochondria___ is the powerhouse of the ___cell___."
+          placeholder="The {{mitochondria}} is the powerhouse of the {{cell}}."
           rows={4}
           className="w-full px-3 py-2 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200 font-mono text-sm"
         />

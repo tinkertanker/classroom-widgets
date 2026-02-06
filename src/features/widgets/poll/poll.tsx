@@ -307,7 +307,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
         </NetworkedWidgetStats>
 
         {/* Poll content */}
-        <div className="flex-1 flex flex-col relative p-4 pt-8">
+        <div className="flex-1 flex flex-col relative p-4 pt-8 overflow-y-auto">
           {/* Overlays */}
           <NetworkedWidgetOverlays
             isActive={isWidgetActive}

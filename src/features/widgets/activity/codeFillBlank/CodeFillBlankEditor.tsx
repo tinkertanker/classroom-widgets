@@ -28,8 +28,6 @@ interface CodeFillBlankEditorProps {
  * Example: "def ___greet___(name):\n    return ___\"Hello, \"___ + name"
  */
 export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBlankEditorProps) {
-  const [title, setTitle] = useState(initialData?.title || '');
-  const [instructions, setInstructions] = useState(initialData?.instructions || 'Complete the code by filling in the blanks.');
   const [template, setTemplate] = useState(initialData?.template || '');
   const [language, setLanguage] = useState<'python' | 'javascript' | 'text'>(initialData?.language || 'python');
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
@@ -37,7 +35,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
 
   // Parse answers from template
   const parseAnswers = useCallback((text: string): string[] => {
-    const pattern = /___([^_]+)___/g;
+    const pattern = /\{\{([^}]+)\}\}/g;
     const matches = [...text.matchAll(pattern)];
     return matches.map(m => m[1].trim());
   }, []);
@@ -57,52 +55,24 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
 
   const handleSave = () => {
     if (answers.length === 0) {
-      alert('Please add at least one blank using ___answer___ syntax');
+      alert('Please add at least one blank using {{answer}} syntax');
       return;
     }
     onSave({
       template,
       answers,
       distractors,
-      title: title || 'Code Fill-in-the-Blanks',
-      instructions,
+      title: 'Code Fill-in-the-Blanks',
+      instructions: 'Complete the code by filling in the blanks.',
       language
     });
   };
 
   // Preview with blanks shown as underlines
-  const previewText = template.replace(/___([^_]+)___/g, '______');
+  const previewText = template.replace(/\{\{([^}]+)\}\}/g, '______');
 
   return (
     <div className="space-y-4 p-4 max-w-2xl">
-      {/* Title */}
-      <div>
-        <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
-          Title
-        </label>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., Python Functions Quiz"
-          className="w-full px-3 py-2 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200"
-        />
-      </div>
-
-      {/* Instructions */}
-      <div>
-        <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
-          Instructions
-        </label>
-        <input
-          type="text"
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Instructions for students"
-          className="w-full px-3 py-2 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 text-warm-gray-800 dark:text-warm-gray-200"
-        />
-      </div>
-
       {/* Language Selection */}
       <div>
         <label className="block text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-1">
@@ -125,15 +95,15 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
           Code Template
         </label>
         <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mb-2">
-          Use <code className="bg-warm-gray-100 dark:bg-warm-gray-700 px-1 rounded">___answer___</code> to mark blanks.
-          Example: <code className="bg-warm-gray-100 dark:bg-warm-gray-700 px-1 rounded">def ___greet___(name):</code>
+          Use <code className="bg-warm-gray-100 dark:bg-warm-gray-700 px-1 rounded">{"{{answer}}"}</code> to mark blanks.
+          Example: <code className="bg-warm-gray-100 dark:bg-warm-gray-700 px-1 rounded">def {"{{greet}}"}(name):</code>
         </p>
         <textarea
           value={template}
           onChange={(e) => setTemplate(e.target.value)}
-          placeholder={`def ___greet___(name):
-    message = "Hello, " + ___name___
-    ___return___ message`}
+          placeholder={`def {{greet}}(name):
+    message = "Hello, " + {{name}}
+    {{return}} message`}
           rows={8}
           className="w-full px-3 py-2 rounded-lg border border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-900 dark:bg-warm-gray-950 text-warm-gray-200 font-mono text-sm"
           spellCheck={false}

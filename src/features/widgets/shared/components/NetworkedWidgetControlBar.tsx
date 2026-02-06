@@ -57,6 +57,7 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
           disabled={disabled || !isConnected}
           activeLabel={activeLabel}
           inactiveLabel={inactiveLabel}
+          showText={false}
         />
 
         {showClear && onClear && (
@@ -68,6 +69,7 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
             variant={clearVariant}
             requireConfirmation={requireClearConfirmation}
             confirmationMessage={clearConfirmationMessage}
+            showText={false}
           />
         )}
       </div>
