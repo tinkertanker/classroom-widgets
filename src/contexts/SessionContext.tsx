@@ -3,6 +3,7 @@ import { useSocket } from '../hooks/useSocket';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import api from '../services/api';
 import { debug } from '../shared/utils/debug';
+import { WidgetType } from '../shared/types';
 
 interface ActiveRoom {
   roomType: string;
@@ -177,6 +178,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     if (!socket) return;
     
     const handleRoomCreated = (data: { roomType: string; widgetId: string; roomData: any }) => {
+      console.log('[UnifiedSession] Received session:roomCreated event:', data);
       setActiveRooms(prev => {
         const next = new Map(prev);
         next.set(data.widgetId, {
@@ -185,6 +187,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           isActive: data.roomData?.isActive || false,
           roomData: data.roomData
         });
+        console.log('[UnifiedSession] Updated activeRooms:', Array.from(next.keys()));
         return next;
       });
     };
@@ -442,12 +445,25 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     if (!socket?.connected || !sessionCode) return;
 
     // Get current widgets from store
+    // These are the widget types that create server-side rooms
+    const networkedWidgetTypes = [
+      WidgetType.POLL,
+      WidgetType.QUESTIONS,
+      WidgetType.RT_FEEDBACK,
+      WidgetType.LINK_SHARE,
+      WidgetType.HANDOUT,
+      WidgetType.FILL_BLANK,
+      WidgetType.SORTING,
+      WidgetType.SEQUENCING,
+      WidgetType.MATCHING
+    ];
     const currentWidgets = useWorkspaceStore.getState().widgets;
     const networkedWidgetIds = currentWidgets
-      .filter((w: any) => ['poll', 'questions', 'rtfeedback', 'linkShare'].includes(w.type))
+      .filter((w: any) => networkedWidgetTypes.includes(w.type))
       .map((w: any) => w.id);
 
-    debug('[UnifiedSession] Sending cleanup request with active widgets:', networkedWidgetIds);
+    console.log('[UnifiedSession] cleanupOrphanedRooms: Found networked widgets:', networkedWidgetIds);
+    console.log('[UnifiedSession] cleanupOrphanedRooms: Current activeRooms:', Array.from(activeRooms.keys()));
 
     // Send cleanup request to server with list of active widget IDs
     // Server will close any rooms not in this list
@@ -476,18 +492,35 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Schedule cleanup after recovery completes and widgets have had time to mount
   // This handles the case where widgets were deleted while offline
   useEffect(() => {
+    console.log('[UnifiedSession] Cleanup useEffect triggered:', {
+      isInitialRecoveryComplete: isInitialRecoveryComplete.current,
+      isRecovering,
+      socketConnected: socket?.connected,
+      sessionCode
+    });
+
     // Only run after initial recovery is complete
-    if (!isInitialRecoveryComplete.current || isRecovering) return;
-    if (!socket?.connected || !sessionCode) return;
+    if (!isInitialRecoveryComplete.current || isRecovering) {
+      console.log('[UnifiedSession] Cleanup skipped: not ready');
+      return;
+    }
+    if (!socket?.connected || !sessionCode) {
+      console.log('[UnifiedSession] Cleanup skipped: no socket or session');
+      return;
+    }
 
     // Wait for widgets to mount before cleaning up orphaned rooms
     // This delay ensures React has rendered all widgets before we check
+    console.log('[UnifiedSession] Scheduling cleanup in 2 seconds...');
     const cleanupTimer = setTimeout(() => {
-      debug('[UnifiedSession] Running post-recovery cleanup');
+      console.log('[UnifiedSession] Running post-recovery cleanup NOW');
       cleanupOrphanedRooms();
     }, 2000); // 2 second delay to allow widgets to mount
 
-    return () => clearTimeout(cleanupTimer);
+    return () => {
+      console.log('[UnifiedSession] Cleanup timer cancelled');
+      clearTimeout(cleanupTimer);
+    };
   }, [isRecovering, socket?.connected, sessionCode, cleanupOrphanedRooms]);
 
   // Create session
@@ -565,6 +598,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     // Use ref to always get the current session code
     const currentCode = sessionCodeRef.current;
 
+    console.log('[UnifiedSession] createRoom called:', { roomType, widgetId, currentCode, isRecovering });
+
     // Wait for recovery to complete if in progress (use promise-based approach)
     if (isRecovering && recoveryPromiseRef.current) {
       debug('[UnifiedSession] Waiting for recovery to complete before creating room');
@@ -575,14 +610,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       debug.error('[UnifiedSession] Cannot create room - no session or not connected', { currentCode, connected: socket?.connected });
       return false;
     }
-    
+
+    console.log('[UnifiedSession] Emitting session:createRoom:', { sessionCode: currentCode, roomType, widgetId });
     return new Promise((resolve) => {
+      console.log('[UnifiedSession] Setting up emit with callback...');
       socket.emit('session:createRoom', {
         sessionCode: currentCode,
         roomType,
         widgetId
       }, (response: any) => {
+        console.log('[UnifiedSession] createRoom callback received:', response);
         if (response.success) {
+          console.log('[UnifiedSession] Room created successfully');
           resolve(true);
         } else {
           debug.error('[UnifiedSession] Failed to create room:', response.error);
@@ -629,8 +668,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Close room
   const closeRoom = useCallback((roomType: string, widgetId: string) => {
     if (!socket || !sessionCode) return;
-    
-    debug('[UnifiedSession] Closing room:', widgetId);
+
+    // Debug: log call stack to trace where closeRoom is being called from
+    console.log('[UnifiedSession] Closing room:', widgetId, 'roomType:', roomType);
+    console.log('[UnifiedSession] closeRoom call stack:', new Error().stack);
     socket.emit('session:closeRoom', {
       sessionCode,
       roomType,

@@ -44,7 +44,11 @@ export enum WidgetType {
   QUESTIONS = 17,
   WORDLE = 18,
   SNAKE = 19,
-  HANDOUT = 20
+  HANDOUT = 20,
+  FILL_BLANK = 21,
+  SORTING = 22,
+  SEQUENCING = 23,
+  MATCHING = 24
 }
 
 // Widget Configuration
@@ -221,3 +225,6 @@ export * from './socket.types';
 
 // Export storage format types (for multi-workspace support)
 export * from './storage';
+
+// Export activity types
+export * from './activity.types';

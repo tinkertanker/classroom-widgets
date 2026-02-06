@@ -60,7 +60,7 @@ export interface SessionCloseData {
 // Room (Widget) Management Events
 // ============================================================================
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout' | 'activity';
 
 export interface SessionCreateRoomData {
   sessionCode: string;
@@ -360,6 +360,82 @@ export interface HandoutRequestStateData {
 }
 
 // ============================================================================
+// Activity Widget Events
+// ============================================================================
+
+import type {
+  ActivityDefinition,
+  ActivityAction,
+  ActivityResults,
+  StudentAnswers,
+  ActivityType as ActivityTypeEnum,
+  ActivityItem,
+  ActivityTarget
+} from './activity.types';
+
+export interface SessionActivityUpdateData {
+  sessionCode: string;
+  widgetId: string;
+  activity: Partial<ActivityDefinition>;
+}
+
+export interface SessionActivityRevealData {
+  sessionCode: string;
+  widgetId: string;
+  reveal: boolean;
+}
+
+export interface SessionActivityResetData {
+  sessionCode: string;
+  widgetId: string;
+}
+
+export interface SessionActivitySubmitData {
+  sessionCode: string;
+  widgetId: string;
+  answers: StudentAnswers;
+}
+
+export interface ActivityStateUpdateData {
+  widgetId: string;
+  activity: ActivityDefinition;
+  isActive: boolean;
+  actions: ActivityAction[];
+  responseCount: number;
+}
+
+export interface ActivityFeedbackData {
+  widgetId: string;
+  results: ActivityResults;
+  actions: ActivityAction[];
+}
+
+export interface ActivityRevealedData {
+  widgetId: string;
+  correctAnswers: Record<string, string>;
+}
+
+export interface ActivityResponseReceivedData {
+  widgetId: string;
+  studentId: string;
+  studentName: string;
+  response: StudentAnswers;
+  results: ActivityResults;
+}
+
+export interface SessionActivitySubmittedResponse {
+  success: boolean;
+  widgetId: string;
+  results?: ActivityResults;
+  error?: string;
+}
+
+export interface ActivityRequestStateData {
+  sessionCode: string;
+  widgetId: string;
+}
+
+// ============================================================================
 // Generic Widget Events
 // ============================================================================
 
@@ -412,6 +488,13 @@ export interface ServerToClientEvents {
   'handout:stateUpdate': (data: HandoutStateUpdateData) => void;
   'handout:itemAdded': (data: HandoutItemAddedData) => void;
   'handout:itemDeleted': (data: HandoutItemDeletedData) => void;
+
+  // Activity events
+  'activity:stateUpdate': (data: ActivityStateUpdateData) => void;
+  'activity:feedback': (data: ActivityFeedbackData) => void;
+  'activity:revealed': (data: ActivityRevealedData) => void;
+  'activity:responseReceived': (data: ActivityResponseReceivedData) => void;
+  'session:activity:submitted': (data: SessionActivitySubmittedResponse) => void;
 }
 
 /** Request state data for RT Feedback */
@@ -470,6 +553,13 @@ export interface ClientToServerEvents {
   'session:handout:add': (data: SessionHandoutAddData) => void;
   'session:handout:delete': (data: SessionHandoutDeleteData) => void;
   'handout:requestState': (data: HandoutRequestStateData) => void;
+
+  // Activity events
+  'session:activity:update': (data: SessionActivityUpdateData) => void;
+  'session:activity:reveal': (data: SessionActivityRevealData) => void;
+  'session:activity:reset': (data: SessionActivityResetData) => void;
+  'session:activity:submit': (data: SessionActivitySubmitData, callback: (response: SessionActivitySubmittedResponse) => void) => void;
+  'activity:requestState': (data: ActivityRequestStateData) => void;
 }
 
 // ============================================================================

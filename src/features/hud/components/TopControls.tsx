@@ -15,6 +15,9 @@ const TopControls: React.FC = () => {
   const { connected } = useServerConnection();
   const { sessionCode } = useSession();
   const { showClock } = useBottomBar();
+
+  // Debug: log session code
+  console.log('[TopControls] sessionCode:', sessionCode);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isNear, registerHudElement } = useHudProximityContext();
 

@@ -227,10 +227,18 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   socket.on(EVENTS.SESSION.CREATE_ROOM, async (data, callback) => {
     try {
       const { sessionCode, roomType, widgetId } = data;
+      console.log('[SessionHandler] CREATE_ROOM received:', { sessionCode, roomType, widgetId, socketId: socket.id });
       const actualSessionCode = sessionCode || getCurrentSessionCode();
+      console.log('[SessionHandler] Looking up session:', actualSessionCode);
       const session = sessionManager.getSession(actualSessionCode);
 
       if (!session || !session.isHost(socket.id)) {
+        console.log('[SessionHandler] CREATE_ROOM failed: session not found or not host', {
+          sessionExists: !!session,
+          isHost: session ? session.isHost(socket.id) : false,
+          hostSocketId: session ? session.hostSocketId : null,
+          requestingSocketId: socket.id
+        });
         callback({ success: false, error: 'Session not found' });
         return;
       }
@@ -256,7 +264,9 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       }
       
       // Create new room
+      console.log('[SessionHandler] Creating new room:', { roomType, widgetId });
       const room = session.createRoom(roomType, widgetId);
+      console.log('[SessionHandler] Room created successfully:', { roomType: room.getType(), widgetId: room.widgetId });
       const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
       socket.join(`${session.code}:${roomId}`);
       
@@ -274,11 +284,19 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       });
       
       // Notify all session participants about new room
-      io.to(`session:${session.code}`).emit('session:roomCreated', {
+      const sessionRoomName = `session:${session.code}`;
+      const socketsInRoom = io.sockets.adapter.rooms.get(sessionRoomName);
+      console.log('[SessionHandler] Emitting session:roomCreated to:', sessionRoomName);
+      console.log('[SessionHandler] Sockets in session room:', socketsInRoom ? Array.from(socketsInRoom) : 'none');
+      console.log('[SessionHandler] Current socket ID:', socket.id);
+      console.log('[SessionHandler] Is current socket in session room?', socketsInRoom?.has(socket.id));
+
+      io.to(sessionRoomName).emit('session:roomCreated', {
         roomType,
         widgetId,
         roomData: room.toJSON()
       });
+      console.log('[SessionHandler] Room creation complete, returning success');
       
       // Send initial state to all participants using the unified event
       io.to(`session:${session.code}`).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
@@ -288,11 +306,17 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       });
       
       // Return room data to the teacher
-      callback({
-        success: true,
-        isExisting: false,
-        roomData: room.toJSON()
-      });
+      console.log('[SessionHandler] Calling callback with success');
+      if (typeof callback === 'function') {
+        callback({
+          success: true,
+          isExisting: false,
+          roomData: room.toJSON()
+        });
+        console.log('[SessionHandler] Callback called successfully');
+      } else {
+        console.error('[SessionHandler] callback is not a function:', typeof callback);
+      }
     } catch (error) {
       console.error('Error creating room:', error);
       callback({

@@ -10,9 +10,10 @@ import LinkShareActivity from './components/LinkShareActivity';
 import RTFeedbackActivity from './components/RTFeedbackActivity';
 import QuestionsActivity from './components/QuestionsActivity';
 import HandoutActivity from './components/HandoutActivity';
+import { ActivityRenderer } from './components/activity';
 import AdminPanel from './components/AdminPanel';
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout' | 'activity';
 
 interface JoinedRoom {
   id: string;
@@ -504,7 +505,7 @@ const App: React.FC = () => {
                 }`} 
                 data-room-type={room.type}
               >
-                <div 
+                <div
                   className={`flex justify-between items-center px-4 py-2.5 transition-all duration-300 cursor-pointer select-none border-b-2 ${
                     !room.isActive
                       ? 'border-warm-gray-400 dark:border-warm-gray-600 bg-warm-gray-100 dark:bg-warm-gray-800'
@@ -516,6 +517,8 @@ const App: React.FC = () => {
                       ? 'border-amber-500 dark:border-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/40'
                       : room.type === 'handout'
                       ? 'border-slate-blue-500 dark:border-slate-blue-400 bg-slate-blue-100 dark:bg-slate-blue-900/30 hover:bg-slate-blue-200 dark:hover:bg-slate-blue-900/40'
+                      : room.type === 'activity'
+                      ? 'border-purple-500 dark:border-purple-400 bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/40'
                       : 'border-sky-500 dark:border-sky-400 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-200 dark:hover:bg-sky-900/40'
                   }`}
                   onClick={() => toggleMinimizeRoom(room.id)}
@@ -528,7 +531,7 @@ const App: React.FC = () => {
                     }
                   }}
                   aria-expanded={!minimizedRooms.has(room.id)}
-                  aria-label={`${room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : 'Ask Questions'} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
+                  aria-label={`${room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : room.type === 'activity' ? 'Interactive Activity' : 'Ask Questions'} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
                 >
                   <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                     <span className={`text-base md:text-lg font-semibold ${
@@ -542,12 +545,14 @@ const App: React.FC = () => {
                         ? 'text-amber-700 dark:text-amber-300'
                         : room.type === 'handout'
                         ? 'text-slate-blue-700 dark:text-slate-blue-300'
+                        : room.type === 'activity'
+                        ? 'text-purple-700 dark:text-purple-300'
                         : 'text-sky-700 dark:text-sky-300'
                     }`}>
-                      {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : 'Ask Questions'}
+                      {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : room.type === 'activity' ? (room.initialData?.activity?.title || 'Interactive Activity') : 'Ask Questions'}
                     </span>
                     <span className="text-warm-gray-600 dark:text-warm-gray-400 text-xs sm:text-sm">
-                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : room.type === 'handout' ? '• View content shared by your teacher' : '• Submit questions to your teacher'}
+                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : room.type === 'handout' ? '• View content shared by your teacher' : room.type === 'activity' ? '• Complete the interactive activity' : '• Submit questions to your teacher'}
                     </span>
                   </div>
                   <div
@@ -562,6 +567,8 @@ const App: React.FC = () => {
                         ? 'bg-amber-500 dark:bg-amber-600 text-white'
                         : room.type === 'handout'
                         ? 'bg-slate-blue-500 dark:bg-slate-blue-600 text-white'
+                        : room.type === 'activity'
+                        ? 'bg-purple-500 dark:bg-purple-600 text-white'
                         : 'bg-sky-500 dark:bg-sky-600 text-white'
                     } w-6 h-6 rounded-full text-xs transition-all duration-200 flex items-center justify-center pointer-events-none shadow-sm`}
                   >
@@ -632,6 +639,16 @@ const App: React.FC = () => {
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
                         initialItems={room.initialData?.items || []}
+                      />
+                    )}
+                    {room.type === 'activity' && (
+                      <ActivityRenderer
+                        socket={room.socket}
+                        sessionCode={room.code}
+                        widgetId={room.widgetId}
+                        initialActivity={room.initialData?.activity}
+                        initialIsActive={room.initialData?.isActive}
+                        initialActions={room.initialData?.actions || []}
                       />
                     )}
                   </div>

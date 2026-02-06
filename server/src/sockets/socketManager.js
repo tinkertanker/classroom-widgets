@@ -7,6 +7,7 @@ const linkShareHandler = require('./handlers/linkShareHandler');
 const rtFeedbackHandler = require('./handlers/rtFeedbackHandler');
 const questionsHandler = require('./handlers/questionsHandler');
 const handoutHandler = require('./handlers/handoutHandler');
+const activityHandler = require('./handlers/activityHandler');
 const adminHandler = require('./handlers/adminHandler');
 
 // Track host disconnect timeouts (sessionCode -> timeoutId)
@@ -74,6 +75,7 @@ function setupSocketHandlers(io, sessionManager) {
     rtFeedbackHandler(io, socket, sessionManager, () => currentSessionCode);
     questionsHandler(io, socket, sessionManager, () => currentSessionCode);
     handoutHandler(io, socket, sessionManager, () => currentSessionCode);
+    activityHandler(io, socket, sessionManager, () => currentSessionCode);
     adminHandler(io, socket, sessionManager);
 
     // Handle disconnection

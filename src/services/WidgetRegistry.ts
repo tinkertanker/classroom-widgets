@@ -21,7 +21,8 @@ import {
   FaCircleQuestion,
   FaPersonChalkboard,
   FaInbox,
-  FaFileLines
+  FaFileLines,
+  FaPenNib
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
@@ -49,7 +50,8 @@ const LazyWidgets = {
   TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
   Questions: lazy(() => import('../features/widgets/questions')),
   Snake: lazy(() => import('../features/widgets/snake')),
-  Handout: lazy(() => import('../features/widgets/handout'))
+  Handout: lazy(() => import('../features/widgets/handout')),
+  FillBlank: lazy(() => import('../features/widgets/activity/fillBlank'))
   // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
@@ -474,6 +476,30 @@ export class WidgetRegistry {
         studentComponentName: 'HandoutActivity'
       }
     });
+
+    // Fill in the Blanks
+    this.register({
+      type: WidgetType.FILL_BLANK,
+      name: 'Fill in the Blanks',
+      icon: FaPenNib,
+      component: LazyWidgets.FillBlank,
+      defaultSize: { width: 400, height: 400 },
+      minSize: { width: 350, height: 350 },
+      maxSize: { width: 600, height: 700 },
+      category: WidgetCategory.NETWORKED,
+      description: 'Interactive fill-in-the-blank activities',
+      features: {
+        hasSettings: true,
+        hasStateManagement: true,
+        isResizable: true
+      },
+      networked: {
+        roomType: 'activity',
+        hasStartStop: true,
+        startsActive: false,
+        studentComponentName: 'ActivityRenderer'
+      }
+    });
   }
 
   private register(config: WidgetConfig): void {
@@ -563,7 +589,11 @@ export class WidgetRegistry {
       [WIDGET_TYPES.QUESTIONS]: WidgetType.QUESTIONS,
       [WIDGET_TYPES.WORDLE]: WidgetType.WORDLE,
       [WIDGET_TYPES.SNAKE]: WidgetType.SNAKE,
-      [WIDGET_TYPES.HANDOUT]: WidgetType.HANDOUT
+      [WIDGET_TYPES.HANDOUT]: WidgetType.HANDOUT,
+      [WIDGET_TYPES.FILL_BLANK]: WidgetType.FILL_BLANK,
+      [WIDGET_TYPES.SORTING]: WidgetType.SORTING,
+      [WIDGET_TYPES.SEQUENCING]: WidgetType.SEQUENCING,
+      [WIDGET_TYPES.MATCHING]: WidgetType.MATCHING
     };
     return mapping[legacyType];
   }
@@ -590,7 +620,11 @@ export class WidgetRegistry {
       [WidgetType.QUESTIONS]: WIDGET_TYPES.QUESTIONS,
       [WidgetType.WORDLE]: WIDGET_TYPES.WORDLE,
       [WidgetType.SNAKE]: WIDGET_TYPES.SNAKE,
-      [WidgetType.HANDOUT]: WIDGET_TYPES.HANDOUT
+      [WidgetType.HANDOUT]: WIDGET_TYPES.HANDOUT,
+      [WidgetType.FILL_BLANK]: WIDGET_TYPES.FILL_BLANK,
+      [WidgetType.SORTING]: WIDGET_TYPES.SORTING,
+      [WidgetType.SEQUENCING]: WIDGET_TYPES.SEQUENCING,
+      [WidgetType.MATCHING]: WIDGET_TYPES.MATCHING
     };
     return mapping[type];
   }

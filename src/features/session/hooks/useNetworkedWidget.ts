@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
 import { debug } from '../../../shared/utils/debug';
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout';
+export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout' | 'activity';
 
 interface UseNetworkedWidgetProps {
   widgetId?: string;
@@ -61,11 +61,17 @@ export function useNetworkedWidget({
   
   // Watch for session being cleared
   useEffect(() => {
+    console.log('[useNetworkedWidget] Session check:', {
+      sessionCode: session.sessionCode,
+      hasRoom,
+      widgetId
+    });
     if (!session.sessionCode && hasRoom) {
       // Session has been cleared, so no rooms exist anymore
+      console.log('[useNetworkedWidget] Clearing hasRoom - no session code');
       setHasRoom(false);
     }
-  }, [session.sessionCode, hasRoom]);
+  }, [session.sessionCode, hasRoom, widgetId]);
   
   // Listen for room events
   useEffect(() => {
@@ -127,7 +133,10 @@ export function useNetworkedWidget({
       if (!success) {
         throw new Error('Failed to create room');
       }
-      
+
+      // Set hasRoom directly on success - don't rely solely on session:roomCreated event
+      // The event might not be received due to timing issues with socket room membership
+      setHasRoom(true);
       setIsStarting(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start';

@@ -42,7 +42,8 @@ module.exports = {
     LINK_SHARE: 'linkShare',
     RT_FEEDBACK: 'rtfeedback',
     QUESTIONS: 'questions',
-    HANDOUT: 'handout'
+    HANDOUT: 'handout',
+    ACTIVITY: 'activity'
   },
 
   // Socket event namespaces
@@ -126,6 +127,21 @@ module.exports = {
       STATE_UPDATE: 'handout:stateUpdate',
       ITEM_ADDED: 'handout:itemAdded',
       ITEM_DELETED: 'handout:itemDeleted'
+    },
+    ACTIVITY: {
+      // Client -> Server events (teacher)
+      UPDATE: 'session:activity:update',
+      REVEAL: 'session:activity:reveal',
+      RESET: 'session:activity:reset',
+      REQUEST_STATE: 'activity:requestState',
+      // Client -> Server events (student)
+      SUBMIT: 'session:activity:submit',
+      // Server -> Client events
+      STATE_UPDATE: 'activity:stateUpdate',
+      FEEDBACK: 'activity:feedback',
+      REVEALED: 'activity:revealed',
+      RESPONSE_RECEIVED: 'activity:responseReceived',
+      SUBMITTED: 'session:activity:submitted'
     }
   }
 };
