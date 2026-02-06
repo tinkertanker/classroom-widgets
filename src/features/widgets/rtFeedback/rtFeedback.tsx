@@ -135,7 +135,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="RT Feedback">
           {feedbackData.totalResponses} response{feedbackData.totalResponses !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 

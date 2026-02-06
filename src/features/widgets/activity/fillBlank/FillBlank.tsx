@@ -318,7 +318,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="Fill in the Blanks">
           {responseCount} response{responseCount !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 
@@ -334,11 +334,6 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
           {activityData.template ? (
             <div className="flex flex-col gap-4">
-              {/* Title */}
-              <h3 className="text-lg font-semibold text-warm-gray-800 dark:text-warm-gray-200">
-                {activityData.title}
-              </h3>
-
               {/* Preview */}
               <div className="bg-warm-gray-50 dark:bg-warm-gray-800/50 p-4 rounded-lg">
                 <p className="text-warm-gray-700 dark:text-warm-gray-300 text-lg leading-relaxed">

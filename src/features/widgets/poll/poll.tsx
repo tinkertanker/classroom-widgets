@@ -302,7 +302,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="Poll">
           {results.totalVotes} vote{results.totalVotes !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 

@@ -203,7 +203,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="Handout">
           {items.length} item{items.length !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 

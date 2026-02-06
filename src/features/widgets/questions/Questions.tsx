@@ -194,7 +194,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="Questions">
           {questions.length} question{questions.length !== 1 ? 's' : ''}
           {unansweredCount > 0 &&
             ` (${unansweredCount} unanswered)`

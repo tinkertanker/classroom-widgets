@@ -176,7 +176,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="Drop Box">
           {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 

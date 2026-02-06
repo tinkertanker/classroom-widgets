@@ -316,17 +316,11 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     ? activityData.template.replace(/\{\{([^}]+)\}\}/g, '______')
     : 'No activity configured';
 
-  const languageLabel = {
-    python: 'Python',
-    javascript: 'JavaScript',
-    text: 'Plain Text'
-  }[activityData.language];
-
   return (
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats>
+        <NetworkedWidgetStats label="Code Fill-in-the-Blanks">
           {responseCount} response{responseCount !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 
@@ -342,16 +336,6 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
           {activityData.template ? (
             <div className="flex flex-col gap-4">
-              {/* Title and Language */}
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-warm-gray-800 dark:text-warm-gray-200">
-                  {activityData.title}
-                </h3>
-                <span className="px-2 py-1 bg-warm-gray-200 dark:bg-warm-gray-700 text-warm-gray-600 dark:text-warm-gray-400 rounded text-xs">
-                  {languageLabel}
-                </span>
-              </div>
-
               {/* Code Preview */}
               <div className="bg-warm-gray-900 dark:bg-warm-gray-950 p-4 rounded-lg overflow-x-auto">
                 <pre className={`text-sm font-mono whitespace-pre-wrap ${
