@@ -302,4 +302,75 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
     session.updateActivity();
   });
+
+  // Student requests to retry the activity
+  socket.on(EVENTS.ACTIVITY.RETRY, (data, callback) => {
+    const { sessionCode, widgetId } = data;
+
+    logger.debug('activity:retry', 'Received retry request', {
+      sessionCode,
+      widgetId,
+      socketId: socket.id
+    });
+
+    const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
+
+    if (!session) {
+      logger.warn('activity:retry', 'Session not found', { sessionCode });
+      if (callback) {
+        callback({
+          ...createErrorResponse('INVALID_SESSION'),
+          widgetId
+        });
+      }
+      return;
+    }
+
+    const room = session.getRoom('activity', widgetId);
+    if (!room || !(room instanceof ActivityRoom)) {
+      logger.warn('activity:retry', 'Activity room not found', { widgetId });
+      if (callback) {
+        callback({
+          ...createErrorResponse('ROOM_NOT_FOUND'),
+          widgetId
+        });
+      }
+      return;
+    }
+
+    // Check if retry is allowed
+    if (!room.allowRetry) {
+      logger.debug('activity:retry', 'Retry not allowed', { widgetId });
+      if (callback) {
+        callback({
+          ...createErrorResponse('RETRY_NOT_ALLOWED'),
+          widgetId
+        });
+      }
+      return;
+    }
+
+    // Clear the student's response
+    room.clearStudentResponse(socket.id);
+
+    // Send updated state back to the student
+    const stateData = room.getStateForStudent(socket.id);
+    stateData.widgetId = widgetId;
+
+    if (callback) {
+      callback(createSuccessResponse({
+        widgetId,
+        state: stateData
+      }));
+    }
+
+    // Also emit the state update
+    socket.emit(EVENTS.ACTIVITY.RETRY_READY, {
+      widgetId,
+      actions: stateData.actions,
+      results: null
+    });
+
+    session.updateActivity();
+  });
 };

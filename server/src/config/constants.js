@@ -136,12 +136,14 @@ module.exports = {
       REQUEST_STATE: 'activity:requestState',
       // Client -> Server events (student)
       SUBMIT: 'session:activity:submit',
+      RETRY: 'session:activity:retry',
       // Server -> Client events
       STATE_UPDATE: 'activity:stateUpdate',
       FEEDBACK: 'activity:feedback',
       REVEALED: 'activity:revealed',
       RESPONSE_RECEIVED: 'activity:responseReceived',
-      SUBMITTED: 'session:activity:submitted'
+      SUBMITTED: 'session:activity:submitted',
+      RETRY_READY: 'activity:retryReady'
     }
   }
 };

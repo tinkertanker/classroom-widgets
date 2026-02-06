@@ -166,8 +166,19 @@ function ActivityActions({
   }, [socket, sessionCode, widgetId, getAnswers]);
 
   const handleRetry = useCallback(() => {
-    clearAnswers();
-  }, [clearAnswers]);
+    // Emit retry event to server to clear response
+    socket.emit('session:activity:retry', {
+      sessionCode,
+      widgetId
+    }, (response: any) => {
+      if (response.success) {
+        // Clear local answers after server confirms
+        clearAnswers();
+      } else {
+        console.error('Failed to retry activity:', response.error);
+      }
+    });
+  }, [socket, sessionCode, widgetId, clearAnswers]);
 
   const hasAnswers = () => {
     const answers = getAnswers();
@@ -248,10 +259,18 @@ export function ActivityRenderer({
       setIsActive(data.isActive);
     };
 
+    const handleRetryReady = (data: any) => {
+      if (data.widgetId !== widgetId) return;
+      // Clear results and update actions to allow re-submission
+      setResults(null);
+      setActions(data.actions);
+    };
+
     socket.on('activity:stateUpdate', handleStateUpdate);
     socket.on('activity:feedback', handleFeedback);
     socket.on('activity:revealed', handleRevealed);
     socket.on('session:widgetStateChanged', handleWidgetStateChanged);
+    socket.on('activity:retryReady', handleRetryReady);
 
     // Request current state on mount
     socket.emit('activity:requestState', { sessionCode, widgetId });
@@ -261,6 +280,7 @@ export function ActivityRenderer({
       socket.off('activity:feedback', handleFeedback);
       socket.off('activity:revealed', handleRevealed);
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
+      socket.off('activity:retryReady', handleRetryReady);
     };
   }, [socket, sessionCode, widgetId]);
 
@@ -356,18 +376,7 @@ function ActivityContentInner() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Title and instructions */}
-      {activity.title && (
-        <h3 className="text-lg font-semibold text-warm-gray-800 dark:text-warm-gray-200">
-          {activity.title}
-        </h3>
-      )}
-
-      {activity.instructions && (
-        <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">
-          {activity.instructions}
-        </p>
-      )}
+      {/* Title and instructions are now shown in the header row of App.tsx */}
 
       {/* Paused overlay */}
       {!isActive && !results && (

@@ -552,7 +552,7 @@ const App: React.FC = () => {
                       {room.type === 'poll' ? 'Poll Activity' : room.type === 'linkShare' ? 'Share Links' : room.type === 'rtfeedback' ? 'Real-Time Feedback' : room.type === 'handout' ? 'Handout' : room.type === 'activity' ? (room.initialData?.activity?.title || 'Interactive Activity') : 'Ask Questions'}
                     </span>
                     <span className="text-warm-gray-600 dark:text-warm-gray-400 text-xs sm:text-sm">
-                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : room.type === 'handout' ? '• View content shared by your teacher' : room.type === 'activity' ? '• Complete the interactive activity' : '• Submit questions to your teacher'}
+                      {room.type === 'poll' ? '' : room.type === 'linkShare' ? '• Share presentation links with your teacher' : room.type === 'rtfeedback' ? '• Adjust the slider to let your teacher know how you\'re doing' : room.type === 'handout' ? '• View content shared by your teacher' : room.type === 'activity' ? (room.initialData?.activity?.instructions ? `• ${room.initialData.activity.instructions}` : '') : '• Submit questions to your teacher'}
                     </span>
                   </div>
                   <div
