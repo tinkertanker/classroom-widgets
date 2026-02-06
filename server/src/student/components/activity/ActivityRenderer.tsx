@@ -257,6 +257,11 @@ export function ActivityRenderer({
     const handleWidgetStateChanged = (data: any) => {
       if (data.widgetId !== widgetId || data.roomType !== 'activity') return;
       setIsActive(data.isActive);
+
+      // When activity becomes active, request fresh state to get updated actions
+      if (data.isActive) {
+        socket.emit('activity:requestState', { sessionCode, widgetId });
+      }
     };
 
     const handleRetryReady = (data: any) => {

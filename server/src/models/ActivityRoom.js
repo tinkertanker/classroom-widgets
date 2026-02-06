@@ -291,7 +291,9 @@ class ActivityRoom extends Room {
       responseCount: this.getResponseCount(),
       answersRevealed: this.answersRevealed,
       showImmediateFeedback: this.showImmediateFeedback,
-      allowRetry: this.allowRetry
+      allowRetry: this.allowRetry,
+      // Include default actions for initial state (without specific student context)
+      actions: this.getActions(null)
     };
   }
 }
