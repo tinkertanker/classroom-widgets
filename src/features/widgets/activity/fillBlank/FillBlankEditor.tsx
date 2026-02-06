@@ -64,8 +64,21 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
     });
   };
 
-  // Preview with blanks shown as underlines
-  const previewText = template.replace(/\{\{([^}]+)\}\}/g, '______');
+  // Render preview with gray blocks for blanks
+  const renderPreview = (text: string) => {
+    const parts = text.split(/(\{\{[^}]+\}\})/);
+    return parts.map((part, index) => {
+      if (part.match(/^\{\{[^}]+\}\}$/)) {
+        return (
+          <span
+            key={index}
+            className="inline-block w-20 h-6 mx-1 bg-warm-gray-300 dark:bg-warm-gray-600 rounded align-middle"
+          />
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   return (
     <div className="space-y-4 p-4 max-w-2xl">
@@ -112,8 +125,8 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
           <p className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
             Preview:
           </p>
-          <p className="text-warm-gray-800 dark:text-warm-gray-200">
-            {previewText}
+          <p className="text-warm-gray-800 dark:text-warm-gray-200 leading-relaxed">
+            {renderPreview(template)}
           </p>
         </div>
       )}

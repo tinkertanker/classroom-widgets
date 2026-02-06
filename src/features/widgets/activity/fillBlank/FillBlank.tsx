@@ -309,10 +309,21 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     );
   }
 
-  // Preview of the sentence with blanks
-  const previewText = activityData.template
-    ? activityData.template.replace(/\{\{([^}]+)\}\}/g, '______')
-    : 'No activity configured';
+  // Render preview with gray blocks for blanks
+  const renderPreview = (template: string) => {
+    const parts = template.split(/(\{\{[^}]+\}\})/);
+    return parts.map((part, index) => {
+      if (part.match(/^\{\{[^}]+\}\}$/)) {
+        return (
+          <span
+            key={index}
+            className="inline-block w-20 h-6 mx-1 bg-warm-gray-300 dark:bg-warm-gray-600 rounded align-middle"
+          />
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   return (
     <div className={widgetWrapper}>
@@ -337,7 +348,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
               {/* Preview */}
               <div className="bg-warm-gray-50 dark:bg-warm-gray-800/50 p-4 rounded-lg">
                 <p className="text-warm-gray-700 dark:text-warm-gray-300 text-lg leading-relaxed">
-                  {previewText}
+                  {renderPreview(activityData.template)}
                 </p>
               </div>
 

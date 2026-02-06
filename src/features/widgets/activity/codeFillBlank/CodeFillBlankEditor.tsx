@@ -68,8 +68,21 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
     });
   };
 
-  // Preview with blanks shown as underlines
-  const previewText = template.replace(/\{\{([^}]+)\}\}/g, '______');
+  // Render preview with gray blocks for blanks
+  const renderCodePreview = (text: string) => {
+    const parts = text.split(/(\{\{[^}]+\}\})/);
+    return parts.map((part, index) => {
+      if (part.match(/^\{\{[^}]+\}\}$/)) {
+        return (
+          <span
+            key={index}
+            className="inline-block w-16 h-5 mx-0.5 bg-warm-gray-600 dark:bg-warm-gray-500 rounded align-middle"
+          />
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   return (
     <div className="space-y-4 p-4 max-w-2xl">
@@ -136,7 +149,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
             Preview:
           </p>
           <pre className="text-warm-gray-200 font-mono text-sm whitespace-pre-wrap">
-            {previewText}
+            {renderCodePreview(template)}
           </pre>
         </div>
       )}

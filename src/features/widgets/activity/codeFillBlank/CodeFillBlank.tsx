@@ -311,10 +311,21 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     );
   }
 
-  // Preview of the code with blanks
-  const previewText = activityData.template
-    ? activityData.template.replace(/\{\{([^}]+)\}\}/g, '______')
-    : 'No activity configured';
+  // Render preview with gray blocks for blanks
+  const renderCodePreview = (template: string) => {
+    const parts = template.split(/(\{\{[^}]+\}\})/);
+    return parts.map((part, index) => {
+      if (part.match(/^\{\{[^}]+\}\}$/)) {
+        return (
+          <span
+            key={index}
+            className="inline-block w-16 h-5 mx-0.5 bg-warm-gray-600 dark:bg-warm-gray-500 rounded align-middle"
+          />
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
+  };
 
   return (
     <div className={widgetWrapper}>
@@ -343,7 +354,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
                   activityData.language === 'javascript' ? 'text-yellow-300' :
                   'text-warm-gray-200'
                 }`}>
-                  {previewText}
+                  {renderCodePreview(activityData.template)}
                 </pre>
               </div>
 
