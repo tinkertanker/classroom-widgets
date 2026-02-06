@@ -22,7 +22,8 @@ import {
   FaPersonChalkboard,
   FaInbox,
   FaFileLines,
-  FaPenNib
+  FaPenNib,
+  FaCode
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
@@ -51,7 +52,8 @@ const LazyWidgets = {
   Questions: lazy(() => import('../features/widgets/questions')),
   Snake: lazy(() => import('../features/widgets/snake')),
   Handout: lazy(() => import('../features/widgets/handout')),
-  FillBlank: lazy(() => import('../features/widgets/activity/fillBlank'))
+  FillBlank: lazy(() => import('../features/widgets/activity/fillBlank')),
+  CodeFillBlank: lazy(() => import('../features/widgets/activity/codeFillBlank'))
   // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
@@ -500,6 +502,30 @@ export class WidgetRegistry {
         studentComponentName: 'ActivityRenderer'
       }
     });
+
+    // Code Fill in the Blanks
+    this.register({
+      type: WidgetType.CODE_FILL_BLANK,
+      name: 'Code Fill-in-the-Blanks',
+      icon: FaCode,
+      component: LazyWidgets.CodeFillBlank,
+      defaultSize: { width: 450, height: 450 },
+      minSize: { width: 400, height: 400 },
+      maxSize: { width: 700, height: 800 },
+      category: WidgetCategory.NETWORKED,
+      description: 'Code completion activities with syntax highlighting',
+      features: {
+        hasSettings: true,
+        hasStateManagement: true,
+        isResizable: true
+      },
+      networked: {
+        roomType: 'activity',
+        hasStartStop: true,
+        startsActive: false,
+        studentComponentName: 'ActivityRenderer'
+      }
+    });
   }
 
   private register(config: WidgetConfig): void {
@@ -593,7 +619,8 @@ export class WidgetRegistry {
       [WIDGET_TYPES.FILL_BLANK]: WidgetType.FILL_BLANK,
       [WIDGET_TYPES.SORTING]: WidgetType.SORTING,
       [WIDGET_TYPES.SEQUENCING]: WidgetType.SEQUENCING,
-      [WIDGET_TYPES.MATCHING]: WidgetType.MATCHING
+      [WIDGET_TYPES.MATCHING]: WidgetType.MATCHING,
+      [WIDGET_TYPES.CODE_FILL_BLANK]: WidgetType.CODE_FILL_BLANK
     };
     return mapping[legacyType];
   }
@@ -624,7 +651,8 @@ export class WidgetRegistry {
       [WidgetType.FILL_BLANK]: WIDGET_TYPES.FILL_BLANK,
       [WidgetType.SORTING]: WIDGET_TYPES.SORTING,
       [WidgetType.SEQUENCING]: WIDGET_TYPES.SEQUENCING,
-      [WidgetType.MATCHING]: WIDGET_TYPES.MATCHING
+      [WidgetType.MATCHING]: WIDGET_TYPES.MATCHING,
+      [WidgetType.CODE_FILL_BLANK]: WIDGET_TYPES.CODE_FILL_BLANK
     };
     return mapping[type];
   }

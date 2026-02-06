@@ -48,7 +48,8 @@ export enum WidgetType {
   FILL_BLANK = 21,
   SORTING = 22,
   SEQUENCING = 23,
-  MATCHING = 24
+  MATCHING = 24,
+  CODE_FILL_BLANK = 25
 }
 
 // Widget Configuration

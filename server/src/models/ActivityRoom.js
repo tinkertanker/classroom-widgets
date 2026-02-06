@@ -101,6 +101,7 @@ class ActivityRoom extends Room {
     const { placements = [], textInputs = {} } = answers;
     const correct = [];
     const incorrect = [];
+    const isCodeActivity = this.activity.type === 'code-fill-blank';
 
     // Evaluate drag-drop placements
     for (const target of this.activity.targets) {
@@ -113,15 +114,19 @@ class ActivityRoom extends Room {
         } else {
           incorrect.push(target.id);
         }
-      } else if (textInputs[target.id]) {
-        // Check text input - for now, exact match (case-insensitive)
-        const userInput = textInputs[target.id].trim().toLowerCase();
+      } else if (textInputs[target.id] !== undefined && textInputs[target.id] !== '') {
+        // Check text input
+        const userInput = textInputs[target.id];
         const correctItems = target.accepts.map(itemId => {
           const item = this.activity.items.find(i => i.id === itemId);
-          return item?.content?.toLowerCase() || '';
+          return item?.content || '';
         });
 
-        if (correctItems.includes(userInput)) {
+        // Use evaluation mode if specified, otherwise default based on activity type
+        const evalMode = target.evaluationMode || (isCodeActivity ? 'whitespace-flexible' : 'exact');
+        const isCorrect = this.evaluateTextInput(userInput, correctItems, evalMode);
+
+        if (isCorrect) {
           correct.push(target.id);
         } else {
           incorrect.push(target.id);
@@ -139,6 +144,37 @@ class ActivityRoom extends Room {
       incorrect,
       submitted: true
     };
+  }
+
+  /**
+   * Evaluate a text input against correct answers using the specified mode
+   * @param {string} userInput - The student's input
+   * @param {string[]} correctAnswers - Array of accepted correct answers
+   * @param {string} mode - Evaluation mode: 'exact', 'whitespace-flexible', 'case-insensitive'
+   * @returns {boolean} Whether the input is correct
+   */
+  evaluateTextInput(userInput, correctAnswers, mode = 'exact') {
+    let normalized = userInput.trim();
+
+    switch (mode) {
+      case 'whitespace-flexible':
+        // Normalize whitespace: collapse multiple spaces/newlines to single space
+        normalized = normalized.replace(/\s+/g, ' ');
+        return correctAnswers.some(answer => {
+          const normalizedAnswer = answer.trim().replace(/\s+/g, ' ');
+          return normalized === normalizedAnswer;
+        });
+
+      case 'case-insensitive':
+        normalized = normalized.toLowerCase();
+        return correctAnswers.some(answer => {
+          return normalized === answer.trim().toLowerCase();
+        });
+
+      case 'exact':
+      default:
+        return correctAnswers.some(answer => normalized === answer.trim());
+    }
   }
 
   /**

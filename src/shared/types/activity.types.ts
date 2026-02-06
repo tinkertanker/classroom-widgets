@@ -10,13 +10,13 @@
 // Activity Types
 // ============================================================================
 
-export type ActivityType = 'fill-blank' | 'sorting' | 'sequencing' | 'matching';
+export type ActivityType = 'fill-blank' | 'sorting' | 'sequencing' | 'matching' | 'code-fill-blank';
 
 // ============================================================================
 // Foundation UI Blocks
 // ============================================================================
 
-export type UIBlockType = 'text' | 'draggable-item' | 'drop-zone' | 'text-input' | 'container';
+export type UIBlockType = 'text' | 'draggable-item' | 'drop-zone' | 'text-input' | 'container' | 'code-editor';
 
 /**
  * Base interface for all UI blocks
@@ -94,8 +94,23 @@ export interface ContainerBlock extends UIBlock {
   children: UIBlock[];
 }
 
+/**
+ * Code editor block - for code activities with syntax highlighting
+ */
+export interface CodeEditorBlock extends UIBlock {
+  type: 'code-editor';
+  props: {
+    targetId: string;
+    language: 'python' | 'javascript' | 'text';
+    placeholder?: string;
+    prefillCode?: string;
+    maxLines?: number;
+    showLineNumbers?: boolean;
+  };
+}
+
 // Union type for all specific block types
-export type SpecificUIBlock = TextBlock | DraggableItemBlock | DropZoneBlock | TextInputBlock | ContainerBlock;
+export type SpecificUIBlock = TextBlock | DraggableItemBlock | DropZoneBlock | TextInputBlock | ContainerBlock | CodeEditorBlock;
 
 // ============================================================================
 // Activity Data Types
@@ -119,6 +134,7 @@ export interface ActivityTarget {
   label?: string;
   accepts: string[]; // Item IDs that are correct for this target
   order?: number; // For sequencing activities
+  evaluationMode?: 'exact' | 'whitespace-flexible' | 'case-insensitive'; // For code evaluation
 }
 
 /**

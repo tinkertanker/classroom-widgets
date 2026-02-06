@@ -5,6 +5,7 @@ import { DraggableItemBlock } from './blocks/DraggableItemBlock';
 import { DropZoneBlock } from './blocks/DropZoneBlock';
 import { TextInputBlock } from './blocks/TextInputBlock';
 import { ContainerBlock } from './blocks/ContainerBlock';
+import { CodeEditorBlock } from './blocks/CodeEditorBlock';
 
 interface BlockRendererProps {
   block: UIBlock;
@@ -30,6 +31,9 @@ export function BlockRenderer({ block }: BlockRendererProps) {
 
     case 'container':
       return <ContainerBlock block={block as any} />;
+
+    case 'code-editor':
+      return <CodeEditorBlock block={block as any} />;
 
     default:
       console.warn(`Unknown block type: ${(block as UIBlock).type}`);
