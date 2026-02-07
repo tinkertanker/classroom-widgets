@@ -22,6 +22,58 @@ const PLACEHOLDER_TEXT = 'Double-click to edit';
 
 const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER_TEXT);
 
+const formatInlineText = (line: string) => {
+  const tokens = line.split(/(\*_[^_]+_\*|\*[^*]+\*|_[^_]+_|~[^~]+~|`[^`]+`)/g);
+  return tokens.map((token, index) => {
+    if (token.startsWith('*_') && token.endsWith('_*')) {
+      return (
+        <strong key={`bold-italic-${index}`}><em>{token.slice(2, -2)}</em></strong>
+      );
+    }
+    if (token.startsWith('*') && token.endsWith('*')) {
+      return (
+        <strong key={`bold-${index}`}>{token.slice(1, -1)}</strong>
+      );
+    }
+    if (token.startsWith('_') && token.endsWith('_')) {
+      return (
+        <em key={`italic-${index}`}>{token.slice(1, -1)}</em>
+      );
+    }
+    if (token.startsWith('~') && token.endsWith('~')) {
+      return (
+        <span key={`strike-${index}`} className="line-through">{token.slice(1, -1)}</span>
+      );
+    }
+    if (token.startsWith('`') && token.endsWith('`')) {
+      return (
+        <span key={`mono-${index}`} className="font-mono">{token.slice(1, -1)}</span>
+      );
+    }
+    return <span key={`text-${index}`}>{token}</span>;
+  });
+};
+
+const renderFormattedText = (value: string) => {
+  const lines = value.split('\n');
+  return lines.map((line, index) => (
+    <React.Fragment key={`line-${index}`}>
+      {(() => {
+        const headingMatch = line.match(/^\s*#{1,3}\s+(.*)$/);
+        const content = headingMatch ? headingMatch[1] : line;
+        const isHeading = Boolean(headingMatch);
+        const headingClass = isHeading ? 'font-semibold' : undefined;
+        return (
+          <span className={headingClass}>
+            {formatInlineText(content)}
+          </span>
+        );
+      })()}
+      {index < lines.length - 1 ? <br /> : null}
+    </React.Fragment>
+  ));
+};
+
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
   const normalisedSavedState = savedState
     ? {
@@ -42,21 +94,17 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const clickTimerRef = useRef<number | null>(null);
 
   // Use auto font size hook
   const fontSize = useAutoFontSize({
     text,
     containerRef,
     textRef,
-    maxSize: 200,
+    maxSize: 180,
     minSize: 12,
     padding: 32
   });
-
-  const handleDoubleClick = () => {
-    setIsEditing(true);
-    setEditText(text);
-  };
 
   // Select all text when entering edit mode
   useEffect(() => {
@@ -64,6 +112,16 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       textareaRef.current.select();
     }
   }, [isEditing]);
+
+  // Prevent delayed colour changes from firing after unmount.
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current !== null) {
+        window.clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const commitText = (nextText: string) => {
     updateState({ text: normaliseText(nextText) });
@@ -82,11 +140,24 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only cycle colors on single click when not editing
-    if (!isEditing && e.detail === 1) {
+    if (isEditing || e.detail !== 1) return;
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+    }
+    clickTimerRef.current = window.setTimeout(() => {
       const nextIndex = (colorIndex + 1) % colorCombinations.length;
       updateState({ colorIndex: nextIndex });
+      clickTimerRef.current = null;
+    }, 500);
+  };
+
+  const handleDoubleClick = () => {
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
     }
+    setIsEditing(true);
+    setEditText(text);
   };
 
   const currentColors = colorCombinations[colorIndex];
@@ -95,8 +166,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     <div
       ref={containerRef}
       className={cn(widgetContainer, currentColors.bg, "items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer")}
-      onDoubleClick={handleDoubleClick}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
     >
       {isEditing ? (
         <textarea
@@ -114,11 +185,11 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       ) : (
         <div
           ref={textRef}
-          className={`${currentColors.text} font-bold text-center leading-tight select-none`}
+          className={cn(currentColors.text, "text-center leading-tight select-none clickable")}
           style={{ fontSize: `${fontSize}px` }}
-          title="Double-click to edit, click to change color"
+          title="Double-click to edit"
         >
-          {text}
+          {renderFormattedText(text)}
         </div>
       )}
     </div>
