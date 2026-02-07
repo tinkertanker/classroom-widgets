@@ -22,6 +22,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pendingTitleFallbackRef = useRef('');
 
   // Generate QR code whenever URL changes
   useEffect(() => {
@@ -53,16 +54,19 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     e.preventDefault();
     const urlInput = (e.target as HTMLFormElement).url.value;
     if (urlInput) {
-      updateState({
-        url: urlInput,
-        title: title || urlInput
-      });
+      pendingTitleFallbackRef.current = title || urlInput;
+      updateState({ url: urlInput });
+      setTempTitle('');
+      setIsEditingTitle(true);
     }
   };
 
   const handleTitleSave = () => {
-    updateState({ title: tempTitle });
+    const trimmedTitle = tempTitle.trim();
+    const nextTitle = trimmedTitle || pendingTitleFallbackRef.current || url;
+    updateState({ title: nextTitle });
     setIsEditingTitle(false);
+    pendingTitleFallbackRef.current = '';
   };
 
   const handleTitleKeyPress = (e: React.KeyboardEvent) => {
@@ -73,6 +77,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     if (e.key === 'Escape') {
       setTempTitle(title);
       setIsEditingTitle(false);
+      pendingTitleFallbackRef.current = '';
     }
   };
 
@@ -117,12 +122,14 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
                   onKeyDown={handleTitleKeyPress}
                   onBlur={handleTitleSave}
                   className="text-lg font-medium text-center w-full px-2 py-1 border-b-2 border-sage-500 bg-transparent focus:outline-none text-warm-gray-700 dark:text-warm-gray-300"
+                  placeholder="Title"
                   autoFocus
                 />
               ) : (
                 <p 
                   className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300 cursor-pointer hover:text-sage-600 dark:hover:text-sage-400 inline-block"
                   onClick={(_e) => {
+                    pendingTitleFallbackRef.current = title || url;
                     setTempTitle(title);
                     setIsEditingTitle(true);
                   }}
@@ -137,6 +144,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
             <div 
               className="bg-white p-2 rounded-lg shadow-inner cursor-pointer flex-1 flex items-center justify-center"
               onDoubleClick={(_e) => {
+                pendingTitleFallbackRef.current = '';
                 updateState({ url: '', title: '' });
               }}
               title="Double-click to change URL"

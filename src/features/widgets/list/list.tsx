@@ -189,7 +189,6 @@ const SortableItem: React.FC<SortableItemProps> = ({
 
 const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRefs = useRef<HTMLInputElement[]>([]);
 
   // List item management
   const {
@@ -223,11 +222,8 @@ const List: React.FC<ListProps> = ({ savedState, onStateChange }) => {
 
   // Add item with focus management
   const handleAddInput = useCallback(() => {
-    addItem();
-    setTimeout(() => {
-      inputRefs.current[items.length]?.focus();
-    }, 0);
-  }, [addItem, items.length]);
+    addItem({ startEditing: true });
+  }, [addItem]);
 
   // Keyboard handlers
   const { handleKeyDown, handleMouseDown } = useListKeyboardHandlers({
