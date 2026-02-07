@@ -1,0 +1,243 @@
+import React, { useState } from 'react';
+import { WidgetTextarea } from '@shared/components/WidgetInput';
+import { normaliseChoiceList, stringifyChoiceList } from './utils/choiceList';
+import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { SavedRandomiserList } from '@shared/types/storage';
+
+interface RandomiserSettingsProps {
+  choices: string[];
+  removedChoices: string[];
+  onUpdateChoices: (choices: string[]) => void;
+  onUpdateRemovedChoices: (removedChoices: string[]) => void;
+  onSave?: (activeChoices: string[]) => void;
+  onClose?: () => void;
+}
+
+const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
+  choices,
+  removedChoices,
+  onUpdateChoices,
+  onUpdateRemovedChoices,
+  onSave,
+  onClose
+}) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [input, setInput] = useState(stringifyChoiceList(choices));
+  const [removedInput, setRemovedInput] = useState(stringifyChoiceList(removedChoices));
+  const [showSavedDialog, setShowSavedDialog] = useState(false);
+
+  const {
+    saveRandomiserList,
+    getRandomiserLists,
+    deleteRandomiserList,
+  } = useWorkspaceStore();
+
+  const updateInputAndNotify = (nextInput: string) => {
+    setInput(nextInput);
+    onUpdateChoices(normaliseChoiceList(nextInput));
+  };
+
+  const updateRemovedInputAndNotify = (nextInput: string) => {
+    setRemovedInput(nextInput);
+    onUpdateRemovedChoices(normaliseChoiceList(nextInput));
+  };
+
+  const handleRestoreAll = () => {
+    if (removedInput.trim()) {
+      // Add removed items back to input
+      const currentItems = input.trim() ? input + '\n' : '';
+      const newInput = currentItems + removedInput;
+      updateInputAndNotify(newInput);
+      updateRemovedInputAndNotify('');
+    }
+  };
+
+  // Helper to process choices from input string
+  const processChoicesFromInput = (inputStr: string) => {
+    return normaliseChoiceList(inputStr);
+  };
+
+  // Helper to get active choices (excluding removed)
+  const getActiveChoicesFromInputs = () => {
+    const currentChoices = processChoicesFromInput(input);
+    const currentRemoved = processChoicesFromInput(removedInput);
+    return currentChoices.filter(choice => !currentRemoved.includes(choice));
+  };
+
+  const handleSave = () => {
+    const activeChoices = getActiveChoicesFromInputs();
+    onSave?.(activeChoices);
+  };
+
+  const handleSaveToCollection = (name: string) => {
+    const activeChoices = getActiveChoicesFromInputs();
+    saveRandomiserList(name, activeChoices);
+    setShowSavedDialog(false);
+  };
+
+  const handleLoadFromCollection = (item: SavedRandomiserList) => {
+    setInput(item.choices.join('\n'));
+    setRemovedInput('');
+    setShowSavedDialog(false);
+  };
+
+  const handleDeleteFromCollection = (id: string) => {
+    deleteRandomiserList(id);
+  };
+
+  return (
+    <div className="w-[700px] max-w-full">
+      <div className="px-6 py-4">
+        <div className="flex flex-col space-y-4">
+          <div className="flex flex-row items-center justify-between">
+            <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">Randomiser Lists</h3>
+            <div className="flex space-x-2">
+              <button
+                className="px-3 py-1.5 bg-slate-blue-500 hover:bg-slate-blue-600 dark:bg-slate-blue-600 dark:hover:bg-slate-blue-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                onClick={() => setShowSavedDialog(true)}
+              >
+                <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Saved Lists
+              </button>
+              <div className="relative">
+                <button
+                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                  onClick={() => setMenuOpen(!menuOpen)}
+                >
+                  Suggestions
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {menuOpen && (
+                  <div className="absolute mt-1 w-full bg-soft-white dark:bg-warm-gray-700 rounded-md shadow-lg z-10">
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
+                      onClick={() => {
+                        const numbers = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17\n18\n19\n20\n21\n22\n23\n24\n25\n26\n27\n28\n29\n30";
+                        updateInputAndNotify(numbers);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Generate numbers 1 to 30
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
+                      onClick={() => {
+                        const alphabet = "A\nB\nC\nD\nE\nF\nG\nH\nI\nJ\nK\nL\nM\nN\nO\nP\nQ\nR\nS\nT\nU\nV\nW\nX\nY\nZ";
+                        updateInputAndNotify(alphabet);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Generate the alphabet
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 text-warm-gray-800 dark:text-warm-gray-200 text-sm"
+                      onClick={() => {
+                        const fruits = "Apple\nBanana\nOrange\nMango\nStrawberry\nGrapes\nWatermelon\nPineapple\nPeach\nCherry";
+                        updateInputAndNotify(fruits);
+                        setMenuOpen(false);
+                      }}
+                    >
+                      Generate fruits
+                    </button>
+                  </div>
+                )}
+              </div>
+              <button
+                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200"
+                onClick={() => {
+                  updateInputAndNotify("");
+                  updateRemovedInputAndNotify("");
+                }}
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2 block">
+                Active Items
+              </label>
+              <WidgetTextarea
+                onChange={(e) => updateInputAndNotify(e.target.value)}
+                value={input}
+                id="textarea"
+                placeholder="Start typing a list to randomise..."
+                className="h-[300px] text-sm"
+                style={{ resize: 'none' }}
+              />
+            </div>
+            
+            <div className="flex flex-col justify-center">
+              <button
+                onClick={handleRestoreAll}
+                disabled={!removedInput.trim()}
+                className="px-3 py-2 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Restore all removed items"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1">
+              <label className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2 block">
+                Removed Items
+              </label>
+              <WidgetTextarea
+                value={removedInput}
+                onChange={(e) => updateRemovedInputAndNotify(e.target.value)}
+                placeholder="Removed items will appear here..."
+                className="h-[300px] text-sm"
+                style={{ resize: 'none' }}
+              />
+            </div>
+          </div>
+          
+          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+            Note: All leading and trailing spaces, empty rows, and duplicates in the list are automatically removed when generating.
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-warm-gray-200 dark:border-warm-gray-600">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Saved Lists Dialog */}
+      {showSavedDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]">
+          <SavedCollectionsDialog
+            type="randomiser"
+            items={getRandomiserLists()}
+            currentItemCount={getActiveChoicesFromInputs().length}
+            onSave={handleSaveToCollection}
+            onLoad={handleLoadFromCollection}
+            onDelete={handleDeleteFromCollection}
+            onClose={() => setShowSavedDialog(false)}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RandomiserSettings;

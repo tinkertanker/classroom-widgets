@@ -8,18 +8,8 @@ console.log('🔍 Checking Classroom Widgets setup...\n');
 // Check locations
 const checks = [
   {
-    name: 'Main app node_modules',
+    name: 'Root node_modules',
     path: './node_modules',
-    required: true
-  },
-  {
-    name: 'Server node_modules',
-    path: './server/node_modules',
-    required: true
-  },
-  {
-    name: 'Student app node_modules',
-    path: './server/src/student/node_modules',
     required: true
   },
   {
@@ -29,12 +19,12 @@ const checks = [
   },
   {
     name: 'Teacher app build',
-    path: './build',
+    path: './packages/teacher/build',
     required: false
   },
   {
     name: 'Student app build',
-    path: './server/public',
+    path: './packages/server/public/student',
     required: false
   }
 ];
@@ -45,9 +35,9 @@ checks.forEach(check => {
   const exists = fs.existsSync(check.path);
   const status = exists ? '✅' : (check.required ? '❌' : '⚠️ ');
   const message = exists ? 'Found' : (check.required ? 'Missing (required)' : 'Not found (optional)');
-  
+
   console.log(`${status} ${check.name}: ${message}`);
-  
+
   if (check.required && !exists) {
     hasErrors = true;
   }
@@ -56,7 +46,7 @@ checks.forEach(check => {
 console.log('\n' + '='.repeat(50) + '\n');
 
 if (hasErrors) {
-  console.log('❌ Setup incomplete! Run: npm run install:all\n');
+  console.log('❌ Setup incomplete! Run: npm install\n');
   process.exit(1);
 } else {
   console.log('✅ All required dependencies are installed!\n');

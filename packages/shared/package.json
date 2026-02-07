@@ -1,0 +1,8 @@
+{
+  "name": "@classroom-widgets/shared",
+  "version": "0.10.0",
+  "private": true,
+  "exports": {
+    "./*": "./*"
+  }
+}

@@ -1,0 +1,47 @@
+# Backend Server Dockerfile
+# Build context: repo root (.)
+FROM node:18-alpine
+
+# Install dumb-init for proper signal handling and wget for health checks
+RUN apk add --no-cache dumb-init wget
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Copy workspace root package files
+COPY package.json package-lock.json ./
+
+# Copy workspace package.json files for install
+COPY packages/shared/package.json packages/shared/
+COPY packages/student/package.json packages/student/
+COPY packages/server/package.json packages/server/
+
+# Install all dependencies
+RUN npm ci
+
+# Copy package sources
+COPY packages/shared/ packages/shared/
+COPY packages/student/ packages/student/
+COPY packages/server/ packages/server/
+
+# Build the student app
+RUN npm run build -w @classroom-widgets/student
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Change ownership of app directory
+RUN chown -R nodejs:nodejs /usr/src/app
+
+# Switch to non-root user
+USER nodejs
+
+# Expose port (will use PORT env variable)
+EXPOSE 3001
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the server
+CMD ["node", "packages/server/src/server.js"]
