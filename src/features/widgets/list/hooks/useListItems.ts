@@ -40,7 +40,7 @@ export function useListItems({ initialItems, savedState, onStateChange }: UseLis
         status: savedState.statuses?.[index] || 0
       }));
     }
-    return [{ id: uuidv4(), text: "", status: 0, isEditing: true }];
+    return [{ id: uuidv4(), text: "", status: 0 }];
   });
 
   const notifyStateChange = useCallback((nextItems: ListItem[]) => {
@@ -64,16 +64,9 @@ export function useListItems({ initialItems, savedState, onStateChange }: UseLis
   }, [notifyStateChange]);
 
   // Add new item
-  const addItem = useCallback((options?: { startEditing?: boolean }) => {
-    const shouldStartEditing = options?.startEditing ?? false;
-    const newItem = { id: uuidv4(), text: "", status: 0, isEditing: shouldStartEditing };
-    setItemsAndNotify(prevItems => {
-      if (!shouldStartEditing) {
-        return [...prevItems, newItem];
-      }
-      const clearedItems = prevItems.map(item => ({ ...item, isEditing: false }));
-      return [...clearedItems, newItem];
-    });
+  const addItem = useCallback(() => {
+    const newItem = { id: uuidv4(), text: "", status: 0 };
+    setItemsAndNotify(prevItems => [...prevItems, newItem]);
     return newItem;
   }, [setItemsAndNotify]);
 
