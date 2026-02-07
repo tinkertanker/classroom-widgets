@@ -24,8 +24,8 @@ services:
 
   backend:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/server/Dockerfile
     ports:
       - "3001:3001"
     environment:

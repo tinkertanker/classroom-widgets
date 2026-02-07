@@ -44,7 +44,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: ./server/Dockerfile.prod
+      dockerfile: packages/server/Dockerfile.prod
     container_name: classroom-widgets-backend
     image: classroom-widgets-backend:latest
     expose:

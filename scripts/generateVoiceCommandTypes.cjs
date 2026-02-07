@@ -9,8 +9,8 @@ const fs = require('fs');
 const path = require('path');
 
 const SHARED_DIR = path.join(__dirname, '../shared');
-const SRC_DIR = path.join(__dirname, '../src/shared/constants');
-const SERVER_DIR = path.join(__dirname, '../server/src/shared/constants');
+const SRC_DIR = path.join(__dirname, '../packages/shared/constants');
+const SERVER_DIR = path.join(__dirname, '../packages/server/src/shared/constants');
 
 // Read the shared definitions
 const definitionsPath = path.join(SHARED_DIR, 'voiceCommandDefinitions.json');
@@ -227,5 +227,5 @@ fs.writeFileSync(jsPath, jsContent);
 console.log(`   ✅ Written: ${jsPath}`);
 
 console.log('\\n✨ Voice command types generated successfully!');
-console.log('   Frontend: src/shared/constants/voiceCommandDefinitions.ts');
-console.log('   Backend:  server/src/shared/constants/voiceCommandDefinitions.js');
+console.log('   Frontend: packages/shared/constants/voiceCommandDefinitions.ts');
+console.log('   Backend:  packages/server/src/shared/constants/voiceCommandDefinitions.js');

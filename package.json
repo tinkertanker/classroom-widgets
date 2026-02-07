@@ -2,93 +2,30 @@
   "name": "classroom-widgets",
   "version": "0.10.0",
   "private": true,
-  "type": "module",
-  "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/react": "^18.2.79",
-    "@types/react-dom": "^18.2.25",
-    "annyang": "^2.6.1",
-    "axios": "^1.11.0",
-    "qrcode": "^1.5.4",
-    "react": "^18.3.1",
-    "react-clock": "^5.0.0",
-    "react-confetti-explosion": "^3.0.3",
-    "react-dom": "^18.3.1",
-    "react-icons": "^5.3.0",
-    "react-qr-code": "^2.0.15",
-    "react-rnd": "^10.4.12",
-    "react-router-dom": "^7.7.1",
-    "socket.io-client": "^4.8.1",
-    "tailwind-merge": "^3.3.1",
-    "uuid": "^10.0.0",
-    "zustand": "^5.0.6"
-  },
+  "workspaces": [
+    "packages/shared",
+    "packages/teacher",
+    "packages/student",
+    "packages/server"
+  ],
   "scripts": {
-    "start": "vite",
-    "build": "vite build",
-    "test": "vitest",
-    "preview": "vite preview",
-    "// Development Scripts": "",
-    "dev": "cd server && ./dev.sh",
-    "dev:all": "cd server && ./dev.sh",
-    "dev:teacher": "vite",
-    "dev:server": "cd server && npm run dev",
-    "dev:student": "cd server/src/student && npm run dev",
-    "dev:concurrent": "concurrently -n \"teacher,server,student\" -c \"blue,green,magenta\" \"npm run dev:teacher\" \"npm run dev:server\" \"npm run dev:student\"",
-    "// Production Scripts": "",
-    "server": "cd server && npm start",
-    "build:student": "cd server/src/student && npm install && npm run build",
+    "dev": "cd packages/server && ./dev.sh",
+    "dev:teacher": "npm run dev -w @classroom-widgets/teacher",
+    "dev:server": "npm run dev -w @classroom-widgets/server",
+    "dev:student": "npm run dev -w @classroom-widgets/student",
+    "dev:all": "concurrently -n teacher,server,student -c blue,green,magenta \"npm run dev:teacher\" \"npm run dev:server\" \"npm run dev:student\"",
+    "dev:concurrent": "npm run dev:all",
+    "build": "npm run build -w @classroom-widgets/teacher",
+    "build:student": "npm run build -w @classroom-widgets/student",
     "build:all": "npm run build && npm run build:student",
-    "// Setup Scripts": "",
-    "check": "node scripts/check-setup.js",
-    "install:all": "npm install && cd server && npm install && cd src/student && npm install",
-    "clean": "rm -rf build server/public node_modules server/node_modules server/src/student/node_modules",
-    "clean:install": "npm run clean && npm run install:all",
+    "test": "npm run test -w @classroom-widgets/teacher",
     "generate:voice-types": "node scripts/generateVoiceCommandTypes.cjs",
     "prebuild": "npm run generate:voice-types",
-    "prebuild:all": "npm run generate:voice-types",
-    "// Deployment Scripts": "",
-    "deploy:prepare": "npm run build:all",
-    "serve:production": "cd server && NODE_ENV=production npm start"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "server": "npm run start -w @classroom-widgets/server",
+    "install:all": "npm install",
+    "clean": "rm -rf node_modules packages/*/node_modules"
   },
   "devDependencies": {
-    "@types/annyang": "^2.6.5",
-    "@types/jest": "^29.5.12",
-    "@types/qrcode": "^1.5.5",
-    "@types/uuid": "^10.0.0",
-    "@vitejs/plugin-react": "^4.6.0",
-    "@vitest/ui": "^3.2.4",
-    "autoprefixer": "^10.4.21",
-    "concurrently": "^9.2.0",
-    "jsdom": "^26.1.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.4.5",
-    "vite": "^7.0.4",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^3.2.4"
+    "concurrently": "^9.2.0"
   }
 }
