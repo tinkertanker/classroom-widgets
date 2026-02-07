@@ -113,6 +113,16 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     }
   }, [isEditing]);
 
+  // Prevent delayed colour changes from firing after unmount.
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current !== null) {
+        window.clearTimeout(clickTimerRef.current);
+        clickTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const commitText = (nextText: string) => {
     updateState({ text: normaliseText(nextText) });
   };
@@ -129,8 +139,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     }
   };
 
-  const handleClick = () => {
-    if (isEditing) return;
+  const handleClick = (e: React.MouseEvent) => {
+    if (isEditing || e.detail !== 1) return;
     if (clickTimerRef.current) {
       window.clearTimeout(clickTimerRef.current);
     }
@@ -138,7 +148,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       const nextIndex = (colorIndex + 1) % colorCombinations.length;
       updateState({ colorIndex: nextIndex });
       clickTimerRef.current = null;
-    }, 200);
+    }, 500);
   };
 
   const handleDoubleClick = () => {
