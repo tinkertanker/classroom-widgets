@@ -86,16 +86,17 @@ export const WorkspaceSwitcher: React.FC = () => {
         className={clsx(
           hudContainer.base,
           hudContainer.hover,
-          'flex items-center space-x-2 h-10 px-3'
+          'flex items-center space-x-2 h-10 px-3 max-[540px]:px-2 max-[540px]:space-x-0'
         )}
         title={currentWorkspace.name}
+        aria-label={`Workspace: ${currentWorkspace.name}`}
       >
         <FaFolder className="w-4 h-4 text-sage-600 dark:text-sage-400" />
-        <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200 truncate max-w-[120px]">
+        <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200 truncate max-w-[120px] max-[540px]:hidden">
           {currentWorkspace.name}
         </span>
         <FaChevronDown className={clsx(
-          'w-3 h-3 text-warm-gray-400 transition-transform',
+          'w-3 h-3 text-warm-gray-400 transition-transform max-[540px]:hidden',
           isOpen && 'rotate-180'
         )} />
       </button>

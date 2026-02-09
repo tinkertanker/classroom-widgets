@@ -26,6 +26,7 @@ import { ConfettiProvider } from '../contexts/ConfettiContext';
 import trashSound from '../sounds/trash-crumple.mp3';
 const trashAudio = new Audio(trashSound);
 
+const MIN_SCREEN_WIDTH = 300;
 
 function App() {
   const { theme, scale } = useWorkspace();
@@ -43,7 +44,8 @@ function App() {
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
-  const [screenTooSmall, setScreenTooSmall] = useState(window.innerWidth < 768);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [screenTooSmall, setScreenTooSmall] = useState(window.innerWidth < MIN_SCREEN_WIDTH);
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -70,10 +72,13 @@ function App() {
   // Check screen size
   useEffect(() => {
     const checkScreenSize = () => {
-      setScreenTooSmall(window.innerWidth < 768);
+      const width = window.innerWidth;
+      setWindowWidth(width);
+      setScreenTooSmall(width < MIN_SCREEN_WIDTH);
     };
     
     window.addEventListener('resize', checkScreenSize);
+    checkScreenSize();
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
   
@@ -472,7 +477,11 @@ function App() {
   return (
     <GlobalErrorBoundary>
       {screenTooSmall ? (
-        <SmallScreenWarning />
+        <SmallScreenWarning
+          minWidth={MIN_SCREEN_WIDTH}
+          currentWidth={windowWidth}
+          scale={scale}
+        />
       ) : (
         <SocketProvider>
           <SessionProvider>

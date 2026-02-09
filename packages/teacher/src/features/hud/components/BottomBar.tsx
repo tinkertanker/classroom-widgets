@@ -220,14 +220,14 @@ const BottomBar: React.FC = () => {
       <div
         ref={bottomRef}
         className={clsx(
-          "toolbar-content inline-flex flex-col space-y-4 px-4 pt-4 pb-2 max-w-full",
+          "toolbar-content inline-flex flex-col space-y-4 px-2 sm:px-4 pt-3 sm:pt-4 pb-2 max-w-full",
           hudProximity.peekWrapper(isNear.bottom)
         )}
       >
         {/* Main widget buttons */}
-        <div className="flex space-x-3 items-center">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Left section - always visible */}
-          <div className="flex space-x-3 items-center flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Trash icon */}
             <TrashZone />
 
@@ -235,7 +235,7 @@ const BottomBar: React.FC = () => {
             <button
             onClick={handleShowMoreWidgets}
             className={clsx(
-              'w-16 h-16 p-2 rounded-lg',
+              'w-12 h-12 sm:w-16 sm:h-16 p-1.5 sm:p-2 rounded-lg',
               'bg-gradient-to-br from-sage-50 to-sage-100',
               'dark:from-sage-900/20 dark:to-sage-800/30',
               'hover:from-sage-100 hover:to-sage-200',
@@ -250,7 +250,7 @@ const BottomBar: React.FC = () => {
             disabled={stickerMode}
             title="More widgets (⌘K)"
           >
-            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">
+            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300 scale-90 sm:scale-100">
               <LaunchpadIcon size={32} />
             </div>
             <span className="text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
@@ -265,7 +265,7 @@ const BottomBar: React.FC = () => {
           </div>
 
           {/* Middle section - recent widget buttons */}
-          <div className="flex space-x-3 items-center overflow-x-auto scrollbar-hide flex-1 min-w-0">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
             {recentConfigs.map((config) => (
               <WidgetButton
                 key={config!.type}
@@ -280,15 +280,15 @@ const BottomBar: React.FC = () => {
           </div>
 
           {/* Right section - always visible */}
-          <div className="flex space-x-3 items-center flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
             <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
 
             {/* Stickers button */}
           <button
             onClick={handleShowStickers}
             className={clsx(
-              'px-3 py-2 rounded-lg transition-all duration-200 group',
-              'flex flex-col items-center gap-1 min-w-[80px]',
+              'px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all duration-200 group',
+              'flex flex-col items-center gap-1 min-w-[64px] sm:min-w-[80px]',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
                 : 'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70'
@@ -298,12 +298,12 @@ const BottomBar: React.FC = () => {
 
             <StackedStickersIcon
               className={clsx(
-                "w-6 h-6 transform transition-transform duration-300",
+                "w-5 h-5 sm:w-6 sm:h-6 transform transition-transform duration-300",
                 stickerMode ? "scale-110" : "hover:scale-105"
               )}
               isActive={stickerMode}
             />
-            <span className="text-xs text-center leading-tight">Stickers</span>
+            <span className="text-[10px] sm:text-xs text-center leading-tight">Stickers</span>
           </button>
 
             {/* Voice Control button (Alpha feature) */}
@@ -311,8 +311,8 @@ const BottomBar: React.FC = () => {
               <button
                 onClick={handleActivateVoiceControl}
                 className={clsx(
-                  'px-3 py-2 rounded-lg transition-all duration-200 group',
-                  'flex flex-col items-center gap-1 min-w-[80px]',
+                  'px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all duration-200 group',
+                  'flex flex-col items-center gap-1 min-w-[64px] sm:min-w-[80px]',
                   'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300',
                   'hover:bg-sage-100 dark:hover:bg-sage-900/30',
                   'hover:text-sage-700 dark:hover:text-sage-300',
@@ -322,8 +322,8 @@ const BottomBar: React.FC = () => {
                 disabled={stickerMode}
                 title={`Voice Control${isMac ? ' (⌘⌘)' : ' (Ctrl Ctrl)'}`}
               >
-                <FaMicrophone className="text-lg" />
-                <span className="text-xs text-center leading-tight">Voice</span>
+                <FaMicrophone className="text-base sm:text-lg" />
+                <span className="text-[10px] sm:text-xs text-center leading-tight">Voice</span>
                 {/* Keyboard shortcut indicator */}
                 <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   {isMac ? '⌘⌘' : 'Ctrl Ctrl'}
@@ -336,8 +336,8 @@ const BottomBar: React.FC = () => {
               <button
               onClick={handleDebugLaunchAll}
               className={clsx(
-                'px-3 py-2 rounded-lg transition-all duration-200',
-                'flex flex-col items-center gap-1 min-w-[80px]',
+                'px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-all duration-200',
+                'flex flex-col items-center gap-1 min-w-[64px] sm:min-w-[80px]',
                 'text-warm-gray-700 dark:text-warm-gray-300',
                 'bg-yellow-100 dark:bg-yellow-900/30',
                 'hover:bg-yellow-200 dark:hover:bg-yellow-800/40',
@@ -346,8 +346,8 @@ const BottomBar: React.FC = () => {
               )}
               title="Debug: Launch all widgets in a grid (⌘⇧D)"
             >
-              <FaBug className="text-lg text-yellow-600 dark:text-yellow-400" />
-              <span className="text-xs text-center leading-tight">Debug All</span>
+              <FaBug className="text-base sm:text-lg text-yellow-600 dark:text-yellow-400" />
+              <span className="text-[10px] sm:text-xs text-center leading-tight">Debug All</span>
               {/* Keyboard shortcut indicator */}
               <div className="absolute -bottom-1 -right-1 bg-yellow-600 dark:bg-yellow-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 {isMac ? '⌘⇧D' : 'Ctrl+Shift+D'}
@@ -359,11 +359,11 @@ const BottomBar: React.FC = () => {
             <div className="relative">
               <button
               onClick={() => setShowMenu(!showMenu)}
-              className="px-3 py-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px]"
+              className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center gap-1 min-w-[64px] sm:min-w-[80px]"
               title="Menu"
             >
-              <FaBars className="text-lg" />
-              <span className="text-xs text-center leading-tight">Menu</span>
+              <FaBars className="text-base sm:text-lg" />
+              <span className="text-[10px] sm:text-xs text-center leading-tight">Menu</span>
             </button>
 
               {/* Menu dropdown */}
