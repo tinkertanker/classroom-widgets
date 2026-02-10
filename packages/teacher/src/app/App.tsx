@@ -44,8 +44,9 @@ function App() {
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  const [screenTooSmall, setScreenTooSmall] = useState(window.innerWidth < MIN_SCREEN_WIDTH);
+  const [screenTooSmall, setScreenTooSmall] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
+  );
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -72,9 +73,7 @@ function App() {
   // Check screen size
   useEffect(() => {
     const checkScreenSize = () => {
-      const width = window.innerWidth;
-      setWindowWidth(width);
-      setScreenTooSmall(width < MIN_SCREEN_WIDTH);
+      setScreenTooSmall(window.innerWidth < MIN_SCREEN_WIDTH);
     };
     
     window.addEventListener('resize', checkScreenSize);
@@ -479,7 +478,6 @@ function App() {
       {screenTooSmall ? (
         <SmallScreenWarning
           minWidth={MIN_SCREEN_WIDTH}
-          currentWidth={windowWidth}
           scale={scale}
         />
       ) : (

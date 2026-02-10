@@ -11,7 +11,17 @@ const SmallScreenWarning: React.FC<SmallScreenWarningProps> = ({
   currentWidth,
   scale = 1
 }) => {
-  const [internalWidth, setInternalWidth] = React.useState(() => window.innerWidth);
+  const [internalWidth, setInternalWidth] = React.useState(() => {
+    if (currentWidth !== undefined) {
+      return currentWidth;
+    }
+
+    if (typeof window !== 'undefined') {
+      return window.innerWidth;
+    }
+
+    return minWidth;
+  });
   const windowWidth = currentWidth ?? internalWidth;
   const effectiveWidth = Math.round(windowWidth / (scale || 1));
 
