@@ -94,7 +94,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         "border border-warm-gray-300/50 dark:border-warm-gray-600/50",
         "transition-all duration-500 ease-out cursor-pointer",
         !connected ? "animate-pulse" : "hover:scale-105",
-        isExpanded ? "px-4 py-2 rounded-full" : "h-10 px-3 rounded-lg",
+        isExpanded ? "px-3 py-2 sm:px-4 sm:py-2 rounded-full" : "h-10 px-2 sm:px-3 rounded-lg",
         "relative",
         zIndex.hud,
         className
@@ -116,32 +116,32 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
 
         {/* Session Info - Expandable */}
         <div className={clsx(
-          "flex items-center gap-3 transition-all duration-500",
-          isExpanded ? "max-w-[1200px] opacity-100 ml-3" : "max-w-0 opacity-0 overflow-hidden hidden"
+          "flex flex-wrap items-center gap-2 min-w-0 transition-all duration-500",
+          isExpanded ? "max-w-[1200px] opacity-100 ml-2 sm:ml-3" : "max-w-0 opacity-0 overflow-hidden hidden"
         )}>
           {/* Session Code */}
-          <code className="text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider">
+          <code className="text-2xl sm:text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
             {sessionCode}
           </code>
 
           {/* Separator */}
-          <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+          <div className="w-px h-6 sm:h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
 
           {/* URL */}
-          <span className="text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate">
+          <span className="text-sm sm:text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px] sm:max-w-[420px]">
             {displayUrl?.replace(/^https?:\/\//, '')}
           </span>
 
           {/* Close Session Button */}
           {connected && (
             <>
-              <div className="w-px h-4 bg-warm-gray-300 dark:bg-warm-gray-600" />
+              <div className="w-px h-3 sm:h-4 bg-warm-gray-300 dark:bg-warm-gray-600" />
               <button
                 onClick={handleCloseSession}
                 className="text-dusty-rose-600 dark:text-dusty-rose-400 hover:text-dusty-rose-700 dark:hover:text-dusty-rose-300 transition-colors p-1 rounded hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20"
                 title="Close session"
               >
-                <FaXmark className="text-sm" />
+                <FaXmark className="text-xs sm:text-sm" />
               </button>
             </>
           )}

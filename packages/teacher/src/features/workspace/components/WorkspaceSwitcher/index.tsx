@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { FaFolder, FaChevronDown, FaPlus } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspaceManager } from '../../hooks/useWorkspaceManager';
@@ -7,6 +7,7 @@ import { hudContainer, dropdownContainer, zIndex, menuItem } from '@shared/utils
 
 export const WorkspaceSwitcher: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownId = useId();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -86,16 +87,20 @@ export const WorkspaceSwitcher: React.FC = () => {
         className={clsx(
           hudContainer.base,
           hudContainer.hover,
-          'flex items-center space-x-2 h-10 px-3'
+          'flex items-center space-x-2 h-10 px-3 max-[540px]:px-2 max-[540px]:space-x-0'
         )}
         title={currentWorkspace.name}
+        aria-label={`Workspace: ${currentWorkspace.name}`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-controls={isOpen ? dropdownId : undefined}
       >
         <FaFolder className="w-4 h-4 text-sage-600 dark:text-sage-400" />
-        <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200 truncate max-w-[120px]">
+        <span className="text-sm text-warm-gray-700 dark:text-warm-gray-200 truncate max-w-[120px] max-[540px]:hidden">
           {currentWorkspace.name}
         </span>
         <FaChevronDown className={clsx(
-          'w-3 h-3 text-warm-gray-400 transition-transform',
+          'w-3 h-3 text-warm-gray-400 transition-transform max-[540px]:hidden',
           isOpen && 'rotate-180'
         )} />
       </button>
@@ -106,7 +111,10 @@ export const WorkspaceSwitcher: React.FC = () => {
           'absolute top-full left-0 mt-2 w-64',
           dropdownContainer,
           zIndex.hudDropdown
-        )}>
+        )}
+          id={dropdownId}
+          role="menu"
+        >
           {/* Workspace list */}
           <div className="max-h-64 overflow-y-auto py-1">
             {workspaceList.map(workspace => (

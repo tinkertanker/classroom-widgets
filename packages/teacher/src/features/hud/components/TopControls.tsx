@@ -93,14 +93,14 @@ const TopControls: React.FC = () => {
 
   return (
     <div className={clsx(
-      'fixed top-4 left-4 right-4 flex items-start justify-between pointer-events-none',
+      'fixed top-4 left-4 right-4 flex items-start justify-between gap-2 pointer-events-none max-[540px]:top-2 max-[540px]:left-2 max-[540px]:right-2 max-[540px]:flex-col',
       zIndex.hud
     )}>
       {/* Left side - Workspace Switcher + Clock */}
       <div
         ref={topLeftRef}
         className={clsx(
-          'flex items-center space-x-2',
+          'flex flex-wrap items-center gap-2 max-w-full',
           hudProximity.wrapper(isNear.topLeft)
         )}
       >
@@ -121,7 +121,7 @@ const TopControls: React.FC = () => {
       <div
         ref={topRightRef}
         className={clsx(
-          'flex items-start space-x-2',
+          'flex flex-wrap items-start justify-end gap-2 max-w-full self-end max-[540px]:self-auto',
           hudProximity.wrapper(isNear.topRight)
         )}
       >
@@ -153,7 +153,7 @@ const TopControls: React.FC = () => {
 
           <button
             onClick={handleZoomReset}
-            className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors"
+            className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors max-[540px]:hidden"
             title="Reset zoom"
           >
             {Math.round(scale * 100)}%

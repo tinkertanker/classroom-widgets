@@ -1,6 +1,43 @@
 import React from 'react';
 
-const SmallScreenWarning: React.FC = () => {
+interface SmallScreenWarningProps {
+  minWidth?: number;
+  currentWidth?: number;
+  scale?: number;
+}
+
+const SmallScreenWarning: React.FC<SmallScreenWarningProps> = ({
+  minWidth = 768,
+  currentWidth,
+  scale = 1
+}) => {
+  const [internalWidth, setInternalWidth] = React.useState(() => {
+    if (currentWidth !== undefined) {
+      return currentWidth;
+    }
+
+    if (typeof window !== 'undefined') {
+      return window.innerWidth;
+    }
+
+    return minWidth;
+  });
+  const windowWidth = currentWidth ?? internalWidth;
+  const effectiveWidth = Math.round(windowWidth / (scale || 1));
+
+  React.useEffect(() => {
+    if (currentWidth !== undefined) {
+      return;
+    }
+
+    const handleResize = () => {
+      setInternalWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [currentWidth]);
+
   return (
     <div className="fixed inset-0 bg-warm-gray-900 text-white flex items-center justify-center p-4 z-[9999]">
       <div className="text-center max-w-md">
@@ -9,12 +46,17 @@ const SmallScreenWarning: React.FC = () => {
         </svg>
         <h1 className="text-2xl font-bold mb-4">Screen Too Small</h1>
         <p className="text-warm-gray-300 mb-6">
-          Classroom Widgets requires a larger screen to function properly. 
-          Please use a desktop or laptop computer with a minimum screen width of 768 pixels.
+          Classroom Widgets requires a larger screen to function properly.
+          Please use a desktop or laptop computer with a minimum screen width of {minWidth} pixels.
         </p>
         <div className="text-sm text-warm-gray-400">
-          Current screen width: {window.innerWidth}px
+          Current screen width: {Math.round(windowWidth)}px
         </div>
+        {scale !== 1 && (
+          <div className="text-xs text-warm-gray-500 mt-1">
+            Effective width at {Math.round(scale * 100)}%: {effectiveWidth}px
+          </div>
+        )}
       </div>
     </div>
   );

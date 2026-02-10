@@ -220,14 +220,14 @@ const BottomBar: React.FC = () => {
       <div
         ref={bottomRef}
         className={clsx(
-          "toolbar-content inline-flex flex-col space-y-4 px-4 pt-4 pb-2 max-w-full",
+          "toolbar-content inline-flex flex-col space-y-4 px-2 sm:px-4 pt-3 sm:pt-4 pb-2 max-w-full",
           hudProximity.peekWrapper(isNear.bottom)
         )}
       >
         {/* Main widget buttons */}
-        <div className="flex space-x-3 items-center">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Left section - always visible */}
-          <div className="flex space-x-3 items-center flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             {/* Trash icon */}
             <TrashZone />
 
@@ -250,10 +250,10 @@ const BottomBar: React.FC = () => {
             disabled={stickerMode}
             title="More widgets (⌘K)"
           >
-            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">
-              <LaunchpadIcon size={32} />
+            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300 scale-100 max-[540px]:scale-90">
+              <LaunchpadIcon size={30} />
             </div>
-            <span className="text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
+            <span className="text-xs max-[540px]:text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
             {/* Keyboard shortcut indicator */}
             <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               {isMac ? '⌘K' : 'Ctrl+K'}
@@ -261,11 +261,11 @@ const BottomBar: React.FC = () => {
           </button>
 
             {/* Separator */}
-            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[540px]:hidden" />
           </div>
 
           {/* Middle section - recent widget buttons */}
-          <div className="flex space-x-3 items-center overflow-x-auto scrollbar-hide flex-1 min-w-0">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0 max-[540px]:hidden">
             {recentConfigs.map((config) => (
               <WidgetButton
                 key={config!.type}
@@ -280,15 +280,15 @@ const BottomBar: React.FC = () => {
           </div>
 
           {/* Right section - always visible */}
-          <div className="flex space-x-3 items-center flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
             <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
 
             {/* Stickers button */}
           <button
             onClick={handleShowStickers}
             className={clsx(
-              'px-3 py-2 rounded-lg transition-all duration-200 group',
-              'flex flex-col items-center gap-1 min-w-[80px]',
+              'w-16 h-16 rounded-lg transition-all duration-200 group',
+              'flex flex-col items-center justify-center gap-1',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
                 : 'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70'
@@ -298,12 +298,12 @@ const BottomBar: React.FC = () => {
 
             <StackedStickersIcon
               className={clsx(
-                "w-6 h-6 transform transition-transform duration-300",
+                "w-6 h-6 max-[540px]:w-5 max-[540px]:h-5 transform transition-transform duration-300 -translate-x-[5px]",
                 stickerMode ? "scale-110" : "hover:scale-105"
               )}
               isActive={stickerMode}
             />
-            <span className="text-xs text-center leading-tight">Stickers</span>
+            <span className="text-xs max-[540px]:text-[10px] text-center leading-tight">Stickers</span>
           </button>
 
             {/* Voice Control button (Alpha feature) */}
@@ -311,19 +311,20 @@ const BottomBar: React.FC = () => {
               <button
                 onClick={handleActivateVoiceControl}
                 className={clsx(
-                  'px-3 py-2 rounded-lg transition-all duration-200 group',
-                  'flex flex-col items-center gap-1 min-w-[80px]',
+                  'w-16 h-16 rounded-lg transition-all duration-200 group',
+                  'flex flex-col items-center justify-center gap-1',
                   'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300',
                   'hover:bg-sage-100 dark:hover:bg-sage-900/30',
                   'hover:text-sage-700 dark:hover:text-sage-300',
+                  'max-[540px]:hidden',
                   'relative',
                   stickerMode ? 'opacity-50 cursor-not-allowed' : ''
                 )}
                 disabled={stickerMode}
                 title={`Voice Control${isMac ? ' (⌘⌘)' : ' (Ctrl Ctrl)'}`}
               >
-                <FaMicrophone className="text-lg" />
-                <span className="text-xs text-center leading-tight">Voice</span>
+                <FaMicrophone className="text-lg max-[540px]:text-base" />
+                <span className="text-xs max-[540px]:text-[10px] text-center leading-tight">Voice</span>
                 {/* Keyboard shortcut indicator */}
                 <div className="absolute -bottom-1 -right-1 bg-sage-600 dark:bg-sage-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   {isMac ? '⌘⌘' : 'Ctrl Ctrl'}
@@ -336,18 +337,19 @@ const BottomBar: React.FC = () => {
               <button
               onClick={handleDebugLaunchAll}
               className={clsx(
-                'px-3 py-2 rounded-lg transition-all duration-200',
-                'flex flex-col items-center gap-1 min-w-[80px]',
+                'w-16 h-16 rounded-lg transition-all duration-200',
+                'flex flex-col items-center justify-center gap-1',
                 'text-warm-gray-700 dark:text-warm-gray-300',
                 'bg-yellow-100 dark:bg-yellow-900/30',
                 'hover:bg-yellow-200 dark:hover:bg-yellow-800/40',
+                'max-[540px]:hidden',
                 'border border-yellow-300 dark:border-yellow-700',
                 'relative group'
               )}
               title="Debug: Launch all widgets in a grid (⌘⇧D)"
             >
-              <FaBug className="text-lg text-yellow-600 dark:text-yellow-400" />
-              <span className="text-xs text-center leading-tight">Debug All</span>
+              <FaBug className="text-lg max-[540px]:text-base text-yellow-600 dark:text-yellow-400" />
+              <span className="text-xs max-[540px]:text-[10px] text-center leading-tight">Debug All</span>
               {/* Keyboard shortcut indicator */}
               <div className="absolute -bottom-1 -right-1 bg-yellow-600 dark:bg-yellow-500 text-white text-[9px] font-bold px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 {isMac ? '⌘⇧D' : 'Ctrl+Shift+D'}
@@ -359,11 +361,11 @@ const BottomBar: React.FC = () => {
             <div className="relative">
               <button
               onClick={() => setShowMenu(!showMenu)}
-              className="px-3 py-2 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px]"
+              className="w-16 h-16 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center justify-center gap-1"
               title="Menu"
             >
-              <FaBars className="text-lg" />
-              <span className="text-xs text-center leading-tight">Menu</span>
+              <FaBars className="text-lg max-[540px]:text-base" />
+              <span className="text-xs max-[540px]:text-[10px] text-center leading-tight">Menu</span>
             </button>
 
               {/* Menu dropdown */}

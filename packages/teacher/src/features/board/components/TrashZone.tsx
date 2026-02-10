@@ -76,7 +76,8 @@ const TrashZone: React.FC = () => {
   
   const classes = clsx(
     'w-16 h-16 cursor-pointer transition-all duration-200',
-    'p-3 rounded-lg flex items-center justify-center',
+    'max-[540px]:w-16 max-[540px]:h-16',
+    'p-3 max-[540px]:p-2 rounded-lg flex items-center justify-center',
     'relative z-[1000]', // High z-index to ensure it's above dragged widgets
     {
       'bg-dusty-rose-500 transform scale-105': isOverTrash,
@@ -85,7 +86,7 @@ const TrashZone: React.FC = () => {
   );
   
   const iconClasses = clsx(
-    'w-10 h-10 transition-all duration-200',
+    'w-10 h-10 max-[540px]:w-6 max-[540px]:h-6 transition-all duration-200',
     {
       'text-white': isOverTrash,
       'text-warm-gray-600 dark:text-warm-gray-300': !isOverTrash
