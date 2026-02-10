@@ -94,7 +94,10 @@ export const defaultPollQuestions: PollQuestion[] = [
 ];
 
 export function getDefaultPollQuestion(): PollQuestion {
-  return classroomPulsePoll;
+  return {
+    question: classroomPulsePoll.question,
+    options: [...classroomPulsePoll.options]
+  };
 }
 
 // Function to get a random poll question
