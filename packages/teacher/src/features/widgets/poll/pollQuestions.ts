@@ -4,7 +4,13 @@ export interface PollQuestion {
   options: string[];
 }
 
+export const classroomPulsePoll: PollQuestion = {
+  question: 'How is the lesson for you right now?',
+  options: ['Way too fast', 'Too fast', 'Just right', 'Too slow', 'Way too slow']
+};
+
 export const defaultPollQuestions: PollQuestion[] = [
+  classroomPulsePoll,
   {
     question: "Why did the chicken cross the road?",
     options: ["To get to the other side", "It was escaping from KFC", "To prove it wasn't chicken", "Google Maps said it was faster"]
@@ -86,6 +92,10 @@ export const defaultPollQuestions: PollQuestion[] = [
     options: ["Cats (obviously)", "Geese", "Llamas", "Honey badgers", "Seagulls"]
   }
 ];
+
+export function getDefaultPollQuestion(): PollQuestion {
+  return classroomPulsePoll;
+}
 
 // Function to get a random poll question
 export function getRandomPollQuestion(): PollQuestion {
