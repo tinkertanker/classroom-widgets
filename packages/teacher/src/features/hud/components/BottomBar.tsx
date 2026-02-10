@@ -236,7 +236,6 @@ const BottomBar: React.FC = () => {
             onClick={handleShowMoreWidgets}
             className={clsx(
               'w-16 h-16 p-2 rounded-lg',
-              'max-[540px]:w-12 max-[540px]:h-12 max-[540px]:p-1.5',
               'bg-gradient-to-br from-sage-50 to-sage-100',
               'dark:from-sage-900/20 dark:to-sage-800/30',
               'hover:from-sage-100 hover:to-sage-200',
@@ -251,7 +250,7 @@ const BottomBar: React.FC = () => {
             disabled={stickerMode}
             title="More widgets (⌘K)"
           >
-            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300 scale-100 max-[540px]:scale-75">
+            <div className="text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300 scale-100 max-[540px]:scale-90">
               <LaunchpadIcon size={30} />
             </div>
             <span className="text-xs max-[540px]:text-[10px] font-bold text-sage-700 dark:text-sage-300 group-hover:text-sage-800 dark:group-hover:text-sage-200 transition-colors duration-300">MORE</span>
@@ -289,7 +288,7 @@ const BottomBar: React.FC = () => {
             onClick={handleShowStickers}
             className={clsx(
               'px-3 py-2 max-[540px]:px-2 max-[540px]:py-1.5 rounded-lg transition-all duration-200 group',
-              'flex flex-col items-center gap-1 min-w-[80px] max-[540px]:min-w-[64px]',
+              'flex flex-col items-center gap-1 min-w-[80px] max-[540px]:w-16 max-[540px]:h-16 max-[540px]:min-w-0',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
                 : 'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70'
@@ -362,7 +361,7 @@ const BottomBar: React.FC = () => {
             <div className="relative">
               <button
               onClick={() => setShowMenu(!showMenu)}
-              className="px-3 py-2 max-[540px]:px-2 max-[540px]:py-1.5 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px] max-[540px]:min-w-[64px]"
+              className="px-3 py-2 max-[540px]:px-2 max-[540px]:py-1.5 rounded-lg text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70 transition-all duration-200 flex flex-col items-center gap-1 min-w-[80px] max-[540px]:w-16 max-[540px]:h-16 max-[540px]:min-w-0"
               title="Menu"
             >
               <FaBars className="text-lg max-[540px]:text-base" />
