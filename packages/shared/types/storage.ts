@@ -13,6 +13,8 @@
 
 import { BackgroundType, WidgetType } from './index';
 
+export type LayoutFormat = 'canvas' | 'column';
+
 // =============================================================================
 // SAVED COLLECTIONS - Persistent storage for reusable content
 // =============================================================================
@@ -90,6 +92,7 @@ export interface WorkspaceData {
   scale: number;
   scrollPosition: { x: number; y: number };
   widgetStates: Array<[string, any]>;  // Serialized Map entries
+  layoutFormat?: LayoutFormat;
 }
 
 /**
@@ -223,7 +226,8 @@ export function createDefaultWorkspace(id: string, name: string = DEFAULT_WORKSP
     background: BackgroundType.LOWPOLY,
     scale: 1,
     scrollPosition: { x: 0, y: 0 },
-    widgetStates: []
+    widgetStates: [],
+    layoutFormat: 'canvas'
   };
 }
 

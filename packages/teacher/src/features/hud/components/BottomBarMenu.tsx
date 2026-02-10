@@ -12,7 +12,8 @@ import {
   FaMountain,
   FaWater,
   FaCircleInfo,
-  FaMicrophone
+  FaMicrophone,
+  FaTableColumns
 } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useTheme, useBottomBar } from '@shared/hooks/useWorkspace';
@@ -34,10 +35,16 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
   const bottomBar = useWorkspaceStore((state) => state.bottomBar);
   const updateBottomBar = useWorkspaceStore((state) => state.updateBottomBar);
 
+  const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
+  const setLayoutFormat = useWorkspaceStore((state) => state.setLayoutFormat);
   const voiceControlEnabled = bottomBar.voiceControlEnabled ?? false;
 
   const handleToggleVoiceControl = () => {
     updateBottomBar({ voiceControlEnabled: !voiceControlEnabled });
+  };
+
+  const handleToggleLayout = () => {
+    setLayoutFormat(layoutFormat === 'canvas' ? 'column' : 'canvas');
   };
 
   useEffect(() => {
@@ -97,6 +104,31 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
         icon={theme === 'light' ? FaMoon : FaSun}
       >
         {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+      </MenuItem>
+
+      {/* Layout Format Toggle */}
+      <MenuItem
+        onClick={handleToggleLayout}
+        icon={FaTableColumns}
+        rightContent={
+          <div
+            className={clsx(
+              'ml-auto w-9 h-5 rounded-full transition-colors duration-200 relative',
+              layoutFormat === 'column'
+                ? 'bg-sage-500 dark:bg-sage-600'
+                : 'bg-warm-gray-300 dark:bg-warm-gray-600'
+            )}
+          >
+            <div
+              className={clsx(
+                'absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200',
+                layoutFormat === 'column' ? 'translate-x-4' : 'translate-x-0.5'
+              )}
+            />
+          </div>
+        }
+      >
+        Column Layout
       </MenuItem>
 
       <MenuDivider />

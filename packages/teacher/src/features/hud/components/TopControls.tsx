@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection, useBottomBar } from '@shared/hooks/useWorkspace';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useSession } from '../../../contexts/SessionContext';
 import SessionBanner from '../../session/components/SessionBanner';
 import { WorkspaceSwitcher } from '../../workspace';
@@ -15,6 +16,7 @@ const TopControls: React.FC = () => {
   const { connected } = useServerConnection();
   const { sessionCode } = useSession();
   const { showClock } = useBottomBar();
+  const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
 
   // Debug: log session code
   console.log('[TopControls] sessionCode:', sessionCode);
@@ -143,28 +145,30 @@ const TopControls: React.FC = () => {
           </button>
         )}
 
-        {/* Zoom Controls */}
-        <HudButtonGroup>
-          <HudGroupButton
-            onClick={handleZoomOut}
-            icon={FaMinus}
-            title="Zoom out"
-          />
+        {/* Zoom Controls (hidden in column layout) */}
+        {layoutFormat !== 'column' && (
+          <HudButtonGroup>
+            <HudGroupButton
+              onClick={handleZoomOut}
+              icon={FaMinus}
+              title="Zoom out"
+            />
 
-          <button
-            onClick={handleZoomReset}
-            className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors max-[540px]:hidden"
-            title="Reset zoom"
-          >
-            {Math.round(scale * 100)}%
-          </button>
+            <button
+              onClick={handleZoomReset}
+              className="px-2 py-1 text-xs font-mono text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700 rounded transition-colors max-[540px]:hidden"
+              title="Reset zoom"
+            >
+              {Math.round(scale * 100)}%
+            </button>
 
-          <HudGroupButton
-            onClick={handleZoomIn}
-            icon={FaPlus}
-            title="Zoom in"
-          />
-        </HudButtonGroup>
+            <HudGroupButton
+              onClick={handleZoomIn}
+              icon={FaPlus}
+              title="Zoom in"
+            />
+          </HudButtonGroup>
+        )}
 
         {/* Fullscreen Button */}
         <HudButton

@@ -113,7 +113,7 @@ export function useCreateWidget() {
     const widgetSize = widgetConfig?.defaultSize || { width: 350, height: 350 };
     
     // Calculate position based on viewport
-    const boardContainer = document.querySelector('.board-scroll-container') as HTMLElement;
+    const boardContainer = (document.querySelector('.board-scroll-container') || document.querySelector('.column-board-container')) as HTMLElement;
     if (boardContainer) {
       const scrollLeft = boardContainer.scrollLeft;
       const scrollTop = boardContainer.scrollTop;

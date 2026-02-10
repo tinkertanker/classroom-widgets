@@ -1,5 +1,5 @@
 import { BackgroundType, WidgetType, Widget, Position, Size } from '@shared/types';
-import { SavedCollections, SavedRandomiserList, SavedQuestionBank, SavedPollQuestion } from '@shared/types/storage';
+import { SavedCollections, SavedRandomiserList, SavedQuestionBank, SavedPollQuestion, LayoutFormat } from '@shared/types/storage';
 
 export interface BottomBarConfig {
   visibleWidgets: WidgetType[];
@@ -50,6 +50,7 @@ export interface WorkspaceStore {
   canRedo: boolean;
   focusedWidgetId: string | null;
   classEndTime: number | null;  // Timestamp for class end time
+  layoutFormat: LayoutFormat;
 
   // Workspace management state
   currentWorkspaceId: string;
@@ -65,6 +66,7 @@ export interface WorkspaceStore {
   setTheme: (theme: 'light' | 'dark') => void;
   setScale: (scale: number) => void;
   setScrollPosition: (position: Position) => void;
+  setLayoutFormat: (format: LayoutFormat) => void;
   setServerStatus: (status: Partial<ServerStatus>) => void;
   
   // Widget actions

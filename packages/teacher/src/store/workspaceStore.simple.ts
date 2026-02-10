@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { BackgroundType, WidgetType } from '@shared/types';
+import { LayoutFormat } from '@shared/types/storage';
 import { WorkspaceStore } from './workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { debug } from '@shared/utils/debug';
@@ -127,6 +128,7 @@ const workspaceStorage: StateStorage = {
                 scale: currentWorkspace.scale,
                 scrollPosition: currentWorkspace.scrollPosition,
                 widgetStates: currentWorkspace.widgetStates,
+                layoutFormat: currentWorkspace.layoutFormat || 'canvas',
                 theme: v2Data.globalSettings.theme,
                 bottomBar: (v2Data.globalSettings as any).bottomBar || (v2Data.globalSettings as any).toolbar,
                 sessionCode: v2Data.session.code,
@@ -201,7 +203,8 @@ const workspaceStorage: StateStorage = {
         background: state.background || BackgroundType.LOWPOLY,
         scale: state.scale ?? 1,
         scrollPosition: state.scrollPosition || { x: 0, y: 0 },
-        widgetStates: state.widgetStates || []
+        widgetStates: state.widgetStates || [],
+        layoutFormat: state.layoutFormat || 'canvas'
       };
 
       // Update global settings
@@ -269,6 +272,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   canRedo: false,
   focusedWidgetId: null,
   classEndTime: null,
+  layoutFormat: 'canvas' as LayoutFormat,
 
   // Workspace management state (populated on rehydration)
   currentWorkspaceId: '',
@@ -287,6 +291,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     sessionCreatedAt: null 
   }),
   setBackground: (background) => set({ background }),
+  setLayoutFormat: (format) => set({ layoutFormat: format }),
   setTheme: (theme) => set({ theme }),
   setScale: (scale) => set({ scale }),
   setScrollPosition: (position) => set({ scrollPosition: position }),
@@ -448,6 +453,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       background: workspace.background,
       scale: workspace.scale,
       scrollPosition: workspace.scrollPosition,
+      layoutFormat: (workspace.layoutFormat || 'canvas') as LayoutFormat,
       widgetStates: new Map(workspace.widgetStates),
       focusedWidgetId: null
     });
@@ -478,6 +484,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       background: workspace.background,
       scale: workspace.scale,
       scrollPosition: workspace.scrollPosition,
+      layoutFormat: (workspace.layoutFormat || 'canvas') as LayoutFormat,
       widgetStates: new Map(workspace.widgetStates),
       focusedWidgetId: null
     });
@@ -513,6 +520,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         background: currentWorkspace.background,
         scale: currentWorkspace.scale,
         scrollPosition: currentWorkspace.scrollPosition,
+        layoutFormat: (currentWorkspace.layoutFormat || 'canvas') as LayoutFormat,
         widgetStates: new Map(currentWorkspace.widgetStates),
         focusedWidgetId: null
       });
@@ -714,6 +722,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         background: state.background,
         theme: state.theme,
         scale: state.scale,
+        layoutFormat: state.layoutFormat,
         bottomBar: state.bottomBar,
         widgetStates: Array.from(state.widgetStates.entries()),
         sessionCode: state.sessionCode,

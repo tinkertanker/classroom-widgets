@@ -9,9 +9,11 @@ import { useWorkspace, useServerConnection } from '@shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '@shared/utils/migration';
 import Board from '../features/board/components';
+import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
 import TopControls from '../features/hud/components/TopControls';
 import WidgetList from '../features/board/components/WidgetList';
+import ColumnWidgetList from '../features/board/components/ColumnWidgetList';
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '@shared/components/SmallScreenWarning';
 import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
@@ -40,6 +42,7 @@ function App() {
   const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
   // Removed: focusedWidgetId subscription - use getState() where needed
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
   const voiceControlEnabled = useWorkspaceStore((state) => state.bottomBar.voiceControlEnabled ?? false);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
@@ -83,6 +86,14 @@ function App() {
   
   
   
+  // Disable sticker mode when switching to column layout
+  useEffect(() => {
+    if (layoutFormat === 'column' && stickerMode) {
+      setStickerMode(false);
+      setSelectedStickerType(null);
+    }
+  }, [layoutFormat, stickerMode]);
+
   // Trash sound effect
   useEffect(() => {
     (window as any).playTrashSound = () => {
@@ -521,9 +532,15 @@ function App() {
           
           {/* Main Board */}
           <div className="h-full relative overflow-hidden">
-            <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
-                  <WidgetList />
-                </Board>
+            {layoutFormat === 'column' ? (
+              <ColumnBoard>
+                <ColumnWidgetList />
+              </ColumnBoard>
+            ) : (
+              <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
+                <WidgetList />
+              </Board>
+            )}
           </div>
           
           {/* Toolbar at bottom */}
