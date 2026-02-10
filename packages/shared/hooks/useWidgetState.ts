@@ -1,15 +1,26 @@
 import { useState, useCallback, useEffect } from 'react';
 
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+  const keysA = Object.keys(a as Record<string, unknown>);
+  const keysB = Object.keys(b as Record<string, unknown>);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every(key =>
+    Object.is((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
+  );
+}
+
 interface UseWidgetStateOptions<T> {
   initialState: T;
   onStateChange?: (state: T) => void;
   savedState?: T;
 }
 
-export function useWidgetState<T>({ 
-  initialState, 
-  onStateChange, 
-  savedState 
+export function useWidgetState<T>({
+  initialState,
+  onStateChange,
+  savedState
 }: UseWidgetStateOptions<T>) {
   const [state, setStateInternal] = useState<T>(savedState ?? initialState);
 
@@ -25,9 +36,10 @@ export function useWidgetState<T>({
     });
   }, [onStateChange]);
 
-  // Update state when savedState changes
+  // Update state when savedState changes (use shallow comparison to avoid
+  // infinite loops when callers pass a new object with the same values)
   useEffect(() => {
-    if (savedState !== undefined && !Object.is(savedState, state)) {
+    if (savedState !== undefined && !shallowEqual(savedState, state)) {
       setState(savedState, false);
     }
   }, [savedState, state, setState]);
