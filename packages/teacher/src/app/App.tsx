@@ -1,6 +1,6 @@
 // Main App component - Refactored for better architecture
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import './App.css';
 import { ModalProvider } from '../contexts/ModalContext';
 import { SocketProvider } from '../contexts/SocketProvider';
@@ -43,7 +43,12 @@ function App() {
   // Removed: focusedWidgetId subscription - use getState() where needed
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
+  const setLayoutFormat = useWorkspaceStore((state) => state.setLayoutFormat);
   const voiceControlEnabled = useWorkspaceStore((state) => state.bottomBar.voiceControlEnabled ?? false);
+  const [isNarrowScreen, setIsNarrowScreen] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 540 : false
+  );
+  const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -77,12 +82,25 @@ function App() {
   useEffect(() => {
     const checkScreenSize = () => {
       setScreenTooSmall(window.innerWidth < MIN_SCREEN_WIDTH);
+      const narrow = window.innerWidth < 540;
+      const wasNarrow = isNarrowScreen;
+      setIsNarrowScreen(narrow);
+
+      if (narrow && !wasNarrow) {
+        // Entering narrow: stash current layout and force column
+        layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
+        setLayoutFormat('column');
+      } else if (!narrow && wasNarrow && layoutBeforeNarrowRef.current) {
+        // Leaving narrow: restore original layout
+        setLayoutFormat(layoutBeforeNarrowRef.current);
+        layoutBeforeNarrowRef.current = null;
+      }
     };
-    
+
     window.addEventListener('resize', checkScreenSize);
     checkScreenSize();
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
+  }, [setLayoutFormat, isNarrowScreen]);
   
   
   
@@ -543,10 +561,12 @@ function App() {
             )}
           </div>
           
-          {/* Toolbar at bottom */}
-          <div className="toolbar-container">
-            <BottomBar />
-          </div>
+          {/* Toolbar at bottom (hidden on narrow single-column screens) */}
+          {!isNarrowScreen && (
+            <div className="toolbar-container">
+              <BottomBar />
+            </div>
+          )}
 
           {/* Version label */}
           <div className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 pointer-events-none select-none z-10">

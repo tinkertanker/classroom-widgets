@@ -156,7 +156,7 @@ input[type="range"] {
   padding: 4.5rem 1rem 5rem;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 540px) {
   .column-board-content {
     columns: 2;
     padding: 4.5rem 1.5rem 5rem;

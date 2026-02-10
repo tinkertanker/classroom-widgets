@@ -1,6 +1,6 @@
 // BottomBarMenu - Dropdown menu for bottom bar settings
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   FaRotateLeft,
   FaMoon,
@@ -13,7 +13,10 @@ import {
   FaWater,
   FaCircleInfo,
   FaMicrophone,
-  FaTableColumns
+  FaTableColumns,
+  FaPalette,
+  FaChevronRight,
+  FaChevronDown
 } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useTheme, useBottomBar } from '@shared/hooks/useWorkspace';
@@ -43,7 +46,10 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
     updateBottomBar({ voiceControlEnabled: !voiceControlEnabled });
   };
 
+  const isNarrowScreen = typeof window !== 'undefined' && window.innerWidth < 540;
+
   const handleToggleLayout = () => {
+    if (isNarrowScreen) return; // Can't switch to canvas on narrow screens
     setLayoutFormat(layoutFormat === 'canvas' ? 'column' : 'canvas');
   };
 
@@ -64,6 +70,8 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
       onClose();
     }
   };
+
+  const [showBackgrounds, setShowBackgrounds] = useState(false);
 
   const handleBackgroundChange = (type: BackgroundType) => {
     setBackground(type);
@@ -110,6 +118,7 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
       <MenuItem
         onClick={handleToggleLayout}
         icon={FaTableColumns}
+        className={isNarrowScreen ? 'opacity-60 cursor-not-allowed' : ''}
         rightContent={
           <div
             className={clsx(
@@ -133,50 +142,60 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
 
       <MenuDivider />
 
-      {/* Background Options */}
-      <MenuSectionHeader>Background</MenuSectionHeader>
-
+      {/* Background Options (collapsible) */}
       <MenuItem
-        onClick={() => handleBackgroundChange(BackgroundType.GEOMETRIC)}
-        icon={FaShapes}
+        onClick={() => setShowBackgrounds(!showBackgrounds)}
+        icon={FaPalette}
+        rightContent={showBackgrounds ? <FaChevronDown className="w-3 h-3 text-warm-gray-400" /> : <FaChevronRight className="w-3 h-3 text-warm-gray-400" />}
       >
-        Geometric
+        Background
       </MenuItem>
 
-      <MenuItem
-        onClick={() => handleBackgroundChange(BackgroundType.GRADIENT)}
-        icon={FaBrush}
-      >
-        Gradient
-      </MenuItem>
+      {showBackgrounds && (
+        <div className="pl-4">
+          <MenuItem
+            onClick={() => handleBackgroundChange(BackgroundType.GEOMETRIC)}
+            icon={FaShapes}
+          >
+            Geometric
+          </MenuItem>
 
-      <MenuItem
-        onClick={() => handleBackgroundChange(BackgroundType.LINES)}
-        icon={FaGripLines}
-      >
-        Lines
-      </MenuItem>
+          <MenuItem
+            onClick={() => handleBackgroundChange(BackgroundType.GRADIENT)}
+            icon={FaBrush}
+          >
+            Gradient
+          </MenuItem>
 
-      <MenuItem
-        onClick={() => handleBackgroundChange(BackgroundType.DOTS)}
-        icon={FaCircle}
-      >
-        Dots
-      </MenuItem>
+          <MenuItem
+            onClick={() => handleBackgroundChange(BackgroundType.LINES)}
+            icon={FaGripLines}
+          >
+            Lines
+          </MenuItem>
 
-      <MenuItem
-        onClick={() => handleBackgroundChange(BackgroundType.LOWPOLY)}
-        icon={FaMountain}
-      >
-        Low Poly
-      </MenuItem>
+          <MenuItem
+            onClick={() => handleBackgroundChange(BackgroundType.DOTS)}
+            icon={FaCircle}
+          >
+            Dots
+          </MenuItem>
 
-      <MenuItem
-        onClick={() => handleBackgroundChange(BackgroundType.SEAWAVE)}
-        icon={FaWater}
-      >
-        Sea Wave
-      </MenuItem>
+          <MenuItem
+            onClick={() => handleBackgroundChange(BackgroundType.LOWPOLY)}
+            icon={FaMountain}
+          >
+            Low Poly
+          </MenuItem>
+
+          <MenuItem
+            onClick={() => handleBackgroundChange(BackgroundType.SEAWAVE)}
+            icon={FaWater}
+          >
+            Sea Wave
+          </MenuItem>
+        </div>
+      )}
 
       <MenuDivider />
 
