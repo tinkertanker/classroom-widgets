@@ -561,12 +561,10 @@ function App() {
             )}
           </div>
           
-          {/* Toolbar at bottom (hidden on narrow single-column screens) */}
-          {!isNarrowScreen && (
-            <div className="toolbar-container">
-              <BottomBar />
-            </div>
-          )}
+          {/* Toolbar at bottom */}
+          <div className="toolbar-container">
+            <BottomBar />
+          </div>
 
           {/* Version label */}
           <div className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 pointer-events-none select-none z-10">

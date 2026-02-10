@@ -226,10 +226,12 @@ const BottomBar: React.FC = () => {
       >
         {/* Main widget buttons */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Left section - always visible */}
+          {/* Left section */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Trash icon */}
-            <TrashZone />
+            {/* Trash icon (hidden on narrow screens) */}
+            <div className="max-[539px]:hidden">
+              <TrashZone />
+            </div>
 
             {/* More widgets button */}
             <button
@@ -261,7 +263,7 @@ const BottomBar: React.FC = () => {
           </button>
 
             {/* Separator */}
-            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[540px]:hidden" />
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[539px]:hidden" />
           </div>
 
           {/* Middle section - recent widget buttons */}
@@ -279,16 +281,17 @@ const BottomBar: React.FC = () => {
             ))}
           </div>
 
-          {/* Right section - always visible */}
+          {/* Right section */}
           <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
-            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[539px]:hidden" />
 
-            {/* Stickers button */}
+            {/* Stickers button (hidden on narrow screens) */}
           <button
             onClick={handleShowStickers}
             className={clsx(
               'w-16 h-16 rounded-lg transition-all duration-200 group',
               'flex flex-col items-center justify-center gap-1',
+              'max-[539px]:hidden',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
                 : 'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70'
