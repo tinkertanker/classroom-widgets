@@ -30,30 +30,60 @@ import { GiSnake } from 'react-icons/gi';
 import { WidgetType, WidgetConfig, WidgetCategory, Size } from '@shared/types';
 import { WIDGET_TYPES } from '@shared/constants/widgetTypes';
 
-// Lazy load all widgets
+// Preload all widget chunks immediately so they're browser-cached
+// before React.lazy needs them (prevents "Loading widget..." flash)
+const widgetImports = {
+  Randomiser: () => import('../features/widgets/randomiser'),
+  Timer: () => import('../features/widgets/timer'),
+  List: () => import('../features/widgets/list'),
+  TaskCue: () => import('../features/widgets/taskCue'),
+  TrafficLight: () => import('../features/widgets/trafficLight'),
+  AudioVolumeMonitor: () => import('../features/widgets/volumeLevel'),
+  ShortenLink: () => import('../features/widgets/shortenLink'),
+  TextBanner: () => import('../features/widgets/textBanner'),
+  ImageDisplay: () => import('../features/widgets/imageDisplay'),
+  SoundEffects: () => import('../features/widgets/soundEffects'),
+  Sticker: () => import('../features/widgets/sticker'),
+  Poll: () => import('../features/widgets/poll'),
+  QRCodeWidget: () => import('../features/widgets/qrcode'),
+  LinkShare: () => import('../features/widgets/linkShare'),
+  Visualiser: () => import('../features/widgets/visualiser'),
+  RTFeedback: () => import('../features/widgets/rtFeedback'),
+  TicTacToe: () => import('../features/widgets/ticTacToe'),
+  Questions: () => import('../features/widgets/questions'),
+  Snake: () => import('../features/widgets/snake'),
+  Handout: () => import('../features/widgets/handout'),
+  FillBlank: () => import('../features/widgets/activity/fillBlank'),
+  CodeFillBlank: () => import('../features/widgets/activity/codeFillBlank'),
+};
+
+// Trigger all imports now — ESM caches them so React.lazy reuses the resolved modules
+Object.values(widgetImports).forEach(fn => fn());
+
+// Lazy load all widgets (reuses cached imports from above)
 const LazyWidgets = {
-  Randomiser: lazy(() => import('../features/widgets/randomiser')),
-  Timer: lazy(() => import('../features/widgets/timer')),
-  List: lazy(() => import('../features/widgets/list')),
-  TaskCue: lazy(() => import('../features/widgets/taskCue')),
-  TrafficLight: lazy(() => import('../features/widgets/trafficLight')),
-  AudioVolumeMonitor: lazy(() => import('../features/widgets/volumeLevel')),
-  ShortenLink: lazy(() => import('../features/widgets/shortenLink')),
-  TextBanner: lazy(() => import('../features/widgets/textBanner')),
-  ImageDisplay: lazy(() => import('../features/widgets/imageDisplay')),
-  SoundEffects: lazy(() => import('../features/widgets/soundEffects')),
-  Sticker: lazy(() => import('../features/widgets/sticker')),
-  Poll: lazy(() => import('../features/widgets/poll')),
-  QRCodeWidget: lazy(() => import('../features/widgets/qrcode')),
-  LinkShare: lazy(() => import('../features/widgets/linkShare')),
-  Visualiser: lazy(() => import('../features/widgets/visualiser')),
-  RTFeedback: lazy(() => import('../features/widgets/rtFeedback')),
-  TicTacToe: lazy(() => import('../features/widgets/ticTacToe')),
-  Questions: lazy(() => import('../features/widgets/questions')),
-  Snake: lazy(() => import('../features/widgets/snake')),
-  Handout: lazy(() => import('../features/widgets/handout')),
-  FillBlank: lazy(() => import('../features/widgets/activity/fillBlank')),
-  CodeFillBlank: lazy(() => import('../features/widgets/activity/codeFillBlank'))
+  Randomiser: lazy(widgetImports.Randomiser),
+  Timer: lazy(widgetImports.Timer),
+  List: lazy(widgetImports.List),
+  TaskCue: lazy(widgetImports.TaskCue),
+  TrafficLight: lazy(widgetImports.TrafficLight),
+  AudioVolumeMonitor: lazy(widgetImports.AudioVolumeMonitor),
+  ShortenLink: lazy(widgetImports.ShortenLink),
+  TextBanner: lazy(widgetImports.TextBanner),
+  ImageDisplay: lazy(widgetImports.ImageDisplay),
+  SoundEffects: lazy(widgetImports.SoundEffects),
+  Sticker: lazy(widgetImports.Sticker),
+  Poll: lazy(widgetImports.Poll),
+  QRCodeWidget: lazy(widgetImports.QRCodeWidget),
+  LinkShare: lazy(widgetImports.LinkShare),
+  Visualiser: lazy(widgetImports.Visualiser),
+  RTFeedback: lazy(widgetImports.RTFeedback),
+  TicTacToe: lazy(widgetImports.TicTacToe),
+  Questions: lazy(widgetImports.Questions),
+  Snake: lazy(widgetImports.Snake),
+  Handout: lazy(widgetImports.Handout),
+  FillBlank: lazy(widgetImports.FillBlank),
+  CodeFillBlank: lazy(widgetImports.CodeFillBlank),
   // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
