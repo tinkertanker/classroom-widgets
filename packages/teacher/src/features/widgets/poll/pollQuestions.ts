@@ -103,5 +103,9 @@ export function getDefaultPollQuestion(): PollQuestion {
 // Function to get a random poll question
 export function getRandomPollQuestion(): PollQuestion {
   const randomIndex = Math.floor(Math.random() * defaultPollQuestions.length);
-  return defaultPollQuestions[randomIndex];
+  const selected = defaultPollQuestions[randomIndex];
+  return {
+    question: selected.question,
+    options: [...selected.options]
+  };
 }

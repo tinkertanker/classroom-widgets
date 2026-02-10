@@ -395,7 +395,13 @@ export class VoiceCommandExecutor {
     try {
       const store = useWorkspaceStore.getState();
       const defaultPoll = getDefaultPollQuestion();
-      const options = command.parameters.options || defaultPoll.options;
+      const requestedOptions = command.parameters.options;
+      const usesPlaceholderOptions = Array.isArray(requestedOptions) &&
+        requestedOptions.length > 0 &&
+        requestedOptions.every((option: string) => /^Option \d+$/i.test(option.trim()));
+      const options = !Array.isArray(requestedOptions) || requestedOptions.length === 0 || usesPlaceholderOptions
+        ? defaultPoll.options
+        : requestedOptions;
 
       // Get viewport center position
       const { x, y } = getViewportCenterPosition(WidgetType.POLL);
