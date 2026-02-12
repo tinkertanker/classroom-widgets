@@ -13,7 +13,7 @@ const SRC_DIR = path.join(__dirname, '../packages/shared/constants');
 const SERVER_DIR = path.join(__dirname, '../packages/server/src/shared/constants');
 
 // Read the shared definitions
-const definitionsPath = path.join(SHARED_DIR, 'voiceCommandDefinitions.json');
+const definitionsPath = path.join(__dirname, '../packages/shared/voiceCommandDefinitions.json');
 const definitions = JSON.parse(fs.readFileSync(definitionsPath, 'utf8'));
 
 console.log('📖 Reading voice command definitions...');
@@ -25,7 +25,7 @@ function generateTypeScriptFile() {
   const widgets = definitions.widgets;
 
   let content = `// AUTO-GENERATED FILE - DO NOT EDIT
-// Generated from shared/voiceCommandDefinitions.json
+// Generated from packages/shared/voiceCommandDefinitions.json
 // Run 'npm run generate:voice-types' to regenerate
 
 /**
@@ -111,7 +111,7 @@ function generateJavaScriptFile() {
   const widgets = definitions.widgets;
 
   let content = `// AUTO-GENERATED FILE - DO NOT EDIT
-// Generated from shared/voiceCommandDefinitions.json
+// Generated from packages/shared/voiceCommandDefinitions.json
 // Run 'npm run generate:voice-types' to regenerate
 
 /**

@@ -1,5 +1,5 @@
 // AUTO-GENERATED FILE - DO NOT EDIT
-// Generated from shared/voiceCommandDefinitions.json
+// Generated from packages/shared/voiceCommandDefinitions.json
 // Run 'npm run generate:voice-types' to regenerate
 
 /**

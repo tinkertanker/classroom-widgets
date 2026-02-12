@@ -6,6 +6,7 @@ import { ModalProvider } from '../contexts/ModalContext';
 import { SocketProvider } from '../contexts/SocketProvider';
 import { SessionProvider } from '../contexts/SessionContext';
 import { useWorkspace, useServerConnection } from '@shared/hooks/useWorkspace';
+import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '@shared/utils/migration';
 import Board from '../features/board/components';
@@ -28,7 +29,7 @@ import { ConfettiProvider } from '../contexts/ConfettiContext';
 import trashSound from '../sounds/trash-crumple.mp3';
 const trashAudio = new Audio(trashSound);
 
-const MIN_SCREEN_WIDTH = 300;
+
 
 function App() {
   const { theme, scale } = useWorkspace();
@@ -46,7 +47,7 @@ function App() {
   const setLayoutFormat = useWorkspaceStore((state) => state.setLayoutFormat);
   const voiceControlEnabled = useWorkspaceStore((state) => state.bottomBar.voiceControlEnabled ?? false);
   const [isNarrowScreen, setIsNarrowScreen] = useState(
-    typeof window !== 'undefined' ? window.innerWidth < 540 : false
+    typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
@@ -82,7 +83,7 @@ function App() {
   useEffect(() => {
     const checkScreenSize = () => {
       setScreenTooSmall(window.innerWidth < MIN_SCREEN_WIDTH);
-      const narrow = window.innerWidth < 540;
+      const narrow = window.innerWidth < NARROW_SCREEN_WIDTH;
       const wasNarrow = isNarrowScreen;
       setIsNarrowScreen(narrow);
 
