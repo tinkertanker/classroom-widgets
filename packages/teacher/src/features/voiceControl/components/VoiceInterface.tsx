@@ -25,6 +25,8 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   const [processedTranscript, setProcessedTranscript] = useState<string | null>(null);
   const isProcessingRef = useRef<boolean>(false);
   const processedRequestIdsRef = useRef<Set<string>>(new Set());
+  const isOpenRef = useRef<boolean>(isOpen);
+  const timeoutIdsRef = useRef<number[]>([]);
 
   const {
     isListening,
@@ -40,8 +42,29 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
   const { playFeedback } = useVoiceFeedbackSound();
 
+  const clearScheduledActions = useCallback(() => {
+    timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    timeoutIdsRef.current = [];
+  }, []);
+
+  const scheduleAction = useCallback((action: () => void, delayMs: number) => {
+    const timeoutId = window.setTimeout(() => {
+      timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId);
+      action();
+    }, delayMs);
+    timeoutIdsRef.current.push(timeoutId);
+  }, []);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+    if (!isOpen) {
+      clearScheduledActions();
+    }
+  }, [isOpen, clearScheduledActions]);
+
   // Define handlers before useEffects
   const handleClose = useCallback(() => {
+    clearScheduledActions();
     stopRecording();
     resetState();
     setParsedCommand(null);
@@ -50,34 +73,37 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     processedRequestIdsRef.current.clear();
     setVoiceState('idle');
     onClose();
-  }, [stopRecording, resetState, onClose]);
+  }, [clearScheduledActions, stopRecording, resetState, onClose]);
 
   const handleRetry = useCallback(() => {
     resetState();
     setParsedCommand(null);
     setProcessedTranscript(null);
     setVoiceState('activating');
-    setTimeout(() => {
+    scheduleAction(() => {
+      if (!isOpenRef.current) return;
       startRecording();
       setVoiceState('listening');
     }, 300);
-  }, [resetState, startRecording]);
+  }, [resetState, startRecording, scheduleAction]);
 
   // Auto-start recording when interface opens
   useEffect(() => {
     if (isOpen && voiceState === 'idle') {
       setVoiceState('activating');
-      setTimeout(() => {
+      scheduleAction(() => {
+        if (!isOpenRef.current) return;
         startRecording();
       }, 300);
     }
-  }, [isOpen, voiceState, startRecording]);
+  }, [isOpen, voiceState, startRecording, scheduleAction]);
 
   // Cleanup: Stop recording and release microphone when modal closes or component unmounts
   useEffect(() => {
     if (!isOpen) {
       // Modal is closed - ensure we stop recording and release microphone
       debug('🚪 Voice interface closed - releasing microphone resources');
+      clearScheduledActions();
       stopRecording();
       resetState();
     }
@@ -85,10 +111,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     // Cleanup on unmount
     return () => {
       debug('🧹 Voice interface unmounting - releasing microphone resources');
+      clearScheduledActions();
       stopRecording();
       resetState();
     };
-  }, [isOpen, stopRecording, resetState]);
+  }, [isOpen, clearScheduledActions, stopRecording, resetState]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -128,11 +155,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     if (confidence < 0.5 || transcript.trim().length < 3) {
       debug(`🚫 Skipping low-quality transcript: "${transcript}"`);
       setVoiceState('activating');
-      setTimeout(() => startRecording(), 500);
+      scheduleAction(() => {
+        if (!isOpenRef.current) return;
+        startRecording();
+      }, 500);
       return;
     }
-
-    const processingId = `${transcript}_${Date.now()}`;
     if (processedRequestIdsRef.current.has(transcript)) {
       return;
     }
@@ -176,7 +204,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       .finally(() => {
         isProcessingRef.current = false;
       });
-  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose, playFeedback]);
+  }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose, playFeedback, scheduleAction, startRecording]);
 
   // State transitions
   useEffect(() => {
