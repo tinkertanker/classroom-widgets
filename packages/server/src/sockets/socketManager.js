@@ -1,7 +1,6 @@
 const { EVENTS } = require('../config/constants');
 const {
-  startHostDisconnectTimeout,
-  clearHostDisconnectTimeout
+  startHostDisconnectTimeout
 } = require('./hostDisconnectTimeouts');
 
 // Import individual socket handlers
@@ -99,6 +98,5 @@ function setupSocketHandlers(io, sessionManager) {
 }
 
 module.exports = {
-  setupSocketHandlers,
-  clearHostDisconnectTimeout
+  setupSocketHandlers
 };
