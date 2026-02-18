@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { renderHook } from '@testing-library/react';
 import { useWidgetSettings } from './useWidgetSettings';
 import { ModalProvider } from '@/contexts/ModalContext';
 
