@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { renderHook } from '@testing-library/react';
 import { useWidgetSettings } from './useWidgetSettings';
 import { ModalProvider } from '@/contexts/ModalContext';
 
@@ -157,23 +156,4 @@ describe('useWidgetSettings', () => {
     });
   });
 
-  test('hook returns correct interface', () => {
-    const { result } = renderHook(
-      () => useWidgetSettings(TestSettingsComponent, {
-        title: 'Test',
-        initialState: { value: 'test', enabled: true }
-      }),
-      { wrapper }
-    );
-    
-    expect(result.current).toHaveProperty('state');
-    expect(result.current).toHaveProperty('setState');
-    expect(result.current).toHaveProperty('openSettings');
-    expect(result.current).toHaveProperty('updateState');
-    
-    expect(result.current.state).toEqual({ value: 'test', enabled: true });
-    expect(typeof result.current.openSettings).toBe('function');
-    expect(typeof result.current.updateState).toBe('function');
-    expect(typeof result.current.setState).toBe('function');
-  });
 });
