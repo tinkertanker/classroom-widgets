@@ -9,7 +9,7 @@ import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStat
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { getPollColor } from '@shared/constants/pollColors';
 import PollSettings from './PollSettings';
-import { getRandomPollQuestion } from './pollQuestions';
+import { getDefaultPollQuestion } from './pollQuestions';
 import { useWidget } from '@shared/hooks/useWidget';
 import { debug } from '@shared/utils/debug';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
@@ -33,11 +33,10 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     if (savedState?.pollData) {
       return savedState.pollData;
     }
-    // Get a random question for new widgets
-    const randomQuestion = getRandomPollQuestion();
+    const defaultQuestion = getDefaultPollQuestion();
     return {
-      question: randomQuestion.question,
-      options: randomQuestion.options
+      question: defaultQuestion.question,
+      options: defaultQuestion.options
     };
   });
 
@@ -245,7 +244,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
         debug('[Poll] Applying recovered poll data');
         setPollData(recoveryData.roomData.pollData);
       } else {
-        debug('[Poll] Recovery data has empty poll data, keeping random question');
+        debug('[Poll] Recovery data has empty poll data, keeping default question');
       }
 
       // Apply recovered results if available

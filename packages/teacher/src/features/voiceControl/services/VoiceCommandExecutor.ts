@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { debug } from '@shared/utils/debug';
 import { VOICE_WIDGET_TARGET_MAP } from '@shared/constants/voiceCommandDefinitions';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
+import { getDefaultPollQuestion } from '../../widgets/poll/pollQuestions';
 
 /**
  * Helper Functions for Widget Lookup
@@ -393,7 +394,14 @@ export class VoiceCommandExecutor {
   private async executeCreatePoll(command: any): Promise<ExecutionResult> {
     try {
       const store = useWorkspaceStore.getState();
-      const options = command.parameters.options || ['Option 1', 'Option 2'];
+      const defaultPoll = getDefaultPollQuestion();
+      const requestedOptions = command.parameters.options;
+      const usesPlaceholderOptions = Array.isArray(requestedOptions) &&
+        requestedOptions.length > 0 &&
+        requestedOptions.every((option: string) => /^Option \d+$/i.test(option.trim()));
+      const options = !Array.isArray(requestedOptions) || requestedOptions.length === 0 || usesPlaceholderOptions
+        ? defaultPoll.options
+        : requestedOptions;
 
       // Get viewport center position
       const { x, y } = getViewportCenterPosition(WidgetType.POLL);
@@ -403,8 +411,8 @@ export class VoiceCommandExecutor {
 
       // Set initial poll data
       store.updateWidgetState(widgetId, {
-        question: 'Voice-Generated Poll',
-        options: options.map((option: string, index: number) => option),
+        question: defaultPoll.question,
+        options: options.map((option: string) => option),
         votes: {}
       });
 
