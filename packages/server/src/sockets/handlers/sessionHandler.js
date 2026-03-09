@@ -2,7 +2,7 @@ const { EVENTS, LIMITS } = require('../../config/constants');
 const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
-const { clearHostDisconnectTimeout } = require('../socketManager');
+const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
 const serverConfig = require('../../config/server.config');
 
 /**

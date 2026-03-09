@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node test-server.js"
+    "test": "node scripts/check-startup-warnings.js && node test-server.js",
+    "test:startup": "node scripts/check-startup-warnings.js"
   },
   "keywords": [],
   "author": "",
