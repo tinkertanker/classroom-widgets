@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { UseVoiceRecordingReturn, TranscriptionResult, VoiceRecordingState } from '../types/voiceControl';
-import { getBrowserInfo, getBrowserSupportMessage, checkMicrophonePermission } from '../utils/browserCompatibility';
+import { getBrowserInfo } from '../utils/browserCompatibility';
 import { debug } from '@shared/utils/debug';
 
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
@@ -32,24 +32,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     // Get browser info for debugging
     const browserInfo = getBrowserInfo();
     debug('Browser info:', browserInfo);
-
-    // Check microphone permission
-    checkMicrophonePermission().then(hasPermission => {
-      if (!hasPermission) {
-        setState(prev => ({
-          ...prev,
-          error: 'Microphone access is required for voice control. Please allow microphone access and refresh the page.'
-        }));
-      } else {
-        debug('Microphone permission granted');
-      }
-    }).catch(err => {
-      debug.error('Permission check failed:', err);
-      setState(prev => ({
-        ...prev,
-        error: 'Failed to check microphone permissions. Please refresh the page and try again.'
-      }));
-    });
   }, []);
 
   // Initialize native Web Speech API directly (fallback from annyang)
