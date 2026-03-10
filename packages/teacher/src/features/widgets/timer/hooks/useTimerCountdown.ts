@@ -29,6 +29,18 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     onTickRef.current = onTick;
   }, [onTimeUp, onTick]);
 
+  const getElapsedSeconds = useCallback(() => {
+    if (startTimeRef.current === null) {
+      return 0;
+    }
+
+    return Math.floor((Date.now() - startTimeRef.current) / 1000);
+  }, []);
+
+  const getRunningRemainingTime = useCallback(() => {
+    return Math.max(0, pausedTimeRef.current - getElapsedSeconds());
+  }, [getElapsedSeconds]);
+
   // Handle countdown tick using timestamp-based timing
   useEffect(() => {
     if (isRunning && startTimeRef.current !== null) {
@@ -122,6 +134,35 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     originalTimeRef.current = newInitialTime;
   }, []);
 
+  const adjustTime = useCallback((deltaSeconds: number) => {
+    const safeDelta = Math.max(0, Math.floor(deltaSeconds));
+
+    if (safeDelta === 0 || timerFinished) {
+      return;
+    }
+
+    if (isRunning && startTimeRef.current !== null) {
+      const nextTime = getRunningRemainingTime() + safeDelta;
+
+      pausedTimeRef.current += safeDelta;
+      originalTimeRef.current += safeDelta;
+
+      setTime(nextTime);
+      setInitialTime(prev => prev + safeDelta);
+      onTickRef.current?.(nextTime);
+      return;
+    }
+
+    const nextTime = time + safeDelta;
+
+    pausedTimeRef.current = nextTime;
+    originalTimeRef.current += safeDelta;
+
+    setTime(nextTime);
+    setInitialTime(prev => prev + safeDelta);
+    onTickRef.current?.(nextTime);
+  }, [getRunningRemainingTime, isRunning, time, timerFinished]);
+
   // Calculate progress percentage
   const progress = initialTime > 0 ? time / initialTime : 0;
 
@@ -137,6 +178,7 @@ export function useTimerCountdown({ onTimeUp, onTick }: UseTimerCountdownProps =
     pauseTimer,
     resumeTimer,
     restartTimer,
-    resetTimer
+    resetTimer,
+    adjustTime
   };
 }

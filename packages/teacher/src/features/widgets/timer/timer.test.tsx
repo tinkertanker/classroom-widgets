@@ -1,16 +1,16 @@
-import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import React, { act } from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
 import Timer from './timer';
 import { ModalProvider } from '../../../contexts/ModalContext';
 
-// Mock the audio files
-jest.mock('./timer-end.mp3', () => 'timer-end.mp3');
+vi.mock('./timer-end.mp3', () => ({ default: 'timer-end.mp3' }));
+vi.mock('./timer-end-2.wav', () => ({ default: 'timer-end-2.wav' }));
+vi.mock('./timer-end-3.mp3', () => ({ default: 'timer-end-3.mp3' }));
 
-// Mock play method on HTMLAudioElement
-global.HTMLMediaElement.prototype.play = jest.fn(() => Promise.resolve());
-global.HTMLMediaElement.prototype.pause = jest.fn();
+global.HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve());
+global.HTMLMediaElement.prototype.pause = vi.fn();
 
-// Wrapper component with ModalProvider
 const renderWithModal = (component: React.ReactElement) => {
   return render(
     <ModalProvider>
@@ -19,133 +19,119 @@ const renderWithModal = (component: React.ReactElement) => {
   );
 };
 
+const getByExactText = (text: string) =>
+  screen.getByText((_, element) => {
+    if (!element) {
+      return false;
+    }
+
+    const matches = element.textContent === text;
+    const childMatches = Array.from(element.children).some(
+      child => child.textContent === text
+    );
+
+    return matches && !childMatches;
+  });
+
 describe('Timer Widget', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
-    jest.useRealTimers();
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
   });
 
-  test('renders with initial state showing 00:00:10', () => {
+  test('renders with the default editable time', () => {
     renderWithModal(<Timer />);
-    
-    expect(screen.getByText('00:00:10')).toBeInTheDocument();
+
+    expect(getByExactText('00:00:10')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
   });
 
-  test('starts and stops timer', () => {
+  test('expands the quick-add tray and applies idle additions', () => {
     renderWithModal(<Timer />);
-    
-    // Start timer
-    const startButton = screen.getByRole('button', { name: /start/i });
-    fireEvent.click(startButton);
-    
-    // Button should change to pause
-    expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
-    
-    // Advance timer by 1 second
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-    
-    // Should show 9 seconds
-    expect(screen.getByText('00:00:09')).toBeInTheDocument();
-    
-    // Pause timer
-    fireEvent.click(screen.getByRole('button', { name: /pause/i }));
-    
-    // Should show resume button
-    expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
+
+    expect(screen.getByRole('button', { name: /add 1 minute/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /add 1 minute/i }));
+
+    expect(getByExactText('00:01:10')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
   });
 
-  test('can edit time by clicking segments', () => {
+  test('adds time while running without interrupting the countdown', () => {
     renderWithModal(<Timer />);
-    
-    // Click on seconds segment (the "10" part)
-    const segments = screen.getAllByText(/\d{2}/);
-    const secondsSegment = segments[2]; // The third segment is seconds
-    
-    fireEvent.click(secondsSegment);
-    
-    // An input should appear
-    const input = screen.getByRole('textbox');
-    expect(input).toBeInTheDocument();
-    
-    // Change the value
-    fireEvent.change(input, { target: { value: '30' } });
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    
-    // Should update to 30 seconds
-    expect(screen.getByText('00:00:30')).toBeInTheDocument();
-  });
 
-  test('resets timer', () => {
-    renderWithModal(<Timer />);
-    
-    // Start timer
     fireEvent.click(screen.getByRole('button', { name: /start/i }));
-    
-    // Advance by 5 seconds
+
     act(() => {
-      jest.advanceTimersByTime(5000);
+      vi.advanceTimersByTime(1000);
     });
-    
-    expect(screen.getByText('00:00:05')).toBeInTheDocument();
-    
-    // Reset timer
-    const resetButton = screen.getByRole('button', { name: /reset/i });
-    fireEvent.click(resetButton);
-    
-    // Should return to original time (10 seconds)
-    expect(screen.getByText('00:00:10')).toBeInTheDocument();
+
+    expect(getByExactText('9')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add 1 minute/i }));
+
+    expect(getByExactText('01:09')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
+  });
+
+  test('adds time while paused and resumes from the extended value', () => {
+    renderWithModal(<Timer />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /pause/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add 2 minutes/i }));
+
+    expect(getByExactText('00:02:07')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /resume/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(getByExactText('02:06')).toBeInTheDocument();
+  });
+
+  test('restart returns to the adjusted duration after a quick-add', () => {
+    renderWithModal(<Timer />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
+    fireEvent.click(screen.getByRole('button', { name: /add 5 minutes/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /restart/i }));
+
+    expect(getByExactText('00:05:10')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
   });
 
-  test('plays sound when timer reaches zero', () => {
+  test('hides quick-add controls after the timer finishes and still plays audio', () => {
     renderWithModal(<Timer />);
-    
-    // Set timer to 1 second for quick test
-    const segments = screen.getAllByText(/\d{2}/);
-    const secondsSegment = segments[2];
-    
-    fireEvent.click(secondsSegment);
-    const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: '01' } });
-    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    
-    // Start timer
-    fireEvent.click(screen.getByRole('button', { name: /start/i }));
-    
-    // Advance to completion
-    act(() => {
-      jest.advanceTimersByTime(1100); // A bit more than 1 second
-    });
-    
-    // Should have played sound
-    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
-    
-    // Timer should show 00:00:00
-    expect(screen.getByText('00:00:00')).toBeInTheDocument();
-  });
 
-  test('timer countdown works correctly', () => {
-    renderWithModal(<Timer />);
-    
-    // Timer should start at 10 seconds
-    expect(screen.getByText('00:00:10')).toBeInTheDocument();
-    
-    // Start timer
     fireEvent.click(screen.getByRole('button', { name: /start/i }));
-    
-    // Advance by 3 seconds
+
     act(() => {
-      jest.advanceTimersByTime(3000);
+      vi.advanceTimersByTime(11000);
     });
-    
-    // Should show 7 seconds remaining
-    expect(screen.getByText('00:00:07')).toBeInTheDocument();
+
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show add time options/i })).not.toBeInTheDocument();
+    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
   });
 });
