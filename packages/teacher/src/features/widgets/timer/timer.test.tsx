@@ -4,7 +4,6 @@ import { vi } from 'vitest';
 import Timer from './timer';
 import { ModalProvider } from '../../../contexts/ModalContext';
 
-vi.mock('./timer-end.mp3', () => ({ default: 'timer-end.mp3' }));
 vi.mock('./timer-end-2.wav', () => ({ default: 'timer-end-2.wav' }));
 vi.mock('./timer-end-3.mp3', () => ({ default: 'timer-end-3.mp3' }));
 
@@ -49,6 +48,18 @@ describe('Timer Widget', () => {
 
     expect(getByExactText('00:00:10')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
+  });
+
+  test('keeps manual time edits after finishing segment editing', () => {
+    renderWithModal(<Timer />);
+
+    fireEvent.click(screen.getByText('10'));
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: '45' } });
+    fireEvent.blur(input);
+
+    expect(getByExactText('00:00:45')).toBeInTheDocument();
   });
 
   test('expands the quick-add tray and applies idle additions', () => {

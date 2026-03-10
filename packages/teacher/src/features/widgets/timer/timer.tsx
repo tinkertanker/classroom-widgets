@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useTheme } from "@shared/hooks/useWorkspace";
 import { FaVolumeXmark, FaVolumeLow, FaVolumeHigh } from 'react-icons/fa6';
 import { 
@@ -108,10 +108,8 @@ const Timer = () => {
   const segmentEditor = useTimeSegmentEditor({
     initialValues: ['00', '00', '10'],
     isRunning: isRunning, // Disable editing when actively running (allow when paused)
-    onValuesChange: (values, timeValues) => {
-      // When editing time segments while paused, the new value will be used on resume
-      const totalSeconds = timeValues[0] * 3600 + timeValues[1] * 60 + timeValues[2];
-      // This will be used when starting/resuming the timer
+    onValuesChange: () => {
+      // Edited values are read directly from the segment editor when starting or resuming.
     }
   });
 
@@ -129,20 +127,21 @@ const Timer = () => {
     }
   }, [timerFinished]);
 
+  const lastSyncedTimeRef = useRef(time);
+
   React.useEffect(() => {
-    if (segmentEditor.editingSegment === null) {
+    if (segmentEditor.editingSegment === null && time !== lastSyncedTimeRef.current) {
       segmentEditor.updateFromTime(time);
     }
+
+    lastSyncedTimeRef.current = time;
   }, [time, segmentEditor.editingSegment, segmentEditor.updateFromTime]);
 
   // Timer animation hook
-  const { pulseAngle, arcPath, isHamsterOnColoredArc, isHamsterOnGreyArc } = useTimerAnimation({
+  const { pulseAngle, isHamsterOnColoredArc } = useTimerAnimation({
     isRunning,
     progress
   });
-
-  // You can now use isHamsterOnColoredArc and isHamsterOnGreyArc
-  // These values update in real-time as the hamster moves around the circle
 
   // Handle start button click
   const handleStart = useCallback(() => {
@@ -425,14 +424,10 @@ const Timer = () => {
           onQuickAddToggle={() => setQuickAddExpanded(prev => !prev)}
         />
 
-        {!timerFinished && (
+        {quickAddExpanded && !timerFinished && (
           <div
             id="timer-quick-add-tray"
-            className={cn(
-              "overflow-hidden transition-all duration-200 ease-out",
-              quickAddExpanded ? "mt-2 max-h-24 opacity-100" : "max-h-0 opacity-0"
-            )}
-            aria-hidden={!quickAddExpanded}
+            className="mt-2 overflow-hidden transition-all duration-200 ease-out"
           >
             <div className="rounded-lg border border-white/40 bg-white/45 p-2 shadow-sm backdrop-blur-md dark:border-warm-gray-600/40 dark:bg-warm-gray-800/45">
               <div className="flex items-center justify-center gap-2">
