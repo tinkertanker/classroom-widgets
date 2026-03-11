@@ -4,6 +4,18 @@ import { vi } from 'vitest';
 import Timer from './timer';
 import { ModalProvider } from '../../../contexts/ModalContext';
 
+const localStorageMock = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn()
+};
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: localStorageMock,
+  configurable: true
+});
+
 vi.mock('./timer-end-2.wav', () => ({ default: 'timer-end-2.wav' }));
 vi.mock('./timer-end-3.mp3', () => ({ default: 'timer-end-3.mp3' }));
 
@@ -36,6 +48,7 @@ describe('Timer Widget', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-11T14:00:00'));
   });
 
   afterEach(() => {
@@ -73,6 +86,84 @@ describe('Timer Widget', () => {
 
     expect(getByExactText('00:01:10')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
+  });
+
+  test('opens target-time tray and sets timer from clock time', () => {
+    renderWithModal(<Timer />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+    });
+
+    expect(screen.getByText('Until')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /target hour/i }), { target: { value: '2' } });
+      fireEvent.change(screen.getByRole('combobox', { name: /target minute/i }), { target: { value: '5' } });
+      fireEvent.click(screen.getByRole('button', { name: 'PM' }));
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
+    });
+
+    expect(getByExactText('00:05:00')).toBeInTheDocument();
+    expect(screen.queryByText('Until')).not.toBeInTheDocument();
+  });
+
+  test('treats earlier target times as tomorrow', () => {
+    vi.setSystemTime(new Date('2026-03-11T23:45:00'));
+
+    renderWithModal(<Timer />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+    });
+
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /target hour/i }), { target: { value: '11' } });
+      fireEvent.change(screen.getByRole('combobox', { name: /target minute/i }), { target: { value: '30' } });
+      fireEvent.click(screen.getByRole('button', { name: 'PM' }));
+    });
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
+    });
+
+    expect(getByExactText('23:45:00')).toBeInTheDocument();
+  });
+
+  test('closes target-time tray when clicking the clock button again', () => {
+    renderWithModal(<Timer />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+    });
+
+    expect(screen.getByText('Until')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /hide target time picker/i }));
+    });
+
+    expect(screen.queryByText('Until')).not.toBeInTheDocument();
+  });
+
+  test('closes target-time tray when opening quick-add tray', () => {
+    renderWithModal(<Timer />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+    });
+
+    expect(screen.getByText('Until')).toBeInTheDocument();
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
+    });
+
+    expect(screen.queryByText('Until')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add 1 minute/i })).toBeInTheDocument();
   });
 
   test('adds time while running without interrupting the countdown', () => {
@@ -144,5 +235,15 @@ describe('Timer Widget', () => {
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /show add time options/i })).not.toBeInTheDocument();
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+  });
+
+  test('hides target-time toggle while timer is running', () => {
+    renderWithModal(<Timer />);
+
+    expect(screen.getByRole('button', { name: /set target time/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+    expect(screen.queryByRole('button', { name: /set target time/i })).not.toBeInTheDocument();
   });
 });

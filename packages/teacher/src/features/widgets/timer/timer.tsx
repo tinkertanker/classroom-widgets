@@ -11,6 +11,12 @@ import { cn, widgetWrapper, widgetContainer, text, transitions, backgrounds, but
 import { TimerControlBar } from '../shared/components';
 import { HamsterAnimation } from './components/HamsterAnimation';
 import { TimeDisplay } from './components/TimeDisplay';
+import {
+  formatClockSelection,
+  getDefaultTargetSelection,
+  getSecondsUntilClockTime,
+  type ClockTimeSelection
+} from './clockTime';
 import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
@@ -21,8 +27,9 @@ const Timer = () => {
   const [soundMode, setSoundMode] = useState<SoundMode>('short');
   const [showJitter, setShowJitter] = useState(false);
   const [quickAddExpanded, setQuickAddExpanded] = useState(false);
+  const [targetTimeExpanded, setTargetTimeExpanded] = useState(false);
+  const [targetTime, setTargetTime] = useState<ClockTimeSelection>(() => getDefaultTargetSelection());
 
-  // Timer audio hooks for all three sounds
   const { playSound: playSound2 } = useTimerAudio({
     soundUrl: timerEndSound2,
     enabled: soundMode === 'short'
@@ -33,11 +40,9 @@ const Timer = () => {
     enabled: soundMode === 'long'
   });
 
-  // Play sound based on selected mode
   const playTimerSound = useCallback(() => {
     switch (soundMode) {
       case 'quiet':
-        // No sound
         break;
       case 'short':
         playSound2();
@@ -48,7 +53,6 @@ const Timer = () => {
     }
   }, [soundMode, playSound2, playSound3]);
 
-  // Cycle through sound modes
   const cycleSoundMode = useCallback(() => {
     setSoundMode(prev => {
       switch (prev) {
@@ -64,7 +68,6 @@ const Timer = () => {
     });
   }, []);
 
-  // Get sound mode icon
   const getSoundModeIcon = () => {
     switch (soundMode) {
       case 'quiet':
@@ -76,7 +79,6 @@ const Timer = () => {
     }
   };
 
-  // Get sound mode title
   const getSoundModeTitle = () => {
     switch (soundMode) {
       case 'quiet':
@@ -88,7 +90,6 @@ const Timer = () => {
     }
   };
 
-  // Timer countdown hook
   const {
     time,
     isRunning,
@@ -99,25 +100,23 @@ const Timer = () => {
     pauseTimer,
     resumeTimer,
     restartTimer,
+    resetTimer,
     adjustTime
   } = useTimerCountdown({
     onTimeUp: playTimerSound
   });
 
-  // Time segment editor hook
   const segmentEditor = useTimeSegmentEditor({
     initialValues: ['00', '00', '10'],
-    isRunning: isRunning, // Disable editing when actively running (allow when paused)
-    onValuesChange: () => {
-      // Edited values are read directly from the segment editor when starting or resuming.
-    }
+    isRunning: isRunning,
+    onValuesChange: () => {}
   });
 
-  // Handle jitter animation - show for 5 seconds when timer finishes
   React.useEffect(() => {
     if (timerFinished) {
       setShowJitter(true);
       setQuickAddExpanded(false);
+      setTargetTimeExpanded(false);
       const timer = setTimeout(() => {
         setShowJitter(false);
       }, 5000);
@@ -137,13 +136,36 @@ const Timer = () => {
     lastSyncedTimeRef.current = time;
   }, [time, segmentEditor.editingSegment, segmentEditor.updateFromTime]);
 
-  // Timer animation hook
   const { pulseAngle, isHamsterOnColoredArc } = useTimerAnimation({
     isRunning,
     progress
   });
 
-  // Handle start button click
+  const handleTargetTimeChange = useCallback(<K extends keyof ClockTimeSelection>(field: K, value: ClockTimeSelection[K]) => {
+    setTargetTime(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const handleSetTargetTime = useCallback(() => {
+    const totalSeconds = getSecondsUntilClockTime(targetTime);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const newValues = [
+      hours.toString().padStart(2, '0'),
+      minutes.toString().padStart(2, '0'),
+      seconds.toString().padStart(2, '0')
+    ];
+
+    segmentEditor.setValues(newValues);
+    segmentEditor.setTimeValues([hours, minutes, seconds]);
+    resetTimer(totalSeconds);
+    setTargetTimeExpanded(false);
+  }, [targetTime, segmentEditor, resetTimer]);
+
   const handleStart = useCallback(() => {
     const totalSeconds =
       segmentEditor.timeValues[0] * 3600 +
@@ -155,25 +177,23 @@ const Timer = () => {
     }
   }, [segmentEditor.timeValues, startTimer]);
 
-  // Handle resume button click - use edited time if it was changed
   const handleResume = useCallback(() => {
     const editedSeconds =
       segmentEditor.timeValues[0] * 3600 +
       segmentEditor.timeValues[1] * 60 +
       segmentEditor.timeValues[2];
 
-    // If the edited time differs from current time, use the edited value
     if (editedSeconds !== time && editedSeconds > 0) {
-      startTimer(editedSeconds, false); // Restart with new time, but don't update original
+      startTimer(editedSeconds, false);
     } else {
-      resumeTimer(); // Resume with current time
+      resumeTimer();
     }
   }, [segmentEditor.timeValues, time, startTimer, resumeTimer]);
 
-  // Handle restart button click - go back to original initial time
   const handleRestart = useCallback(() => {
     restartTimer();
     setQuickAddExpanded(false);
+    setTargetTimeExpanded(false);
   }, [restartTimer]);
 
   const handleQuickAdd = useCallback((deltaSeconds: number) => {
@@ -181,11 +201,28 @@ const Timer = () => {
     setQuickAddExpanded(false);
   }, [adjustTime]);
 
-  // Determine which controls to show
+  const handleTargetTimeToggle = useCallback(() => {
+    setTargetTimeExpanded(prev => {
+      if (!prev) {
+        setTargetTime(getDefaultTargetSelection());
+      }
+      return !prev;
+    });
+    setQuickAddExpanded(false);
+  }, []);
+
+  const handleQuickAddToggle = useCallback(() => {
+    setQuickAddExpanded(prev => !prev);
+    setTargetTimeExpanded(false);
+  }, []);
+
   const showStartButton = !isRunning && !isPaused && !timerFinished;
   const showPauseButton = isRunning;
   const showResumeButton = isPaused;
   const inEditMode = !isRunning;
+  const allowSegmentEditing = !isRunning;
+  const showTargetTimeToggle = !isRunning && !isPaused && !timerFinished;
+  const showQuickAddToggle = !timerFinished;
   const quickAddOptions = [
     { label: '+1m', seconds: 60, title: 'Add 1 minute' },
     { label: '+2m', seconds: 120, title: 'Add 2 minutes' },
@@ -346,7 +383,7 @@ const Timer = () => {
                   <div className="flex flex-row items-center">
                     {segmentEditor.values.map((val, idx) => (
                       <React.Fragment key={idx}>
-                        {segmentEditor.editingSegment === idx ? (
+                        {allowSegmentEditing && segmentEditor.editingSegment === idx ? (
                           <input
                             ref={segmentEditor.inputRef}
                             type="text"
@@ -367,15 +404,15 @@ const Timer = () => {
                           />
                         ) : (
                           <span
-                            onClick={() => segmentEditor.handleSegmentClick(idx)}
+                            onClick={allowSegmentEditing ? () => segmentEditor.handleSegmentClick(idx) : undefined}
                             className={cn(
-                              "leading-none cursor-pointer px-1 rounded-md",
+                              "leading-none px-1 rounded-md",
                               text.primary,
-                              backgrounds.hover,
                               transitions.colors,
-                              !isRunning && 'hover:text-sage-600'
+                              allowSegmentEditing && backgrounds.hover,
+                              allowSegmentEditing ? 'cursor-pointer hover:text-sage-600' : 'cursor-default'
                             )}
-                            title={!isRunning ? 'Click to edit' : ''}
+                            title={allowSegmentEditing ? 'Click to edit' : ''}
                             style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}
                           >
                             {val}
@@ -419,10 +456,81 @@ const Timer = () => {
           onSoundModeToggle={cycleSoundMode}
           soundModeIcon={getSoundModeIcon()}
           soundModeTitle={getSoundModeTitle()}
-          showQuickAddToggle={!timerFinished}
+          showTargetTimeToggle={showTargetTimeToggle}
+          targetTimeExpanded={targetTimeExpanded}
+          onTargetTimeToggle={handleTargetTimeToggle}
+          showQuickAddToggle={showQuickAddToggle}
           quickAddExpanded={quickAddExpanded}
-          onQuickAddToggle={() => setQuickAddExpanded(prev => !prev)}
+          onQuickAddToggle={handleQuickAddToggle}
         />
+
+        {targetTimeExpanded && !timerFinished && !isRunning && !isPaused && (
+          <div
+            id="timer-target-time-tray"
+            className="mt-2 overflow-hidden transition-all duration-200 ease-out"
+          >
+            <div className="rounded-lg border border-white/40 bg-white/45 p-2 shadow-sm backdrop-blur-md dark:border-warm-gray-600/40 dark:bg-warm-gray-800/45">
+              <div className="flex items-center justify-center gap-2">
+                <span className={cn("text-xs font-medium uppercase tracking-wide whitespace-nowrap", text.muted)}>
+                  Until
+                </span>
+                  <select
+                    aria-label="Target hour"
+                    value={targetTime.hour}
+                    onChange={(e) => handleTargetTimeChange('hour', parseInt(e.target.value, 10))}
+                    className={cn(
+                      "w-12 rounded-md border px-1.5 py-1 text-sm font-medium text-center",
+                      backgrounds.surface,
+                      text.primary
+                    )}
+                  >
+                    {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((hour) => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
+                  </select>
+                  <span className={cn("text-lg font-medium", text.muted)}>:</span>
+                  <select
+                    aria-label="Target minute"
+                    value={targetTime.minute}
+                    onChange={(e) => handleTargetTimeChange('minute', parseInt(e.target.value, 10))}
+                    className={cn(
+                      "w-14 rounded-md border px-1.5 py-1 text-sm font-medium text-center",
+                      backgrounds.surface,
+                      text.primary
+                    )}
+                  >
+                    {Array.from({ length: 60 }, (_, minute) => (
+                      <option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</option>
+                    ))}
+                  </select>
+                  <div className="flex overflow-hidden rounded-md border border-white/50 dark:border-warm-gray-600/40">
+                    {(['AM', 'PM'] as const).map((period) => (
+                      <button
+                        key={period}
+                        type="button"
+                        onClick={() => handleTargetTimeChange('period', period)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-medium transition-colors",
+                          targetTime.period === period
+                            ? 'bg-sage-500 text-white'
+                            : 'bg-white/45 text-warm-gray-600 hover:text-sage-600 dark:bg-warm-gray-800/45 dark:text-warm-gray-300 dark:hover:text-sage-400'
+                        )}
+                      >
+                        {period}
+                      </button>
+                    ))}
+                  </div>
+                <button
+                  type="button"
+                  onClick={handleSetTargetTime}
+                  className={cn(buttons.primary, "whitespace-nowrap px-3 py-1 text-sm")}
+                >
+                  Set
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {quickAddExpanded && !timerFinished && (
           <div

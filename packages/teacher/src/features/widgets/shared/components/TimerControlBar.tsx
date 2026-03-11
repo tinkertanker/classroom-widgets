@@ -1,6 +1,13 @@
 import React from 'react';
+import { FaRegClock } from 'react-icons/fa6';
 import { WidgetControlBar } from './WidgetControlBar';
 import { cn, buttons } from '@shared/utils/styles';
+
+const pressedButtonClass = cn(
+  'translate-y-px shadow-inner',
+  'from-sage-400 to-sage-300/60 hover:from-sage-400 hover:to-sage-300/60',
+  'dark:from-sage-950/80 dark:to-sage-900/50 dark:hover:from-sage-950/80 dark:hover:to-sage-900/50'
+);
 
 interface TimerControlBarProps {
   timerFinished: boolean;
@@ -21,12 +28,11 @@ interface TimerControlBarProps {
   showQuickAddToggle?: boolean;
   quickAddExpanded?: boolean;
   onQuickAddToggle?: () => void;
+  showTargetTimeToggle?: boolean;
+  targetTimeExpanded?: boolean;
+  onTargetTimeToggle?: () => void;
 }
 
-/**
- * Specialized control bar for the Timer widget with its unique state management.
- * Handles the timer's various states: finished, start, pause, resume, restart.
- */
 export const TimerControlBar: React.FC<TimerControlBarProps> = ({
   timerFinished,
   showStartButton,
@@ -45,7 +51,10 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
   soundModeTitle,
   showQuickAddToggle = false,
   quickAddExpanded = false,
-  onQuickAddToggle
+  onQuickAddToggle,
+  showTargetTimeToggle = false,
+  targetTimeExpanded = false,
+  onTargetTimeToggle
 }) => {
   return (
     <WidgetControlBar className={className}>
@@ -96,11 +105,34 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
       )}
 
       <div className="flex items-center gap-2">
+        {showTargetTimeToggle && onTargetTimeToggle && (
+          <button
+            onClick={onTargetTimeToggle}
+            disabled={disabled}
+            className={cn(
+              buttons.primary,
+              "inline-flex items-center justify-center px-3.5 py-[9px] text-sm leading-none",
+              targetTimeExpanded && "ring-2 ring-sage-400",
+              targetTimeExpanded && pressedButtonClass
+            )}
+            title={targetTimeExpanded ? 'Hide target time picker' : 'Set timer to end at a specific time'}
+            aria-label={targetTimeExpanded ? 'Hide target time picker' : 'Set target time'}
+            aria-expanded={targetTimeExpanded}
+            aria-controls="timer-target-time-tray"
+          >
+            {targetTimeExpanded ? '\u00D7' : <FaRegClock className="h-[13px] w-[13px]" />}
+          </button>
+        )}
+
         {showQuickAddToggle && onQuickAddToggle && (
           <button
             onClick={onQuickAddToggle}
             disabled={disabled}
-            className={cn(buttons.primary, "px-3 py-1.5 text-sm")}
+            className={cn(
+              buttons.primary,
+              "px-3 py-1.5 text-sm",
+              quickAddExpanded && pressedButtonClass
+            )}
             title={quickAddExpanded ? 'Hide add time options' : 'Show add time options'}
             aria-label={quickAddExpanded ? 'Hide add time options' : 'Show add time options'}
             aria-expanded={quickAddExpanded}
@@ -110,7 +142,6 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
           </button>
         )}
 
-        {/* Sound mode toggle button */}
         {onSoundModeToggle && soundModeIcon && (
           <button
             onClick={onSoundModeToggle}
