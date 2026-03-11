@@ -11,6 +11,8 @@ const localStorageMock = {
   clear: vi.fn()
 };
 
+const originalLocalStorage = globalThis.localStorage;
+
 Object.defineProperty(globalThis, 'localStorage', {
   value: localStorageMock,
   configurable: true
@@ -54,6 +56,13 @@ describe('Timer Widget', () => {
   afterEach(() => {
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
+  });
+
+  afterAll(() => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: originalLocalStorage,
+      configurable: true
+    });
   });
 
   test('renders with the default editable time', () => {
@@ -164,6 +173,24 @@ describe('Timer Widget', () => {
 
     expect(screen.queryByText('Until')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add 1 minute/i })).toBeInTheDocument();
+  });
+
+  test('exposes the selected target period accessibly', () => {
+    renderWithModal(<Timer />);
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+    });
+
+    expect(screen.getByRole('button', { name: 'PM' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'AM' })).toHaveAttribute('aria-pressed', 'false');
+
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'AM' }));
+    });
+
+    expect(screen.getByRole('button', { name: 'AM' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'PM' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('adds time while running without interrupting the countdown', () => {

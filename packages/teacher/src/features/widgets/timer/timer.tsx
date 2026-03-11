@@ -12,7 +12,6 @@ import { TimerControlBar } from '../shared/components';
 import { HamsterAnimation } from './components/HamsterAnimation';
 import { TimeDisplay } from './components/TimeDisplay';
 import {
-  formatClockSelection,
   getDefaultTargetSelection,
   getSecondsUntilClockTime,
   type ClockTimeSelection
@@ -503,12 +502,17 @@ const Timer = () => {
                       <option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</option>
                     ))}
                   </select>
-                  <div className="flex overflow-hidden rounded-md border border-white/50 dark:border-warm-gray-600/40">
+                  <div
+                    className="flex overflow-hidden rounded-md border border-white/50 dark:border-warm-gray-600/40"
+                    role="group"
+                    aria-label="Target period"
+                  >
                     {(['AM', 'PM'] as const).map((period) => (
                       <button
                         key={period}
                         type="button"
                         onClick={() => handleTargetTimeChange('period', period)}
+                        aria-pressed={targetTime.period === period}
                         className={cn(
                           "px-2.5 py-1 text-xs font-medium transition-colors",
                           targetTime.period === period
