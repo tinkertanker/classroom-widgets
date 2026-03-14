@@ -43,7 +43,6 @@ COPY packages/shared/ packages/shared/
 COPY packages/teacher/ packages/teacher/
 
 # Copy voice command generation files
-COPY shared/ shared/
 COPY scripts/ scripts/
 
 # Set environment variables for build
