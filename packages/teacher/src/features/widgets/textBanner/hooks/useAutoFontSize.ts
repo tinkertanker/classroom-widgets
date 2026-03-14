@@ -7,6 +7,8 @@ interface UseAutoFontSizeOptions {
   maxSize?: number;
   minSize?: number;
   padding?: number;
+  /** When true, only constrain by width — let height grow freely. */
+  widthOnly?: boolean;
 }
 
 /**
@@ -18,7 +20,8 @@ export function useAutoFontSize({
   textRef,
   maxSize = 200,
   minSize = 12,
-  padding = 32
+  padding = 32,
+  widthOnly = false
 }: UseAutoFontSizeOptions) {
   const [fontSize, setFontSize] = useState(24);
 
@@ -28,58 +31,61 @@ export function useAutoFontSize({
 
     const container = containerRef.current;
     const textElement = textRef.current;
-    
+
     // Get container dimensions with padding
     const containerWidth = container.clientWidth - padding;
     const containerHeight = container.clientHeight - padding;
-    
+
     // Binary search for optimal size (more efficient than linear)
     let low = minSize;
     let high = maxSize;
     let bestSize = minSize;
-    
+
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
       textElement.style.fontSize = `${mid}px`;
-      
+
       const textWidth = textElement.scrollWidth;
       const textHeight = textElement.scrollHeight;
-      
-      if (textWidth <= containerWidth && textHeight <= containerHeight) {
+
+      const fitsWidth = textWidth <= containerWidth;
+      const fitsHeight = widthOnly || textHeight <= containerHeight;
+
+      if (fitsWidth && fitsHeight) {
         bestSize = mid;
         low = mid + 1;
       } else {
         high = mid - 1;
       }
     }
-    
+
     setFontSize(bestSize);
   };
 
-  // Recalculate on text change
+  // Recalculate on text or mode change
   useEffect(() => {
     calculateFontSize();
-  }, [text]);
+  }, [text, widthOnly]);
 
   // Recalculate on window resize
   useEffect(() => {
     const handleResize = () => calculateFontSize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [text]);
+  }, [text, widthOnly]);
 
   // Recalculate when container size changes (from react-rnd resize)
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const resizeObserver = new ResizeObserver(() => {
       calculateFontSize();
     });
-    
+
     resizeObserver.observe(containerRef.current);
-    
+
     return () => resizeObserver.disconnect();
-  }, [text]);
+  }, [text, widthOnly]);
 
   return fontSize;
 }

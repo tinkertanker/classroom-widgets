@@ -154,6 +154,13 @@ input[type="range"] {
   columns: 1;
   column-gap: 1rem;
   padding: 4.5rem 1rem 5rem;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.column-widget-item {
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 @media (min-width: 540px) {

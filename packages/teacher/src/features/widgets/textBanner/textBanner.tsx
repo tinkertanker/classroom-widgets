@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAutoFontSize } from './hooks';
 import { cn, widgetContainer } from '@shared/utils/styles';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface TextBannerProps {
   savedState?: { text: string; colorIndex?: number };
@@ -75,6 +76,7 @@ const renderFormattedText = (value: string) => {
 };
 
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
+  const isColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
   const normalisedSavedState = savedState
     ? {
         text: normaliseText(savedState.text),
@@ -97,13 +99,15 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const clickTimerRef = useRef<number | null>(null);
 
   // Use auto font size hook
+  // In column layout, only constrain by width so text drives the widget height
   const fontSize = useAutoFontSize({
     text,
     containerRef,
     textRef,
     maxSize: 180,
-    minSize: 12,
-    padding: 32
+    minSize: isColumnLayout ? 24 : 12,
+    padding: 32,
+    widthOnly: isColumnLayout
   });
 
   // Select all text when entering edit mode
