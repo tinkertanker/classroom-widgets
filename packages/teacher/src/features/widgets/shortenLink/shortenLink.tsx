@@ -7,7 +7,8 @@ import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 
 // Use environment variables for API configuration
 const API_KEY = import.meta.env.VITE_SHORTIO_API_KEY || '';
-const BASE_URL = import.meta.env.VITE_SHORTIO_BASE_URL || 'https://api.short.io/links';
+const BASE_URL = import.meta.env.VITE_SHORTIO_BASE_URL || 'https://api.short.io/links/public';
+const SHORTIO_DOMAIN = import.meta.env.VITE_SHORTIO_DOMAIN || '';
 
 interface ShortenLinkProps {
 }
@@ -41,7 +42,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
         BASE_URL,
         {
           originalURL: link,
-          domain: "tk.sg"
+          domain: SHORTIO_DOMAIN
         },
         {
           headers: {
