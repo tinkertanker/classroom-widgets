@@ -137,7 +137,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   }, [isActive, soundButtons, playSound]);
 
   return (
-    <div className={widgetContainer}>
+    <div className={`${widgetContainer} !h-fit`}>
       {/* Drag handle area */}
       <div className="sound-effects-drag-handle px-2 py-2 border-b border-warm-gray-200 dark:border-warm-gray-700 cursor-move hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 group">
         <div className="flex justify-center">
@@ -157,8 +157,8 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
       </div>
       
       {/* Sound buttons */}
-      <div className="flex-1 p-2 overflow-y-auto min-h-0">
-        <div className="flex flex-col gap-1">
+      <div className="flex-1 p-2 overflow-y-auto min-h-0 @container">
+        <div className="grid grid-cols-1 @[140px]:grid-cols-2 gap-1">
           {soundButtons.map((sound, index) => {
           const Icon = sound.icon as React.ComponentType<{ className?: string }>;
           const keyNumber = index < 9 ? (index + 1).toString() : '0';

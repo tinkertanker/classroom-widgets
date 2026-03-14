@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
 import { useSocketEvents } from './useSocketEvents';
 import { RoomType } from './useNetworkedWidget';
@@ -53,6 +53,19 @@ export function useNetworkedWidgetState({
       setIsActive(recoveryData.roomData.isActive);
     }
   }, [recoveryData, roomType]);
+
+  // Auto-activate when room is first created (not recovery)
+  const hasAutoActivatedRef = useRef(false);
+  useEffect(() => {
+    if (hasRoom && !recoveryData && !hasAutoActivatedRef.current && widgetId) {
+      hasAutoActivatedRef.current = true;
+      debug(`[${roomType}] Auto-activating widget on room creation`);
+      unifiedSession.updateRoomState(roomType, widgetId, true);
+    }
+    if (!hasRoom) {
+      hasAutoActivatedRef.current = false;
+    }
+  }, [hasRoom, recoveryData, widgetId, roomType, unifiedSession]);
 
   // Toggle active state
   const toggleActive = useCallback(() => {

@@ -17,9 +17,14 @@ import timerEndSound3 from "./timer-end-3.mp3";
 
 type SoundMode = 'quiet' | 'short' | 'long';
 
-const Timer = () => {
+interface TimerProps {
+  savedState?: any;
+  onStateChange?: (state: any) => void;
+}
+
+const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   const { isDark } = useTheme();
-  const [soundMode, setSoundMode] = useState<SoundMode>('short');
+  const [soundMode, setSoundMode] = useState<SoundMode>(() => savedState?.soundMode ?? 'short');
   const [showJitter, setShowJitter] = useState(false);
 
   // Timer audio hooks for all three sounds
@@ -108,18 +113,20 @@ const Timer = () => {
     startTimer,
     pauseTimer,
     resumeTimer,
-    restartTimer
+    restartTimer,
+    getPersistedState
   } = useTimerCountdown({
     onTimeUp: playTimerSound,
     onTick: (newTime) => {
       // Update the time segment editor when time changes
       segmentEditorUpdateRef.current?.(newTime);
-    }
+    },
+    restoredState: savedState?.timer
   });
 
   // Time segment editor hook
   const segmentEditor = useTimeSegmentEditor({
-    initialValues: ['00', '00', '10'],
+    initialValues: savedState?.segmentValues ?? ['00', '00', '10'],
     isRunning: isRunning, // Disable editing when actively running (allow when paused)
     onValuesChange: (values, timeValues) => {
       // When editing time segments while paused, the new value will be used on resume
@@ -130,6 +137,15 @@ const Timer = () => {
 
   // Store the update function in ref
   segmentEditorUpdateRef.current = segmentEditor.updateFromTime;
+
+  // Persist timer state for recovery across remounts
+  React.useEffect(() => {
+    onStateChange?.({
+      timer: getPersistedState(),
+      soundMode,
+      segmentValues: segmentEditor.values,
+    });
+  }, [onStateChange, getPersistedState, soundMode, segmentEditor.values]);
 
   // Handle jitter animation - show for 5 seconds when timer finishes
   React.useEffect(() => {
