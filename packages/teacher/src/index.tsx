@@ -10,6 +10,14 @@ import PollPage from './pages/widgets/PollPage';
 import QuestionsPage from './pages/widgets/QuestionsPage';
 import FeedbackPage from './pages/widgets/FeedbackPage';
 import HandoutPage from './pages/widgets/HandoutPage';
+import TimerPage from './pages/widgets/TimerPage';
+import RandomiserPage from './pages/widgets/RandomiserPage';
+import ListPage from './pages/widgets/ListPage';
+import TaskCuePage from './pages/widgets/TaskCuePage';
+import TrafficLightPage from './pages/widgets/TrafficLightPage';
+import TextBannerPage from './pages/widgets/TextBannerPage';
+import QrCodePage from './pages/widgets/QrCodePage';
+import SoundEffectsPage from './pages/widgets/SoundEffectsPage';
 
 // Load Umami analytics conditionally (only if env vars are set)
 const umamiScriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL;
@@ -42,6 +50,14 @@ root.render(
           <Route path="/widgets/questions" element={<QuestionsPage />} />
           <Route path="/widgets/feedback" element={<FeedbackPage />} />
           <Route path="/widgets/handout" element={<HandoutPage />} />
+          <Route path="/widgets/timer" element={<TimerPage />} />
+          <Route path="/widgets/randomiser" element={<RandomiserPage />} />
+          <Route path="/widgets/list" element={<ListPage />} />
+          <Route path="/widgets/task-cue" element={<TaskCuePage />} />
+          <Route path="/widgets/traffic-light" element={<TrafficLightPage />} />
+          <Route path="/widgets/text-banner" element={<TextBannerPage />} />
+          <Route path="/widgets/qr-code" element={<QrCodePage />} />
+          <Route path="/widgets/sound-effects" element={<SoundEffectsPage />} />
         </Routes>
       </BrowserRouter>
     </HelmetProvider>

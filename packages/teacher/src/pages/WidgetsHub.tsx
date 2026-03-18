@@ -35,16 +35,16 @@ const interactiveWidgets = [
 ];
 
 const classroomWidgets = [
-  { icon: FaClock, title: 'Timer', description: 'Countdown timer with quick-add controls and target-time support.' },
-  { icon: FaDice, title: 'Randomiser', description: 'Pick a student or item at random with a satisfying animated spin.' },
-  { icon: FaListCheck, title: 'List', description: 'Task list with completion tracking and confetti for the last item.' },
-  { icon: FaTrafficLight, title: 'Traffic Light', description: 'Red / amber / green status indicator for the whole room to see.' },
+  { icon: FaClock, title: 'Timer', description: 'Countdown timer with quick-add controls and target-time support.', href: '/widgets/timer' },
+  { icon: FaDice, title: 'Randomiser', description: 'Pick a student or item at random with a satisfying animated spin.', href: '/widgets/randomiser' },
+  { icon: FaListCheck, title: 'List', description: 'Task list with completion tracking and confetti for the last item.', href: '/widgets/list' },
+  { icon: FaTrafficLight, title: 'Traffic Light', description: 'Red / amber / green status indicator for the whole room to see.', href: '/widgets/traffic-light' },
 ];
 
 const displayWidgets = [
-  { icon: FaFont, title: 'Text Banner', description: 'Big bold text on screen — instructions, shoutouts, or anything else.' },
-  { icon: FaQrcode, title: 'QR Code', description: 'Generate a QR code for any link so students can scan and go.' },
-  { icon: FaVolumeHigh, title: 'Sound Effects', description: 'Audio cues to celebrate, warn, or just keep the energy up.' },
+  { icon: FaFont, title: 'Text Banner', description: 'Big bold text on screen — instructions, shoutouts, or anything else.', href: '/widgets/text-banner' },
+  { icon: FaQrcode, title: 'QR Code', description: 'Generate a QR code for any link so students can scan and go.', href: '/widgets/qr-code' },
+  { icon: FaVolumeHigh, title: 'Sound Effects', description: 'Audio cues to celebrate, warn, or just keep the energy up.', href: '/widgets/sound-effects' },
 ];
 
 const WidgetsHub: React.FC = () => {
@@ -112,14 +112,15 @@ const WidgetsHub: React.FC = () => {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {classroomWidgets.map((w, i) => (
-              <div
+              <a
                 key={w.title}
-                className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md border border-warm-gray-100 dark:border-warm-gray-600"
+                href={w.href}
+                className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-warm-gray-100 dark:border-warm-gray-600 group"
               >
                 <w.icon className={`text-2xl mb-3 ${i % 2 === 0 ? 'text-terracotta-500' : 'text-sage-500'}`} />
-                <h4 className="font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1">{w.title}</h4>
+                <h4 className="font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1 group-hover:text-sage-600 dark:group-hover:text-sage-400">{w.title}</h4>
                 <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">{w.description}</p>
-              </div>
+              </a>
             ))}
           </div>
         </div>
@@ -136,14 +137,15 @@ const WidgetsHub: React.FC = () => {
           </div>
           <div className="grid sm:grid-cols-3 gap-6">
             {displayWidgets.map((w, i) => (
-              <div
+              <a
                 key={w.title}
-                className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md border border-warm-gray-100 dark:border-warm-gray-600"
+                href={w.href}
+                className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-warm-gray-100 dark:border-warm-gray-600 group"
               >
                 <w.icon className={`text-2xl mb-3 ${i % 2 === 0 ? 'text-dusty-rose-500' : 'text-sage-500'}`} />
-                <h4 className="font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1">{w.title}</h4>
+                <h4 className="font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1 group-hover:text-sage-600 dark:group-hover:text-sage-400">{w.title}</h4>
                 <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">{w.description}</p>
-              </div>
+              </a>
             ))}
           </div>
         </div>
