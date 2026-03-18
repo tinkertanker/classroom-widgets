@@ -198,6 +198,43 @@ const About: React.FC = () => {
         </div>
       </section>
 
+      {/* Widget Docs */}
+      <section className="py-20 px-4 bg-warm-gray-50 dark:bg-warm-gray-800">
+        <div className="max-w-7xl mx-auto">
+          <h3 className="text-3xl font-bold text-center text-warm-gray-900 dark:text-warm-gray-100 mb-4">
+            Meet the Widgets
+          </h3>
+          <p className="text-center text-warm-gray-500 dark:text-warm-gray-400 mb-12 max-w-2xl mx-auto">
+            Student interaction widgets let your class join from any device with a 5-character code. No app download, no account.
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[
+              { title: 'Live Poll', href: '/widgets/poll', description: 'Instant votes, live results.', color: 'bg-terracotta-500' },
+              { title: 'Q&A', href: '/widgets/questions', description: 'Anonymous student questions.', color: 'bg-sage-500' },
+              { title: 'RT Feedback', href: '/widgets/feedback', description: 'Live difficulty gauge.', color: 'bg-dusty-rose-500' },
+              { title: 'Handout', href: '/widgets/handout', description: 'Push links to devices instantly.', color: 'bg-terracotta-400' },
+            ].map((w) => (
+              <a
+                key={w.href}
+                href={w.href}
+                className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-warm-gray-100 dark:border-warm-gray-600 group"
+              >
+                <div className={`w-10 h-10 ${w.color} rounded-lg mb-4`} />
+                <h4 className="font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1 group-hover:text-sage-600 dark:group-hover:text-sage-400 flex items-center gap-2">
+                  {w.title} <FaArrowRight className="text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h4>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">{w.description}</p>
+              </a>
+            ))}
+          </div>
+          <div className="text-center">
+            <a href="/widgets" className="inline-flex items-center gap-2 text-sage-600 dark:text-sage-400 hover:text-sage-700 font-medium transition-colors">
+              See all widgets <FaArrowRight className="text-sm" />
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* What's New */}
       <section className="py-20 px-4 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-20">
