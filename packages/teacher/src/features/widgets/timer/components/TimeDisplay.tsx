@@ -3,16 +3,28 @@ import { cn, text } from '@shared/utils/styles';
 
 interface TimeDisplayProps {
   time: number;
-  values: string[];
   isEditing: boolean;
   onPause?: () => void;
 }
 
-export const TimeDisplay: React.FC<TimeDisplayProps> = ({ time, values, isEditing, onPause }) => {
+const getDisplayValues = (time: number) => {
+  const hours = Math.floor(time / 3600);
+  const minutes = Math.floor((time % 3600) / 60);
+  const seconds = time % 60;
+
+  return [
+    hours.toString().padStart(2, '0'),
+    minutes.toString().padStart(2, '0'),
+    seconds.toString().padStart(2, '0')
+  ];
+};
+
+export const TimeDisplay: React.FC<TimeDisplayProps> = ({ time, isEditing, onPause }) => {
   if (isEditing) return null;
-  
+
   const baseClasses = cn("leading-none font-bold", text.primary);
-  
+  const values = getDisplayValues(time);
+
   return (
     <div className="flex items-center justify-center w-full h-full cursor-pointer" onClick={onPause}>
       {time >= 3600 ? (
