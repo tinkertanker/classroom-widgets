@@ -21,9 +21,14 @@ import timerEndSound3 from "./timer-end-3.mp3";
 
 type SoundMode = 'quiet' | 'short' | 'long';
 
-const Timer = () => {
+interface TimerProps {
+  savedState?: any;
+  onStateChange?: (state: any) => void;
+}
+
+const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   const { isDark } = useTheme();
-  const [soundMode, setSoundMode] = useState<SoundMode>('short');
+  const [soundMode, setSoundMode] = useState<SoundMode>(() => savedState?.soundMode ?? 'short');
   const [showJitter, setShowJitter] = useState(false);
   const [quickAddExpanded, setQuickAddExpanded] = useState(false);
   const [targetTimeExpanded, setTargetTimeExpanded] = useState(false);
@@ -89,6 +94,7 @@ const Timer = () => {
     }
   };
 
+  // Persist timer state for recovery across remounts.
   const {
     time,
     isRunning,
@@ -100,17 +106,28 @@ const Timer = () => {
     resumeTimer,
     restartTimer,
     resetTimer,
-    adjustTime
+    adjustTime,
+    getPersistedState
   } = useTimerCountdown({
-    onTimeUp: playTimerSound
+    onTimeUp: playTimerSound,
+    restoredState: savedState?.timer
   });
 
   const segmentEditor = useTimeSegmentEditor({
-    initialValues: ['00', '00', '10'],
-    isRunning: isRunning,
-    onValuesChange: () => {}
+    initialValues: savedState?.segmentValues ?? ['00', '00', '10'],
+    isRunning,
+    onValuesChange: () => {
+      // Edited values are read directly from the segment editor when starting or resuming.
+    }
   });
 
+  React.useEffect(() => {
+    onStateChange?.({
+      timer: getPersistedState(),
+      soundMode,
+      segmentValues: segmentEditor.values,
+    });
+  }, [onStateChange, getPersistedState, soundMode, segmentEditor.values]);
   React.useEffect(() => {
     if (timerFinished) {
       setShowJitter(true);

@@ -234,35 +234,62 @@ interface WorkspaceState {
 - **Selective subscriptions**: Components only re-render when needed
 - **Middleware**: Built-in persist middleware
 
-### Local Storage Schema
+### Storage Format (Version 2 - Multi-Workspace Ready)
+
+The app uses a versioned storage format to support future multi-workspace features.
+
+**Key Files:**
+- `src/shared/types/storage.ts` - Type definitions and helpers
+- `src/shared/utils/storageMigration.ts` - Migration and workspace utilities
 
 ```typescript
-// localStorage key: 'workspace-storage'
-{
-  "widgets": [
-    {
-      "id": "uuid-1",
-      "type": 3,  // WidgetType.TIMER
-      "x": 100,
-      "y": 100,
-      "width": 350,
-      "height": 415,
-      "zIndex": 1
+// localStorage key: 'classroom-widgets-storage-v2'
+interface StorageFormatV2 {
+  version: 2;
+  migratedFrom?: number;      // Previous version if migrated
+  migratedAt?: number;        // Migration timestamp
+
+  currentWorkspaceId: string; // Active workspace
+
+  workspaces: {
+    [id: string]: {
+      id: string;
+      name: string;           // e.g., "My Workspace"
+      createdAt: number;
+      updatedAt: number;
+      widgets: Widget[];
+      background: BackgroundType;
+      scale: number;
+      scrollPosition: { x: number; y: number };
+      widgetStates: [string, any][];  // Serialized Map
     }
-  ],
-  "widgetStates": {
-    "uuid-1": {
-      "minutes": 5,
-      "seconds": 0,
-      "isRunning": false
-    }
-  },
-  "background": "geometric",
-  "toolbar": {
-    "visibleWidgets": [1, 2, 3, 4, 5]
-  }
+  };
+
+  globalSettings: {
+    theme: 'light' | 'dark';
+    toolbar: {
+      visibleWidgets: WidgetType[];
+      recentWidgets: WidgetType[];     // Last 5 launched
+      recentWidgetsLimit: number;      // Default: 5
+      voiceControlEnabled: boolean;    // Alpha feature
+      // ...
+    };
+  };
+
+  session: {
+    code: string | null;
+    createdAt: number | null;
+  };
 }
 ```
+
+**Version History:**
+| Version | Status | Description |
+|---------|--------|-------------|
+| V1 | Deprecated (April 2026) | Single workspace, Zustand default format |
+| V2 | Current | Multi-workspace with named workspaces |
+
+**Migration:** V1 automatically migrates to V2 on first load. Backup saved to `workspace-storage-backup-{timestamp}`.
 
 ## Widget System
 
