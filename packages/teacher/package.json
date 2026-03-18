@@ -1,6 +1,6 @@
 {
   "name": "@classroom-widgets/teacher",
-  "version": "0.10.2",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "scripts": {

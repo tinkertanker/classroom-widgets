@@ -1,5 +1,5 @@
-// Application version configuration - reads directly from package.json
-import packageJson from '../package.json';
+// Application version configuration - reads from root package.json (source of truth)
+import packageJson from '../../../package.json';
 
 export const APP_VERSION = packageJson.version;
 
