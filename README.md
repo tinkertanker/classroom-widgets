@@ -242,14 +242,16 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-Use `npm version` to bump the version, commit, and tag in one step — the version is displayed in the app UI and must stay in sync with the git tag:
+Use `npm version` to bump the version, commit, and tag in one step — the version is displayed in the app UI and is read from the root `package.json`:
 
 ```bash
-npm version 1.2.3 -w packages/teacher
+npm version 1.2.3
 git push origin master --tags
 ```
 
 Pushing a `v*` tag triggers the GitHub Actions workflow which auto-deploys to production.
+
+> **Note:** This workflow is untested end-to-end. Verify that `npm version` correctly creates the git tag and that the version displayed in the app reflects the root `package.json` before relying on it.
 
 See [Deployment Guide](./docs/DEPLOYMENT.md) for full instructions including CD setup, Docker, and environment configuration.
 
