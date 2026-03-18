@@ -70,6 +70,18 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     onTickRef.current = onTick;
   }, [onTimeUp, onTick]);
 
+  const getElapsedSeconds = useCallback(() => {
+    if (startTimeRef.current === null) {
+      return 0;
+    }
+
+    return Math.floor((Date.now() - startTimeRef.current) / 1000);
+  }, []);
+
+  const getRunningRemainingTime = useCallback(() => {
+    return Math.max(0, pausedTimeRef.current - getElapsedSeconds());
+  }, [getElapsedSeconds]);
+
   // Fire onTimeUp if timer expired while unmounted
   useEffect(() => {
     if (restored?.timerFinished) {
@@ -78,7 +90,6 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     // Only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
   // Handle countdown tick using timestamp-based timing
   useEffect(() => {
     if (isRunning && startTimeRef.current !== null) {
@@ -178,6 +189,37 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     endTimeRef.current = null;
   }, []);
 
+  const adjustTime = useCallback((deltaSeconds: number) => {
+    const safeDelta = Math.max(0, Math.floor(deltaSeconds));
+
+    if (safeDelta === 0 || timerFinished) {
+      return;
+    }
+
+    if (isRunning && startTimeRef.current !== null) {
+      const nextTime = getRunningRemainingTime() + safeDelta;
+
+      pausedTimeRef.current += safeDelta;
+      originalTimeRef.current += safeDelta;
+      endTimeRef.current = Date.now() + nextTime * 1000;
+
+      setTime(nextTime);
+      setInitialTime(prev => prev + safeDelta);
+      onTickRef.current?.(nextTime);
+      return;
+    }
+
+    const nextTime = time + safeDelta;
+
+    pausedTimeRef.current = nextTime;
+    originalTimeRef.current += safeDelta;
+    endTimeRef.current = null;
+
+    setTime(nextTime);
+    setInitialTime(prev => prev + safeDelta);
+    onTickRef.current?.(nextTime);
+  }, [getRunningRemainingTime, isRunning, time, timerFinished]);
+
   // Calculate progress percentage
   const progress = initialTime > 0 ? time / initialTime : 0;
 
@@ -204,6 +246,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     resumeTimer,
     restartTimer,
     resetTimer,
+    adjustTime,
     getPersistedState
   };
 }
