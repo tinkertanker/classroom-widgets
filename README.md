@@ -242,12 +242,14 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-Push a version tag to auto-deploy to production via GitHub Actions:
+Use `npm version` to bump the version, commit, and tag in one step — the version is displayed in the app UI and must stay in sync with the git tag:
 
 ```bash
-git tag v1.2.3
-git push origin v1.2.3
+npm version 1.2.3 -w packages/teacher
+git push origin master --tags
 ```
+
+Pushing a `v*` tag triggers the GitHub Actions workflow which auto-deploys to production.
 
 See [Deployment Guide](./docs/DEPLOYMENT.md) for full instructions including CD setup, Docker, and environment configuration.
 
