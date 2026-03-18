@@ -1,4 +1,5 @@
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import { FaChartColumn, FaQuestion, FaMusic, FaClock, FaComments, FaDice, FaArrowRight, FaChalkboardUser, FaUsers, FaRocket, FaCheck, FaTriangleExclamation, FaFaceSadTear, FaLightbulb, FaLock, FaShieldHalved, FaTableColumns, FaStar } from 'react-icons/fa6';
 import { CustomStickerIcons } from '../features/widgets/sticker/CustomStickerIcons';
 import { FloatingWidgets } from './components/FloatingWidgets';
@@ -57,6 +58,14 @@ const About: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-soft-white dark:bg-warm-gray-900 overflow-hidden relative">
+      <Helmet>
+        <title>About — Classroom Widgets, Free Teacher Tools</title>
+        <meta name="description" content="Learn about Classroom Widgets — free, no-login tools for teachers. Timers, live polls, Q&A, randomisers, real-time feedback and more. Built by Tinkercademy." />
+        <meta property="og:url" content="https://widgets.tk.sg/about" />
+        <meta property="og:title" content="About — Classroom Widgets, Free Teacher Tools" />
+        <meta property="og:description" content="Learn about Classroom Widgets — free, no-login tools for teachers. Timers, live polls, Q&A, randomisers, real-time feedback and more. Built by Tinkercademy." />
+        <link rel="canonical" href="https://widgets.tk.sg/about" />
+      </Helmet>
       {/* Floating Widgets */}
       <FloatingWidgets />
       {/* Navigation */}
