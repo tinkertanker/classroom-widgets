@@ -242,45 +242,14 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-### Automated Deployment via Git Tags (CD)
-
-Pushing a version tag triggers the GitHub Actions workflow, which SSHes into the production server and deploys automatically:
+Push a version tag to auto-deploy to production via GitHub Actions:
 
 ```bash
 git tag v1.2.3
 git push origin v1.2.3
 ```
 
-The workflow will:
-1. Pull the latest code on the server (`git pull --rebase`)
-2. Bring down the running containers (`docker compose down`)
-3. Rebuild and start the new version (`docker compose -f docker-compose.prod.yml up --build -d`)
-
-**Required GitHub Secrets** (repo Settings → Secrets and variables → Actions):
-
-| Secret | Description |
-|--------|-------------|
-| `SSH_HOST` | Production server hostname or IP |
-| `SSH_USER` | SSH username on the server |
-| `SSH_PRIVATE_KEY` | Private key for SSH authentication (use a dedicated deploy key, not your personal key) |
-| `DEPLOY_PATH` | Absolute path to the repo on the server (e.g. `/home/user/classroom_widgets`) |
-
-### Docker Deployment (Manual)
-
-```bash
-docker compose -f docker-compose.prod.yml up --build -d
-```
-
-See [Deployment Guide](./docs/DEPLOYMENT.md) for detailed instructions.
-
-### Manual Deployment
-
-1. Build all applications: `npm run build:all`
-2. Set up Nginx with provided configuration
-3. Configure environment variables
-4. Start the Express server: `npm start`
-
-See [Deployment Guide](./docs/DEPLOYMENT.md) for complete deployment instructions.
+See [Deployment Guide](./docs/DEPLOYMENT.md) for full instructions including CD setup, Docker, and environment configuration.
 
 ## 📖 Documentation
 

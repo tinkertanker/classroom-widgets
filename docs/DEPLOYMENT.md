@@ -9,6 +9,33 @@ Complete guide for deploying Classroom Widgets to production.
 - [SSL/TLS Configuration](#ssltls-configuration)
 - [Troubleshooting](#troubleshooting)
 
+## Automated Deployment (CD)
+
+Pushing a version tag triggers the GitHub Actions workflow, which SSHes into the production server and deploys automatically:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The workflow pulls the latest code, brings down the running containers, then rebuilds and restarts them.
+
+**Required GitHub Secrets** (repo Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `SSH_HOST` | Production server hostname or IP |
+| `SSH_USER` | SSH username on the server |
+| `SSH_PRIVATE_KEY` | Private key for SSH auth — use a dedicated deploy key, not your personal key |
+| `DEPLOY_PATH` | Absolute path to the repo on the server (e.g. `/home/user/classroom_widgets`) |
+
+**Generating a deploy key:**
+```bash
+ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/deploy_key
+cat ~/.ssh/deploy_key.pub >> ~/.ssh/authorized_keys  # on the server
+cat ~/.ssh/deploy_key  # paste this into the SSH_PRIVATE_KEY secret
+```
+
 ## Quick Deploy
 
 ### Prerequisites
