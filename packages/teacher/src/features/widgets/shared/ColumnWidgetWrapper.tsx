@@ -25,7 +25,7 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
     <div
       className="column-widget-item relative break-inside-avoid mb-4"
       onClick={handleWidgetClick}
-      style={{ maxHeight: widget.size.height }}
+      style={{ height: widget.size.height }}
     >
       <div className="widget-wrapper w-full h-full">
         {children}
