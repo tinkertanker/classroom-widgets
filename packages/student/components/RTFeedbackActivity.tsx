@@ -17,13 +17,6 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
 
-  // Update isActive when prop changes
-  useEffect(() => {
-    if (initialIsActive !== undefined) {
-      setIsActive(initialIsActive);
-    }
-  }, [initialIsActive]);
-
   // Listen for room state changes using shared hook
   useWidgetStateChange({
     socket,
