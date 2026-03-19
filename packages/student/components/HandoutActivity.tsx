@@ -31,16 +31,6 @@ const HandoutActivity: React.FC<HandoutActivityProps> = ({
   const [isActive, setIsActive] = useState(initialIsActive);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Update isActive when prop changes
-  useEffect(() => {
-    setIsActive(initialIsActive);
-  }, [initialIsActive]);
-
-  // Update items when prop changes
-  useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
-
   // Listen for room state changes using shared hook
   useWidgetStateChange({
     socket,
