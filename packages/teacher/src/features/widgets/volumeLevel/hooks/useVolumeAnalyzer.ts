@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 
 interface UseVolumeAnalyzerOptions {
   isEnabled: boolean;
+  isInCooldown?: boolean;
   threshold: number;
   smoothingSamples?: number;
   updateInterval?: number;
@@ -14,6 +15,7 @@ interface UseVolumeAnalyzerOptions {
  */
 export function useVolumeAnalyzer({
   isEnabled,
+  isInCooldown = false,
   threshold,
   smoothingSamples = 10,
   updateInterval = 100,
@@ -22,13 +24,12 @@ export function useVolumeAnalyzer({
   const [volume, setVolume] = useState(0);
   const volumeHistoryRef = useRef<number[]>([]);
   const dataArrayRef = useRef<Uint8Array | null>(null);
-  const isCooldownRef = useRef(false);
+  const isCooldownRef = useRef(isInCooldown);
   const onThresholdExceededRef = useRef(onThresholdExceeded);
 
-  // Update callback ref
-  useEffect(() => {
-    onThresholdExceededRef.current = onThresholdExceeded;
-  }, [onThresholdExceeded]);
+  // Keep refs current without forcing callback recreation downstream.
+  isCooldownRef.current = isInCooldown;
+  onThresholdExceededRef.current = onThresholdExceeded;
 
   // Reset volume when disabled
   useEffect(() => {
@@ -74,11 +75,6 @@ export function useVolumeAnalyzer({
 
     return averageVolume;
   }, [isEnabled, threshold, smoothingSamples]);
-
-  const setCooldown = useCallback((active: boolean) => {
-    isCooldownRef.current = active;
-  }, []);
-
   const startMonitoring = useCallback((analyser: AnalyserNode) => {
     const intervalId = setInterval(() => {
       analyzeVolume(analyser);
@@ -93,7 +89,6 @@ export function useVolumeAnalyzer({
   return {
     volume,
     normalizedVolume: threshold > 0 ? Math.min(volume / threshold, 1) : 0,
-    startMonitoring,
-    setCooldown
+    startMonitoring
   };
 }

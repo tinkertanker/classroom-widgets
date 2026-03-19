@@ -1,5 +1,5 @@
 // Removed Chakra UI imports
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 // @ts-ignore
 import { FaBell, FaMicrophone } from 'react-icons/fa6';
 import ramBellSoundFile from './Ram-Bell-Sound.mp3';
@@ -52,10 +52,10 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
     const { 
         volume, 
         normalizedVolume, 
-        startMonitoring, 
-        setCooldown 
+        startMonitoring
     } = useVolumeAnalyzer({
         isEnabled,
+        isInCooldown,
         threshold,
         smoothingSamples: 10,
         updateInterval: 100,
@@ -65,11 +65,6 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
             }
         }
     });
-
-    // Update cooldown state in volume analyzer
-    useEffect(() => {
-        setCooldown(isInCooldown);
-    }, [isInCooldown, setCooldown]);
 
     // Audio stream management
     const { analyser } = useAudioStream({
