@@ -29,6 +29,8 @@ import { ConfettiProvider } from '../contexts/ConfettiContext';
 import trashSound from '../sounds/trash-crumple.mp3';
 const trashAudio = new Audio(trashSound);
 
+const STICKER_MODE_CHANGE_EVENT = 'sticker-mode-change';
+
 
 
 function App() {
@@ -50,6 +52,7 @@ function App() {
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
+  const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -78,6 +81,18 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  const updateStickerMode = useCallback((mode: boolean, type?: string | null) => {
+    const nextType = mode ? (type ?? stickerStateRef.current.type) : null;
+
+    stickerStateRef.current = { mode, type: nextType };
+    setStickerMode(mode);
+    setSelectedStickerType(nextType);
+
+    window.dispatchEvent(new CustomEvent(STICKER_MODE_CHANGE_EVENT, {
+      detail: { mode, type: nextType }
+    }));
+  }, []);
   
   // Check screen size
   useEffect(() => {
@@ -108,10 +123,9 @@ function App() {
   // Disable sticker mode when switching to column layout
   useEffect(() => {
     if (layoutFormat === 'column' && stickerMode) {
-      setStickerMode(false);
-      setSelectedStickerType(null);
+      updateStickerMode(false);
     }
-  }, [layoutFormat, stickerMode]);
+  }, [layoutFormat, stickerMode, updateStickerMode]);
 
   // Trash sound effect
   useEffect(() => {
@@ -146,8 +160,7 @@ function App() {
       // Exit sticker mode with S or Escape key
       if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
         e.preventDefault();
-        setStickerMode(false);
-        setSelectedStickerType(null);
+        updateStickerMode(false);
         return;
       }
 
@@ -199,7 +212,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {
@@ -464,30 +477,25 @@ function App() {
       updateWidgetState(widgetId, { stickerType: selectedStickerType });
       
       // Exit sticker mode after placing
-      setStickerMode(false);
-      setSelectedStickerType(null);
+      updateStickerMode(false);
     }
   };
 
   // Make sticker mode functions available globally for toolbar
   useEffect(() => {
     (window as any).setStickerMode = (mode: boolean, type?: string) => {
-      setStickerMode(mode);
-      if (type) {
-        setSelectedStickerType(type);
-      } else if (!mode) {
-        setSelectedStickerType(null);
-      }
+      updateStickerMode(mode, type);
     };
 
-    // Also expose a getter for the toolbar to check state
-    (window as any).getStickerMode = () => stickerMode;
+    (window as any).getStickerState = () => stickerStateRef.current;
+    (window as any).getStickerMode = () => stickerStateRef.current.mode;
 
     return () => {
       delete (window as any).setStickerMode;
+      delete (window as any).getStickerState;
       delete (window as any).getStickerMode;
     };
-  }, [stickerMode]);
+  }, [updateStickerMode]);
 
   // Make voice control functions available globally for toolbar
   useEffect(() => {
@@ -537,8 +545,7 @@ function App() {
                 </div>
                 <button
                   onClick={() => {
-                    setStickerMode(false);
-                    setSelectedStickerType(null);
+                    updateStickerMode(false);
                   }}
                   className="ml-2 text-amber-200 hover:text-white transition-colors"
                   title="Exit sticker mode"

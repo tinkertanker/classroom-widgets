@@ -29,35 +29,49 @@ const defaultRecentWidgets = [
   WidgetType.TRAFFIC_LIGHT
 ];
 
+const STICKER_MODE_CHANGE_EVENT = 'sticker-mode-change';
+
+const getStickerState = () => {
+  const state = (window as any).getStickerState?.();
+
+  return {
+    mode: state?.mode ?? false,
+    type: state?.type ?? ''
+  };
+};
+
 const BottomBar: React.FC = () => {
   const { recentWidgets, voiceControlEnabled } = useBottomBar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();
   const [showMenu, setShowMenu] = useState(false);
-  const [stickerMode, setStickerMode] = useState(false);
-  const [selectedStickerType, setSelectedStickerType] = useState<string>('');
+  const [{ mode: stickerMode, type: selectedStickerType }, setStickerState] = useState(getStickerState);
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const { isNear, registerHudElement } = useHudProximityContext();
+
+  const setSelectedStickerType = (type: string) => {
+    setStickerState((current) => ({
+      ...current,
+      type
+    }));
+  };
 
   // Ref callback for registering bottom HUD region
   const bottomRef = React.useCallback((node: HTMLDivElement | null) => {
     registerHudElement('bottom', node);
   }, [registerHudElement]);
 
-  // Sync with global sticker mode state
+  // Sync with sticker mode updates from App
   useEffect(() => {
-    const checkStickerMode = () => {
-      const globalStickerMode = (window as any).getStickerMode?.();
-      if (globalStickerMode !== undefined && globalStickerMode !== stickerMode) {
-        setStickerMode(globalStickerMode);
-      }
+    const syncStickerState = () => {
+      setStickerState(getStickerState());
     };
 
-    // Check periodically for state changes
-    const interval = setInterval(checkStickerMode, 100);
+    syncStickerState();
+    window.addEventListener(STICKER_MODE_CHANGE_EVENT, syncStickerState);
 
-    return () => clearInterval(interval);
-  }, [stickerMode]);
+    return () => window.removeEventListener(STICKER_MODE_CHANGE_EVENT, syncStickerState);
+  }, []);
 
   // Add keyboard shortcut for debug launch all (only in development)
   useEffect(() => {
@@ -104,10 +118,8 @@ const BottomBar: React.FC = () => {
         <StickerPalette
           selectedStickerType={selectedStickerType}
           setSelectedStickerType={setSelectedStickerType}
-          setStickerMode={(mode) => {
-            setStickerMode(mode);
-            // Always pass the current selectedStickerType to the global function
-            (window as any).setStickerMode?.(mode, selectedStickerType);
+          setStickerMode={(mode, type) => {
+            (window as any).setStickerMode?.(mode, type ?? selectedStickerType);
           }}
           stickerMode={stickerMode}
           onClose={hideModal}
