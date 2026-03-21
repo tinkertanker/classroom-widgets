@@ -1,5 +1,5 @@
 import React from 'react';
-import { hudContainer, zIndex } from '@shared/utils/styles';
+import { zIndex } from '@shared/utils/styles';
 import { clsx } from 'clsx';
 
 interface NarrowModeExitButtonProps {
@@ -57,7 +57,10 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
         "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
         // Match BottomBar's peekWrapper exactly
         "transition-all duration-300 ease-in-out pointer-events-auto",
-        "opacity-30 translate-y-7 hover:opacity-100 hover:translate-y-0"
+        "opacity-30 translate-y-7",
+        "hover:opacity-100 hover:translate-y-0",
+        "focus-visible:opacity-100 focus-visible:translate-y-0",
+        "active:opacity-100 active:translate-y-0"
       )}
       title={title}
     >

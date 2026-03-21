@@ -50,7 +50,8 @@ function App() {
   const [isNarrowScreen, setIsNarrowScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
-  const [layoutBeforeNarrow, setLayoutBeforeNarrow] = useState<'canvas' | 'column' | null>(null);
+  // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
+  const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -90,26 +91,26 @@ function App() {
 
       if (narrow && !wasNarrow) {
         // Entering narrow: stash current layout and force column
-        setLayoutBeforeNarrow(useWorkspaceStore.getState().layoutFormat);
+        layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
         setLayoutFormat('column');
-      } else if (!narrow && wasNarrow && layoutBeforeNarrow) {
+      } else if (!narrow && wasNarrow && layoutBeforeNarrowRef.current) {
         // Leaving narrow: restore original layout
-        setLayoutFormat(layoutBeforeNarrow);
-        setLayoutBeforeNarrow(null);
+        setLayoutFormat(layoutBeforeNarrowRef.current);
+        layoutBeforeNarrowRef.current = null;
       }
     };
 
     window.addEventListener('resize', checkScreenSize);
     checkScreenSize();
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, [setLayoutFormat, isNarrowScreen, layoutBeforeNarrow]);
+  }, [setLayoutFormat, isNarrowScreen]);
 
   // Handler to toggle layout in narrow mode
-  // Also update layoutBeforeNarrow so the user's choice is preserved when exiting narrow mode
+  // Also update layoutBeforeNarrowRef so the user's choice is preserved when exiting narrow mode
   const handleToggleLayoutNarrow = useCallback(() => {
     const newFormat = layoutFormat === 'canvas' ? 'column' : 'canvas';
     setLayoutFormat(newFormat);
-    setLayoutBeforeNarrow(newFormat);
+    layoutBeforeNarrowRef.current = newFormat;
   }, [layoutFormat, setLayoutFormat]);
 
 
