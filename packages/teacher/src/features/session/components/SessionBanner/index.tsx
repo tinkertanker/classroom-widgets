@@ -52,20 +52,30 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
   // Handle reconnection attempt
   const handleReconnect = React.useCallback(() => {
     if (!connected && socket && !socket.connected) {
+      // Clear any existing timeout before creating a new one
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+
       setIsReconnecting(true);
       socket.connect();
 
       // Reset reconnecting state after a timeout
       reconnectTimeoutRef.current = setTimeout(() => {
         setIsReconnecting(false);
+        reconnectTimeoutRef.current = null;
       }, 3000);
     }
   }, [connected, socket]);
 
-  // Reset reconnecting state when connection status changes
+  // Reset reconnecting state and clear timeout when connection status changes
   useEffect(() => {
     if (connected) {
       setIsReconnecting(false);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     }
   }, [connected]);
 
