@@ -28,8 +28,13 @@ export function useVolumeAnalyzer({
   const onThresholdExceededRef = useRef(onThresholdExceeded);
 
   // Keep refs current without forcing callback recreation downstream.
-  isCooldownRef.current = isInCooldown;
-  onThresholdExceededRef.current = onThresholdExceeded;
+  useEffect(() => {
+    isCooldownRef.current = isInCooldown;
+  }, [isInCooldown]);
+
+  useEffect(() => {
+    onThresholdExceededRef.current = onThresholdExceeded;
+  }, [onThresholdExceeded]);
 
   // Reset volume when disabled
   useEffect(() => {

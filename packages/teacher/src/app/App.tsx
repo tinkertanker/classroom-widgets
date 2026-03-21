@@ -7,6 +7,7 @@ import { SocketProvider } from '../contexts/SocketProvider';
 import { SessionProvider } from '../contexts/SessionContext';
 import { useWorkspace, useServerConnection } from '@shared/hooks/useWorkspace';
 import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
+import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '@shared/utils/migration';
 import Board from '../features/board/components';
@@ -29,7 +30,6 @@ import { ConfettiProvider } from '../contexts/ConfettiContext';
 import trashSound from '../sounds/trash-crumple.mp3';
 const trashAudio = new Audio(trashSound);
 
-const STICKER_MODE_CHANGE_EVENT = 'sticker-mode-change';
 
 
 

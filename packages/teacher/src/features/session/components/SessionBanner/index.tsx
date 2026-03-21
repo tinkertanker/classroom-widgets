@@ -31,6 +31,7 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-expand when disconnected to show status
   useEffect(() => {
@@ -39,6 +40,15 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
     }
   }, [connected]);
 
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handle reconnection attempt
   const handleReconnect = React.useCallback(() => {
     if (!connected && socket && !socket.connected) {
@@ -46,7 +56,7 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
       socket.connect();
 
       // Reset reconnecting state after a timeout
-      setTimeout(() => {
+      reconnectTimeoutRef.current = setTimeout(() => {
         setIsReconnecting(false);
       }, 3000);
     }

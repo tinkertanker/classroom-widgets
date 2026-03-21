@@ -19,6 +19,7 @@ import LaunchpadIcon from './LaunchpadIcon';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useHudProximityContext } from '@shared/hooks/useHudProximity';
 import { hudProximity } from '@shared/utils/styles';
+import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 
 // Default recent widgets if none are set
 const defaultRecentWidgets = [
@@ -28,8 +29,6 @@ const defaultRecentWidgets = [
   WidgetType.TASK_CUE,
   WidgetType.TRAFFIC_LIGHT
 ];
-
-const STICKER_MODE_CHANGE_EVENT = 'sticker-mode-change';
 
 const getStickerState = () => {
   const state = (window as any).getStickerState?.();
