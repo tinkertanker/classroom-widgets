@@ -28,9 +28,10 @@ import { MenuItem, MenuDivider, MenuSectionHeader } from '../../../components/ui
 
 interface BottomBarMenuProps {
   onClose: () => void;
+  onToggleLayout?: () => void;
 }
 
-const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
+const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }) => {
   const { setBackground } = useWorkspace();
   const { theme, toggleTheme } = useTheme();
   const { removeAll } = useWidgets();
@@ -46,11 +47,12 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
     updateBottomBar({ voiceControlEnabled: !voiceControlEnabled });
   };
 
-  const isNarrowScreen = typeof window !== 'undefined' && window.innerWidth < 540;
-
   const handleToggleLayout = () => {
-    if (isNarrowScreen) return; // Can't switch to canvas on narrow screens
-    setLayoutFormat(layoutFormat === 'canvas' ? 'column' : 'canvas');
+    if (onToggleLayout) {
+      onToggleLayout();
+    } else {
+      setLayoutFormat(layoutFormat === 'canvas' ? 'column' : 'canvas');
+    }
   };
 
   useEffect(() => {
@@ -118,7 +120,6 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose }) => {
       <MenuItem
         onClick={handleToggleLayout}
         icon={FaTableColumns}
-        className={isNarrowScreen ? 'opacity-60 cursor-not-allowed' : ''}
         rightContent={
           <div
             className={clsx(

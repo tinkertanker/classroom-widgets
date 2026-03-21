@@ -190,6 +190,16 @@ input[type="range"] {
   90% { transform: translate(-2px, -1px) rotate(-1deg); }
 }
 
+/* Narrow mode exit button entrance animation */
+@keyframes slideInFromBottom {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 0.3; transform: translateY(4px); }
+}
+
+.narrow-mode-button-enter {
+  animation: slideInFromBottom 0.3s ease-out forwards;
+}
+
 
 
 
