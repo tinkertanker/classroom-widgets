@@ -79,18 +79,20 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       </div>
       {/* Delete button - appears on hover below widget (outside bounds), always visible on touch devices */}
       <button
+        type="button"
         onClick={handleDeleteClick}
-        tabIndex={showDelete || isTouchDevice ? 0 : -1}
+        tabIndex={0}
+        aria-label="Delete widget"
         className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
                    bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
                    text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
-                   shadow-lg transition-all duration-300 ${
+                   shadow-lg transition-all duration-300 focus:opacity-100 focus-visible:opacity-100 focus:pointer-events-auto focus-visible:pointer-events-auto ${
                      showDelete || isTouchDevice ? 'opacity-100' : 'opacity-0 pointer-events-none'
                    }`}
         style={{ zIndex: 9999 }}
         title="Delete widget"
       >
-        <FaTrash className="w-3 h-3" />
+        <FaTrash className="w-3 h-3" aria-hidden="true" />
       </button>
     </div>
   );
