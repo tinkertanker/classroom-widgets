@@ -27,7 +27,7 @@ import {
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
-import { WidgetType, WidgetConfig, WidgetCategory, Size } from '@shared/types';
+import { WidgetType, WidgetConfig, WidgetCategory, Size, ColumnSizing } from '@shared/types';
 import { WIDGET_TYPES } from '@shared/constants/widgetTypes';
 
 // Preload all widget chunks immediately so they're browser-cached
@@ -120,6 +120,7 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 150 },
       category: WidgetCategory.INTERACTIVE,
       description: 'Random selection with slot machine animation',
+      columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -139,6 +140,7 @@ export class WidgetRegistry {
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Countdown and stopwatch functionality',
+      columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -157,6 +159,8 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 200 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Task list with completion tracking',
+      columnSizing: 'fixed',
+      columnHeight: 400,
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -177,6 +181,7 @@ export class WidgetRegistry {
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Visual work mode indicators',
+      columnSizing: 'content',
       features: {
         isTransparent: true,
         hasSettings: true,
@@ -195,6 +200,7 @@ export class WidgetRegistry {
       minSize: { width: 350, height: 150 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Status indicator lights',
+      columnSizing: 'content',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -214,6 +220,7 @@ export class WidgetRegistry {
       maxSize: { width: 315, height: 210 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Audio level visualization',
+      columnSizing: 'fixed',
       features: {
         hasSettings: true,
         isResizable: false
@@ -231,6 +238,7 @@ export class WidgetRegistry {
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'URL shortening service',
+      columnSizing: 'aspect-ratio',
       features: {
         requiresApiKey: true,
         isResizable: true
@@ -247,6 +255,7 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 80 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Customizable text display',
+      columnSizing: 'content',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -264,6 +273,7 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 200 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Image viewer widget',
+      columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -281,6 +291,7 @@ export class WidgetRegistry {
       minSize: { width: 250, height: 300 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'QR code generator',
+      columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -300,6 +311,7 @@ export class WidgetRegistry {
       minSize: { width: 80, height: 200 },
       category: WidgetCategory.FUN,
       description: 'Sound effect player',
+      columnSizing: 'content',
       features: {
         hasAudioPlayback: true,
         isResizable: true
@@ -334,6 +346,7 @@ export class WidgetRegistry {
       minSize: { width: 300, height: 225 },
       category: WidgetCategory.FUN,
       description: 'Audio frequency visualization',
+      columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
         hasFaceDetection: true,
@@ -352,6 +365,7 @@ export class WidgetRegistry {
       maxSize: { width: 350, height: 350 },
       category: WidgetCategory.FUN,
       description: 'Classic tic-tac-toe game',
+      columnSizing: 'fixed',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -371,6 +385,7 @@ export class WidgetRegistry {
       maxSize: { width: 350, height: 450 },
       category: WidgetCategory.FUN,
       description: 'Classic snake game with arrow key controls',
+      columnSizing: 'fixed',
       features: {
         hasStateManagement: true,
         isResizable: false,
@@ -408,6 +423,7 @@ export class WidgetRegistry {
       maxSize: { width: 600, height: 800 },
       category: WidgetCategory.NETWORKED,
       description: 'Real-time polling with student participation',
+      columnSizing: 'fixed',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -431,6 +447,7 @@ export class WidgetRegistry {
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
       description: 'Collect links or text submissions from students',
+      columnSizing: 'fixed',
       features: {
         hasStateManagement: true,
         isResizable: true
@@ -453,6 +470,7 @@ export class WidgetRegistry {
       minSize: { width: 300, height: 300 },
       category: WidgetCategory.NETWORKED,
       description: 'Real-time feedback slider for student understanding',
+      columnSizing: 'fixed',
       features: {
         hasStateManagement: true,
         isResizable: true
@@ -475,6 +493,7 @@ export class WidgetRegistry {
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
       description: 'Q&A functionality with moderation',
+      columnSizing: 'fixed',
       features: {
         hasStateManagement: true,
         isResizable: true
@@ -497,6 +516,7 @@ export class WidgetRegistry {
       minSize: { width: 350, height: 300 },
       category: WidgetCategory.NETWORKED,
       description: 'Push text or links to students',
+      columnSizing: 'fixed',
       features: {
         hasStateManagement: true,
         isResizable: true
@@ -520,6 +540,7 @@ export class WidgetRegistry {
       maxSize: { width: 600, height: 700 },
       category: WidgetCategory.NETWORKED,
       description: 'Interactive fill-in-the-blank activities',
+      columnSizing: 'fixed',
       features: {
         hasSettings: true,
         hasStateManagement: true,
@@ -544,6 +565,7 @@ export class WidgetRegistry {
       maxSize: { width: 700, height: 800 },
       category: WidgetCategory.NETWORKED,
       description: 'Code completion activities with syntax highlighting',
+      columnSizing: 'fixed',
       features: {
         hasSettings: true,
         hasStateManagement: true,

@@ -95,7 +95,7 @@ const TopControls: React.FC = () => {
 
   return (
     <div className={clsx(
-      'fixed top-4 left-4 right-4 flex items-start justify-between gap-2 pointer-events-none max-[540px]:top-2 max-[540px]:left-2 max-[540px]:right-2 max-[540px]:flex-col',
+      'fixed top-4 left-4 right-4 flex items-start justify-between gap-2 pointer-events-none max-[540px]:top-2 max-[540px]:left-2 max-[540px]:right-2',
       zIndex.hud
     )}>
       {/* Left side - Workspace Switcher + Clock */}
@@ -123,7 +123,7 @@ const TopControls: React.FC = () => {
       <div
         ref={topRightRef}
         className={clsx(
-          'flex flex-wrap items-start justify-end gap-2 max-w-full self-end max-[540px]:self-auto',
+          'flex flex-wrap items-start justify-end gap-2 max-w-full self-end',
           hudProximity.wrapper(isNear.topRight)
         )}
       >

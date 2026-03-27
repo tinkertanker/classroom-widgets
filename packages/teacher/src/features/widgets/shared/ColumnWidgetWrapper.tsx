@@ -2,20 +2,11 @@ import React, { useCallback, memo } from 'react';
 import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
-import { WidgetType } from '@shared/types';
 
 interface ColumnWidgetWrapperProps {
   widgetId: string;
   children: React.ReactNode;
 }
-
-// Widgets that need a fixed height in column layout (e.g. SVG-based content
-// that collapses without an explicit dimension).
-const FIXED_HEIGHT_WIDGETS = new Set([WidgetType.TIMER]);
-
-// Widgets whose height should be driven entirely by their content
-// (no maxHeight constraint from canvas size).
-const CONTENT_HEIGHT_WIDGETS = new Set([WidgetType.TEXT_BANNER, WidgetType.SOUND_EFFECTS]);
 
 const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children }) => {
   const { widget } = useWidget(widgetId);
@@ -30,12 +21,23 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
     setFocusedWidget(widgetId);
   }, [widgetId, setFocusedWidget]);
 
-  // Determine height strategy per widget type
+  // Height strategy is driven by the widget's columnSizing declaration
+  const columnSizing = config.columnSizing ?? 'fixed';
   const style: React.CSSProperties = {};
-  if (FIXED_HEIGHT_WIDGETS.has(widget.type)) {
-    style.height = widget.size.height;
-  } else if (!CONTENT_HEIGHT_WIDGETS.has(widget.type)) {
-    style.maxHeight = widget.size.height;
+
+  switch (columnSizing) {
+    case 'aspect-ratio': {
+      const { width, height } = config.defaultSize;
+      style.aspectRatio = `${width} / ${height}`;
+      break;
+    }
+    case 'content':
+      // No height constraints — content drives height
+      break;
+    case 'fixed': {
+      style.height = config.columnHeight ?? config.defaultSize.height;
+      break;
+    }
   }
 
   return (

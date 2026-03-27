@@ -161,6 +161,7 @@ input[type="range"] {
 .column-widget-item {
   box-sizing: border-box;
   max-width: 100%;
+  contain: inline-size;
 }
 
 @media (min-width: 540px) {
