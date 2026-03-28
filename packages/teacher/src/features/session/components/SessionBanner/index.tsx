@@ -97,7 +97,7 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
           "transition-all duration-500 ease-out cursor-pointer",
           !connected ? "animate-pulse" : "hover:scale-105",
           // On wide screens, expand inline as before
-          isExpanded ? "max-[540px]:h-10 max-[540px]:px-2 max-[540px]:rounded-lg sm:px-4 sm:py-2 sm:rounded-full" : "h-10 px-2 sm:px-3 rounded-lg",
+          isExpanded ? "max-[540px]:h-10 max-[540px]:px-2 max-[540px]:rounded-lg min-[540px]:px-4 min-[540px]:py-2 min-[540px]:rounded-full" : "h-10 px-2 min-[540px]:px-3 rounded-lg",
           "relative",
           zIndex.hud
         )}
@@ -120,24 +120,24 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
           <div className={clsx(
             "items-center gap-2 min-w-0 transition-all duration-500",
             "max-[540px]:hidden",
-            isExpanded ? "flex max-w-[1200px] opacity-100 ml-2 sm:ml-3" : "hidden max-w-0 opacity-0 overflow-hidden"
+            isExpanded ? "flex max-w-[1200px] opacity-100 ml-2 min-[540px]:ml-3" : "hidden max-w-0 opacity-0 overflow-hidden"
           )}>
-            <code className="text-2xl sm:text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
+            <code className="text-2xl min-[540px]:text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
               {sessionCode}
             </code>
-            <div className="w-px h-6 sm:h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
-            <span className="text-sm sm:text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px] sm:max-w-[420px]">
+            <div className="w-px h-6 min-[540px]:h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
+            <span className="text-sm min-[540px]:text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px] min-[540px]:max-w-[420px]">
               {displayUrl?.replace(/^https?:\/\//, '')}
             </span>
             {connected && (
               <>
-                <div className="w-px h-3 sm:h-4 bg-warm-gray-300 dark:bg-warm-gray-600" />
+                <div className="w-px h-3 min-[540px]:h-4 bg-warm-gray-300 dark:bg-warm-gray-600" />
                 <button
                   onClick={handleCloseSession}
                   className="text-dusty-rose-600 dark:text-dusty-rose-400 hover:text-dusty-rose-700 dark:hover:text-dusty-rose-300 transition-colors p-1 rounded hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20"
                   title="Close session"
                 >
-                  <FaXmark className="text-xs sm:text-sm" />
+                  <FaXmark className="text-xs min-[540px]:text-sm" />
                 </button>
               </>
             )}

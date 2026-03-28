@@ -220,7 +220,7 @@ const BottomBar: React.FC = () => {
       <div
         ref={bottomRef}
         className={clsx(
-          "toolbar-content inline-flex flex-col space-y-4 px-2 sm:px-4 pt-3 sm:pt-4 pb-2 max-w-full",
+          "toolbar-content inline-flex flex-col space-y-4 px-2 min-[540px]:px-4 pt-3 min-[540px]:pt-4 pb-2 max-w-full",
           hudProximity.peekWrapper(isNear.bottom)
         )}
       >
@@ -229,7 +229,7 @@ const BottomBar: React.FC = () => {
           {/* Left section */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Trash icon (hidden on narrow screens) */}
-            <div className="max-[539px]:hidden">
+            <div className="max-[540px]:hidden">
               <TrashZone />
             </div>
 
@@ -263,7 +263,7 @@ const BottomBar: React.FC = () => {
           </button>
 
             {/* Separator */}
-            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[539px]:hidden" />
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[540px]:hidden" />
           </div>
 
           {/* Middle section - recent widget buttons */}
@@ -283,7 +283,7 @@ const BottomBar: React.FC = () => {
 
           {/* Right section */}
           <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
-            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[539px]:hidden" />
+            <div className="w-px h-8 bg-warm-gray-300 dark:bg-warm-gray-600 max-[540px]:hidden" />
 
             {/* Stickers button (hidden on narrow screens) */}
           <button
@@ -291,7 +291,7 @@ const BottomBar: React.FC = () => {
             className={clsx(
               'w-16 h-16 rounded-lg transition-all duration-200 group',
               'flex flex-col items-center justify-center gap-1',
-              'max-[539px]:hidden',
+              'max-[540px]:hidden',
               stickerMode
                 ? 'bg-terracotta-500 text-white hover:bg-terracotta-600'
                 : 'text-warm-gray-700 bg-white/50 dark:bg-warm-gray-700/50 dark:text-warm-gray-300 hover:bg-white/70 dark:hover:bg-warm-gray-600/70'

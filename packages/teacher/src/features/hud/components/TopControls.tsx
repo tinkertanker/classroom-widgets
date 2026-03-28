@@ -171,7 +171,7 @@ const TopControls: React.FC = () => {
         )}
 
         {/* Fullscreen Button (hidden on narrow single-column screens) */}
-        <div className="max-[539px]:hidden">
+        <div className="max-[540px]:hidden">
           <HudButton
             onClick={handleFullscreen}
             icon={isFullscreen ? FaCompress : FaExpand}

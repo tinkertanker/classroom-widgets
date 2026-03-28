@@ -21,6 +21,7 @@ export default {
         'terracotta': brandColors.terracotta,
         'dusty-rose': brandColors.dustyRose,
         'sky': brandColors.sky,
+        'slate-blue': brandColors.slateBlue,
         'amber': brandColors.amber,
       }
     },
