@@ -34,13 +34,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Update isActive when prop changes
-  useEffect(() => {
-    if (initialIsActive !== undefined) {
-      setIsActive(initialIsActive);
-    }
-  }, [initialIsActive]);
-
   // Listen for widget state changes using shared hook
   useWidgetStateChange({
     socket,
@@ -174,7 +167,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
         // Waiting state when teacher has stopped accepting questions
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 dark:text-warm-gray-400 mb-2">
               Questions Paused
             </h2>
             <p className="text-warm-gray-500 text-sm">

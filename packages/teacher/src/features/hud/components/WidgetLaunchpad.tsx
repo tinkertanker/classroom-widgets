@@ -21,7 +21,6 @@ const categoryTitles: Record<WidgetCategory, string> = {
 const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidget }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory | null>(null);
-  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const widgetRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const { connected: serverConnected } = useServerConnection();
@@ -72,15 +71,8 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
       return true;
     });
   }, [searchQuery, selectedCategory]);
-  
-  // Highlight single widget without focusing
-  useEffect(() => {
-    if (filteredWidgets.length === 1) {
-      setHighlightedIndex(0);
-    } else {
-      setHighlightedIndex(-1);
-    }
-  }, [filteredWidgets]);
+
+  const highlightedIndex = filteredWidgets.length === 1 ? 0 : -1;
   
   // Group widgets by category
   const widgetsByCategory = useMemo(() => {

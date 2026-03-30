@@ -94,10 +94,7 @@ const Clock: React.FC = () => {
     return 'text-warm-gray-600 dark:text-warm-gray-300';
   };
 
-  // Initialize picker with current end time when dropdown opens
-  useEffect(() => {
-    if (!isDropdownOpen) return;
-
+  const openDropdown = () => {
     if (endTime) {
       const hours = endTime.getHours();
       setSelectedHour(hours % 12 || 12);
@@ -113,8 +110,9 @@ const Clock: React.FC = () => {
       setSelectedMinute(0);
       setSelectedPeriod(hours >= 12 ? 'PM' : 'AM');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDropdownOpen]); // Only run when dropdown opens, not on every time tick
+
+    setIsDropdownOpen(true);
+  };
 
   // Set end time from picker
   const handleSetTime = () => {
@@ -204,7 +202,14 @@ const Clock: React.FC = () => {
     <div ref={dropdownRef} className="relative">
       {/* Clock Display - Clickable */}
       <button
-        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+        onClick={() => {
+          if (isDropdownOpen) {
+            setIsDropdownOpen(false);
+            return;
+          }
+
+          openDropdown();
+        }}
         className={clsx(
           'flex items-center gap-2 font-mono tabular-nums transition-colors duration-300',
           colorClass

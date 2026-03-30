@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 // @ts-ignore
 import {
   FaTrophy,        // Victory
@@ -39,7 +39,7 @@ interface SoundEffectsProps {
 }
 
 const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
-  const [audioElements, setAudioElements] = useState<Map<string, HTMLAudioElement>>(new Map());
+  const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
   // Memoize sound effect definitions to prevent recreation on every render
   const soundButtons: SoundButton[] = useMemo(() => [
@@ -55,37 +55,39 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
     { name: 'Applause', icon: FaHandsClapping, color: 'bg-sage-500 hover:bg-sage-600', soundFile: applauseSoundFile },
   ], []);
 
-  // Initialize audio elements when sound files are available
+  const soundFilesByName = useMemo(
+    () => new Map(soundButtons.map(({ name, soundFile }) => [name, soundFile])),
+    [soundButtons]
+  );
+
+  // Release any created audio elements when the widget unmounts
   useEffect(() => {
-    const audioMap = new Map<string, HTMLAudioElement>();
-    
-    soundButtons.forEach(button => {
-      if (button.soundFile) {
-        const audio = new Audio(button.soundFile);
-        audio.preload = 'auto';
-        audioMap.set(button.name, audio);
-      }
-    });
-
-    setAudioElements(audioMap);
-
-    // Cleanup
     return () => {
-      audioMap.forEach(audio => {
+      audioElementsRef.current.forEach(audio => {
         audio.pause();
         audio.src = '';
       });
+      audioElementsRef.current.clear();
     };
-  }, [soundButtons]);
+  }, []);
 
-  // Memoize playSound function to prevent recreation on every render
   const playSound = useCallback((soundName: string) => {
-    // Play the sound if available
-    const audio = audioElements.get(soundName);
+    let audio = audioElementsRef.current.get(soundName);
+
+    if (!audio) {
+      const soundFile = soundFilesByName.get(soundName);
+
+      if (soundFile) {
+        audio = new Audio(soundFile);
+        audio.preload = 'auto';
+        audioElementsRef.current.set(soundName, audio);
+      }
+    }
+
     if (audio) {
       // Reset and play
       audio.currentTime = 0;
-      audio.play().catch(error => {
+      audio.play().catch(() => {
         // Error playing sound - silently fail
       });
     }
@@ -98,7 +100,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
         button.classList.remove('scale-95');
       }, 100);
     }
-  }, [audioElements]);
+  }, [soundFilesByName]);
 
   // Keyboard shortcuts (1-9 for first 9 sounds, 0 for 10th sound)
   useEffect(() => {

@@ -52,6 +52,9 @@ export enum WidgetType {
   CODE_FILL_BLANK = 25
 }
 
+// Column layout sizing strategy
+export type ColumnSizing = 'aspect-ratio' | 'content' | 'fixed';
+
 // Widget Configuration
 export interface WidgetConfig {
   type: WidgetType;
@@ -66,6 +69,10 @@ export interface WidgetConfig {
   features?: WidgetFeatures;
   networked?: NetworkedWidgetConfig;
   description?: string;
+  /** How the widget is sized in column layout. Defaults to 'fixed'. */
+  columnSizing?: ColumnSizing;
+  /** Override height for 'fixed' column sizing (defaults to defaultSize.height). */
+  columnHeight?: number;
 }
 
 // Widget Features

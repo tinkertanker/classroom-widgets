@@ -69,6 +69,24 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   return (
     <div
       className="column-widget-item relative break-inside-avoid mb-12"
+  // Height strategy is driven by the widget's columnSizing declaration
+  const columnSizing = config.columnSizing ?? 'fixed';
+  const style: React.CSSProperties = {};
+
+  switch (columnSizing) {
+    case 'aspect-ratio': {
+      const { width, height } = config.defaultSize;
+      style.aspectRatio = `${width} / ${height}`;
+      break;
+    }
+    case 'content':
+      // No height constraints — content drives height
+      break;
+    case 'fixed': {
+      style.height = config.columnHeight ?? config.defaultSize.height;
+      break;
+    }
+  }
       onClick={handleWidgetClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

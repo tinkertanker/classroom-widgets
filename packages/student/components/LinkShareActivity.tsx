@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
@@ -77,16 +77,6 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   const [submissionCount, setSubmissionCount] = useState(0);
   const [isActive, setIsActive] = useState(initialIsActive);
   const [acceptMode, setAcceptMode] = useState<'links' | 'all'>(initialAcceptMode);
-
-  // Update isActive when prop changes
-  useEffect(() => {
-    setIsActive(initialIsActive);
-  }, [initialIsActive]);
-
-  // Update acceptMode when prop changes
-  useEffect(() => {
-    setAcceptMode(initialAcceptMode);
-  }, [initialAcceptMode]);
 
   // Listen for room state changes using shared hook
   useWidgetStateChange({
@@ -183,7 +173,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
         // Inactive state
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 dark:text-warm-gray-400 mb-2">
               Drop Box Paused
             </h2>
             <p className="text-warm-gray-500 text-sm">

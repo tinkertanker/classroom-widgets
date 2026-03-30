@@ -19,10 +19,6 @@ export const NetworkedWidgetHeader: React.FC<NetworkedWidgetHeaderProps> = ({
   children,
   icon: Icon
 }) => {
-  // Get the server URL and format it for student access
-  const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
-  const studentUrl = serverUrl;
-
   return (
     <div className="mb-1">
       <div className="flex justify-between items-center mb-1">
