@@ -11,67 +11,83 @@ interface SessionBannerProps {
   className?: string;
 }
 
-const SessionBanner: React.FC<SessionBannerProps> = ({
-  className = ''
-}) => {
-  const session = useSession();
-  const { sessionCode, isConnected: connected, closeSession: onClose, serverUrl, studentAppUrl } = session;
+interface ActiveSessionBannerProps {
+  className: string;
+  connected: boolean;
+  displayUrl?: string;
+  onClose: () => void;
+  sessionCode: string;
+  socket: ReturnType<typeof useSession>['socket'];
+}
 
-  // Use studentAppUrl if available (provided by server), fall back to serverUrl
-  const displayUrl = studentAppUrl || serverUrl;
-  const [isExpanded, setIsExpanded] = useState(false);
+const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
+  className,
+  connected,
+  displayUrl,
+  onClose,
+  sessionCode,
+  socket
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
-
-  // Auto-expand when session starts or when disconnected
-  useEffect(() => {
-    if (sessionCode && !isExpanded) {
-      setIsExpanded(true);
-    } else if (!sessionCode) {
-      setIsExpanded(false);
-    }
-  }, [sessionCode]);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-expand when disconnected to show status
   useEffect(() => {
-    if (!connected && sessionCode) {
+    if (!connected) {
       setIsExpanded(true);
     }
-  }, [connected, sessionCode]);
+  }, [connected]);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle reconnection attempt
   const handleReconnect = React.useCallback(() => {
-    if (!connected && sessionCode) {
-      if (session.socket && !session.socket.connected) {
-        setIsReconnecting(true);
-        session.socket.connect();
-
-        // Reset reconnecting state after a timeout
-        setTimeout(() => {
-          setIsReconnecting(false);
-        }, 3000);
+    if (!connected && socket && !socket.connected) {
+      // Clear any existing timeout before creating a new one
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
       }
-    }
-  }, [connected, sessionCode, session.socket]);
 
-  // Reset reconnecting state when connection status changes
+      setIsReconnecting(true);
+      socket.connect();
+
+      // Reset reconnecting state after a timeout
+      reconnectTimeoutRef.current = setTimeout(() => {
+        setIsReconnecting(false);
+        reconnectTimeoutRef.current = null;
+      }, 3000);
+    }
+  }, [connected, socket]);
+
+  // Reset reconnecting state and clear timeout when connection status changes
   useEffect(() => {
     if (connected) {
       setIsReconnecting(false);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     }
   }, [connected]);
 
   const handleCloseSession = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to close this session? All students will be disconnected.')) {
-      if (session.socket && sessionCode) {
-        session.socket.emit('session:close', { sessionCode });
+      if (socket) {
+        socket.emit('session:close', { sessionCode });
       }
       onClose();
     }
   };
-
-  if (!sessionCode) return null;
 
   // Use consistent styling with other HUD elements
   // Base: bg-soft-white/80, backdrop-blur-sm, shadow-md
@@ -183,6 +199,29 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
         </div>
       )}
     </div>
+  );
+};
+
+const SessionBanner: React.FC<SessionBannerProps> = ({
+  className = ''
+}) => {
+  const session = useSession();
+  const { sessionCode, isConnected: connected, closeSession: onClose, serverUrl, studentAppUrl } = session;
+
+  // Use studentAppUrl if available (provided by server), fall back to serverUrl
+  const displayUrl = studentAppUrl || serverUrl;
+  if (!sessionCode) return null;
+
+  return (
+    <ActiveSessionBanner
+      key={sessionCode}
+      className={className}
+      connected={connected}
+      displayUrl={displayUrl}
+      onClose={onClose}
+      sessionCode={sessionCode}
+      socket={session.socket}
+    />
   );
 };
 

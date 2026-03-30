@@ -34,13 +34,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Update isActive when prop changes
-  useEffect(() => {
-    if (initialIsActive !== undefined) {
-      setIsActive(initialIsActive);
-    }
-  }, [initialIsActive]);
-
   // Listen for widget state changes using shared hook
   useWidgetStateChange({
     socket,

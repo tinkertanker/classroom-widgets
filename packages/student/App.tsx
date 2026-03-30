@@ -470,7 +470,7 @@ const App: React.FC = () => {
           onJoin={handleJoin}
           onLeaveSession={handleLeaveSession}
           currentSessionCode={currentSessionCode}
-          defaultName={studentName}
+          name={studentName}
           onNameChange={setStudentName}
           isDarkMode={isDarkMode}
           onToggleDarkMode={toggleDarkMode}

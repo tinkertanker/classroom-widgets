@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaSun, FaMoon, FaTriangleExclamation } from 'react-icons/fa6';
 import { isValidSessionCode, sanitizeStudentName } from '@shared/utils/validation';
 
@@ -6,8 +6,8 @@ interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
   onLeaveSession?: () => void;
   currentSessionCode?: string;
-  defaultName?: string;
-  onNameChange?: (name: string) => void;
+  name: string;
+  onNameChange: (name: string) => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
   isCompact?: boolean;
@@ -15,16 +15,10 @@ interface JoinFormProps {
   isRecovering?: boolean;
 }
 
-const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSessionCode, defaultName = '', onNameChange, isDarkMode, onToggleDarkMode, isCompact = false, isConnected = false, isRecovering = false }) => {
+const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSessionCode, name, onNameChange, isDarkMode, onToggleDarkMode, isCompact = false, isConnected = false, isRecovering = false }) => {
   const [code, setCode] = useState('');
-  const [name, setName] = useState(defaultName);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Update local name when defaultName changes
-  useEffect(() => {
-    setName(defaultName);
-  }, [defaultName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +44,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
       return;
     }
 
-    // Name is now optional, use default if empty
+    // Name is optional, sanitise whatever is currently in the controlled field
     const finalName = sanitizeStudentName(name);
 
     setIsLoading(true);
@@ -58,10 +52,8 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
       await onJoin(code, finalName);
       // Clear the code field on success but keep the name
       setCode('');
-      // Update parent's name state
-      if (onNameChange) {
-        onNameChange(finalName);
-      }
+      // Keep the controlled value in sync with the sanitised submission
+      onNameChange(finalName);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection error');
     } finally {
@@ -89,11 +81,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setName(value);
-    // Update parent immediately
-    if (onNameChange) {
-      onNameChange(value);
-    }
+    onNameChange(value);
     // Clear error when user starts typing
     if (error) setError('');
   };

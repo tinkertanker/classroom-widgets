@@ -13,7 +13,7 @@ import {
 interface StickerPaletteProps {
   selectedStickerType: string;
   setSelectedStickerType: (type: string) => void;
-  setStickerMode: (mode: boolean) => void;
+  setStickerMode: (mode: boolean, type?: string) => void;
   stickerMode: boolean;
   onClose?: () => void;
 }
@@ -52,9 +52,7 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
             key={type}
             onClick={() => {
               setSelectedStickerType(type);
-              setStickerMode(true);
-              // Also set the global sticker mode with the type
-              (window as any).setStickerMode?.(true, type);
+              setStickerMode(true, type);
               if (onClose) onClose();
             }}
             className={`group relative flex items-center justify-center p-4 rounded-xl transition-all duration-300 transform hover:scale-110 ${
