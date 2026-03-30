@@ -20,6 +20,9 @@ Object.defineProperty(globalThis, 'localStorage', {
 
 vi.mock('./timer-end-2.wav', () => ({ default: 'timer-end-2.wav' }));
 vi.mock('./timer-end-3.mp3', () => ({ default: 'timer-end-3.mp3' }));
+vi.mock('./components/HamsterAnimation', () => ({
+  HamsterAnimation: () => null
+}));
 
 global.HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve());
 global.HTMLMediaElement.prototype.pause = vi.fn();
@@ -248,6 +251,26 @@ describe('Timer Widget', () => {
 
     expect(getByExactText('00:05:10')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+  });
+
+  test('does not persist timer state on every countdown tick while running', () => {
+    const onStateChange = vi.fn();
+
+    renderWithModal(<Timer onStateChange={onStateChange} />);
+
+    onStateChange.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+    expect(onStateChange).toHaveBeenCalledTimes(1);
+
+    onStateChange.mockClear();
+
+    act(() => {
+      vi.advanceTimersByTime(3200);
+    });
+
+    expect(onStateChange).not.toHaveBeenCalled();
   });
 
   test('hides quick-add controls after the timer finishes and still plays audio', () => {

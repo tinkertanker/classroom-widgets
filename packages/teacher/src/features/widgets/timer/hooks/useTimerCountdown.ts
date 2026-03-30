@@ -52,10 +52,11 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   const [isRunning, setIsRunning] = useState(restored?.isRunning ?? false);
   const [isPaused, setIsPaused] = useState(restored?.isPaused ?? false);
   const [timerFinished, setTimerFinished] = useState(restored?.timerFinished ?? false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(restored?.isRunning ? Date.now() : null);
   const pausedTimeRef = useRef<number>(restored?.time ?? 0);
   const originalTimeRef = useRef<number>(restored?.originalTime ?? 10);
+  const [scheduleVersion, setScheduleVersion] = useState(0);
   // Track the absolute end time for persistence
   const endTimeRef = useRef<number | null>(
     restored?.isRunning && restored.time > 0 ? Date.now() + restored.time * 1000 : null
@@ -90,44 +91,51 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     // Only on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // Handle countdown tick using timestamp-based timing
-  useEffect(() => {
-    if (isRunning && startTimeRef.current !== null) {
-      intervalRef.current = setInterval(() => {
-        const now = Date.now();
-        const elapsed = Math.floor((now - startTimeRef.current!) / 1000);
-        const newTime = Math.max(0, pausedTimeRef.current - elapsed);
 
-        setTime(newTime);
+  const clearScheduledTick = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
 
-        if (newTime <= 0) {
-          setIsRunning(false);
-          setTimerFinished(true);
-          endTimeRef.current = null;
-          onTimeUpRef.current?.();
-          onTickRef.current?.(0);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-          }
-        } else {
-          onTickRef.current?.(newTime);
-        }
-      }, 100); // Check every 100ms for smoother updates
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+  const tick = useCallback(() => {
+    const endTime = endTimeRef.current;
+    if (endTime === null) {
+      return;
     }
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isRunning]); // Only depend on isRunning
+    const now = Date.now();
+    const newTime = Math.max(0, Math.ceil((endTime - now) / 1000));
+
+    setTime((currentTime) => (currentTime === newTime ? currentTime : newTime));
+
+    if (newTime <= 0) {
+      clearScheduledTick();
+      setIsRunning(false);
+      setTimerFinished(true);
+      endTimeRef.current = null;
+      onTimeUpRef.current?.();
+      onTickRef.current?.(0);
+      return;
+    }
+
+    onTickRef.current?.(newTime);
+
+    const msUntilNextSecond = Math.max(16, endTime - now - (newTime - 1) * 1000);
+    timeoutRef.current = setTimeout(tick, msUntilNextSecond);
+  }, [clearScheduledTick]);
+
+  // Handle countdown tick only when the visible second changes.
+  useEffect(() => {
+    clearScheduledTick();
+
+    if (isRunning && endTimeRef.current !== null) {
+      tick();
+    }
+
+    return clearScheduledTick;
+  }, [clearScheduledTick, isRunning, scheduleVersion, tick]);
 
   const startTimer = useCallback((totalSeconds: number, updateOriginal: boolean = true) => {
     setInitialTime(totalSeconds);
@@ -138,6 +146,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     startTimeRef.current = Date.now();
     pausedTimeRef.current = totalSeconds;
     endTimeRef.current = Date.now() + totalSeconds * 1000;
+    setScheduleVersion((version) => version + 1);
     // Only update the original time on the very first start, not on resume with edits
     if (updateOriginal) {
       originalTimeRef.current = totalSeconds;
@@ -145,13 +154,14 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   }, []);
 
   const pauseTimer = useCallback(() => {
+    clearScheduledTick();
     setIsRunning(false);
     setIsPaused(true);
     // Store the current time when pausing
     pausedTimeRef.current = time;
     startTimeRef.current = null;
     endTimeRef.current = null;
-  }, [time]);
+  }, [clearScheduledTick, time]);
 
   const resumeTimer = useCallback(() => {
     if (time > 0) {
@@ -161,6 +171,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
       startTimeRef.current = Date.now();
       pausedTimeRef.current = time;
       endTimeRef.current = Date.now() + time * 1000;
+      setScheduleVersion((version) => version + 1);
     }
   }, [time]);
 
@@ -178,6 +189,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   }, []);
 
   const resetTimer = useCallback((newInitialTime: number) => {
+    clearScheduledTick();
     setInitialTime(newInitialTime);
     setTime(newInitialTime);
     setIsRunning(false);
@@ -187,7 +199,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     pausedTimeRef.current = newInitialTime;
     originalTimeRef.current = newInitialTime;
     endTimeRef.current = null;
-  }, []);
+  }, [clearScheduledTick]);
 
   const adjustTime = useCallback((deltaSeconds: number) => {
     const safeDelta = Math.max(0, Math.floor(deltaSeconds));
@@ -205,6 +217,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
       setTime(nextTime);
       setInitialTime(prev => prev + safeDelta);
+      setScheduleVersion((version) => version + 1);
       onTickRef.current?.(nextTime);
       return;
     }
@@ -230,8 +243,8 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     originalTime: originalTimeRef.current,
     isRunning,
     isPaused,
-    pausedTimeRemaining: isPaused ? time : pausedTimeRef.current,
-  }), [initialTime, isRunning, isPaused, time]);
+    pausedTimeRemaining: pausedTimeRef.current,
+  }), [initialTime, isRunning, isPaused]);
 
   return {
     time,
