@@ -60,15 +60,16 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   }, []);
 
   const handleMouseLeave = useCallback(() => {
+    // Clear any existing timeout before creating a new one
+    if (hideDeleteTimeoutRef.current) {
+      clearTimeout(hideDeleteTimeoutRef.current);
+    }
     // Delay hiding the delete button
     hideDeleteTimeoutRef.current = setTimeout(() => {
       setShowDelete(false);
     }, 1000);
   }, []);
 
-  return (
-    <div
-      className="column-widget-item relative break-inside-avoid mb-12"
   // Height strategy is driven by the widget's columnSizing declaration
   const columnSizing = config.columnSizing ?? 'fixed';
   const style: React.CSSProperties = {};
@@ -87,10 +88,16 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       break;
     }
   }
+
+  const isDeleteVisible = showDelete || isTouchDevice;
+
+  return (
+    <div
+      className="column-widget-item relative break-inside-avoid mb-12"
       onClick={handleWidgetClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{ height: widget.size.height }}
+      style={style}
     >
       <div className="widget-wrapper w-full h-full">
         {children}
@@ -99,13 +106,13 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       <button
         type="button"
         onClick={handleDeleteClick}
-        tabIndex={0}
+        tabIndex={isDeleteVisible ? 0 : -1}
         aria-label="Delete widget"
         className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
                    bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
                    text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
-                   shadow-lg transition-all duration-300 focus:opacity-100 focus-visible:opacity-100 focus:pointer-events-auto focus-visible:pointer-events-auto ${
-                     showDelete || isTouchDevice ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                   shadow-lg transition-all duration-300 ${
+                     isDeleteVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
                    }`}
         style={{ zIndex: 9999 }}
         title="Delete widget"
