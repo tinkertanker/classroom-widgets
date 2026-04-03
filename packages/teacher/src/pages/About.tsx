@@ -1,5 +1,6 @@
 import React from 'react';
-import { FaChartColumn, FaQuestion, FaMusic, FaClock, FaComments, FaDice, FaArrowRight, FaChalkboardUser, FaUsers, FaRocket, FaCheck, FaTriangleExclamation, FaFaceSadTear, FaLightbulb, FaLock, FaShieldHalved } from 'react-icons/fa6';
+import { Helmet } from 'react-helmet-async';
+import { FaChartColumn, FaQuestion, FaMusic, FaClock, FaComments, FaDice, FaArrowRight, FaChalkboardUser, FaUsers, FaRocket, FaCheck, FaTriangleExclamation, FaFaceSadTear, FaLightbulb, FaLock, FaShieldHalved, FaTableColumns, FaStar } from 'react-icons/fa6';
 import { CustomStickerIcons } from '../features/widgets/sticker/CustomStickerIcons';
 import { FloatingWidgets } from './components/FloatingWidgets';
 
@@ -57,6 +58,14 @@ const About: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-soft-white dark:bg-warm-gray-900 overflow-hidden relative">
+      <Helmet>
+        <title>About — Classroom Widgets, Free Teacher Tools</title>
+        <meta name="description" content="Learn about Classroom Widgets — free, no-login tools for teachers. Timers, live polls, Q&A, randomisers, real-time feedback and more. Built by Tinkercademy." />
+        <meta property="og:url" content="https://widgets.tk.sg/about" />
+        <meta property="og:title" content="About — Classroom Widgets, Free Teacher Tools" />
+        <meta property="og:description" content="Learn about Classroom Widgets — free, no-login tools for teachers. Timers, live polls, Q&A, randomisers, real-time feedback and more. Built by Tinkercademy." />
+        <link rel="canonical" href="https://widgets.tk.sg/about" />
+      </Helmet>
       {/* Floating Widgets */}
       <FloatingWidgets />
       {/* Navigation */}
@@ -185,6 +194,85 @@ const About: React.FC = () => {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Widget Docs */}
+      <section className="py-20 px-4 bg-warm-gray-50 dark:bg-warm-gray-800">
+        <div className="max-w-7xl mx-auto">
+          <h3 className="text-3xl font-bold text-center text-warm-gray-900 dark:text-warm-gray-100 mb-4">
+            Meet the Widgets
+          </h3>
+          <p className="text-center text-warm-gray-500 dark:text-warm-gray-400 mb-12 max-w-2xl mx-auto">
+            Student interaction widgets let your class join from any device with a 5-character code. No app download, no account.
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[
+              { title: 'Live Poll', href: '/widgets/poll', description: 'Instant votes, live results.', color: 'bg-terracotta-500' },
+              { title: 'Q&A', href: '/widgets/questions', description: 'Anonymous student questions.', color: 'bg-sage-500' },
+              { title: 'RT Feedback', href: '/widgets/feedback', description: 'Live difficulty gauge.', color: 'bg-dusty-rose-500' },
+              { title: 'Handout', href: '/widgets/handout', description: 'Push links to devices instantly.', color: 'bg-terracotta-400' },
+            ].map((w) => (
+              <a
+                key={w.href}
+                href={w.href}
+                className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-warm-gray-100 dark:border-warm-gray-600 group"
+              >
+                <div className={`w-10 h-10 ${w.color} rounded-lg mb-4`} />
+                <h4 className="font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1 group-hover:text-sage-600 dark:group-hover:text-sage-400 flex items-center gap-2">
+                  {w.title} <FaArrowRight className="text-xs opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h4>
+                <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">{w.description}</p>
+              </a>
+            ))}
+          </div>
+          <div className="text-center">
+            <a href="/widgets" className="inline-flex items-center gap-2 text-sage-600 dark:text-sage-400 hover:text-sage-700 font-medium transition-colors">
+              See all widgets <FaArrowRight className="text-sm" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* What's New */}
+      <section className="py-20 px-4 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto relative z-20">
+          <h3 className="text-3xl font-bold text-center text-warm-gray-900 dark:text-warm-gray-100 mb-4">
+            What's New
+          </h3>
+          <p className="text-center text-warm-gray-500 dark:text-warm-gray-400 mb-12">
+            Fresh off the vibe-coding assembly line
+          </p>
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md border border-warm-gray-100 dark:border-warm-gray-600 flex gap-4">
+              <FaTableColumns className="text-2xl text-sage-500 shrink-0 mt-1" />
+              <div>
+                <h4 className="text-lg font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1">Column Layout</h4>
+                <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">A cleaner alternative to the freeform canvas — widgets stack in tidy columns. Great for when you want things to look like you planned ahead.</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md border border-warm-gray-100 dark:border-warm-gray-600 flex gap-4">
+              <FaClock className="text-2xl text-terracotta-500 shrink-0 mt-1" />
+              <div>
+                <h4 className="text-lg font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1">Timer Upgrades</h4>
+                <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">Quick-add buttons (+1m, +2m, +5m), a target-time tray to count down to a specific clock time, and state that survives page reloads. Your students can no longer gaslight you about how much time is left.</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md border border-warm-gray-100 dark:border-warm-gray-600 flex gap-4">
+              <FaMusic className="text-2xl text-dusty-rose-500 shrink-0 mt-1" />
+              <div>
+                <h4 className="text-lg font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1">Sound Effects Grid</h4>
+                <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">The sound effects widget now has a responsive grid layout so your button to play the sad trombone is always within reach.</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-warm-gray-700 p-6 rounded-lg shadow-md border border-warm-gray-100 dark:border-warm-gray-600 flex gap-4">
+              <FaStar className="text-2xl text-sage-500 shrink-0 mt-1" />
+              <div>
+                <h4 className="text-lg font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-1">Narrow Screen Support</h4>
+                <p className="text-warm-gray-600 dark:text-warm-gray-400 text-sm">The app now works better on smaller screens and narrow windows. Because not everyone has a widescreen monitor the size of a dining table.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -90,6 +90,20 @@ module.exports = {
           900: '#0c4a6e',
         },
         
+        // Slate blue (for handout widget)
+        'slate-blue': {
+          50: '#f5f7fd',
+          100: '#e6eaf7',
+          200: '#ccd4ee',
+          300: '#a3b1de',
+          400: '#7a8ecb',
+          500: '#5a6fb8',
+          600: '#4759a0',
+          700: '#3a4882',
+          800: '#303a66',
+          900: '#272f52',
+        },
+
         // Amber
         'amber': {
           50: '#fffbeb',

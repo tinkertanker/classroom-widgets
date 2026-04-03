@@ -48,6 +48,7 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
 
   return (
     <button
+      type="button"
       onClick={onToggleLayout}
       className={clsx(
         `fixed bottom-2 right-2 ${zIndex.hud} px-2 py-1.5 h-auto`,
@@ -55,12 +56,8 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
         "bg-soft-white/80 dark:bg-warm-gray-800/80 rounded-lg shadow-md backdrop-blur-sm",
         "border border-warm-gray-300/50 dark:border-warm-gray-600/50",
         "hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700",
-        // Match BottomBar's peekWrapper exactly
         "transition-all duration-300 ease-in-out pointer-events-auto",
-        "opacity-30 translate-y-7",
-        "hover:opacity-100 hover:translate-y-0",
-        "focus-visible:opacity-100 focus-visible:translate-y-0",
-        "active:opacity-100 active:translate-y-0"
+        "opacity-100 translate-y-0"
       )}
       title={title}
     >

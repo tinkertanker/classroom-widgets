@@ -31,16 +31,6 @@ const HandoutActivity: React.FC<HandoutActivityProps> = ({
   const [isActive, setIsActive] = useState(initialIsActive);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // Update isActive when prop changes
-  useEffect(() => {
-    setIsActive(initialIsActive);
-  }, [initialIsActive]);
-
-  // Update items when prop changes
-  useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
-
   // Listen for room state changes using shared hook
   useWidgetStateChange({
     socket,
@@ -116,7 +106,7 @@ const HandoutActivity: React.FC<HandoutActivityProps> = ({
         // Inactive state
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 dark:text-warm-gray-400 mb-2">
               Handout Paused
             </h2>
             <p className="text-warm-gray-500 text-sm">

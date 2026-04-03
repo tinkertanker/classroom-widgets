@@ -28,7 +28,7 @@ import { MenuItem, MenuDivider, MenuSectionHeader } from '../../../components/ui
 
 interface BottomBarMenuProps {
   onClose: () => void;
-  onToggleLayout?: () => void;
+  onToggleLayout: () => void;
 }
 
 const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }) => {
@@ -40,7 +40,6 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
   const updateBottomBar = useWorkspaceStore((state) => state.updateBottomBar);
 
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
-  const setLayoutFormat = useWorkspaceStore((state) => state.setLayoutFormat);
   const voiceControlEnabled = bottomBar.voiceControlEnabled ?? false;
 
   const handleToggleVoiceControl = () => {
@@ -48,11 +47,7 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
   };
 
   const handleToggleLayout = () => {
-    if (onToggleLayout) {
-      onToggleLayout();
-    } else {
-      setLayoutFormat(layoutFormat === 'canvas' ? 'column' : 'canvas');
-    }
+    onToggleLayout();
   };
 
   useEffect(() => {

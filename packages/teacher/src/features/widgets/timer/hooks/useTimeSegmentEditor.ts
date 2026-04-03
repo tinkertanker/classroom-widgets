@@ -79,16 +79,20 @@ export function useTimeSegmentEditor({
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    
+
     const newValues = [
       hours.toString().padStart(2, '0'),
       minutes.toString().padStart(2, '0'),
       seconds.toString().padStart(2, '0')
     ];
-    
+
+    if (newValues.every((value, index) => value === values[index])) {
+      return;
+    }
+
     setValues(newValues);
     setTimeValues([hours, minutes, seconds]);
-  }, []);
+  }, [values]);
 
   return {
     values,

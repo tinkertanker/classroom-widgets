@@ -17,13 +17,6 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
 
-  // Update isActive when prop changes
-  useEffect(() => {
-    if (initialIsActive !== undefined) {
-      setIsActive(initialIsActive);
-    }
-  }, [initialIsActive]);
-
   // Listen for room state changes using shared hook
   useWidgetStateChange({
     socket,
@@ -112,7 +105,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
         // Waiting state when teacher has stopped feedback
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-warm-gray-600 mb-2">
+            <h2 className="text-xl font-semibold text-warm-gray-600 dark:text-warm-gray-400 mb-2">
               Feedback Paused
             </h2>
             <p className="text-warm-gray-500 text-sm">

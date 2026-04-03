@@ -62,12 +62,13 @@ module.exports = {
   // In development: the Vite dev server for student app
   // In production: derived from server origin + '/student' path
   getStudentAppUrl: function(serverOrigin) {
+    if (process.env.STUDENT_APP_URL) {
+      return process.env.STUDENT_APP_URL;
+    }
     if (this.IS_PRODUCTION) {
-      // In production, student app is served from /student path
-      return serverOrigin ? `${serverOrigin}/student` : '/student';
+      return serverOrigin || '/';
     } else {
-      // In development, student app runs on separate Vite dev server
-      return process.env.STUDENT_APP_URL || this.DEV.VITE_URL;
+      return this.DEV.VITE_URL;
     }
   },
 

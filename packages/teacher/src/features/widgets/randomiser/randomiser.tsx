@@ -88,6 +88,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
             // Update displayChoices to show items immediately if there are active choices
             if (activeChoices.length > 0) {
               setDisplayChoices(activeChoices);
+              setResult("Ready to randomise!");
               // Reset animation state to prepare for next randomisation
               resetAnimation();
               setButtonSettings("normal");
@@ -168,15 +169,6 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Update result message when choices change
-  useEffect(() => {
-    if (choices.length > 0 && result === "Enter a list to randomise!") {
-      setResult("Ready to randomise!");
-    } else if (choices.length === 0 && result === "Ready to randomise!") {
-      setResult("Enter a list to randomise!");
-    }
-  }, [choices, result]);
 
   return (
     <div className={widgetWrapper} ref={widgetRef}>

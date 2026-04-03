@@ -1,12 +1,13 @@
 // Main App component - Refactored for better architecture
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import './App.css';
 import { ModalProvider } from '../contexts/ModalContext';
 import { SocketProvider } from '../contexts/SocketProvider';
 import { SessionProvider } from '../contexts/SessionContext';
 import { useWorkspace, useServerConnection } from '@shared/hooks/useWorkspace';
 import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
+import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { migrateFromOldFormat } from '@shared/utils/migration';
 import Board from '../features/board/components';
@@ -32,6 +33,7 @@ const trashAudio = new Audio(trashSound);
 
 
 
+
 function App() {
   const { theme, scale } = useWorkspace();
   const { url, setServerStatus } = useServerConnection();
@@ -52,6 +54,7 @@ function App() {
   );
   // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
+  const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
@@ -80,48 +83,61 @@ function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
+
+  const updateStickerMode = useCallback((mode: boolean, type?: string | null) => {
+    const nextType = mode ? (type ?? stickerStateRef.current.type) : null;
+
+    stickerStateRef.current = { mode, type: nextType };
+    setStickerMode(mode);
+    setSelectedStickerType(nextType);
+
+    window.dispatchEvent(new CustomEvent(STICKER_MODE_CHANGE_EVENT, {
+      detail: { mode, type: nextType }
+    }));
+  }, []);
   
   // Check screen size
   useEffect(() => {
     const checkScreenSize = () => {
       setScreenTooSmall(window.innerWidth < MIN_SCREEN_WIDTH);
       const narrow = window.innerWidth < NARROW_SCREEN_WIDTH;
-      const wasNarrow = isNarrowScreen;
-      setIsNarrowScreen(narrow);
+      setIsNarrowScreen((wasNarrow) => {
+        if (narrow && !wasNarrow) {
+          // Entering narrow: stash current layout and force column
+          layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
+          setLayoutFormat('column');
+        } else if (!narrow && wasNarrow && layoutBeforeNarrowRef.current) {
+          // Leaving narrow: restore original layout
+          setLayoutFormat(layoutBeforeNarrowRef.current);
+          layoutBeforeNarrowRef.current = null;
+        }
 
-      if (narrow && !wasNarrow) {
-        // Entering narrow: stash current layout and force column
-        layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
-        setLayoutFormat('column');
-      } else if (!narrow && wasNarrow && layoutBeforeNarrowRef.current) {
-        // Leaving narrow: restore original layout
-        setLayoutFormat(layoutBeforeNarrowRef.current);
-        layoutBeforeNarrowRef.current = null;
-      }
+        return narrow;
+      });
     };
 
     window.addEventListener('resize', checkScreenSize);
     checkScreenSize();
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, [setLayoutFormat, isNarrowScreen]);
+  }, [setLayoutFormat]);
 
   // Handler to toggle layout in narrow mode
   // Also update layoutBeforeNarrowRef so the user's choice is preserved when exiting narrow mode
   const handleToggleLayoutNarrow = useCallback(() => {
-    const newFormat = layoutFormat === 'canvas' ? 'column' : 'canvas';
+    const currentLayout = useWorkspaceStore.getState().layoutFormat;
+    const newFormat = currentLayout === 'canvas' ? 'column' : 'canvas';
     setLayoutFormat(newFormat);
     layoutBeforeNarrowRef.current = newFormat;
-  }, [layoutFormat, setLayoutFormat]);
+  }, [setLayoutFormat]);
 
 
 
   // Disable sticker mode when switching to column layout
   useEffect(() => {
     if (layoutFormat === 'column' && stickerMode) {
-      setStickerMode(false);
-      setSelectedStickerType(null);
+      updateStickerMode(false);
     }
-  }, [layoutFormat, stickerMode]);
+  }, [layoutFormat, stickerMode, updateStickerMode]);
 
   // Trash sound effect
   useEffect(() => {
@@ -156,8 +172,7 @@ function App() {
       // Exit sticker mode with S or Escape key
       if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
         e.preventDefault();
-        setStickerMode(false);
-        setSelectedStickerType(null);
+        updateStickerMode(false);
         return;
       }
 
@@ -209,7 +224,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {
@@ -474,30 +489,25 @@ function App() {
       updateWidgetState(widgetId, { stickerType: selectedStickerType });
       
       // Exit sticker mode after placing
-      setStickerMode(false);
-      setSelectedStickerType(null);
+      updateStickerMode(false);
     }
   };
 
   // Make sticker mode functions available globally for toolbar
   useEffect(() => {
     (window as any).setStickerMode = (mode: boolean, type?: string) => {
-      setStickerMode(mode);
-      if (type) {
-        setSelectedStickerType(type);
-      } else if (!mode) {
-        setSelectedStickerType(null);
-      }
+      updateStickerMode(mode, type);
     };
 
-    // Also expose a getter for the toolbar to check state
-    (window as any).getStickerMode = () => stickerMode;
+    (window as any).getStickerState = () => stickerStateRef.current;
+    (window as any).getStickerMode = () => stickerStateRef.current.mode;
 
     return () => {
       delete (window as any).setStickerMode;
+      delete (window as any).getStickerState;
       delete (window as any).getStickerMode;
     };
-  }, [stickerMode]);
+  }, [updateStickerMode]);
 
   // Make voice control functions available globally for toolbar
   useEffect(() => {
@@ -547,8 +557,7 @@ function App() {
                 </div>
                 <button
                   onClick={() => {
-                    setStickerMode(false);
-                    setSelectedStickerType(null);
+                    updateStickerMode(false);
                   }}
                   className="ml-2 text-amber-200 hover:text-white transition-colors"
                   title="Exit sticker mode"

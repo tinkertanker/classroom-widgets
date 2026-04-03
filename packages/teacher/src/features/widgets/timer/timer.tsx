@@ -4,7 +4,6 @@ import { FaVolumeXmark, FaVolumeLow, FaVolumeHigh } from 'react-icons/fa6';
 import { 
   useTimeSegmentEditor, 
   useTimerCountdown, 
-  useTimerAnimation, 
   useTimerAudio 
 } from "./hooks";
 import { cn, widgetWrapper, widgetContainer, text, transitions, backgrounds, buttons } from '@shared/utils/styles';
@@ -96,6 +95,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
 
   // Persist timer state for recovery across remounts.
   const {
+    initialTime,
     time,
     isRunning,
     isPaused,
@@ -127,7 +127,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
       soundMode,
       segmentValues: segmentEditor.values,
     });
-  }, [onStateChange, getPersistedState, soundMode, segmentEditor.values]);
+  }, [onStateChange, getPersistedState, initialTime, isRunning, isPaused, soundMode, segmentEditor.values, timerFinished]);
   React.useEffect(() => {
     if (timerFinished) {
       setShowJitter(true);
@@ -145,17 +145,15 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   const lastSyncedTimeRef = useRef(time);
 
   React.useEffect(() => {
-    if (segmentEditor.editingSegment === null && time !== lastSyncedTimeRef.current) {
+    if (!isRunning && segmentEditor.editingSegment === null && time !== lastSyncedTimeRef.current) {
       segmentEditor.updateFromTime(time);
+      lastSyncedTimeRef.current = time;
     }
 
-    lastSyncedTimeRef.current = time;
-  }, [time, segmentEditor.editingSegment, segmentEditor.updateFromTime]);
-
-  const { pulseAngle, isHamsterOnColoredArc } = useTimerAnimation({
-    isRunning,
-    progress
-  });
+    if (!isRunning) {
+      lastSyncedTimeRef.current = time;
+    }
+  }, [isRunning, time, segmentEditor.editingSegment, segmentEditor.updateFromTime]);
 
   const handleTargetTimeChange = useCallback(<K extends keyof ClockTimeSelection>(field: K, value: ClockTimeSelection[K]) => {
     setTargetTime(prev => ({
@@ -368,7 +366,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
               />
 
               {isRunning && time > 0 && (
-                <HamsterAnimation pulseAngle={pulseAngle} isOnColoredArc={isHamsterOnColoredArc} />
+                <HamsterAnimation isRunning={isRunning} progress={progress} />
               )}
             </svg>
 
@@ -390,7 +388,6 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
               ) : isRunning && !inEditMode ? (
                 <TimeDisplay
                   time={time}
-                  values={segmentEditor.values}
                   isEditing={false}
                   onPause={pauseTimer}
                 />
