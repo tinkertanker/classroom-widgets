@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { useTheme } from "@shared/hooks/useWorkspace";
+import { warmGray } from '@shared/constants/colors';
 import { FaVolumeXmark, FaVolumeLow, FaVolumeHigh } from 'react-icons/fa6';
 import { 
   useTimeSegmentEditor, 
@@ -242,11 +243,12 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
     { label: '+2m', seconds: 120, title: 'Add 2 minutes' },
     { label: '+5m', seconds: 300, title: 'Add 5 minutes' }
   ];
+  const timerFaceFill = isDark ? warmGray[800] : 'rgba(250, 250, 249, 0.9)';
 
   return (
     <div className={widgetWrapper}>
       <div
-        className={cn(widgetContainer, "bg-transparent dark:bg-warm-gray-800/90 border-0 relative")}
+        className={cn(widgetContainer, "bg-transparent dark:bg-transparent border-0 relative")}
         style={{
           containerType: 'size',
           ...(showJitter && {
@@ -257,7 +259,10 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
         }}
       >
         <div className="flex-1 min-h-0 flex items-center justify-center relative">
-          <div className="absolute flex h-full w-full items-center justify-center rounded-lg bg-transparent shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)] dark:bg-warm-gray-800/90">
+          <div
+            className="absolute flex h-full w-full items-center justify-center bg-transparent dark:bg-transparent"
+            data-testid="timer-visual-shell"
+          >
             <svg className="h-full w-full pointer-events-none" viewBox="0 0 100 100">
               <defs>
                 <linearGradient id="rainbowGradient" gradientUnits="userSpaceOnUse" x1="50" y1="5" x2="50" y2="95">
@@ -333,8 +338,8 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
                 cx="50"
                 cy="50"
                 r="40"
-                fill="rgba(250, 250, 249, 0.9)"
-                className="dark:fill-warm-gray-800/90"
+                fill={timerFaceFill}
+                data-testid="timer-face"
               />
 
               <circle

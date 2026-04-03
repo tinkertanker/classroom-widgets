@@ -3,6 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import Timer from './timer';
 import { ModalProvider } from '../../../contexts/ModalContext';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { warmGray } from '@shared/constants/colors';
 
 const localStorageMock = {
   getItem: vi.fn(() => null),
@@ -54,6 +56,7 @@ describe('Timer Widget', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-11T14:00:00'));
+    useWorkspaceStore.setState({ theme: 'light' });
   });
 
   afterEach(() => {
@@ -73,6 +76,18 @@ describe('Timer Widget', () => {
 
     expect(getByExactText('00:00:10')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
+  });
+
+  test('keeps the outer timer shell transparent in dark mode while filling the circle solid dark', () => {
+    useWorkspaceStore.setState({ theme: 'dark' });
+
+    renderWithModal(<Timer />);
+
+    const timerVisualShell = screen.getByTestId('timer-visual-shell');
+
+    expect(timerVisualShell).toHaveClass('dark:bg-transparent');
+    expect(timerVisualShell).not.toHaveClass('dark:bg-warm-gray-800/90');
+    expect(screen.getByTestId('timer-face')).toHaveAttribute('fill', warmGray[800]);
   });
 
   test('keeps manual time edits after finishing segment editing', () => {
