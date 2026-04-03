@@ -52,6 +52,9 @@ function App() {
   const [isNarrowScreen, setIsNarrowScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
+  const previousIsNarrowScreenRef = useRef(
+    typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
+  );
   // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
@@ -100,26 +103,29 @@ function App() {
   useEffect(() => {
     const checkScreenSize = () => {
       setScreenTooSmall(window.innerWidth < MIN_SCREEN_WIDTH);
-      const narrow = window.innerWidth < NARROW_SCREEN_WIDTH;
-      setIsNarrowScreen((wasNarrow) => {
-        if (narrow && !wasNarrow) {
-          // Entering narrow: stash current layout and force column
-          layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
-          setLayoutFormat('column');
-        } else if (!narrow && wasNarrow && layoutBeforeNarrowRef.current) {
-          // Leaving narrow: restore original layout
-          setLayoutFormat(layoutBeforeNarrowRef.current);
-          layoutBeforeNarrowRef.current = null;
-        }
-
-        return narrow;
-      });
+      setIsNarrowScreen(window.innerWidth < NARROW_SCREEN_WIDTH);
     };
 
     window.addEventListener('resize', checkScreenSize);
     checkScreenSize();
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, [setLayoutFormat]);
+  }, []);
+
+  useEffect(() => {
+    const wasNarrow = previousIsNarrowScreenRef.current;
+
+    if (isNarrowScreen && !wasNarrow) {
+      // Entering narrow: stash current layout and force column
+      layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
+      setLayoutFormat('column');
+    } else if (!isNarrowScreen && wasNarrow && layoutBeforeNarrowRef.current) {
+      // Leaving narrow: restore original layout
+      setLayoutFormat(layoutBeforeNarrowRef.current);
+      layoutBeforeNarrowRef.current = null;
+    }
+
+    previousIsNarrowScreenRef.current = isNarrowScreen;
+  }, [isNarrowScreen, setLayoutFormat]);
 
   // Handler to toggle layout in narrow mode
   // Also update layoutBeforeNarrowRef so the user's choice is preserved when exiting narrow mode
