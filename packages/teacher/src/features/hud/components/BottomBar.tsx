@@ -39,7 +39,11 @@ const getStickerState = () => {
   };
 };
 
-const BottomBar: React.FC = () => {
+interface BottomBarProps {
+  onToggleLayout: () => void;
+}
+
+const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
   const { recentWidgets, voiceControlEnabled } = useBottomBar();
   const createWidget = useCreateWidget();
   const { showModal, hideModal } = useModal();
@@ -384,7 +388,7 @@ const BottomBar: React.FC = () => {
 
               {/* Menu dropdown */}
               {showMenu && (
-                <BottomBarMenu onClose={() => setShowMenu(false)} />
+                <BottomBarMenu onClose={() => setShowMenu(false)} onToggleLayout={onToggleLayout} />
               )}
             </div>
           </div>

@@ -14,6 +14,7 @@ import Board from '../features/board/components';
 import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
 import TopControls from '../features/hud/components/TopControls';
+import NarrowModeExitButton from '../features/hud/components/NarrowModeExitButton';
 import WidgetList from '../features/board/components/WidgetList';
 import ColumnWidgetList from '../features/board/components/ColumnWidgetList';
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
@@ -51,6 +52,10 @@ function App() {
   const [isNarrowScreen, setIsNarrowScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
+  const previousIsNarrowScreenRef = useRef(
+    typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
+  );
+  // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
   const [isInitialized, setIsInitialized] = React.useState(false);
@@ -98,28 +103,41 @@ function App() {
   useEffect(() => {
     const checkScreenSize = () => {
       setScreenTooSmall(window.innerWidth < MIN_SCREEN_WIDTH);
-      const narrow = window.innerWidth < NARROW_SCREEN_WIDTH;
-      const wasNarrow = isNarrowScreen;
-      setIsNarrowScreen(narrow);
-
-      if (narrow && !wasNarrow) {
-        // Entering narrow: stash current layout and force column
-        layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
-        setLayoutFormat('column');
-      } else if (!narrow && wasNarrow && layoutBeforeNarrowRef.current) {
-        // Leaving narrow: restore original layout
-        setLayoutFormat(layoutBeforeNarrowRef.current);
-        layoutBeforeNarrowRef.current = null;
-      }
+      setIsNarrowScreen(window.innerWidth < NARROW_SCREEN_WIDTH);
     };
 
     window.addEventListener('resize', checkScreenSize);
     checkScreenSize();
     return () => window.removeEventListener('resize', checkScreenSize);
-  }, [setLayoutFormat, isNarrowScreen]);
-  
-  
-  
+  }, []);
+
+  useEffect(() => {
+    const wasNarrow = previousIsNarrowScreenRef.current;
+
+    if (isNarrowScreen && !wasNarrow) {
+      // Entering narrow: stash current layout and force column
+      layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
+      setLayoutFormat('column');
+    } else if (!isNarrowScreen && wasNarrow && layoutBeforeNarrowRef.current) {
+      // Leaving narrow: restore original layout
+      setLayoutFormat(layoutBeforeNarrowRef.current);
+      layoutBeforeNarrowRef.current = null;
+    }
+
+    previousIsNarrowScreenRef.current = isNarrowScreen;
+  }, [isNarrowScreen, setLayoutFormat]);
+
+  // Handler to toggle layout in narrow mode
+  // Also update layoutBeforeNarrowRef so the user's choice is preserved when exiting narrow mode
+  const handleToggleLayoutNarrow = useCallback(() => {
+    const currentLayout = useWorkspaceStore.getState().layoutFormat;
+    const newFormat = currentLayout === 'canvas' ? 'column' : 'canvas';
+    setLayoutFormat(newFormat);
+    layoutBeforeNarrowRef.current = newFormat;
+  }, [setLayoutFormat]);
+
+
+
   // Disable sticker mode when switching to column layout
   useEffect(() => {
     if (layoutFormat === 'column' && stickerMode) {
@@ -571,13 +589,20 @@ function App() {
           
           {/* Toolbar at bottom */}
           <div className="toolbar-container">
-            <BottomBar />
+            <BottomBar onToggleLayout={handleToggleLayoutNarrow} />
           </div>
 
           {/* Version label */}
           <a href="/about" className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 hover:opacity-100 select-none z-10 transition-opacity">
             v{APP_VERSION}
           </a>
+
+          {/* Narrow mode layout toggle - shows when in narrow screen mode */}
+          <NarrowModeExitButton
+            isNarrowScreen={isNarrowScreen}
+            layoutFormat={layoutFormat}
+            onToggleLayout={handleToggleLayoutNarrow}
+          />
 
           {/* Voice Control Interface */}
           <VoiceInterface
