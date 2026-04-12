@@ -7,7 +7,7 @@ import {
   useTimerCountdown, 
   useTimerAudio 
 } from "./hooks";
-import { cn, widgetWrapper, widgetContainer, text, transitions, backgrounds, buttons } from '@shared/utils/styles';
+import { cn, widgetWrapper, text, transitions, backgrounds, buttons } from '@shared/utils/styles';
 import { TimerControlBar } from '../shared/components';
 import { HamsterAnimation } from './components/HamsterAnimation';
 import { TimeDisplay } from './components/TimeDisplay';
@@ -248,7 +248,8 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   return (
     <div className={widgetWrapper}>
       <div
-        className={cn(widgetContainer, "bg-transparent dark:bg-transparent border-0 relative")}
+        className="w-full h-full overflow-hidden flex flex-col relative bg-transparent dark:bg-transparent"
+        data-testid="timer-outer-container"
         style={{
           containerType: 'size',
           ...(showJitter && {

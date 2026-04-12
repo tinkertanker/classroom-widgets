@@ -83,10 +83,15 @@ describe('Timer Widget', () => {
 
     renderWithModal(<Timer />);
 
-    const timerVisualShell = screen.getByTestId('timer-visual-shell');
+    const timerOuterContainer = screen.getByTestId('timer-outer-container');
+    expect(timerOuterContainer).toHaveClass('bg-transparent');
+    expect(timerOuterContainer).toHaveClass('dark:bg-transparent');
+    expect(timerOuterContainer).not.toHaveClass('dark:bg-warm-gray-800/90');
 
+    const timerVisualShell = screen.getByTestId('timer-visual-shell');
     expect(timerVisualShell).toHaveClass('dark:bg-transparent');
     expect(timerVisualShell).not.toHaveClass('dark:bg-warm-gray-800/90');
+
     expect(screen.getByTestId('timer-face')).toHaveAttribute('fill', warmGray[800]);
   });
 
