@@ -20,7 +20,8 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}
-            git pull --rebase
+            git fetch origin
+            git reset --hard origin/master
             docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml up --build -d
             echo "Deployed ${{ github.ref_name }} successfully"
