@@ -259,9 +259,9 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
             disabled={!session.isConnected}
             className={`px-2 py-1 text-xs font-medium rounded transition-colors inline-flex items-center gap-1.5 ${
               acceptMode === 'all'
-                ? 'bg-slate-blue-100 text-slate-blue-700 dark:bg-slate-blue-900/30 dark:text-slate-blue-400'
+                ? 'bg-terracotta-100 text-terracotta-700 dark:bg-terracotta-900/30 dark:text-terracotta-400'
                 : 'bg-warm-gray-100 text-warm-gray-600 dark:bg-warm-gray-700 dark:text-warm-gray-400'
-            } hover:bg-slate-blue-200 dark:hover:bg-slate-blue-900/50 disabled:opacity-50 disabled:cursor-not-allowed`}
+            } hover:bg-terracotta-100 dark:hover:bg-terracotta-900/30 disabled:opacity-50 disabled:cursor-not-allowed`}
             title={acceptMode === 'all' ? 'Accepting links and text' : 'Accepting links only'}
           >
             {acceptMode === 'all' ? (
