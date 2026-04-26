@@ -16,6 +16,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageKeyRef = useRef<string | null>(savedState?.imageKey ?? null);
+  const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Load image from IndexedDB on mount
   useEffect(() => {
@@ -70,8 +71,16 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     reader.readAsDataURL(file);
   };
 
+  const wasDrag = (e: React.MouseEvent) => {
+    if (!mouseDownPosRef.current) return false;
+    const dx = e.clientX - mouseDownPosRef.current.x;
+    const dy = e.clientY - mouseDownPosRef.current.y;
+    return Math.sqrt(dx * dx + dy * dy) > 5;
+  };
+
   // Handle click to open file dialog
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    if (wasDrag(e)) return;
     if (!imageUrl) {
       fileInputRef.current?.click();
     }
@@ -138,7 +147,8 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   }, [isActive]);
 
   // Handle double-click to change image
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (wasDrag(e)) return;
     if (imageUrl) {
       fileInputRef.current?.click();
     }
@@ -154,6 +164,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
           ? 'bg-soft-white/90 dark:bg-warm-gray-800/90'
           : 'bg-warm-gray-200/90 dark:bg-warm-gray-700/90'
       }`}
+      onMouseDown={(e) => { mouseDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onDragOver={handleDragOver}
