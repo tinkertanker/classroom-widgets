@@ -40,26 +40,26 @@ The application uses a warm, neutral color palette designed for classroom enviro
 ### Brand Colors
 
 #### Sage (Primary Actions)
-- **Sage 500**: `#7c9885` - Primary buttons, active states
-- **Sage 400**: `#8fb4a0` - Dark mode variant
-- **Sage 600**: `#6a8573` - Hover states
+- **Sage 500**: `#4a8f5f` - Primary buttons, active states
+- **Sage 400**: `#67a47f` - Dark mode variant
+- **Sage 600**: `#39744c` - Hover states
 
 #### Terracotta (Secondary Actions)
-- **Terracotta 500**: `#c99a83` - Secondary buttons
-- **Terracotta 200**: `#f4e6e1` - Light mode borders
-- **Terracotta 700**: `#8b5a4a` - Dark mode borders
+- **Terracotta 500**: `#cc7d4a` - Secondary buttons
+- **Terracotta 200**: `#f2d9c4` - Light mode borders
+- **Terracotta 700**: `#975230` - Dark mode borders
 
 #### Dusty Rose (Destructive Actions)
-- **Dusty Rose 500**: `#b8838a` - Danger buttons, alerts
-- **Dusty Rose 300**: `#d4a5a9` - Light mode borders
-- **Dusty Rose 400**: `#c5969c` - Dark mode borders
-- **Dusty Rose 600**: `#a57179` - Hover states
+- **Dusty Rose 500**: `#b84040` - Danger buttons, alerts
+- **Dusty Rose 300**: `#e09494` - Light mode borders
+- **Dusty Rose 400**: `#cc6666` - Dark mode borders
+- **Dusty Rose 600**: `#963232` - Hover states
 
-#### Amber (Warning / Caution)
-- **Amber 500**: `#cc9a4a` - Warning states, caution indicators
-- **Amber 400**: `#dbb06d` - Dark mode variant
-- **Amber 600**: `#b88438` - Hover states
-- Usage: session timers nearing end, caution icons, sticker selection highlights
+#### Amber (Warning / Caution / Energy)
+- **Amber 500**: `#d4861a` - Warning states, caution indicators, celebration moments
+- **Amber 400**: `#de9a3a` - Dark mode variant
+- **Amber 600**: `#ae6c13` - Hover states
+- Usage: session timers nearing end, caution icons, sticker selection highlights, high-energy UI moments
 
 #### Sky (Link Text Only)
 - **Sky 600**: `#3865b8` - Clickable link text (light mode)
