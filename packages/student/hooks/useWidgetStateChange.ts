@@ -26,8 +26,8 @@ export const useWidgetStateChange = ({
       }
     };
 
-    const handleStateUpdate = (data: { isActive: boolean; widgetId?: string; [key: string]: any }) => {
-      if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
+    const handleStateUpdate = (data: { isActive?: boolean; widgetId?: string; [key: string]: any }) => {
+      if ((data.widgetId === widgetId || (!data.widgetId && !widgetId)) && data.isActive !== undefined) {
         onStateChange(data.isActive, data);
       }
     };
