@@ -55,6 +55,17 @@ The application uses a warm, neutral color palette designed for classroom enviro
 - **Dusty Rose 400**: `#c5969c` - Dark mode borders
 - **Dusty Rose 600**: `#a57179` - Hover states
 
+#### Amber (Warning / Caution)
+- **Amber 500**: `#cc9a4a` - Warning states, caution indicators
+- **Amber 400**: `#dbb06d` - Dark mode variant
+- **Amber 600**: `#b88438` - Hover states
+- Usage: session timers nearing end, caution icons, sticker selection highlights
+
+#### Sky (Link Text Only)
+- **Sky 600**: `#3865b8` - Clickable link text (light mode)
+- **Sky 400**: `#6da0db` - Clickable link text (dark mode)
+- **Constraint**: Use sky exclusively for anchor (`<a>`) link text. Do not use sky for buttons, pills, badges, borders, or any UI chrome. This preserves the warm palette character of the application while honouring the universal blue-link convention.
+
 ### Status Colors
 
 #### Game States (Wordle)

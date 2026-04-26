@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { FaFileLines, FaTrash, FaArrowUpRightFromSquare, FaPlus } from 'react-icons/fa6';
+import { FaFileLines, FaTrash, FaArrowUpRightFromSquare, FaPlus, FaLink, FaAlignLeft } from 'react-icons/fa6';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
@@ -216,7 +216,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
         />
 
         {/* Content area */}
-        <div className="flex-1 overflow-y-auto p-4 pt-8 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 pt-12 space-y-3">
           {/* Input area */}
           <div className="flex gap-2">
             <input
@@ -226,15 +226,16 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
               onKeyDown={handleKeyDown}
               placeholder="Enter text or link..."
               disabled={!session.isConnected}
-              className="flex-1 px-3 py-2 text-sm border border-warm-gray-300 dark:border-warm-gray-600 rounded-lg bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 placeholder-warm-gray-400 dark:placeholder-warm-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-3 py-2 text-sm border border-warm-gray-300 dark:border-warm-gray-600 rounded-lg bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 placeholder-warm-gray-400 dark:placeholder-warm-gray-500 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleAddItem}
               disabled={!session.isConnected || !inputValue.trim()}
-              className="px-3 py-2 bg-slate-blue-500 hover:bg-slate-blue-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="Add item"
             >
-              <FaPlus className="text-sm" />
+              <FaPlus className="text-xs" />
+              Add
             </button>
           </div>
 
@@ -245,20 +246,41 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
               <p className="text-sm">No items yet. Add something above!</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white dark:bg-warm-gray-700 rounded-lg p-3 shadow-sm border border-warm-gray-200 dark:border-warm-gray-600"
-                >
-                  <div className="flex justify-between items-start gap-2">
+            <>
+              {/* Section divider */}
+              <div className="flex items-center gap-2 pt-1">
+                <div className="h-px flex-1 bg-warm-gray-200 dark:bg-warm-gray-600" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-warm-gray-400 dark:text-warm-gray-500">
+                  {items.length} item{items.length !== 1 ? 's' : ''}
+                </span>
+                <div className="h-px flex-1 bg-warm-gray-200 dark:bg-warm-gray-600" />
+              </div>
+
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`bg-white dark:bg-warm-gray-700 rounded-lg px-3 py-2.5 shadow-sm border border-warm-gray-200 dark:border-warm-gray-600 flex items-center gap-3 ${
+                      item.isLink ? 'border-l-2 border-l-sage-400 dark:border-l-sage-500' : ''
+                    }`}
+                  >
+                    {/* Type pill */}
+                    <span className={`flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-md text-[11px] ${
+                      item.isLink
+                        ? 'bg-sage-100 text-sage-600 dark:bg-sage-800/50 dark:text-sage-300'
+                        : 'bg-warm-gray-100 text-warm-gray-500 dark:bg-warm-gray-600 dark:text-warm-gray-400'
+                    }`}>
+                      {item.isLink ? <FaLink /> : <FaAlignLeft />}
+                    </span>
+
+                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       {item.isLink ? (
                         <a
                           href={item.content}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-slate-blue-600 hover:text-slate-blue-700 dark:text-slate-blue-400 dark:hover:text-slate-blue-300 break-all inline-flex items-center gap-1"
+                          className="text-sm text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 break-all inline-flex items-center gap-1 font-medium"
                         >
                           {item.content}
                           <FaArrowUpRightFromSquare className="text-[10px] flex-shrink-0" />
@@ -269,17 +291,19 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
                         </p>
                       )}
                     </div>
+
+                    {/* Delete */}
                     <button
                       onClick={() => handleDeleteItem(item.id)}
-                      className="text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors p-1"
+                      className="flex-shrink-0 text-warm-gray-400 hover:text-dusty-rose-500 dark:text-warm-gray-500 dark:hover:text-dusty-rose-400 transition-colors p-1"
                       title="Delete item"
                     >
                       <FaTrash className="text-xs" />
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>

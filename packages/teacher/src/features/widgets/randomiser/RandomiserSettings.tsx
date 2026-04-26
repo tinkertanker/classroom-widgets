@@ -94,7 +94,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
             <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">Randomiser Lists</h3>
             <div className="flex space-x-2">
               <button
-                className="px-3 py-1.5 bg-slate-blue-500 hover:bg-slate-blue-600 dark:bg-slate-blue-600 dark:hover:bg-slate-blue-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
                 onClick={() => setShowSavedDialog(true)}
               >
                 <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
