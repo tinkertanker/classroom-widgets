@@ -95,6 +95,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const textRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const clickTimerRef = useRef<number | null>(null);
+  const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
   // Use auto font size hook
   const fontSize = useAutoFontSize({
@@ -139,8 +140,15 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     }
   };
 
+  const wasDrag = (e: React.MouseEvent) => {
+    if (!mouseDownPosRef.current) return false;
+    const dx = e.clientX - mouseDownPosRef.current.x;
+    const dy = e.clientY - mouseDownPosRef.current.y;
+    return Math.sqrt(dx * dx + dy * dy) > 5;
+  };
+
   const handleClick = (e: React.MouseEvent) => {
-    if (isEditing || e.detail !== 1) return;
+    if (isEditing || e.detail !== 1 || wasDrag(e)) return;
     if (clickTimerRef.current) {
       window.clearTimeout(clickTimerRef.current);
     }
@@ -151,7 +159,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     }, 500);
   };
 
-  const handleDoubleClick = () => {
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (wasDrag(e)) return;
     if (clickTimerRef.current) {
       window.clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
@@ -166,6 +175,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     <div
       ref={containerRef}
       className={cn(widgetContainer, currentColors.bg, "items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer")}
+      onMouseDown={(e) => { mouseDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
@@ -185,7 +195,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       ) : (
         <div
           ref={textRef}
-          className={cn(currentColors.text, "text-center leading-tight select-none clickable")}
+          className={cn(currentColors.text, "text-center leading-tight select-none")}
           style={{ fontSize: `${fontSize}px` }}
           title="Double-click to edit"
         >

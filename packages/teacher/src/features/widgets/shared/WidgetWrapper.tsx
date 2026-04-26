@@ -24,6 +24,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const dragMovedRef = useRef(false);
+  const postDragRef = useRef(false);
   // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
   // This prevents re-renders when other widgets get focused
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
@@ -34,9 +36,14 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   if (!config) return null;
 
   const handleDragStart = useCallback(() => {
+    dragMovedRef.current = false;
     startDrag();
     focus();
   }, [startDrag, focus]);
+
+  const handleDrag = useCallback(() => {
+    dragMovedRef.current = true;
+  }, []);
 
   const handleDragStop = useCallback((e: any, d: any) => {
     // Read dropTarget directly from store to avoid subscribing to it
@@ -54,6 +61,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       move(newPosition);
     }
     stopDrag();
+    if (dragMovedRef.current) {
+      postDragRef.current = true;
+      setTimeout(() => { postDragRef.current = false; }, 0);
+    }
   }, [move, stopDrag, remove, widgetId]);
 
   const handleResizeStart = useCallback(() => {
@@ -125,6 +136,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   }, [remove, widgetId]);
 
   const handleWidgetClick = useCallback(() => {
+    if (postDragRef.current) return;
     setFocusedWidget(widgetId);
     focus();
   }, [widgetId, setFocusedWidget, focus]);
@@ -152,6 +164,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
         position={widget.position}
         size={widget.size}
         onDragStart={handleDragStart}
+        onDrag={handleDrag}
         onDragStop={handleDragStop}
         onResizeStart={handleResizeStart}
         onResizeStop={handleResizeStop}
@@ -171,8 +184,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
         // IMPORTANT: The 'cancel' prop prevents react-rnd from starting a drag operation
         // when clicking on interactive elements. Without this, the first click on these
         // elements gets consumed by the drag handler instead of triggering the element's
-        // click handler. Add any clickable elements here or use the 'no-drag' class.
-        cancel=".no-drag, button, input, textarea, select, a, .clickable, .delete-button"
+        // click handler. Add interactive elements here or apply the 'no-drag' class.
+        cancel=".no-drag, button, input, textarea, select, a, .delete-button"
         enableResizing={{
           top: true,
           right: true,
