@@ -1,35 +1,73 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { widgetContainer } from '@shared/utils/styles';
+import { storeImage, loadImage, deleteImage } from '../../../services/imageStorage';
 
 interface ImageDisplayProps {
-  savedState?: { imageUrl: string | null };
-  onStateChange?: (state: { imageUrl: string | null }) => void;
+  widgetId?: string;
+  savedState?: { imageKey?: string | null; imageUrl?: string | null };
+  onStateChange?: (state: { imageKey: string | null }) => void;
   isActive?: boolean; // Whether this widget is currently focused
 }
 
-const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange, isActive = false }) => {
-  const [imageUrl, setImageUrl] = useState<string | null>(savedState?.imageUrl || null);
+const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onStateChange, isActive = false }) => {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageKeyRef = useRef<string | null>(savedState?.imageKey ?? null);
+
+  // Load image from IndexedDB on mount
+  useEffect(() => {
+    const key = savedState?.imageKey;
+    if (key) {
+      loadImage(key).then(url => {
+        if (url) setImageUrl(url);
+      });
+    } else if (savedState?.imageUrl) {
+      // Migrate legacy base64 imageUrl to IndexedDB
+      const newKey = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
+      storeImage(newKey, savedState.imageUrl).then(() => {
+        imageKeyRef.current = newKey;
+        setImageUrl(savedState.imageUrl!);
+        onStateChange?.({ imageKey: newKey });
+      });
+    }
+  }, []);
 
   // Update image and notify parent
-  const updateImage = (url: string | null) => {
-    setImageUrl(url);
-    if (onStateChange) {
-      onStateChange({ imageUrl: url });
+  const updateImage = async (dataUrl: string | null) => {
+    if (dataUrl) {
+      const key = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
+      await storeImage(key, dataUrl);
+      imageKeyRef.current = key;
+      setImageUrl(dataUrl);
+      onStateChange?.({ imageKey: key });
+    } else {
+      if (imageKeyRef.current) {
+        await deleteImage(imageKeyRef.current);
+        imageKeyRef.current = null;
+      }
+      setImageUrl(null);
+      onStateChange?.({ imageKey: null });
     }
   };
 
+  const MAX_IMAGE_SIZE = 3 * 1024 * 1024; // 3MB
+
   // Handle file selection
   const handleFileSelect = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        updateImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError(`Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please use an image under 3 MB.`);
+      return;
     }
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      updateImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Handle click to open file dialog
@@ -157,9 +195,13 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ savedState, onStateChange, 
           <p className="text-warm-gray-600 dark:text-warm-gray-300 font-medium mb-2">
             {isDragging ? 'Drop image here' : 'Add an image'}
           </p>
-          <p className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
-            Click to browse, drag & drop, or paste
-          </p>
+          {error ? (
+            <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+          ) : (
+            <p className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+              Click to browse, drag & drop, or paste
+            </p>
+          )}
         </div>
       )}
       
