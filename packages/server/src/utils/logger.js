@@ -2,16 +2,32 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
-/**
- * Simple logging system with different log levels
- */
+const DEBUG_LOG_FLAGS = [
+  'HTTP_DEBUG',
+  'SOCKET_DEBUG',
+  'SESSION_DEBUG',
+  'VOICE_COMMAND_DEBUG',
+  'LOG_SOCKET_EVENTS'
+];
+
+function resolveLogLevel() {
+  // Debug flags take priority so SOCKET_DEBUG=true works without also setting LOG_LEVEL=debug.
+  const hasDebugFlag = DEBUG_LOG_FLAGS.some((flag) => process.env[flag] === 'true');
+  if (hasDebugFlag) {
+    return 'debug';
+  }
+
+  return process.env.LOG_LEVEL || 'info';
+}
+
 class Logger {
   constructor(options = {}) {
     this.options = {
-      level: process.env.LOG_LEVEL || 'info',
+      level: resolveLogLevel(),
       writeToFile: process.env.NODE_ENV === 'production',
       logDir: path.join(__dirname, '../../logs'),
       maxFileSize: 10 * 1024 * 1024, // 10MB
+      rotationCheckIntervalMs: 60 * 1000,
       ...options
     };
 
@@ -29,6 +45,8 @@ class Logger {
       debug: '\x1b[90m', // Gray
       reset: '\x1b[0m'
     };
+
+    this.lastRotationCheck = new Map();
 
     // Ensure log directory exists
     if (this.options.writeToFile) {
@@ -66,26 +84,49 @@ class Logger {
   }
 
   /**
-   * Write to file
+   * Write to file (async; rotation check throttled to avoid per-log fs.stat).
    */
   writeToFile(level, formattedMessage) {
     if (!this.options.writeToFile) return;
 
     const logFile = this.getLogFilePath(level);
-    
-    // Check file size and rotate if necessary
-    try {
-      const stats = fs.statSync(logFile);
-      if (stats.size > this.options.maxFileSize) {
-        const archiveFile = logFile.replace('.log', `-${Date.now()}.log`);
-        fs.renameSync(logFile, archiveFile);
-      }
-    } catch (error) {
-      // File doesn't exist yet
+
+    const appendMessage = () => {
+      fs.appendFile(logFile, formattedMessage + '\n', (error) => {
+        if (error) {
+          console.error(`Failed to write log file ${logFile}:`, error.message);
+        }
+      });
+    };
+
+    const now = Date.now();
+    const lastCheck = this.lastRotationCheck.get(level) || 0;
+    if (now - lastCheck < this.options.rotationCheckIntervalMs) {
+      appendMessage();
+      return;
     }
 
-    // Append to log file
-    fs.appendFileSync(logFile, formattedMessage + '\n');
+    this.lastRotationCheck.set(level, now);
+
+    fs.stat(logFile, (statError, stats) => {
+      if (statError || !stats) {
+        appendMessage();
+        return;
+      }
+
+      if (stats.size <= this.options.maxFileSize) {
+        appendMessage();
+        return;
+      }
+
+      const archiveFile = logFile.replace('.log', `-${Date.now()}.log`);
+      fs.rename(logFile, archiveFile, (renameError) => {
+        if (renameError && renameError.code !== 'ENOENT') {
+          console.error(`Failed to rotate log file ${logFile}:`, renameError.message);
+        }
+        appendMessage();
+      });
+    });
   }
 
   /**

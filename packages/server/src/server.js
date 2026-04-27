@@ -13,6 +13,7 @@ const serverConfig = require('./config/server.config');
 // Import middleware
 const { socketAuth, socketErrorHandler } = require('./middleware/socketAuth');
 const { expressErrorHandler, setupGlobalErrorHandlers } = require('./middleware/errorHandler');
+const { logger } = require('./utils/logger');
 
 // Import services
 const SessionManager = require('./services/SessionManager');
@@ -78,10 +79,10 @@ class AppServer {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Request logging in development
-    if (!serverConfig.IS_PRODUCTION) {
+    // Request logging in development (opt-in to avoid per-request hot-path noise)
+    if (!serverConfig.IS_PRODUCTION && process.env.HTTP_DEBUG === 'true') {
       this.app.use((req, res, next) => {
-        console.log(`${req.method} ${req.path}`);
+        logger.debug(`${req.method} ${req.path}`);
         next();
       });
     }
