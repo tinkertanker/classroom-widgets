@@ -517,7 +517,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
                       text.primary
                     )}
                   >
-                    {Array.from({ length: 60 }, (_, minute) => (
+                    {Array.from({ length: 12 }, (_, index) => index * 5).map((minute) => (
                       <option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</option>
                     ))}
                   </select>
