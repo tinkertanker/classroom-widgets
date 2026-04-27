@@ -79,10 +79,11 @@ class AppServer {
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Request logging in development (opt-in to avoid per-request hot-path noise)
+    // Request logging in development (opt-in to avoid per-request hot-path noise).
+    // Uses logger.info so it's not gated by LOG_LEVEL — the env flag is the only gate.
     if (!serverConfig.IS_PRODUCTION && process.env.HTTP_DEBUG === 'true') {
       this.app.use((req, res, next) => {
-        logger.debug(`${req.method} ${req.path}`);
+        logger.info(`${req.method} ${req.path}`);
         next();
       });
     }

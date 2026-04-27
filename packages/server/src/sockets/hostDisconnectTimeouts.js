@@ -31,7 +31,7 @@ function startHostDisconnectTimeout(io, sessionManager, sessionCode) {
 
   hostDisconnectTimeouts.set(sessionCode, timeoutId);
   if (SOCKET_DEBUG) {
-    logger.debug(`Started ${HOST_DISCONNECT_TIMEOUT / 1000}s timeout for session ${sessionCode}`);
+    logger.info(`Started ${HOST_DISCONNECT_TIMEOUT / 1000}s timeout for session ${sessionCode}`);
   }
 }
 
@@ -44,7 +44,7 @@ function clearHostDisconnectTimeout(sessionCode) {
     clearTimeout(timeoutId);
     hostDisconnectTimeouts.delete(sessionCode);
     if (SOCKET_DEBUG) {
-      logger.debug(`Cleared host disconnect timeout for session ${sessionCode}`);
+      logger.info(`Cleared host disconnect timeout for session ${sessionCode}`);
     }
   }
 }

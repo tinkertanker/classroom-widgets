@@ -107,7 +107,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   // Student joins session
   socket.on(EVENTS.SESSION.JOIN, async (data) => {
     if (SESSION_DEBUG) {
-      logger.debug('[sessionHandler] Student joining session:', {
+      logger.info('[sessionHandler] Student joining session:', {
         code: data.code,
         name: data.name,
         studentId: data.studentId,
@@ -130,7 +130,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       
       if (!session) {
         if (SESSION_DEBUG) {
-          logger.debug('[sessionHandler] Session not found:', code);
+          logger.info('[sessionHandler] Session not found:', code);
         }
         socket.emit('session:joined', {
           success: false,
@@ -158,7 +158,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Get active rooms data
       const activeRoomsData = session.getActiveRooms();
       if (SESSION_DEBUG) {
-        logger.debug('[sessionHandler] Active rooms for session:', code, activeRoomsData.map(r => ({
+        logger.info('[sessionHandler] Active rooms for session:', code, activeRoomsData.map(r => ({
           type: r.roomType,
           widgetId: r.widgetId,
           hasPollData: r.roomType === 'poll' ? !!r.room?.pollData?.question : 'N/A'
@@ -170,12 +170,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         const roomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
         socket.join(`${code}:${roomId}`);
         if (SESSION_DEBUG) {
-          logger.debug('[sessionHandler] Student joined room:', `${code}:${roomId}`);
+          logger.info('[sessionHandler] Student joined room:', `${code}:${roomId}`);
         }
       });
 
       if (SESSION_DEBUG) {
-        logger.debug('[sessionHandler] Sending session:joined response with', activeRoomsData.length, 'active rooms');
+        logger.info('[sessionHandler] Sending session:joined response with', activeRoomsData.length, 'active rooms');
       }
       socket.emit('session:joined', {
         success: true,
@@ -265,17 +265,17 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     try {
       const { sessionCode, roomType, widgetId } = data;
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] CREATE_ROOM received:', { sessionCode, roomType, widgetId, socketId: socket.id });
+        logger.info('[SessionHandler] CREATE_ROOM received:', { sessionCode, roomType, widgetId, socketId: socket.id });
       }
       const actualSessionCode = sessionCode || getCurrentSessionCode();
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Looking up session:', actualSessionCode);
+        logger.info('[SessionHandler] Looking up session:', actualSessionCode);
       }
       const session = sessionManager.getSession(actualSessionCode);
 
       if (!session || !session.isHost(socket.id)) {
         if (SESSION_DEBUG) {
-          logger.debug('[SessionHandler] CREATE_ROOM failed: session not found or not host', {
+          logger.info('[SessionHandler] CREATE_ROOM failed: session not found or not host', {
             sessionExists: !!session,
             isHost: session ? session.isHost(socket.id) : false,
             hostSocketId: session ? session.hostSocketId : null,
@@ -308,11 +308,11 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       
       // Create new room
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Creating new room:', { roomType, widgetId });
+        logger.info('[SessionHandler] Creating new room:', { roomType, widgetId });
       }
       const room = session.createRoom(roomType, widgetId);
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Room created successfully:', { roomType: room.getType(), widgetId: room.widgetId });
+        logger.info('[SessionHandler] Room created successfully:', { roomType: room.getType(), widgetId: room.widgetId });
       }
       const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
       socket.join(`${session.code}:${roomId}`);
@@ -334,10 +334,10 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       const sessionRoomName = `session:${session.code}`;
       const socketsInRoom = io.sockets.adapter.rooms.get(sessionRoomName);
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Emitting session:roomCreated to:', sessionRoomName);
-        logger.debug('[SessionHandler] Sockets in session room:', socketsInRoom ? Array.from(socketsInRoom) : 'none');
-        logger.debug('[SessionHandler] Current socket ID:', socket.id);
-        logger.debug('[SessionHandler] Is current socket in session room?', socketsInRoom?.has(socket.id));
+        logger.info('[SessionHandler] Emitting session:roomCreated to:', sessionRoomName);
+        logger.info('[SessionHandler] Sockets in session room:', socketsInRoom ? Array.from(socketsInRoom) : 'none');
+        logger.info('[SessionHandler] Current socket ID:', socket.id);
+        logger.info('[SessionHandler] Is current socket in session room?', socketsInRoom?.has(socket.id));
       }
 
       io.to(sessionRoomName).emit('session:roomCreated', {
@@ -346,7 +346,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         roomData: room.toJSON()
       });
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Room creation complete, returning success');
+        logger.info('[SessionHandler] Room creation complete, returning success');
       }
 
       // Send initial state to all participants using the unified event
@@ -358,7 +358,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
 
       // Return room data to the teacher
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Calling callback with success');
+        logger.info('[SessionHandler] Calling callback with success');
       }
       if (typeof callback === 'function') {
         callback({
@@ -367,7 +367,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
           roomData: room.toJSON()
         });
         if (SESSION_DEBUG) {
-          logger.debug('[SessionHandler] Callback called successfully');
+          logger.info('[SessionHandler] Callback called successfully');
         }
       } else {
         console.error('[SessionHandler] callback is not a function:', typeof callback);
@@ -426,7 +426,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   // Host closes a room within session
   socket.on(EVENTS.SESSION.CLOSE_ROOM, async (data) => {
     if (SESSION_DEBUG) {
-      logger.debug('[SessionHandler] Received session:closeRoom:', data);
+      logger.info('[SessionHandler] Received session:closeRoom:', data);
     }
     try {
       const { sessionCode, roomType, widgetId } = data;
@@ -434,19 +434,19 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
 
       if (!session || !session.isHost(socket.id)) {
         if (SESSION_DEBUG) {
-          logger.debug('[SessionHandler] Cannot close room - invalid session or not host');
+          logger.info('[SessionHandler] Cannot close room - invalid session or not host');
         }
         return;
       }
 
       const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Closing room:', roomId);
+        logger.info('[SessionHandler] Closing room:', roomId);
       }
       session.closeRoom(roomType, widgetId);
 
       if (SESSION_DEBUG) {
-        logger.debug('[SessionHandler] Broadcasting room closed to all participants');
+        logger.info('[SessionHandler] Broadcasting room closed to all participants');
       }
       // Notify all participants
       io.to(`session:${session.code}`).emit('session:roomClosed', { 
@@ -471,25 +471,25 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   // Unified widget state update handler
   socket.on(EVENTS.SESSION.UPDATE_WIDGET_STATE, async (data) => {
     if (SESSION_DEBUG) {
-      logger.debug('[server] Received session:updateWidgetState:', data);
+      logger.info('[server] Received session:updateWidgetState:', data);
     }
     try {
       const { sessionCode, roomType, widgetId, isActive } = data;
       if (SESSION_DEBUG) {
-        logger.debug('[server] Getting session for code:', sessionCode);
+        logger.info('[server] Getting session for code:', sessionCode);
       }
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
 
       if (!session) {
         if (SESSION_DEBUG) {
-          logger.debug('[server] updateWidgetState - No session found for code:', sessionCode);
+          logger.info('[server] updateWidgetState - No session found for code:', sessionCode);
         }
         return;
       }
 
       if (session.hostSocketId !== socket.id) {
         if (SESSION_DEBUG) {
-          logger.debug('[server] updateWidgetState - Not host:', {
+          logger.info('[server] updateWidgetState - Not host:', {
             hostSocketId: session.hostSocketId,
             currentSocketId: socket.id
           });
@@ -500,13 +500,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       const room = session.getRoom(roomType, widgetId);
       if (!room) {
         if (SESSION_DEBUG) {
-          logger.debug('[server] updateWidgetState - Room not found:', { roomType, widgetId });
+          logger.info('[server] updateWidgetState - Room not found:', { roomType, widgetId });
         }
         return;
       }
 
       if (SESSION_DEBUG) {
-        logger.debug('[server] Updating room isActive from', room.isActive, 'to', isActive);
+        logger.info('[server] Updating room isActive from', room.isActive, 'to', isActive);
       }
       room.isActive = isActive;
 
@@ -515,15 +515,15 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Ensure the host is in the session room
       if (!socket.rooms.has(sessionRoom)) {
         if (SESSION_DEBUG) {
-          logger.debug('[server] Host socket not in session room, joining now');
+          logger.info('[server] Host socket not in session room, joining now');
         }
         socket.join(sessionRoom);
       }
 
       if (SESSION_DEBUG) {
-        logger.debug('[server] Broadcasting state change to session:', sessionRoom);
+        logger.info('[server] Broadcasting state change to session:', sessionRoom);
         const roomSockets = io.sockets.adapter.rooms.get(sessionRoom);
-        logger.debug('[server] Sockets in session room:', roomSockets ? Array.from(roomSockets) : 'No room exists');
+        logger.info('[server] Sockets in session room:', roomSockets ? Array.from(roomSockets) : 'No room exists');
       }
 
       // Broadcast unified state change to all participants
@@ -533,12 +533,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         isActive
       };
       if (SESSION_DEBUG) {
-        logger.debug('[server] Emitting WIDGET_STATE_CHANGED with data:', eventData);
+        logger.info('[server] Emitting WIDGET_STATE_CHANGED with data:', eventData);
       }
       io.to(sessionRoom).emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, eventData);
 
       if (SESSION_DEBUG) {
-        logger.debug('[server] State change broadcast complete');
+        logger.info('[server] State change broadcast complete');
       }
 
       session.updateActivity();
@@ -550,7 +550,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
   // Unified reset handler for all widget types
   socket.on('session:reset', async (data) => {
     if (SESSION_DEBUG) {
-      logger.debug('[server] Received session:reset:', data);
+      logger.info('[server] Received session:reset:', data);
     }
     try {
       const { sessionCode, widgetId } = data;
@@ -558,7 +558,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
 
       if (!session || session.hostSocketId !== socket.id) {
         if (SESSION_DEBUG) {
-          logger.debug('[server] Unauthorized reset attempt');
+          logger.info('[server] Unauthorized reset attempt');
         }
         return;
       }
@@ -578,7 +578,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       
       if (!room) {
         if (SESSION_DEBUG) {
-          logger.debug('[server] Room not found for reset with widgetId:', widgetId);
+          logger.info('[server] Room not found for reset with widgetId:', widgetId);
         }
         return;
       }
@@ -586,7 +586,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Call the room's reset method if it exists
       if (typeof room.reset === 'function') {
         if (SESSION_DEBUG) {
-          logger.debug('[server] Calling reset on room:', roomType);
+          logger.info('[server] Calling reset on room:', roomType);
         }
         room.reset();
         
@@ -604,11 +604,11 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         io.to(roomNamespace).emit(eventName, updateData);
         
         if (SESSION_DEBUG) {
-          logger.debug('[server] Reset complete, update emitted');
+          logger.info('[server] Reset complete, update emitted');
         }
       } else {
         if (SESSION_DEBUG) {
-          logger.debug('[server] Room type does not support reset:', roomType);
+          logger.info('[server] Room type does not support reset:', roomType);
         }
       }
       

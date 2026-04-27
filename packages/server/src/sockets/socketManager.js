@@ -22,7 +22,7 @@ const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true';
 function setupSocketHandlers(io, sessionManager) {
   io.on('connection', (socket) => {
     if (SOCKET_DEBUG) {
-      logger.debug(`Socket connected: ${socket.id}`);
+      logger.info(`Socket connected: ${socket.id}`);
     }
 
     // Track which session this socket belongs to
@@ -46,7 +46,7 @@ function setupSocketHandlers(io, sessionManager) {
     // Handle disconnection
     socket.on('disconnect', () => {
       if (SOCKET_DEBUG) {
-        logger.debug(`Socket disconnected: ${socket.id}`);
+        logger.info(`Socket disconnected: ${socket.id}`);
       }
 
       // Handle session disconnect

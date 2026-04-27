@@ -8,7 +8,9 @@ const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDef
 const VOICE_COMMAND_DEBUG = process.env.VOICE_COMMAND_DEBUG === 'true';
 
 // Words that signal a likely command intent. Transcripts that contain none of these
-// (e.g. background chatter, gibberish) skip the full pattern scan and BAML fallback.
+// (e.g. background chatter, gibberish) skip the full ~50-pattern regex scan. BAML
+// fallback is still attempted in the route when configured, so natural phrasings
+// outside this list aren't permanently lost.
 const INTENT_KEYWORDS = [
   'timer', 'randomiser', 'randomizer', 'randomise', 'randomize', 'random',
   'poll', 'question', 'questions',
@@ -527,8 +529,9 @@ class PatternMatchingService {
       PatternMatchingService.intentRegex = buildIntentRegex(INTENT_KEYWORDS);
     }
 
-    // Fast path: skip the full pattern scan and BAML fallback for transcripts
-    // with zero command-intent keywords (background chatter, gibberish).
+    // Fast path: skip the full pattern scan for transcripts with zero command-intent
+    // keywords (background chatter, gibberish). The route layer decides whether to
+    // still call BAML — this function only controls pattern matching.
     if (!PatternMatchingService.intentRegex.test(lowerTranscript)) {
       if (VOICE_COMMAND_DEBUG) {
         console.log('⚡ Fast path: transcript has no known command intent keywords');

@@ -198,6 +198,54 @@ async function runTests() {
     assert(response.data.data.widgets.length === 4, 'Should have 4 widget types');
   });
 
+  // Test 9: Voice command — known transcript matches a pattern
+  await test('API: Voice command matches known transcript', async () => {
+    const response = await axios.post(`${API_URL}/voice-command`, {
+      transcript: 'create a timer',
+      context: {},
+      userPreferences: {}
+    });
+    assert(response.status === 200, 'Status should be 200');
+    assert(response.data.success === true, 'Should match');
+    assert(response.data.command.action === 'CREATE_TIMER', 'Should resolve to CREATE_TIMER');
+    assert(response.data.command.target === 'timer', 'Target should be timer');
+  });
+
+  // Test 10: Voice command — intent prefilter fast path returns UNKNOWN without leaking marker
+  await test('API: Voice command intent prefilter rejects gibberish without leaking marker', async () => {
+    const response = await axios.post(`${API_URL}/voice-command`, {
+      transcript: 'blargle wibble frobnicate quantum zebra',
+      context: {},
+      userPreferences: {}
+    });
+    assert(response.status === 200, 'Status should be 200');
+    assert(response.data.success === false, 'Should not match');
+    assert(response.data.command.action === 'UNKNOWN', 'Should be UNKNOWN');
+    assert(!('viaIntentPrefilter' in response.data), 'Internal viaIntentPrefilter marker must not leak in response');
+    assert(!('skipAIFallback' in response.data), 'Legacy skipAIFallback marker must not leak in response');
+  });
+
+  // Test 11: Voice command — randomise variants reach the pattern matcher
+  await test('API: Voice command resolves randomise/randomize variants', async () => {
+    for (const transcript of ['randomise', 'randomize']) {
+      const response = await axios.post(`${API_URL}/voice-command`, {
+        transcript,
+        context: {},
+        userPreferences: {}
+      });
+      assert(response.data.success === true, `"${transcript}" should match`);
+      assert(response.data.command.action === 'RANDOMISE', `"${transcript}" should resolve to RANDOMISE`);
+    }
+  });
+
+  // Test 12: Voice command health endpoint (regression: ollamaService ReferenceError)
+  await test('API: Voice command health endpoint responds without error', async () => {
+    const response = await axios.get(`${API_URL}/voice-command/health`);
+    assert(response.status === 200, 'Status should be 200');
+    assert(response.data.status === 'healthy', 'Should be healthy');
+    assert('ollamaAvailable' in response.data.llmService, 'Should report ollamaAvailable');
+  });
+
   // Summary
   log('\n📊 Test Summary', 'blue');
   log(`   Passed: ${passed}`, 'green');

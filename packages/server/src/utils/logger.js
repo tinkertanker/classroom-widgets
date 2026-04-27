@@ -2,28 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const util = require('util');
 
-const DEBUG_LOG_FLAGS = [
-  'HTTP_DEBUG',
-  'SOCKET_DEBUG',
-  'SESSION_DEBUG',
-  'VOICE_COMMAND_DEBUG',
-  'LOG_SOCKET_EVENTS'
-];
-
-function resolveLogLevel() {
-  // Debug flags take priority so SOCKET_DEBUG=true works without also setting LOG_LEVEL=debug.
-  const hasDebugFlag = DEBUG_LOG_FLAGS.some((flag) => process.env[flag] === 'true');
-  if (hasDebugFlag) {
-    return 'debug';
-  }
-
-  return process.env.LOG_LEVEL || 'info';
-}
-
 class Logger {
   constructor(options = {}) {
     this.options = {
-      level: resolveLogLevel(),
+      level: process.env.LOG_LEVEL || 'info',
       writeToFile: process.env.NODE_ENV === 'production',
       logDir: path.join(__dirname, '../../logs'),
       maxFileSize: 10 * 1024 * 1024, // 10MB

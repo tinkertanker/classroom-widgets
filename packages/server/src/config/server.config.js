@@ -1,23 +1,6 @@
 /**
  * Server configuration
  */
-const DEBUG_LOG_FLAGS = [
-  'HTTP_DEBUG',
-  'SOCKET_DEBUG',
-  'SESSION_DEBUG',
-  'VOICE_COMMAND_DEBUG',
-  'LOG_SOCKET_EVENTS'
-];
-
-function resolveLogLevel() {
-  const hasDebugFlag = DEBUG_LOG_FLAGS.some((flag) => process.env[flag] === 'true');
-  if (hasDebugFlag) {
-    return 'debug';
-  }
-
-  return process.env.LOG_LEVEL || 'info';
-}
-
 module.exports = {
   // Server port
   PORT: process.env.PORT || 3001,
@@ -91,7 +74,7 @@ module.exports = {
 
   // Logging
   LOG: {
-    LEVEL: resolveLogLevel(),
+    LEVEL: process.env.LOG_LEVEL || 'info',
     // Whether to log socket events
     LOG_SOCKET_EVENTS: process.env.LOG_SOCKET_EVENTS === 'true'
   },
