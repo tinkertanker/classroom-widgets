@@ -5,6 +5,30 @@ const express = require('express');
 const router = express.Router();
 const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDefinitions');
 
+const VOICE_COMMAND_DEBUG = process.env.VOICE_COMMAND_DEBUG === 'true';
+
+// Words that signal a likely command intent. Transcripts that contain none of these
+// (e.g. background chatter, gibberish) skip the full ~50-pattern regex scan. BAML
+// fallback is still attempted in the route when configured, so natural phrasings
+// outside this list aren't permanently lost.
+const INTENT_KEYWORDS = [
+  'timer', 'randomiser', 'randomizer', 'randomise', 'randomize', 'random',
+  'poll', 'question', 'questions',
+  'feedback', 'traffic', 'light', 'banner', 'sound', 'sticker', 'stamp', 'list',
+  'link', 'shorten', 'shortener', 'image', 'qr', 'qrcode', 'task', 'cue',
+  'visualiser', 'visualizer', 'volume', 'monitor', 'snake', 'wordle', 'tic',
+  'tac', 'toe', 'activity', 'fill', 'blank', 'handout', 'drop', 'box', 'share',
+  'create', 'add', 'make', 'start', 'stop', 'pause', 'reset', 'restart',
+  'enable', 'disable', 'open', 'close', 'play', 'set', 'change', 'show',
+  'display', 'launch', 'pick', 'choose', 'select', 'spin', 'roll', 'generate',
+  'place', 'activate'
+];
+
+function buildIntentRegex(keywords) {
+  const escapedKeywords = keywords.map((keyword) => keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`\\b(?:${escapedKeywords.join('|')})\\b`, 'i');
+}
+
 /**
  * LLM Integration Guide
  *
@@ -29,9 +53,51 @@ const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDef
  * - SAP algorithm: Schema-Aligned Parsing for flexible LLM outputs
  */
 class PatternMatchingService {
+  static buildUnknownResult(transcript, options = {}) {
+    const result = {
+      success: false,
+      command: {
+        action: 'UNKNOWN',
+        target: 'unknown',
+        parameters: {},
+        confidence: 0.10
+      },
+      feedback: {
+        message: `I'm not sure how to handle "${transcript}".`,
+        type: 'error',
+        shouldSpeak: true
+      },
+      alternatives: [
+        {
+          action: 'CREATE_TIMER',
+          description: 'Create a new timer',
+          confidence: 0.60
+        },
+        {
+          action: 'CREATE_LIST',
+          description: 'Create a new list',
+          confidence: 0.50
+        },
+        {
+          action: 'CREATE_POLL',
+          description: 'Create a new poll',
+          confidence: 0.40
+        }
+      ]
+    };
+
+    if (options.viaIntentPrefilter) {
+      result.viaIntentPrefilter = true;
+    }
+
+    return result;
+  }
+
   async processVoiceCommand(transcript, context) {
-    console.log(`🔍 PatternMatchingService processing: "${transcript}"`);
-    console.log('🗂️ Context provided:', context);
+    if (VOICE_COMMAND_DEBUG) {
+      console.log(`🔍 PatternMatchingService processing: "${transcript}"`);
+      console.log('🗂️ Context provided:', context);
+    }
 
     const lowerTranscript = transcript.toLowerCase().trim();
 
@@ -44,8 +110,12 @@ class PatternMatchingService {
      * 2. Action patterns (e.g., "reset timer", "start poll")
      * 3. Generic create patterns (e.g., "create timer")
      * 4. Launch patterns (e.g., "launch timer")
+     *
+     * Patterns are cached on the class so we don't rebuild ~50 RegExp objects
+     * on every request.
      */
-    const patterns = [
+    if (!PatternMatchingService.patterns) {
+      PatternMatchingService.patterns = [
       // ========================================
       // TIMER WIDGET COMMANDS
       // ========================================
@@ -454,7 +524,26 @@ class PatternMatchingService {
         },
         confidence: 0.80
       }
-    ];
+      ];
+
+      PatternMatchingService.intentRegex = buildIntentRegex(INTENT_KEYWORDS);
+    }
+
+    // Fast path: skip the full pattern scan for transcripts with zero command-intent
+    // keywords (background chatter, gibberish). The route layer decides whether to
+    // still call BAML — this function only controls pattern matching.
+    if (!PatternMatchingService.intentRegex.test(lowerTranscript)) {
+      if (VOICE_COMMAND_DEBUG) {
+        console.log('⚡ Fast path: transcript has no known command intent keywords');
+      }
+      const result = PatternMatchingService.buildUnknownResult(transcript, { viaIntentPrefilter: true });
+      if (VOICE_COMMAND_DEBUG) {
+        console.log('📋 Generated unknown command result:', result);
+      }
+      return result;
+    }
+
+    const patterns = PatternMatchingService.patterns;
 
     // Try to match patterns (in order of specificity)
     for (const patternDef of patterns) {
@@ -462,7 +551,9 @@ class PatternMatchingService {
       const match = lowerTranscript.match(pattern);
 
       if (match) {
-        console.log(`✅ Pattern matched: ${pattern.toString()} -> ${action}`);
+        if (VOICE_COMMAND_DEBUG) {
+          console.log(`✅ Pattern matched: ${pattern.toString()} -> ${action}`);
+        }
 
         // Handle dynamic target (for generic launch commands)
         const resolvedTarget = typeof target === 'function' ? target(match) : target;
@@ -481,45 +572,21 @@ class PatternMatchingService {
             shouldSpeak: true
           }
         };
-        console.log('📋 Generated result:', result);
+        if (VOICE_COMMAND_DEBUG) {
+          console.log('📋 Generated result:', result);
+        }
         return result;
       }
     }
 
-    // Unknown command
-    console.log('❌ No patterns matched, returning unknown command response');
-    const result = {
-      success: false,
-      command: {
-        action: 'UNKNOWN',
-        target: 'unknown',
-        parameters: {},
-        confidence: 0.10
-      },
-      feedback: {
-        message: `I'm not sure how to handle "${transcript}".`,
-        type: 'error',
-        shouldSpeak: true
-      },
-      alternatives: [
-        {
-          action: 'CREATE_TIMER',
-          description: 'Create a new timer',
-          confidence: 0.60
-        },
-        {
-          action: 'CREATE_LIST',
-          description: 'Create a new list',
-          confidence: 0.50
-        },
-        {
-          action: 'CREATE_POLL',
-          description: 'Create a new poll',
-          confidence: 0.40
-        }
-      ]
-    };
-    console.log('📋 Generated unknown command result:', result);
+    // Unknown command (had intent keywords but no pattern matched — let BAML try)
+    if (VOICE_COMMAND_DEBUG) {
+      console.log('❌ No patterns matched, returning unknown command response');
+    }
+    const result = PatternMatchingService.buildUnknownResult(transcript);
+    if (VOICE_COMMAND_DEBUG) {
+      console.log('📋 Generated unknown command result:', result);
+    }
     return result;
   }
 }
@@ -538,20 +605,27 @@ if (USE_BAML) {
     BAMLVoiceCommandService = require('../services/BAMLVoiceCommandService');
   } catch (error) {
     console.warn('⚠️ BAMLVoiceCommandService not available:', error.message);
-    console.log('💡 To use BAML, ensure it\'s installed: npm install @boundaryml/baml');
-    console.log('💡 Generate client with: npx baml-cli generate');
+    if (VOICE_COMMAND_DEBUG) {
+      console.log('💡 To use BAML, ensure it\'s installed: npm install @boundaryml/baml');
+      console.log('💡 Generate client with: npx baml-cli generate');
+    }
   }
 }
 
 const patternService = new PatternMatchingService();
 const bamlService = USE_BAML && BAMLVoiceCommandService ? new BAMLVoiceCommandService() : null;
+// Ollama path is currently unused; the health endpoint references it so keep a
+// nullable handle to avoid a ReferenceError on GET /api/voice-command/health.
+const ollamaService = null;
 
 // Determine active mode
 const aiServiceName = bamlService
   ? `Pattern matching first (${CONFIDENCE_THRESHOLD * 100}% threshold), BAML fallback (type-safe)`
   : 'Pattern matching only';
 
-console.log(`🤖 Voice Command Processing Mode: ${aiServiceName}`);
+if (VOICE_COMMAND_DEBUG) {
+  console.log(`🤖 Voice Command Processing Mode: ${aiServiceName}`);
+}
 
 // POST /api/voice-command
 router.post('/', async (req, res) => {
@@ -561,15 +635,19 @@ router.post('/', async (req, res) => {
   try {
     const { transcript, context, userPreferences } = req.body;
 
-    console.log(`[${new Date().toISOString()}] [${requestId}] 📨 Received voice command request:`, JSON.stringify({
-      transcript,
-      context,
-      userPreferences
-    }, null, 2));
+    if (VOICE_COMMAND_DEBUG) {
+      console.log(`[${new Date().toISOString()}] [${requestId}] 📨 Received voice command request:`, JSON.stringify({
+        transcript,
+        context,
+        userPreferences
+      }, null, 2));
+    }
 
     // Validate request
     if (!transcript || typeof transcript !== 'string') {
-      console.log(`[${new Date().toISOString()}] [${requestId}] ❌ Invalid request - missing or invalid transcript`);
+      if (VOICE_COMMAND_DEBUG) {
+        console.log(`[${new Date().toISOString()}] [${requestId}] ❌ Invalid request - missing or invalid transcript`);
+      }
       return res.status(400).json({
         error: 'Transcript is required and must be a string'
       });
@@ -586,7 +664,9 @@ router.post('/', async (req, res) => {
     );
 
     if (isObviouslyInvalid) {
-      console.log(`[${new Date().toISOString()}] [${requestId}] ⚡ Fast reject: obviously invalid transcript`);
+      if (VOICE_COMMAND_DEBUG) {
+        console.log(`[${new Date().toISOString()}] [${requestId}] ⚡ Fast reject: obviously invalid transcript`);
+      }
       const processingTime = Date.now() - startTime;
       const result = {
         success: false,
@@ -602,12 +682,16 @@ router.post('/', async (req, res) => {
           shouldSpeak: false  // Don't speak for obvious noise
         }
       };
-      console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Fast rejected in ${processingTime}ms`);
+      if (VOICE_COMMAND_DEBUG) {
+        console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Fast rejected in ${processingTime}ms`);
+      }
       return res.json(result);
     }
 
     // Process the command with intelligent hybrid approach (Pattern → BAML if needed)
-    console.log(`[${new Date().toISOString()}] [${requestId}] ⚙️ Processing voice command...`);
+    if (VOICE_COMMAND_DEBUG) {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ⚙️ Processing voice command...`);
+    }
 
     let result;
     let usedService = 'PatternMatchingService';
@@ -618,9 +702,22 @@ router.post('/', async (req, res) => {
       userPreferences: userPreferences || {}
     });
 
+    // The intent prefilter marks results that bypassed the pattern scan. Strip the
+    // marker before responding and tag it for telemetry. We deliberately do NOT use
+    // it to skip BAML: when BAML is configured, natural phrasings outside the
+    // INTENT_KEYWORDS list (e.g. "five minute countdown", "applause") should still
+    // get a chance via BAML rather than being permanently UNKNOWN.
+    const viaIntentPrefilter = result.viaIntentPrefilter === true;
+    if (viaIntentPrefilter) {
+      delete result.viaIntentPrefilter;
+      usedService = 'PatternMatchingService (intent prefilter)';
+    }
+
     // Step 2: If confidence is low, try BAML AI fallback
     if (result.command.confidence < CONFIDENCE_THRESHOLD && bamlService) {
-      console.log(`[${new Date().toISOString()}] [${requestId}] ⚠️ Low confidence (${(result.command.confidence * 100).toFixed(0)}%), trying BAML...`);
+      if (VOICE_COMMAND_DEBUG) {
+        console.log(`[${new Date().toISOString()}] [${requestId}] ⚠️ Low confidence (${(result.command.confidence * 100).toFixed(0)}%), trying BAML...`);
+      }
       try {
         const bamlResult = await bamlService.processVoiceCommand(transcript, {
           context: context || {},
@@ -641,7 +738,9 @@ router.post('/', async (req, res) => {
     }
 
     const processingTime = Date.now() - startTime;
-    console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Voice command processed by ${usedService} in ${processingTime}ms:`, JSON.stringify(result, null, 2));
+    if (VOICE_COMMAND_DEBUG) {
+      console.log(`[${new Date().toISOString()}] [${requestId}] ✅ Voice command processed by ${usedService} in ${processingTime}ms:`, JSON.stringify(result, null, 2));
+    }
 
     res.json(result);
   } catch (error) {

@@ -2,6 +2,7 @@ const { EVENTS } = require('../config/constants');
 const {
   startHostDisconnectTimeout
 } = require('./hostDisconnectTimeouts');
+const { logger } = require('../utils/logger');
 
 // Import individual socket handlers
 const sessionHandler = require('./handlers/sessionHandler');
@@ -13,13 +14,17 @@ const handoutHandler = require('./handlers/handoutHandler');
 const activityHandler = require('./handlers/activityHandler');
 const adminHandler = require('./handlers/adminHandler');
 
+const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true';
+
 /**
  * Setup all socket handlers
  */
 function setupSocketHandlers(io, sessionManager) {
   io.on('connection', (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
-    
+    if (SOCKET_DEBUG) {
+      logger.info(`Socket connected: ${socket.id}`);
+    }
+
     // Track which session this socket belongs to
     let currentSessionCode = null;
 
@@ -40,14 +45,16 @@ function setupSocketHandlers(io, sessionManager) {
 
     // Handle disconnection
     socket.on('disconnect', () => {
-      console.log(`Socket disconnected: ${socket.id}`);
-      
+      if (SOCKET_DEBUG) {
+        logger.info(`Socket disconnected: ${socket.id}`);
+      }
+
       // Handle session disconnect
       if (currentSessionCode) {
         const session = sessionManager.getSession(currentSessionCode);
         if (session) {
           if (session.hostSocketId === socket.id) {
-            console.log(`Host disconnected from session ${currentSessionCode}`);
+            logger.info(`Host disconnected from session ${currentSessionCode}`);
 
             // Mark host as disconnected
             session.hostDisconnectedAt = Date.now();
