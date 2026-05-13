@@ -50,14 +50,6 @@ const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER
 const SMART_PUNCT_RE = /[‘’‚‛“”„‟–—…]/;
 const hasCodeFence = (value: string) => /```/.test(value);
 
-const normaliseCodePunctuation = (value: string) =>
-  value
-    .replace(/[‘’‚‛]/g, "'")
-    .replace(/[“”„‟]/g, '"')
-    .replace(/–/g, '-')
-    .replace(/—/g, '--')
-    .replace(/…/g, '...');
-
 const formatInlineText = (line: string) => {
   const tokens = line.split(/(\*_[^_]+_\*|\*[^*]+\*|_[^_]+_|~[^~]+~|`[^`]+`)/g);
   return tokens.map((token, index) => {
@@ -197,14 +189,14 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   }, [controlsVisible, isEditing]);
 
   const commitText = useCallback((nextText: string) => {
-    const value = hasCodeFence(nextText) ? normaliseCodePunctuation(nextText) : nextText;
+    const value = hasCodeFence(nextText) ? normaliseCode(nextText) : nextText;
     updateState({ text: normaliseText(value) });
   }, [updateState]);
 
   const handleEditChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const raw = e.target.value;
     const value = hasCodeFence(raw) && SMART_PUNCT_RE.test(raw)
-      ? normaliseCodePunctuation(raw)
+      ? normaliseCode(raw)
       : raw;
     if (value !== raw) {
       const ta = e.target;
@@ -212,7 +204,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       // by normalising the prefix up to the original cursor so it lands at the
       // same logical position rather than mid-insertion.
       const rawCursor = ta.selectionStart;
-      const adjustedCursor = normaliseCodePunctuation(raw.slice(0, rawCursor)).length;
+      const adjustedCursor = normaliseCode(raw.slice(0, rawCursor)).length;
       setEditText(value);
       requestAnimationFrame(() => {
         if (ta.isConnected) {
@@ -301,6 +293,24 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const adjustFontCap = (delta: number) => {
     const next = Math.min(MAX_FONT_SIZE_CAP, Math.max(MIN_FONT_SIZE_CAP, fontSizeCap + delta));
     updateState({ fontSizeCap: next });
+  };
+
+  const adjustColumnHeight = (delta: number) => {
+    if (!isColumnLayout) return;
+    const current = columnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT;
+    const next = Math.min(MAX_COLUMN_HEIGHT, Math.max(MIN_COLUMN_HEIGHT, current + delta));
+    updateState({ columnHeight: next });
+  };
+
+  const handleResizeKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 32 : 8;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      adjustColumnHeight(step);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      adjustColumnHeight(-step);
+    }
   };
 
   const pendingHeightRef = useRef<number | null>(null);
@@ -526,9 +536,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
             ref={textRef}
             code={codeBlock.code}
             language={codeBlock.language}
-            fontFamily={fontFamily}
             fontSize={fontSize}
-            colorClass={currentColors.text}
           />
         ) : (
           <div
@@ -549,11 +557,13 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
         <div
           role="separator"
           aria-orientation="horizontal"
-          aria-label="Resize banner height"
+          aria-label="Resize banner height (use arrow keys)"
+          tabIndex={0}
           onMouseDown={handleResizeMouseDown}
+          onKeyDown={handleResizeKeyDown}
           className={cn(
             'absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize select-none',
-            'opacity-0 group-hover/banner:opacity-100 transition-opacity',
+            'opacity-0 group-hover/banner:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-soft-white/70 transition-opacity',
             pendingHeight !== null && 'opacity-100'
           )}
         >
@@ -567,9 +577,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
 interface CodeBlockRenderProps {
   code: string;
   language: string;
-  fontFamily: TextBannerFontFamily;
   fontSize: number;
-  colorClass: string;
 }
 
 const CodeBlockRender = React.forwardRef<HTMLDivElement, CodeBlockRenderProps>(
@@ -601,7 +609,7 @@ const CodeBlockRender = React.forwardRef<HTMLDivElement, CodeBlockRenderProps>(
         <pre className="text-banner-code">
           <code
             dangerouslySetInnerHTML={{
-              __html: highlighted?.html ?? escapeHtml(code)
+              __html: highlighted?.html ?? escapeHtml(normalised)
             }}
           />
         </pre>

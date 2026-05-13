@@ -64,7 +64,14 @@ function ensureStyles() {
 
 async function loadHighlighter(): Promise<HLJSApi> {
   if (!hljsPromise) {
-    hljsPromise = import('highlight.js').then((mod) => mod.default);
+    hljsPromise = import('highlight.js')
+      .then((mod) => mod.default)
+      .catch((err) => {
+        // Drop the cached rejection so the next attempt can retry the chunk
+        // load after a transient network failure.
+        hljsPromise = null;
+        throw err;
+      });
   }
   return hljsPromise;
 }
