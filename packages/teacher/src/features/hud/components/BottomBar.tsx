@@ -109,7 +109,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
           }}
         />
       ),
-      className: 'max-w-4xl bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl',
+      className: 'w-full max-w-4xl mx-4 bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl',
       noPadding: true
     });
   };
