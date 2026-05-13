@@ -261,7 +261,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           onClick={stopAll}
           onDoubleClick={stopAll}
         >
-          {/* Colour swatches */}
+          {/* Colour swatches + click-to-recolour lock */}
           <div className="flex items-center gap-1">
             {colorCombinations.map((combo, idx) => (
               <button
@@ -276,6 +276,18 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
                 aria-label={`Use colour ${idx + 1}`}
               />
             ))}
+            <button
+              type="button"
+              onClick={() => updateState({ clickToRecolour: !clickToRecolour })}
+              className={cn(
+                'w-7 h-7 ml-1 flex items-center justify-center rounded-full transition-colors',
+                clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
+              )}
+              aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
+              title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
+            >
+              {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
+            </button>
           </div>
 
           <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
@@ -326,22 +338,6 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
               </button>
             ))}
           </div>
-
-          <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
-
-          {/* Click-to-recolour toggle */}
-          <button
-            type="button"
-            onClick={() => updateState({ clickToRecolour: !clickToRecolour })}
-            className={cn(
-              'w-7 h-7 flex items-center justify-center rounded-full transition-colors',
-              clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
-            )}
-            aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
-            title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
-          >
-            {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
-          </button>
 
           {/* Dismiss */}
           <button
