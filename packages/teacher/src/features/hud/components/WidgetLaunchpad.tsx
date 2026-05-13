@@ -114,7 +114,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
   return (
     <div className="flex flex-col h-full max-h-[600px] bg-white dark:bg-warm-gray-800 rounded-lg">
       {/* Search and filters section */}
-      <div className="p-6 pb-4">
+      <div className="p-4 sm:p-6 sm:pb-4">
         {/* Search input */}
         <div className="relative mb-3">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -147,7 +147,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
         </div>
         
         {/* Category filters */}
-        <div className="flex gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-3">
           <button
             onClick={() => setSelectedCategory(null)}
             className={`px-3 py-1 text-xs rounded-full transition-colors ${
@@ -183,7 +183,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
       </div>
       
       {/* Widget grid */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
         {filteredWidgets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <svg className="w-16 h-16 text-warm-gray-300 dark:text-warm-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,7 +198,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
           </div>
         ) : selectedCategory ? (
           // Show widgets in selected category
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {filteredWidgets.map((widget, index) => {
               const Icon = widget.icon;
               const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
@@ -240,7 +240,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                 <h3 className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-3">
                   {categoryTitles[category]}
                 </h3>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {widgets.map((widget) => {
                     const Icon = widget.icon;
                     const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;

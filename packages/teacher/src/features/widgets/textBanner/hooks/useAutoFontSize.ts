@@ -9,6 +9,8 @@ interface UseAutoFontSizeOptions {
   padding?: number;
   /** When true, only constrain by width — let height grow freely. */
   widthOnly?: boolean;
+  /** Any external value whose change should force a recalculation (e.g. font family). */
+  fontFamily?: string;
 }
 
 /**
@@ -21,7 +23,8 @@ export function useAutoFontSize({
   maxSize = 200,
   minSize = 12,
   padding = 32,
-  widthOnly = false
+  widthOnly = false,
+  fontFamily
 }: UseAutoFontSizeOptions) {
   const [fontSize, setFontSize] = useState(24);
 
@@ -65,14 +68,14 @@ export function useAutoFontSize({
   // Recalculate on text or mode change
   useEffect(() => {
     calculateFontSize();
-  }, [text, widthOnly]);
+  }, [text, widthOnly, maxSize, minSize, padding, fontFamily]);
 
   // Recalculate on window resize
   useEffect(() => {
     const handleResize = () => calculateFontSize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [text, widthOnly]);
+  }, [text, widthOnly, maxSize, minSize, padding, fontFamily]);
 
   // Recalculate when container size changes (from react-rnd resize)
   useEffect(() => {
@@ -85,7 +88,7 @@ export function useAutoFontSize({
     resizeObserver.observe(containerRef.current);
 
     return () => resizeObserver.disconnect();
-  }, [text, widthOnly]);
+  }, [text, widthOnly, maxSize, minSize, padding, fontFamily]);
 
   return fontSize;
 }
