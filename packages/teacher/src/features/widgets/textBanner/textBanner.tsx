@@ -7,7 +7,7 @@ import {
   FONT_FAMILY_ORDER,
   TextBannerFontFamily
 } from './fonts';
-import { findCodeBlock, highlightCode, type HighlightedCode } from './highlight';
+import { findCodeBlock, highlightCode, normaliseCode, type HighlightedCode } from './highlight';
 import { cn, widgetContainer } from '@shared/utils/styles';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
@@ -46,6 +46,17 @@ const MAX_FONT_SIZE_CAP = 220;
 const FONT_SIZE_STEP = 16;
 
 const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER_TEXT);
+
+const SMART_PUNCT_RE = /[‘’‚‛“”„‟–—…]/;
+const hasCodeFence = (value: string) => /```/.test(value);
+
+const normaliseCodePunctuation = (value: string) =>
+  value
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/–/g, '-')
+    .replace(/—/g, '--')
+    .replace(/…/g, '...');
 
 const formatInlineText = (line: string) => {
   const tokens = line.split(/(\*_[^_]+_\*|\*[^*]+\*|_[^_]+_|~[^~]+~|`[^`]+`)/g);
@@ -185,8 +196,28 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   }, [controlsVisible, isEditing]);
 
   const commitText = useCallback((nextText: string) => {
-    updateState({ text: normaliseText(nextText) });
+    const value = hasCodeFence(nextText) ? normaliseCodePunctuation(nextText) : nextText;
+    updateState({ text: normaliseText(value) });
   }, [updateState]);
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const raw = e.target.value;
+    const value = hasCodeFence(raw) && SMART_PUNCT_RE.test(raw)
+      ? normaliseCodePunctuation(raw)
+      : raw;
+    if (value !== raw) {
+      const ta = e.target;
+      const cursor = ta.selectionStart;
+      setEditText(value);
+      requestAnimationFrame(() => {
+        if (ta.isConnected) {
+          ta.selectionStart = ta.selectionEnd = cursor;
+        }
+      });
+    } else {
+      setEditText(value);
+    }
+  };
 
   const handleBlur = () => {
     commitText(editText);
@@ -199,6 +230,20 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       commitText(editText);
       setIsEditing(false);
       setControlsVisible(false);
+      return;
+    }
+    if (e.key === 'Tab' && hasCodeFence(editText)) {
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const next = editText.slice(0, start) + '  ' + editText.slice(end);
+      setEditText(next);
+      requestAnimationFrame(() => {
+        if (ta.isConnected) {
+          ta.selectionStart = ta.selectionEnd = start + 2;
+        }
+      });
     }
   };
 
@@ -421,12 +466,20 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           <textarea
             ref={textareaRef}
             value={editText}
-            onChange={(e) => setEditText(e.target.value)}
+            onChange={handleEditChange}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            style={{ fontFamily: FONT_FAMILY_STACK[fontFamily] }}
+            spellCheck={!hasCodeFence(editText)}
+            autoCorrect="off"
+            autoCapitalize="off"
+            autoComplete="off"
+            data-gramm="false"
+            data-enable-grammarly="false"
+            style={{
+              fontFamily: hasCodeFence(editText) ? FONT_FAMILY_STACK.mono : FONT_FAMILY_STACK[fontFamily]
+            }}
             className="w-full h-full p-4 text-base bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
             placeholder="Enter your message... (use ```language for code blocks)"
             autoFocus
@@ -486,28 +539,27 @@ const CodeBlockRender = React.forwardRef<HTMLDivElement, CodeBlockRenderProps>(
   ({ code, language, fontSize }, ref) => {
     const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
 
+    const normalised = useMemo(() => normaliseCode(code), [code]);
+
     useEffect(() => {
       let cancelled = false;
-      highlightCode(code, language)
+      highlightCode(normalised, language)
         .then((result) => {
           if (!cancelled) setHighlighted(result);
         })
         .catch(() => {
-          if (!cancelled) setHighlighted({ html: escapeHtml(code), language: 'plaintext' });
+          if (!cancelled) setHighlighted({ html: escapeHtml(normalised), language: 'plaintext' });
         });
       return () => {
         cancelled = true;
       };
-    }, [code, language]);
-
-    // Use a smaller font for code so it fits more easily
-    const codeFontSize = Math.max(12, Math.round(fontSize * 0.7));
+    }, [normalised, language]);
 
     return (
       <div
         ref={ref}
-        className="w-full max-w-full"
-        style={{ fontSize: `${codeFontSize}px` }}
+        className="max-w-full"
+        style={{ fontSize: `${fontSize}px` }}
       >
         <pre className="text-banner-code">
           <code

@@ -8,7 +8,7 @@ const STYLE_ID = 'text-banner-hljs-styles';
 const HLJS_CSS = `
 .text-banner-code {
   display: block;
-  width: 100%;
+  max-width: 100%;
   text-align: left;
   white-space: pre;
   font-family: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
@@ -16,7 +16,7 @@ const HLJS_CSS = `
   border-radius: 0.5rem;
   background: rgba(0, 0, 0, 0.35);
   color: #f5f5f5;
-  overflow-x: auto;
+  margin: 0;
 }
 .text-banner-code .hljs-comment,
 .text-banner-code .hljs-quote { color: #9ca3af; font-style: italic; }
@@ -74,10 +74,18 @@ export interface HighlightedCode {
   language: string;
 }
 
+export const normaliseCode = (input: string) =>
+  input
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/–/g, '-')
+    .replace(/—/g, '--')
+    .replace(/…/g, '...');
+
 export async function highlightCode(code: string, language?: string): Promise<HighlightedCode> {
   ensureStyles();
   const hljs = await loadHighlighter();
-  const trimmed = code.replace(/\n+$/, '');
+  const trimmed = normaliseCode(code.replace(/\n+$/, ''));
   if (language && hljs.getLanguage(language)) {
     const result = hljs.highlight(trimmed, { language, ignoreIllegals: true });
     return { html: result.value, language: result.language ?? language };
