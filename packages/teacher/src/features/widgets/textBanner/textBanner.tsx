@@ -518,6 +518,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
               onBlur={handleBlur}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
               spellCheck={!hasCodeFence(editText)}
               autoCorrect="off"
               autoCapitalize="off"
