@@ -50,6 +50,19 @@ const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER
 const SMART_PUNCT_RE = /[‘’‚‛“”„‟–—…]/;
 const hasCodeFence = (value: string) => /```/.test(value);
 
+// Returns true when the caret is between an opening and closing ``` fence.
+const isCursorInsideFence = (text: string, cursor: number) => {
+  let count = 0;
+  let i = 0;
+  while (true) {
+    const next = text.indexOf('```', i);
+    if (next === -1 || next >= cursor) break;
+    count++;
+    i = next + 3;
+  }
+  return count % 2 === 1;
+};
+
 const formatInlineText = (line: string) => {
   const tokens = line.split(/(\*_[^_]+_\*|\*[^*]+\*|_[^_]+_|~[^~]+~|`[^`]+`)/g);
   return tokens.map((token, index) => {
@@ -229,7 +242,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       setControlsVisible(false);
       return;
     }
-    if (e.key === 'Tab' && hasCodeFence(editText)) {
+    if (e.key === 'Tab' && isCursorInsideFence(editText, e.currentTarget.selectionStart)) {
       e.preventDefault();
       const ta = e.currentTarget;
       const start = ta.selectionStart;
@@ -558,6 +571,10 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           role="separator"
           aria-orientation="horizontal"
           aria-label="Resize banner height (use arrow keys)"
+          aria-valuenow={Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)}
+          aria-valuemin={MIN_COLUMN_HEIGHT}
+          aria-valuemax={MAX_COLUMN_HEIGHT}
+          aria-valuetext={`${Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)} pixels`}
           tabIndex={0}
           onMouseDown={handleResizeMouseDown}
           onKeyDown={handleResizeKeyDown}
