@@ -256,99 +256,104 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     >
       {controlsVisible && (
         <div
-          className="flex-shrink-0 m-2 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm shadow-lg text-xs select-none self-center max-w-[calc(100%-1rem)] flex-wrap justify-center"
+          className="flex-shrink-0 m-2 z-20 flex flex-col items-center gap-1 px-2 py-1.5 rounded-2xl bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm shadow-lg text-xs select-none self-center max-w-[calc(100%-1rem)]"
           onMouseDown={preventToolbarBlur}
           onClick={stopAll}
           onDoubleClick={stopAll}
         >
-          {/* Colour swatches + click-to-recolour lock */}
-          <div className="flex items-center gap-1">
-            {colorCombinations.map((combo, idx) => (
+          {/* Row 1: colours + lock | fonts | dismiss */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
+            {/* Colour swatches + click-to-recolour lock */}
+            <div className="flex items-center gap-1">
+              {colorCombinations.map((combo, idx) => (
+                <button
+                  key={combo.swatch}
+                  type="button"
+                  onClick={() => updateState({ colorIndex: idx })}
+                  className={cn(
+                    'w-5 h-5 rounded-full border transition-transform hover:scale-110',
+                    idx === colorIndex ? 'border-soft-white ring-2 ring-soft-white/40' : 'border-warm-gray-500'
+                  )}
+                  style={{ backgroundColor: combo.swatch }}
+                  aria-label={`Use colour ${idx + 1}`}
+                />
+              ))}
               <button
-                key={combo.swatch}
                 type="button"
-                onClick={() => updateState({ colorIndex: idx })}
+                onClick={() => updateState({ clickToRecolour: !clickToRecolour })}
                 className={cn(
-                  'w-5 h-5 rounded-full border transition-transform hover:scale-110',
-                  idx === colorIndex ? 'border-soft-white ring-2 ring-soft-white/40' : 'border-warm-gray-500'
+                  'w-7 h-7 ml-1 flex items-center justify-center rounded-full transition-colors',
+                  clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
                 )}
-                style={{ backgroundColor: combo.swatch }}
-                aria-label={`Use colour ${idx + 1}`}
-              />
-            ))}
+                aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
+                title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
+              >
+                {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
+              </button>
+            </div>
+
+            <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
+
+            {/* Font family */}
+            <div className="flex items-center gap-1">
+              {FONT_FAMILY_ORDER.map((family) => (
+                <button
+                  key={family}
+                  type="button"
+                  onClick={() => updateState({ fontFamily: family })}
+                  className={cn(
+                    'px-2 py-1 rounded-md text-[11px] leading-none transition-colors',
+                    fontFamily === family
+                      ? 'bg-soft-white text-warm-gray-900'
+                      : 'hover:bg-warm-gray-700/60'
+                  )}
+                  style={{ fontFamily: FONT_FAMILY_STACK[family] }}
+                  title={FONT_FAMILY_LABEL[family]}
+                  aria-label={`Use ${FONT_FAMILY_LABEL[family]} font`}
+                >
+                  Aa
+                </button>
+              ))}
+            </div>
+
+            <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
+
+            {/* Dismiss */}
             <button
               type="button"
-              onClick={() => updateState({ clickToRecolour: !clickToRecolour })}
-              className={cn(
-                'w-7 h-7 ml-1 flex items-center justify-center rounded-full transition-colors',
-                clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
-              )}
-              aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
-              title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
+              onClick={() => setControlsVisible(false)}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60"
+              aria-label="Hide controls"
+              title="Hide controls"
             >
-              {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
+              <FaXmark className="w-3 h-3" />
             </button>
           </div>
 
-          <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
-
-          {/* Font size */}
-          <button
-            type="button"
-            onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
-            disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
-            aria-label="Decrease maximum font size"
-            title="Decrease size"
-          >
-            <FaMinus className="w-3 h-3" />
-          </button>
-          <span className="text-[10px] tabular-nums w-6 text-center opacity-80">{fontSizeCap}</span>
-          <button
-            type="button"
-            onClick={() => adjustFontCap(FONT_SIZE_STEP)}
-            disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
-            aria-label="Increase maximum font size"
-            title="Increase size"
-          >
-            <FaPlus className="w-3 h-3" />
-          </button>
-
-          <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
-
-          {/* Font family */}
-          <div className="flex items-center gap-1">
-            {FONT_FAMILY_ORDER.map((family) => (
-              <button
-                key={family}
-                type="button"
-                onClick={() => updateState({ fontFamily: family })}
-                className={cn(
-                  'px-2 py-1 rounded-md text-[11px] leading-none transition-colors',
-                  fontFamily === family
-                    ? 'bg-soft-white text-warm-gray-900'
-                    : 'hover:bg-warm-gray-700/60'
-                )}
-                style={{ fontFamily: FONT_FAMILY_STACK[family] }}
-                title={FONT_FAMILY_LABEL[family]}
-                aria-label={`Use ${FONT_FAMILY_LABEL[family]} font`}
-              >
-                Aa
-              </button>
-            ))}
+          {/* Row 2: font size */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
+              disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
+              aria-label="Decrease maximum font size"
+              title="Decrease size"
+            >
+              <FaMinus className="w-3 h-3" />
+            </button>
+            <span className="text-[10px] tabular-nums w-8 text-center opacity-80">{fontSizeCap}px</span>
+            <button
+              type="button"
+              onClick={() => adjustFontCap(FONT_SIZE_STEP)}
+              disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
+              aria-label="Increase maximum font size"
+              title="Increase size"
+            >
+              <FaPlus className="w-3 h-3" />
+            </button>
           </div>
-
-          {/* Dismiss */}
-          <button
-            type="button"
-            onClick={() => setControlsVisible(false)}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60"
-            aria-label="Hide controls"
-            title="Hide controls"
-          >
-            <FaXmark className="w-3 h-3" />
-          </button>
         </div>
       )}
 
