@@ -50,7 +50,9 @@ const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER
 const SMART_PUNCT_RE = /[‘’‚‛“”„‟–—…]/;
 const hasCodeFence = (value: string) => /```/.test(value);
 
-// Returns true when the caret is between an opening and closing ``` fence.
+// Returns true when there is an odd number of ``` fences before the caret,
+// i.e. the caret sits after an open fence whose closing fence hasn't appeared
+// yet (whether it's been typed or not).
 const isCursorInsideFence = (text: string, cursor: number) => {
   let count = 0;
   let i = 0;
@@ -267,13 +269,18 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const handleTextAreaClick = (e: React.MouseEvent) => {
     if (isEditing || e.detail !== 1 || wasDrag(e)) return;
     if (!clickToRecolour) return;
-    if (clickTimerRef.current) {
-      window.clearTimeout(clickTimerRef.current);
-    }
+    cancelPendingColorCycle();
     clickTimerRef.current = window.setTimeout(() => {
       updateState({ colorIndex: (colorIndex + 1) % colorCombinations.length });
       clickTimerRef.current = null;
     }, 500);
+  };
+
+  const cancelPendingColorCycle = () => {
+    if (clickTimerRef.current) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
   };
 
   const enterEditMode = () => {
@@ -406,23 +413,31 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
                 <button
                   key={combo.swatch}
                   type="button"
-                  onClick={() => updateState({ colorIndex: idx })}
+                  onClick={() => {
+                    cancelPendingColorCycle();
+                    updateState({ colorIndex: idx });
+                  }}
                   className={cn(
                     'w-5 h-5 rounded-full border transition-transform hover:scale-110',
                     idx === colorIndex ? 'border-soft-white ring-2 ring-soft-white/40' : 'border-warm-gray-500'
                   )}
                   style={{ backgroundColor: combo.swatch }}
                   aria-label={`Use colour ${idx + 1}`}
+                  aria-pressed={idx === colorIndex}
                 />
               ))}
               <button
                 type="button"
-                onClick={() => updateState({ clickToRecolour: !clickToRecolour })}
+                onClick={() => {
+                  cancelPendingColorCycle();
+                  updateState({ clickToRecolour: !clickToRecolour });
+                }}
                 className={cn(
                   'w-7 h-7 ml-1 flex items-center justify-center rounded-full transition-colors',
                   clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
                 )}
                 aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
+                aria-pressed={!clickToRecolour}
                 title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
               >
                 {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
@@ -459,6 +474,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
                   style={{ fontFamily: FONT_FAMILY_STACK[family] }}
                   title={FONT_FAMILY_LABEL[family]}
                   aria-label={`Use ${FONT_FAMILY_LABEL[family]} font`}
+                  aria-pressed={fontFamily === family}
                 >
                   Aa
                 </button>
