@@ -164,7 +164,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     maxSize: fontSizeCap,
     minSize: isColumnLayout ? 18 : 12,
     padding: 32,
-    widthOnly: isColumnLayout && !hasManualColumnHeight
+    widthOnly: isColumnLayout && !hasManualColumnHeight,
+    fontFamily
   });
 
   useEffect(() => {
@@ -299,6 +300,15 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   };
 
   const pendingHeightRef = useRef<number | null>(null);
+  const resizeCleanupRef = useRef<(() => void) | null>(null);
+
+  // Make sure any in-progress drag listeners are torn down on unmount.
+  useEffect(() => {
+    return () => {
+      resizeCleanupRef.current?.();
+      resizeCleanupRef.current = null;
+    };
+  }, []);
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     if (!isColumnLayout) return;
@@ -320,9 +330,14 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       setPendingHeight(next);
     };
 
-    const handleUp = () => {
+    const detach = () => {
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
+      resizeCleanupRef.current = null;
+    };
+
+    const handleUp = () => {
+      detach();
       const final = pendingHeightRef.current;
       resizeStartRef.current = null;
       pendingHeightRef.current = null;
@@ -332,6 +347,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       }
     };
 
+    resizeCleanupRef.current = detach;
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
   };
@@ -351,7 +367,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     >
       {controlsVisible && (
         <div
-          className="flex-shrink-0 m-2 z-20 flex flex-col items-center gap-1 px-2 py-1.5 rounded-2xl bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm shadow-lg text-xs select-none self-center max-w-[calc(100%-1rem)]"
+          className="flex-shrink-0 z-20 flex flex-col items-center gap-1.5 px-3 py-2 bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm text-xs select-none"
           onMouseDown={preventToolbarBlur}
           onClick={stopAll}
           onDoubleClick={stopAll}
@@ -454,7 +470,10 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       <div
         ref={textAreaContainerRef}
         className={cn(
-          'flex-1 min-h-0 flex items-center justify-center p-4 relative overflow-hidden',
+          'flex-1 flex items-center justify-center p-4 relative',
+          // Only constrain the content pane when the widget itself has a bounded height
+          // (canvas mode is always bounded via react-rnd; column mode only when columnHeight is set).
+          (!isColumnLayout || hasManualColumnHeight) && 'min-h-0 overflow-hidden',
           clickToRecolour && !isEditing ? 'cursor-pointer' : ''
         )}
         onMouseDown={(e) => {
