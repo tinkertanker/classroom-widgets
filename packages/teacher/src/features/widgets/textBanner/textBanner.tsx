@@ -18,7 +18,12 @@ interface TextBannerState {
   fontFamily: TextBannerFontFamily;
   fontSizeCap: number;
   clickToRecolour: boolean;
+  columnHeight?: number;
 }
+
+const DEFAULT_COLUMN_HEIGHT = 160;
+const MIN_COLUMN_HEIGHT = 60;
+const MAX_COLUMN_HEIGHT = 1200;
 
 interface TextBannerProps {
   savedState?: Partial<TextBannerState> & { text: string };
@@ -111,7 +116,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
         colorIndex: savedState.colorIndex ?? 0,
         fontFamily: savedState.fontFamily ?? 'sans',
         fontSizeCap: savedState.fontSizeCap ?? DEFAULT_FONT_SIZE_CAP,
-        clickToRecolour: savedState.clickToRecolour ?? true
+        clickToRecolour: savedState.clickToRecolour ?? true,
+        columnHeight: savedState.columnHeight
       }
     : undefined;
 
@@ -121,22 +127,25 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     onStateChange
   });
 
-  const { text, colorIndex, fontFamily, fontSizeCap, clickToRecolour } = state;
+  const { text, colorIndex, fontFamily, fontSizeCap, clickToRecolour, columnHeight } = state;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(text);
   const [controlsVisible, setControlsVisible] = useState(() => !savedState);
+  const [pendingHeight, setPendingHeight] = useState<number | null>(null);
 
   const widgetRef = useRef<HTMLDivElement>(null);
   const textAreaContainerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const resizeStartRef = useRef<{ y: number; startHeight: number } | null>(null);
   const clickTimerRef = useRef<number | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const codeBlock = useMemo(() => findCodeBlock(text), [text]);
   const isCodeBlockOnly = codeBlock?.match.trim() === text.trim();
 
+  const hasManualColumnHeight = isColumnLayout && columnHeight !== undefined;
   const fontSize = useAutoFontSize({
     text,
     containerRef: textAreaContainerRef,
@@ -144,7 +153,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     maxSize: fontSizeCap,
     minSize: isColumnLayout ? 18 : 12,
     padding: 32,
-    widthOnly: isColumnLayout
+    widthOnly: isColumnLayout && !hasManualColumnHeight
   });
 
   useEffect(() => {
@@ -244,14 +253,55 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     updateState({ fontSizeCap: next });
   };
 
+  const pendingHeightRef = useRef<number | null>(null);
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    if (!isColumnLayout) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const startHeight = widgetRef.current?.offsetHeight ?? columnHeight ?? DEFAULT_COLUMN_HEIGHT;
+    resizeStartRef.current = { y: e.clientY, startHeight };
+    pendingHeightRef.current = startHeight;
+    setPendingHeight(startHeight);
+
+    const handleMove = (ev: MouseEvent) => {
+      if (!resizeStartRef.current) return;
+      const delta = ev.clientY - resizeStartRef.current.y;
+      const next = Math.min(
+        MAX_COLUMN_HEIGHT,
+        Math.max(MIN_COLUMN_HEIGHT, resizeStartRef.current.startHeight + delta)
+      );
+      pendingHeightRef.current = next;
+      setPendingHeight(next);
+    };
+
+    const handleUp = () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+      const final = pendingHeightRef.current;
+      resizeStartRef.current = null;
+      pendingHeightRef.current = null;
+      setPendingHeight(null);
+      if (final !== null) {
+        updateState({ columnHeight: final });
+      }
+    };
+
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+  };
+
+  const effectiveColumnHeight = pendingHeight ?? columnHeight;
+
   return (
     <div
       ref={widgetRef}
       className={cn(
         widgetContainer,
         currentColors.bg,
-        'relative overflow-hidden transition-colors duration-300 flex flex-col'
+        'relative overflow-hidden transition-colors duration-300 flex flex-col group/banner'
       )}
+      style={isColumnLayout && effectiveColumnHeight ? { height: `${effectiveColumnHeight}px` } : undefined}
       onDoubleClick={handleDoubleClick}
     >
       {controlsVisible && (
@@ -359,7 +409,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       <div
         ref={textAreaContainerRef}
         className={cn(
-          'flex-1 flex items-center justify-center p-4 relative',
+          'flex-1 min-h-0 flex items-center justify-center p-4 relative overflow-hidden',
           clickToRecolour && !isEditing ? 'cursor-pointer' : ''
         )}
         onMouseDown={(e) => {
@@ -404,6 +454,22 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           </div>
         )}
       </div>
+
+      {isColumnLayout && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize banner height"
+          onMouseDown={handleResizeMouseDown}
+          className={cn(
+            'absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize select-none',
+            'opacity-0 group-hover/banner:opacity-100 transition-opacity',
+            pendingHeight !== null && 'opacity-100'
+          )}
+        >
+          <div className="w-10 h-1 rounded-full bg-soft-white/60" />
+        </div>
+      )}
     </div>
   );
 };
