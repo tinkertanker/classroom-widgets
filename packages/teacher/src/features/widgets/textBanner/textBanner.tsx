@@ -233,6 +233,12 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     e.stopPropagation();
   };
 
+  // Prevent the textarea from losing focus when the toolbar is clicked.
+  const preventToolbarBlur = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
   const adjustFontCap = (delta: number) => {
     const next = Math.min(MAX_FONT_SIZE_CAP, Math.max(MIN_FONT_SIZE_CAP, fontSizeCap + delta));
     updateState({ fontSizeCap: next });
@@ -251,7 +257,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       {controlsVisible && (
         <div
           className="flex-shrink-0 m-2 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm shadow-lg text-xs select-none self-center max-w-[calc(100%-1rem)] flex-wrap justify-center"
-          onMouseDown={stopAll}
+          onMouseDown={preventToolbarBlur}
           onClick={stopAll}
           onDoubleClick={stopAll}
         >
