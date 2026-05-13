@@ -261,9 +261,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           onClick={stopAll}
           onDoubleClick={stopAll}
         >
-          {/* Row 1: colours + lock | fonts | dismiss */}
+          {/* Row 1: colours + lock | dismiss */}
           <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            {/* Colour swatches + click-to-recolour lock */}
             <div className="flex items-center gap-1">
               {colorCombinations.map((combo, idx) => (
                 <button
@@ -294,7 +293,19 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
 
             <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
 
-            {/* Font family */}
+            <button
+              type="button"
+              onClick={() => setControlsVisible(false)}
+              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60"
+              aria-label="Hide controls"
+              title="Hide controls"
+            >
+              <FaXmark className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Row 2: font family | font size */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-center">
             <div className="flex items-center gap-1">
               {FONT_FAMILY_ORDER.map((family) => (
                 <button
@@ -318,41 +329,29 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
 
             <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
 
-            {/* Dismiss */}
-            <button
-              type="button"
-              onClick={() => setControlsVisible(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60"
-              aria-label="Hide controls"
-              title="Hide controls"
-            >
-              <FaXmark className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Row 2: font size */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
-              disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
-              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
-              aria-label="Decrease maximum font size"
-              title="Decrease size"
-            >
-              <FaMinus className="w-3 h-3" />
-            </button>
-            <span className="text-[10px] tabular-nums w-8 text-center opacity-80">{fontSizeCap}px</span>
-            <button
-              type="button"
-              onClick={() => adjustFontCap(FONT_SIZE_STEP)}
-              disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
-              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
-              aria-label="Increase maximum font size"
-              title="Increase size"
-            >
-              <FaPlus className="w-3 h-3" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
+                disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
+                aria-label="Decrease maximum font size"
+                title="Decrease size"
+              >
+                <FaMinus className="w-3 h-3" />
+              </button>
+              <span className="text-[10px] tabular-nums w-8 text-center opacity-80">{fontSizeCap}px</span>
+              <button
+                type="button"
+                onClick={() => adjustFontCap(FONT_SIZE_STEP)}
+                disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
+                aria-label="Increase maximum font size"
+                title="Increase size"
+              >
+                <FaPlus className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
       )}
