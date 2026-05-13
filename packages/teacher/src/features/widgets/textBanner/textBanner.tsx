@@ -208,11 +208,15 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       : raw;
     if (value !== raw) {
       const ta = e.target;
-      const cursor = ta.selectionStart;
+      // Some replacements change length (— → --, … → ...). Adjust the cursor
+      // by normalising the prefix up to the original cursor so it lands at the
+      // same logical position rather than mid-insertion.
+      const rawCursor = ta.selectionStart;
+      const adjustedCursor = normaliseCodePunctuation(raw.slice(0, rawCursor)).length;
       setEditText(value);
       requestAnimationFrame(() => {
         if (ta.isConnected) {
-          ta.selectionStart = ta.selectionEnd = cursor;
+          ta.selectionStart = ta.selectionEnd = adjustedCursor;
         }
       });
     } else {
