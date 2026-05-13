@@ -1,25 +1,44 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { FaMinus, FaPlus, FaLock, FaLockOpen, FaXmark } from 'react-icons/fa6';
 import { useAutoFontSize } from './hooks';
+import {
+  FONT_FAMILY_STACK,
+  FONT_FAMILY_LABEL,
+  FONT_FAMILY_ORDER,
+  TextBannerFontFamily
+} from './fonts';
+import { findCodeBlock, highlightCode, type HighlightedCode } from './highlight';
 import { cn, widgetContainer } from '@shared/utils/styles';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
-interface TextBannerProps {
-  savedState?: { text: string; colorIndex?: number };
-  onStateChange?: (state: { text: string; colorIndex: number }) => void;
+interface TextBannerState {
+  text: string;
+  colorIndex: number;
+  fontFamily: TextBannerFontFamily;
+  fontSizeCap: number;
+  clickToRecolour: boolean;
 }
 
-// Define color combinations with high contrast
+interface TextBannerProps {
+  savedState?: Partial<TextBannerState> & { text: string };
+  onStateChange?: (state: TextBannerState) => void;
+}
+
 const colorCombinations = [
-  { bg: 'bg-terracotta-500 dark:bg-terracotta-600', text: 'text-soft-white dark:text-white' },
-  { bg: 'bg-sage-600 dark:bg-sage-700', text: 'text-soft-white dark:text-white' },
-  { bg: 'bg-warm-gray-800 dark:bg-warm-gray-900', text: 'text-soft-white dark:text-warm-gray-100' },
-  { bg: 'bg-dusty-rose-600 dark:bg-dusty-rose-700', text: 'text-soft-white dark:text-white' },
-  { bg: 'bg-soft-white dark:bg-warm-gray-200', text: 'text-warm-gray-900 dark:text-warm-gray-900' },
-  { bg: 'bg-blue-600 dark:bg-blue-700', text: 'text-soft-white dark:text-white' }
+  { bg: 'bg-terracotta-500 dark:bg-terracotta-600', text: 'text-soft-white dark:text-white', swatch: '#d97757' },
+  { bg: 'bg-sage-600 dark:bg-sage-700', text: 'text-soft-white dark:text-white', swatch: '#5c7560' },
+  { bg: 'bg-warm-gray-800 dark:bg-warm-gray-900', text: 'text-soft-white dark:text-warm-gray-100', swatch: '#3f3a36' },
+  { bg: 'bg-dusty-rose-600 dark:bg-dusty-rose-700', text: 'text-soft-white dark:text-white', swatch: '#b96370' },
+  { bg: 'bg-soft-white dark:bg-warm-gray-200', text: 'text-warm-gray-900 dark:text-warm-gray-900', swatch: '#f8f5f0' },
+  { bg: 'bg-blue-600 dark:bg-blue-700', text: 'text-soft-white dark:text-white', swatch: '#2563eb' }
 ];
 
 const PLACEHOLDER_TEXT = 'Double-click to edit';
+const DEFAULT_FONT_SIZE_CAP = 96;
+const MIN_FONT_SIZE_CAP = 24;
+const MAX_FONT_SIZE_CAP = 220;
+const FONT_SIZE_STEP = 16;
 
 const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER_TEXT);
 
@@ -77,48 +96,63 @@ const renderFormattedText = (value: string) => {
 
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
   const isColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
-  const normalisedSavedState = savedState
+
+  const initialState: TextBannerState = {
+    text: PLACEHOLDER_TEXT,
+    colorIndex: 0,
+    fontFamily: 'sans',
+    fontSizeCap: DEFAULT_FONT_SIZE_CAP,
+    clickToRecolour: true
+  };
+
+  const normalisedSavedState: TextBannerState | undefined = savedState
     ? {
         text: normaliseText(savedState.text),
-        colorIndex: savedState.colorIndex ?? 0
+        colorIndex: savedState.colorIndex ?? 0,
+        fontFamily: savedState.fontFamily ?? 'sans',
+        fontSizeCap: savedState.fontSizeCap ?? DEFAULT_FONT_SIZE_CAP,
+        clickToRecolour: savedState.clickToRecolour ?? true
       }
     : undefined;
 
-  const { state, updateState } = useWidgetState({
-    initialState: { text: PLACEHOLDER_TEXT, colorIndex: 0 },
+  const { state, updateState } = useWidgetState<TextBannerState>({
+    initialState,
     savedState: normalisedSavedState,
     onStateChange
   });
 
-  const { text, colorIndex } = state;
+  const { text, colorIndex, fontFamily, fontSizeCap, clickToRecolour } = state;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(text);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [controlsVisible, setControlsVisible] = useState(() => !savedState);
+
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const textAreaContainerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const clickTimerRef = useRef<number | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Use auto font size hook
-  // In column layout, only constrain by width so text drives the widget height
+  const codeBlock = useMemo(() => findCodeBlock(text), [text]);
+  const isCodeBlockOnly = codeBlock?.match.trim() === text.trim();
+
   const fontSize = useAutoFontSize({
     text,
-    containerRef,
+    containerRef: textAreaContainerRef,
     textRef,
-    maxSize: 180,
-    minSize: isColumnLayout ? 24 : 12,
+    maxSize: fontSizeCap,
+    minSize: isColumnLayout ? 18 : 12,
     padding: 32,
     widthOnly: isColumnLayout
   });
 
-  // Select all text when entering edit mode
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.select();
     }
   }, [isEditing]);
 
-  // Prevent delayed colour changes from firing after unmount.
   useEffect(() => {
     return () => {
       if (clickTimerRef.current !== null) {
@@ -128,19 +162,34 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     };
   }, []);
 
-  const commitText = (nextText: string) => {
+  // Dismiss controls on outside click (when not editing)
+  useEffect(() => {
+    if (!controlsVisible || isEditing) return;
+    const handler = (event: MouseEvent) => {
+      if (!widgetRef.current) return;
+      if (!widgetRef.current.contains(event.target as Node)) {
+        setControlsVisible(false);
+      }
+    };
+    document.addEventListener('mousedown', handler, true);
+    return () => document.removeEventListener('mousedown', handler, true);
+  }, [controlsVisible, isEditing]);
+
+  const commitText = useCallback((nextText: string) => {
     updateState({ text: normaliseText(nextText) });
-  };
+  }, [updateState]);
 
   const handleBlur = () => {
     commitText(editText);
     setIsEditing(false);
+    setControlsVisible(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       commitText(editText);
       setIsEditing(false);
+      setControlsVisible(false);
     }
   };
 
@@ -151,63 +200,262 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     return Math.sqrt(dx * dx + dy * dy) > 5;
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleTextAreaClick = (e: React.MouseEvent) => {
     if (isEditing || e.detail !== 1 || wasDrag(e)) return;
+    if (!clickToRecolour) return;
     if (clickTimerRef.current) {
       window.clearTimeout(clickTimerRef.current);
     }
     clickTimerRef.current = window.setTimeout(() => {
-      const nextIndex = (colorIndex + 1) % colorCombinations.length;
-      updateState({ colorIndex: nextIndex });
+      updateState({ colorIndex: (colorIndex + 1) % colorCombinations.length });
       clickTimerRef.current = null;
     }, 500);
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    if (wasDrag(e)) return;
+  const enterEditMode = () => {
     if (clickTimerRef.current) {
       window.clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
     }
     setIsEditing(true);
-    setEditText(text);
+    setEditText(text === PLACEHOLDER_TEXT ? '' : text);
+    setControlsVisible(true);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (wasDrag(e)) return;
+    enterEditMode();
   };
 
   const currentColors = colorCombinations[colorIndex];
 
+  const stopAll = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+  };
+
+  const adjustFontCap = (delta: number) => {
+    const next = Math.min(MAX_FONT_SIZE_CAP, Math.max(MIN_FONT_SIZE_CAP, fontSizeCap + delta));
+    updateState({ fontSizeCap: next });
+  };
+
   return (
     <div
-      ref={containerRef}
-      className={cn(widgetContainer, currentColors.bg, "items-center justify-center p-4 relative overflow-hidden transition-colors duration-300 cursor-pointer")}
-      onMouseDown={(e) => { mouseDownPosRef.current = { x: e.clientX, y: e.clientY }; }}
-      onClick={handleClick}
+      ref={widgetRef}
+      className={cn(
+        widgetContainer,
+        currentColors.bg,
+        'relative overflow-hidden transition-colors duration-300 flex flex-col'
+      )}
       onDoubleClick={handleDoubleClick}
     >
-      {isEditing ? (
-        <textarea
-          ref={textareaRef}
-          value={editText}
-          onChange={(e) => setEditText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full h-full p-4 text-xl bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
-          placeholder="Enter your message..."
-          autoFocus
-        />
-      ) : (
+      {controlsVisible && (
         <div
-          ref={textRef}
-          className={cn(currentColors.text, "text-center leading-tight select-none")}
-          style={{ fontSize: `${fontSize}px` }}
-          title="Double-click to edit"
+          className="flex-shrink-0 m-2 z-20 flex items-center gap-1.5 px-2 py-1.5 rounded-full bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm shadow-lg text-xs select-none self-center max-w-[calc(100%-1rem)] flex-wrap justify-center"
+          onMouseDown={stopAll}
+          onClick={stopAll}
+          onDoubleClick={stopAll}
         >
-          {renderFormattedText(text)}
+          {/* Colour swatches */}
+          <div className="flex items-center gap-1">
+            {colorCombinations.map((combo, idx) => (
+              <button
+                key={combo.swatch}
+                type="button"
+                onClick={() => updateState({ colorIndex: idx })}
+                className={cn(
+                  'w-5 h-5 rounded-full border transition-transform hover:scale-110',
+                  idx === colorIndex ? 'border-soft-white ring-2 ring-soft-white/40' : 'border-warm-gray-500'
+                )}
+                style={{ backgroundColor: combo.swatch }}
+                aria-label={`Use colour ${idx + 1}`}
+              />
+            ))}
+          </div>
+
+          <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
+
+          {/* Font size */}
+          <button
+            type="button"
+            onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
+            disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
+            aria-label="Decrease maximum font size"
+            title="Decrease size"
+          >
+            <FaMinus className="w-3 h-3" />
+          </button>
+          <span className="text-[10px] tabular-nums w-6 text-center opacity-80">{fontSizeCap}</span>
+          <button
+            type="button"
+            onClick={() => adjustFontCap(FONT_SIZE_STEP)}
+            disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
+            aria-label="Increase maximum font size"
+            title="Increase size"
+          >
+            <FaPlus className="w-3 h-3" />
+          </button>
+
+          <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
+
+          {/* Font family */}
+          <div className="flex items-center gap-1">
+            {FONT_FAMILY_ORDER.map((family) => (
+              <button
+                key={family}
+                type="button"
+                onClick={() => updateState({ fontFamily: family })}
+                className={cn(
+                  'px-2 py-1 rounded-md text-[11px] leading-none transition-colors',
+                  fontFamily === family
+                    ? 'bg-soft-white text-warm-gray-900'
+                    : 'hover:bg-warm-gray-700/60'
+                )}
+                style={{ fontFamily: FONT_FAMILY_STACK[family] }}
+                title={FONT_FAMILY_LABEL[family]}
+                aria-label={`Use ${FONT_FAMILY_LABEL[family]} font`}
+              >
+                Aa
+              </button>
+            ))}
+          </div>
+
+          <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
+
+          {/* Click-to-recolour toggle */}
+          <button
+            type="button"
+            onClick={() => updateState({ clickToRecolour: !clickToRecolour })}
+            className={cn(
+              'w-7 h-7 flex items-center justify-center rounded-full transition-colors',
+              clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
+            )}
+            aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
+            title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
+          >
+            {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
+          </button>
+
+          {/* Dismiss */}
+          <button
+            type="button"
+            onClick={() => setControlsVisible(false)}
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60"
+            aria-label="Hide controls"
+            title="Hide controls"
+          >
+            <FaXmark className="w-3 h-3" />
+          </button>
         </div>
       )}
+
+      <div
+        ref={textAreaContainerRef}
+        className={cn(
+          'flex-1 flex items-center justify-center p-4 relative',
+          clickToRecolour && !isEditing ? 'cursor-pointer' : ''
+        )}
+        onMouseDown={(e) => {
+          mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
+        }}
+        onClick={handleTextAreaClick}
+      >
+        {isEditing ? (
+          <textarea
+            ref={textareaRef}
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            style={{ fontFamily: FONT_FAMILY_STACK[fontFamily] }}
+            className="w-full h-full p-4 text-base bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
+            placeholder="Enter your message... (use ```language for code blocks)"
+            autoFocus
+          />
+        ) : isCodeBlockOnly && codeBlock ? (
+          <CodeBlockRender
+            ref={textRef}
+            code={codeBlock.code}
+            language={codeBlock.language}
+            fontFamily={fontFamily}
+            fontSize={fontSize}
+            colorClass={currentColors.text}
+          />
+        ) : (
+          <div
+            ref={textRef}
+            className={cn(currentColors.text, 'text-center leading-tight select-none')}
+            style={{
+              fontSize: `${fontSize}px`,
+              fontFamily: FONT_FAMILY_STACK[fontFamily]
+            }}
+            title="Double-click to edit"
+          >
+            {renderFormattedText(text)}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
+
+interface CodeBlockRenderProps {
+  code: string;
+  language: string;
+  fontFamily: TextBannerFontFamily;
+  fontSize: number;
+  colorClass: string;
+}
+
+const CodeBlockRender = React.forwardRef<HTMLDivElement, CodeBlockRenderProps>(
+  ({ code, language, fontSize }, ref) => {
+    const [highlighted, setHighlighted] = useState<HighlightedCode | null>(null);
+
+    useEffect(() => {
+      let cancelled = false;
+      highlightCode(code, language)
+        .then((result) => {
+          if (!cancelled) setHighlighted(result);
+        })
+        .catch(() => {
+          if (!cancelled) setHighlighted({ html: escapeHtml(code), language: 'plaintext' });
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [code, language]);
+
+    // Use a smaller font for code so it fits more easily
+    const codeFontSize = Math.max(12, Math.round(fontSize * 0.7));
+
+    return (
+      <div
+        ref={ref}
+        className="w-full max-w-full"
+        style={{ fontSize: `${codeFontSize}px` }}
+      >
+        <pre className="text-banner-code">
+          <code
+            dangerouslySetInnerHTML={{
+              __html: highlighted?.html ?? escapeHtml(code)
+            }}
+          />
+        </pre>
+      </div>
+    );
+  }
+);
+CodeBlockRender.displayName = 'CodeBlockRender';
+
+const escapeHtml = (input: string) =>
+  input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 export default TextBanner;
