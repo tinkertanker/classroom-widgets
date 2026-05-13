@@ -463,27 +463,41 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
         onClick={handleTextAreaClick}
       >
         {isEditing ? (
-          <textarea
-            ref={textareaRef}
-            value={editText}
-            onChange={handleEditChange}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-            spellCheck={!hasCodeFence(editText)}
-            autoCorrect="off"
-            autoCapitalize="off"
-            autoComplete="off"
-            data-gramm="false"
-            data-enable-grammarly="false"
-            style={{
-              fontFamily: hasCodeFence(editText) ? FONT_FAMILY_STACK.mono : FONT_FAMILY_STACK[fontFamily]
-            }}
-            className="w-full h-full p-4 text-base bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
-            placeholder="Enter your message... (use ```language for code blocks)"
-            autoFocus
-          />
+          <div className="flex flex-col w-full h-full gap-1">
+            <textarea
+              ref={textareaRef}
+              value={editText}
+              onChange={handleEditChange}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              spellCheck={!hasCodeFence(editText)}
+              autoCorrect="off"
+              autoCapitalize="off"
+              autoComplete="off"
+              data-gramm="false"
+              data-enable-grammarly="false"
+              style={{
+                fontFamily: hasCodeFence(editText) ? FONT_FAMILY_STACK.mono : FONT_FAMILY_STACK[fontFamily]
+              }}
+              className="flex-1 min-h-0 w-full p-4 text-base bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
+              placeholder="Enter your message... (use ```language for code blocks)"
+              autoFocus
+            />
+            <div className={cn('text-[11px] text-center opacity-70 select-none', currentColors.text)}>
+              <a
+                href="https://commonmark.org/help/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseDown={(e) => e.preventDefault()}
+                className="underline hover:opacity-100"
+              >
+                Markdown
+              </a>{' '}
+              supported (subset)
+            </div>
+          </div>
         ) : isCodeBlockOnly && codeBlock ? (
           <CodeBlockRender
             ref={textRef}
