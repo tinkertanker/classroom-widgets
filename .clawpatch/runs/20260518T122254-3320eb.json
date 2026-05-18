@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "runId": "20260518T122254-3320eb",
+  "command": "revalidate",
+  "args": [
+    "revalidate",
+    "--finding",
+    "fnd_sig-feat-library-05cbc88809-deb0_1e1dd60cec",
+    "--json"
+  ],
+  "rootPath": "C:/Users/yjsoon/Developer/classroom-widgets",
+  "headSha": "0f73c1cbe1289819574ad906d2c33e545b1bb271",
+  "startedAt": "2026-05-18T12:22:54.893Z",
+  "finishedAt": "2026-05-18T12:24:19.743Z",
+  "status": "completed",
+  "claimedFeatureIds": [],
+  "findingIds": [
+    "fnd_sig-feat-library-05cbc88809-deb0_1e1dd60cec"
+  ],
+  "patchAttemptIds": [],
+  "errors": []
+}

@@ -39,7 +39,7 @@
     "project-root:packages/teacher"
   ],
   "trustBoundaries": [],
-  "status": "needs-fix",
+  "status": "fixed",
   "lock": null,
   "findingIds": [
     "fnd_sig-feat-library-05cbc88809-0a06_a2ac0ad302",
@@ -58,5 +58,5 @@
     }
   ],
   "createdAt": "2026-05-18T12:09:19.825Z",
-  "updatedAt": "2026-05-18T12:10:01.985Z"
+  "updatedAt": "2026-05-18T12:24:19.730Z"
 }

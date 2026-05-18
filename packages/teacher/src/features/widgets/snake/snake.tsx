@@ -28,14 +28,14 @@ const Snake: React.FC = () => {
   const directionRef = useRef(direction);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
 
-  const generateRandomFood = useCallback((): Position => {
+  const generateRandomFood = useCallback((occupiedSnake = snake): Position => {
     let newFood: Position;
     do {
       newFood = {
         x: Math.floor(Math.random() * GRID_SIZE),
         y: Math.floor(Math.random() * GRID_SIZE)
       };
-    } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
+    } while (occupiedSnake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
     return newFood;
   }, [snake]);
 
@@ -94,7 +94,7 @@ const Snake: React.FC = () => {
       // Check if food eaten
       if (ateFood) {
         setScore(prev => prev + 10);
-        setFood(generateRandomFood());
+        setFood(generateRandomFood(newSnake));
         // Increase speed every 50 points
         if ((score + 10) % 50 === 0) {
           setSpeed(prev => Math.max(50, prev - 20));

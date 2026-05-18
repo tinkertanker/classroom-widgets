@@ -29,11 +29,29 @@
   "whyTestsDoNotAlreadyCoverThis": "No linked tests were provided, and this edge case requires controlling random food placement after an eat event.",
   "suggestedRegressionTest": "Mock Math.random to return the just-eaten head coordinates after an eat, advance the game one tick, and assert the next food position is not on any snake segment.",
   "minimumFixScope": "Change food generation in packages/teacher/src/features/widgets/snake/snake.tsx to use the updated snake positions.",
-  "status": "open",
-  "history": [],
+  "status": "fixed",
+  "history": [
+    {
+      "runId": "20260518T122254-3320eb",
+      "kind": "revalidate",
+      "status": "fixed",
+      "note": null,
+      "reasoning": "The original evidence path still exists at packages/teacher/src/features/widgets/snake/snake.tsx, but the relevant code has changed. generateRandomFood is now defined at line 31 as useCallback((occupiedSnake = snake): Position => ...) and checks occupiedSnake at line 38 instead of always checking the captured snake state. In moveSnake, newSnake.unshift(head) is at line 92, and the eat path now calls setFood(generateRandomFood(newSnake)) at line 97, so the newly occupied head/body positions are excluded when spawning replacement food. The current git diff confirms this is the intended change from generateRandomFood() to generateRandomFood(newSnake). I could not run Vitest because npm commands were rejected by the current tool policy, and there appears to be no snake-specific test file in the current src file listing; this conclusion is based on current code inspection and diff evidence.",
+      "commands": [
+        "Get-Content -Path packages/teacher/src/features/widgets/snake/snake.tsx | Select-Object -First 180",
+        "rg -n \"generateRandomFood|setFood\\(|newSnake\\.unshift|occupiedSnake\" packages/teacher/src/features/widgets/snake/snake.tsx",
+        "git diff -- packages/teacher/src/features/widgets/snake/snake.tsx",
+        "rg --files packages/teacher/src",
+        "npm run test -w @classroom-widgets/teacher -- --run"
+      ],
+      "createdAt": "2026-05-18T12:24:19.671Z"
+    }
+  ],
   "signature": "sig_feat-library-05cbc88809_deb035b4da",
-  "linkedPatchAttemptIds": [],
+  "linkedPatchAttemptIds": [
+    "pat_fnd-sig-feat-library-05cbc88809-_a5f9b3eb9b"
+  ],
   "createdByRunId": "20260518T120928-326713",
   "createdAt": "2026-05-18T12:10:01.971Z",
-  "updatedAt": "2026-05-18T12:10:01.971Z"
+  "updatedAt": "2026-05-18T12:24:19.671Z"
 }
