@@ -79,8 +79,11 @@ const Snake: React.FC = () => {
         return currentSnake;
       }
 
+      const ateFood = head.x === food.x && head.y === food.y;
+      const collisionBody = ateFood ? newSnake : newSnake.slice(0, -1);
+
       // Check self collision
-      if (newSnake.some(segment => segment.x === head.x && segment.y === head.y)) {
+      if (collisionBody.some(segment => segment.x === head.x && segment.y === head.y)) {
         setGameOver(true);
         setIsPaused(true);
         return currentSnake;
@@ -89,7 +92,7 @@ const Snake: React.FC = () => {
       newSnake.unshift(head);
 
       // Check if food eaten
-      if (head.x === food.x && head.y === food.y) {
+      if (ateFood) {
         setScore(prev => prev + 10);
         setFood(generateRandomFood());
         // Increase speed every 50 points

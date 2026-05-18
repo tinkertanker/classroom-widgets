@@ -29,11 +29,33 @@
   "whyTestsDoNotAlreadyCoverThis": "No linked tests were provided for the snake widget, and there is no evidence of movement/collision tests covering tail-vacating behavior.",
   "suggestedRegressionTest": "Render the component or extract the movement reducer, set a snake body where the next head moves into the current tail cell without eating food, advance one tick, and assert the game is not over and the snake advances normally.",
   "minimumFixScope": "Update moveSnake collision logic in packages/teacher/src/features/widgets/snake/snake.tsx.",
-  "status": "open",
-  "history": [],
+  "status": "fixed",
+  "history": [
+    {
+      "runId": "20260518T122029-887329",
+      "kind": "revalidate",
+      "status": "fixed",
+      "note": null,
+      "reasoning": "The original evidence path still exists at packages/teacher/src/features/widgets/snake/snake.tsx, but the collision logic has changed. Current code computes ateFood before self-collision, sets collisionBody to newSnake.slice(0, -1) for non-food moves, and checks collisionBody.some(...) instead of the full current snake. That means the current tail cell is excluded before collision checking on normal moves, while eating moves still check the full body. The tail pop still happens afterward at the current line 103, but the false death condition described in the finding is no longer present. No snake-specific test file exists in the repository; attempts to run npm/node verification commands were blocked by the read-only execution policy, so the conclusion is based on current code inspection plus test discovery.",
+      "commands": [
+        "Get-Content -Path packages/teacher/src/features/widgets/snake/snake.tsx | Select-Object -First 180",
+        "rg -n \"moveSnake|newSnake\\.some|newSnake\\.pop|gameOver|snake\" packages/teacher/src/features/widgets/snake packages/teacher/src -g \"*.tsx\" -g \"*.ts\"",
+        "rg --files -g \"*snake*\" -g \"*.test.*\" -g \"*.spec.*\"",
+        "Get-Content -Path package.json | Select-Object -First 120",
+        "Get-Content -Path packages/teacher/package.json | Select-Object -First 160",
+        "rg -n -C 3 \"const ateFood|collisionBody|newSnake\\.unshift|newSnake\\.pop\" packages/teacher/src/features/widgets/snake/snake.tsx",
+        "rg -n \"collisionBody|newSnake\\.some\\(segment => segment\\.x === head\\.x|newSnake\\.pop\\(\\)\" packages/teacher/src/features/widgets/snake/snake.tsx",
+        "npm run test -w @classroom-widgets/teacher -- --run packages/teacher/src/features/widgets/snake (blocked by policy)",
+        "node -e \"const snake=[{x:1,y:1},{x:1,y:2},{x:0,y:2}]; const head={x:0,y:2}; const food={x:9,y:9}; const ateFood=head.x===food.x&&head.y===food.y; const collisionBody=ateFood?snake:snake.slice(0,-1); console.log({ateFood, collision: collisionBody.some(s=>s.x===head.x&&s.y===head.y), bodyLength: collisionBody.length});\" (blocked by policy)"
+      ],
+      "createdAt": "2026-05-18T12:21:29.982Z"
+    }
+  ],
   "signature": "sig_feat-library-05cbc88809_0a06e74da6",
-  "linkedPatchAttemptIds": [],
+  "linkedPatchAttemptIds": [
+    "pat_fnd-sig-feat-library-05cbc88809-_35d4387f21"
+  ],
   "createdByRunId": "20260518T120928-326713",
   "createdAt": "2026-05-18T12:10:01.971Z",
-  "updatedAt": "2026-05-18T12:10:01.971Z"
+  "updatedAt": "2026-05-18T12:21:29.982Z"
 }
