@@ -80,10 +80,17 @@ function TrafficLight() {
               <div
                 className="flex flex-row items-center justify-center h-full px-4 py-2"
               >
-              {["#ff0000", "#ffa500", "#008000"].map((color, index) => (
-                <div
+              {[
+                { color: "#ff0000", label: "red" },
+                { color: "#ffa500", label: "orange" },
+                { color: "#008000", label: "green" },
+              ].map(({ color, label }) => (
+                <button
                   key={color}
-                  className="clickable relative rounded-full cursor-pointer mx-1 transition-all duration-300 hover:scale-105"
+                  type="button"
+                  aria-label={`Set traffic light to ${label}`}
+                  aria-pressed={state.activeLight === color}
+                  className="clickable relative rounded-full cursor-pointer mx-1 p-0 appearance-none transition-all duration-300 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   style={{
                     width: `${state.boxHeight * 0.7}px`,
                     height: `${state.boxHeight * 0.7}px`,
@@ -126,7 +133,7 @@ function TrafficLight() {
                       filter: 'blur(2px)'
                     }}
                   />
-                </div>
+                </button>
               ))}
               </div>
             </div>

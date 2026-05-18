@@ -29,11 +29,38 @@
   "whyTestsDoNotAlreadyCoverThis": "No linked tests are included for this feature, and there is no test asserting keyboard focusability or accessible activation of the light controls.",
   "suggestedRegressionTest": "Add a React Testing Library test that tabs to each light button, activates it with Enter or Space, and asserts the status message updates for red, orange, and green.",
   "minimumFixScope": "Update the mapped light control element in packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx and add a focused component test.",
-  "status": "open",
-  "history": [],
+  "status": "fixed",
+  "history": [
+    {
+      "runId": "20260518T122642-ec29a5",
+      "kind": "revalidate",
+      "status": "fixed",
+      "note": null,
+      "reasoning": "The original evidence path still exists, but the cited plain div control is no longer present at the original lines. In packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx the mapped light control is now a real <button> at line 88 with type=\"button\", an accessible aria-label at line 91, aria-pressed at line 92, and the existing onClick activation at line 122. Native buttons are keyboard-focusable and support Enter/Space activation without custom key handlers. A focused regression test now exists in packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx: it queries the red/orange/green controls by button role and accessible name, tabs through them, activates with Enter and Space, and checks the status text plus aria-pressed state. I attempted to run the focused Vitest command, but npm/node execution is blocked by the current policy, so the decision is based on current code and the checked-in regression test rather than a live test run.",
+      "commands": [
+        "Get-Content -Path packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx | Select-Object -First 180",
+        "rg -n \"TrafficLight|trafficLight|handleLightClick|aria-label|role=|button\" packages/teacher/src -S",
+        "rg --files | rg \"(trafficLight|TrafficLight|test|spec)\"",
+        "Get-Content -Path packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx",
+        "Get-Content -Path package.json",
+        "Get-Content -Path packages/teacher/package.json",
+        "npm run test -w @classroom-widgets/teacher -- --run packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx",
+        "npm --version",
+        "Get-ChildItem -Name",
+        "node --version",
+        "rg -n \"lets keyboard users|userEvent\\.tab|userEvent\\.keyboard|getByRole\\('button'|toHaveFocus|aria-pressed\" packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx",
+        "rg -n '<button' packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx",
+        "rg -n 'type=\"button\"|aria-label|aria-pressed|onClick' packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx",
+        "rg -n '<div\\s*$|className=\"clickable relative rounded-full|tabIndex|onKeyDown|role=' packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx"
+      ],
+      "createdAt": "2026-05-18T12:27:49.561Z"
+    }
+  ],
   "signature": "sig_feat-cli-command-77f75a2628_d1ee26f47f",
-  "linkedPatchAttemptIds": [],
+  "linkedPatchAttemptIds": [
+    "pat_fnd-sig-feat-cli-command-77f75a2_8931ebd9dc"
+  ],
   "createdByRunId": "20260518T120928-326713",
   "createdAt": "2026-05-18T12:10:02.649Z",
-  "updatedAt": "2026-05-18T12:10:02.649Z"
+  "updatedAt": "2026-05-18T12:27:49.560Z"
 }
