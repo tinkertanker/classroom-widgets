@@ -11,7 +11,7 @@ class ResizeObserverMock {
   disconnect = vi.fn();
 }
 
-const playMock = vi.fn();
+const playMock = vi.fn(() => Promise.resolve());
 
 beforeAll(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
@@ -53,5 +53,17 @@ describe('TrafficLight', () => {
     userEvent.keyboard('{enter}');
     expect(screen.getByText(/teacher's turn/i)).toBeInTheDocument();
     expect(redLight).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('keeps updating the light when audio playback is rejected', async () => {
+    playMock.mockRejectedValueOnce(new Error('blocked'));
+
+    render(<TrafficLight />);
+
+    userEvent.click(screen.getByRole('button', { name: /set traffic light to green/i }));
+
+    expect(screen.getByText(/discuss/i)).toBeInTheDocument();
+    await Promise.resolve();
+    expect(playMock).toHaveBeenCalledTimes(1);
   });
 });

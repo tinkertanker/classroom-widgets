@@ -45,7 +45,7 @@ function TrafficLight() {
 
 
   const handleLightClick = useCallback((color: string) => {
-    new Audio(actionClickSoundFile).play();
+    void new Audio(actionClickSoundFile).play().catch(() => undefined);
     setState((prevState) => ({
       ...prevState,
       activeLight: color,

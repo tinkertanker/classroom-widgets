@@ -22,11 +22,38 @@
   "whyTestsDoNotAlreadyCoverThis": "No linked tests are included, and there is no coverage for rejected audio playback promises.",
   "suggestedRegressionTest": "Add a component test that mocks Audio.prototype.play to reject, clicks a light, asserts the message still changes, and verifies no unhandled rejection escapes.",
   "minimumFixScope": "Update handleLightClick in packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx and add a focused test for rejected playback.",
-  "status": "open",
-  "history": [],
+  "status": "fixed",
+  "history": [
+    {
+      "runId": "20260518T122953-ef4519",
+      "kind": "revalidate",
+      "status": "fixed",
+      "note": null,
+      "reasoning": "The original evidence path still exists, but the relevant lines moved from 39-45 to 47-48. The current handleLightClick now uses `void new Audio(actionClickSoundFile).play().catch(() => undefined);` before updating state, so rejected playback promises are intentionally handled. A focused regression test now exists at `packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx:58-68`, mocking `play` to reject and asserting the light still updates. I attempted to run the focused Vitest command, but the sandbox policy rejected npm/node execution, so the validation is based on current code and test inspection rather than executed test output.",
+      "commands": [
+        "Get-Location",
+        "Test-Path 'packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx'",
+        "rg -n \"handleLightClick|new Audio|actionClickSoundFile|trafficLight\" packages/teacher/src/features/widgets/trafficLight packages/teacher/src",
+        "Get-Content 'packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx'",
+        "Get-Content 'packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx'",
+        "Get-Content 'package.json'",
+        "Get-Content 'packages/teacher/package.json'",
+        "npm run test -w @classroom-widgets/teacher -- --run packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx",
+        "npm --version",
+        "node --version",
+        "git status --short",
+        "git diff -- packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx",
+        "rg -n \"keeps updating the light|mockRejectedValueOnce|catch\\(\\)\" packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx packages/teacher/src/features/widgets/trafficLight/trafficLight.test.tsx",
+        "rg -n -F \"play().catch\" packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx"
+      ],
+      "createdAt": "2026-05-18T12:31:30.046Z"
+    }
+  ],
   "signature": "sig_feat-cli-command-77f75a2628_4927f3b065",
-  "linkedPatchAttemptIds": [],
+  "linkedPatchAttemptIds": [
+    "pat_fnd-sig-feat-cli-command-77f75a2_ac8aa9ae5f"
+  ],
   "createdByRunId": "20260518T120928-326713",
   "createdAt": "2026-05-18T12:10:02.649Z",
-  "updatedAt": "2026-05-18T12:10:02.649Z"
+  "updatedAt": "2026-05-18T12:31:30.046Z"
 }
