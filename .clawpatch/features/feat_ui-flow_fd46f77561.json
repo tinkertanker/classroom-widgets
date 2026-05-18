@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_ui-flow_fd46f77561",
+  "title": "React component MenuItem",
+  "summary": "React component implemented by packages/teacher/src/components/ui/MenuItem.tsx.",
+  "kind": "ui-flow",
+  "source": "react-component",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/src/components/ui/MenuItem.tsx",
+      "symbol": "MenuItem",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/components/ui/MenuItem.tsx",
+      "reason": "component implementation"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "react",
+    "component",
+    "web"
+  ],
+  "trustBoundaries": [
+    "user-input",
+    "network",
+    "serialization"
+  ],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

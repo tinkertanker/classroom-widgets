@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_d6fdcb5848",
+  "title": "Node source packages/teacher/src/features/widgets/wordle",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/wordle with 6 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/wordle",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/wordle/components/WordleGrid.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/wordle"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/wordle/components/WordleKeyboard.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/wordle"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/wordle/components/index.ts",
+      "reason": "source group packages/teacher/src/features/widgets/wordle"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/wordle/hooks/useWordleGame.ts",
+      "reason": "source group packages/teacher/src/features/widgets/wordle"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/wordle/wordList.ts",
+      "reason": "source group packages/teacher/src/features/widgets/wordle"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/wordle/wordle.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/wordle"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

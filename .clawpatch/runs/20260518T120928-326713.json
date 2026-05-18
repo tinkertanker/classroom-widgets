@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "runId": "20260518T120928-326713",
+  "command": "review",
+  "args": [
+    "review",
+    "--limit",
+    "3",
+    "--json"
+  ],
+  "rootPath": "C:/Users/yjsoon/Developer/classroom-widgets",
+  "headSha": "33b1e9c58b50e028c1f6221ce90de7d90ff48120",
+  "startedAt": "2026-05-18T12:09:28.875Z",
+  "finishedAt": "2026-05-18T12:10:02.654Z",
+  "status": "completed",
+  "claimedFeatureIds": [
+    "feat_cli-command_77f75a2628",
+    "feat_config_7528cb5b98",
+    "feat_library_05cbc88809"
+  ],
+  "findingIds": [
+    "fnd_sig-feat-config-7528cb5b98-efa77_b84fde3e51",
+    "fnd_sig-feat-library-05cbc88809-0a06_a2ac0ad302",
+    "fnd_sig-feat-library-05cbc88809-deb0_1e1dd60cec",
+    "fnd_sig-feat-cli-command-77f75a2628-_722fd05ea6",
+    "fnd_sig-feat-cli-command-77f75a2628-_c21e2a263f"
+  ],
+  "patchAttemptIds": [],
+  "errors": []
+}

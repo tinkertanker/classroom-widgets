@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_1f4f836290",
+  "title": "Node source packages/teacher/src/app",
+  "summary": "Node/TypeScript source group packages/teacher/src/app with 2 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/app",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/app/App.tsx",
+      "reason": "source group packages/teacher/src/app"
+    },
+    {
+      "path": "packages/teacher/src/app/providers/ModalProvider.tsx",
+      "reason": "source group packages/teacher/src/app"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_5fa647a6e9",
+  "title": "Node source packages/teacher/src/features/widgets/shared/utils",
+  "summary": "Node/TypeScript source file packages/teacher/src/features/widgets/shared/utils/networkedWidgetHelpers.ts.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/shared/utils",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/shared/utils/networkedWidgetHelpers.ts",
+      "reason": "source group packages/teacher/src/features/widgets/shared/utils"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

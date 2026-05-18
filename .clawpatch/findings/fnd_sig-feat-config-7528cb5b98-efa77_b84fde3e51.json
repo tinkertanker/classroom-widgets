@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "findingId": "fnd_sig-feat-config-7528cb5b98-efa77_b84fde3e51",
+  "featureId": "feat_config_7528cb5b98",
+  "title": "Root npm scripts use Unix-only shell commands",
+  "category": "build-release",
+  "severity": "medium",
+  "confidence": "high",
+  "triage": "risk",
+  "evidence": [
+    {
+      "path": "package.json",
+      "startLine": 12,
+      "endLine": 12,
+      "symbol": "scripts.dev",
+      "quote": "\"dev\": \"cd packages/server && ./dev.sh\""
+    },
+    {
+      "path": "package.json",
+      "startLine": 28,
+      "endLine": 28,
+      "symbol": "scripts.clean",
+      "quote": "\"clean\": \"rm -rf node_modules packages/*/node_modules\""
+    }
+  ],
+  "reasoning": "The root project exposes npm scripts that rely on POSIX shell behavior. On a default Windows npm environment, `./dev.sh` is not directly executable from `cmd.exe`, and `rm -rf` is not available. That makes common root commands fail for Windows contributors or Windows CI even though the package is otherwise an npm workspace project and the review environment is Windows.",
+  "reproduction": "On Windows with npm's default script shell, run `npm run dev` or `npm run clean`; the shell will fail to execute `./dev.sh` or resolve `rm`.",
+  "recommendation": "Replace these with cross-platform Node scripts or npm-native commands. For example, route `dev` through the existing workspace script (`npm run dev -w @classroom-widgets/server`) and implement `clean` with a Node cleanup script or a cross-platform package such as `rimraf`.",
+  "whyTestsDoNotAlreadyCoverThis": "No linked tests or CI scripts exercise the root npm lifecycle commands across supported shells.",
+  "suggestedRegressionTest": "Add a lightweight script check in CI that runs the root lifecycle commands, or at minimum runs `npm run dev:server -- --help`/a non-blocking equivalent and `npm run clean` on Windows and Linux runners.",
+  "minimumFixScope": "Update the root `package.json` scripts for `dev` and `clean`, adding a small helper dependency or Node script if needed.",
+  "status": "open",
+  "history": [],
+  "signature": "sig_feat-config-7528cb5b98_efa77aad2c",
+  "linkedPatchAttemptIds": [],
+  "createdByRunId": "20260518T120928-326713",
+  "createdAt": "2026-05-18T12:09:54.004Z",
+  "updatedAt": "2026-05-18T12:09:54.004Z"
+}

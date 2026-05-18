@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_3caea7a8b1",
+  "title": "Node source packages/teacher/src/features/widgets/textBanner",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/textBanner with 6 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/textBanner",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/fonts.ts",
+      "reason": "source group packages/teacher/src/features/widgets/textBanner"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/highlight.ts",
+      "reason": "source group packages/teacher/src/features/widgets/textBanner"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/hooks/index.ts",
+      "reason": "source group packages/teacher/src/features/widgets/textBanner"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/hooks/useAutoFontSize.ts",
+      "reason": "source group packages/teacher/src/features/widgets/textBanner"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/index.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/textBanner"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/textBanner.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/textBanner"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/highlight.test.ts",
+      "reason": "associated test"
+    }
+  ],
+  "tests": [
+    {
+      "path": "packages/teacher/src/features/widgets/textBanner/highlight.test.ts",
+      "command": "npm --prefix packages/teacher run test"
+    }
+  ],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

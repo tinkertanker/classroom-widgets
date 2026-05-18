@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_ui-flow_b4050eb227",
+  "title": "React component PageLayout",
+  "summary": "React component implemented by packages/teacher/src/pages/components/PageLayout.tsx.",
+  "kind": "ui-flow",
+  "source": "react-component",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/src/pages/components/PageLayout.tsx",
+      "symbol": "PageLayout",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/pages/components/PageLayout.tsx",
+      "reason": "component implementation"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/sticker/CustomStickerIcons.tsx",
+      "reason": "direct import"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "react",
+    "component",
+    "web"
+  ],
+  "trustBoundaries": [
+    "user-input",
+    "network",
+    "serialization"
+  ],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

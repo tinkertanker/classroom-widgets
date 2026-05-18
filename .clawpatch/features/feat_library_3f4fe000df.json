@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_3f4fe000df",
+  "title": "Node source packages/teacher/src/features/board",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/board with 11 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/board",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/board/components/Background.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/BackgroundPattern.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/Board.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/ColumnBoard.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/ColumnWidgetList.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/ColumnWidgetRenderer.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/TrashZone.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/WidgetList.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/WidgetRenderer.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/components/index.tsx",
+      "reason": "source group packages/teacher/src/features/board"
+    },
+    {
+      "path": "packages/teacher/src/features/board/hooks/useZoomWithScroll.ts",
+      "reason": "source group packages/teacher/src/features/board"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

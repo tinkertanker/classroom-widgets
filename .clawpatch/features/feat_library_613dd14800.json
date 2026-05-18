@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_613dd14800",
+  "title": "Node source packages/teacher/src/features/widgets/qrcode",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/qrcode with 2 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/qrcode",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/qrcode/index.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/qrcode"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/qrcode/qrcode.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/qrcode"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

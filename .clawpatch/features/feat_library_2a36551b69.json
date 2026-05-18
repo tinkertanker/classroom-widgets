@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_2a36551b69",
+  "title": "Node package @classroom-widgets/shared",
+  "summary": "Node package @classroom-widgets/shared with package metadata and review context rooted at packages/shared.",
+  "kind": "library",
+  "source": "node-package",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/shared/package.json",
+      "symbol": "@classroom-widgets/shared",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/shared/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "contextFiles": [],
+  "tests": [],
+  "tags": [
+    "node",
+    "package",
+    "project:@classroom-widgets/shared",
+    "project-root:packages/shared",
+    "workspace"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

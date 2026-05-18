@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "projectId": "prj_https-github-com-tinkertanker-cl_7ba8b021dc",
+  "name": "classroom-widgets",
+  "rootPath": "C:/Users/yjsoon/Developer/classroom-widgets",
+  "git": {
+    "remoteUrl": "https://github.com/tinkertanker/classroom-widgets",
+    "defaultBranch": "master",
+    "currentBranch": "master",
+    "headSha": "33b1e9c58b50e028c1f6221ce90de7d90ff48120"
+  },
+  "detected": {
+    "languages": [
+      "javascript"
+    ],
+    "frameworks": [],
+    "packageManagers": [
+      "npm"
+    ],
+    "commands": {
+      "typecheck": null,
+      "lint": null,
+      "format": null,
+      "test": "npm run test"
+    }
+  },
+  "createdAt": "2026-05-18T12:09:13.855Z",
+  "updatedAt": "2026-05-18T12:09:13.855Z"
+}

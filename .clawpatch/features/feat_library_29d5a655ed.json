@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_29d5a655ed",
+  "title": "Node source packages/teacher/src/features/widgets/list",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/list with 7 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/list",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/list/hooks/index.ts",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/list/hooks/useAutoResizeTextarea.ts",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/list/hooks/useListItems.ts",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/list/hooks/useListKeyboardHandlers.ts",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/list/hooks/useResponsiveSize.ts",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/list/index.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/list/list.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/list"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

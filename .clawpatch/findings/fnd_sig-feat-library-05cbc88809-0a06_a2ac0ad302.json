@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "findingId": "fnd_sig-feat-library-05cbc88809-0a06_a2ac0ad302",
+  "featureId": "feat_library_05cbc88809",
+  "title": "Snake can falsely die when moving into the cell just vacated by its tail",
+  "category": "bug",
+  "severity": "medium",
+  "confidence": "high",
+  "triage": "confirmed-bug",
+  "evidence": [
+    {
+      "path": "packages/teacher/src/features/widgets/snake/snake.tsx",
+      "startLine": 74,
+      "endLine": 78,
+      "symbol": "moveSnake",
+      "quote": "if (newSnake.some(segment => segment.x === head.x && segment.y === head.y))"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/snake/snake.tsx",
+      "startLine": 92,
+      "endLine": 94,
+      "symbol": "moveSnake",
+      "quote": "} else {\n        newSnake.pop();\n      }"
+    }
+  ],
+  "reasoning": "The self-collision check runs against the full current snake before the tail is removed for a normal non-eating move. In Snake, moving into the current tail cell is legal because that tail moves away on the same tick. This implementation marks that move as game over before it reaches the non-food branch that pops the tail, causing valid maneuvers to fail once the snake is long enough to turn into its own tail position.",
+  "reproduction": "Grow the snake to length greater than 1, then steer so the next head position is exactly the current tail cell on a tick where no food is eaten. The game sets gameOver instead of allowing the move.",
+  "recommendation": "When checking self-collision, exclude the tail segment on non-food moves, or compute whether the next head eats food first and check against the body slice that will remain after the tick.",
+  "whyTestsDoNotAlreadyCoverThis": "No linked tests were provided for the snake widget, and there is no evidence of movement/collision tests covering tail-vacating behavior.",
+  "suggestedRegressionTest": "Render the component or extract the movement reducer, set a snake body where the next head moves into the current tail cell without eating food, advance one tick, and assert the game is not over and the snake advances normally.",
+  "minimumFixScope": "Update moveSnake collision logic in packages/teacher/src/features/widgets/snake/snake.tsx.",
+  "status": "open",
+  "history": [],
+  "signature": "sig_feat-library-05cbc88809_0a06e74da6",
+  "linkedPatchAttemptIds": [],
+  "createdByRunId": "20260518T120928-326713",
+  "createdAt": "2026-05-18T12:10:01.971Z",
+  "updatedAt": "2026-05-18T12:10:01.971Z"
+}

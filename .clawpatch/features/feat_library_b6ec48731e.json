@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_b6ec48731e",
+  "title": "Node source packages/server/src/middleware",
+  "summary": "Node/TypeScript source group packages/server/src/middleware with 3 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/server/package.json",
+      "symbol": "packages/server/src/middleware",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/server/src/middleware/errorHandler.js",
+      "reason": "source group packages/server/src/middleware"
+    },
+    {
+      "path": "packages/server/src/middleware/socketAuth.js",
+      "reason": "source group packages/server/src/middleware"
+    },
+    {
+      "path": "packages/server/src/middleware/validation.js",
+      "reason": "source group packages/server/src/middleware"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/server/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/server",
+    "project-root:packages/server"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

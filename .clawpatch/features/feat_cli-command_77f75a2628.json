@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_cli-command_77f75a2628",
+  "title": "Node source packages/teacher/src/features/widgets/trafficLight",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/trafficLight with 2 files.",
+  "kind": "cli-command",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/trafficLight",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/trafficLight/index.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/trafficLight"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/trafficLight/trafficLight.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/trafficLight"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [
+    "user-input",
+    "process-exec"
+  ],
+  "status": "needs-fix",
+  "lock": null,
+  "findingIds": [
+    "fnd_sig-feat-cli-command-77f75a2628-_722fd05ea6",
+    "fnd_sig-feat-cli-command-77f75a2628-_c21e2a263f"
+  ],
+  "patchAttemptIds": [],
+  "analysisHistory": [
+    {
+      "runId": "20260518T120928-326713",
+      "kind": "review",
+      "summary": "2 finding(s)",
+      "provider": "codex",
+      "model": null,
+      "reasoningEffort": null,
+      "createdAt": "2026-05-18T12:10:02.653Z"
+    }
+  ],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:10:02.653Z"
+}

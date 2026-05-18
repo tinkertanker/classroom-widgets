@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_8805407360",
+  "title": "Node source packages/server/src/services",
+  "summary": "Node/TypeScript source group packages/server/src/services with 2 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/server/package.json",
+      "symbol": "packages/server/src/services",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/server/src/services/BAMLVoiceCommandService.js",
+      "reason": "source group packages/server/src/services"
+    },
+    {
+      "path": "packages/server/src/services/SessionManager.js",
+      "reason": "source group packages/server/src/services"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/server/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/server",
+    "project-root:packages/server"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_route_45ce3b277b",
+  "title": "React route /widgets/feedback",
+  "summary": "React Router route '/widgets/feedback' rendered by FeedbackPage.",
+  "kind": "route",
+  "source": "react-router-route",
+  "confidence": "high",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/src/pages/widgets/FeedbackPage.tsx",
+      "symbol": "FeedbackPage",
+      "route": "/widgets/feedback",
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/pages/widgets/FeedbackPage.tsx",
+      "reason": "route component"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/teacher/src/index.tsx",
+      "reason": "route declaration"
+    },
+    {
+      "path": "packages/teacher/src/pages/components/PageLayout.tsx",
+      "reason": "direct import"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "react",
+    "react-router",
+    "web"
+  ],
+  "trustBoundaries": [
+    "user-input",
+    "network",
+    "serialization"
+  ],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

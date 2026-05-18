@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_2096fb0463",
+  "title": "Node source packages/teacher/src/features/widgets/shared",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/shared with 5 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/shared",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/shared/ColumnWidgetWrapper.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/shared"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/shared/NetworkedWidgetEmpty.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/shared"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/shared/NetworkedWidgetHeader.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/shared"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/shared/WidgetWrapper.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/shared"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/shared/withWidgetProvider.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/shared"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

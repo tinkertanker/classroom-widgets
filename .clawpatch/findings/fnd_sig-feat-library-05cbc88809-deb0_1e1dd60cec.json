@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "findingId": "fnd_sig-feat-library-05cbc88809-deb0_1e1dd60cec",
+  "featureId": "feat_library_05cbc88809",
+  "title": "New food can spawn on the snake head immediately after eating",
+  "category": "bug",
+  "severity": "low",
+  "confidence": "high",
+  "triage": "confirmed-bug",
+  "evidence": [
+    {
+      "path": "packages/teacher/src/features/widgets/snake/snake.tsx",
+      "startLine": 27,
+      "endLine": 38,
+      "symbol": "generateRandomFood",
+      "quote": "} while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/snake/snake.tsx",
+      "startLine": 84,
+      "endLine": 90,
+      "symbol": "moveSnake",
+      "quote": "newSnake.unshift(head);\n\n      // Check if food eaten\n      if (head.x === food.x && head.y === food.y) {\n        setScore(prev => prev + 10);\n        setFood(generateRandomFood());"
+    }
+  ],
+  "reasoning": "After the snake eats, newSnake includes the new head at the consumed food cell, but generateRandomFood filters against the React state variable snake captured by the callback, which is the pre-move snake. That old snake does not include the newly occupied head cell, so the random generator can choose the just-eaten cell and render food inside the snake.",
+  "reproduction": "On a tick where the snake eats food, have Math.random produce coordinates equal to the consumed food/head cell. generateRandomFood accepts that coordinate because it only checks the pre-move snake array.",
+  "recommendation": "Generate food against the next snake body after unshifting the head, for example by passing newSnake into a helper that excludes all occupied cells.",
+  "whyTestsDoNotAlreadyCoverThis": "No linked tests were provided, and this edge case requires controlling random food placement after an eat event.",
+  "suggestedRegressionTest": "Mock Math.random to return the just-eaten head coordinates after an eat, advance the game one tick, and assert the next food position is not on any snake segment.",
+  "minimumFixScope": "Change food generation in packages/teacher/src/features/widgets/snake/snake.tsx to use the updated snake positions.",
+  "status": "open",
+  "history": [],
+  "signature": "sig_feat-library-05cbc88809_deb035b4da",
+  "linkedPatchAttemptIds": [],
+  "createdByRunId": "20260518T120928-326713",
+  "createdAt": "2026-05-18T12:10:01.971Z",
+  "updatedAt": "2026-05-18T12:10:01.971Z"
+}

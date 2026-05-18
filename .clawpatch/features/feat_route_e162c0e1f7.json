@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_route_e162c0e1f7",
+  "title": "React route /widgets/task-cue",
+  "summary": "React Router route '/widgets/task-cue' rendered by TaskCuePage.",
+  "kind": "route",
+  "source": "react-router-route",
+  "confidence": "high",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/src/pages/widgets/TaskCuePage.tsx",
+      "symbol": "TaskCuePage",
+      "route": "/widgets/task-cue",
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/pages/widgets/TaskCuePage.tsx",
+      "reason": "route component"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/teacher/src/index.tsx",
+      "reason": "route declaration"
+    },
+    {
+      "path": "packages/teacher/src/pages/components/PageLayout.tsx",
+      "reason": "direct import"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "react",
+    "react-router",
+    "web"
+  ],
+  "trustBoundaries": [
+    "user-input",
+    "network",
+    "serialization"
+  ],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

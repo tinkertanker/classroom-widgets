@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_cc3a7a1315",
+  "title": "Node source packages/server/src/utils",
+  "summary": "Node/TypeScript source group packages/server/src/utils with 5 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/server/package.json",
+      "symbol": "packages/server/src/utils",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/server/src/utils/codeGenerator.js",
+      "reason": "source group packages/server/src/utils"
+    },
+    {
+      "path": "packages/server/src/utils/errors.js",
+      "reason": "source group packages/server/src/utils"
+    },
+    {
+      "path": "packages/server/src/utils/logger.js",
+      "reason": "source group packages/server/src/utils"
+    },
+    {
+      "path": "packages/server/src/utils/roomFactory.js",
+      "reason": "source group packages/server/src/utils"
+    },
+    {
+      "path": "packages/server/src/utils/validation.js",
+      "reason": "source group packages/server/src/utils"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/server/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/server",
+    "project-root:packages/server"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

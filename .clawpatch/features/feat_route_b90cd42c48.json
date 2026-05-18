@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_route_b90cd42c48",
+  "title": "React route /widgets/qr-code",
+  "summary": "React Router route '/widgets/qr-code' rendered by QrCodePage.",
+  "kind": "route",
+  "source": "react-router-route",
+  "confidence": "high",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/src/pages/widgets/QrCodePage.tsx",
+      "symbol": "QrCodePage",
+      "route": "/widgets/qr-code",
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/pages/widgets/QrCodePage.tsx",
+      "reason": "route component"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/teacher/src/index.tsx",
+      "reason": "route declaration"
+    },
+    {
+      "path": "packages/teacher/src/pages/components/PageLayout.tsx",
+      "reason": "direct import"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "react",
+    "react-router",
+    "web"
+  ],
+  "trustBoundaries": [
+    "user-input",
+    "network",
+    "serialization"
+  ],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

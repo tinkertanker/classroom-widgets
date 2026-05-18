@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_test-suite_df889cec77",
+  "title": "Package script test (@classroom-widgets/server)",
+  "summary": "Package script 'test' in packages/server/package.json: node scripts/check-startup-warnings.js && node test-server.js",
+  "kind": "test-suite",
+  "source": "package-json-script",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/server/package.json",
+      "symbol": "test",
+      "route": null,
+      "command": "test"
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/server/package.json",
+      "reason": "entrypoint"
+    }
+  ],
+  "contextFiles": [],
+  "tests": [],
+  "tags": [
+    "node",
+    "package-script",
+    "project:@classroom-widgets/server",
+    "project-root:packages/server"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_2b05870e91",
+  "title": "Node source packages/teacher/src/features/widgets/randomiser",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/randomiser with 11 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/randomiser",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/RandomiserSettings.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/hooks/index.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/hooks/useChoiceManager.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/hooks/useRandomiserAudio.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/hooks/useResponsiveHeight.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/hooks/useSlotMachineAnimation.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/index.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/randomiser.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/slotMachine.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/types.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/randomiser/utils/choiceList.ts",
+      "reason": "source group packages/teacher/src/features/widgets/randomiser"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    }
+  ],
+  "tests": [],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}

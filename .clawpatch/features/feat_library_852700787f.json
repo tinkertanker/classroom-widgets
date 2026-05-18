@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "featureId": "feat_library_852700787f",
+  "title": "Node source packages/teacher/src/features/widgets/timer",
+  "summary": "Node/TypeScript source group packages/teacher/src/features/widgets/timer with 10 files.",
+  "kind": "library",
+  "source": "node-source-group",
+  "confidence": "medium",
+  "entrypoints": [
+    {
+      "path": "packages/teacher/package.json",
+      "symbol": "packages/teacher/src/features/widgets/timer",
+      "route": null,
+      "command": null
+    }
+  ],
+  "ownedFiles": [
+    {
+      "path": "packages/teacher/src/features/widgets/timer/clockTime.ts",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/components/HamsterAnimation.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/components/TimeDisplay.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/hooks/index.ts",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/hooks/useTimeSegmentEditor.ts",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/hooks/useTimerAnimation.ts",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/hooks/useTimerAudio.ts",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/hooks/useTimerCountdown.ts",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/index.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/timer.tsx",
+      "reason": "source group packages/teacher/src/features/widgets/timer"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "packages/teacher/package.json",
+      "reason": "package manifest"
+    },
+    {
+      "path": "packages/teacher/src/features/widgets/timer/timer.test.tsx",
+      "reason": "associated test"
+    }
+  ],
+  "tests": [
+    {
+      "path": "packages/teacher/src/features/widgets/timer/timer.test.tsx",
+      "command": "npm --prefix packages/teacher run test"
+    }
+  ],
+  "tags": [
+    "node",
+    "typescript",
+    "source-group",
+    "project:@classroom-widgets/teacher",
+    "project-root:packages/teacher"
+  ],
+  "trustBoundaries": [],
+  "status": "pending",
+  "lock": null,
+  "findingIds": [],
+  "patchAttemptIds": [],
+  "analysisHistory": [],
+  "createdAt": "2026-05-18T12:09:19.825Z",
+  "updatedAt": "2026-05-18T12:09:19.825Z"
+}
