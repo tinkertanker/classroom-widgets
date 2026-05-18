@@ -9,7 +9,7 @@
     "packages/server"
   ],
   "scripts": {
-    "dev": "cd packages/server && ./dev.sh",
+    "dev": "npm run dev:server",
     "dev:teacher": "npm run dev -w @classroom-widgets/teacher",
     "dev:server": "npm run dev -w @classroom-widgets/server",
     "dev:student": "npm run dev -w @classroom-widgets/student",
@@ -23,7 +23,7 @@
     "prebuild": "npm run generate:voice-types",
     "server": "npm run start -w @classroom-widgets/server",
     "install:all": "npm install",
-    "clean": "rm -rf node_modules packages/*/node_modules"
+    "clean": "node scripts/clean-workspaces.cjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.0"

@@ -29,11 +29,35 @@
   "whyTestsDoNotAlreadyCoverThis": "No linked tests or CI scripts exercise the root npm lifecycle commands across supported shells.",
   "suggestedRegressionTest": "Add a lightweight script check in CI that runs the root lifecycle commands, or at minimum runs `npm run dev:server -- --help`/a non-blocking equivalent and `npm run clean` on Windows and Linux runners.",
   "minimumFixScope": "Update the root `package.json` scripts for `dev` and `clean`, adding a small helper dependency or Node script if needed.",
-  "status": "open",
-  "history": [],
+  "status": "fixed",
+  "history": [
+    {
+      "runId": "20260518T121639-0656ac",
+      "kind": "revalidate",
+      "status": "fixed",
+      "note": null,
+      "reasoning": "Current package.json no longer contains the cited Unix-only root scripts. The original path still exists, but package.json:12 is now \"dev\": \"npm run dev:server\" and package.json:26 is now \"clean\": \"node scripts/clean-workspaces.cjs\"; package.json:28 is devDependencies, not the old clean script. The dev target routes through the server workspace, whose dev script is \"nodemon src/server.js\". The clean replacement uses Node fs.rmSync in scripts/clean-workspaces.cjs:15 instead of shelling out to rm -rf. Scoped searches over package.json, packages, and scripts found no remaining dev.sh or rm -rf references. I attempted non-destructive node/npm runtime checks, but this harness rejected node/npm execution, so the conclusion is based on current script definitions plus static search rather than executing npm lifecycle scripts.",
+      "commands": [
+        "Get-Content -Path package.json",
+        "git status --short",
+        "Get-Content -Path scripts\\clean-workspaces.cjs",
+        "Get-Content -Path packages\\server\\package.json",
+        "rg -n --glob !node_modules --glob !.git dev.sh package.json packages scripts",
+        "rg -n --glob !node_modules --glob !.git \"rm -rf\" package.json packages scripts",
+        "Select-String -Path package.json -Pattern dev",
+        "Select-String -Path packages\\server\\package.json -Pattern nodemon",
+        "Select-String -Path scripts\\clean-workspaces.cjs -Pattern fs.rmSync",
+        "node --check scripts\\clean-workspaces.cjs (rejected by harness policy)",
+        "npm run dev -- --help (rejected by harness policy)"
+      ],
+      "createdAt": "2026-05-18T12:18:48.147Z"
+    }
+  ],
   "signature": "sig_feat-config-7528cb5b98_efa77aad2c",
-  "linkedPatchAttemptIds": [],
+  "linkedPatchAttemptIds": [
+    "pat_fnd-sig-feat-config-7528cb5b98-e_a4e80babf6"
+  ],
   "createdByRunId": "20260518T120928-326713",
   "createdAt": "2026-05-18T12:09:54.004Z",
-  "updatedAt": "2026-05-18T12:09:54.004Z"
+  "updatedAt": "2026-05-18T12:18:48.145Z"
 }
