@@ -19,6 +19,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
   const [isMirrored, setIsMirrored] = useState<boolean>(savedState?.isMirrored ?? true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isMountedRef = useRef(false);
 
   // Get available video devices
   const getVideoDevices = async () => {
@@ -52,6 +53,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
           track.stop();
           console.log('🛑 [Visualiser] Stopped video track:', track.label);
         });
+        streamRef.current = null;
       }
 
       // Check if there are any cameras available first
@@ -74,9 +76,15 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('✅ [Visualiser] Camera access granted');
 
+      streamRef.current = stream;
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        return;
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        streamRef.current = stream;
       }
 
       setHasPermission(true);
@@ -126,6 +134,8 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
 
   // Initialize webcam on mount (auto-restart on page reload)
   useEffect(() => {
+    isMountedRef.current = true;
+
     // Always request camera on mount, even after page reload
     // This will use the saved deviceId if available, or default camera otherwise
     const deviceToUse = selectedDeviceId || undefined;
@@ -134,6 +144,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
 
     // Cleanup on unmount - ensure camera is released
     return () => {
+      isMountedRef.current = false;
       console.log('🧹 [Visualiser] Component unmounting - releasing camera');
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => {
@@ -144,6 +155,12 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
       }
     };
   }, []); // Only run once on mount
+
+  useEffect(() => {
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [hasPermission, isLoading]);
 
   // Handle device change
   useEffect(() => {
