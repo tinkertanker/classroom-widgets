@@ -29,11 +29,6 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
     };
   }, []);
 
-  if (!widget) return null;
-
-  const config = widgetRegistry.get(widget.type);
-  if (!config) return null;
-
   const handleWidgetClick = useCallback(() => {
     setFocusedWidget(widgetId);
   }, [widgetId, setFocusedWidget]);
@@ -69,6 +64,11 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       setShowDelete(false);
     }, 1000);
   }, []);
+
+  if (!widget) return null;
+
+  const config = widgetRegistry.get(widget.type);
+  if (!config) return null;
 
   // Height strategy is driven by the widget's columnSizing declaration
   const columnSizing = config.columnSizing ?? 'fixed';
