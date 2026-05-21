@@ -40,7 +40,7 @@ const colorCombinations = [
 ];
 
 const PLACEHOLDER_TEXT = 'Double-click to edit';
-const DEFAULT_FONT_SIZE_CAP = 96;
+const DEFAULT_FONT_SIZE_CAP = 48;
 const MIN_FONT_SIZE_CAP = 24;
 const MAX_FONT_SIZE_CAP = 220;
 const FONT_SIZE_STEP = 16;
@@ -160,12 +160,16 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
   const clickTimerRef = useRef<number | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
 
+  const previewText = isEditing ? normaliseText(editText) : text;
+  const isPlaceholderText = text === PLACEHOLDER_TEXT;
   const codeBlock = useMemo(() => findCodeBlock(text), [text]);
   const isCodeBlockOnly = codeBlock?.match.trim() === text.trim();
+  const previewCodeBlock = useMemo(() => findCodeBlock(previewText), [previewText]);
+  const isPreviewCodeBlockOnly = previewCodeBlock?.match.trim() === previewText.trim();
 
   const hasManualColumnHeight = isColumnLayout && columnHeight !== undefined;
   const fontSize = useAutoFontSize({
-    text,
+    text: previewText,
     containerRef: textAreaContainerRef,
     textRef,
     maxSize: fontSizeCap,
@@ -174,6 +178,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
     widthOnly: isColumnLayout && !hasManualColumnHeight,
     fontFamily
   });
+  const displayFontSize = isPlaceholderText ? fontSizeCap : fontSize;
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -524,6 +529,31 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
         }}
         onClick={handleTextAreaClick}
       >
+        <div
+          ref={textRef}
+          aria-hidden="true"
+          className={cn(
+            'absolute left-4 right-4 top-4 pointer-events-none select-none opacity-0',
+            isPreviewCodeBlockOnly && previewCodeBlock
+              ? 'max-w-full'
+              : cn(currentColors.text, 'text-center leading-tight')
+          )}
+          style={{
+            fontSize: `${fontSize}px`,
+            fontFamily: isPreviewCodeBlockOnly && previewCodeBlock
+              ? FONT_FAMILY_STACK.mono
+              : FONT_FAMILY_STACK[fontFamily]
+          }}
+        >
+          {isPreviewCodeBlockOnly && previewCodeBlock ? (
+            <pre className="text-banner-code">
+              <code>{normaliseCode(previewCodeBlock.code)}</code>
+            </pre>
+          ) : (
+            renderFormattedText(previewText)
+          )}
+        </div>
+
         {isEditing ? (
           <div className="flex flex-col w-full h-full gap-1">
             <textarea
@@ -542,7 +572,9 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
               data-gramm="false"
               data-enable-grammarly="false"
               style={{
-                fontFamily: hasCodeFence(editText) ? FONT_FAMILY_STACK.mono : FONT_FAMILY_STACK[fontFamily]
+                fontFamily: hasCodeFence(editText) ? FONT_FAMILY_STACK.mono : FONT_FAMILY_STACK[fontFamily],
+                fontSize: `${fontSizeCap}px`,
+                lineHeight: 1.15
               }}
               className="flex-1 min-h-0 w-full p-4 text-base bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
               placeholder="Enter your message... (use ```language for code blocks)"
@@ -563,17 +595,15 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
           </div>
         ) : isCodeBlockOnly && codeBlock ? (
           <CodeBlockRender
-            ref={textRef}
             code={codeBlock.code}
             language={codeBlock.language}
             fontSize={fontSize}
           />
         ) : (
           <div
-            ref={textRef}
             className={cn(currentColors.text, 'text-center leading-tight select-none')}
             style={{
-              fontSize: `${fontSize}px`,
+              fontSize: `${displayFontSize}px`,
               fontFamily: FONT_FAMILY_STACK[fontFamily]
             }}
             title="Double-click to edit"
