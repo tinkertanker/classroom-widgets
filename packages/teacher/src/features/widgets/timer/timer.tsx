@@ -248,7 +248,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   return (
     <div className={widgetWrapper}>
       <div
-        className="w-full h-full overflow-hidden flex flex-col relative bg-transparent dark:bg-transparent"
+        className="w-full h-full overflow-hidden flex flex-col relative rounded-lg bg-transparent dark:bg-transparent"
         data-testid="timer-outer-container"
         style={{
           containerType: 'size',

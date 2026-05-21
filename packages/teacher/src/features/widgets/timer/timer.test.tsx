@@ -84,6 +84,7 @@ describe('Timer Widget', () => {
     renderWithModal(<Timer />);
 
     const timerOuterContainer = screen.getByTestId('timer-outer-container');
+    expect(timerOuterContainer).toHaveClass('rounded-lg');
     expect(timerOuterContainer).toHaveClass('bg-transparent');
     expect(timerOuterContainer).toHaveClass('dark:bg-transparent');
     expect(timerOuterContainer).not.toHaveClass('dark:bg-warm-gray-800/90');
