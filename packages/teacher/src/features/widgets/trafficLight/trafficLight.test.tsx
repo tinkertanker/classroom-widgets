@@ -27,43 +27,44 @@ afterAll(() => {
 });
 
 describe('TrafficLight', () => {
-  test('lets keyboard users focus and activate each light', () => {
+  test('lets keyboard users focus and activate each light', async () => {
+    const user = userEvent.setup();
     render(<TrafficLight />);
 
     const redLight = screen.getByRole('button', { name: /set traffic light to red/i });
     const orangeLight = screen.getByRole('button', { name: /set traffic light to orange/i });
     const greenLight = screen.getByRole('button', { name: /set traffic light to green/i });
 
-    userEvent.tab();
+    await user.tab();
     expect(redLight).toHaveFocus();
 
-    userEvent.tab();
+    await user.tab();
     expect(orangeLight).toHaveFocus();
-    userEvent.keyboard('{enter}');
+    await user.keyboard('{enter}');
     expect(screen.getByText(/work quietly on your own/i)).toBeInTheDocument();
     expect(orangeLight).toHaveAttribute('aria-pressed', 'true');
 
-    userEvent.tab();
+    await user.tab();
     expect(greenLight).toHaveFocus();
-    userEvent.keyboard(' ');
+    await user.keyboard(' ');
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
     expect(greenLight).toHaveAttribute('aria-pressed', 'true');
 
     redLight.focus();
-    userEvent.keyboard('{enter}');
+    await user.keyboard('{enter}');
     expect(screen.getByText(/teacher's turn/i)).toBeInTheDocument();
     expect(redLight).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('keeps updating the light when audio playback is rejected', async () => {
+    const user = userEvent.setup();
     playMock.mockRejectedValueOnce(new Error('blocked'));
 
     render(<TrafficLight />);
 
-    userEvent.click(screen.getByRole('button', { name: /set traffic light to green/i }));
+    await user.click(screen.getByRole('button', { name: /set traffic light to green/i }));
 
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
-    await Promise.resolve();
     expect(playMock).toHaveBeenCalledTimes(1);
   });
 });
