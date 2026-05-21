@@ -9,7 +9,7 @@
     "packages/server"
   ],
   "scripts": {
-    "dev": "npm run dev:server",
+    "dev": "npm run dev:all",
     "dev:teacher": "npm run dev -w @classroom-widgets/teacher",
     "dev:server": "npm run dev -w @classroom-widgets/server",
     "dev:student": "npm run dev -w @classroom-widgets/student",
