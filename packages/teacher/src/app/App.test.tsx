@@ -3,6 +3,8 @@ import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { widgetRegistry } from '../services/WidgetRegistry';
+import { WidgetType } from '@shared/types';
 
 vi.mock('./App.css', () => ({}));
 vi.mock('../sounds/trash-crumple.mp3', () => ({ default: 'trash-crumple.mp3' }));
@@ -88,6 +90,14 @@ const setWindowWidth = (width: number) => {
   });
 };
 
+class MockFileReader {
+  onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+
+  readAsDataURL() {
+    this.onload?.({ target: { result: 'data:image/png;base64,test' } } as ProgressEvent<FileReader>);
+  }
+}
+
 describe('App narrow layout', () => {
   beforeEach(() => {
     setWindowWidth(500);
@@ -111,6 +121,74 @@ describe('App narrow layout', () => {
     await waitFor(() => {
       expect(useWorkspaceStore.getState().layoutFormat).toBe('column');
       expect(screen.getByTestId('column-board')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('App image paste sizing', () => {
+  const originalFileReader = globalThis.FileReader;
+  const originalImage = globalThis.Image;
+
+  beforeEach(() => {
+    setWindowWidth(1200);
+    localStorage.clear();
+    useWorkspaceStore.setState({
+      layoutFormat: 'canvas',
+      widgets: [],
+      widgetStates: new Map(),
+      focusedWidgetId: null
+    });
+    vi.mocked(widgetRegistry.get).mockReturnValue({
+      type: WidgetType.IMAGE_DISPLAY,
+      name: 'Image',
+      icon: () => null,
+      component: () => null,
+      defaultSize: { width: 350, height: 350 },
+      minSize: { width: 200, height: 200 },
+      features: {}
+    });
+    globalThis.FileReader = MockFileReader as unknown as typeof FileReader;
+    globalThis.Image = vi.fn(() => {
+      const image = {
+        width: 1000,
+        height: 100,
+        onload: null as (() => void) | null,
+        set src(_value: string) {
+          this.onload?.();
+        }
+      };
+      return image;
+    }) as unknown as typeof Image;
+  });
+
+  afterEach(() => {
+    cleanup();
+    globalThis.FileReader = originalFileReader;
+    globalThis.Image = originalImage;
+    vi.clearAllMocks();
+  });
+
+  it('preserves a pasted image aspect ratio when minimum size would otherwise distort it', async () => {
+    render(<App />);
+
+    const pasteEvent = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(pasteEvent, 'clipboardData', {
+      value: {
+        items: [
+          {
+            type: 'image/png',
+            getAsFile: () => new File(['image'], 'wide.png', { type: 'image/png' })
+          }
+        ],
+        getData: () => ''
+      }
+    });
+
+    document.dispatchEvent(pasteEvent);
+
+    await waitFor(() => {
+      const [widget] = useWorkspaceStore.getState().widgets;
+      expect(widget.size.width / widget.size.height).toBeCloseTo(10, 5);
     });
   });
 });
