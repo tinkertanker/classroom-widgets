@@ -31,23 +31,23 @@ describe('TrafficLight', () => {
     const orangeLight = screen.getByRole('button', { name: /set traffic light to orange/i });
     const greenLight = screen.getByRole('button', { name: /set traffic light to green/i });
 
-    userEvent.tab();
+    await userEvent.tab();
     expect(redLight).toHaveFocus();
 
-    userEvent.tab();
+    await userEvent.tab();
     expect(orangeLight).toHaveFocus();
-    userEvent.keyboard('{enter}');
+    await userEvent.keyboard('{enter}');
     expect(screen.getByText(/work quietly on your own/i)).toBeInTheDocument();
     expect(orangeLight).toHaveAttribute('aria-pressed', 'true');
 
-    userEvent.tab();
+    await userEvent.tab();
     expect(greenLight).toHaveFocus();
-    userEvent.keyboard(' ');
+    await userEvent.keyboard(' ');
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
     expect(greenLight).toHaveAttribute('aria-pressed', 'true');
 
     redLight.focus();
-    userEvent.keyboard('{enter}');
+    await userEvent.keyboard('{enter}');
     expect(screen.getByText(/teacher's turn/i)).toBeInTheDocument();
     expect(redLight).toHaveAttribute('aria-pressed', 'true');
   });
@@ -57,7 +57,7 @@ describe('TrafficLight', () => {
 
     render(<TrafficLight />);
 
-    userEvent.click(screen.getByRole('button', { name: /set traffic light to green/i }));
+    await userEvent.click(screen.getByRole('button', { name: /set traffic light to green/i }));
 
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);
