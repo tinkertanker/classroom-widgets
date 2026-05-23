@@ -52,9 +52,7 @@ function App() {
   const [isNarrowScreen, setIsNarrowScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
-  const previousIsNarrowScreenRef = useRef(
-    typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
-  );
+  const previousIsNarrowScreenRef = useRef(false);
   // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
