@@ -20,6 +20,7 @@ const HudButton = forwardRef<HTMLButtonElement, HudButtonProps>(
       size = 'md',
       active = false,
       className,
+      type = 'button',
       ...props
     },
     ref
@@ -30,6 +31,7 @@ const HudButton = forwardRef<HTMLButtonElement, HudButtonProps>(
     return (
       <button
         ref={ref}
+        type={type}
         className={clsx(
           hudContainer.button,
           sizeClasses,
@@ -67,9 +69,10 @@ export interface HudGroupButtonProps extends ButtonHTMLAttributes<HTMLButtonElem
 }
 
 export const HudGroupButton = forwardRef<HTMLButtonElement, HudGroupButtonProps>(
-  ({ icon: Icon, children, className, ...props }, ref) => (
+  ({ icon: Icon, children, className, type = 'button', ...props }, ref) => (
     <button
       ref={ref}
+      type={type}
       className={clsx(
         "p-1.5 rounded",
         "hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700",
