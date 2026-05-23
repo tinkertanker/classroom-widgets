@@ -16,19 +16,30 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageKeyRef = useRef<string | null>(savedState?.imageKey ?? null);
+  const imageChangeIdRef = useRef(0);
+  const activeReaderRef = useRef<FileReader | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const beginImageChange = () => {
+    imageChangeIdRef.current += 1;
+    return imageChangeIdRef.current;
+  };
+
+  const isCurrentImageChange = (changeId: number) => imageChangeIdRef.current === changeId;
 
   // Load image from IndexedDB on mount
   useEffect(() => {
+    const changeId = imageChangeIdRef.current;
     const key = savedState?.imageKey;
     if (key) {
       loadImage(key).then(url => {
-        if (url) setImageUrl(url);
+        if (url && isCurrentImageChange(changeId)) setImageUrl(url);
       });
     } else if (savedState?.imageUrl) {
       // Migrate legacy base64 imageUrl to IndexedDB
       const newKey = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
       storeImage(newKey, savedState.imageUrl).then(() => {
+        if (!isCurrentImageChange(changeId)) return;
         imageKeyRef.current = newKey;
         setImageUrl(savedState.imageUrl!);
         onStateChange?.({ imageKey: newKey });
@@ -37,16 +48,18 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   }, []);
 
   // Update image and notify parent
-  const updateImage = async (dataUrl: string | null) => {
+  const updateImage = async (dataUrl: string | null, changeId = beginImageChange()) => {
     if (dataUrl) {
-      const key = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
+      const key = widgetId ? `image-${widgetId}-${changeId}` : `image-${Date.now()}-${changeId}`;
       await storeImage(key, dataUrl);
+      if (!isCurrentImageChange(changeId)) return;
       imageKeyRef.current = key;
       setImageUrl(dataUrl);
       onStateChange?.({ imageKey: key });
     } else {
       if (imageKeyRef.current) {
         await deleteImage(imageKeyRef.current);
+        if (!isCurrentImageChange(changeId)) return;
         imageKeyRef.current = null;
       }
       setImageUrl(null);
@@ -59,14 +72,25 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   // Handle file selection
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) return;
+    const changeId = beginImageChange();
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
     if (file.size > MAX_IMAGE_SIZE) {
       setError(`Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please use an image under 3 MB.`);
       return;
     }
     setError(null);
     const reader = new FileReader();
+    activeReaderRef.current = reader;
     reader.onload = (e) => {
-      updateImage(e.target?.result as string);
+      if (isCurrentImageChange(changeId)) {
+        updateImage(e.target?.result as string, changeId);
+      }
+    };
+    reader.onloadend = () => {
+      if (activeReaderRef.current === reader) {
+        activeReaderRef.current = null;
+      }
     };
     reader.readAsDataURL(file);
   };
