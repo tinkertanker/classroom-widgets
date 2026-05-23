@@ -6,7 +6,6 @@ function TrafficLight() {
   const [state, setState] = useState({
     activeLight: "#ff0000",
     boxHeight: 100,
-    num: 0,
   });
 
   const boxRef = useRef<HTMLDivElement>(null);
@@ -51,15 +50,6 @@ function TrafficLight() {
       activeLight: color,
     }));
   }, []);
-
-  const toggleInputButtons = useCallback(() => {
-    setState((prevState) => ({
-      ...prevState,
-      num: prevState.num === 0 ? 2 : 0,
-    }));
-  }, []);
-
-
 
   return (
     <>
