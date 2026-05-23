@@ -21,7 +21,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(
     },
     ref
   ) => {
-    const baseClasses = 'bg-soft-white dark:bg-warm-gray-800 rounded-lg transition-all duration-200';
+    const baseClasses = 'flex flex-col bg-soft-white dark:bg-warm-gray-800 rounded-lg transition-all duration-200';
     
     const variantClasses = {
       default: 'shadow-sm',
