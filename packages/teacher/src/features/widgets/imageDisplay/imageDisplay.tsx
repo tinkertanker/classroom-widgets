@@ -29,6 +29,10 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     return imageChangeIdRef.current;
   };
 
+  const invalidatePendingImageChanges = () => {
+    imageChangeIdRef.current += 1;
+  };
+
   const isCurrentImageChange = (changeId: number) => imageChangeIdRef.current === changeId;
 
   // Load image from IndexedDB on mount
@@ -67,7 +71,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   }, []);
 
   useEffect(() => () => {
-    beginImageChange();
+    invalidatePendingImageChanges();
     activeReaderRef.current?.abort();
     activeReaderRef.current = null;
   }, []);

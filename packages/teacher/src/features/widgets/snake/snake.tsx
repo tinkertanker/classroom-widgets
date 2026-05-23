@@ -117,12 +117,12 @@ const Snake: React.FC = () => {
         if (!newFood) {
           setGameOver(true);
           setIsPaused(true);
-          return newSnake;
-        }
-        setFood(newFood);
-        // Increase speed every 50 points
-        if ((score + 10) % 50 === 0) {
-          setSpeed(prev => Math.max(50, prev - 20));
+        } else {
+          setFood(newFood);
+          // Increase speed every 50 points
+          if ((score + 10) % 50 === 0) {
+            setSpeed(prev => Math.max(50, prev - 20));
+          }
         }
       } else {
         newSnake.pop();
