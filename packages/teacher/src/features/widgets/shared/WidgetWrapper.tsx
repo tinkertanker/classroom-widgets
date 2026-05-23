@@ -23,7 +23,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const rndRef = useRef<any>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTrashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragMovedRef = useRef(false);
   const postDragRef = useRef(false);
   // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
