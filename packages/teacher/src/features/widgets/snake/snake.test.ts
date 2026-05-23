@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { isSnakeSelfCollision } from './snake';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { generateRandomFood, isSnakeSelfCollision } from './snake';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('isSnakeSelfCollision', () => {
   it('allows moving into the current tail when the tail will be vacated', () => {
@@ -22,5 +26,17 @@ describe('isSnakeSelfCollision', () => {
     ];
 
     expect(isSnakeSelfCollision(snake, { x: 1, y: 2 }, true)).toBe(true);
+  });
+});
+
+describe('generateRandomFood', () => {
+  it('does not place food on occupied cells', () => {
+    vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(15 / 20)
+      .mockReturnValueOnce(15 / 20)
+      .mockReturnValueOnce(16 / 20)
+      .mockReturnValueOnce(15 / 20);
+
+    expect(generateRandomFood([{ x: 15, y: 15 }])).toEqual({ x: 16, y: 15 });
   });
 });

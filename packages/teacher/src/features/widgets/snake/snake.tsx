@@ -27,6 +27,17 @@ export const isSnakeSelfCollision = (
   return collisionSegments.some(segment => segment.x === nextHead.x && segment.y === nextHead.y);
 };
 
+export const generateRandomFood = (occupiedSegments: Position[]): Position => {
+  let newFood: Position;
+  do {
+    newFood = {
+      x: Math.floor(Math.random() * GRID_SIZE),
+      y: Math.floor(Math.random() * GRID_SIZE)
+    };
+  } while (occupiedSegments.some(segment => segment.x === newFood.x && segment.y === newFood.y));
+  return newFood;
+};
+
 const Snake: React.FC = () => {
   const [snake, setSnake] = useState<Position[]>([{ x: 10, y: 10 }]);
   const [food, setFood] = useState<Position>({ x: 15, y: 15 });
@@ -37,17 +48,6 @@ const Snake: React.FC = () => {
   const [speed, setSpeed] = useState(INITIAL_SPEED);
   const directionRef = useRef(direction);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
-
-  const generateRandomFood = useCallback((occupiedSnake = snake): Position => {
-    let newFood: Position;
-    do {
-      newFood = {
-        x: Math.floor(Math.random() * GRID_SIZE),
-        y: Math.floor(Math.random() * GRID_SIZE)
-      };
-    } while (occupiedSnake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
-    return newFood;
-  }, [snake]);
 
   const resetGame = useCallback(() => {
     setSnake([{ x: 10, y: 10 }]);
@@ -114,7 +114,7 @@ const Snake: React.FC = () => {
 
       return newSnake;
     });
-  }, [gameOver, isPaused, food, score, generateRandomFood]);
+  }, [gameOver, isPaused, food, score]);
 
   // Handle keyboard input
   useEffect(() => {
