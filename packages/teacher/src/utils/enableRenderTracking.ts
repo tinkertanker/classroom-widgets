@@ -9,6 +9,7 @@
  * }
  */
 
+import React, { useEffect, useRef } from 'react';
 import { debug } from '@shared/utils/debug';
 
 export function enableRenderTracking() {
@@ -21,16 +22,18 @@ export function enableRenderTracking() {
   debug('Use React DevTools Profiler to monitor component renders');
   
   // Option 2: Monkey patch React to log all renders
-  const React = require('react');
-  const originalCreateElement = React.createElement;
+  const reactWithMutableCreateElement = React as typeof React & {
+    createElement: typeof React.createElement;
+  };
+  const originalCreateElement = reactWithMutableCreateElement.createElement;
   
-  React.createElement = function(...args: any[]) {
+  reactWithMutableCreateElement.createElement = function(...args: any[]) {
     if (typeof args[0] === 'function' && args[0].name) {
       // Log functional component renders
       debug(`[Render] ${args[0].name}`);
     }
     return originalCreateElement.apply(React, args);
-  };
+  } as typeof React.createElement;
 }
 
 /**
@@ -38,14 +41,12 @@ export function enableRenderTracking() {
  * Logs all prop changes to console
  */
 export function useRenderTracker(componentName: string, props: Record<string, any>) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const React = require('react') as typeof import('react');
-  const renderCount = React.useRef(0);
-  const prevPropsRef = React.useRef<Record<string, any>>(undefined);
+  const renderCount = useRef(0);
+  const prevPropsRef = useRef<Record<string, any>>(undefined);
   
   renderCount.current += 1;
   
-  React.useEffect(() => {
+  useEffect(() => {
     if (prevPropsRef.current) {
       const allKeys = Object.keys({ ...prevPropsRef.current, ...props });
       const changedProps: Record<string, any> = {};

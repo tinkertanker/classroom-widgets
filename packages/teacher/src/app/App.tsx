@@ -52,9 +52,7 @@ function App() {
   const [isNarrowScreen, setIsNarrowScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
-  const previousIsNarrowScreenRef = useRef(
-    typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
-  );
+  const previousIsNarrowScreenRef = useRef(false);
   // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
@@ -307,10 +305,23 @@ function App() {
                   }
                 }
 
-                // Ensure minimum size
+                // Apply minimum pressure proportionally so the image ratio is not distorted.
                 const minSize = imageWidgetConfig?.minSize || { width: 200, height: 200 };
-                widgetWidth = Math.max(widgetWidth, minSize.width);
-                widgetHeight = Math.max(widgetHeight, minSize.height);
+                const minScale = Math.max(
+                  minSize.width / widgetWidth,
+                  minSize.height / widgetHeight,
+                  1
+                );
+                widgetWidth *= minScale;
+                widgetHeight *= minScale;
+
+                const maxScale = Math.min(
+                  maxWidth / widgetWidth,
+                  maxHeight / widgetHeight,
+                  1
+                );
+                widgetWidth *= maxScale;
+                widgetHeight *= maxScale;
 
                 // Get center position for the calculated size
                 const position = getCenterPosition(widgetWidth, widgetHeight);

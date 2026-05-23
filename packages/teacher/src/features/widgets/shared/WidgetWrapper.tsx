@@ -23,18 +23,14 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const rndRef = useRef<any>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const hideTrashTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTrashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragMovedRef = useRef(false);
   const postDragRef = useRef(false);
   // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
   // This prevents re-renders when other widgets get focused
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const config = widget ? widgetRegistry.get(widget.type) : undefined;
   
-  if (!widget) return null;
-  
-  const config = widgetRegistry.get(widget.type);
-  if (!config) return null;
-
   const handleDragStart = useCallback(() => {
     dragMovedRef.current = false;
     startDrag();
@@ -84,11 +80,11 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
 
   // Handle zoom changes
   useEffect(() => {
-    if (rndRef.current && rndRef.current.updatePosition) {
+    if (widget && rndRef.current && rndRef.current.updatePosition) {
       // Force position update when scale changes
       rndRef.current.updatePosition({ x: widget.position.x, y: widget.position.y });
     }
-  }, [scale, widget.position]);
+  }, [scale, widget?.position]);
   
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -113,7 +109,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, [isResizing, isBeingDragged, stopDrag]);
 
-  const isTransparent = config.features?.isTransparent || false;
+  const isTransparent = config?.features?.isTransparent || false;
   
   const wrapperClasses = clsx(
     'widget-wrapper',
@@ -140,6 +136,9 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
     setFocusedWidget(widgetId);
     focus();
   }, [widgetId, setFocusedWidget, focus]);
+
+  if (!widget) return null;
+  if (!config) return null;
 
   return (
     <div 

@@ -15,7 +15,7 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
   const isFocused = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
   const [showDelete, setShowDelete] = useState(false);
-  const hideDeleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detect touch devices (no hover capability) - always show delete button on touch
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
@@ -28,11 +28,6 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       }
     };
   }, []);
-
-  if (!widget) return null;
-
-  const config = widgetRegistry.get(widget.type);
-  if (!config) return null;
 
   const handleWidgetClick = useCallback(() => {
     setFocusedWidget(widgetId);
@@ -69,6 +64,11 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       setShowDelete(false);
     }, 1000);
   }, []);
+
+  if (!widget) return null;
+
+  const config = widgetRegistry.get(widget.type);
+  if (!config) return null;
 
   // Height strategy is driven by the widget's columnSizing declaration
   const columnSizing = config.columnSizing ?? 'fixed';

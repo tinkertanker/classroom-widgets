@@ -13,56 +13,51 @@ class ResizeObserverMock {
 
 const playMock = vi.fn(() => Promise.resolve());
 
-beforeAll(() => {
+beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   vi.stubGlobal('Audio', vi.fn(() => ({ play: playMock })));
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
-});
-
-afterAll(() => {
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe('TrafficLight', () => {
   test('lets keyboard users focus and activate each light', async () => {
-    const user = userEvent.setup();
     render(<TrafficLight />);
 
     const redLight = screen.getByRole('button', { name: /set traffic light to red/i });
     const orangeLight = screen.getByRole('button', { name: /set traffic light to orange/i });
     const greenLight = screen.getByRole('button', { name: /set traffic light to green/i });
 
-    await user.tab();
+    await userEvent.tab();
     expect(redLight).toHaveFocus();
 
-    await user.tab();
+    await userEvent.tab();
     expect(orangeLight).toHaveFocus();
-    await user.keyboard('{enter}');
+    await userEvent.keyboard('{enter}');
     expect(screen.getByText(/work quietly on your own/i)).toBeInTheDocument();
     expect(orangeLight).toHaveAttribute('aria-pressed', 'true');
 
-    await user.tab();
+    await userEvent.tab();
     expect(greenLight).toHaveFocus();
-    await user.keyboard(' ');
+    await userEvent.keyboard(' ');
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
     expect(greenLight).toHaveAttribute('aria-pressed', 'true');
 
     redLight.focus();
-    await user.keyboard('{enter}');
+    await userEvent.keyboard('{enter}');
     expect(screen.getByText(/teacher's turn/i)).toBeInTheDocument();
     expect(redLight).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('keeps updating the light when audio playback is rejected', async () => {
-    const user = userEvent.setup();
     playMock.mockRejectedValueOnce(new Error('blocked'));
 
     render(<TrafficLight />);
 
-    await user.click(screen.getByRole('button', { name: /set traffic light to green/i }));
+    await userEvent.click(screen.getByRole('button', { name: /set traffic light to green/i }));
 
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);

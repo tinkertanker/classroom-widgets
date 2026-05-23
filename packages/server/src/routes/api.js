@@ -156,7 +156,8 @@ module.exports = (sessionManager) => {
   router.post('/admin/cleanup', asyncHandler(async (req, res) => {
     // In production, this should be protected with authentication
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+    const adminToken = process.env.ADMIN_TOKEN;
+    if (!adminToken || adminToken.trim() === '' || authHeader !== `Bearer ${adminToken}`) {
       return res.status(401).json({
         success: false,
         error: 'Unauthorized'

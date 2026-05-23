@@ -21,6 +21,7 @@ const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
       rightContent,
       className,
       children,
+      type = 'button',
       ...props
     },
     ref
@@ -28,6 +29,7 @@ const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
     return (
       <button
         ref={ref}
+        type={type}
         className={clsx(
           variant === 'danger' ? menuItem.danger : menuItem.base,
           className
