@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { act } from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
 import Visualiser from './visualiser';
@@ -67,5 +67,40 @@ describe('Visualiser', () => {
     unmount();
 
     expect(stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores camera access failures that resolve after unmount', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let rejectUserMedia: (error: Error) => void = () => {};
+    const enumerateDevices = vi.fn().mockResolvedValue([
+      { kind: 'videoinput', deviceId: 'camera-1', label: 'Camera' }
+    ] as unknown as MediaDeviceInfo[]);
+    const getUserMedia = vi.fn().mockImplementation(() => (
+      new Promise((_resolve, reject) => {
+        rejectUserMedia = reject;
+      })
+    ));
+
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { enumerateDevices, getUserMedia }
+    });
+
+    const { unmount } = render(
+      <Visualiser savedState={{ deviceId: 'camera-1' }} />
+    );
+
+    await waitFor(() => {
+      expect(getUserMedia).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    await act(async () => {
+      rejectUserMedia(new DOMException('Permission denied', 'NotAllowedError'));
+    });
+
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });
