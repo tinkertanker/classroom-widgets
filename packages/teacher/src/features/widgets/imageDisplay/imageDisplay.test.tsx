@@ -1,6 +1,6 @@
 import React, { act } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import ImageDisplay from './imageDisplay';
 import { loadImage, storeImage, deleteImage } from '../../../services/imageStorage';
 
@@ -63,6 +63,11 @@ describe('ImageDisplay', () => {
     ));
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
   test('ignores an older image store that completes after a newer selection', async () => {
     const onStateChange = vi.fn();
     const { container } = render(<ImageDisplay widgetId="widget-1" onStateChange={onStateChange} />);
@@ -91,6 +96,34 @@ describe('ImageDisplay', () => {
 
     expect(screen.getByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,second');
     expect(onStateChange).toHaveBeenCalledTimes(1);
+    expect(deleteImage).toHaveBeenCalledWith(storeCalls[0].key);
+  });
+
+  test('best-effort deletes the previous key after a successful replacement', async () => {
+    const onStateChange = vi.fn();
+    const { container } = render(<ImageDisplay widgetId="widget-1" onStateChange={onStateChange} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['first'], 'first.png', { type: 'image/png' })] }
+    });
+    readers[0].finish('data:image/png;base64,first');
+
+    await act(async () => {
+      storeCalls[0].resolve();
+    });
+
+    fireEvent.change(input, {
+      target: { files: [new File(['second'], 'second.png', { type: 'image/png' })] }
+    });
+    readers[1].finish('data:image/png;base64,second');
+
+    await act(async () => {
+      storeCalls[1].resolve();
+    });
+
+    expect(screen.getByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,second');
+    expect(deleteImage).toHaveBeenCalledWith(storeCalls[0].key);
   });
 
   test('shows an error when loading a saved image fails', async () => {

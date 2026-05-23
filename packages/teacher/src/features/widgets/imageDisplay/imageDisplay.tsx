@@ -71,12 +71,19 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     try {
       if (dataUrl) {
         const key = widgetId ? `image-${widgetId}-${changeId}` : `image-${Date.now()}-${changeId}`;
+        const previousKey = imageKeyRef.current;
         await storeImage(key, dataUrl);
-        if (!isCurrentImageChange(changeId)) return;
+        if (!isCurrentImageChange(changeId)) {
+          void deleteImage(key).catch(() => undefined);
+          return;
+        }
         imageKeyRef.current = key;
         setError(null);
         setImageUrl(dataUrl);
         onStateChange?.({ imageKey: key });
+        if (previousKey && previousKey !== key) {
+          void deleteImage(previousKey).catch(() => undefined);
+        }
       } else {
         if (imageKeyRef.current) {
           await deleteImage(imageKeyRef.current);

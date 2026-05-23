@@ -13,17 +13,14 @@ class ResizeObserverMock {
 
 const playMock = vi.fn(() => Promise.resolve());
 
-beforeAll(() => {
+beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   vi.stubGlobal('Audio', vi.fn(() => ({ play: playMock })));
 });
 
 afterEach(() => {
-  vi.clearAllMocks();
-});
-
-afterAll(() => {
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe('TrafficLight', () => {
