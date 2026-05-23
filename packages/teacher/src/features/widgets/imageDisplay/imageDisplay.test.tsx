@@ -126,6 +126,26 @@ describe('ImageDisplay', () => {
     expect(deleteImage).toHaveBeenCalledWith(storeCalls[0].key);
   });
 
+  test('ignores and cleans up a pending image store after unmount', async () => {
+    const onStateChange = vi.fn();
+    const { container, unmount } = render(<ImageDisplay widgetId="widget-1" onStateChange={onStateChange} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['image'], 'image.png', { type: 'image/png' })] }
+    });
+    readers[0].finish('data:image/png;base64,image');
+
+    unmount();
+
+    await act(async () => {
+      storeCalls[0].resolve();
+    });
+
+    expect(onStateChange).not.toHaveBeenCalled();
+    expect(deleteImage).toHaveBeenCalledWith(storeCalls[0].key);
+  });
+
   test('shows an error when loading a saved image fails', async () => {
     vi.mocked(loadImage).mockRejectedValueOnce(new Error('load failed'));
 
