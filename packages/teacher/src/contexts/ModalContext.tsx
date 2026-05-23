@@ -67,6 +67,14 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [isOpen, hideModal]);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('modal-open', isOpen);
+
+    return () => {
+      document.documentElement.classList.remove('modal-open');
+    };
+  }, [isOpen]);
+
   return (
     <ModalContext.Provider value={{ showModal, hideModal, isOpen }}>
       {children}
@@ -77,6 +85,8 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         >
           <div 
             ref={modalContentRef}
+            role="dialog"
+            data-dashboard-interactive="true"
             className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
             onClick={(e) => e.stopPropagation()}
           >

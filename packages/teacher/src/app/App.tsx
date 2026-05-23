@@ -24,6 +24,7 @@ import { HudProximityProvider } from '@shared/hooks/useHudProximity';
 import { WidgetType, WidgetCategory } from '@shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { APP_VERSION } from '../version';
+import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboardMode';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
@@ -64,6 +65,7 @@ function App() {
   const [screenTooSmall, setScreenTooSmall] = useState(
     typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
   );
+  const { isDashboardMode } = useDesktopDashboardMode();
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -531,7 +533,7 @@ function App() {
   
   return (
     <GlobalErrorBoundary>
-      {screenTooSmall ? (
+      {screenTooSmall && !isDashboardMode ? (
         <SmallScreenWarning
           minWidth={MIN_SCREEN_WIDTH}
           scale={scale}
@@ -542,7 +544,11 @@ function App() {
             <ConfettiProvider>
               <ModalProvider>
               <HudProximityProvider>
-                <div className="h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative">
+                <div
+                  className={`h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative ${
+                    isDashboardMode ? 'desktop-dashboard-root' : ''
+                  }`}
+                >
           
           {/* Top Controls */}
           <TopControls />

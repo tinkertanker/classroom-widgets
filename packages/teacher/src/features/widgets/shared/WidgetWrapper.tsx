@@ -10,6 +10,7 @@ import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import LiquidGlassOverlay from '../../desktop/LiquidGlassOverlay';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -20,6 +21,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
   const { widget, move, resize, focus, remove } = useWidget(widgetId);
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();
+  const isDesktopDashboardMode = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('dashboard') === '1';
   const rndRef = useRef<any>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -198,6 +201,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       >
         <div className="w-full h-full relative" onClick={handleWidgetClick}>
           {children}
+          <LiquidGlassOverlay active={isDesktopDashboardMode && !isTransparent} />
           {/* Hover trash icon */}
           <button
             onClick={handleDeleteClick}

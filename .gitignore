@@ -10,6 +10,9 @@ node_modules
 
 # production
 packages/teacher/build
+dist/
+packages/macos-dashboard/.build/
+.playwright-cli/
 
 # misc
 .DS_Store
