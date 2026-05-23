@@ -27,15 +27,25 @@ export const isSnakeSelfCollision = (
   return collisionSegments.some(segment => segment.x === nextHead.x && segment.y === nextHead.y);
 };
 
-export const generateRandomFood = (occupiedSegments: Position[]): Position => {
-  let newFood: Position;
-  do {
-    newFood = {
-      x: Math.floor(Math.random() * GRID_SIZE),
-      y: Math.floor(Math.random() * GRID_SIZE)
-    };
-  } while (occupiedSegments.some(segment => segment.x === newFood.x && segment.y === newFood.y));
-  return newFood;
+export const generateRandomFood = (occupiedSegments: Position[]): Position | null => {
+  const totalCells = GRID_SIZE * GRID_SIZE;
+  if (occupiedSegments.length >= totalCells) {
+    return null;
+  }
+
+  const occupied = new Set(occupiedSegments.map(segment => `${segment.x},${segment.y}`));
+  const startIndex = Math.floor(Math.random() * totalCells);
+
+  for (let offset = 0; offset < totalCells; offset += 1) {
+    const index = (startIndex + offset) % totalCells;
+    const x = index % GRID_SIZE;
+    const y = Math.floor(index / GRID_SIZE);
+    if (!occupied.has(`${x},${y}`)) {
+      return { x, y };
+    }
+  }
+
+  return null;
 };
 
 const Snake: React.FC = () => {
@@ -103,7 +113,13 @@ const Snake: React.FC = () => {
       // Check if food eaten
       if (isEatingFood) {
         setScore(prev => prev + 10);
-        setFood(generateRandomFood(newSnake));
+        const newFood = generateRandomFood(newSnake);
+        if (!newFood) {
+          setGameOver(true);
+          setIsPaused(true);
+          return newSnake;
+        }
+        setFood(newFood);
         // Increase speed every 50 points
         if ((score + 10) % 50 === 0) {
           setSpeed(prev => Math.max(50, prev - 20));

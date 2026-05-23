@@ -31,12 +31,17 @@ describe('isSnakeSelfCollision', () => {
 
 describe('generateRandomFood', () => {
   it('does not place food on occupied cells', () => {
-    vi.spyOn(Math, 'random')
-      .mockReturnValueOnce(15 / 20)
-      .mockReturnValueOnce(15 / 20)
-      .mockReturnValueOnce(16 / 20)
-      .mockReturnValueOnce(15 / 20);
+    vi.spyOn(Math, 'random').mockReturnValue(315 / 400);
 
     expect(generateRandomFood([{ x: 15, y: 15 }])).toEqual({ x: 16, y: 15 });
+  });
+
+  it('returns null when the snake occupies the full grid', () => {
+    const occupiedSegments = Array.from({ length: 20 * 20 }, (_, index) => ({
+      x: index % 20,
+      y: Math.floor(index / 20)
+    }));
+
+    expect(generateRandomFood(occupiedSegments)).toBeNull();
   });
 });

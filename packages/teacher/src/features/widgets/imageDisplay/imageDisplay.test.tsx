@@ -168,4 +168,23 @@ describe('ImageDisplay', () => {
     expect(await screen.findByText('Unable to save image. Please try again.')).toBeInTheDocument();
     expect(onStateChange).not.toHaveBeenCalled();
   });
+
+  test('aborts active file reader and ignores file load callbacks after unmount', () => {
+    const { container, unmount } = render(<ImageDisplay widgetId="widget-1" onStateChange={vi.fn()} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['image'], 'image.png', { type: 'image/png' })] }
+    });
+
+    expect(readers[0].readyState).toBe(MockFileReader.LOADING);
+
+    unmount();
+
+    expect(readers[0].readyState).toBe(MockFileReader.DONE);
+
+    readers[0].finish('data:image/png;base64,image');
+
+    expect(storeImage).not.toHaveBeenCalled();
+  });
 });

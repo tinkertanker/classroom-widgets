@@ -66,6 +66,12 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     }
   }, []);
 
+  useEffect(() => () => {
+    beginImageChange();
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
+  }, []);
+
   // Update image and notify parent
   const updateImage = async (dataUrl: string | null, changeId = beginImageChange()) => {
     try {
