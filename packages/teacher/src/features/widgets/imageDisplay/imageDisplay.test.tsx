@@ -92,4 +92,47 @@ describe('ImageDisplay', () => {
     expect(screen.getByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,second');
     expect(onStateChange).toHaveBeenCalledTimes(1);
   });
+
+  test('shows an error when loading a saved image fails', async () => {
+    vi.mocked(loadImage).mockRejectedValueOnce(new Error('load failed'));
+
+    render(<ImageDisplay savedState={{ imageKey: 'stored-image' }} />);
+
+    expect(await screen.findByText('Unable to load image. Please try again.')).toBeInTheDocument();
+  });
+
+  test('shows legacy image without emitting state when migration store fails', async () => {
+    const onStateChange = vi.fn();
+    vi.mocked(storeImage).mockRejectedValueOnce(new Error('store failed'));
+
+    render(
+      <ImageDisplay
+        widgetId="widget-1"
+        savedState={{ imageUrl: 'data:image/png;base64,legacy' }}
+        onStateChange={onStateChange}
+      />
+    );
+
+    expect(await screen.findByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,legacy');
+    expect(await screen.findByText('Unable to save image. Please try again.')).toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  test('shows an error and skips state change when selected image store fails', async () => {
+    const onStateChange = vi.fn();
+    vi.mocked(storeImage).mockRejectedValueOnce(new Error('store failed'));
+    const { container } = render(<ImageDisplay widgetId="widget-1" onStateChange={onStateChange} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: { files: [new File(['image'], 'image.png', { type: 'image/png' })] }
+    });
+
+    await act(async () => {
+      readers[0].finish('data:image/png;base64,image');
+    });
+
+    expect(await screen.findByText('Unable to save image. Please try again.')).toBeInTheDocument();
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
 });

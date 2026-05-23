@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { widgetContainer } from '@shared/utils/styles';
 import { storeImage, loadImage, deleteImage } from '../../../services/imageStorage';
 
+const STORAGE_LOAD_ERROR = 'Unable to load image. Please try again.';
+const STORAGE_SAVE_ERROR = 'Unable to save image. Please try again.';
+const STORAGE_DELETE_ERROR = 'Unable to remove image. Please try again.';
+
 interface ImageDisplayProps {
   widgetId?: string;
   savedState?: { imageKey?: string | null; imageUrl?: string | null };
@@ -32,38 +36,61 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     const changeId = imageChangeIdRef.current;
     const key = savedState?.imageKey;
     if (key) {
-      loadImage(key).then(url => {
-        if (url && isCurrentImageChange(changeId)) setImageUrl(url);
-      });
+      void loadImage(key)
+        .then(url => {
+          if (url && isCurrentImageChange(changeId)) {
+            setError(null);
+            setImageUrl(url);
+          }
+        })
+        .catch(() => {
+          if (isCurrentImageChange(changeId)) setError(STORAGE_LOAD_ERROR);
+        });
     } else if (savedState?.imageUrl) {
       // Migrate legacy base64 imageUrl to IndexedDB
       const newKey = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
-      storeImage(newKey, savedState.imageUrl).then(() => {
-        if (!isCurrentImageChange(changeId)) return;
-        imageKeyRef.current = newKey;
-        setImageUrl(savedState.imageUrl!);
-        onStateChange?.({ imageKey: newKey });
-      });
+      const legacyImageUrl = savedState.imageUrl;
+      void storeImage(newKey, legacyImageUrl)
+        .then(() => {
+          if (!isCurrentImageChange(changeId)) return;
+          imageKeyRef.current = newKey;
+          setError(null);
+          setImageUrl(legacyImageUrl);
+          onStateChange?.({ imageKey: newKey });
+        })
+        .catch(() => {
+          if (!isCurrentImageChange(changeId)) return;
+          setImageUrl(legacyImageUrl);
+          setError(STORAGE_SAVE_ERROR);
+        });
     }
   }, []);
 
   // Update image and notify parent
   const updateImage = async (dataUrl: string | null, changeId = beginImageChange()) => {
-    if (dataUrl) {
-      const key = widgetId ? `image-${widgetId}-${changeId}` : `image-${Date.now()}-${changeId}`;
-      await storeImage(key, dataUrl);
-      if (!isCurrentImageChange(changeId)) return;
-      imageKeyRef.current = key;
-      setImageUrl(dataUrl);
-      onStateChange?.({ imageKey: key });
-    } else {
-      if (imageKeyRef.current) {
-        await deleteImage(imageKeyRef.current);
+    try {
+      if (dataUrl) {
+        const key = widgetId ? `image-${widgetId}-${changeId}` : `image-${Date.now()}-${changeId}`;
+        await storeImage(key, dataUrl);
         if (!isCurrentImageChange(changeId)) return;
-        imageKeyRef.current = null;
+        imageKeyRef.current = key;
+        setError(null);
+        setImageUrl(dataUrl);
+        onStateChange?.({ imageKey: key });
+      } else {
+        if (imageKeyRef.current) {
+          await deleteImage(imageKeyRef.current);
+          if (!isCurrentImageChange(changeId)) return;
+          imageKeyRef.current = null;
+        }
+        setError(null);
+        setImageUrl(null);
+        onStateChange?.({ imageKey: null });
       }
-      setImageUrl(null);
-      onStateChange?.({ imageKey: null });
+    } catch {
+      if (isCurrentImageChange(changeId)) {
+        setError(dataUrl ? STORAGE_SAVE_ERROR : STORAGE_DELETE_ERROR);
+      }
     }
   };
 
@@ -84,7 +111,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     activeReaderRef.current = reader;
     reader.onload = (e) => {
       if (isCurrentImageChange(changeId)) {
-        updateImage(e.target?.result as string, changeId);
+        void updateImage(e.target?.result as string, changeId);
       }
     };
     reader.onloadend = () => {
@@ -243,6 +270,11 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
       {imageUrl && (
         <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 dark:bg-opacity-70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
           Double-click to change
+        </div>
+      )}
+      {imageUrl && error && (
+        <div className="absolute bottom-2 left-2 right-2 bg-red-600/90 text-white px-2 py-1 rounded text-xs">
+          {error}
         </div>
       )}
     </div>
