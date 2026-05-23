@@ -17,6 +17,16 @@ const GRID_SIZE = 20;
 const CELL_SIZE = 15;
 const INITIAL_SPEED = 150;
 
+export const isSnakeSelfCollision = (
+  snake: Position[],
+  nextHead: Position,
+  isEatingFood: boolean
+) => {
+  const collisionSegments = isEatingFood ? snake : snake.slice(0, -1);
+
+  return collisionSegments.some(segment => segment.x === nextHead.x && segment.y === nextHead.y);
+};
+
 const Snake: React.FC = () => {
   const [snake, setSnake] = useState<Position[]>([{ x: 10, y: 10 }]);
   const [food, setFood] = useState<Position>({ x: 15, y: 15 });
@@ -79,11 +89,10 @@ const Snake: React.FC = () => {
         return currentSnake;
       }
 
-      const ateFood = head.x === food.x && head.y === food.y;
-      const collisionBody = ateFood ? newSnake : newSnake.slice(0, -1);
+      const isEatingFood = head.x === food.x && head.y === food.y;
 
       // Check self collision
-      if (collisionBody.some(segment => segment.x === head.x && segment.y === head.y)) {
+      if (isSnakeSelfCollision(newSnake, head, isEatingFood)) {
         setGameOver(true);
         setIsPaused(true);
         return currentSnake;
@@ -92,7 +101,7 @@ const Snake: React.FC = () => {
       newSnake.unshift(head);
 
       // Check if food eaten
-      if (ateFood) {
+      if (isEatingFood) {
         setScore(prev => prev + 10);
         setFood(generateRandomFood(newSnake));
         // Increase speed every 50 points
