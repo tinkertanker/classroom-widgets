@@ -11,17 +11,30 @@ module.exports = {
 
   // CORS configuration
   CORS: {
-    // Allowed origins - can be set via environment variable
-    ALLOWED_ORIGINS: process.env.CORS_ORIGINS 
-      ? process.env.CORS_ORIGINS.split(',') 
-      : [
-          'http://localhost:3000',
-          'http://localhost:3001', 
-          'http://localhost:3002',
-          'http://127.0.0.1:3000',
-          'http://127.0.0.1:3001',
-          'http://127.0.0.1:3002'
-        ],
+    // Allowed origins - can be set via environment variable.
+    // Wildcards are rejected at startup to prevent accidental "*" in prod.
+    ALLOWED_ORIGINS: (() => {
+      const raw = process.env.CORS_ORIGINS
+        ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+        : [
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://localhost:3002',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:3001',
+            'http://127.0.0.1:3002'
+          ];
+      const hasWildcard = raw.some(o => o === '*');
+      if (hasWildcard) {
+        if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging') {
+          throw new Error('[server.config] CORS_ORIGINS contains "*" - wildcard origins are not permitted in production.');
+        }
+        // In dev we strip the "*" but warn so it doesn't quietly mask real values.
+        console.warn('[server.config] CORS_ORIGINS contains "*" - stripped in development.');
+        return raw.filter(o => o !== '*');
+      }
+      return raw;
+    })(),
     CREDENTIALS: true,
     METHODS: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     ALLOWED_HEADERS: ['Content-Type', 'Authorization']

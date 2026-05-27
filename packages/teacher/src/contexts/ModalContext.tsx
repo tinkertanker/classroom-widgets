@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 interface ModalOptions {
@@ -67,15 +67,23 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [isOpen, hideModal]);
 
+  const contextValue = useMemo(
+    () => ({ showModal, hideModal, isOpen }),
+    [showModal, hideModal, isOpen]
+  );
+
   return (
-    <ModalContext.Provider value={{ showModal, hideModal, isOpen }}>
+    <ModalContext.Provider value={contextValue}>
       {children}
       {isOpen && modalOptions && ReactDOM.createPortal(
-        <div 
+        <div
           className={modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}
           onClick={handleOverlayClick}
+          role="dialog"
+          aria-modal="true"
+          aria-label={modalOptions.title || 'Dialog'}
         >
-          <div 
+          <div
             ref={modalContentRef}
             className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
             onClick={(e) => e.stopPropagation()}
@@ -87,7 +95,9 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 </h2>
                 {modalOptions.showCloseButton !== false && (
                   <button
+                    type="button"
                     onClick={hideModal}
+                    aria-label="Close dialog"
                     className="text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none"
                   >
                     ×
@@ -98,7 +108,9 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             <div className={modalOptions.noPadding ? '' : (modalOptions.title ? 'p-6' : 'relative p-6')}>
               {!modalOptions.title && modalOptions.showCloseButton !== false && !modalOptions.noPadding && (
                 <button
+                  type="button"
                   onClick={hideModal}
+                  aria-label="Close dialog"
                   className="absolute top-4 right-4 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none z-10"
                 >
                   ×

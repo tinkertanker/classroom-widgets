@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, ReactNode } from 'react';
 
 interface WidgetContextType {
   widgetId?: string;
@@ -14,8 +14,12 @@ export const WidgetProvider: React.FC<{
   savedState?: any;
   onStateChange?: (state: any) => void;
 }> = ({ children, widgetId, savedState, onStateChange }) => {
+  const value = useMemo(
+    () => ({ widgetId, savedState, onStateChange }),
+    [widgetId, savedState, onStateChange]
+  );
   return (
-    <WidgetContext.Provider value={{ widgetId, savedState, onStateChange }}>
+    <WidgetContext.Provider value={value}>
       {children}
     </WidgetContext.Provider>
   );

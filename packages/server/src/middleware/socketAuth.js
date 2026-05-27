@@ -1,6 +1,20 @@
 const { LIMITS } = require('../config/constants');
 const { createRateLimitResponse } = require('../utils/errors');
 
+// Tracks every setInterval created by rate limiters so server.js can clear
+// them during graceful shutdown (prevents the event loop staying alive).
+const pendingCleanupHandles = [];
+
+/**
+ * Cancel all rate-limiter cleanup timers. Called from graceful shutdown.
+ */
+const stopRateLimiterCleanup = () => {
+  while (pendingCleanupHandles.length) {
+    const handle = pendingCleanupHandles.pop();
+    clearInterval(handle);
+  }
+};
+
 /**
  * Socket authentication middleware
  */
@@ -137,8 +151,8 @@ const createEventRateLimiter = () => {
   // Map of clientKey -> Map of eventName -> { count, windowStart }
   const eventRequests = new Map();
 
-  // Cleanup old entries every 5 minutes
-  setInterval(() => {
+  // Cleanup old entries every 5 minutes. Track handle so graceful shutdown can cancel it.
+  const cleanupHandle = setInterval(() => {
     const now = Date.now();
     eventRequests.forEach((events, clientKey) => {
       events.forEach((data, eventName) => {
@@ -152,6 +166,9 @@ const createEventRateLimiter = () => {
       }
     });
   }, 5 * 60 * 1000);
+  if (cleanupHandle.unref) cleanupHandle.unref();
+  // Expose stop() so server.js can clear during shutdown.
+  pendingCleanupHandles.push(cleanupHandle);
 
   /**
    * Check if a request should be rate limited
@@ -282,5 +299,6 @@ module.exports = {
   rateLimiter,
   eventRateLimiter,
   withRateLimit,
-  EVENT_RATE_LIMITS
+  EVENT_RATE_LIMITS,
+  stopRateLimiterCleanup
 };

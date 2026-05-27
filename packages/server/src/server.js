@@ -5,13 +5,15 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
 const path = require('path');
 
 // Import configurations
 const serverConfig = require('./config/server.config');
 
 // Import middleware
-const { socketAuth, socketErrorHandler } = require('./middleware/socketAuth');
+const { socketAuth, socketErrorHandler, stopRateLimiterCleanup } = require('./middleware/socketAuth');
 const { expressErrorHandler, setupGlobalErrorHandlers } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 
@@ -24,6 +26,23 @@ const { setupSocketHandlers } = require('./sockets/socketManager');
 // Import routes
 const apiRoutes = require('./routes/api');
 const staticRoutes = require('./routes/static');
+
+const normaliseOrigin = (value) => {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+};
+
+const isLocalDevelopmentOrigin = (origin) => {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Initialize and configure the server
@@ -39,10 +58,47 @@ class AppServer {
     setupGlobalErrorHandlers();
   }
 
+  static isOriginAllowed(origin) {
+    // Allow requests with no origin (like mobile apps or Postman).
+    if (!origin) return true;
+
+    const requestOrigin = normaliseOrigin(origin);
+    if (!requestOrigin) return false;
+
+    const allowedOrigins = serverConfig.CORS.ALLOWED_ORIGINS
+      .map(normaliseOrigin)
+      .filter(Boolean);
+
+    if (allowedOrigins.includes(requestOrigin)) {
+      return true;
+    }
+
+    // In development, allow localhost on any port.
+    return !serverConfig.IS_PRODUCTION && isLocalDevelopmentOrigin(requestOrigin);
+  }
+
+  static corsOriginDelegate(origin, callback) {
+    if (AppServer.isOriginAllowed(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  }
+
   /**
    * Configure Express middleware
    */
   configureMiddleware() {
+    // Security headers. CSP off here because static student bundle inlines styles
+    // and the CSP would need a per-deployment policy; revisit when ready.
+    this.app.use(helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false
+    }));
+
+    // Gzip responses (skip websocket upgrade frames automatically).
+    this.app.use(compression());
+
     // Static file serving should come BEFORE CORS in production
     // This prevents CORS checks on static assets served from the same domain
     if (serverConfig.IS_PRODUCTION) {
@@ -51,36 +107,19 @@ class AppServer {
 
     // CORS configuration
     this.app.use(cors({
-      origin: function(origin, callback) {
-        // Allow requests with no origin (like mobile apps or Postman)
-        if (!origin) return callback(null, true);
-        
-        // Check against allowed origins
-        if (serverConfig.CORS.ALLOWED_ORIGINS.some(allowed => 
-          origin.includes(allowed) || allowed === '*'
-        )) {
-          return callback(null, true);
-        }
-        
-        // In development, allow localhost on any port
-        if (!serverConfig.IS_PRODUCTION && 
-            (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-          return callback(null, true);
-        }
-        
-        callback(new Error('Not allowed by CORS'));
-      },
+      origin: AppServer.corsOriginDelegate,
       credentials: serverConfig.CORS.CREDENTIALS,
       methods: serverConfig.CORS.METHODS,
       allowedHeaders: serverConfig.CORS.ALLOWED_HEADERS
     }));
 
-    // Body parsing
-    this.app.use(express.json({ limit: '10mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    // Body parsing. Typical poll/activity payloads are tiny; tight limits
+    // prevent trivial memory-DoS from oversized POSTs.
+    this.app.use(express.json({ limit: '256kb' }));
+    this.app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
     // Request logging in development (opt-in to avoid per-request hot-path noise).
-    // Uses logger.info so it's not gated by LOG_LEVEL — the env flag is the only gate.
+    // Uses logger.info so it's not gated by LOG_LEVEL - the env flag is the only gate.
     if (!serverConfig.IS_PRODUCTION && process.env.HTTP_DEBUG === 'true') {
       this.app.use((req, res, next) => {
         logger.info(`${req.method} ${req.path}`);
@@ -95,7 +134,7 @@ class AppServer {
   configureSocketIO() {
     this.io = new Server(this.server, {
       cors: {
-        origin: serverConfig.CORS.ALLOWED_ORIGINS,
+        origin: AppServer.corsOriginDelegate,
         methods: serverConfig.CORS.METHODS,
         credentials: serverConfig.CORS.CREDENTIALS
       },
@@ -193,6 +232,12 @@ class AppServer {
       console.log(`\n${signal} received. Starting graceful shutdown...`);
       
       try {
+        // Cancel background timers so the event loop can quiesce.
+        if (this.sessionManager && typeof this.sessionManager.stopCleanupInterval === 'function') {
+          this.sessionManager.stopCleanupInterval();
+        }
+        stopRateLimiterCleanup();
+
         // Stop accepting new connections
         this.server.close(() => {
           console.log('HTTP server closed');
