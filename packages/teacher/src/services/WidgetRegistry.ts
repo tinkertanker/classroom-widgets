@@ -57,8 +57,25 @@ const widgetImports = {
   CodeFillBlank: () => import('../features/widgets/activity/codeFillBlank'),
 };
 
-// Trigger all imports now — ESM caches them so React.lazy reuses the resolved modules
-Object.values(widgetImports).forEach(fn => fn());
+// Warm widget chunks during idle time after first paint.
+// React.lazy will hit the cached resolved modules on first render, so users
+// don't see a "Loading widget..." flash - without blocking the critical path.
+if (typeof window !== 'undefined') {
+  const warmCaches = () => {
+    Object.values(widgetImports).forEach(fn => {
+      // Fire and forget; chunk errors are logged but don't bubble
+      fn().catch(err => {
+        if (import.meta.env?.DEV) console.warn('[WidgetRegistry] preload failed', err);
+      });
+    });
+  };
+  const ric = (window as any).requestIdleCallback;
+  if (typeof ric === 'function') {
+    ric(warmCaches, { timeout: 2000 });
+  } else {
+    setTimeout(warmCaches, 200);
+  }
+}
 
 // Lazy load all widgets (reuses cached imports from above)
 const LazyWidgets = {

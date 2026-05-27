@@ -8,7 +8,8 @@ const { TIME, LIMITS } = require('../config/constants');
 class SessionManager {
   constructor() {
     this.sessions = new Map();
-    
+    this.cleanupIntervalHandle = null;
+
     // Start cleanup interval
     this.startCleanupInterval();
   }
@@ -57,12 +58,11 @@ class SessionManager {
    * Clean up inactive sessions
    */
   cleanupInactiveSessions() {
-    const now = Date.now();
     let cleanedCount = 0;
 
     // Clean up sessions
     for (const [code, session] of this.sessions) {
-      if (now - session.lastActivity > TIME.SESSION_IDLE_TIMEOUT) {
+      if (session.isInactive(TIME.INACTIVITY_TIMEOUT)) {
         console.log(`Cleaning up inactive session: ${code}`);
         this.sessions.delete(code);
         cleanedCount++;
@@ -79,9 +79,22 @@ class SessionManager {
    * Start periodic cleanup of inactive sessions
    */
   startCleanupInterval() {
-    setInterval(() => {
+    if (this.cleanupIntervalHandle) return;
+    this.cleanupIntervalHandle = setInterval(() => {
       this.cleanupInactiveSessions();
     }, TIME.CLEANUP_INTERVAL);
+    // Don't keep the event loop alive just for the cleanup timer.
+    if (this.cleanupIntervalHandle.unref) this.cleanupIntervalHandle.unref();
+  }
+
+  /**
+   * Stop periodic cleanup - call on graceful shutdown.
+   */
+  stopCleanupInterval() {
+    if (this.cleanupIntervalHandle) {
+      clearInterval(this.cleanupIntervalHandle);
+      this.cleanupIntervalHandle = null;
+    }
   }
 
   /**

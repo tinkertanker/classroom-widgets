@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useId, ReactNode, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 interface ModalOptions {
@@ -31,6 +31,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isOpen, setIsOpen] = useState(false);
   const [modalOptions, setModalOptions] = useState<ModalOptions | null>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
+  const modalTitleId = useId();
 
   const showModal = useCallback((options: ModalOptions) => {
     setModalOptions(options);
@@ -67,27 +68,38 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [isOpen, hideModal]);
 
+  const contextValue = useMemo(
+    () => ({ showModal, hideModal, isOpen }),
+    [showModal, hideModal, isOpen]
+  );
+
   return (
-    <ModalContext.Provider value={{ showModal, hideModal, isOpen }}>
+    <ModalContext.Provider value={contextValue}>
       {children}
       {isOpen && modalOptions && ReactDOM.createPortal(
-        <div 
+        <div
           className={modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}
           onClick={handleOverlayClick}
         >
-          <div 
+          <div
             ref={modalContentRef}
             className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalOptions.title ? modalTitleId : undefined}
+            aria-label={modalOptions.title ? undefined : 'Dialog'}
           >
             {modalOptions.title && (
               <div className="flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">
-                <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">
+                <h2 id={modalTitleId} className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">
                   {modalOptions.title}
                 </h2>
                 {modalOptions.showCloseButton !== false && (
                   <button
+                    type="button"
                     onClick={hideModal}
+                    aria-label="Close dialog"
                     className="text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none"
                   >
                     ×
@@ -98,7 +110,9 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             <div className={modalOptions.noPadding ? '' : (modalOptions.title ? 'p-6' : 'relative p-6')}>
               {!modalOptions.title && modalOptions.showCloseButton !== false && !modalOptions.noPadding && (
                 <button
+                  type="button"
                   onClick={hideModal}
+                  aria-label="Close dialog"
                   className="absolute top-4 right-4 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none z-10"
                 >
                   ×
