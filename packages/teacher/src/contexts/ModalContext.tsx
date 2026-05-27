@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useId, ReactNode, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 interface ModalOptions {
@@ -31,6 +31,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isOpen, setIsOpen] = useState(false);
   const [modalOptions, setModalOptions] = useState<ModalOptions | null>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
+  const modalTitleId = useId();
 
   const showModal = useCallback((options: ModalOptions) => {
     setModalOptions(options);
@@ -79,18 +80,19 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         <div
           className={modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}
           onClick={handleOverlayClick}
-          role="dialog"
-          aria-modal="true"
-          aria-label={modalOptions.title || 'Dialog'}
         >
           <div
             ref={modalContentRef}
             className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={modalOptions.title ? modalTitleId : undefined}
+            aria-label={modalOptions.title ? undefined : 'Dialog'}
           >
             {modalOptions.title && (
               <div className="flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">
-                <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">
+                <h2 id={modalTitleId} className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">
                   {modalOptions.title}
                 </h2>
                 {modalOptions.showCloseButton !== false && (

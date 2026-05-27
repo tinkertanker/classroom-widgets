@@ -13,8 +13,8 @@ const path = require('path');
 const serverConfig = require('./config/server.config');
 
 // Import middleware
-const { socketAuth, socketErrorHandler, stopRateLimiterCleanup } = require('./middleware/socketAuth');
-const { expressErrorHandler, setupGlobalErrorHandlers } = require('./middleware/errorHandler');
+const { socketAuth, stopRateLimiterCleanup } = require('./middleware/socketAuth');
+const { AuthorizationError, expressErrorHandler, setupGlobalErrorHandlers } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 
 // Import services
@@ -82,7 +82,7 @@ class AppServer {
       return callback(null, true);
     }
 
-    callback(new Error('Not allowed by CORS'));
+    callback(new AuthorizationError('Not allowed by CORS'));
   }
 
   /**
