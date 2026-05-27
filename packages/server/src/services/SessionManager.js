@@ -58,12 +58,11 @@ class SessionManager {
    * Clean up inactive sessions
    */
   cleanupInactiveSessions() {
-    const now = Date.now();
     let cleanedCount = 0;
 
     // Clean up sessions
     for (const [code, session] of this.sessions) {
-      if (now - session.lastActivity > TIME.INACTIVITY_TIMEOUT) {
+      if (session.isInactive(TIME.INACTIVITY_TIMEOUT)) {
         console.log(`Cleaning up inactive session: ${code}`);
         this.sessions.delete(code);
         cleanedCount++;

@@ -113,6 +113,10 @@ class AppServer {
       allowedHeaders: serverConfig.CORS.ALLOWED_HEADERS
     }));
 
+    // Voice command context can contain legacy image widget data URLs. Keep
+    // that endpoint on the old larger limit while tightening the rest.
+    this.app.use('/api/voice-command', express.json({ limit: '10mb' }));
+
     // Body parsing. Typical poll/activity payloads are tiny; tight limits
     // prevent trivial memory-DoS from oversized POSTs.
     this.app.use(express.json({ limit: '256kb' }));
