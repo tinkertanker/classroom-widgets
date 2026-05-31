@@ -200,7 +200,7 @@ final class DashboardWindowController: NSWindowController {
     }
 
     private static func combinedVisibleFrame() -> NSRect {
-        NSScreen.screens.reduce(NSRect.zero) { partial, screen in
+        NSScreen.screens.reduce(NSRect.null) { partial, screen in
             partial.union(screen.visibleFrame)
         }
     }
