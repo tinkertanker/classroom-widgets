@@ -47,6 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch) {
             controller.showDashboard()
         }
+
+        if !UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon) {
+            showSettings()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
