@@ -100,6 +100,135 @@
   pointer-events: none; /* Allow clicks to pass through empty space */
 }
 
+html.desktop-dashboard-mode,
+html.desktop-dashboard-mode body,
+html.desktop-dashboard-mode #root {
+  background: transparent !important;
+}
+
+html.desktop-dashboard-mode body {
+  overflow: hidden;
+}
+
+.desktop-dashboard-root {
+  background: transparent !important;
+}
+
+.desktop-dashboard-root [data-dashboard-chrome="true"] {
+  display: none;
+}
+
+html.desktop-dashboard-mode .board-scroll-container {
+  overflow: hidden;
+  background: transparent !important;
+}
+
+html.desktop-dashboard-mode .board {
+  background: transparent !important;
+}
+
+html.desktop-dashboard-mode .board > div:first-child,
+html.desktop-dashboard-mode .column-board-container > .fixed {
+  display: none;
+}
+
+html.desktop-dashboard-mode .board-scale-wrapper {
+  transform-style: preserve-3d;
+  perspective: 1200px;
+}
+
+html.desktop-dashboard-mode .widget-wrapper {
+  filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.22));
+}
+
+html.desktop-dashboard-mode .widget-wrapper > div {
+  animation: desktop-widget-depth-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+html.desktop-dashboard-hidden .widget-wrapper,
+html.desktop-dashboard-hidden .toolbar-container,
+html.desktop-dashboard-hidden [role="dialog"] {
+  opacity: 0;
+  pointer-events: none !important;
+}
+
+html.desktop-dashboard-hidden .widget-wrapper > div,
+html.desktop-dashboard-hidden [role="dialog"] {
+  transform: translateY(28px) scale(0.92) rotateX(10deg);
+}
+
+html.desktop-dashboard-visible .widget-wrapper,
+html.desktop-dashboard-visible .toolbar-container,
+html.desktop-dashboard-visible [role="dialog"] {
+  opacity: 1;
+}
+
+html.desktop-dashboard-mode .toolbar-container {
+  transition: opacity 180ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.desktop-dashboard-mode body > .fixed.inset-0 {
+  background: transparent !important;
+  pointer-events: none;
+}
+
+html.desktop-dashboard-mode body > .fixed.inset-0 > [role="dialog"] {
+  pointer-events: auto;
+}
+
+html.desktop-dashboard-mode.modal-open .toolbar-container {
+  opacity: 0;
+  transform: translateY(18px) scale(0.96);
+  pointer-events: none;
+}
+
+html.desktop-dashboard-mode [role="dialog"] {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+}
+
+html.dark.desktop-dashboard-mode [role="dialog"] {
+  background: rgba(38, 36, 32, 0.74) !important;
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+.desktop-liquid-glass-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
+html.desktop-dashboard-mode .widget-wrapper > div {
+  overflow: hidden;
+  border-radius: 14px;
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+}
+
+@keyframes desktop-widget-depth-in {
+  0% {
+    opacity: 0;
+    transform: translateY(36px) scale(0.88) rotateX(12deg);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.015) rotateX(0deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg);
+  }
+}
+
 /* Toolbar content wrapper also needs to pass through clicks in padding areas */
 .toolbar-content {
   pointer-events: none;
@@ -197,7 +326,3 @@ input[type="range"] {
   80% { transform: translate(1px, 2px) rotate(0.5deg); }
   90% { transform: translate(-2px, -1px) rotate(-1deg); }
 }
-
-
-
-

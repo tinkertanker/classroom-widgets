@@ -10,6 +10,7 @@ import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface WidgetRendererProps {
   widgetId: string;
+  dashboardVisible?: boolean;
 }
 
 const WidgetLoader: React.FC = () => (
@@ -21,7 +22,7 @@ const WidgetLoader: React.FC = () => (
   </Card>
 );
 
-const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
+const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId, dashboardVisible }) => {
   const { widget, state, setState } = useWidget(widgetId);
   // Subscribe only to whether THIS widget is focused, not the focusedWidgetId value
   // This prevents all widgets from re-rendering when focus changes
@@ -47,7 +48,7 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId }) => {
   };
   
   return (
-    <WidgetWrapper widgetId={widgetId}>
+    <WidgetWrapper widgetId={widgetId} dashboardVisible={dashboardVisible}>
       <ErrorBoundary widgetName={widgetName}>
         <Suspense fallback={<WidgetLoader />}>
           <Component {...widgetProps} />

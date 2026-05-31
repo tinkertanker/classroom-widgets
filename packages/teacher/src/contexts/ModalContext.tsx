@@ -68,6 +68,14 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   }, [isOpen, hideModal]);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('modal-open', isOpen);
+
+    return () => {
+      document.documentElement.classList.remove('modal-open');
+    };
+  }, [isOpen]);
+
   const contextValue = useMemo(
     () => ({ showModal, hideModal, isOpen }),
     [showModal, hideModal, isOpen]
@@ -83,12 +91,13 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         >
           <div
             ref={modalContentRef}
-            className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
-            onClick={(e) => e.stopPropagation()}
             role="dialog"
+            data-dashboard-interactive="true"
             aria-modal="true"
             aria-labelledby={modalOptions.title ? modalTitleId : undefined}
             aria-label={modalOptions.title ? undefined : 'Dialog'}
+            className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
+            onClick={(e) => e.stopPropagation()}
           >
             {modalOptions.title && (
               <div className="flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">

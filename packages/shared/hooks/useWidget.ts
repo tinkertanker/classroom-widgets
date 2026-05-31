@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { WidgetInstance, Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { widgetRegistry } from '@/services/WidgetRegistry';
+import { isDesktopDashboardMode } from '../utils/dashboardMode';
 
 // Hook for individual widget instances
 export function useWidget(widgetId: string) {
@@ -119,6 +120,17 @@ export function useCreateWidget() {
       const scrollTop = boardContainer.scrollTop;
       const viewportWidth = boardContainer.clientWidth;
       const viewportHeight = boardContainer.clientHeight;
+      const isDashboardMode = isDesktopDashboardMode();
+
+      if (isDashboardMode) {
+        const cascade = Math.min(widgets.length, 6) * 28;
+        const toolbarClearance = 96;
+
+        return addWidget(type, {
+          x: Math.max(24, (viewportWidth / scale - widgetSize.width) / 2 + cascade),
+          y: Math.max(24, (viewportHeight / scale - toolbarClearance - widgetSize.height) / 2 + cascade)
+        });
+      }
       
       // Create viewport info for findAvailablePosition
       const viewport = {

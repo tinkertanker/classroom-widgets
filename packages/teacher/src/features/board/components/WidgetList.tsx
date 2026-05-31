@@ -6,7 +6,11 @@ import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import WidgetRenderer from './WidgetRenderer';
 
-const WidgetList: React.FC = () => {
+interface WidgetListProps {
+  dashboardVisible?: boolean;
+}
+
+const WidgetList: React.FC<WidgetListProps> = ({ dashboardVisible }) => {
   // Subscribe only to widget IDs using shallow comparison
   // This prevents re-renders when widget properties (position/size) change
   // Only re-renders when widgets are added/removed
@@ -17,7 +21,7 @@ const WidgetList: React.FC = () => {
   return (
     <>
       {widgetIds.map((widgetId) => (
-        <WidgetRenderer key={widgetId} widgetId={widgetId} />
+        <WidgetRenderer key={widgetId} widgetId={widgetId} dashboardVisible={dashboardVisible} />
       ))}
     </>
   );
