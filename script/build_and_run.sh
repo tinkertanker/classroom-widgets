@@ -50,6 +50,8 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
   <string>13.0</string>
   <key>LSUIElement</key>
   <true/>
+  <key>NSCameraUsageDescription</key>
+  <string>Classroom Widgets uses the camera for the Visualiser widget.</string>
   <key>NSPrincipalClass</key>
   <string>NSApplication</string>
 </dict>
