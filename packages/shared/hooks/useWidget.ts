@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { WidgetInstance, Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { widgetRegistry } from '@/services/WidgetRegistry';
+import { isDesktopDashboardMode } from '../utils/dashboardMode';
 
 // Hook for individual widget instances
 export function useWidget(widgetId: string) {
@@ -119,8 +120,7 @@ export function useCreateWidget() {
       const scrollTop = boardContainer.scrollTop;
       const viewportWidth = boardContainer.clientWidth;
       const viewportHeight = boardContainer.clientHeight;
-      const isDashboardMode = typeof window !== 'undefined' &&
-        new URLSearchParams(window.location.search).get('dashboard') === '1';
+      const isDashboardMode = isDesktopDashboardMode();
 
       if (isDashboardMode) {
         const cascade = Math.min(widgets.length, 6) * 28;

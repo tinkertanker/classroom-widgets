@@ -65,7 +65,7 @@ function App() {
   const [screenTooSmall, setScreenTooSmall] = useState(
     typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
   );
-  const { isDashboardMode } = useDesktopDashboardMode();
+  const { isDashboardMode, isDashboardVisible } = useDesktopDashboardMode();
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -551,7 +551,9 @@ function App() {
                 >
           
           {/* Top Controls */}
-          <TopControls />
+          <div data-dashboard-chrome="true">
+            <TopControls />
+          </div>
           
           {/* Sticker Mode Banner */}
           {stickerMode && (
@@ -588,7 +590,7 @@ function App() {
               </ColumnBoard>
             ) : (
               <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
-                <WidgetList />
+                <WidgetList dashboardVisible={isDashboardVisible} />
               </Board>
             )}
           </div>
@@ -599,7 +601,7 @@ function App() {
           </div>
 
           {/* Version label */}
-          <a href="/about" className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 hover:opacity-100 select-none z-10 transition-opacity">
+          <a href="/about" data-dashboard-chrome="true" className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 hover:opacity-100 select-none z-10 transition-opacity">
             v{APP_VERSION}
           </a>
 

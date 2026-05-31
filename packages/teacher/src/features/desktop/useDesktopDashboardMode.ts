@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 
 type DashboardBridge = {
   setVisible: (visible: boolean) => void;
   toggle: () => void;
   isVisible: () => boolean;
   isInteractiveAt: (x: number, y: number) => boolean;
+};
+
+type DashboardInteractiveRegion = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };
 
 declare global {
@@ -20,15 +28,17 @@ declare global {
   }
 }
 
-const DASHBOARD_QUERY_KEYS = ['dashboard', 'desktop'];
-
-function readDashboardModeFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return DASHBOARD_QUERY_KEYS.some((key) => {
-    const value = params.get(key);
-    return value === '1' || value === 'true';
-  });
-}
+const DASHBOARD_INTERACTIVE_SELECTOR = [
+  '.widget-wrapper',
+  '.toolbar-container button',
+  '.toolbar-container a',
+  '.toolbar-container input',
+  '.toolbar-container select',
+  '.toolbar-container textarea',
+  '[data-dashboard-interactive="true"]',
+  '[role="dialog"]',
+  '.delete-button'
+].join(', ');
 
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -38,12 +48,32 @@ function isEditableTarget(target: EventTarget | null) {
   );
 }
 
+function isElementInteractable(element: Element) {
+  let current: Element | null = element;
+
+  while (current && current !== document.documentElement) {
+    const style = window.getComputedStyle(current);
+    if (
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      style.pointerEvents === 'none' ||
+      Number(style.opacity) === 0
+    ) {
+      return false;
+    }
+    current = current.parentElement;
+  }
+
+  return true;
+}
+
 export function useDesktopDashboardMode() {
   const isDashboardMode = useMemo(() => {
     if (typeof window === 'undefined') return false;
-    return readDashboardModeFromUrl();
+    return isDesktopDashboardMode();
   }, []);
   const [isDashboardVisible, setDashboardVisible] = useState(isDashboardMode);
+  const [interactiveRegions, setInteractiveRegions] = useState<DashboardInteractiveRegion[]>([]);
 
   const setVisible = useCallback((visible: boolean) => {
     setDashboardVisible(visible);
@@ -71,6 +101,71 @@ export function useDesktopDashboardMode() {
         'desktop-dashboard-visible',
         'desktop-dashboard-hidden'
       );
+    };
+  }, [isDashboardMode, isDashboardVisible]);
+
+  useEffect(() => {
+    if (!isDashboardMode) return;
+
+    let frame = 0;
+
+    const collectRegions = () => {
+      if (!isDashboardVisible) return [];
+
+      return Array.from(document.querySelectorAll(DASHBOARD_INTERACTIVE_SELECTOR))
+        .filter(isElementInteractable)
+        .map((element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({
+          x: rect.left,
+          y: rect.top,
+          width: rect.width,
+          height: rect.height
+        }));
+    };
+
+    const publishRegions = () => {
+      frame = 0;
+      const regions = collectRegions();
+      setInteractiveRegions(regions);
+      window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+        type: 'interactive-regions-changed',
+        regions
+      });
+    };
+
+    const schedulePublish = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(publishRegions);
+    };
+
+    schedulePublish();
+    window.addEventListener('resize', schedulePublish);
+    window.addEventListener('scroll', schedulePublish, true);
+    document.addEventListener('transitionend', schedulePublish, true);
+
+    const resizeObserver = new ResizeObserver(schedulePublish);
+    resizeObserver.observe(document.documentElement);
+    document
+      .querySelectorAll(DASHBOARD_INTERACTIVE_SELECTOR)
+      .forEach((element) => resizeObserver.observe(element));
+
+    const mutationObserver = new MutationObserver(schedulePublish);
+    mutationObserver.observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true
+    });
+
+    return () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+      window.removeEventListener('resize', schedulePublish);
+      window.removeEventListener('scroll', schedulePublish, true);
+      document.removeEventListener('transitionend', schedulePublish, true);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
     };
   }, [isDashboardMode, isDashboardVisible]);
 
@@ -116,31 +211,19 @@ export function useDesktopDashboardMode() {
       isInteractiveAt: (x: number, y: number) => {
         if (!isDashboardVisible) return false;
 
-        const element = document.elementFromPoint(x, y);
-        if (!element) return false;
-
-        return Boolean(
-          element.closest(
-            [
-              '.widget-wrapper',
-              '.toolbar-container button',
-              '.toolbar-container a',
-              '.toolbar-container input',
-              '.toolbar-container select',
-              '.toolbar-container textarea',
-              '[data-dashboard-interactive="true"]',
-              '[role="dialog"]',
-              '.delete-button'
-            ].join(', ')
-          )
-        );
+        return interactiveRegions.some((region) => (
+          x >= region.x &&
+          x <= region.x + region.width &&
+          y >= region.y &&
+          y <= region.y + region.height
+        ));
       }
     };
 
     return () => {
       delete window.classroomDashboard;
     };
-  }, [isDashboardMode, isDashboardVisible, setVisible, toggle]);
+  }, [interactiveRegions, isDashboardMode, isDashboardVisible, setVisible, toggle]);
 
   return {
     isDashboardMode,

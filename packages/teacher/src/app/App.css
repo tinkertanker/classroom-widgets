@@ -114,8 +114,7 @@ html.desktop-dashboard-mode body {
   background: transparent !important;
 }
 
-.desktop-dashboard-root > .fixed.top-4,
-.desktop-dashboard-root > a[href="/about"] {
+.desktop-dashboard-root [data-dashboard-chrome="true"] {
   display: none;
 }
 

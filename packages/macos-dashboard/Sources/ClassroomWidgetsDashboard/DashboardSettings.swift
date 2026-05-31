@@ -99,13 +99,10 @@ struct DashboardSettingsView: View {
 
                 Section("Overlay") {
                     Toggle("Click through empty dashboard areas", isOn: $clickThroughEmptyAreas)
-                        .onChange(of: clickThroughEmptyAreas) { _ in context.windowBehaviorChanged() }
 
                     Toggle("Show on all Spaces", isOn: $keepOnAllSpaces)
-                        .onChange(of: keepOnAllSpaces) { _ in context.windowBehaviorChanged() }
 
                     Toggle("Float above other windows", isOn: $floatingOverlay)
-                        .onChange(of: floatingOverlay) { _ in context.windowBehaviorChanged() }
                 }
             }
             .formStyle(.grouped)
@@ -121,8 +118,6 @@ struct DashboardSettingsView: View {
                             modifiers: $toggleShortcutModifiers,
                             placeholder: "None"
                         )
-                        .onChange(of: toggleShortcutKeyCode) { _ in context.shortcutsChanged() }
-                        .onChange(of: toggleShortcutModifiers) { _ in context.shortcutsChanged() }
                     }
 
                     LabeledContent("Open widget launcher") {
@@ -131,8 +126,6 @@ struct DashboardSettingsView: View {
                             modifiers: $launcherShortcutModifiers,
                             placeholder: "None"
                         )
-                        .onChange(of: launcherShortcutKeyCode) { _ in context.shortcutsChanged() }
-                        .onChange(of: launcherShortcutModifiers) { _ in context.shortcutsChanged() }
                     }
 
                     if shortcutsConflict {
@@ -148,7 +141,6 @@ struct DashboardSettingsView: View {
                         toggleShortcutModifiers = DashboardDefaults.shortcutModifiers
                         launcherShortcutKeyCode = DashboardDefaults.launcherShortcutKeyCode
                         launcherShortcutModifiers = DashboardDefaults.shortcutModifiers
-                        context.shortcutsChanged()
                     }
                 }
             }
@@ -159,12 +151,31 @@ struct DashboardSettingsView: View {
         }
         .frame(width: 520, height: 330)
         .padding(20)
+        .onChange(of: windowBehaviorSignature) { _ in context.windowBehaviorChanged() }
+        .onChange(of: shortcutsSignature) { _ in context.shortcutsChanged() }
     }
 
     private var shortcutsConflict: Bool {
         toggleShortcutKeyCode != -1 &&
             toggleShortcutKeyCode == launcherShortcutKeyCode &&
             toggleShortcutModifiers == launcherShortcutModifiers
+    }
+
+    private var windowBehaviorSignature: String {
+        [
+            clickThroughEmptyAreas,
+            keepOnAllSpaces,
+            floatingOverlay
+        ].map(String.init).joined(separator: ":")
+    }
+
+    private var shortcutsSignature: String {
+        [
+            toggleShortcutKeyCode,
+            toggleShortcutModifiers,
+            launcherShortcutKeyCode,
+            launcherShortcutModifiers
+        ].map(String.init).joined(separator: ":")
     }
 }
 

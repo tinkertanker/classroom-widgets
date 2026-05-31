@@ -9,20 +9,21 @@ import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '@shared/types';
 import { debug } from '@shared/utils/debug';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import LiquidGlassOverlay from '../../desktop/LiquidGlassOverlay';
 
 interface WidgetWrapperProps {
   widgetId: string;
   children: React.ReactNode;
+  dashboardVisible?: boolean;
 }
 
-const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => {
+const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashboardVisible = true }) => {
   const { widget, move, resize, focus, remove } = useWidget(widgetId);
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();
-  const isDesktopDashboardMode = typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('dashboard') === '1';
+  const isDashboardMode = isDesktopDashboardMode();
   const rndRef = useRef<any>(null);
   const [showTrash, setShowTrash] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -201,7 +202,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => 
       >
         <div className="w-full h-full relative" onClick={handleWidgetClick}>
           {children}
-          <LiquidGlassOverlay active={isDesktopDashboardMode && !isTransparent} />
+          <LiquidGlassOverlay active={isDashboardMode && dashboardVisible && !isTransparent} />
           {/* Hover trash icon */}
           <button
             onClick={handleDeleteClick}
