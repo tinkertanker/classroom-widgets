@@ -7,13 +7,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: DashboardWindowController?
     private var hotKeys: [DashboardHotKey] = []
     private var statusItem: NSStatusItem?
+    private let launchAtLoginManager = LaunchAtLoginManager()
     private lazy var settingsContext = DashboardSettingsContext(
+        launchAtLoginManager: launchAtLoginManager,
         onShortcutsChanged: { [weak self] in
             self?.registerHotKeys()
             self?.updateStatusMenu()
         },
         onWindowBehaviorChanged: { [weak self] in
             self?.controller?.applySettings()
+        },
+        onMenuBarIconChanged: { [weak self] in
+            self?.syncStatusItemVisibility()
         },
         onShowDashboard: { [weak self] in
             self?.controller?.showDashboard()
@@ -42,6 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch) {
             controller.showDashboard()
         }
+
+        if !UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon) {
+            showSettings()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -49,11 +58,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupStatusItem() {
+        guard UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon) else {
+            statusItem = nil
+            return
+        }
+
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = menuBarIcon()
         statusItem.button?.imagePosition = .imageOnly
         self.statusItem = statusItem
         updateStatusMenu()
+    }
+
+    private func syncStatusItemVisibility() {
+        let shouldShow = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon)
+
+        if shouldShow {
+            if statusItem == nil {
+                setupStatusItem()
+            } else {
+                updateStatusMenu()
+            }
+            return
+        }
+
+        if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+        }
+        statusItem = nil
     }
 
     private func menuBarIcon() -> NSImage? {
@@ -80,24 +112,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let toggleTitle = controller?.isDashboardVisible == true ? "Hide Dashboard" : "Show Dashboard"
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleDashboard), keyEquivalent: "")
         toggleItem.target = self
-        toggleItem.attributedTitle = menuTitle(toggleTitle, shortcut: DashboardShortcutFormatter.title(
+        applyShortcut(
+            to: toggleItem,
             keyCode: shortcutKeyCode(for: DashboardSettingKeys.toggleShortcutKeyCode, fallback: DashboardDefaults.toggleShortcutKeyCode),
             modifiers: shortcutModifiers(for: DashboardSettingKeys.toggleShortcutModifiers)
-        ))
+        )
         menu.addItem(toggleItem)
 
         let launcherItem = NSMenuItem(title: "Open Widget Launcher", action: #selector(showWidgetLauncher), keyEquivalent: "")
         launcherItem.target = self
-        launcherItem.attributedTitle = menuTitle("Open Widget Launcher", shortcut: DashboardShortcutFormatter.title(
+        applyShortcut(
+            to: launcherItem,
             keyCode: shortcutKeyCode(for: DashboardSettingKeys.launcherShortcutKeyCode, fallback: DashboardDefaults.launcherShortcutKeyCode),
             modifiers: shortcutModifiers(for: DashboardSettingKeys.launcherShortcutModifiers)
-        ))
+        )
         menu.addItem(launcherItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: "")
         settingsItem.target = self
+        applyShortcut(
+            to: settingsItem,
+            keyCode: shortcutKeyCode(for: DashboardSettingKeys.settingsShortcutKeyCode, fallback: DashboardDefaults.settingsShortcutKeyCode),
+            modifiers: shortcutModifiers(for: DashboardSettingKeys.settingsShortcutModifiers)
+        )
         menu.addItem(settingsItem)
 
         menu.addItem(NSMenuItem.separator())
@@ -109,29 +148,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.menu = menu
     }
 
+    private func applyShortcut(to item: NSMenuItem, keyCode: Int, modifiers: Int) {
+        guard let keyEquivalent = DashboardShortcutFormatter.keyEquivalent(for: keyCode) else {
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            return
+        }
+
+        item.keyEquivalent = keyEquivalent
+        item.keyEquivalentModifierMask = DashboardShortcutFormatter.modifierFlags(from: modifiers)
+    }
+
     private func registerHotKeys() {
         hotKeys.removeAll()
 
         let toggleKeyCode = shortcutKeyCode(for: DashboardSettingKeys.toggleShortcutKeyCode, fallback: DashboardDefaults.toggleShortcutKeyCode)
-        if toggleKeyCode != -1, let modifiers = carbonModifiers(from: shortcutModifiers(for: DashboardSettingKeys.toggleShortcutModifiers)) {
-            registerHotKey(id: 1, keyCode: toggleKeyCode, modifiers: modifiers) { [weak self] in
-                self?.controller?.toggleDashboard()
-                self?.updateStatusMenu()
-            }
+        let toggleModifiers = shortcutModifiers(for: DashboardSettingKeys.toggleShortcutModifiers)
+        registerGlobalShortcut(
+            id: 1,
+            keyCode: toggleKeyCode,
+            rawModifiers: toggleModifiers,
+            reservedShortcuts: []
+        ) { [weak self] in
+            self?.controller?.toggleDashboard()
+            self?.updateStatusMenu()
         }
 
         let launcherKeyCode = shortcutKeyCode(for: DashboardSettingKeys.launcherShortcutKeyCode, fallback: DashboardDefaults.launcherShortcutKeyCode)
         let launcherModifiers = shortcutModifiers(for: DashboardSettingKeys.launcherShortcutModifiers)
-        let conflictsWithToggle = launcherKeyCode == toggleKeyCode &&
-            launcherModifiers == shortcutModifiers(for: DashboardSettingKeys.toggleShortcutModifiers)
+        registerGlobalShortcut(
+            id: 2,
+            keyCode: launcherKeyCode,
+            rawModifiers: launcherModifiers,
+            reservedShortcuts: [(toggleKeyCode, toggleModifiers)]
+        ) { [weak self] in
+            self?.controller?.showWidgetLauncher()
+            self?.updateStatusMenu()
+        }
 
-        if !conflictsWithToggle,
-           launcherKeyCode != -1,
-           let modifiers = carbonModifiers(from: launcherModifiers) {
-            registerHotKey(id: 2, keyCode: launcherKeyCode, modifiers: modifiers) { [weak self] in
-                self?.controller?.showWidgetLauncher()
-                self?.updateStatusMenu()
-            }
+        let settingsKeyCode = shortcutKeyCode(for: DashboardSettingKeys.settingsShortcutKeyCode, fallback: DashboardDefaults.settingsShortcutKeyCode)
+        let settingsModifiers = shortcutModifiers(for: DashboardSettingKeys.settingsShortcutModifiers)
+        registerGlobalShortcut(
+            id: 3,
+            keyCode: settingsKeyCode,
+            rawModifiers: settingsModifiers,
+            reservedShortcuts: [
+                (toggleKeyCode, toggleModifiers),
+                (launcherKeyCode, launcherModifiers)
+            ]
+        ) { [weak self] in
+            self?.settingsWindowCoordinator.show()
+            self?.updateStatusMenu()
+        }
+    }
+
+    private func registerGlobalShortcut(
+        id: UInt32,
+        keyCode: Int,
+        rawModifiers: Int,
+        reservedShortcuts: [(keyCode: Int, modifiers: Int)],
+        handler: @escaping () -> Void
+    ) {
+        guard keyCode != -1 else { return }
+
+        let conflictsWithReservedShortcut = reservedShortcuts.contains { reservedShortcut in
+            reservedShortcut.keyCode == keyCode && reservedShortcut.modifiers == rawModifiers
+        }
+        guard !conflictsWithReservedShortcut else { return }
+
+        if let modifiers = carbonModifiers(from: rawModifiers) {
+            registerHotKey(id: id, keyCode: keyCode, modifiers: modifiers, handler: handler)
         }
     }
 
@@ -142,6 +228,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             NSLog("Unable to register dashboard hotkey \(id): \(error)")
         }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showSettings()
+        return true
     }
 
     @objc private func toggleDashboard() {
@@ -191,17 +282,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return carbonModifiers == 0 ? nil : carbonModifiers
     }
 
-    private func menuTitle(_ title: String, shortcut: String?) -> NSAttributedString {
-        guard let shortcut else {
-            return NSAttributedString(string: title)
-        }
-
-        let attributed = NSMutableAttributedString(string: title)
-        let shortcutString = NSAttributedString(
-            string: "    \(shortcut)",
-            attributes: [.foregroundColor: NSColor.secondaryLabelColor]
-        )
-        attributed.append(shortcutString)
-        return attributed
-    }
 }

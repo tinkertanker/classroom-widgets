@@ -11,6 +11,22 @@ enum DashboardShortcutFormatter {
         return modifierSymbols(from: flags) + keyTitle(for: keyCode)
     }
 
+    static func keyEquivalent(for keyCode: Int) -> String? {
+        guard keyCode != -1 else {
+            return nil
+        }
+
+        if let specialKey = specialMenuKeyEquivalents[keyCode] {
+            return specialKey
+        }
+
+        return keyCodeToUSKeyboardCharacter[keyCode]?.lowercased()
+    }
+
+    static func modifierFlags(from modifiers: Int) -> NSEvent.ModifierFlags {
+        NSEvent.ModifierFlags(rawValue: UInt(modifiers)).intersection(.deviceIndependentFlagsMask)
+    }
+
     static func modifierSymbols(from flags: NSEvent.ModifierFlags) -> String {
         var symbols = ""
         if flags.contains(.control) { symbols += "⌃" }
@@ -46,6 +62,35 @@ enum DashboardShortcutFormatter {
         kVK_F1: "F1", kVK_F2: "F2", kVK_F3: "F3", kVK_F4: "F4",
         kVK_F5: "F5", kVK_F6: "F6", kVK_F7: "F7", kVK_F8: "F8",
         kVK_F9: "F9", kVK_F10: "F10", kVK_F11: "F11", kVK_F12: "F12"
+    ]
+
+    private static let specialMenuKeyEquivalents: [Int: String] = [
+        kVK_Return: "\r",
+        kVK_Tab: "\t",
+        kVK_Space: " ",
+        kVK_Delete: "\u{8}",
+        kVK_Escape: "\u{1b}",
+        kVK_ForwardDelete: String(UnicodeScalar(NSDeleteFunctionKey)!),
+        kVK_LeftArrow: String(UnicodeScalar(NSLeftArrowFunctionKey)!),
+        kVK_RightArrow: String(UnicodeScalar(NSRightArrowFunctionKey)!),
+        kVK_UpArrow: String(UnicodeScalar(NSUpArrowFunctionKey)!),
+        kVK_DownArrow: String(UnicodeScalar(NSDownArrowFunctionKey)!),
+        kVK_Home: String(UnicodeScalar(NSHomeFunctionKey)!),
+        kVK_End: String(UnicodeScalar(NSEndFunctionKey)!),
+        kVK_PageUp: String(UnicodeScalar(NSPageUpFunctionKey)!),
+        kVK_PageDown: String(UnicodeScalar(NSPageDownFunctionKey)!),
+        kVK_F1: String(UnicodeScalar(NSF1FunctionKey)!),
+        kVK_F2: String(UnicodeScalar(NSF2FunctionKey)!),
+        kVK_F3: String(UnicodeScalar(NSF3FunctionKey)!),
+        kVK_F4: String(UnicodeScalar(NSF4FunctionKey)!),
+        kVK_F5: String(UnicodeScalar(NSF5FunctionKey)!),
+        kVK_F6: String(UnicodeScalar(NSF6FunctionKey)!),
+        kVK_F7: String(UnicodeScalar(NSF7FunctionKey)!),
+        kVK_F8: String(UnicodeScalar(NSF8FunctionKey)!),
+        kVK_F9: String(UnicodeScalar(NSF9FunctionKey)!),
+        kVK_F10: String(UnicodeScalar(NSF10FunctionKey)!),
+        kVK_F11: String(UnicodeScalar(NSF11FunctionKey)!),
+        kVK_F12: String(UnicodeScalar(NSF12FunctionKey)!)
     ]
 
     private static let keyCodeToUSKeyboardCharacter: [Int: String] = [
