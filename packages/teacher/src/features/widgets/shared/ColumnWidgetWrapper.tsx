@@ -105,8 +105,13 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       style={style}
     >
       <div className="widget-wrapper w-full h-full relative">
-        {children}
-        <LiquidGlassOverlay active={showDashboardOverlay} />
+        <div
+          className="widget-surface w-full h-full relative"
+          data-dashboard-glass={showDashboardOverlay ? 'true' : 'false'}
+        >
+          {children}
+          <LiquidGlassOverlay active={showDashboardOverlay} />
+        </div>
       </div>
       {/* Delete button - appears on hover below widget (outside bounds), always visible on touch devices */}
       <button

@@ -117,6 +117,7 @@ final class DashboardWindowController: NSWindowController {
         var components = URLComponents()
         components.scheme = dashboardURLScheme
         components.host = "app"
+        components.path = "/"
         components.queryItems = [
             URLQueryItem(name: "dashboard", value: "1"),
             URLQueryItem(name: "visible", value: dashboardVisible ? "1" : "0")
