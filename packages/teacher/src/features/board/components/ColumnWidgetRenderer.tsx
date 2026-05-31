@@ -8,6 +8,7 @@ import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface ColumnWidgetRendererProps {
   widgetId: string;
+  dashboardVisible?: boolean;
 }
 
 const WidgetLoader: React.FC = () => (
@@ -19,7 +20,7 @@ const WidgetLoader: React.FC = () => (
   </Card>
 );
 
-const ColumnWidgetRenderer: React.FC<ColumnWidgetRendererProps> = ({ widgetId }) => {
+const ColumnWidgetRenderer: React.FC<ColumnWidgetRendererProps> = ({ widgetId, dashboardVisible }) => {
   const { widget, state, setState } = useWidget(widgetId);
   const isActive = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
 
@@ -42,7 +43,7 @@ const ColumnWidgetRenderer: React.FC<ColumnWidgetRendererProps> = ({ widgetId })
   };
 
   return (
-    <ColumnWidgetWrapper widgetId={widgetId}>
+    <ColumnWidgetWrapper widgetId={widgetId} dashboardVisible={dashboardVisible}>
       <ErrorBoundary widgetName={widgetName}>
         <Suspense fallback={<WidgetLoader />}>
           <Component {...widgetProps} />

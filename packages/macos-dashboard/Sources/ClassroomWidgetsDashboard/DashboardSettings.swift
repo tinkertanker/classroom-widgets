@@ -24,8 +24,8 @@ enum DashboardDefaults {
             DashboardSettingKeys.toggleShortcutModifiers: shortcutModifiers,
             DashboardSettingKeys.launcherShortcutKeyCode: launcherShortcutKeyCode,
             DashboardSettingKeys.launcherShortcutModifiers: shortcutModifiers,
-            DashboardSettingKeys.showDashboardAtLaunch: true,
-            DashboardSettingKeys.clickThroughEmptyAreas: true,
+            DashboardSettingKeys.showDashboardAtLaunch: false,
+            DashboardSettingKeys.clickThroughEmptyAreas: false,
             DashboardSettingKeys.keepOnAllSpaces: true,
             DashboardSettingKeys.floatingOverlay: true
         ])
@@ -73,8 +73,7 @@ struct DashboardSettingsView: View {
     @AppStorage(DashboardSettingKeys.toggleShortcutModifiers) private var toggleShortcutModifiers = DashboardDefaults.shortcutModifiers
     @AppStorage(DashboardSettingKeys.launcherShortcutKeyCode) private var launcherShortcutKeyCode = DashboardDefaults.launcherShortcutKeyCode
     @AppStorage(DashboardSettingKeys.launcherShortcutModifiers) private var launcherShortcutModifiers = DashboardDefaults.shortcutModifiers
-    @AppStorage(DashboardSettingKeys.showDashboardAtLaunch) private var showDashboardAtLaunch = true
-    @AppStorage(DashboardSettingKeys.clickThroughEmptyAreas) private var clickThroughEmptyAreas = true
+    @AppStorage(DashboardSettingKeys.showDashboardAtLaunch) private var showDashboardAtLaunch = false
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
     @AppStorage(DashboardSettingKeys.floatingOverlay) private var floatingOverlay = true
 
@@ -97,9 +96,7 @@ struct DashboardSettingsView: View {
                     }
                 }
 
-                Section("Overlay") {
-                    Toggle("Click through empty dashboard areas", isOn: $clickThroughEmptyAreas)
-
+                Section("Dashboard Layer") {
                     Toggle("Show on all Spaces", isOn: $keepOnAllSpaces)
 
                     Toggle("Float above other windows", isOn: $floatingOverlay)
@@ -163,7 +160,6 @@ struct DashboardSettingsView: View {
 
     private var windowBehaviorSignature: String {
         [
-            clickThroughEmptyAreas,
             keepOnAllSpaces,
             floatingOverlay
         ].map(String.init).joined(separator: ":")

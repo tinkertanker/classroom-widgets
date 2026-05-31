@@ -141,7 +141,7 @@ html.desktop-dashboard-mode .widget-wrapper {
   filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.22));
 }
 
-html.desktop-dashboard-mode .widget-wrapper > div {
+html.desktop-dashboard-mode .widget-wrapper > .widget-surface {
   animation: desktop-widget-depth-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -152,7 +152,7 @@ html.desktop-dashboard-hidden [role="dialog"] {
   pointer-events: none !important;
 }
 
-html.desktop-dashboard-hidden .widget-wrapper > div,
+html.desktop-dashboard-hidden .widget-wrapper > .widget-surface,
 html.desktop-dashboard-hidden [role="dialog"] {
   transform: translateY(28px) scale(0.92) rotateX(10deg);
 }
@@ -207,7 +207,7 @@ html.dark.desktop-dashboard-mode [role="dialog"] {
   opacity: 0.9;
 }
 
-html.desktop-dashboard-mode .widget-wrapper > div {
+html.desktop-dashboard-mode .widget-wrapper > .widget-surface[data-dashboard-glass="true"] {
   overflow: hidden;
   border-radius: 14px;
   backdrop-filter: blur(18px) saturate(1.35);

@@ -4,13 +4,12 @@ import WebKit
 final class DashboardWindowController: NSWindowController {
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
-    private var localMouseMonitor: Any?
-    private var globalMouseMonitor: Any?
-    private var interactiveRegions: [CGRect] = []
-    private var dashboardVisible = true
+    private var dashboardVisible: Bool
     var isDashboardVisible: Bool { dashboardVisible }
 
     init() {
+        dashboardVisible = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch)
+
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(
             StaticFileSchemeHandler(webRoot: WebRootResolver.resolve()),
@@ -27,7 +26,7 @@ final class DashboardWindowController: NSWindowController {
         webView.setValue(false, forKey: "drawsBackground")
 
         let window = DashboardWindow(
-            contentRect: Self.combinedScreenFrame(),
+            contentRect: Self.combinedVisibleFrame(),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -36,7 +35,7 @@ final class DashboardWindowController: NSWindowController {
         window.isOpaque = false
         window.hasShadow = false
         window.level = .floating
-        window.ignoresMouseEvents = false
+        window.ignoresMouseEvents = !dashboardVisible
         window.contentView = webView
 
         super.init(window: window)
@@ -44,17 +43,10 @@ final class DashboardWindowController: NSWindowController {
 
         scriptMessageHandler.onVisibilityChanged = { [weak self] visible in
             self?.dashboardVisible = visible
-            if !visible {
-                self?.window?.ignoresMouseEvents = true
-            }
-        }
-        scriptMessageHandler.onInteractiveRegionsChanged = { [weak self] regions in
-            self?.interactiveRegions = regions
-            self?.updateMousePassthrough()
+            self?.window?.ignoresMouseEvents = !visible
         }
         webView.configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
         loadDashboard()
-        installMouseMonitors()
     }
 
     required init?(coder: NSCoder) {
@@ -62,21 +54,18 @@ final class DashboardWindowController: NSWindowController {
     }
 
     deinit {
-        if let localMouseMonitor {
-            NSEvent.removeMonitor(localMouseMonitor)
-        }
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
-        }
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomDashboard")
     }
 
     func showDashboard() {
         dashboardVisible = true
-        window?.setFrame(Self.combinedScreenFrame(), display: true)
+        let frame = Self.combinedVisibleFrame()
+        window?.setFrame(frame, display: true)
         applySettings()
+        window?.makeKeyAndOrderFront(nil)
         window?.orderFrontRegardless()
         window?.ignoresMouseEvents = false
+        NSApp.activate(ignoringOtherApps: true)
         setWebDashboardVisible(true)
     }
 
@@ -85,9 +74,10 @@ final class DashboardWindowController: NSWindowController {
         setWebDashboardVisible(dashboardVisible)
 
         if dashboardVisible {
+            window?.makeKeyAndOrderFront(nil)
             window?.orderFrontRegardless()
             window?.ignoresMouseEvents = false
-            updateMousePassthrough()
+            NSApp.activate(ignoringOtherApps: true)
         } else {
             window?.ignoresMouseEvents = true
         }
@@ -115,13 +105,24 @@ final class DashboardWindowController: NSWindowController {
         }
         window.collectionBehavior = behavior
 
-        if !UserDefaults.standard.bool(forKey: DashboardSettingKeys.clickThroughEmptyAreas) {
-            window.ignoresMouseEvents = false
+        if !dashboardVisible {
+            window.ignoresMouseEvents = true
+            return
         }
+
+        window.ignoresMouseEvents = false
     }
 
     private func loadDashboard() {
-        let url = URL(string: "\(dashboardURLScheme)://app/?dashboard=1")!
+        var components = URLComponents()
+        components.scheme = dashboardURLScheme
+        components.host = "app"
+        components.queryItems = [
+            URLQueryItem(name: "dashboard", value: "1"),
+            URLQueryItem(name: "visible", value: dashboardVisible ? "1" : "0")
+        ]
+
+        guard let url = components.url else { return }
         webView.load(URLRequest(url: url))
     }
 
@@ -130,45 +131,9 @@ final class DashboardWindowController: NSWindowController {
         webView.evaluateJavaScript(expression)
     }
 
-    private func installMouseMonitors() {
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]) { [weak self] event in
-            self?.updateMousePassthrough()
-            return event
-        }
-
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged]) { [weak self] _ in
-            self?.updateMousePassthrough()
-        }
-    }
-
-    private func updateMousePassthrough() {
-        guard UserDefaults.standard.bool(forKey: DashboardSettingKeys.clickThroughEmptyAreas) else {
-            window?.ignoresMouseEvents = false
-            return
-        }
-
-        guard dashboardVisible, let window else {
-            window?.ignoresMouseEvents = true
-            return
-        }
-
-        let screenPoint = NSEvent.mouseLocation
-        guard window.frame.contains(screenPoint) else {
-            window.ignoresMouseEvents = true
-            return
-        }
-
-        let pointInWindow = window.convertPoint(fromScreen: screenPoint)
-        let webPoint = CGPoint(
-            x: pointInWindow.x,
-            y: webView.bounds.height - pointInWindow.y
-        )
-        window.ignoresMouseEvents = !interactiveRegions.contains { $0.contains(webPoint) }
-    }
-
-    private static func combinedScreenFrame() -> NSRect {
+    private static func combinedVisibleFrame() -> NSRect {
         NSScreen.screens.reduce(NSRect.zero) { partial, screen in
-            partial.union(screen.frame)
+            partial.union(screen.visibleFrame)
         }
     }
 }

@@ -35,6 +35,7 @@ const DASHBOARD_INTERACTIVE_SELECTOR = [
   '.toolbar-container input',
   '.toolbar-container select',
   '.toolbar-container textarea',
+  '.dashboard-widget-chrome',
   '[data-dashboard-interactive="true"]',
   '[role="dialog"]',
   '.delete-button'
@@ -72,7 +73,11 @@ export function useDesktopDashboardMode() {
     if (typeof window === 'undefined') return false;
     return isDesktopDashboardMode();
   }, []);
-  const [isDashboardVisible, setDashboardVisible] = useState(isDashboardMode);
+  const [isDashboardVisible, setDashboardVisible] = useState(() => {
+    if (!isDashboardMode || typeof window === 'undefined') return false;
+
+    return new URLSearchParams(window.location.search).get('visible') !== '0';
+  });
   const [interactiveRegions, setInteractiveRegions] = useState<DashboardInteractiveRegion[]>([]);
 
   const setVisible = useCallback((visible: boolean) => {

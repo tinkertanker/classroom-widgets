@@ -11,14 +11,37 @@ enum WebRootResolver {
             return bundledWebRoot
         }
 
-        let bundleURL = Bundle.main.bundleURL
-        let repoRoot = bundleURL
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
+        if let repoBuildRoot = findTeacherBuildRoot(from: Bundle.main.bundleURL) {
+            return repoBuildRoot
+        }
 
-        return repoRoot
+        return URL(fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true)
             .appendingPathComponent("packages")
             .appendingPathComponent("teacher")
             .appendingPathComponent("build")
+    }
+
+    private static func findTeacherBuildRoot(from startURL: URL) -> URL? {
+        let fileManager = FileManager.default
+        var current = startURL
+
+        for _ in 0..<10 {
+            let candidate = current
+                .appendingPathComponent("packages")
+                .appendingPathComponent("teacher")
+                .appendingPathComponent("build", isDirectory: true)
+
+            if fileManager.fileExists(atPath: candidate.appendingPathComponent("index.html").path) {
+                return candidate
+            }
+
+            let parent = current.deletingLastPathComponent()
+            if parent.path == current.path {
+                break
+            }
+            current = parent
+        }
+
+        return nil
     }
 }

@@ -3,13 +3,16 @@ import { FaTrash } from 'react-icons/fa6';
 import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import LiquidGlassOverlay from '../../desktop/LiquidGlassOverlay';
 
 interface ColumnWidgetWrapperProps {
   widgetId: string;
   children: React.ReactNode;
+  dashboardVisible?: boolean;
 }
 
-const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children }) => {
+const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children, dashboardVisible = true }) => {
   const { widget, remove } = useWidget(widgetId);
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
@@ -69,6 +72,8 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
 
   const config = widgetRegistry.get(widget.type);
   if (!config) return null;
+  const isTransparent = config.features?.isTransparent || false;
+  const showDashboardOverlay = isDesktopDashboardMode() && dashboardVisible && !isTransparent;
 
   // Height strategy is driven by the widget's columnSizing declaration
   const columnSizing = config.columnSizing ?? 'fixed';
@@ -99,8 +104,9 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       onMouseLeave={handleMouseLeave}
       style={style}
     >
-      <div className="widget-wrapper w-full h-full">
+      <div className="widget-wrapper w-full h-full relative">
         {children}
+        <LiquidGlassOverlay active={showDashboardOverlay} />
       </div>
       {/* Delete button - appears on hover below widget (outside bounds), always visible on touch devices */}
       <button
