@@ -597,7 +597,7 @@ function App() {
           <div className="h-full relative overflow-hidden">
             {layoutFormat === 'column' ? (
               <ColumnBoard>
-                <ColumnWidgetList />
+                <ColumnWidgetList dashboardVisible={isDashboardVisible} />
               </ColumnBoard>
             ) : (
               <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>

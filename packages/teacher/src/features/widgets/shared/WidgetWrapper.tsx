@@ -3,11 +3,11 @@
 import React, { useCallback, useRef, useEffect, useState, memo } from 'react';
 import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
-import { FaTrash } from 'react-icons/fa6';
+import { FaTrash, FaXmark } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '@shared/hooks/useWidget';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
-import { Position, Size } from '@shared/types';
+import { Position, Size, WidgetType } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
@@ -143,6 +143,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
 
   if (!widget) return null;
   if (!config) return null;
+  const shouldUseDashboardGlass = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
 
   return (
     <div 
@@ -200,23 +201,45 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
           topLeft: true
         }}
       >
-        <div className="w-full h-full relative" onClick={handleWidgetClick}>
+        <div
+          className="widget-surface w-full h-full relative"
+          data-dashboard-glass={shouldUseDashboardGlass ? 'true' : 'false'}
+          onClick={handleWidgetClick}
+        >
           {children}
-          <LiquidGlassOverlay active={isDashboardMode && dashboardVisible && !isTransparent} />
-          {/* Hover trash icon */}
-          <button
-            onClick={handleDeleteClick}
-            className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2 
-                       bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500 
-                       text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full 
-                       shadow-lg transition-all duration-300 ${
-                         showTrash && !isBeingDragged ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                       }`}
-            style={{ zIndex: 9999 }}
-            title="Delete widget"
-          >
-            <FaTrash className="w-3 h-3" />
-          </button>
+          <LiquidGlassOverlay active={shouldUseDashboardGlass} />
+          {isDashboardMode ? (
+            <div
+              className={`dashboard-widget-chrome no-drag absolute top-2 right-2 flex items-center gap-1 transition-all duration-200 ${
+                showTrash && !isBeingDragged ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              data-dashboard-interactive="true"
+              style={{ zIndex: 9999 }}
+            >
+              <button
+                onClick={handleDeleteClick}
+                className="delete-button no-drag w-7 h-7 rounded-full bg-white/90 dark:bg-warm-gray-800/90 text-warm-gray-600 dark:text-warm-gray-200 border border-warm-gray-200/80 dark:border-warm-gray-600/80 shadow-lg flex items-center justify-center hover:bg-dusty-rose-500 hover:text-white transition-colors"
+                title="Close widget"
+                aria-label="Close widget"
+              >
+                <FaXmark className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleDeleteClick}
+              className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
+                         bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
+                         text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
+                         shadow-lg transition-all duration-300 ${
+                           showTrash && !isBeingDragged ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                         }`}
+              style={{ zIndex: 9999 }}
+              title="Delete widget"
+            >
+              <FaTrash className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </Rnd>
     </div>

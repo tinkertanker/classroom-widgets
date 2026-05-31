@@ -1,15 +1,19 @@
 import React, { useCallback, useState, useRef, useEffect, memo } from 'react';
-import { FaTrash } from 'react-icons/fa6';
+import { FaTrash, FaXmark } from 'react-icons/fa6';
 import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { WidgetType } from '@shared/types';
+import LiquidGlassOverlay from '../../desktop/LiquidGlassOverlay';
 
 interface ColumnWidgetWrapperProps {
   widgetId: string;
   children: React.ReactNode;
+  dashboardVisible?: boolean;
 }
 
-const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children }) => {
+const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children, dashboardVisible = true }) => {
   const { widget, remove } = useWidget(widgetId);
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
@@ -69,6 +73,9 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
 
   const config = widgetRegistry.get(widget.type);
   if (!config) return null;
+  const isTransparent = config.features?.isTransparent || false;
+  const isDashboardMode = isDesktopDashboardMode();
+  const showDashboardOverlay = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
 
   // Height strategy is driven by the widget's columnSizing declaration
   const columnSizing = config.columnSizing ?? 'fixed';
@@ -99,26 +106,54 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
       onMouseLeave={handleMouseLeave}
       style={style}
     >
-      <div className="widget-wrapper w-full h-full">
-        {children}
+      <div className="widget-wrapper w-full h-full relative">
+        <div
+          className="widget-surface w-full h-full relative"
+          data-dashboard-glass={showDashboardOverlay ? 'true' : 'false'}
+        >
+          {children}
+          <LiquidGlassOverlay active={showDashboardOverlay} />
+          {isDashboardMode ? (
+            <div
+              className={`dashboard-widget-chrome absolute top-2 right-2 flex items-center gap-1 transition-all duration-200 ${
+                isDeleteVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              data-dashboard-interactive="true"
+              style={{ zIndex: 9999 }}
+            >
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                tabIndex={isDeleteVisible ? 0 : -1}
+                aria-label="Close widget"
+                className="delete-button w-7 h-7 rounded-full bg-white/90 dark:bg-warm-gray-800/90 text-warm-gray-600 dark:text-warm-gray-200 border border-warm-gray-200/80 dark:border-warm-gray-600/80 shadow-lg flex items-center justify-center hover:bg-dusty-rose-500 hover:text-white transition-colors"
+                title="Close widget"
+              >
+                <FaXmark className="w-3.5 h-3.5" aria-hidden="true" />
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
       {/* Delete button - appears on hover below widget (outside bounds), always visible on touch devices */}
-      <button
-        type="button"
-        onClick={handleDeleteClick}
-        tabIndex={isDeleteVisible ? 0 : -1}
-        aria-label="Delete widget"
-        className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
-                   bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
-                   text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
-                   shadow-lg transition-all duration-300 ${
-                     isDeleteVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                   }`}
-        style={{ zIndex: 9999 }}
-        title="Delete widget"
-      >
-        <FaTrash className="w-3 h-3" aria-hidden="true" />
-      </button>
+      {!isDashboardMode ? (
+        <button
+          type="button"
+          onClick={handleDeleteClick}
+          tabIndex={isDeleteVisible ? 0 : -1}
+          aria-label="Delete widget"
+          className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
+                     bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
+                     text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
+                     shadow-lg transition-all duration-300 ${
+                       isDeleteVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                     }`}
+          style={{ zIndex: 9999 }}
+          title="Delete widget"
+        >
+          <FaTrash className="w-3 h-3" aria-hidden="true" />
+        </button>
+      ) : null}
     </div>
   );
 };

@@ -22,6 +22,8 @@
     "test:build-config": "node scripts/check-root-build-config.cjs",
     "generate:voice-types": "node scripts/generateVoiceCommandTypes.cjs",
     "prebuild": "npm run generate:voice-types",
+    "macos:run": "./script/build_and_run.sh",
+    "macos:dmg": "./script/build_macos_release.sh",
     "server": "npm run start -w @classroom-widgets/server",
     "install:all": "npm install",
     "clean": "node scripts/clean-workspaces.cjs"

@@ -24,6 +24,7 @@ Avoid `any` in widget state callbacks. Declare explicit shapes for saved state a
 Keep networked widgets on the shared patterns (`useNetworkedWidget`, `useNetworkedWidgetState`, `useSocketEvents`).
 Keep commits atomic and add files explicitly.
 Use `tmux` for long-running commands and `trash` instead of `rm` for deletions.
+For macOS app work, use `npm run macos:run -- --verify` for local verification and `npm run macos:dmg -- --distribution --notarise` for public-downloadable DMGs. The app should be installed and launched from `/Applications/Classroom Widgets Dashboard.app` after successful local or release builds so macOS camera permission stays tied to the canonical app location.
 
 ---
 
@@ -55,6 +56,8 @@ npm test           # Run tests with Vitest
 # Building
 npm run build      # Build teacher app (auto-generates voice types)
 npm run build:all  # Build all applications (teacher + student)
+npm run macos:run -- --verify  # Build, install to /Applications, launch, and verify the macOS dashboard
+npm run macos:dmg -- --distribution --notarise  # Build a Developer ID signed, notarised DMG
 
 # Setup
 npm run install:all  # Install dependencies for all workspaces

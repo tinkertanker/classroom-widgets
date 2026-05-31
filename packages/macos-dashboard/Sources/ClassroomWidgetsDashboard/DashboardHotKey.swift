@@ -37,7 +37,7 @@ final class DashboardHotKey {
                   hotKeyID.signature == DashboardHotKey.signature,
                   hotKeyID.id == instance.id
             else {
-                return noErr
+                return OSStatus(eventNotHandledErr)
             }
 
             instance.handler()
