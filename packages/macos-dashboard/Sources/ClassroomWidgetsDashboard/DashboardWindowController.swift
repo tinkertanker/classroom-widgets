@@ -90,6 +90,7 @@ final class DashboardWindowController: NSWindowController {
         setWebDashboardVisible(dashboardVisible)
 
         if dashboardVisible {
+            window?.setFrame(Self.combinedVisibleFrame(), display: true)
             window?.makeKeyAndOrderFront(nil)
             window?.orderFrontRegardless()
             updateMousePassthrough()

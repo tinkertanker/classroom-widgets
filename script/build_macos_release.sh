@@ -280,7 +280,6 @@ if [ "${USE_NOTARISATION}" = "true" ]; then
     xcrun notarytool submit "${DMG_PATH}"
     --key "${API_KEY_PATH}"
     --key-id "${API_KEY_ID}"
-    --team-id "${DEVELOPMENT_TEAM}"
     --wait
   )
 
