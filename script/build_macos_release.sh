@@ -26,7 +26,7 @@ STAGING_DIR="${ROOT_DIR}/dist/macos-dmg-staging"
 ENTITLEMENTS_PATH="${ROOT_DIR}/script/macos-distribution-entitlements.plist"
 VERSION="$(node -p "require('./package.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
-DMG_PATH="${ROOT_DIR}/dist/${PRODUCT_NAME}-v${VERSION}-macos.dmg"
+DMG_PATH="${DMG_PATH:-}"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 DEVELOPMENT_TEAM="${APPLE_TEAM_ID:-}"
 API_KEY_PATH="${APPLE_API_KEY_PATH:-}"
@@ -138,6 +138,8 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+DMG_PATH="${DMG_PATH:-${ROOT_DIR}/dist/${PRODUCT_NAME}-v${VERSION}-macos.dmg}"
 
 if ! command -v create-dmg >/dev/null 2>&1; then
   echo "create-dmg not found. Install it with: brew install create-dmg" >&2
