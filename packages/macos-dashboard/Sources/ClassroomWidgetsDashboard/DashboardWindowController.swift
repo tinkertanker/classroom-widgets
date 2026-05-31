@@ -1,13 +1,15 @@
 import AppKit
 import WebKit
 
-final class DashboardWindowController: NSWindowController {
+final class DashboardWindowController: NSWindowController, WKNavigationDelegate {
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private var dashboardVisible: Bool
     private var interactiveRegions: [CGRect] = []
     private var localMouseMonitor: Any?
     private var globalMouseMonitor: Any?
+    private var pendingWidgetLauncherOpen = false
+    private var widgetLauncherOpenAttemptInFlight = false
     var isDashboardVisible: Bool { dashboardVisible }
 
     init() {
@@ -42,13 +44,14 @@ final class DashboardWindowController: NSWindowController {
         window.contentView = webView
 
         super.init(window: window)
+        webView.navigationDelegate = self
         applySettings()
         installMouseMonitors()
 
         scriptMessageHandler.onVisibilityChanged = { [weak self] visible in
             guard let self else { return }
             self.dashboardVisible = visible
-            self.updateMousePassthrough()
+            self.syncWindowVisibility()
         }
         scriptMessageHandler.onInteractiveRegionsChanged = { [weak self] regions in
             guard let self else { return }
@@ -73,14 +76,20 @@ final class DashboardWindowController: NSWindowController {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomDashboard")
     }
 
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        setWebDashboardVisible(dashboardVisible)
+
+        if pendingWidgetLauncherOpen && !widgetLauncherOpenAttemptInFlight {
+            openWidgetLauncher()
+        }
+    }
+
     func showDashboard() {
         dashboardVisible = true
         let frame = Self.combinedVisibleFrame()
         window?.setFrame(frame, display: true)
         applySettings()
-        window?.makeKeyAndOrderFront(nil)
-        window?.orderFrontRegardless()
-        updateMousePassthrough()
+        syncWindowVisibility(activateApp: true)
         NSApp.activate(ignoringOtherApps: true)
         setWebDashboardVisible(true)
     }
@@ -91,23 +100,18 @@ final class DashboardWindowController: NSWindowController {
 
         if dashboardVisible {
             window?.setFrame(Self.combinedVisibleFrame(), display: true)
-            window?.makeKeyAndOrderFront(nil)
-            window?.orderFrontRegardless()
-            updateMousePassthrough()
-            NSApp.activate(ignoringOtherApps: true)
-        } else {
-            window?.ignoresMouseEvents = true
         }
+
+        syncWindowVisibility(activateApp: dashboardVisible)
     }
 
     func showWidgetLauncher() {
+        pendingWidgetLauncherOpen = true
         showDashboard()
-        let expression = """
-        requestAnimationFrame(() => {
-          document.querySelector('[title*="More widgets"]')?.click()
-        })
-        """
-        webView.evaluateJavaScript(expression)
+
+        if !webView.isLoading {
+            openWidgetLauncher()
+        }
     }
 
     func applySettings() {
@@ -122,12 +126,27 @@ final class DashboardWindowController: NSWindowController {
         }
         window.collectionBehavior = behavior
 
-        if !dashboardVisible {
+        syncWindowVisibility()
+    }
+
+    private func syncWindowVisibility(activateApp: Bool = false) {
+        guard let window else { return }
+
+        guard dashboardVisible else {
             window.ignoresMouseEvents = true
+            window.orderOut(nil)
             return
         }
 
+        if !window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+        }
+        window.orderFrontRegardless()
         updateMousePassthrough()
+
+        if activateApp {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     private func installMouseMonitors() {
@@ -195,9 +214,62 @@ final class DashboardWindowController: NSWindowController {
         webView.load(URLRequest(url: url))
     }
 
-    private func setWebDashboardVisible(_ visible: Bool) {
-        let expression = "window.classroomDashboard?.setVisible(\(visible ? "true" : "false"))"
-        webView.evaluateJavaScript(expression)
+    private func setWebDashboardVisible(_ visible: Bool, retriesRemaining: Int = 3) {
+        let expression = """
+        (() => {
+          if (window.classroomDashboard?.setVisible) {
+            window.classroomDashboard.setVisible(\(visible ? "true" : "false"));
+            return true;
+          }
+          return false;
+        })()
+        """
+        webView.evaluateJavaScript(expression) { [weak self] result, _ in
+            guard
+                result as? Bool != true,
+                retriesRemaining > 0
+            else { return }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                self?.setWebDashboardVisible(visible, retriesRemaining: retriesRemaining - 1)
+            }
+        }
+    }
+
+    private func openWidgetLauncher(retriesRemaining: Int = 5) {
+        guard pendingWidgetLauncherOpen, !widgetLauncherOpenAttemptInFlight else {
+            return
+        }
+
+        widgetLauncherOpenAttemptInFlight = true
+        let expression = """
+        (() => {
+          if (window.openClassroomWidgetLauncher) {
+            window.openClassroomWidgetLauncher();
+            return true;
+          }
+          return false;
+        })()
+        """
+        webView.evaluateJavaScript(expression) { [weak self] result, _ in
+            guard let self else { return }
+
+            self.widgetLauncherOpenAttemptInFlight = false
+
+            if result as? Bool == true {
+                self.pendingWidgetLauncherOpen = false
+                return
+            }
+
+            guard retriesRemaining > 0 else {
+                self.pendingWidgetLauncherOpen = false
+                return
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                self.openWidgetLauncher(retriesRemaining: retriesRemaining - 1)
+            }
+        }
     }
 
     private static func combinedVisibleFrame() -> NSRect {
