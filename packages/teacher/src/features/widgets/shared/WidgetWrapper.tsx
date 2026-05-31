@@ -114,7 +114,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   }, [isResizing, isBeingDragged, stopDrag]);
 
   const isTransparent = config?.features?.isTransparent || false;
-  const shouldUseDashboardGlass = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
   
   const wrapperClasses = clsx(
     'widget-wrapper',
@@ -144,6 +143,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
 
   if (!widget) return null;
   if (!config) return null;
+  const shouldUseDashboardGlass = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
 
   return (
     <div 
