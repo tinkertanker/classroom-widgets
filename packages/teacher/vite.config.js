@@ -26,11 +26,18 @@ export default defineConfig({
   },
   build: {
     outDir: 'build',
-    sourcemap: true,
+    // Emit sourcemaps but don't reference them from the JS bundle.
+    // Useful for upload to error trackers without shipping to end users.
+    sourcemap: 'hidden',
+    target: 'es2020',
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-rnd', 'socket.io-client']
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-rnd': ['react-rnd'],
+          'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          'vendor-socket': ['socket.io-client'],
+          'vendor-zustand': ['zustand']
         }
       }
     }

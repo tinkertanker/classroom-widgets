@@ -25,6 +25,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
   const getVideoDevices = async () => {
     try {
       const allDevices = await navigator.mediaDevices.enumerateDevices();
+      if (!isMountedRef.current) return;
       const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
       console.log('📹 [Visualiser] Available cameras:', videoDevices.length, videoDevices.map(d => d.label || 'Unknown device'));
       setDevices(videoDevices);
@@ -58,6 +59,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
 
       // Check if there are any cameras available first
       const allDevices = await navigator.mediaDevices.enumerateDevices();
+      if (!isMountedRef.current) return;
       const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
       console.log('📹 [Visualiser] Checking available cameras:', videoDevices.length);
 
@@ -94,6 +96,8 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
       // Get devices after permission is granted
       await getVideoDevices();
     } catch (err: any) {
+      if (!isMountedRef.current) return;
+
       console.error('❌ [Visualiser] Error accessing webcam:', err);
 
       // Provide more specific error messages

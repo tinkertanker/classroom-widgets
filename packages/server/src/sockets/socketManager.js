@@ -76,14 +76,17 @@ function setupSocketHandlers(io, sessionManager) {
               });
             }
             
-            // Remove participant from all rooms they're in
-            session.activeRooms.forEach((room, roomId) => {
+            // Remove participant from all rooms they're in.
+            // Snapshot first - room.removeParticipant may trigger cleanup that
+            // mutates session.activeRooms during iteration on some code paths.
+            const roomEntries = Array.from(session.activeRooms.entries());
+            for (const [roomId, room] of roomEntries) {
               if (room.participants && room.participants.has(socket.id)) {
                 room.removeParticipant(socket.id);
-                
+
                 // Parse room type from roomId
                 const [roomType] = roomId.split(':');
-                
+
                 // Notify host of room participant count update
                 if (room.hostSocketId) {
                   io.to(room.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
@@ -93,7 +96,7 @@ function setupSocketHandlers(io, sessionManager) {
                   });
                 }
               }
-            });
+            }
           }
         }
       }

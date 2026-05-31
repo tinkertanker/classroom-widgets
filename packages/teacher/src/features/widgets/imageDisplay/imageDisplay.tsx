@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { widgetContainer } from '@shared/utils/styles';
 import { storeImage, loadImage, deleteImage } from '../../../services/imageStorage';
 
+const STORAGE_LOAD_ERROR = 'Unable to load image. Please try again.';
+const STORAGE_SAVE_ERROR = 'Unable to save image. Please try again.';
+const STORAGE_DELETE_ERROR = 'Unable to remove image. Please try again.';
+
 interface ImageDisplayProps {
   widgetId?: string;
   savedState?: { imageKey?: string | null; imageUrl?: string | null };
@@ -16,41 +20,94 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageKeyRef = useRef<string | null>(savedState?.imageKey ?? null);
+  const imageChangeIdRef = useRef(0);
+  const activeReaderRef = useRef<FileReader | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const beginImageChange = () => {
+    imageChangeIdRef.current += 1;
+    return imageChangeIdRef.current;
+  };
+
+  const invalidatePendingImageChanges = () => {
+    imageChangeIdRef.current += 1;
+  };
+
+  const isCurrentImageChange = (changeId: number) => imageChangeIdRef.current === changeId;
 
   // Load image from IndexedDB on mount
   useEffect(() => {
+    const changeId = imageChangeIdRef.current;
     const key = savedState?.imageKey;
     if (key) {
-      loadImage(key).then(url => {
-        if (url) setImageUrl(url);
-      });
+      void loadImage(key)
+        .then(url => {
+          if (url && isCurrentImageChange(changeId)) {
+            setError(null);
+            setImageUrl(url);
+          }
+        })
+        .catch(() => {
+          if (isCurrentImageChange(changeId)) setError(STORAGE_LOAD_ERROR);
+        });
     } else if (savedState?.imageUrl) {
       // Migrate legacy base64 imageUrl to IndexedDB
       const newKey = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
-      storeImage(newKey, savedState.imageUrl).then(() => {
-        imageKeyRef.current = newKey;
-        setImageUrl(savedState.imageUrl!);
-        onStateChange?.({ imageKey: newKey });
-      });
+      const legacyImageUrl = savedState.imageUrl;
+      void storeImage(newKey, legacyImageUrl)
+        .then(() => {
+          if (!isCurrentImageChange(changeId)) return;
+          imageKeyRef.current = newKey;
+          setError(null);
+          setImageUrl(legacyImageUrl);
+          onStateChange?.({ imageKey: newKey });
+        })
+        .catch(() => {
+          if (!isCurrentImageChange(changeId)) return;
+          setImageUrl(legacyImageUrl);
+          setError(STORAGE_SAVE_ERROR);
+        });
     }
   }, []);
 
+  useEffect(() => () => {
+    invalidatePendingImageChanges();
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
+  }, []);
+
   // Update image and notify parent
-  const updateImage = async (dataUrl: string | null) => {
-    if (dataUrl) {
-      const key = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
-      await storeImage(key, dataUrl);
-      imageKeyRef.current = key;
-      setImageUrl(dataUrl);
-      onStateChange?.({ imageKey: key });
-    } else {
-      if (imageKeyRef.current) {
-        await deleteImage(imageKeyRef.current);
-        imageKeyRef.current = null;
+  const updateImage = async (dataUrl: string | null, changeId = beginImageChange()) => {
+    try {
+      if (dataUrl) {
+        const key = widgetId ? `image-${widgetId}-${changeId}` : `image-${Date.now()}-${changeId}`;
+        const previousKey = imageKeyRef.current;
+        await storeImage(key, dataUrl);
+        if (!isCurrentImageChange(changeId)) {
+          void deleteImage(key).catch(() => undefined);
+          return;
+        }
+        imageKeyRef.current = key;
+        setError(null);
+        setImageUrl(dataUrl);
+        onStateChange?.({ imageKey: key });
+        if (previousKey && previousKey !== key) {
+          void deleteImage(previousKey).catch(() => undefined);
+        }
+      } else {
+        if (imageKeyRef.current) {
+          await deleteImage(imageKeyRef.current);
+          if (!isCurrentImageChange(changeId)) return;
+          imageKeyRef.current = null;
+        }
+        setError(null);
+        setImageUrl(null);
+        onStateChange?.({ imageKey: null });
       }
-      setImageUrl(null);
-      onStateChange?.({ imageKey: null });
+    } catch {
+      if (isCurrentImageChange(changeId)) {
+        setError(dataUrl ? STORAGE_SAVE_ERROR : STORAGE_DELETE_ERROR);
+      }
     }
   };
 
@@ -59,14 +116,25 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   // Handle file selection
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) return;
+    const changeId = beginImageChange();
+    activeReaderRef.current?.abort();
+    activeReaderRef.current = null;
     if (file.size > MAX_IMAGE_SIZE) {
       setError(`Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please use an image under 3 MB.`);
       return;
     }
     setError(null);
     const reader = new FileReader();
+    activeReaderRef.current = reader;
     reader.onload = (e) => {
-      updateImage(e.target?.result as string);
+      if (isCurrentImageChange(changeId)) {
+        void updateImage(e.target?.result as string, changeId);
+      }
+    };
+    reader.onloadend = () => {
+      if (activeReaderRef.current === reader) {
+        activeReaderRef.current = null;
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -219,6 +287,11 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
       {imageUrl && (
         <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 dark:bg-opacity-70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
           Double-click to change
+        </div>
+      )}
+      {imageUrl && error && (
+        <div className="absolute bottom-2 left-2 right-2 bg-red-600/90 text-white px-2 py-1 rounded text-xs">
+          {error}
         </div>
       )}
     </div>

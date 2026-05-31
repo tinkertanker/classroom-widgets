@@ -51,6 +51,7 @@ src/secrets/
 secrets/
 
 .repopromt/
+.clawpatch/
 
 # TypeScript build info (incremental compilation cache)
 *.tsbuildinfo

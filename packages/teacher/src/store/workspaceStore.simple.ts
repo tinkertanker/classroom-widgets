@@ -100,6 +100,8 @@ const defaultBottomBar = {
 // Custom Storage Adapter for V2 Format
 // =============================================================================
 
+let lastPersistedZustandValue: string | null = null;
+
 /**
  * Custom storage adapter that handles the multi-workspace V2 format.
  * Automatically migrates from V1 format if needed.
@@ -121,7 +123,7 @@ const workspaceStorage: StateStorage = {
           // Convert V2 format back to Zustand's expected format
           const currentWorkspace = v2Data.workspaces[v2Data.currentWorkspaceId];
           if (currentWorkspace) {
-            return JSON.stringify({
+            const zustandValue = JSON.stringify({
               state: {
                 widgets: currentWorkspace.widgets,
                 background: currentWorkspace.background,
@@ -136,6 +138,8 @@ const workspaceStorage: StateStorage = {
               },
               version: 0  // Zustand's internal version
             });
+            lastPersistedZustandValue = zustandValue;
+            return zustandValue;
           }
         }
       }
@@ -172,6 +176,10 @@ const workspaceStorage: StateStorage = {
   },
 
   setItem: (name: string, value: string): void => {
+    if (value === lastPersistedZustandValue) {
+      return;
+    }
+
     try {
       const zustandData = JSON.parse(value);
       const state = zustandData.state;
@@ -225,17 +233,20 @@ const workspaceStorage: StateStorage = {
       // Also save in legacy format for backward compatibility during transition
       // This can be removed after V1 deprecation date
       localStorage.setItem(LEGACY_STORAGE_KEY, value);
+      lastPersistedZustandValue = value;
 
     } catch (error) {
       console.error('[Storage] Error writing storage:', error);
       // Fallback: save directly to legacy key
       localStorage.setItem(LEGACY_STORAGE_KEY, value);
+      lastPersistedZustandValue = value;
     }
   },
 
   removeItem: (name: string): void => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
+    lastPersistedZustandValue = null;
   }
 };
 

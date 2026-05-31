@@ -15,7 +15,7 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
   const isFocused = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
   const [showDelete, setShowDelete] = useState(false);
-  const hideDeleteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hideDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Detect touch devices (no hover capability) - always show delete button on touch
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;

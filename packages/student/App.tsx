@@ -40,10 +40,13 @@ const App: React.FC = () => {
     return localStorage.getItem('studentName') || '';
   });
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage first, then system preference
-    const saved = localStorage.getItem('darkMode');
-    if (saved !== null) {
-      return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('darkMode');
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      // Corrupted localStorage - fall through to system preference
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });

@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import ConfettiExplosion from 'react-confetti-explosion';
+import React, { createContext, useContext, useState, useCallback, lazy, Suspense } from 'react';
+
+// Lazy-load the confetti renderer - most sessions never trigger it,
+// so we'd rather not ship ~30KB in the main bundle.
+const ConfettiExplosion = lazy(() => import('react-confetti-explosion'));
 
 interface ConfettiPosition {
   x: number;
@@ -56,26 +59,30 @@ export const ConfettiProvider: React.FC<ConfettiProviderProps> = ({ children }) 
   return (
     <ConfettiContext.Provider value={{ triggerConfetti }}>
       {children}
-      {explosions.map(explosion => (
-        <div 
-          key={explosion.id}
-          style={{ 
-            position: 'fixed', 
-            top: explosion.position ? `${explosion.position.y}px` : '50%', 
-            left: explosion.position ? `${explosion.position.x}px` : '50%', 
-            transform: explosion.position ? 'translate(-50%, 0)' : 'translate(-50%, -50%)', 
-            zIndex: 9999,
-            pointerEvents: 'none'
-          }}
-        >
-          <ConfettiExplosion
-            force={0.8}
-            duration={3000}
-            particleCount={200}
-            width={1600}
-          />
-        </div>
-      ))}
+      {explosions.length > 0 && (
+        <Suspense fallback={null}>
+          {explosions.map(explosion => (
+            <div
+              key={explosion.id}
+              style={{
+                position: 'fixed',
+                top: explosion.position ? `${explosion.position.y}px` : '50%',
+                left: explosion.position ? `${explosion.position.x}px` : '50%',
+                transform: explosion.position ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
+                zIndex: 9999,
+                pointerEvents: 'none'
+              }}
+            >
+              <ConfettiExplosion
+                force={0.8}
+                duration={3000}
+                particleCount={200}
+                width={1600}
+              />
+            </div>
+          ))}
+        </Suspense>
+      )}
     </ConfettiContext.Provider>
   );
 };
