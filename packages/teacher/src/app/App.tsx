@@ -167,11 +167,7 @@ function App() {
       // Open widget launcher with Cmd/Ctrl + K (handle this first to avoid triggering voice control)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        // Trigger the LaunchpadDialog by clicking the More button
-        const moreButton = document.querySelector('[title*="More widgets"]') as HTMLButtonElement;
-        if (moreButton) {
-          moreButton.click();
-        }
+        window.openClassroomWidgetLauncher?.();
         return;
       }
 

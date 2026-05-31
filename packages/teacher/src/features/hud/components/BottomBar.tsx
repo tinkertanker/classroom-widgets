@@ -21,6 +21,12 @@ import { useHudProximityContext } from '@shared/hooks/useHudProximity';
 import { hudProximity } from '@shared/utils/styles';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 
+declare global {
+  interface Window {
+    openClassroomWidgetLauncher?: () => void;
+  }
+}
+
 // Default recent widgets if none are set
 const defaultRecentWidgets = [
   WidgetType.RANDOMISER,
@@ -113,6 +119,16 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
       noPadding: true
     });
   };
+
+  useEffect(() => {
+    window.openClassroomWidgetLauncher = handleShowMoreWidgets;
+
+    return () => {
+      if (window.openClassroomWidgetLauncher === handleShowMoreWidgets) {
+        delete window.openClassroomWidgetLauncher;
+      }
+    };
+  }, [handleShowMoreWidgets]);
 
   const handleShowStickers = () => {
     showModal({
