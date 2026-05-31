@@ -100,11 +100,15 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddWidget = (type: WidgetType) => {
+  const handleAddWidget = React.useCallback((type: WidgetType) => {
     createWidget(type);
-  };
+  }, [createWidget]);
 
-  const handleShowMoreWidgets = () => {
+  const handleShowMoreWidgets = React.useCallback(() => {
+    if (stickerMode) {
+      return;
+    }
+
     showModal({
       title: 'Add Widget',
       content: (
@@ -118,7 +122,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
       className: 'w-[calc(100%-2rem)] max-w-4xl bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl',
       noPadding: true
     });
-  };
+  }, [handleAddWidget, hideModal, showModal, stickerMode]);
 
   useEffect(() => {
     window.openClassroomWidgetLauncher = handleShowMoreWidgets;

@@ -9,6 +9,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     private var localMouseMonitor: Any?
     private var globalMouseMonitor: Any?
     private var pendingWidgetLauncherOpen = false
+    private var widgetLauncherOpenAttemptInFlight = false
     var isDashboardVisible: Bool { dashboardVisible }
 
     init() {
@@ -78,7 +79,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebDashboardVisible(dashboardVisible)
 
-        if pendingWidgetLauncherOpen {
+        if pendingWidgetLauncherOpen && !widgetLauncherOpenAttemptInFlight {
             openWidgetLauncher()
         }
     }
@@ -107,7 +108,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     func showWidgetLauncher() {
         pendingWidgetLauncherOpen = true
         showDashboard()
-        openWidgetLauncher()
+
+        if !webView.isLoading {
+            openWidgetLauncher()
+        }
     }
 
     func applySettings() {
@@ -233,6 +237,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     }
 
     private func openWidgetLauncher(retriesRemaining: Int = 5) {
+        guard pendingWidgetLauncherOpen, !widgetLauncherOpenAttemptInFlight else {
+            return
+        }
+
+        widgetLauncherOpenAttemptInFlight = true
         let expression = """
         (() => {
           if (window.openClassroomWidgetLauncher) {
@@ -243,15 +252,22 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
         })()
         """
         webView.evaluateJavaScript(expression) { [weak self] result, _ in
+            guard let self else { return }
+
+            self.widgetLauncherOpenAttemptInFlight = false
+
             if result as? Bool == true {
-                self?.pendingWidgetLauncherOpen = false
+                self.pendingWidgetLauncherOpen = false
                 return
             }
 
-            guard retriesRemaining > 0 else { return }
+            guard retriesRemaining > 0 else {
+                self.pendingWidgetLauncherOpen = false
+                return
+            }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                self?.openWidgetLauncher(retriesRemaining: retriesRemaining - 1)
+                self.openWidgetLauncher(retriesRemaining: retriesRemaining - 1)
             }
         }
     }
