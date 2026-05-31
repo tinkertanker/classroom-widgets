@@ -25,7 +25,7 @@ enum DashboardDefaults {
             DashboardSettingKeys.launcherShortcutKeyCode: launcherShortcutKeyCode,
             DashboardSettingKeys.launcherShortcutModifiers: shortcutModifiers,
             DashboardSettingKeys.showDashboardAtLaunch: false,
-            DashboardSettingKeys.clickThroughEmptyAreas: false,
+            DashboardSettingKeys.clickThroughEmptyAreas: true,
             DashboardSettingKeys.keepOnAllSpaces: true,
             DashboardSettingKeys.floatingOverlay: true
         ])
@@ -74,6 +74,7 @@ struct DashboardSettingsView: View {
     @AppStorage(DashboardSettingKeys.launcherShortcutKeyCode) private var launcherShortcutKeyCode = DashboardDefaults.launcherShortcutKeyCode
     @AppStorage(DashboardSettingKeys.launcherShortcutModifiers) private var launcherShortcutModifiers = DashboardDefaults.shortcutModifiers
     @AppStorage(DashboardSettingKeys.showDashboardAtLaunch) private var showDashboardAtLaunch = false
+    @AppStorage(DashboardSettingKeys.clickThroughEmptyAreas) private var clickThroughEmptyAreas = true
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
     @AppStorage(DashboardSettingKeys.floatingOverlay) private var floatingOverlay = true
 
@@ -100,6 +101,8 @@ struct DashboardSettingsView: View {
                     Toggle("Show on all Spaces", isOn: $keepOnAllSpaces)
 
                     Toggle("Float above other windows", isOn: $floatingOverlay)
+
+                    Toggle("Click through empty dashboard areas", isOn: $clickThroughEmptyAreas)
                 }
             }
             .formStyle(.grouped)
@@ -160,6 +163,7 @@ struct DashboardSettingsView: View {
 
     private var windowBehaviorSignature: String {
         [
+            clickThroughEmptyAreas,
             keepOnAllSpaces,
             floatingOverlay
         ].map(String.init).joined(separator: ":")

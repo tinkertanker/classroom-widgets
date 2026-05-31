@@ -5,6 +5,9 @@ final class DashboardWindowController: NSWindowController {
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private var dashboardVisible: Bool
+    private var interactiveRegions: [CGRect] = []
+    private var localMouseMonitor: Any?
+    private var globalMouseMonitor: Any?
     var isDashboardVisible: Bool { dashboardVisible }
 
     init() {
@@ -40,10 +43,17 @@ final class DashboardWindowController: NSWindowController {
 
         super.init(window: window)
         applySettings()
+        installMouseMonitors()
 
         scriptMessageHandler.onVisibilityChanged = { [weak self] visible in
-            self?.dashboardVisible = visible
-            self?.window?.ignoresMouseEvents = !visible
+            guard let self else { return }
+            self.dashboardVisible = visible
+            self.updateMousePassthrough()
+        }
+        scriptMessageHandler.onInteractiveRegionsChanged = { [weak self] regions in
+            guard let self else { return }
+            self.interactiveRegions = regions
+            self.updateMousePassthrough()
         }
         webView.configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
         loadDashboard()
@@ -54,6 +64,12 @@ final class DashboardWindowController: NSWindowController {
     }
 
     deinit {
+        if let localMouseMonitor {
+            NSEvent.removeMonitor(localMouseMonitor)
+        }
+        if let globalMouseMonitor {
+            NSEvent.removeMonitor(globalMouseMonitor)
+        }
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomDashboard")
     }
 
@@ -64,7 +80,7 @@ final class DashboardWindowController: NSWindowController {
         applySettings()
         window?.makeKeyAndOrderFront(nil)
         window?.orderFrontRegardless()
-        window?.ignoresMouseEvents = false
+        updateMousePassthrough()
         NSApp.activate(ignoringOtherApps: true)
         setWebDashboardVisible(true)
     }
@@ -76,7 +92,7 @@ final class DashboardWindowController: NSWindowController {
         if dashboardVisible {
             window?.makeKeyAndOrderFront(nil)
             window?.orderFrontRegardless()
-            window?.ignoresMouseEvents = false
+            updateMousePassthrough()
             NSApp.activate(ignoringOtherApps: true)
         } else {
             window?.ignoresMouseEvents = true
@@ -110,7 +126,58 @@ final class DashboardWindowController: NSWindowController {
             return
         }
 
-        window.ignoresMouseEvents = false
+        updateMousePassthrough()
+    }
+
+    private func installMouseMonitors() {
+        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [
+            .mouseMoved,
+            .leftMouseDragged,
+            .rightMouseDragged,
+            .otherMouseDragged,
+            .leftMouseDown,
+            .rightMouseDown,
+            .otherMouseDown
+        ]) { [weak self] event in
+            self?.updateMousePassthrough()
+            return event
+        }
+
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [
+            .mouseMoved,
+            .leftMouseDragged,
+            .rightMouseDragged,
+            .otherMouseDragged,
+            .leftMouseDown,
+            .rightMouseDown,
+            .otherMouseDown
+        ]) { [weak self] _ in
+            self?.updateMousePassthrough()
+        }
+    }
+
+    private func updateMousePassthrough() {
+        guard let window else { return }
+
+        guard dashboardVisible else {
+            window.ignoresMouseEvents = true
+            return
+        }
+
+        guard UserDefaults.standard.bool(forKey: DashboardSettingKeys.clickThroughEmptyAreas) else {
+            window.ignoresMouseEvents = false
+            return
+        }
+
+        let screenPoint = NSEvent.mouseLocation
+        guard window.frame.contains(screenPoint) else {
+            window.ignoresMouseEvents = true
+            return
+        }
+
+        let pointInWindow = window.convertPoint(fromScreen: screenPoint)
+        let webPoint = CGPoint(x: pointInWindow.x, y: webView.bounds.height - pointInWindow.y)
+        window.ignoresMouseEvents = !interactiveRegions.contains { $0.contains(webPoint) }
     }
 
     private func loadDashboard() {
