@@ -17,6 +17,7 @@ PRODUCT_NAME="ClassroomWidgetsDashboard"
 BUNDLE_ID="com.classroomwidgets.dashboard"
 MACOS_DIR="${ROOT_DIR}/packages/macos-dashboard"
 APP_BUNDLE="${ROOT_DIR}/dist/${APP_NAME}.app"
+INSTALL_APP_BUNDLE="/Applications/${APP_NAME}.app"
 APP_CONTENTS="${APP_BUNDLE}/Contents"
 APP_MACOS="${APP_CONTENTS}/MacOS"
 APP_RESOURCES="${APP_CONTENTS}/Resources"
@@ -231,6 +232,10 @@ else
   codesign --verify --deep --strict --verbose=2 "${APP_BUNDLE}"
 fi
 
+echo "Installing app to ${INSTALL_APP_BUNDLE}"
+trash_path "${INSTALL_APP_BUNDLE}"
+cp -R "${APP_BUNDLE}" "${INSTALL_APP_BUNDLE}"
+
 mkdir -p "${STAGING_DIR}"
 cp -R "${APP_BUNDLE}" "${STAGING_DIR}/"
 
@@ -293,4 +298,5 @@ trash_path "${STAGING_DIR}"
 
 echo "Built:"
 echo "  - ${APP_BUNDLE}"
+echo "  - ${INSTALL_APP_BUNDLE}"
 echo "  - ${DMG_PATH}"

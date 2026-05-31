@@ -9,6 +9,7 @@ npm run macos:run -- --verify
 ```
 
 This writes `dist/Classroom Widgets Dashboard.app`, opens it, and verifies that `ClassroomWidgetsDashboard` is running.
+The app is installed and launched from `/Applications/Classroom Widgets Dashboard.app` after each successful local run build so macOS camera permission remains tied to the canonical app location.
 
 ## Local DMG
 
@@ -23,6 +24,7 @@ dist/ClassroomWidgetsDashboard-v<version>-macos.dmg
 ```
 
 Use this only for local packaging checks. It is not suitable for public download.
+The built app is also installed to `/Applications/Classroom Widgets Dashboard.app`.
 
 ## Developer ID DMG
 
@@ -49,6 +51,7 @@ npm run macos:dmg -- --distribution --notarise
 ```
 
 The distribution signature uses hardened runtime and `script/macos-distribution-entitlements.plist`, which includes camera access for the Visualiser widget.
+Successful release builds also install the signed app to `/Applications/Classroom Widgets Dashboard.app` before packaging the DMG.
 
 ## Validation
 
