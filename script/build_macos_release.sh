@@ -24,6 +24,7 @@ APP_RESOURCES="${APP_CONTENTS}/Resources"
 WEB_RESOURCES="${APP_RESOURCES}/Web"
 STAGING_DIR="${ROOT_DIR}/dist/macos-dmg-staging"
 ENTITLEMENTS_PATH="${ROOT_DIR}/script/macos-distribution-entitlements.plist"
+APP_ICON_PATH="${MACOS_DIR}/Sources/${PRODUCT_NAME}/Resources/AppIcon.icns"
 VERSION="$(node -p "require('./package.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 DMG_PATH="${DMG_PATH:-}"
@@ -188,6 +189,9 @@ mkdir -p "${APP_MACOS}" "${WEB_RESOURCES}"
 cp "${EXECUTABLE}" "${APP_MACOS}/${PRODUCT_NAME}"
 chmod +x "${APP_MACOS}/${PRODUCT_NAME}"
 cp -R "${ROOT_DIR}/packages/teacher/build/." "${WEB_RESOURCES}/"
+if [ -f "${APP_ICON_PATH}" ]; then
+  cp "${APP_ICON_PATH}" "${APP_RESOURCES}/AppIcon.icns"
+fi
 
 cat > "${APP_CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -200,6 +204,8 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
   <string>${PRODUCT_NAME}</string>
   <key>CFBundleIdentifier</key>
   <string>${BUNDLE_ID}</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundleName</key>
   <string>${APP_NAME}</string>
   <key>CFBundlePackageType</key>

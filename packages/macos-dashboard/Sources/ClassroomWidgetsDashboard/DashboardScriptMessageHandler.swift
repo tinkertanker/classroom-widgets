@@ -1,9 +1,10 @@
 import CoreGraphics
 import WebKit
 
+@MainActor
 final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
-    var onVisibilityChanged: ((Bool) -> Void)?
-    var onInteractiveRegionsChanged: (([CGRect]) -> Void)?
+    var onVisibilityChanged: (@MainActor (Bool) -> Void)?
+    var onInteractiveRegionsChanged: (@MainActor ([CGRect]) -> Void)?
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard

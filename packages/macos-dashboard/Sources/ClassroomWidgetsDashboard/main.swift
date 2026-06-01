@@ -1,7 +1,7 @@
 import AppKit
 
 let dashboardURLScheme = "classroom-widgets"
-@MainActor private var appDelegate: AppDelegate?
+private var appDelegate: AppDelegate?
 
 MainActor.assumeIsolated {
     let app = NSApplication.shared

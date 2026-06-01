@@ -6,14 +6,15 @@ enum DashboardHotKeyError: Error {
     case register(OSStatus)
 }
 
+@MainActor
 final class DashboardHotKey {
     private static let signature = OSType(0x43574447)
     private let id: UInt32
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
-    private let handler: () -> Void
+    private let handler: @MainActor () -> Void
 
-    init(id: UInt32, keyCode: UInt32, modifiers: UInt32, handler: @escaping () -> Void) throws {
+    init(id: UInt32, keyCode: UInt32, modifiers: UInt32, handler: @escaping @MainActor () -> Void) throws {
         self.id = id
         self.handler = handler
 
@@ -33,15 +34,17 @@ final class DashboardHotKey {
                 &hotKeyID
             )
 
-            guard status == noErr,
-                  hotKeyID.signature == DashboardHotKey.signature,
-                  hotKeyID.id == instance.id
-            else {
-                return OSStatus(eventNotHandledErr)
-            }
+            return MainActor.assumeIsolated {
+                guard status == noErr,
+                      hotKeyID.signature == DashboardHotKey.signature,
+                      hotKeyID.id == instance.id
+                else {
+                    return OSStatus(eventNotHandledErr)
+                }
 
-            instance.handler()
-            return noErr
+                instance.handler()
+                return noErr
+            }
         }
 
         let installStatus = InstallEventHandler(
@@ -68,11 +71,13 @@ final class DashboardHotKey {
     }
 
     deinit {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-        }
-        if let eventHandler {
-            RemoveEventHandler(eventHandler)
+        MainActor.assumeIsolated {
+            if let hotKeyRef {
+                UnregisterEventHotKey(hotKeyRef)
+            }
+            if let eventHandler {
+                RemoveEventHandler(eventHandler)
+            }
         }
     }
 }

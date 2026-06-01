@@ -34,21 +34,27 @@ enum DashboardDefaults {
 
 @MainActor
 final class DashboardSettingsContext {
+    private let launchAtLoginManager: DashboardLaunchAtLoginManager
     private let onShortcutsChanged: @MainActor () -> Void
     private let onWindowBehaviorChanged: @MainActor () -> Void
     private let onShowDashboard: @MainActor () -> Void
     private let onShowWidgetLauncher: @MainActor () -> Void
+    private let onReloadDashboard: @MainActor () -> Void
 
     init(
+        launchAtLoginManager: DashboardLaunchAtLoginManager,
         onShortcutsChanged: @escaping @MainActor () -> Void,
         onWindowBehaviorChanged: @escaping @MainActor () -> Void,
         onShowDashboard: @escaping @MainActor () -> Void,
-        onShowWidgetLauncher: @escaping @MainActor () -> Void
+        onShowWidgetLauncher: @escaping @MainActor () -> Void,
+        onReloadDashboard: @escaping @MainActor () -> Void
     ) {
+        self.launchAtLoginManager = launchAtLoginManager
         self.onShortcutsChanged = onShortcutsChanged
         self.onWindowBehaviorChanged = onWindowBehaviorChanged
         self.onShowDashboard = onShowDashboard
         self.onShowWidgetLauncher = onShowWidgetLauncher
+        self.onReloadDashboard = onReloadDashboard
     }
 
     func shortcutsChanged() {
@@ -66,6 +72,22 @@ final class DashboardSettingsContext {
     func showWidgetLauncher() {
         onShowWidgetLauncher()
     }
+
+    func reloadDashboard() {
+        onReloadDashboard()
+    }
+
+    var canConfigureLaunchAtLogin: Bool {
+        launchAtLoginManager.canConfigure
+    }
+
+    func launchAtLoginEnabled() -> Bool {
+        launchAtLoginManager.isEnabled
+    }
+
+    func setLaunchAtLoginEnabled(_ isEnabled: Bool) throws -> DashboardLaunchAtLoginManager.ChangeResult {
+        try launchAtLoginManager.setEnabled(isEnabled)
+    }
 }
 
 struct DashboardSettingsView: View {
@@ -77,6 +99,8 @@ struct DashboardSettingsView: View {
     @AppStorage(DashboardSettingKeys.clickThroughEmptyAreas) private var clickThroughEmptyAreas = true
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
     @AppStorage(DashboardSettingKeys.floatingOverlay) private var floatingOverlay = true
+    @State private var launchAtLoginEnabled = false
+    @State private var launchAtLoginAlertMessage: String?
 
     let context: DashboardSettingsContext
 
@@ -84,17 +108,29 @@ struct DashboardSettingsView: View {
         TabView {
             Form {
                 Section("Launch") {
+                    Toggle("Launch at login", isOn: launchAtLoginBinding)
+                        .disabled(!context.canConfigureLaunchAtLogin)
+
                     Toggle("Show dashboard at launch", isOn: $showDashboardAtLaunch)
 
                     HStack {
-                        Button("Show Dashboard") {
+                        Button("Show Dashboard", systemImage: "rectangle.inset.filled") {
                             context.showDashboard()
                         }
 
-                        Button("Open Widget Launcher") {
+                        Button("Open Widget Launcher", systemImage: "square.grid.2x2") {
                             context.showWidgetLauncher()
                         }
+
+                        Button("Reload Dashboard", systemImage: "arrow.clockwise") {
+                            context.reloadDashboard()
+                        }
                     }
+
+                    Text("Keep the native companion ready from the menu bar, then show the dashboard only when class needs it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Section("Dashboard Layer") {
@@ -149,10 +185,44 @@ struct DashboardSettingsView: View {
                 Label("Shortcuts", systemImage: "keyboard")
             }
         }
-        .frame(width: 520, height: 330)
-        .padding(20)
+        .frame(width: 620, height: 360)
         .onChange(of: windowBehaviorSignature) { _ in context.windowBehaviorChanged() }
         .onChange(of: shortcutsSignature) { _ in context.shortcutsChanged() }
+        .onAppear {
+            launchAtLoginEnabled = context.launchAtLoginEnabled()
+        }
+        .alert("Launch at Login", isPresented: launchAtLoginAlertBinding) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(launchAtLoginAlertMessage ?? "")
+        }
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding {
+            launchAtLoginEnabled
+        } set: { newValue in
+            do {
+                let result = try context.setLaunchAtLoginEnabled(newValue)
+                launchAtLoginEnabled = context.launchAtLoginEnabled()
+                if result == .requiresApproval {
+                    launchAtLoginAlertMessage = "macOS needs approval in System Settings before Classroom Widgets Dashboard can open at login."
+                }
+            } catch {
+                launchAtLoginEnabled = context.launchAtLoginEnabled()
+                launchAtLoginAlertMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private var launchAtLoginAlertBinding: Binding<Bool> {
+        Binding {
+            launchAtLoginAlertMessage != nil
+        } set: { isPresented in
+            if !isPresented {
+                launchAtLoginAlertMessage = nil
+            }
+        }
     }
 
     private var shortcutsConflict: Bool {
@@ -181,6 +251,8 @@ struct DashboardSettingsView: View {
 
 @MainActor
 final class SettingsWindowCoordinator: NSObject, NSWindowDelegate {
+    private static let defaultWindowSize = NSSize(width: 660, height: 420)
+
     private let makeContentView: @MainActor () -> NSView
     private(set) var window: NSWindow?
 
@@ -197,8 +269,8 @@ final class SettingsWindowCoordinator: NSObject, NSWindowDelegate {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 380),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(origin: .zero, size: Self.defaultWindowSize),
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )

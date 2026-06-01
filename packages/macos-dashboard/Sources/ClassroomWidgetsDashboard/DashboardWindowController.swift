@@ -1,6 +1,7 @@
 import AppKit
 import WebKit
 
+@MainActor
 final class DashboardWindowController: NSWindowController, WKNavigationDelegate {
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
@@ -11,6 +12,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     private var pendingWidgetLauncherOpen = false
     private var widgetLauncherOpenAttemptInFlight = false
     var isDashboardVisible: Bool { dashboardVisible }
+    var onVisibilityChanged: (@MainActor (Bool) -> Void)?
 
     init() {
         dashboardVisible = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch)
@@ -52,6 +54,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
             guard let self else { return }
             self.dashboardVisible = visible
             self.syncWindowVisibility()
+            self.onVisibilityChanged?(visible)
         }
         scriptMessageHandler.onInteractiveRegionsChanged = { [weak self] regions in
             guard let self else { return }
@@ -67,13 +70,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     }
 
     deinit {
-        if let localMouseMonitor {
-            NSEvent.removeMonitor(localMouseMonitor)
+        MainActor.assumeIsolated {
+            if let localMouseMonitor {
+                NSEvent.removeMonitor(localMouseMonitor)
+            }
+            if let globalMouseMonitor {
+                NSEvent.removeMonitor(globalMouseMonitor)
+            }
+            webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomDashboard")
         }
-        if let globalMouseMonitor {
-            NSEvent.removeMonitor(globalMouseMonitor)
-        }
-        webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomDashboard")
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -86,6 +91,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
 
     func showDashboard() {
         dashboardVisible = true
+        DashboardLog.windowing.info("Showing dashboard")
         let frame = Self.combinedVisibleFrame()
         window?.setFrame(frame, display: true)
         applySettings()
@@ -96,6 +102,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
 
     func toggleDashboard() {
         dashboardVisible.toggle()
+        DashboardLog.windowing.info("Dashboard visibility changed to \(self.dashboardVisible, privacy: .public)")
         setWebDashboardVisible(dashboardVisible)
 
         if dashboardVisible {
@@ -103,15 +110,24 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
         }
 
         syncWindowVisibility(activateApp: dashboardVisible)
+        onVisibilityChanged?(dashboardVisible)
     }
 
     func showWidgetLauncher() {
         pendingWidgetLauncherOpen = true
+        DashboardLog.windowing.info("Opening widget launcher")
         showDashboard()
 
         if !webView.isLoading {
             openWidgetLauncher()
         }
+    }
+
+    func reloadDashboard() {
+        DashboardLog.web.info("Reloading bundled dashboard")
+        pendingWidgetLauncherOpen = false
+        widgetLauncherOpenAttemptInFlight = false
+        webView.reloadFromOrigin()
     }
 
     func applySettings() {
@@ -230,7 +246,8 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
                 retriesRemaining > 0
             else { return }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
                 self?.setWebDashboardVisible(visible, retriesRemaining: retriesRemaining - 1)
             }
         }
@@ -266,7 +283,8 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
                 return
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
                 self.openWidgetLauncher(retriesRemaining: retriesRemaining - 1)
             }
         }

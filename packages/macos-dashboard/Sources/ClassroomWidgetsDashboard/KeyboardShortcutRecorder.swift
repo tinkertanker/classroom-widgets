@@ -61,6 +61,7 @@ private struct RecorderField: NSViewRepresentable {
         Coordinator(self)
     }
 
+    @MainActor
     final class Coordinator: NSObject, RecorderNSViewDelegate {
         var parent: RecorderField
 
@@ -84,12 +85,14 @@ private struct RecorderField: NSViewRepresentable {
     }
 }
 
+@MainActor
 private protocol RecorderNSViewDelegate: AnyObject {
     func recorderDidStartRecording()
     func recorderDidEndRecording()
     func recorderDidCaptureShortcut(keyCode: Int, modifiers: Int)
 }
 
+@MainActor
 private final class RecorderNSView: NSView {
     weak var delegate: RecorderNSViewDelegate?
 

@@ -11,6 +11,18 @@ enum DashboardShortcutFormatter {
         return modifierSymbols(from: flags) + keyTitle(for: keyCode)
     }
 
+    static func menuKeyEquivalent(for keyCode: Int) -> String? {
+        guard keyCode != -1 else {
+            return nil
+        }
+
+        if keyCode == kVK_Space {
+            return " "
+        }
+
+        return keyCodeToUSKeyboardCharacter[keyCode]?.lowercased()
+    }
+
     static func modifierSymbols(from flags: NSEvent.ModifierFlags) -> String {
         var symbols = ""
         if flags.contains(.control) { symbols += "⌃" }
