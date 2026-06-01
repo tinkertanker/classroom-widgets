@@ -22,6 +22,7 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 MACOS_DIR="$ROOT_DIR/packages/macos-dashboard"
 INSTALL_APP_BUNDLE="/Applications/$APP_NAME.app"
 ENTITLEMENTS_PATH="$ROOT_DIR/script/macos-distribution-entitlements.plist"
+APP_ICON_PATH="$MACOS_DIR/Sources/$PRODUCT_NAME/Resources/AppIcon.icns"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 MODE="${1:-run}"
 
@@ -69,6 +70,9 @@ mkdir -p "$APP_MACOS" "$APP_RESOURCES/Web"
 cp "$EXECUTABLE" "$APP_MACOS/$PRODUCT_NAME"
 chmod +x "$APP_MACOS/$PRODUCT_NAME"
 cp -R "$ROOT_DIR/packages/teacher/build/." "$APP_RESOURCES/Web/"
+if [ -f "$APP_ICON_PATH" ]; then
+  cp "$APP_ICON_PATH" "$APP_RESOURCES/AppIcon.icns"
+fi
 
 cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -79,10 +83,20 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
   <string>$PRODUCT_NAME</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
+  <key>CFBundleDisplayName</key>
+  <string>Classroom Widgets</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSApplicationCategoryType</key>
+  <string>public.app-category.education</string>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>LSUIElement</key>

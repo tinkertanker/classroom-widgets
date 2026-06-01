@@ -49,6 +49,7 @@ final class DashboardSettingsContext {
     private let onMenuBarIconChanged: @MainActor () -> Void
     private let onShowDashboard: @MainActor () -> Void
     private let onShowWidgetLauncher: @MainActor () -> Void
+    private let onReloadDashboard: @MainActor () -> Void
 
     init(
         launchAtLoginManager: LaunchAtLoginManager,
@@ -56,7 +57,8 @@ final class DashboardSettingsContext {
         onWindowBehaviorChanged: @escaping @MainActor () -> Void,
         onMenuBarIconChanged: @escaping @MainActor () -> Void,
         onShowDashboard: @escaping @MainActor () -> Void,
-        onShowWidgetLauncher: @escaping @MainActor () -> Void
+        onShowWidgetLauncher: @escaping @MainActor () -> Void,
+        onReloadDashboard: @escaping @MainActor () -> Void
     ) {
         self.launchAtLoginManager = launchAtLoginManager
         self.onShortcutsChanged = onShortcutsChanged
@@ -64,6 +66,7 @@ final class DashboardSettingsContext {
         self.onMenuBarIconChanged = onMenuBarIconChanged
         self.onShowDashboard = onShowDashboard
         self.onShowWidgetLauncher = onShowWidgetLauncher
+        self.onReloadDashboard = onReloadDashboard
     }
 
     var canConfigureLaunchAtLogin: Bool {
@@ -96,6 +99,10 @@ final class DashboardSettingsContext {
 
     func showWidgetLauncher() {
         onShowWidgetLauncher()
+    }
+
+    func reloadDashboard() {
+        onReloadDashboard()
     }
 }
 
@@ -152,14 +159,23 @@ struct DashboardSettingsView: View {
 
                 Section("Actions") {
                     HStack {
-                        Button("Show Dashboard") {
+                        Button("Show Dashboard", systemImage: "rectangle.inset.filled") {
                             context.showDashboard()
                         }
 
-                        Button("Open Widget Launcher") {
+                        Button("Open Widget Launcher", systemImage: "square.grid.2x2") {
                             context.showWidgetLauncher()
                         }
+
+                        Button("Reload Dashboard", systemImage: "arrow.clockwise") {
+                            context.reloadDashboard()
+                        }
                     }
+
+                    Text("Keep the native companion ready from the menu bar, then show the dashboard only when class needs it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Section("Dashboard Layer") {

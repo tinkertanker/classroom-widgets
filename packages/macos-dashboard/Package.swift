@@ -15,7 +15,10 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "ClassroomWidgetsDashboard"
+            name: "ClassroomWidgetsDashboard",
+            resources: [
+                .process("Resources")
+            ]
         )
     ]
 )

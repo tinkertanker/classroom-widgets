@@ -1,10 +1,8 @@
 import Foundation
-import WebKit
+@preconcurrency import WebKit
 
 final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
     private let webRoot: URL
-    private let readQueue = DispatchQueue(label: "com.classroomwidgets.dashboard.static-files", qos: .userInitiated)
-    private let stateQueue = DispatchQueue(label: "com.classroomwidgets.dashboard.static-files.state")
     private var cache: [URL: (data: Data, mimeType: String)] = [:]
     private var stoppedTasks = Set<ObjectIdentifier>()
 
@@ -24,42 +22,30 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         }
 
         let taskID = ObjectIdentifier(urlSchemeTask)
-        _ = stateQueue.sync {
-            stoppedTasks.remove(taskID)
-        }
+        stoppedTasks.remove(taskID)
 
-        readQueue.async { [weak self] in
-            guard let self else { return }
+        do {
+            let payload = try payload(for: fileURL)
+            guard !isStopped(taskID) else { return }
 
-            do {
-                let payload = try self.payload(for: fileURL)
-                DispatchQueue.main.async {
-                    guard !self.isStopped(taskID) else { return }
-
-                    let response = URLResponse(
-                        url: requestURL,
-                        mimeType: payload.mimeType,
-                        expectedContentLength: payload.data.count,
-                        textEncodingName: nil
-                    )
-                    urlSchemeTask.didReceive(response)
-                    urlSchemeTask.didReceive(payload.data)
-                    urlSchemeTask.didFinish()
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    guard !self.isStopped(taskID) else { return }
-                    urlSchemeTask.didFailWithError(error)
-                }
-            }
+            let response = URLResponse(
+                url: requestURL,
+                mimeType: payload.mimeType,
+                expectedContentLength: payload.data.count,
+                textEncodingName: nil
+            )
+            urlSchemeTask.didReceive(response)
+            urlSchemeTask.didReceive(payload.data)
+            urlSchemeTask.didFinish()
+        } catch {
+            guard !isStopped(taskID) else { return }
+            urlSchemeTask.didFailWithError(error)
         }
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
         let taskID = ObjectIdentifier(urlSchemeTask)
-        _ = stateQueue.sync {
-            stoppedTasks.insert(taskID)
-        }
+        stoppedTasks.insert(taskID)
     }
 
     private func fileURL(for requestURL: URL) -> URL? {
@@ -86,7 +72,7 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     private func payload(for fileURL: URL) throws -> (data: Data, mimeType: String) {
-        if let cached = stateQueue.sync(execute: { cache[fileURL] }) {
+        if let cached = cache[fileURL] {
             return cached
         }
 
@@ -94,16 +80,12 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
             data: try Data(contentsOf: fileURL),
             mimeType: mimeType(for: fileURL.pathExtension)
         )
-        stateQueue.sync {
-            cache[fileURL] = payload
-        }
+        cache[fileURL] = payload
         return payload
     }
 
     private func isStopped(_ taskID: ObjectIdentifier) -> Bool {
-        stateQueue.sync {
-            stoppedTasks.remove(taskID) != nil
-        }
+        stoppedTasks.remove(taskID) != nil
     }
 
     private func mimeType(for pathExtension: String) -> String {

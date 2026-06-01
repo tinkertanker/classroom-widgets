@@ -25,6 +25,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         },
         onShowWidgetLauncher: { [weak self] in
             self?.controller?.showWidgetLauncher()
+        },
+        onReloadDashboard: { [weak self] in
+            self?.controller?.reloadDashboard()
         }
     )
     private lazy var settingsWindowCoordinator = SettingsWindowCoordinator { [weak self] in
@@ -38,11 +41,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         DashboardDefaults.register()
         NSApp.setActivationPolicy(.accessory)
+        NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
 
         let controller = DashboardWindowController()
+        controller.onVisibilityChanged = { [weak self] _ in
+            self?.updateStatusMenu()
+        }
         self.controller = controller
         setupStatusItem()
         registerHotKeys()
+        DashboardLog.app.info("Classroom Widgets Dashboard launched")
 
         if UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch) {
             controller.showDashboard()
@@ -63,8 +71,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = menuBarIcon()
+        let statusItem = NSStatusBar.system.statusItem(withLength: 26)
+        statusItem.button?.image = DashboardMenuBarIcon.make(size: 21)
         statusItem.button?.imagePosition = .imageOnly
         self.statusItem = statusItem
         updateStatusMenu()
@@ -86,24 +94,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSStatusBar.system.removeStatusItem(statusItem)
         }
         statusItem = nil
-    }
-
-    private func menuBarIcon() -> NSImage? {
-        let symbolNames = [
-            "rectangle.3.group",
-            "square.grid.2x2"
-        ]
-        let configuration = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
-
-        for symbolName in symbolNames {
-            if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Classroom Widgets")?
-                .withSymbolConfiguration(configuration) {
-                image.isTemplate = true
-                return image
-            }
-        }
-
-        return nil
     }
 
     private func updateStatusMenu() {
@@ -130,6 +120,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
+        let reloadItem = NSMenuItem(title: "Reload Dashboard", action: #selector(reloadDashboard), keyEquivalent: "r")
+        reloadItem.target = self
+        menu.addItem(reloadItem)
+
+        let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launchAtLoginItem.target = self
+        launchAtLoginItem.state = launchAtLoginManager.isEnabled ? .on : .off
+        launchAtLoginItem.isEnabled = launchAtLoginManager.canConfigure
+        menu.addItem(launchAtLoginItem)
+
         let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: "")
         settingsItem.target = self
         applyShortcut(
@@ -138,6 +138,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             modifiers: shortcutModifiers(for: DashboardSettingKeys.settingsShortcutModifiers)
         )
         menu.addItem(settingsItem)
+
+        let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -245,12 +249,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateStatusMenu()
     }
 
+    @objc private func reloadDashboard() {
+        controller?.reloadDashboard()
+    }
+
     @objc private func showSettings() {
         settingsWindowCoordinator.show()
     }
 
+    @objc private func showAbout() {
+        let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage()
+        NSApp.orderFrontStandardAboutPanel(options: [
+            .applicationName: "Classroom Widgets",
+            .applicationIcon: appIcon,
+            .credits: NSAttributedString(string: "A polished macOS companion for the Classroom Widgets teacher dashboard.")
+        ])
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        do {
+            let result = try launchAtLoginManager.setEnabled(!launchAtLoginManager.isEnabled)
+            if result == .requiresApproval {
+                presentLaunchAtLoginApprovalAlert()
+            }
+        } catch {
+            presentError(error, title: "Launch at Login Failed")
+        }
+        updateStatusMenu()
+    }
+
     @objc private func quitApp() {
         NSApp.terminate(nil)
+    }
+
+    private func presentLaunchAtLoginApprovalAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Approval Needed"
+        alert.informativeText = "macOS needs approval in System Settings before Classroom Widgets Dashboard can open at login."
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    private func presentError(_ error: Error, title: String) {
+        let alert = NSAlert(error: error)
+        alert.messageText = title
+        alert.runModal()
     }
 
     private func shortcutKeyCode(for key: String, fallback: Int) -> Int {
