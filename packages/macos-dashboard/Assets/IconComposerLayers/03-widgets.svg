@@ -1,6 +1,66 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <circle cx="318" cy="318" r="132" fill="#12b8b2"/>
-  <rect x="516" y="226" width="330" height="184" rx="58" fill="#ff806b"/>
-  <rect x="178" y="614" width="348" height="154" rx="64" fill="#ffc83d"/>
-  <rect x="628" y="586" width="210" height="210" rx="54" fill="#fff8ed"/>
+  <defs>
+    <filter id="tile-shadow" x="-20" y="-20" width="193" height="193" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#2b3a3a" flood-opacity="0.16"/>
+    </filter>
+    <linearGradient id="glass-shine" x1="18" y1="10" x2="139" y2="146" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.46"/>
+      <stop offset="0.44" stop-color="#ffffff" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#1f3a3a" stop-opacity="0.10"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(222 222)" color="#86b49f" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(436 222)" color="#d4775c" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(650 222)" color="#d99185" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(222 436)" color="#7cb3a3" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(436 436)" color="#e89a80" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(650 436)" color="#ebb4a9" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(222 650)" color="#5a9483" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(436 650)" color="#c25e42" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
+  <g transform="translate(650 650)" color="#c8766a" filter="url(#tile-shadow)">
+    <rect width="153" height="153" rx="31" fill="currentColor"/>
+    <rect width="153" height="153" rx="31" fill="url(#glass-shine)"/>
+    <rect x="6" y="6" width="141" height="141" rx="26" fill="none" stroke="#ffffff" stroke-opacity="0.38" stroke-width="5"/>
+    <path d="M27 16H93C111 16 125 30 125 48H27Z" fill="#ffffff" fill-opacity="0.18"/>
+  </g>
 </svg>
