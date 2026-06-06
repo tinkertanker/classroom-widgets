@@ -147,11 +147,11 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
     }
   }, [recoveryData]);
 
-  // Sync acceptMode to server after new room creation (not recovery).
+  // Sync acceptMode to server whenever the room becomes available.
   // The server defaults to 'all' but the teacher may have a saved mode of 'links'.
   const hasSyncedModeRef = useRef(false);
   useEffect(() => {
-    if (hasRoom && !recoveryData && !hasSyncedModeRef.current && widgetId && session.sessionCode) {
+    if (hasRoom && !hasSyncedModeRef.current && widgetId && session.sessionCode) {
       hasSyncedModeRef.current = true;
       if (acceptMode !== 'all') {
         emit('session:linkShare:setAcceptMode', {
@@ -164,7 +164,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
     if (!hasRoom) {
       hasSyncedModeRef.current = false;
     }
-  }, [hasRoom, recoveryData, widgetId, acceptMode, emit, session.sessionCode]);
+  }, [hasRoom, widgetId, acceptMode, emit, session.sessionCode]);
 
   // Empty state - show when no room exists
   if (!hasRoom) {
