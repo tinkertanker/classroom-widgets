@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FaInbox, FaTrash, FaArrowUpRightFromSquare, FaLink, FaFont } from 'react-icons/fa6';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
@@ -146,6 +146,25 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
       }
     }
   }, [recoveryData]);
+
+  // Sync acceptMode to server whenever the room becomes available.
+  // The server defaults to 'all' but the teacher may have a saved mode of 'links'.
+  const hasSyncedModeRef = useRef(false);
+  useEffect(() => {
+    if (hasRoom && !hasSyncedModeRef.current && widgetId && session.sessionCode) {
+      hasSyncedModeRef.current = true;
+      if (acceptMode !== 'all') {
+        emit('session:linkShare:setAcceptMode', {
+          sessionCode: session.sessionCode,
+          widgetId,
+          acceptMode
+        });
+      }
+    }
+    if (!hasRoom) {
+      hasSyncedModeRef.current = false;
+    }
+  }, [hasRoom, widgetId, acceptMode, emit, session.sessionCode]);
 
   // Empty state - show when no room exists
   if (!hasRoom) {
