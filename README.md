@@ -271,7 +271,7 @@ All comprehensive documentation is in the [`docs/`](./docs) directory:
 - **[Analytics Setup](./docs/ANALYTICS.md)** - Privacy-focused analytics with Umami
 
 ### Reference
-- **[Main Documentation](./docs/CLAUDE.md)** - Comprehensive project reference
+- **[Agent guide (CLAUDE.md)](./CLAUDE.md)** - Comprehensive project reference for humans and coding agents
 
 ## 🤝 Contributing
 

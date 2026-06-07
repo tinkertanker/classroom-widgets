@@ -4,14 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 📁 Documentation Policy
 
-**ALL documentation belongs in this `docs/` directory.**
+**Agent instructions live at the repo root. Everything else lives in `docs/`.**
+
+| Root | Purpose |
+|------|---------|
+| `CLAUDE.md` | Canonical agent guide (this file) |
+| `AGENTS.md` | Pointer for Cursor and other agents — read `CLAUDE.md` |
+| `README.md` | Human-facing project overview |
 
 When creating new documentation:
-- ✅ Put it in `docs/`
-- ✅ Update links in root `CLAUDE.md` and `README.md`
-- ❌ Don't create `.md` files in the root directory (except README.md and CLAUDE.md)
-
-This keeps the project organized and documentation easy to find.
+- ✅ Put topic guides in `docs/`
+- ✅ Update links in root `CLAUDE.md`, `AGENTS.md`, and `README.md` when needed
+- ❌ Don't add `CLAUDE.md` or `AGENTS.md` under `docs/`
 
 ---
 
@@ -166,7 +170,7 @@ The application includes a sophisticated voice command system for hands-free wid
 3. If confidence < 80% → Ollama AI fallback (~200-800ms)
 4. Command execution (create/control widgets)
 
-See [VOICE_COMMAND_SHARED_DEFINITIONS.md](./VOICE_COMMAND_SHARED_DEFINITIONS.md) for complete documentation.
+See [VOICE_COMMAND_SHARED_DEFINITIONS.md](docs/VOICE_COMMAND_SHARED_DEFINITIONS.md) for complete documentation.
 
 ### Toolbar Features
 - **Recent Widgets**: Shows the 5 most recently launched widgets (automatically updates)
@@ -449,8 +453,8 @@ Access by entering "ADMIN" as the session code in the student app.
 - Enabled per-event rate limiting to prevent abuse
 - Added `session:cleanupRooms` handler for orphaned room cleanup
 - Added read-only admin dashboard (access via "ADMIN" code in student app)
-- See [SOCKET_EVENTS.md](./SOCKET_EVENTS.md) for updated API documentation
-- See [ARCHITECTURE.md](./ARCHITECTURE.md) for security documentation
+- See [SOCKET_EVENTS.md](docs/SOCKET_EVENTS.md) for updated API documentation
+- See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for security documentation
 
 ### Networked Widget Common Base Architecture (January 2025)
 - Created shared infrastructure to reduce code duplication across networked widgets
@@ -490,7 +494,7 @@ Access by entering "ADMIN" as the session code in the student app.
 - Ollama AI prompts auto-generated from shared definitions
 - Build process automatically regenerates type files
 - Eliminates naming mismatch bugs between frontend executor and backend services
-- See [VOICE_COMMAND_SHARED_DEFINITIONS.md](./VOICE_COMMAND_SHARED_DEFINITIONS.md)
+- See [VOICE_COMMAND_SHARED_DEFINITIONS.md](docs/VOICE_COMMAND_SHARED_DEFINITIONS.md)
 
 ### Voice Command System (January 2025)
 - Hybrid approach: Fast pattern matching (~5ms) + AI fallback via Ollama (~200-800ms)
