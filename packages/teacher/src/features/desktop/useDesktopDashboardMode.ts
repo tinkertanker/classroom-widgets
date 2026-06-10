@@ -50,6 +50,14 @@ function isEditableTarget(target: EventTarget | null) {
 }
 
 function isElementInteractable(element: Element) {
+  // pointer-events is inherited and can be re-enabled by descendants
+  // (e.g. .toolbar-container and .toolbar-content disable it, the buttons
+  // inside restore it), so only the element's own computed value is
+  // meaningful — an ancestor's 'none' must not disqualify the element.
+  if (window.getComputedStyle(element).pointerEvents === 'none') {
+    return false;
+  }
+
   let current: Element | null = element;
 
   while (current && current !== document.documentElement) {
@@ -57,7 +65,6 @@ function isElementInteractable(element: Element) {
     if (
       style.display === 'none' ||
       style.visibility === 'hidden' ||
-      style.pointerEvents === 'none' ||
       Number(style.opacity) === 0
     ) {
       return false;
@@ -129,9 +136,16 @@ export function useDesktopDashboardMode() {
         }));
     };
 
+    let lastPublishedKey: string | null = null;
+
     const publishRegions = () => {
       frame = 0;
       const regions = collectRegions();
+      const key = regions
+        .map((region) => `${region.x},${region.y},${region.width},${region.height}`)
+        .join(';');
+      if (key === lastPublishedKey) return;
+      lastPublishedKey = key;
       setInteractiveRegions(regions);
       window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
         type: 'interactive-regions-changed',
