@@ -51,7 +51,7 @@ const defaultRecentWidgets = [
  * Get workspace metadata list from V2 storage
  */
 function getWorkspaceListFromStorage(): { currentId: string; list: WorkspaceMetadata[] } {
-  const v2Data = loadStorage();
+  const v2Data = loadStorageSynced();
   if (!v2Data) {
     return { currentId: '', list: [] };
   }
@@ -72,7 +72,7 @@ function getWorkspaceListFromStorage(): { currentId: string; list: WorkspaceMeta
  * Count existing workspaces with default naming pattern to generate next name
  */
 function getNextWorkspaceName(): string {
-  const v2Data = loadStorage();
+  const v2Data = loadStorageSynced();
   if (!v2Data) return 'Workspace 1';
 
   const workspaceCount = Object.keys(v2Data.workspaces).length;
@@ -101,6 +101,42 @@ const defaultBottomBar = {
 // =============================================================================
 
 let lastPersistedZustandValue: string | null = null;
+
+// Persisting is expensive (two JSON.parse calls plus a full re-stringify of the
+// V2 storage object, written to two localStorage keys), and Zustand's persist
+// middleware calls setItem on every store change — including focus changes and
+// drag stops. Batch rapid updates and write at most once per window.
+const PERSIST_DEBOUNCE_MS = 300;
+let pendingPersistValue: string | null = null;
+let persistTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+function flushPendingPersist(): void {
+  if (persistTimeoutId !== null) {
+    clearTimeout(persistTimeoutId);
+    persistTimeoutId = null;
+  }
+  if (pendingPersistValue !== null) {
+    const value = pendingPersistValue;
+    pendingPersistValue = null;
+    writeStorageValue(value);
+  }
+}
+
+// Several store actions read localStorage directly; they must see any
+// not-yet-flushed state or they would save a stale copy over it.
+function loadStorageSynced() {
+  flushPendingPersist();
+  return loadStorage();
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushPendingPersist);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPendingPersist();
+    }
+  });
+}
 
 /**
  * Custom storage adapter that handles the multi-workspace V2 format.
@@ -176,6 +212,36 @@ const workspaceStorage: StateStorage = {
   },
 
   setItem: (name: string, value: string): void => {
+    if (value === lastPersistedZustandValue && pendingPersistValue === null) {
+      return;
+    }
+
+    pendingPersistValue = value;
+    if (persistTimeoutId === null) {
+      persistTimeoutId = setTimeout(() => {
+        persistTimeoutId = null;
+        if (pendingPersistValue !== null) {
+          const pending = pendingPersistValue;
+          pendingPersistValue = null;
+          writeStorageValue(pending);
+        }
+      }, PERSIST_DEBOUNCE_MS);
+    }
+  },
+
+  removeItem: (name: string): void => {
+    if (persistTimeoutId !== null) {
+      clearTimeout(persistTimeoutId);
+      persistTimeoutId = null;
+    }
+    pendingPersistValue = null;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    lastPersistedZustandValue = null;
+  }
+};
+
+function writeStorageValue(value: string): void {
     if (value === lastPersistedZustandValue) {
       return;
     }
@@ -241,14 +307,7 @@ const workspaceStorage: StateStorage = {
       localStorage.setItem(LEGACY_STORAGE_KEY, value);
       lastPersistedZustandValue = value;
     }
-  },
-
-  removeItem: (name: string): void => {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
-    lastPersistedZustandValue = null;
-  }
-};
+}
 
 // =============================================================================
 // Store Creation
@@ -366,14 +425,21 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
   bringToFront: (widgetId) => {
     set((state) => {
-      const widgets = [...state.widgets];
-      const widgetIndex = widgets.findIndex(w => w.id === widgetId);
-      if (widgetIndex !== -1) {
-        const widget = widgets[widgetIndex];
-        widgets.splice(widgetIndex, 1);
-        widgets.push(widget);
-        widgets.forEach((w, i) => { w.zIndex = i; });
+      const widgetIndex = state.widgets.findIndex(w => w.id === widgetId);
+      if (widgetIndex === -1) {
+        return { focusedWidgetId: widgetId };
       }
+      // Already on top: skip the array rebuild (and the persist write it
+      // would trigger) — this runs on every click inside a widget
+      if (widgetIndex === state.widgets.length - 1) {
+        return state.focusedWidgetId === widgetId ? {} : { focusedWidgetId: widgetId };
+      }
+      const reordered = [...state.widgets];
+      const [moved] = reordered.splice(widgetIndex, 1);
+      reordered.push(moved);
+      // Replace only the widgets whose zIndex actually changed; mutating them
+      // in place would leave subscribers with stale references
+      const widgets = reordered.map((w, i) => (w.zIndex === i ? w : { ...w, zIndex: i }));
       return { widgets, focusedWidgetId: widgetId };
     });
   },
@@ -443,7 +509,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   switchWorkspace: (workspaceId: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data || !v2Data.workspaces[workspaceId]) {
       console.warn('[WorkspaceStore] Cannot switch: workspace not found:', workspaceId);
       return;
@@ -471,7 +537,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   createWorkspace: (name?: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data) {
       console.warn('[WorkspaceStore] Cannot create workspace: no storage found');
       return '';
@@ -504,7 +570,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   deleteWorkspace: (workspaceId: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data) {
       console.warn('[WorkspaceStore] Cannot delete workspace: no storage found');
       return false;
@@ -543,7 +609,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   renameWorkspace: (workspaceId: string, newName: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data) {
       console.warn('[WorkspaceStore] Cannot rename workspace: no storage found');
       return;
@@ -565,7 +631,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   // =============================================================================
 
   saveRandomiserList: (name: string, choices: string[]): string => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data) {
       console.warn('[WorkspaceStore] Cannot save randomiser list: no storage found');
       return '';
@@ -602,7 +668,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   deleteRandomiserList: (id: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data || !v2Data.savedCollections) {
       return;
     }
@@ -615,7 +681,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>): string => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data) {
       console.warn('[WorkspaceStore] Cannot save question bank: no storage found');
       return '';
@@ -652,7 +718,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   deleteQuestionBank: (id: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data || !v2Data.savedCollections) {
       return;
     }
@@ -665,7 +731,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   savePollQuestion: (name: string, question: string, options: string[]): string => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data) {
       console.warn('[WorkspaceStore] Cannot save poll question: no storage found');
       return '';
@@ -712,7 +778,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
 
   deletePollQuestion: (id: string) => {
-    const v2Data = loadStorage();
+    const v2Data = loadStorageSynced();
     if (!v2Data || !v2Data.savedCollections || !v2Data.savedCollections.pollQuestions) {
       return;
     }
@@ -765,7 +831,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
           // Populate workspace management state
           if (state) {
-            let v2Data = loadStorage();
+            let v2Data = loadStorageSynced();
 
             // If no storage exists, create default V2 storage with a workspace
             if (!v2Data) {

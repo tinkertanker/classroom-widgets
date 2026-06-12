@@ -11,7 +11,6 @@ const URGENT_THRESHOLD = 5;
 
 const Clock: React.FC = () => {
   const [time, setTime] = useState(new Date());
-  const [showColon, setShowColon] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedHour, setSelectedHour] = useState(12);
   const [selectedMinute, setSelectedMinute] = useState(0);
@@ -28,20 +27,20 @@ const Clock: React.FC = () => {
     return new Date(classEndTime);
   }, [classEndTime]);
 
-  // Update current time every second
+  // Check the time every second, but only re-render when the displayed
+  // minute changes (the colon blink is pure CSS, see .clock-colon-blink)
   useEffect(() => {
     const timer = setInterval(() => {
-      setTime(new Date());
+      setTime((prev) => {
+        const now = new Date();
+        const sameMinute =
+          prev.getMinutes() === now.getMinutes() &&
+          prev.getHours() === now.getHours() &&
+          prev.getDate() === now.getDate();
+        return sameMinute ? prev : now;
+      });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Blink colon every 500ms
-  useEffect(() => {
-    const colonTimer = setInterval(() => {
-      setShowColon(prev => !prev);
-    }, 500);
-    return () => clearInterval(colonTimer);
   }, []);
 
   // Close dropdown when clicking outside
@@ -127,7 +126,7 @@ const Clock: React.FC = () => {
     newEndTime.setHours(hours24, selectedMinute, 0, 0);
 
     // If the time is earlier than now, assume it's for tomorrow
-    if (newEndTime <= time) {
+    if (newEndTime <= new Date()) {
       newEndTime.setDate(newEndTime.getDate() + 1);
     }
 
@@ -219,7 +218,7 @@ const Clock: React.FC = () => {
         {/* Current Time */}
         <span className="text-sm font-medium">
           {displayHours}
-          <span className={showColon ? 'opacity-100' : 'opacity-0'}>:</span>
+          <span className="clock-colon-blink">:</span>
           {displayMinutes}
           <span className="ml-1 text-xs opacity-75">{ampm}</span>
         </span>
@@ -399,4 +398,4 @@ const Clock: React.FC = () => {
   );
 };
 
-export default Clock;
+export default React.memo(Clock);
