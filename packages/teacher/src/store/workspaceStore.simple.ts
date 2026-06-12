@@ -287,8 +287,16 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
       // Update the workspace the value was captured for; fall back to the
       // pointer in storage when no id was captured (e.g. during startup)
       const currentWorkspaceId = capturedWorkspaceId || v2Data.currentWorkspaceId;
-      const currentWorkspace = v2Data.workspaces[currentWorkspaceId] ||
-        createDefaultWorkspace(currentWorkspaceId);
+      let currentWorkspace = v2Data.workspaces[currentWorkspaceId];
+      if (!currentWorkspace) {
+        if (capturedWorkspaceId) {
+          // The captured workspace was deleted (e.g. by another window)
+          // before the flush — drop the write rather than resurrect it
+          lastPersistedZustandValue = value;
+          return;
+        }
+        currentWorkspace = createDefaultWorkspace(currentWorkspaceId);
+      }
 
       v2Data.workspaces[currentWorkspaceId] = {
         ...currentWorkspace,
