@@ -221,6 +221,21 @@ html.desktop-dashboard-mode .widget-wrapper > .widget-surface[data-dashboard-gla
   -webkit-backdrop-filter: blur(18px) saturate(1.35);
 }
 
+/* The native app draws an NSVisualEffectView behind each glass surface, so
+   thin out the standard card backgrounds to let the desktop blur through.
+   The dark rule is more specific, so it wins when both classes are present. */
+html.desktop-dashboard-mode
+  .widget-surface[data-dashboard-glass='true']
+  :is(.bg-soft-white, .bg-soft-white\/90, .bg-soft-white\/95) {
+  background-color: rgba(253, 252, 251, 0.6) !important;
+}
+
+html.dark.desktop-dashboard-mode
+  .widget-surface[data-dashboard-glass='true']
+  :is(.dark\:bg-warm-gray-800, .dark\:bg-warm-gray-800\/90) {
+  background-color: rgba(61, 56, 53, 0.55) !important;
+}
+
 @keyframes desktop-widget-depth-in {
   0% {
     opacity: 0;

@@ -63,7 +63,7 @@ function App() {
   const [screenTooSmall, setScreenTooSmall] = useState(
     typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
   );
-  const { isDashboardMode, isDashboardVisible } = useDesktopDashboardMode();
+  const { isDashboardMode, isDashboardVisible, setDashboardVisible } = useDesktopDashboardMode();
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -178,6 +178,22 @@ function App() {
         return;
       }
 
+      // In the macOS desktop overlay, Escape dismisses the dashboard like
+      // Mission Control/Launchpad - but only when nothing else claims it
+      // (open modals handle Escape themselves, sticker mode returns above).
+      if (
+        isDashboardMode &&
+        isDashboardVisible &&
+        e.key === 'Escape' &&
+        !e.defaultPrevented &&
+        !(e.target instanceof HTMLElement && e.target.isContentEditable) &&
+        !document.querySelector('[role="dialog"]')
+      ) {
+        e.preventDefault();
+        setDashboardVisible(false);
+        return;
+      }
+
       // Handle Command/Ctrl key press for voice activation (only when Cmd is pressed alone)
       // This should NOT trigger for Cmd+letter combinations
       // Only enable when voice control alpha feature is enabled
@@ -226,7 +242,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode, isDashboardMode, isDashboardVisible, setDashboardVisible]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {

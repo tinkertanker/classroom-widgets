@@ -16,6 +16,10 @@ type DashboardInteractiveRegion = {
   height: number;
 };
 
+type DashboardGlassRegion = DashboardInteractiveRegion & {
+  radius: number;
+};
+
 declare global {
   interface Window {
     classroomDashboard?: DashboardBridge;
@@ -42,6 +46,14 @@ const DASHBOARD_INTERACTIVE_SELECTOR = [
   '.delete-button'
 ].join(', ');
 
+// Surfaces that get a native NSVisualEffectView blur behind the window,
+// so the real desktop shows through (CSS backdrop-filter can only blur
+// other web content, never what's behind the transparent window).
+const DASHBOARD_GLASS_SELECTOR = [
+  '.widget-surface[data-dashboard-glass="true"]',
+  '[role="dialog"]'
+].join(', ');
+
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
 
@@ -50,6 +62,9 @@ function isEditableTarget(target: EventTarget | null) {
   );
 }
 
+const supportsCheckVisibility =
+  typeof Element !== 'undefined' && 'checkVisibility' in Element.prototype;
+
 function isElementInteractable(element: Element) {
   // pointer-events is inherited and can be re-enabled by descendants
   // (e.g. .toolbar-container and .toolbar-content disable it, the buttons
@@ -57,6 +72,12 @@ function isElementInteractable(element: Element) {
   // meaningful — an ancestor's 'none' must not disqualify the element.
   if (window.getComputedStyle(element).pointerEvents === 'none') {
     return false;
+  }
+
+  // Single native call instead of a getComputedStyle walk per ancestor;
+  // this runs for every tracked element on every region update.
+  if (supportsCheckVisibility) {
+    return element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
   }
 
   let current: Element | null = element;
@@ -137,7 +158,27 @@ export function useDesktopDashboardMode() {
         }));
     };
 
+    const collectGlassRegions = (): DashboardGlassRegion[] => {
+      if (!isDashboardVisible) return [];
+
+      return Array.from(document.querySelectorAll(DASHBOARD_GLASS_SELECTOR))
+        .filter(isElementInteractable)
+        .map((element) => ({
+          rect: element.getBoundingClientRect(),
+          radius: parseFloat(window.getComputedStyle(element).borderTopLeftRadius) || 0
+        }))
+        .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+        .map(({ rect, radius }) => ({
+          x: rect.left,
+          y: rect.top,
+          width: rect.width,
+          height: rect.height,
+          radius
+        }));
+    };
+
     let lastPublishedKey: string | null = null;
+    let lastPublishedGlassKey: string | null = null;
 
     const publishRegions = () => {
       frame = 0;
@@ -145,13 +186,26 @@ export function useDesktopDashboardMode() {
       const key = regions
         .map((region) => `${region.x},${region.y},${region.width},${region.height}`)
         .join(';');
-      if (key === lastPublishedKey) return;
-      lastPublishedKey = key;
-      setInteractiveRegions(regions);
-      window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
-        type: 'interactive-regions-changed',
-        regions
-      });
+      if (key !== lastPublishedKey) {
+        lastPublishedKey = key;
+        setInteractiveRegions(regions);
+        window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+          type: 'interactive-regions-changed',
+          regions
+        });
+      }
+
+      const glassRegions = collectGlassRegions();
+      const glassKey = glassRegions
+        .map((region) => `${region.x},${region.y},${region.width},${region.height},${region.radius}`)
+        .join(';');
+      if (glassKey !== lastPublishedGlassKey) {
+        lastPublishedGlassKey = glassKey;
+        window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+          type: 'glass-regions-changed',
+          regions: glassRegions
+        });
+      }
     };
 
     const schedulePublish = () => {
@@ -163,6 +217,9 @@ export function useDesktopDashboardMode() {
     window.addEventListener('resize', schedulePublish);
     window.addEventListener('scroll', schedulePublish, true);
     document.addEventListener('transitionend', schedulePublish, true);
+    // The widget entrance/exit effects are CSS animations, not transitions;
+    // without this the published rects go stale after each show.
+    document.addEventListener('animationend', schedulePublish, true);
 
     const resizeObserver = new ResizeObserver(schedulePublish);
     resizeObserver.observe(document.documentElement);
@@ -184,6 +241,7 @@ export function useDesktopDashboardMode() {
       window.removeEventListener('resize', schedulePublish);
       window.removeEventListener('scroll', schedulePublish, true);
       document.removeEventListener('transitionend', schedulePublish, true);
+      document.removeEventListener('animationend', schedulePublish, true);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
     };

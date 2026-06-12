@@ -5,6 +5,9 @@ import WebKit
 final class DashboardWindowController: NSWindowController, WKNavigationDelegate {
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
+    private let backdropContainer = NSView()
+    private var glassBackdropViews: [NSVisualEffectView] = []
+    private var glassRegions: [DashboardGlassRegion] = []
     private var dashboardVisible: Bool
     private var interactiveRegions: [CGRect] = []
     private var localMouseMonitor: Any?
@@ -44,7 +47,19 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
         window.hasShadow = false
         window.level = .floating
         window.ignoresMouseEvents = !dashboardVisible
-        window.contentView = webView
+
+        // The backdrop layer sits behind the (transparent) web view and hosts
+        // NSVisualEffectViews aligned with the web layer's glass surfaces, so
+        // widgets get a real desktop blur that CSS backdrop-filter cannot do.
+        let contentView = NSView()
+        window.contentView = contentView
+        backdropContainer.frame = contentView.bounds
+        backdropContainer.autoresizingMask = [.width, .height]
+        backdropContainer.alphaValue = dashboardVisible ? 1 : 0
+        contentView.addSubview(backdropContainer)
+        webView.frame = contentView.bounds
+        webView.autoresizingMask = [.width, .height]
+        contentView.addSubview(webView)
 
         super.init(window: window)
         webView.navigationDelegate = self
@@ -61,6 +76,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
             guard let self else { return }
             self.interactiveRegions = regions
             self.updateMousePassthrough()
+        }
+        scriptMessageHandler.onGlassRegionsChanged = { [weak self] regions in
+            guard let self else { return }
+            self.glassRegions = regions
+            self.updateGlassBackdrops()
         }
         webView.configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
         loadDashboard()
@@ -151,11 +171,13 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
 
         guard dashboardVisible else {
             window.ignoresMouseEvents = true
+            setBackdropsVisible(false)
             scheduleOrderOut(window)
             return
         }
 
         hideGeneration += 1
+        setBackdropsVisible(true)
         if !window.isVisible {
             window.makeKeyAndOrderFront(nil)
         }
@@ -234,6 +256,70 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
         let pointInWindow = window.convertPoint(fromScreen: screenPoint)
         let webPoint = CGPoint(x: pointInWindow.x, y: webView.bounds.height - pointInWindow.y)
         window.ignoresMouseEvents = !interactiveRegions.contains { $0.contains(webPoint) }
+    }
+
+    private func updateGlassBackdrops() {
+        while glassBackdropViews.count < glassRegions.count {
+            let view = NSVisualEffectView()
+            view.blendingMode = .behindWindow
+            view.material = .popover
+            view.state = .active
+            backdropContainer.addSubview(view)
+            glassBackdropViews.append(view)
+        }
+
+        while glassBackdropViews.count > glassRegions.count {
+            glassBackdropViews.removeLast().removeFromSuperview()
+        }
+
+        // Web rects are top-left origin; AppKit views are bottom-left.
+        let containerHeight = backdropContainer.bounds.height
+        for (view, region) in zip(glassBackdropViews, glassRegions) {
+            view.frame = CGRect(
+                x: region.rect.minX,
+                y: containerHeight - region.rect.minY - region.rect.height,
+                width: region.rect.width,
+                height: region.rect.height
+            )
+            // maskImage (not layer.cornerRadius) is what clips the
+            // behind-window blur region, per NSVisualEffectView docs.
+            view.maskImage = maskImage(cornerRadius: region.radius)
+        }
+    }
+
+    private var maskImageCache: [CGFloat: NSImage] = [:]
+
+    private func maskImage(cornerRadius radius: CGFloat) -> NSImage? {
+        guard radius > 0 else { return nil }
+
+        if let cached = maskImageCache[radius] {
+            return cached
+        }
+
+        let edge = radius * 2 + 1
+        let image = NSImage(size: NSSize(width: edge, height: edge), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+        image.resizingMode = .stretch
+        maskImageCache[radius] = image
+        return image
+    }
+
+    // Fading the backdrops (slow in, fast out) hides that they sit at the
+    // widgets' final positions while the web layer plays its entrance and
+    // exit animations.
+    private func setBackdropsVisible(_ visible: Bool) {
+        let target: CGFloat = visible ? 1 : 0
+        guard backdropContainer.alphaValue != target else { return }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = visible ? 0.45 : 0.18
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            backdropContainer.animator().alphaValue = target
+        }
     }
 
     private func loadDashboard() {

@@ -31,11 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     )
     private lazy var settingsWindowCoordinator = SettingsWindowCoordinator { [weak self] in
-        guard let self else {
-            return NSView()
-        }
-
-        return NSHostingView(rootView: DashboardSettingsView(context: self.settingsContext))
+        self?.settingsContext
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
