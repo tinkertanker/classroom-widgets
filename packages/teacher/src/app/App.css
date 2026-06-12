@@ -139,9 +139,16 @@ html.desktop-dashboard-mode .board-scale-wrapper {
 
 html.desktop-dashboard-mode .widget-wrapper {
   filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.22));
+  transition: opacity 260ms ease;
 }
 
 html.desktop-dashboard-mode .widget-wrapper > .widget-surface {
+  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Scoped to the visible state so the entrance replays on every show and the
+   animation fill stops overriding the hidden-state transform below. */
+html.desktop-dashboard-visible .widget-wrapper > .widget-surface {
   animation: desktop-widget-depth-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -227,6 +234,47 @@ html.desktop-dashboard-mode .widget-wrapper > .widget-surface[data-dashboard-gla
     opacity: 1;
     transform: translateY(0) scale(1) rotateX(0deg);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.desktop-dashboard-mode .widget-wrapper,
+  html.desktop-dashboard-mode .widget-wrapper > .widget-surface,
+  html.desktop-dashboard-visible .widget-wrapper > .widget-surface,
+  html.desktop-dashboard-mode .toolbar-container {
+    animation: none;
+    transition: none;
+  }
+
+  html.desktop-dashboard-hidden .widget-wrapper > .widget-surface,
+  html.desktop-dashboard-hidden [role="dialog"] {
+    transform: none;
+  }
+}
+
+/* Native macOS apps use the system font, the arrow cursor over UI chrome, and
+   don't let labels be text-selected or images dragged. Scoped to the desktop
+   dashboard so the browser app keeps its own look. Tailwind's select-* utilities
+   still win over the inherited value where selection is wanted. */
+html.desktop-dashboard-mode body,
+html.desktop-dashboard-mode .font-sans {
+  font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Helvetica Neue', sans-serif;
+}
+
+html.desktop-dashboard-mode body {
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html.desktop-dashboard-mode input,
+html.desktop-dashboard-mode textarea,
+html.desktop-dashboard-mode [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+html.desktop-dashboard-mode img {
+  -webkit-user-drag: none;
 }
 
 /* Toolbar content wrapper also needs to pass through clicks in padding areas */

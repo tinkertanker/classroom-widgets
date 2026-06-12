@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DashboardDefaults.register()
         NSApp.setActivationPolicy(.accessory)
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
+        setupMainMenu()
 
         let controller = DashboardWindowController()
         controller.onVisibilityChanged = { [weak self] _ in
@@ -63,6 +64,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         hotKeys.removeAll()
+    }
+
+    // Accessory apps have no visible menu bar, but NSApp.mainMenu still routes
+    // key equivalents. Without it, Cmd+C/V/X/Z/A never reach the web view's
+    // text fields and Cmd+W cannot close the Settings window.
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
+        appMenu.addItem(aboutItem)
+        appMenu.addItem(.separator())
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        appMenu.addItem(settingsItem)
+        appMenu.addItem(.separator())
+        appMenu.addItem(NSMenuItem(title: "Hide Classroom Widgets", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
+        appMenu.addItem(NSMenuItem(title: "Quit Classroom Widgets", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"))
+        editMenu.addItem(NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "Z"))
+        editMenu.addItem(.separator())
+        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
+        let windowMenuItem = NSMenuItem()
+        let windowMenu = NSMenu(title: "Window")
+        let closeItem = NSMenuItem(title: "Close Window", action: #selector(closeFrontWindow), keyEquivalent: "w")
+        closeItem.target = self
+        windowMenu.addItem(closeItem)
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+
+        NSApp.mainMenu = mainMenu
     }
 
     private func setupStatusItem() {
@@ -251,6 +296,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func reloadDashboard() {
         controller?.reloadDashboard()
+    }
+
+    @objc private func closeFrontWindow() {
+        guard let keyWindow = NSApp.keyWindow else {
+            NSSound.beep()
+            return
+        }
+
+        // The borderless dashboard window has no close button, so Cmd+W hides
+        // the dashboard instead of beeping.
+        if keyWindow is DashboardWindow {
+            if controller?.isDashboardVisible == true {
+                controller?.toggleDashboard()
+                updateStatusMenu()
+            }
+            return
+        }
+
+        keyWindow.performClose(nil)
     }
 
     @objc private func showSettings() {

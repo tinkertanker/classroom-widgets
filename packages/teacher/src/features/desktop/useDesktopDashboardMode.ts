@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 
 type DashboardBridge = {
   setVisible: (visible: boolean) => void;
@@ -187,6 +188,22 @@ export function useDesktopDashboardMode() {
       mutationObserver.disconnect();
     };
   }, [isDashboardMode, isDashboardVisible]);
+
+  // WKWebView reports the macOS appearance through prefers-color-scheme, so
+  // the desktop overlay follows the system (including automatic light/dark
+  // switching) instead of the manually toggled in-app theme.
+  useEffect(() => {
+    if (!isDashboardMode) return;
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const applySystemTheme = () => {
+      useWorkspaceStore.getState().setTheme(media.matches ? 'dark' : 'light');
+    };
+
+    applySystemTheme();
+    media.addEventListener('change', applySystemTheme);
+    return () => media.removeEventListener('change', applySystemTheme);
+  }, [isDashboardMode]);
 
   useEffect(() => {
     if (!isDashboardMode) return;

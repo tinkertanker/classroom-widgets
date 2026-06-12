@@ -11,6 +11,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
     private var globalMouseMonitor: Any?
     private var pendingWidgetLauncherOpen = false
     private var widgetLauncherOpenAttemptInFlight = false
+    private var hideGeneration = 0
     var isDashboardVisible: Bool { dashboardVisible }
     var onVisibilityChanged: (@MainActor (Bool) -> Void)?
 
@@ -150,10 +151,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
 
         guard dashboardVisible else {
             window.ignoresMouseEvents = true
-            window.orderOut(nil)
+            scheduleOrderOut(window)
             return
         }
 
+        hideGeneration += 1
         if !window.isVisible {
             window.makeKeyAndOrderFront(nil)
         }
@@ -162,6 +164,24 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate 
 
         if activateApp {
             NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    // Keep the window on screen briefly while the web layer plays its exit
+    // animation; mouse events are already disabled so the overlay is inert.
+    private func scheduleOrderOut(_ window: NSWindow) {
+        guard window.isVisible else {
+            window.orderOut(nil)
+            return
+        }
+
+        hideGeneration += 1
+        let generation = hideGeneration
+
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard let self, self.hideGeneration == generation, !self.dashboardVisible else { return }
+            self.window?.orderOut(nil)
         }
     }
 
