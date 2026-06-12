@@ -108,6 +108,10 @@ let lastPersistedZustandValue: string | null = null;
 // drag stops. Batch rapid updates and write at most once per window.
 const PERSIST_DEBOUNCE_MS = 300;
 let pendingPersistValue: string | null = null;
+// Workspace the pending value belongs to, captured when the write is queued:
+// another window can change currentWorkspaceId in localStorage before the
+// flush fires, and the value must not be written under the new id
+let pendingPersistWorkspaceId: string | null = null;
 let persistTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 function flushPendingPersist(): void {
@@ -117,8 +121,10 @@ function flushPendingPersist(): void {
   }
   if (pendingPersistValue !== null) {
     const value = pendingPersistValue;
+    const workspaceId = pendingPersistWorkspaceId;
     pendingPersistValue = null;
-    writeStorageValue(value);
+    pendingPersistWorkspaceId = null;
+    writeStorageValue(value, workspaceId);
   }
 }
 
@@ -129,8 +135,12 @@ function loadStorageSynced() {
   return loadStorage();
 }
 
+// Flush on every leave-the-page signal we can get. A hard kill (crash, power
+// loss, native app terminating the webview) can still lose up to
+// PERSIST_DEBOUNCE_MS of changes — an accepted trade-off
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', flushPendingPersist);
+  window.addEventListener('beforeunload', flushPendingPersist);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       flushPendingPersist();
@@ -217,13 +227,21 @@ const workspaceStorage: StateStorage = {
     }
 
     pendingPersistValue = value;
+    try {
+      pendingPersistWorkspaceId = useWorkspaceStore.getState().currentWorkspaceId || null;
+    } catch {
+      // Store not constructed yet (persist can fire during creation)
+      pendingPersistWorkspaceId = null;
+    }
     if (persistTimeoutId === null) {
       persistTimeoutId = setTimeout(() => {
         persistTimeoutId = null;
         if (pendingPersistValue !== null) {
           const pending = pendingPersistValue;
+          const workspaceId = pendingPersistWorkspaceId;
           pendingPersistValue = null;
-          writeStorageValue(pending);
+          pendingPersistWorkspaceId = null;
+          writeStorageValue(pending, workspaceId);
         }
       }, PERSIST_DEBOUNCE_MS);
     }
@@ -235,13 +253,14 @@ const workspaceStorage: StateStorage = {
       persistTimeoutId = null;
     }
     pendingPersistValue = null;
+    pendingPersistWorkspaceId = null;
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
     lastPersistedZustandValue = null;
   }
 };
 
-function writeStorageValue(value: string): void {
+function writeStorageValue(value: string, capturedWorkspaceId?: string | null): void {
     if (value === lastPersistedZustandValue) {
       return;
     }
@@ -265,8 +284,9 @@ function writeStorageValue(value: string): void {
         v2Data = createDefaultStorageV2();
       }
 
-      // Update current workspace with new state
-      const currentWorkspaceId = v2Data.currentWorkspaceId;
+      // Update the workspace the value was captured for; fall back to the
+      // pointer in storage when no id was captured (e.g. during startup)
+      const currentWorkspaceId = capturedWorkspaceId || v2Data.currentWorkspaceId;
       const currentWorkspace = v2Data.workspaces[currentWorkspaceId] ||
         createDefaultWorkspace(currentWorkspaceId);
 
@@ -379,7 +399,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       type,
       position: position || { x: 100 + get().widgets.length * 20, y: 100 + get().widgets.length * 20 },
       size: config?.defaultSize || { width: 350, height: 350 },
-      zIndex: get().widgets.length
+      // Max + 1 (not array length): removals leave gaps, and a new widget
+      // must always land on top of existing ones
+      zIndex: get().widgets.reduce((max, w) => Math.max(max, w.zIndex), -1) + 1
     };
 
     // Update recent widgets: move this type to the front, remove duplicates, limit to N
@@ -429,10 +451,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       if (widgetIndex === -1) {
         return { focusedWidgetId: widgetId };
       }
-      // Already on top: skip the array rebuild (and the persist write it
-      // would trigger) — this runs on every click inside a widget
-      if (widgetIndex === state.widgets.length - 1) {
-        return state.focusedWidgetId === widgetId ? {} : { focusedWidgetId: widgetId };
+      // Already on top: skip the reorder — this runs on every click inside a
+      // widget. "Last in array" alone isn't enough: persisted workspaces (and
+      // historical addWidget behavior) can hold gapped or out-of-order
+      // zIndexes, so require fully normalized values before skipping
+      if (
+        widgetIndex === state.widgets.length - 1 &&
+        state.widgets.every((w, i) => w.zIndex === i)
+      ) {
+        return state.focusedWidgetId === widgetId ? state : { focusedWidgetId: widgetId };
       }
       const reordered = [...state.widgets];
       const [moved] = reordered.splice(widgetIndex, 1);

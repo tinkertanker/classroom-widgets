@@ -339,8 +339,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         try {
           const response = await new Promise<any>((resolve, reject) => {
-            // Set up timeout for this attempt
+            // Set up timeout for this attempt; detach the abort listener on
+            // this path too — the signal is shared across retry attempts
             const timeoutId = setTimeout(() => {
+              signal.removeEventListener('abort', abortHandler);
               reject(new Error(`Recovery attempt ${attempt} timed out`));
             }, RECOVERY_TIMEOUT);
 
@@ -349,7 +351,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               clearTimeout(timeoutId);
               reject(new Error('Aborted'));
             };
-            signal.addEventListener('abort', abortHandler);
+            signal.addEventListener('abort', abortHandler, { once: true });
 
             // Attempt to rejoin session
             socket.emit('session:create', { existingCode: sessionCode }, (result: any) => {

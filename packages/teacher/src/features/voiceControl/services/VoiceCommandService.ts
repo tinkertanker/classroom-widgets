@@ -66,7 +66,11 @@ export class VoiceCommandService {
           confidence: 0
         },
         feedback: {
-          message: error instanceof Error ? error.message : 'Failed to process voice command',
+          // A timed-out fetch rejects with a DOMException whose raw message
+          // ("signal timed out") would otherwise be shown to the teacher
+          message: error instanceof DOMException && error.name === 'TimeoutError'
+            ? 'Voice command timed out — is the server running?'
+            : error instanceof Error ? error.message : 'Failed to process voice command',
           type: 'error',
           shouldSpeak: false
         }
