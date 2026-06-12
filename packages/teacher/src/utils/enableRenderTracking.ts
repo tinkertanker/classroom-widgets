@@ -32,7 +32,7 @@ export function enableRenderTracking() {
       // Log functional component renders
       debug(`[Render] ${args[0].name}`);
     }
-    return originalCreateElement.apply(React, args);
+    return originalCreateElement.apply(React, args as Parameters<typeof React.createElement>);
   } as typeof React.createElement;
 }
 
