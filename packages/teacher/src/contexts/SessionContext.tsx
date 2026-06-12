@@ -253,13 +253,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Helper function for delay with abort support
   const delay = (ms: number, signal?: AbortSignal): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(resolve, ms);
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-          reject(new Error('Aborted'));
-        });
-      }
+      const onAbort = () => {
+        clearTimeout(timeout);
+        reject(new Error('Aborted'));
+      };
+      // Detach the abort listener once the delay completes — recovery retries
+      // reuse the same signal, so leaked listeners would accumulate and fire
+      // stale rejections on a later abort
+      const timeout = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      signal?.addEventListener('abort', onAbort, { once: true });
     });
   };
 
