@@ -1,6 +1,11 @@
 import { VoiceCommandRequest, VoiceCommandResponse, VoiceContext } from '../types/voiceControl';
 import { debug } from '@shared/utils/debug';
 
+// LLM fallback (Ollama) usually answers in under a second, but a wedged
+// backend would otherwise leave the voice UI waiting forever
+const COMMAND_TIMEOUT_MS = 15000;
+const HEALTH_CHECK_TIMEOUT_MS = 5000;
+
 export class VoiceCommandService {
   private baseUrl: string;
 
@@ -33,7 +38,8 @@ export class VoiceCommandService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
+        signal: AbortSignal.timeout(COMMAND_TIMEOUT_MS)
       });
 
       if (!response.ok) {
@@ -89,7 +95,9 @@ export class VoiceCommandService {
    */
   async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/voice-command/health`);
+      const response = await fetch(`${this.baseUrl}/voice-command/health`, {
+        signal: AbortSignal.timeout(HEALTH_CHECK_TIMEOUT_MS)
+      });
       return response.ok;
     } catch (error) {
       debug.error('Voice command service health check failed:', error);

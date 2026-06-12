@@ -201,11 +201,10 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
       const x = MARGIN + col * (Math.max(size.width, 350) + SPACING);
       const y = currentY;
 
-      // Add the widget at the calculated position
-      // Use setTimeout to ensure unique timestamps even with the improved ID generation
-      setTimeout(() => {
-        addWidget(config.type, { x, y });
-      }, index * 10); // Small delay between each widget
+      // Add the widget at the calculated position. Widget IDs include a
+      // random suffix, so synchronous adds are safe — staggered timers would
+      // also pile up across repeated invocations and outlive unmount
+      addWidget(config.type, { x, y });
     });
 
     // Calculate total area needed
@@ -307,7 +306,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
               <WidgetButton
                 key={config!.type}
                 config={config!}
-                onClick={() => handleAddWidget(config!.type)}
+                onSelect={handleAddWidget}
                 className={clsx(
                   stickerMode ? 'opacity-50 cursor-not-allowed' : '',
                   'flex-shrink-0'
