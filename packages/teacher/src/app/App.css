@@ -272,7 +272,7 @@ html.dark.desktop-dashboard-mode
    still win over the inherited value where selection is wanted. */
 html.desktop-dashboard-mode body,
 html.desktop-dashboard-mode .font-sans {
-  font-family: -apple-system, BlinkMacSystemFont, system-ui, 'Helvetica Neue', sans-serif;
+  font-family: ui-rounded, -apple-system, BlinkMacSystemFont, system-ui, 'Helvetica Neue', sans-serif;
 }
 
 html.desktop-dashboard-mode body {
