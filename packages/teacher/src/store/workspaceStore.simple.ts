@@ -179,6 +179,7 @@ const workspaceStorage: StateStorage = {
                 layoutFormat: currentWorkspace.layoutFormat || 'canvas',
                 theme: v2Data.globalSettings.theme,
                 bottomBar: (v2Data.globalSettings as any).bottomBar || (v2Data.globalSettings as any).toolbar,
+                classEndTime: v2Data.globalSettings.classEndTime ?? null,
                 sessionCode: v2Data.session.code,
                 sessionCreatedAt: v2Data.session.createdAt
               },
@@ -312,7 +313,8 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
       // Update global settings
       v2Data.globalSettings = {
         theme: state.theme || 'light',
-        bottomBar: state.bottomBar || defaultBottomBar
+        bottomBar: state.bottomBar || defaultBottomBar,
+        classEndTime: state.classEndTime ?? null
       };
 
       // Update session
