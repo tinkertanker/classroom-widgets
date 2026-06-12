@@ -239,4 +239,6 @@ const Background: React.FC<BackgroundProps> = ({ type }) => {
   }
 };
 
-export default Background;
+// Memoized: Board re-renders on every zoom/scale change, and the SVG/gradient
+// layers are expensive to reconcile when neither `type` nor dark mode changed
+export default React.memo(Background);

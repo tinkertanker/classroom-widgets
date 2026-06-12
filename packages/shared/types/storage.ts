@@ -125,6 +125,8 @@ export interface StoredBottomBarConfig {
 export interface GlobalSettings {
   theme: 'light' | 'dark';
   bottomBar: StoredBottomBarConfig;
+  /** Class end time shown by the toolbar clock (epoch ms), null when unset */
+  classEndTime?: number | null;
 }
 
 /**

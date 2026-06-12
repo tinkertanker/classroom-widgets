@@ -27,7 +27,7 @@ import {
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
-import { WidgetType, WidgetConfig, WidgetCategory, Size, ColumnSizing } from '@shared/types';
+import { WidgetType, WidgetConfig, WidgetCategory, WidgetFeatures, Size, ColumnSizing } from '@shared/types';
 import { WIDGET_TYPES } from '@shared/constants/widgetTypes';
 
 // Preload all widget chunks immediately so they're browser-cached
@@ -649,7 +649,7 @@ export class WidgetRegistry {
     return this.get(type)?.networked?.roomType;
   }
 
-  hasFeature(type: WidgetType, feature: keyof import('../shared/types').WidgetFeatures): boolean {
+  hasFeature(type: WidgetType, feature: keyof WidgetFeatures): boolean {
     return this.get(type)?.features?.[feature] || false;
   }
 
@@ -657,7 +657,7 @@ export class WidgetRegistry {
     return this.getByCategory(WidgetCategory.NETWORKED);
   }
 
-  getWidgetsByFeature(feature: keyof import('../shared/types').WidgetFeatures): WidgetConfig[] {
+  getWidgetsByFeature(feature: keyof WidgetFeatures): WidgetConfig[] {
     return this.getAll().filter(widget => widget.features?.[feature]);
   }
 

@@ -23,7 +23,7 @@ export function useVolumeAnalyzer({
 }: UseVolumeAnalyzerOptions) {
   const [volume, setVolume] = useState(0);
   const volumeHistoryRef = useRef<number[]>([]);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const isCooldownRef = useRef(isInCooldown);
   const onThresholdExceededRef = useRef(onThresholdExceeded);
 

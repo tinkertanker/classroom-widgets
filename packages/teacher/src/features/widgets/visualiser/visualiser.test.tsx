@@ -35,7 +35,7 @@ describe('Visualiser', () => {
     if (originalSrcObjectDescriptor) {
       Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', originalSrcObjectDescriptor);
     } else {
-      delete (HTMLMediaElement.prototype as HTMLMediaElement & { srcObject?: MediaStream }).srcObject;
+      delete (HTMLMediaElement.prototype as { srcObject?: MediaStream }).srcObject;
     }
   });
 
