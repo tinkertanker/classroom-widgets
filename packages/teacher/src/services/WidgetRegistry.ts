@@ -258,7 +258,10 @@ export class WidgetRegistry {
       columnSizing: 'aspect-ratio',
       features: {
         requiresApiKey: true,
-        isResizable: true
+        isResizable: true,
+        // Needs a build-time Short.io key (VITE_SHORTIO_API_KEY); without one
+        // the widget can only show an error, so keep it out of the launcher.
+        hidden: !import.meta.env.VITE_SHORTIO_API_KEY
       }
     });
 
