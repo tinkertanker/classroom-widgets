@@ -163,7 +163,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let reloadItem = NSMenuItem(title: "Reload Dashboard", action: #selector(reloadDashboard), keyEquivalent: "r")
+        // No key equivalent: Cmd+R is far too generic for a global-ish menu
+        // item, and the web process now auto-reloads on crash, so this is just
+        // a manual recovery valve.
+        let reloadItem = NSMenuItem(title: "Reload Dashboard", action: #selector(reloadDashboard), keyEquivalent: "")
         reloadItem.target = self
         menu.addItem(reloadItem)
 

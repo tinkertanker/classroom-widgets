@@ -19,7 +19,7 @@ enum DashboardSettingKeys {
 }
 
 enum DashboardDefaults {
-    static let toggleShortcutKeyCode = Int(kVK_Space)
+    static let toggleShortcutKeyCode = Int(kVK_ANSI_D)
     static let launcherShortcutKeyCode = Int(kVK_ANSI_K)
     static let settingsShortcutKeyCode = Int(kVK_ANSI_Comma)
     static let shortcutModifiers = Int(NSEvent.ModifierFlags([.command, .option]).rawValue)

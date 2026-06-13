@@ -54,14 +54,6 @@ const DASHBOARD_GLASS_SELECTOR = [
   '[role="dialog"]'
 ].join(', ');
 
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-
-  return Boolean(
-    target.closest('input, textarea, select, [contenteditable="true"]')
-  );
-}
-
 const supportsCheckVisibility =
   typeof Element !== 'undefined' && 'checkVisibility' in Element.prototype;
 
@@ -301,21 +293,9 @@ export function useDesktopDashboardMode() {
     return () => window.cancelAnimationFrame(frame);
   }, [isDashboardMode]);
 
-  useEffect(() => {
-    if (!isDashboardMode) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return;
-
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.code === 'Space') {
-        event.preventDefault();
-        toggle();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDashboardMode, toggle]);
+  // Toggling is owned by the native global hotkey (default ⌥⌘D). A duplicate
+  // web handler on the same combo would double-fire while the overlay is
+  // focused (both fire, cancelling out), so there is intentionally none here.
 
   useEffect(() => {
     if (!isDashboardMode) return;
