@@ -22,6 +22,7 @@ import { clsx } from 'clsx';
 import { useWorkspace, useTheme, useBottomBar } from '@shared/hooks/useWorkspace';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useWidgets } from '@shared/hooks/useWidget';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { BackgroundType } from '@shared/types';
 import { dropdownContainer, zIndex } from '@shared/utils/styles';
 import { MenuItem, MenuDivider, MenuSectionHeader } from '../../../components/ui';
@@ -41,6 +42,9 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
 
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
   const voiceControlEnabled = bottomBar.voiceControlEnabled ?? false;
+  // In the macOS overlay the theme follows the system appearance, so a manual
+  // toggle here would just get reverted on the next appearance change.
+  const isDashboardMode = isDesktopDashboardMode();
 
   const handleToggleVoiceControl = () => {
     updateBottomBar({ voiceControlEnabled: !voiceControlEnabled });
@@ -97,19 +101,22 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
   return (
     <div
       ref={menuRef}
+      role="menu"
       className={clsx(
         'absolute right-4 bottom-16 min-w-[200px] py-2',
         dropdownContainer,
         zIndex.hudDropdown
       )}
     >
-      {/* Theme Toggle */}
-      <MenuItem
-        onClick={toggleTheme}
-        icon={theme === 'light' ? FaMoon : FaSun}
-      >
-        {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-      </MenuItem>
+      {/* Theme Toggle - hidden in the macOS overlay where the system drives it */}
+      {!isDashboardMode && (
+        <MenuItem
+          onClick={toggleTheme}
+          icon={theme === 'light' ? FaMoon : FaSun}
+        >
+          {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+        </MenuItem>
+      )}
 
       {/* Layout Format Toggle */}
       <MenuItem

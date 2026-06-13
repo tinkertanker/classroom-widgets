@@ -78,7 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsItem.target = self
         appMenu.addItem(settingsItem)
         appMenu.addItem(.separator())
-        appMenu.addItem(NSMenuItem(title: "Hide Classroom Widgets", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
+        // No app-level "Hide" (Cmd+H): for a menu-bar accessory app with the
+        // status icon optionally hidden, hiding every window can strand the
+        // user with no way back. Cmd+W hides the dashboard instead.
         appMenu.addItem(NSMenuItem(title: "Quit Classroom Widgets", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
@@ -306,6 +308,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if controller?.isDashboardVisible == true {
                 controller?.toggleDashboard()
                 updateStatusMenu()
+            } else {
+                // Already hiding (window lingers briefly for the exit
+                // animation) — nothing to close.
+                NSSound.beep()
             }
             return
         }

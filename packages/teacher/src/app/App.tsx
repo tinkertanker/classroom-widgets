@@ -160,7 +160,11 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if not typing in an input field
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
         return;
       }
 
@@ -179,15 +183,17 @@ function App() {
       }
 
       // In the macOS desktop overlay, Escape dismisses the dashboard like
-      // Mission Control/Launchpad - but only when nothing else claims it
-      // (open modals handle Escape themselves, sticker mode returns above).
+      // Mission Control/Launchpad - but only when nothing else claims it:
+      // open modals and menus handle Escape themselves, the voice overlay is
+      // open, sticker mode returned above, or text is being edited.
       if (
         isDashboardMode &&
         isDashboardVisible &&
         e.key === 'Escape' &&
         !e.defaultPrevented &&
+        !isVoiceControlActive &&
         !(e.target instanceof HTMLElement && e.target.isContentEditable) &&
-        !document.querySelector('[role="dialog"]')
+        !document.querySelector('[role="dialog"], [role="menu"]')
       ) {
         e.preventDefault();
         setDashboardVisible(false);
@@ -242,7 +248,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode, isDashboardMode, isDashboardVisible, setDashboardVisible]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode, isDashboardMode, isDashboardVisible, setDashboardVisible, isVoiceControlActive]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {

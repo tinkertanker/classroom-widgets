@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import Combine
 import SwiftUI
 
 enum DashboardSettingKeys {
@@ -182,6 +183,12 @@ struct DashboardGeneralSettingsView: View {
         .formStyle(.grouped)
         .frame(width: 560, height: 500)
         .task {
+            syncLaunchAtLoginState()
+        }
+        // The Settings window is reused (orderOut, not closed), so .task runs
+        // only once. Re-read the login-item state whenever the window comes
+        // back to the front, in case it changed via the menu or System Settings.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             syncLaunchAtLoginState()
         }
         .onChange(of: windowBehaviorSignature) { _ in context.windowBehaviorChanged() }

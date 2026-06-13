@@ -143,6 +143,16 @@ export function useDesktopDashboardMode() {
 
     let frame = 0;
 
+    // Native positions views and hit-tests from these rects; integer pixels
+    // are enough precision and stop sub-pixel float churn from spamming the
+    // bridge on every layout tick.
+    const roundRect = (rect: DOMRect) => ({
+      x: Math.round(rect.left),
+      y: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
+    });
+
     const collectRegions = () => {
       if (!isDashboardVisible) return [];
 
@@ -150,30 +160,41 @@ export function useDesktopDashboardMode() {
         .filter(isElementInteractable)
         .map((element) => element.getBoundingClientRect())
         .filter((rect) => rect.width > 0 && rect.height > 0)
-        .map((rect) => ({
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height
-        }));
+        .map(roundRect);
     };
 
-    const collectGlassRegions = (): DashboardGlassRegion[] => {
-      if (!isDashboardVisible) return [];
+    // Returns null to mean "leave the native backdrops as they are" — distinct
+    // from [] ("remove them"). We never send [] on hide so the native side can
+    // fade its existing blur out instead of having it yanked mid-animation.
+    const collectGlassRegions = (): DashboardGlassRegion[] | null => {
+      if (!isDashboardVisible) return null;
 
-      return Array.from(document.querySelectorAll(DASHBOARD_GLASS_SELECTOR))
-        .filter(isElementInteractable)
+      // Behind-window blur is expensive to recomposite, so don't reposition it
+      // every frame of a drag; the post-drop DOM settle publishes the final
+      // positions.
+      if (useWorkspaceStore.getState().dragState.isDragging) return null;
+
+      const elements = Array.from(document.querySelectorAll(DASHBOARD_GLASS_SELECTOR))
+        .filter(isElementInteractable);
+
+      // A surface mid entrance/scale animation reports a transformed rect, so
+      // publishing now would place the blur displaced and then snap it. Defer
+      // until it settles — animationend reschedules a publish (and reduced
+      // motion has no running animation, so this publishes immediately).
+      const animating = elements.some((element) =>
+        element.getAnimations().some((animation) => animation.playState === 'running')
+      );
+      if (animating) return null;
+
+      return elements
         .map((element) => ({
           rect: element.getBoundingClientRect(),
           radius: parseFloat(window.getComputedStyle(element).borderTopLeftRadius) || 0
         }))
         .filter(({ rect }) => rect.width > 0 && rect.height > 0)
         .map(({ rect, radius }) => ({
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height,
-          radius
+          ...roundRect(rect),
+          radius: Math.round(radius)
         }));
     };
 
@@ -196,6 +217,7 @@ export function useDesktopDashboardMode() {
       }
 
       const glassRegions = collectGlassRegions();
+      if (glassRegions === null) return;
       const glassKey = glassRegions
         .map((region) => `${region.x},${region.y},${region.width},${region.height},${region.radius}`)
         .join(';');

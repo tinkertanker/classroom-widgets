@@ -121,7 +121,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
       // Only apply transitions when NOT dragging - transitions cause input lag during drag
       'transition-all duration-200': !isBeingDragged && !isResizing,
       'ring-2 ring-sage-500': isBeingDragged && !isTransparent,
-      'hover:scale-[1.01]': !isBeingDragged && !isTransparent
+      // No hover scale in the macOS overlay: the scaled rect wouldn't match the
+      // interactive/glass regions published to native, leaving the blur edge and
+      // click-through ring misaligned for the whole hover.
+      'hover:scale-[1.01]': !isBeingDragged && !isTransparent && !isDashboardMode
     }
   );
 

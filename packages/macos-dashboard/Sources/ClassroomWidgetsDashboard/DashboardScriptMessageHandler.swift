@@ -13,6 +13,14 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
     var onGlassRegionsChanged: (@MainActor ([DashboardGlassRegion]) -> Void)?
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        // The user script is injected into all frames, so only honour messages
+        // from a frame actually served by our bundle. Combined with the
+        // navigation policy (which keeps foreign content out of the web view),
+        // this stops any embedded/remote content from driving the native shell.
+        guard message.frameInfo.request.url?.scheme == dashboardURLScheme else {
+            return
+        }
+
         guard
             let body = message.body as? [String: Any],
             let type = body["type"] as? String
