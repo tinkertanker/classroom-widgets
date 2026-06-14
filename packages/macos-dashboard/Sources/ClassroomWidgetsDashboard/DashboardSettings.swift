@@ -181,7 +181,6 @@ struct DashboardGeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 560, height: 500)
         .task {
             syncLaunchAtLoginState()
         }
@@ -314,7 +313,6 @@ struct DashboardShortcutSettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 560, height: 380)
         .onChange(of: shortcutsSignature) { _ in context.shortcutsChanged() }
     }
 
@@ -365,25 +363,45 @@ struct DashboardShortcutSettingsView: View {
     }
 }
 
-// Preference-style tab view controller that keeps the window title in sync
-// with the selected pane, matching System Settings behaviour.
-final class SettingsTabViewController: NSTabViewController {
-    override func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
-        super.tabView(tabView, didSelect: tabViewItem)
+struct DashboardSettingsView: View {
+    let context: DashboardSettingsContext
 
-        if let label = tabViewItem?.label, !label.isEmpty {
-            view.window?.title = label
+    var body: some View {
+        TabView {
+            DashboardGeneralSettingsView(context: context)
+                .tabItem { Text("General") }
+
+            DashboardShortcutSettingsView(context: context)
+                .tabItem { Text("Shortcuts") }
+        }
+        .dashboardTabBarStyle()
+        .frame(width: 600, height: 640)
+        .navigationTitle("Classroom Widgets Settings")
+    }
+}
+
+private extension View {
+    // .tabBarOnly is macOS 15+, but the app deploys to 13; the default tab
+    // style renders as a top tab bar on older systems anyway.
+    @ViewBuilder
+    func dashboardTabBarStyle() -> some View {
+        if #available(macOS 15.0, *) {
+            tabViewStyle(.tabBarOnly)
+        } else {
+            self
         }
     }
 }
 
 @MainActor
 final class SettingsWindowCoordinator: NSObject, NSWindowDelegate {
-    private let makeContext: @MainActor () -> DashboardSettingsContext?
+    private static let windowSize = NSSize(width: 600, height: 640)
+
+    private let makeContentView: @MainActor () -> NSView
     private(set) var window: NSWindow?
 
-    init(makeContext: @escaping @MainActor () -> DashboardSettingsContext?) {
-        self.makeContext = makeContext
+    init(makeContentView: @escaping @MainActor () -> NSView) {
+        self.makeContentView = makeContentView
         super.init()
     }
 
@@ -394,31 +412,16 @@ final class SettingsWindowCoordinator: NSObject, NSWindowDelegate {
             return
         }
 
-        guard let context = makeContext() else { return }
-
-        let tabViewController = SettingsTabViewController()
-        tabViewController.tabStyle = .toolbar
-
-        let generalItem = NSTabViewItem(
-            viewController: NSHostingController(rootView: DashboardGeneralSettingsView(context: context))
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: Self.windowSize),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
         )
-        generalItem.label = "General"
-        generalItem.image = NSImage(systemSymbolName: "switch.2", accessibilityDescription: "General")
-        tabViewController.addTabViewItem(generalItem)
-
-        let shortcutsItem = NSTabViewItem(
-            viewController: NSHostingController(rootView: DashboardShortcutSettingsView(context: context))
-        )
-        shortcutsItem.label = "Shortcuts"
-        shortcutsItem.image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "Shortcuts")
-        tabViewController.addTabViewItem(shortcutsItem)
-
-        let window = NSWindow(contentViewController: tabViewController)
-        window.styleMask = [.titled, .closable]
-        window.toolbarStyle = .preference
-        window.title = generalItem.label
+        window.title = "Classroom Widgets Settings"
         window.isReleasedWhenClosed = false
         window.delegate = self
+        window.contentView = makeContentView()
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
