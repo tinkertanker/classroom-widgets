@@ -67,14 +67,6 @@ class Room {
   }
 
   /**
-   * Get the room namespace for socket.io
-   */
-  getNamespace() {
-    const roomId = this.widgetId ? `${this.getType()}:${this.widgetId}` : this.getType();
-    return `${this.code}:${roomId}`;
-  }
-
-  /**
    * Get the room type - must be implemented by subclasses
    */
   getType() {

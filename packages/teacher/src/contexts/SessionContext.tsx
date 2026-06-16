@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useSocket } from '../hooks/useSocket';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
-import api from '../services/api';
 import { debug } from '@shared/utils/debug';
 import { WidgetType } from '@shared/types';
 

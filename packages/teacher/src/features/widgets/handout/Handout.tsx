@@ -16,50 +16,6 @@ interface HandoutItem {
   timestamp: number;
 }
 
-// Common file extensions to exclude from being treated as TLDs
-const FILE_EXTENSIONS = ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'];
-
-/**
- * Normalize a URL by adding https:// if it looks like a domain without protocol.
- */
-const normalizeUrl = (text: string): string => {
-  const trimmed = text.trim();
-
-  // Already has a protocol
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-
-  // Quick check: must contain a dot and start with alphanumeric
-  if (!/^[a-zA-Z0-9]/.test(trimmed) || !trimmed.includes('.')) {
-    return trimmed;
-  }
-
-  // Don't treat things that have spaces
-  if (trimmed.includes(' ') || trimmed.length > 2000) {
-    return trimmed;
-  }
-
-  // Try adding https:// and see if it's a valid URL
-  const withProtocol = `https://${trimmed}`;
-  try {
-    const url = new URL(withProtocol);
-    // Check: hostname should have at least one dot and valid TLD-like ending
-    if (url.hostname.includes('.') && /\.[a-zA-Z]{2,}$/.test(url.hostname)) {
-      // Exclude common file extensions from being treated as domains
-      const hostnameExt = url.hostname.split('.').pop()?.toLowerCase();
-      if (hostnameExt && FILE_EXTENSIONS.includes(hostnameExt)) {
-        return trimmed;
-      }
-      return withProtocol;
-    }
-  } catch {
-    // Not a valid URL, return as-is
-  }
-
-  return trimmed;
-};
-
 function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [items, setItems] = useState<HandoutItem[]>(savedState?.items || []);

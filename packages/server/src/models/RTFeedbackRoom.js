@@ -49,21 +49,6 @@ class RTFeedbackRoom extends Room {
   }
 
   /**
-   * Get all feedback entries
-   */
-  getAllFeedback() {
-    const feedback = [];
-    this.feedbackData.forEach((data, studentId) => {
-      feedback.push({
-        studentId,
-        value: data.value,
-        timestamp: data.timestamp
-      });
-    });
-    return feedback;
-  }
-  
-  /**
    * Get aggregated feedback for visualization
    * Returns count of students at each understanding level
    */

@@ -366,10 +366,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
   widgetStates: new Map(),
   eventListeners: new Map(),
-  history: [],
-  historyIndex: -1,
-  canUndo: false,
-  canRedo: false,
   focusedWidgetId: null,
   classEndTime: null,
   layoutFormat: 'canvas' as LayoutFormat,
@@ -525,19 +521,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       return { widgetStates: newStates };
     });
   },
-  setWidgetState: (widgetId, state) => {
-    set((store) => {
-      const newStates = new Map(store.widgetStates);
-      newStates.set(widgetId, state);
-      return { widgetStates: newStates };
-    });
-  },
   emitEvent: () => {},
   addEventListener: () => {},
   removeEventListener: () => {},
-  saveSnapshot: () => {},
-  undo: () => {},
-  redo: () => {},
 
   // Workspace management actions
   refreshWorkspaceList: () => {

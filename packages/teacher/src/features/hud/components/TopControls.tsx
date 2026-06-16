@@ -18,8 +18,6 @@ const TopControls: React.FC = () => {
   const { showClock } = useBottomBar();
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
 
-  // Debug: log session code
-  console.log('[TopControls] sessionCode:', sessionCode);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isNear, registerHudElement } = useHudProximityContext();
 

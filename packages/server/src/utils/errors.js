@@ -120,27 +120,9 @@ function createRateLimitResponse(retryAfterMs) {
   };
 }
 
-/**
- * Create an input validation error response
- * @param {string} fieldName - Name of the invalid field
- * @param {string} validationMessage - Validation error message
- * @returns {Object} Validation error response
- */
-function createValidationErrorResponse(fieldName, validationMessage) {
-  return {
-    success: false,
-    error: {
-      code: ERROR_CODES.INVALID_INPUT.code,
-      message: validationMessage,
-      field: fieldName
-    }
-  };
-}
-
 module.exports = {
   ERROR_CODES,
   createErrorResponse,
   createSuccessResponse,
-  createRateLimitResponse,
-  createValidationErrorResponse
+  createRateLimitResponse
 };

@@ -4,9 +4,6 @@
 module.exports = {
   // Time constants
   TIME: {
-    SECOND: 1000,
-    MINUTE: 60 * 1000,
-    HOUR: 60 * 60 * 1000,
     SESSION_MAX_AGE: 12 * 60 * 60 * 1000, // 12 hours
     INACTIVITY_TIMEOUT: 2 * 60 * 60 * 1000, // 2 hours
     CLEANUP_INTERVAL: 60 * 60 * 1000 // 1 hour

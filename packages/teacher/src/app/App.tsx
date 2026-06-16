@@ -9,7 +9,6 @@ import { useWorkspace, useServerConnection } from '@shared/hooks/useWorkspace';
 import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
-import { migrateFromOldFormat } from '@shared/utils/migration';
 import Board from '../features/board/components';
 import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
@@ -72,15 +71,6 @@ function App() {
   
   // Note: Session code management is now handled by the networked widgets themselves
   // via the useNetworkedWidget hook. They will set/clear the session code as needed.
-  
-  // Run migration on first load
-  useEffect(() => {
-    try {
-      migrateFromOldFormat();
-    } catch (error) {
-      console.error('Migration failed:', error);
-    }
-  }, []); // Empty deps - only run once on mount
   
   // Apply theme class to document
   useEffect(() => {

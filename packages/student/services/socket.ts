@@ -11,10 +11,3 @@ export const getSocket = (): Socket => {
     timeout: 20000
   });
 };
-
-// Optional: Add a cleanup function for completeness
-export const disconnectSocket = (socket: Socket): void => {
-  if (socket) {
-    socket.disconnect();
-  }
-};

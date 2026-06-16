@@ -1,5 +1,5 @@
 const Session = require('../models/Session');
-const { generateSessionCode, generateRoomCode } = require('../utils/codeGenerator');
+const { generateSessionCode } = require('../utils/codeGenerator');
 const { TIME, LIMITS } = require('../config/constants');
 
 /**

@@ -27,19 +27,6 @@ function generateCode(length = LIMITS.ROOM_CODE_LENGTH, existingCodes = new Set(
 }
 
 /**
- * Generate a room code
- * @param {Map|Set} existingRooms - Existing rooms to check against
- * @returns {string} Generated room code
- */
-function generateRoomCode(existingRooms) {
-  const existingCodes = existingRooms instanceof Map 
-    ? new Set(existingRooms.keys())
-    : existingRooms;
-    
-  return generateCode(LIMITS.ROOM_CODE_LENGTH, existingCodes);
-}
-
-/**
  * Generate a session code
  * @param {Map} sessions - Existing sessions
  * @param {Map} rooms - Existing rooms (to avoid conflicts with legacy rooms)
@@ -56,6 +43,5 @@ function generateSessionCode(sessions, rooms = new Map()) {
 
 module.exports = {
   generateCode,
-  generateRoomCode,
   generateSessionCode
 };
