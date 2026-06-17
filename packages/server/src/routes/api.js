@@ -1,5 +1,6 @@
 const express = require('express');
 const { isValidSessionCode } = require('../middleware/validation');
+const { asyncHandler } = require('../middleware/errorHandler');
 const voiceCommandRoutes = require('./voiceCommand');
 
 /**
@@ -38,6 +39,31 @@ module.exports = (sessionManager) => {
       exists
     });
   });
+
+  /**
+   * Admin: force cleanup of inactive sessions/rooms.
+   * Operator endpoint (no in-app caller) — documented in docs/architecture.md,
+   * requires the ADMIN_TOKEN bearer token.
+   */
+  router.post('/admin/cleanup', asyncHandler(async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const adminToken = process.env.ADMIN_TOKEN;
+    if (!adminToken || adminToken.trim() === '' || authHeader !== `Bearer ${adminToken}`) {
+      return res.status(401).json({
+        success: false,
+        error: 'Unauthorized'
+      });
+    }
+
+    sessionManager.cleanupInactiveSessions();
+    const stats = sessionManager.getStats();
+
+    res.json({
+      success: true,
+      message: 'Cleanup completed',
+      stats
+    });
+  }));
 
   /**
    * Voice command processing endpoint
