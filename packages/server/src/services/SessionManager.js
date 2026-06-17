@@ -22,7 +22,7 @@ class SessionManager {
       return this.sessions.get(existingCode);
     }
 
-    const code = generateSessionCode(this.sessions, this.rooms);
+    const code = generateSessionCode(this.sessions);
     const session = new Session(code);
     this.sessions.set(code, session);
     return session;

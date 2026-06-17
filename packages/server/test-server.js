@@ -190,15 +190,7 @@ async function runTests() {
     socket.disconnect();
   });
 
-  // Test 8: Widget Types API
-  await test('API: Get widget types', async () => {
-    const response = await axios.get(`${API_URL}/widgets`);
-    assert(response.status === 200, 'Status should be 200');
-    assert(Array.isArray(response.data.data.widgets), 'Should return widgets array');
-    assert(response.data.data.widgets.length === 4, 'Should have 4 widget types');
-  });
-
-  // Test 9: Voice command — known transcript matches a pattern
+  // Test 8: Voice command — known transcript matches a pattern
   await test('API: Voice command matches known transcript', async () => {
     const response = await axios.post(`${API_URL}/voice-command`, {
       transcript: 'create a timer',

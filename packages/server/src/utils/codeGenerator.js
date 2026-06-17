@@ -29,15 +29,11 @@ function generateCode(length = LIMITS.ROOM_CODE_LENGTH, existingCodes = new Set(
 /**
  * Generate a session code
  * @param {Map} sessions - Existing sessions
- * @param {Map} rooms - Existing rooms (to avoid conflicts with legacy rooms)
  * @returns {string} Generated session code
  */
-function generateSessionCode(sessions, rooms = new Map()) {
-  const existingCodes = new Set([
-    ...sessions.keys(),
-    ...rooms.keys()
-  ]);
-  
+function generateSessionCode(sessions) {
+  const existingCodes = new Set(sessions.keys());
+
   return generateCode(LIMITS.ROOM_CODE_LENGTH, existingCodes);
 }
 
