@@ -42,16 +42,10 @@ module.exports = {
 
   // Socket.IO configuration
   SOCKET_IO: {
-    // Path for socket.io
-    PATH: '/socket.io/',
-    
-    // Transports
-    TRANSPORTS: ['websocket', 'polling'],
-    
     // Ping timeout and interval
     PING_TIMEOUT: 60000,
     PING_INTERVAL: 25000,
-    
+
     // Max HTTP buffer size
     MAX_HTTP_BUFFER_SIZE: 1e6 // 1MB
   },
@@ -85,28 +79,4 @@ module.exports = {
     }
   },
 
-  // Logging
-  LOG: {
-    LEVEL: process.env.LOG_LEVEL || 'info',
-    // Whether to log socket events
-    LOG_SOCKET_EVENTS: process.env.LOG_SOCKET_EVENTS === 'true'
-  },
-
-  // Security
-  SECURITY: {
-    // Rate limiting
-    RATE_LIMIT: {
-      WINDOW_MS: 15 * 60 * 1000, // 15 minutes
-      MAX_REQUESTS: 100 // limit each IP to 100 requests per windowMs
-    },
-    
-    // Session security
-    SESSION: {
-      // Maximum session age
-      MAX_AGE: 12 * 60 * 60 * 1000, // 12 hours
-      
-      // Session secret (should be set via environment variable in production)
-      SECRET: process.env.SESSION_SECRET || 'development-secret-change-in-production'
-    }
-  }
 };

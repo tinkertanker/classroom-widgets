@@ -66,15 +66,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
   useEffect(() => {
     fetchSessions();
 
-    // Subscribe to real-time updates
-    socket.emit('admin:subscribe');
-
     // Auto-refresh every 10 seconds
     const interval = setInterval(fetchSessions, 10000);
 
     return () => {
       clearInterval(interval);
-      socket.emit('admin:unsubscribe');
     };
   }, [socket, fetchSessions]);
 

@@ -72,15 +72,4 @@ module.exports = function adminHandler(io, socket, sessionManager) {
     }
   });
 
-  // Admin subscribes to real-time updates
-  socket.on('admin:subscribe', () => {
-    logger.info('admin:subscribe', 'Admin subscribed to updates');
-    socket.join('admin:updates');
-  });
-
-  // Admin unsubscribes from updates
-  socket.on('admin:unsubscribe', () => {
-    logger.info('admin:unsubscribe', 'Admin unsubscribed from updates');
-    socket.leave('admin:updates');
-  });
 };

@@ -14,10 +14,6 @@ vi.mock('@shared/hooks/useWorkspace', () => ({
   useServerConnection: () => ({ url: 'http://localhost:3001', setServerStatus: vi.fn() })
 }));
 
-vi.mock('@shared/utils/migration', () => ({
-  migrateFromOldFormat: vi.fn()
-}));
-
 vi.mock('../contexts/ModalContext', () => ({
   ModalProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }));

@@ -267,20 +267,6 @@ class ActivityRoom extends Room {
   }
 
   /**
-   * Get all responses (for teacher view)
-   */
-  getAllResponses() {
-    const responses = [];
-    this.responses.forEach((data, socketId) => {
-      responses.push({
-        socketId,
-        ...data
-      });
-    });
-    return responses;
-  }
-
-  /**
    * Override toJSON to include activity-specific data
    */
   toJSON() {

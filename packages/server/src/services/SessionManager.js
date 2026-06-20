@@ -1,5 +1,5 @@
 const Session = require('../models/Session');
-const { generateSessionCode, generateRoomCode } = require('../utils/codeGenerator');
+const { generateSessionCode } = require('../utils/codeGenerator');
 const { TIME, LIMITS } = require('../config/constants');
 
 /**
@@ -22,7 +22,7 @@ class SessionManager {
       return this.sessions.get(existingCode);
     }
 
-    const code = generateSessionCode(this.sessions, this.rooms);
+    const code = generateSessionCode(this.sessions);
     const session = new Session(code);
     this.sessions.set(code, session);
     return session;

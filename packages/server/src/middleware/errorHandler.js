@@ -22,12 +22,6 @@ class ValidationError extends AppError {
   }
 }
 
-class AuthenticationError extends AppError {
-  constructor(message = 'Authentication failed') {
-    super(message, 401, 'AUTH_ERROR');
-  }
-}
-
 class AuthorizationError extends AppError {
   constructor(message = 'Not authorized') {
     super(message, 403, 'FORBIDDEN');
@@ -39,52 +33,6 @@ class NotFoundError extends AppError {
     super(message, 404, 'NOT_FOUND');
   }
 }
-
-class RateLimitError extends AppError {
-  constructor(message = 'Too many requests') {
-    super(message, 429, 'RATE_LIMIT');
-  }
-}
-
-/**
- * Socket error handler wrapper
- */
-const handleSocketError = (handler) => {
-  return async (...args) => {
-    const socket = this;
-    const callback = args[args.length - 1];
-    const hasCallback = typeof callback === 'function';
-    
-    try {
-      await handler.apply(socket, args);
-    } catch (error) {
-      console.error(`Socket error in ${handler.name}:`, error);
-      
-      // Send error response
-      const errorResponse = {
-        success: false,
-        error: error.isOperational ? error.message : 'An error occurred',
-        code: error.code || 'ERROR'
-      };
-      
-      if (error instanceof ValidationError && error.errors) {
-        errorResponse.errors = error.errors;
-      }
-      
-      if (hasCallback) {
-        callback(errorResponse);
-      } else {
-        // Emit error event if no callback
-        socket.emit('error', errorResponse);
-      }
-      
-      // Log non-operational errors
-      if (!error.isOperational) {
-        logError(error, { socketId: socket.id, event: handler.name });
-      }
-    }
-  };
-};
 
 /**
  * Express error handler middleware
@@ -108,29 +56,6 @@ const expressErrorHandler = (err, req, res, next) => {
       message: err.isOperational ? message : 'Internal server error',
       code
     }
-  });
-};
-
-/**
- * Socket.io error handler
- */
-const socketErrorHandler = (socket) => {
-  socket.on('error', (error) => {
-    console.error(`Socket error for ${socket.id}:`, error);
-    
-    // Disconnect socket on critical errors
-    if (error.code === 'TRANSPORT_ERROR' || error.code === 'PARSE_ERROR') {
-      socket.disconnect(true);
-    }
-  });
-  
-  // Handle disconnection errors
-  socket.on('disconnect', (reason) => {
-    if (reason === 'io server disconnect' || reason === 'io client disconnect') {
-      return; // Normal disconnect
-    }
-    
-    console.warn(`Socket ${socket.id} disconnected abnormally:`, reason);
   });
 };
 
@@ -196,17 +121,13 @@ module.exports = {
   // Error classes
   AppError,
   ValidationError,
-  AuthenticationError,
   AuthorizationError,
   NotFoundError,
-  RateLimitError,
-  
+
   // Handlers
-  handleSocketError,
   expressErrorHandler,
-  socketErrorHandler,
   setupGlobalErrorHandlers,
-  
+
   // Utilities
   logError,
   asyncHandler

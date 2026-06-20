@@ -65,13 +65,6 @@ class LinkShareRoom extends Room {
   }
 
   /**
-   * Get all submissions
-   */
-  getSubmissions() {
-    return this.submissions;
-  }
-
-  /**
    * Get submission count
    */
   getSubmissionCount() {

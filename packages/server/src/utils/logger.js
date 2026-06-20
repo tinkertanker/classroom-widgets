@@ -154,29 +154,6 @@ class Logger {
   }
 
   /**
-   * Log socket events
-   */
-  logSocketEvent(eventName, socketId, data = {}) {
-    this.debug(`Socket Event: ${eventName}`, {
-      socketId,
-      event: eventName,
-      data: data.sessionCode || data.code || data.roomType || 'N/A'
-    });
-  }
-
-  /**
-   * Log API requests
-   */
-  logRequest(req) {
-    this.info(`API Request: ${req.method} ${req.path}`, {
-      method: req.method,
-      path: req.path,
-      ip: req.ip,
-      userAgent: req.get('user-agent')
-    });
-  }
-
-  /**
    * Log errors with stack trace
    */
   logError(error, context = {}) {
@@ -186,69 +163,11 @@ class Logger {
       code: error.code
     });
   }
-
-  /**
-   * Create child logger with context
-   */
-  child(context) {
-    const childLogger = Object.create(this);
-    childLogger.defaultContext = context;
-    
-    // Override log method to include context
-    childLogger.log = (level, message, meta = {}) => {
-      this.log(level, message, { ...this.defaultContext, ...context, ...meta });
-    };
-    
-    return childLogger;
-  }
 }
 
 // Create singleton instance
 const logger = new Logger();
 
-// Express middleware for request logging
-const requestLogger = (req, res, next) => {
-  const start = Date.now();
-  
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    logger.info(`${req.method} ${req.path} ${res.statusCode}`, {
-      method: req.method,
-      path: req.path,
-      status: res.statusCode,
-      duration: `${duration}ms`,
-      ip: req.ip
-    });
-  });
-  
-  next();
-};
-
-// Socket.IO middleware for event logging
-const socketLogger = (socket, next) => {
-  const originalEmit = socket.emit;
-  const originalOn = socket.on;
-  
-  // Log outgoing events
-  socket.emit = function(event, ...args) {
-    logger.logSocketEvent(`EMIT: ${event}`, socket.id);
-    return originalEmit.apply(socket, [event, ...args]);
-  };
-  
-  // Log incoming events
-  socket.on = function(event, handler) {
-    const wrappedHandler = (...args) => {
-      logger.logSocketEvent(`ON: ${event}`, socket.id);
-      return handler(...args);
-    };
-    return originalOn.apply(socket, [event, wrappedHandler]);
-  };
-  
-  next();
-};
-
 module.exports = {
-  logger,
-  requestLogger,
-  socketLogger
+  logger
 };

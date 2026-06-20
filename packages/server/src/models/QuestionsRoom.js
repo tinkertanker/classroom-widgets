@@ -73,20 +73,6 @@ class QuestionsRoom extends Room {
   }
 
   /**
-   * Get unanswered questions
-   */
-  getUnansweredQuestions() {
-    return this.questions.filter(q => !q.answered);
-  }
-
-  /**
-   * Get answered questions
-   */
-  getAnsweredQuestions() {
-    return this.questions.filter(q => q.answered);
-  }
-
-  /**
    * Get question count
    */
   getQuestionCount() {
