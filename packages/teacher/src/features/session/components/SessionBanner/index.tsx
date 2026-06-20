@@ -138,11 +138,11 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
             "max-[540px]:hidden",
             isExpanded ? "flex max-w-[1200px] opacity-100 ml-2 min-[540px]:ml-3" : "hidden max-w-0 opacity-0 overflow-hidden"
           )}>
-            <code className="text-2xl min-[540px]:text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
+            <code className="select-text text-2xl min-[540px]:text-5xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
               {sessionCode}
             </code>
             <div className="w-px h-6 min-[540px]:h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
-            <span className="text-sm min-[540px]:text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px] min-[540px]:max-w-[420px]">
+            <span className="select-text text-sm min-[540px]:text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px] min-[540px]:max-w-[420px]">
               {displayUrl?.replace(/^https?:\/\//, '')}
             </span>
             {connected && (
@@ -177,11 +177,11 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
             zIndex.hud
           )}
         >
-          <code className="text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
+          <code className="select-text text-2xl font-bold text-warm-gray-800 dark:text-warm-gray-200 tracking-wider leading-none">
             {sessionCode}
           </code>
           <div className="w-px h-6 bg-warm-gray-300 dark:bg-warm-gray-600" />
-          <span className="text-sm font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px]">
+          <span className="select-text text-sm font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px]">
             {displayUrl?.replace(/^https?:\/\//, '')}
           </span>
           {connected && (

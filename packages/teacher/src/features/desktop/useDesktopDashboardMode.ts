@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 
 type DashboardBridge = {
   setVisible: (visible: boolean) => void;
@@ -14,6 +15,12 @@ type DashboardInteractiveRegion = {
   width: number;
   height: number;
 };
+
+type DashboardGlassRegion = DashboardInteractiveRegion & {
+  radius: number;
+};
+
+type DashboardTheme = 'light' | 'dark';
 
 declare global {
   interface Window {
@@ -41,13 +48,24 @@ const DASHBOARD_INTERACTIVE_SELECTOR = [
   '.delete-button'
 ].join(', ');
 
-function isEditableTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
+// Surfaces that get a native NSVisualEffectView blur behind the window,
+// so the real desktop shows through (CSS backdrop-filter can only blur
+// other web content, never what's behind the transparent window).
+const DASHBOARD_GLASS_SELECTOR = [
+  '.widget-surface[data-dashboard-glass="true"]',
+  '[role="dialog"]'
+].join(', ');
 
-  return Boolean(
-    target.closest('input, textarea, select, [contenteditable="true"]')
-  );
-}
+const supportsCheckVisibility =
+  typeof Element !== 'undefined' && 'checkVisibility' in Element.prototype;
+
+const getSystemDashboardTheme = (): DashboardTheme => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return 'light';
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
 
 function isElementInteractable(element: Element) {
   // pointer-events is inherited and can be re-enabled by descendants
@@ -56,6 +74,12 @@ function isElementInteractable(element: Element) {
   // meaningful — an ancestor's 'none' must not disqualify the element.
   if (window.getComputedStyle(element).pointerEvents === 'none') {
     return false;
+  }
+
+  // Single native call instead of a getComputedStyle walk per ancestor;
+  // this runs for every tracked element on every region update.
+  if (supportsCheckVisibility) {
+    return element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
   }
 
   let current: Element | null = element;
@@ -85,6 +109,7 @@ export function useDesktopDashboardMode() {
 
     return new URLSearchParams(window.location.search).get('visible') !== '0';
   });
+  const [dashboardTheme, setDashboardTheme] = useState<DashboardTheme>(() => getSystemDashboardTheme());
   const [interactiveRegions, setInteractiveRegions] = useState<DashboardInteractiveRegion[]>([]);
 
   const setVisible = useCallback((visible: boolean) => {
@@ -121,6 +146,16 @@ export function useDesktopDashboardMode() {
 
     let frame = 0;
 
+    // Native positions views and hit-tests from these rects; integer pixels
+    // are enough precision and stop sub-pixel float churn from spamming the
+    // bridge on every layout tick.
+    const roundRect = (rect: DOMRect) => ({
+      x: Math.round(rect.left),
+      y: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height)
+    });
+
     const collectRegions = () => {
       if (!isDashboardVisible) return [];
 
@@ -128,15 +163,46 @@ export function useDesktopDashboardMode() {
         .filter(isElementInteractable)
         .map((element) => element.getBoundingClientRect())
         .filter((rect) => rect.width > 0 && rect.height > 0)
-        .map((rect) => ({
-          x: rect.left,
-          y: rect.top,
-          width: rect.width,
-          height: rect.height
+        .map(roundRect);
+    };
+
+    // Returns null to mean "leave the native backdrops as they are" — distinct
+    // from [] ("remove them"). We never send [] on hide so the native side can
+    // fade its existing blur out instead of having it yanked mid-animation.
+    const collectGlassRegions = (): DashboardGlassRegion[] | null => {
+      if (!isDashboardVisible) return null;
+
+      // Behind-window blur is expensive to recomposite, so don't reposition it
+      // every frame of a drag; the post-drop DOM settle publishes the final
+      // positions.
+      if (useWorkspaceStore.getState().dragState.isDragging) return null;
+
+      const elements = Array.from(document.querySelectorAll(DASHBOARD_GLASS_SELECTOR))
+        .filter(isElementInteractable);
+
+      // A surface mid entrance/scale animation reports a transformed rect, so
+      // publishing now would place the blur displaced and then snap it. Defer
+      // until it settles — animationend reschedules a publish (and reduced
+      // motion has no running animation, so this publishes immediately).
+      const animating = elements.some((element) =>
+        element.getAnimations().some((animation) => animation.playState === 'running')
+      );
+      if (animating) return null;
+
+      return elements
+        .map((element) => ({
+          rect: element.getBoundingClientRect(),
+          radius: parseFloat(window.getComputedStyle(element).borderTopLeftRadius) || 0
+        }))
+        .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+        .map(({ rect, radius }) => ({
+          ...roundRect(rect),
+          radius: Math.round(radius)
         }));
     };
 
     let lastPublishedKey: string | null = null;
+    let lastPublishedGlassKey: string | null = null;
 
     const publishRegions = () => {
       frame = 0;
@@ -144,13 +210,27 @@ export function useDesktopDashboardMode() {
       const key = regions
         .map((region) => `${region.x},${region.y},${region.width},${region.height}`)
         .join(';');
-      if (key === lastPublishedKey) return;
-      lastPublishedKey = key;
-      setInteractiveRegions(regions);
-      window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
-        type: 'interactive-regions-changed',
-        regions
-      });
+      if (key !== lastPublishedKey) {
+        lastPublishedKey = key;
+        setInteractiveRegions(regions);
+        window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+          type: 'interactive-regions-changed',
+          regions
+        });
+      }
+
+      const glassRegions = collectGlassRegions();
+      if (glassRegions === null) return;
+      const glassKey = glassRegions
+        .map((region) => `${region.x},${region.y},${region.width},${region.height},${region.radius}`)
+        .join(';');
+      if (glassKey !== lastPublishedGlassKey) {
+        lastPublishedGlassKey = glassKey;
+        window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+          type: 'glass-regions-changed',
+          regions: glassRegions
+        });
+      }
     };
 
     const schedulePublish = () => {
@@ -162,6 +242,9 @@ export function useDesktopDashboardMode() {
     window.addEventListener('resize', schedulePublish);
     window.addEventListener('scroll', schedulePublish, true);
     document.addEventListener('transitionend', schedulePublish, true);
+    // The widget entrance/exit effects are CSS animations, not transitions;
+    // without this the published rects go stale after each show.
+    document.addEventListener('animationend', schedulePublish, true);
 
     const resizeObserver = new ResizeObserver(schedulePublish);
     resizeObserver.observe(document.documentElement);
@@ -183,10 +266,27 @@ export function useDesktopDashboardMode() {
       window.removeEventListener('resize', schedulePublish);
       window.removeEventListener('scroll', schedulePublish, true);
       document.removeEventListener('transitionend', schedulePublish, true);
+      document.removeEventListener('animationend', schedulePublish, true);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
     };
   }, [isDashboardMode, isDashboardVisible]);
+
+  // WKWebView reports the macOS appearance through prefers-color-scheme. Keep
+  // this transient so dashboard mode does not overwrite the user's persisted
+  // browser theme preference.
+  useEffect(() => {
+    if (!isDashboardMode || typeof window.matchMedia !== 'function') return;
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const applySystemTheme = () => {
+      setDashboardTheme(media.matches ? 'dark' : 'light');
+    };
+
+    applySystemTheme();
+    media.addEventListener('change', applySystemTheme);
+    return () => media.removeEventListener('change', applySystemTheme);
+  }, [isDashboardMode]);
 
   useEffect(() => {
     if (!isDashboardMode) return;
@@ -204,21 +304,9 @@ export function useDesktopDashboardMode() {
     return () => window.cancelAnimationFrame(frame);
   }, [isDashboardMode]);
 
-  useEffect(() => {
-    if (!isDashboardMode) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) return;
-
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.code === 'Space') {
-        event.preventDefault();
-        toggle();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDashboardMode, toggle]);
+  // Toggling is owned by the native global hotkey (default ⌥⌘D). A duplicate
+  // web handler on the same combo would double-fire while the overlay is
+  // focused (both fire, cancelling out), so there is intentionally none here.
 
   useEffect(() => {
     if (!isDashboardMode) return;
@@ -247,6 +335,7 @@ export function useDesktopDashboardMode() {
   return {
     isDashboardMode,
     isDashboardVisible,
+    dashboardTheme,
     setDashboardVisible,
     toggleDashboard: toggle
   };

@@ -62,7 +62,7 @@ function App() {
   const [screenTooSmall, setScreenTooSmall] = useState(
     typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
   );
-  const { isDashboardMode, isDashboardVisible } = useDesktopDashboardMode();
+  const { isDashboardMode, isDashboardVisible, dashboardTheme, setDashboardVisible } = useDesktopDashboardMode();
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -74,8 +74,9 @@ function App() {
   
   // Apply theme class to document
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
+    const effectiveTheme = isDashboardMode ? dashboardTheme : theme;
+    document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
+  }, [dashboardTheme, isDashboardMode, theme]);
 
   const updateStickerMode = useCallback((mode: boolean, type?: string | null) => {
     const nextType = mode ? (type ?? stickerStateRef.current.type) : null;
@@ -150,7 +151,11 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle if not typing in an input field
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
         return;
       }
 
@@ -165,6 +170,24 @@ function App() {
       if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
         e.preventDefault();
         updateStickerMode(false);
+        return;
+      }
+
+      // In the macOS desktop overlay, Escape dismisses the dashboard like
+      // Mission Control/Launchpad - but only when nothing else claims it:
+      // open modals and menus handle Escape themselves, the voice overlay is
+      // open, sticker mode returned above, or text is being edited.
+      if (
+        isDashboardMode &&
+        isDashboardVisible &&
+        e.key === 'Escape' &&
+        !e.defaultPrevented &&
+        !isVoiceControlActive &&
+        !(e.target instanceof HTMLElement && e.target.isContentEditable) &&
+        !document.querySelector('[role="dialog"], [role="menu"]')
+      ) {
+        e.preventDefault();
+        setDashboardVisible(false);
         return;
       }
 
@@ -216,7 +239,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode, isDashboardMode, isDashboardVisible, setDashboardVisible, isVoiceControlActive]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {
