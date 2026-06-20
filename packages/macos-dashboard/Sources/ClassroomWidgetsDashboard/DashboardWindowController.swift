@@ -415,6 +415,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         let target: CGFloat = visible ? 1 : 0
         guard backdropContainer.alphaValue != target else { return }
 
+        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            backdropContainer.alphaValue = target
+            return
+        }
+
         NSAnimationContext.runAnimationGroup { context in
             context.duration = visible ? 0.45 : 0.18
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
