@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 
 type DashboardBridge = {
   setVisible: (visible: boolean) => void;
