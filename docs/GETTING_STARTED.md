@@ -13,13 +13,13 @@ Quick start guide for developers working on Classroom Widgets.
 
 ## Prerequisites
 
-- **Node.js** 18+ and npm
+- **Node.js** 20.19+ or 22.12+ and npm
 - **Git**
 - **Docker** (optional, for testing production builds)
 
 Check your versions:
 ```bash
-node --version  # Should be 18+
+node --version  # Should be 20.19+ or 22.12+
 npm --version
 git --version
 ```
@@ -30,29 +30,31 @@ git --version
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/classroom-widgets.git
+git clone https://github.com/tinkertanker/classroom-widgets.git
 cd classroom-widgets
 
-# Install all dependencies (root + server + student)
+# Install all dependencies
 npm run install:all
 ```
 
 This installs dependencies for:
-- Teacher app (root directory)
-- Server (server/)
-- Student app (server/src/student/)
+- Teacher app (`packages/teacher`)
+- Student app (`packages/student`)
+- Server (`packages/server`)
+- Shared workspace (`packages/shared`)
 
 ### Environment Variables
 
-Create `.env` files from examples:
+Create `.env` files from examples only when you need optional API keys or non-default server settings:
 
 ```bash
-# Teacher app (optional)
-cp .env.example .env
+# Teacher app (optional for Vite development)
+cp packages/teacher/.env.example packages/teacher/.env
 # Edit to add VITE_SHORTIO_API_KEY if using Link Shortener widget
 
 # Server (optional for development)
-# Defaults work fine for local development
+cp packages/server/.env.example packages/server/.env
+# Defaults work fine for local development if this file is absent
 ```
 
 ## Development
@@ -102,35 +104,26 @@ npm run dev:concurrent
 
 ```
 classroom-widgets/
-├── src/                        # Teacher App (React + TypeScript + Vite)
-│   ├── app/                    # Application root & providers
-│   ├── features/               # Feature modules
-│   │   ├── board/             # Canvas & drag-drop
-│   │   ├── toolbar/           # Widget toolbar
-│   │   ├── widgets/           # All widget implementations
-│   │   │   ├── poll/
-│   │   │   ├── timer/
-│   │   │   ├── questions/
-│   │   │   └── ...
-│   │   └── session/           # Session management
-│   ├── shared/                # Shared components & utilities
-│   ├── store/                 # Zustand state management
-│   └── index.tsx              # Entry point
-│
-├── server/                     # Backend (Node.js + Express + Socket.io)
-│   ├── src/
-│   │   ├── config/            # Server configuration
-│   │   ├── routes/            # API routes
-│   │   ├── sockets/           # Socket.io event handlers
-│   │   ├── student/           # Student App (React + TypeScript + Vite)
-│   │   │   ├── components/    # Student app components
-│   │   │   └── App.tsx        # Student app entry
-│   │   └── server.js          # Server entry point
-│   └── public/                # Built student app (served by Express)
-│
+├── packages/
+│   ├── teacher/                # Teacher App (React + TypeScript + Vite)
+│   │   ├── src/app/            # Application root & providers
+│   │   ├── src/features/       # Board, widgets, HUD, session, voice control
+│   │   ├── src/store/          # Zustand state management
+│   │   └── package.json
+│   ├── student/                # Student App (React + TypeScript + Vite)
+│   │   ├── components/         # Student-facing activity UI
+│   │   ├── services/           # Socket and API helpers
+│   │   └── package.json
+│   ├── server/                 # Backend (Node.js + Express + Socket.io)
+│   │   ├── src/config/         # Server configuration
+│   │   ├── src/routes/         # API routes
+│   │   ├── src/sockets/        # Socket.io event handlers
+│   │   ├── src/server.js       # Server entry point
+│   │   └── package.json
+│   └── shared/                 # Shared types, hooks, constants, utilities
 ├── docs/                       # Documentation
-├── package.json               # Root package (teacher app)
-└── vite.config.js             # Vite configuration
+├── package.json                # Root workspace scripts
+└── package-lock.json           # Locked dependency graph
 ```
 
 ### Key Technologies
@@ -228,7 +221,7 @@ npm run dev:concurrent   # Start everything with concurrently
 
 #### Building
 ```bash
-npm run build            # Build teacher app for production
+npm run build            # Build all workspaces that define a build script
 npm run build:student    # Build student app for production
 npm run build:all        # Build everything
 ```
@@ -242,7 +235,7 @@ npm test                 # Run tests with Vitest
 ```bash
 npm run install:all      # Install all dependencies
 npm run clean            # Remove node_modules and builds
-npm run clean:install    # Clean and reinstall everything
+npm run clean && npm run install:all
 ```
 
 ### Adding a New Widget
@@ -251,7 +244,7 @@ See [ADDING_NEW_WIDGET.md](./ADDING_NEW_WIDGET.md) for detailed instructions.
 
 Quick overview:
 1. Add widget type to `WidgetType` enum
-2. Create widget component in `src/features/widgets/your-widget/`
+2. Create widget component in `packages/teacher/src/features/widgets/your-widget/`
 3. Register in `WidgetRegistry.ts`
 4. Add to default toolbar (optional)
 
@@ -259,7 +252,7 @@ Quick overview:
 
 **Enable debug mode:**
 ```bash
-# .env
+# packages/teacher/.env
 VITE_DEBUG=true
 ```
 
@@ -289,12 +282,13 @@ kill -9 <PID>
 
 **Dependencies out of sync:**
 ```bash
-npm run clean:install
+npm run clean
+npm run install:all
 ```
 
 **WebSocket not connecting:**
 1. Ensure server is running (`npm run dev:server`)
-2. Check `VITE_SERVER_URL` in `.env` (default: `http://localhost:3001`)
+2. Check `VITE_SERVER_URL` in `packages/teacher/.env` (default: `http://localhost:3001`)
 3. Check browser console for errors
 
 **Hot reload not working:**
@@ -306,8 +300,11 @@ npm run dev
 
 **TypeScript errors:**
 ```bash
-# Check for type errors
-npx tsc --noEmit
+# Check teacher app type errors
+npm run typecheck -w @classroom-widgets/teacher
+
+# Check student app type errors
+npm run build -w @classroom-widgets/student
 ```
 
 ## Coding Standards
@@ -386,7 +383,7 @@ className="text-warm-gray-800 dark:text-warm-gray-100"
 Use Zustand for global state:
 
 ```typescript
-// src/store/workspaceStore.simple.ts
+// packages/teacher/src/store/workspaceStore.simple.ts
 export const useWorkspaceStore = create<WorkspaceState>()(
   persist(
     (set, get) => ({
@@ -416,6 +413,6 @@ const addWidget = useWorkspaceStore(state => state.addWidget);
 - Check [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed documentation
 - Check [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment issues
 - Open an issue on GitHub
-- Review existing code in `src/features/widgets/` for examples
+- Review existing code in `packages/teacher/src/features/widgets/` for examples
 
 Happy coding! 🎉

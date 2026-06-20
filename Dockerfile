@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:20-alpine as build
+FROM node:20-alpine AS build
 
 # Build arguments for environment variables
 ARG VITE_SERVER_URL=http://localhost:3001
@@ -38,7 +38,6 @@ COPY packages/shared/ packages/shared/
 COPY packages/teacher/ packages/teacher/
 
 # Copy voice command generation files
-COPY shared/ shared/
 COPY scripts/ scripts/
 
 # Set environment variables for build
