@@ -1,6 +1,6 @@
 # Backend Server Dockerfile
 # Build context: repo root (.)
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Install dumb-init for proper signal handling and wget for health checks
 RUN apk add --no-cache dumb-init wget

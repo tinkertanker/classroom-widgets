@@ -31,15 +31,15 @@ Classroom Widgets is a real-time classroom management system that enables teache
 
 ### Prerequisites
 
-- Node.js 18+ and npm
+- Node.js 20.19+ or 22.12+ and npm
 - Git
-- Docker and Docker Compose (for production deployment)
+- Docker and Docker Compose (only for Docker-based production deployment)
 
 ### First Time Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/classroom-widgets.git
+git clone https://github.com/tinkertanker/classroom-widgets.git
 cd classroom-widgets
 
 # Install all dependencies
@@ -91,30 +91,28 @@ The project is a monorepo consisting of three main parts that run concurrently d
 
 ### Project Structure
 
-The repository is structured as a monorepo with three `package.json` files, orchestrating the three main parts of the application.
+The repository is structured as an npm workspaces monorepo. Run the common commands from the repository root unless a command explicitly names a workspace.
 
 ```plaintext
 classroom-widgets/
-├── src/                      # Teacher App source code (Vite + React)
-│   ├── components/           # Widget and UI components
-│   ├── features/             # Feature-based modules (widgets, session, etc.)
-│   ├── store/                # Zustand state management
-│   └── index.tsx             # Main entry point for the Teacher App
-├── server/                   # Backend and Student App workspace
-│   ├── src/                  # Server source code
-│   │   ├── server.js         # Main Express + Socket.io server entry point
-│   │   ├── config/           # Environment and app configuration
-│   │   ├── middleware/       # Express middleware
-│   │   ├── routes/           # API routes
-│   │   ├── sockets/          # Socket.IO event handlers
-│   │   └── student/          # Student App source code (Vite + React)
-│   │       ├── src/          # Student App components and logic
-│   │       └── package.json  # Student App dependencies
-│   ├── public/               # Built Student App (served by Express)
-│   └── package.json          # Backend server dependencies
+├── packages/
+│   ├── teacher/              # Teacher App source code (Vite + React)
+│   │   ├── src/app/          # Application root and providers
+│   │   ├── src/features/     # Feature modules, widgets, board, session, HUD
+│   │   ├── src/store/        # Zustand state management
+│   │   └── package.json      # Teacher workspace scripts
+│   ├── student/              # Student App source code (Vite + React)
+│   │   ├── components/       # Student-facing activity UI
+│   │   └── package.json      # Student workspace scripts
+│   ├── server/               # Express + Socket.io backend
+│   │   ├── src/server.js     # Server entry point
+│   │   ├── src/routes/       # API routes
+│   │   ├── src/sockets/      # Socket.IO event handlers
+│   │   └── package.json      # Backend workspace scripts
+│   └── shared/               # Shared types, hooks, constants, and utilities
 ├── docs/                     # Project documentation
-├── package.json              # Root package (for Teacher App) and monorepo scripts
-└── vite.config.js            # Vite config for the Teacher App
+├── package.json              # Root workspace scripts
+└── package-lock.json         # Locked dependency graph for all workspaces
 ```
 
 ### Technology Stack
@@ -172,7 +170,7 @@ Control widgets hands-free using natural language:
 
 - **Speech Recognition**: Uses Annyang library for voice input
 - **Hybrid Processing**: Fast pattern matching (~5ms) + AI fallback via Ollama (~200-800ms)
-- **Single Source of Truth**: All commands defined in `shared/voiceCommandDefinitions.json`
+- **Single Source of Truth**: All commands defined in `packages/shared/voiceCommandDefinitions.json`
 - **Auto-Sync**: TypeScript/JavaScript generated automatically to keep frontend/backend in sync
 
 **Example commands**: "start a 5 minute timer", "launch the poll widget", "pick someone at random"
@@ -199,7 +197,7 @@ npm run build:all
 npm run generate:voice-types
 
 # Start the production server
-npm start
+npm run server
 
 # Run tests for the Teacher App
 npm test
@@ -227,11 +225,15 @@ tmux capture-pane -t 0 -p -S -100
 ### Environment Variables
 
 ```bash
-# Copy the example file to get started
-cp .env.example .env
+# Optional: teacher app env vars for Vite development
+cp packages/teacher/.env.example packages/teacher/.env
 
-# Edit .env to add your API keys (optional)
-nano .env
+# Optional: server env vars for local development
+cp packages/server/.env.example packages/server/.env
+
+# Edit these files to add API keys or server settings as needed
+nano packages/teacher/.env
+nano packages/server/.env
 ```
 
 See **[Environment Setup Guide](./docs/ENV_SETUP.md)** for complete environment configuration guide.

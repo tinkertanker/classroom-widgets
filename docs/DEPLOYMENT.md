@@ -41,18 +41,17 @@ cat ~/.ssh/deploy_key  # paste this into the SSH_PRIVATE_KEY secret
 ### Prerequisites
 - Docker and Docker Compose
 - Domain/subdomain pointing to your server
-- SSL certificates (recommended: Let's Encrypt)
+- Host Nginx and SSL certificates (recommended: Let's Encrypt)
 
 ### Deployment Steps
 
 1. **Clone and configure**:
 ```bash
-git clone https://github.com/yourusername/classroom-widgets.git
+git clone https://github.com/tinkertanker/classroom-widgets.git
 cd classroom-widgets
 
-# Copy environment files
+# Copy the production environment file
 cp .env.production.example .env.production
-cp server/.env.production.example server/.env.production
 ```
 
 2. **Edit environment variables**:
@@ -60,34 +59,34 @@ cp server/.env.production.example server/.env.production
 `.env.production`:
 ```env
 VITE_SERVER_URL=https://your-backend-domain.com
+CORS_ORIGINS=https://your-frontend-domain.com,https://your-backend-domain.com
+FRONTEND_DOMAIN=your-frontend-domain.com
+BACKEND_DOMAIN=your-backend-domain.com
+STUDENT_APP_URL=https://your-backend-domain.com/student
 ```
 
-`server/.env.production`:
-```env
-PORT=3001
-CORS_ORIGINS=https://your-frontend-domain.com
-```
+Use the same `.env.production` file for frontend build-time variables and backend container variables. `FRONTEND_DOMAIN` and `BACKEND_DOMAIN` are for your host Nginx/SSL configuration; the production Compose file publishes the frontend on host port `8080` and the backend on host port `3001`.
 
 3. **Build and deploy**:
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
 4. **Verify**:
 - Teacher App: https://your-frontend-domain.com
 - Student App: https://your-backend-domain.com/student
-- API Health: https://your-backend-domain.com/api/health
+- API Health: https://your-backend-domain.com/health
 
 ## Docker Deployment
 
 ### Architecture
 
 Core services run in Docker:
-- **`frontend`**: Teacher App (React + Vite) served by Nginx
-- **`backend`**: Express server (API + WebSocket + serves Student App)
+- **`frontend`**: Teacher App (React + Vite) served by Nginx on host port `8080`
+- **`backend`**: Express server (API + WebSocket + serves Student App) on host port `3001`
 
-Optional services:
-- **`umami`**: Privacy-focused analytics dashboard
+Optional services, started only with `--profile analytics`:
+- **`umami`**: Privacy-focused analytics dashboard on host port `3003`
 - **`umami-db`**: PostgreSQL database for Umami
 
 See [Analytics Setup](./ANALYTICS.md) for Umami configuration.
@@ -96,42 +95,40 @@ See [Analytics Setup](./ANALYTICS.md) for Umami configuration.
 
 ```bash
 # Build and start containers
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 
 # View logs
-docker compose -f docker-compose.prod.yml logs -f
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
 
 # Stop services
-docker compose -f docker-compose.prod.yml down
+docker compose --env-file .env.production -f docker-compose.prod.yml down
 
 # Update deployment
 git pull
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
-### Local Testing (Staging)
+### Local Docker Testing
 
 Test the Docker setup locally before production:
 
 ```bash
-# Copy staging environment file
-cp .env.staging.example .env.staging
-
-# Edit .env.staging to set:
-# VITE_SERVER_URL=http://localhost:3001
-# CORS_ORIGINS=http://localhost:3000,http://localhost
-
-# Build and run staging environment
-docker compose -f docker-compose.staging.yml up --build
-
-# Or use the test script
-./docker-test-local.sh
+# Build and run the local Docker environment
+docker compose up --build
 ```
 
 Access staging:
 - Teacher App: http://localhost:3000
 - Student App: http://localhost:3000/student
 - Backend: http://localhost:3001
+
+To test the optional analytics service too:
+
+```bash
+docker compose --profile analytics up --build
+```
+
+Then open Umami at http://localhost:3003.
 
 **Staging Testing Checklist:**
 - [ ] Teacher can create a session
@@ -159,7 +156,7 @@ VITE_UMAMI_SCRIPT_URL=https://your-umami-domain.com/script.js
 VITE_UMAMI_WEBSITE_ID=your-website-id
 ```
 
-### Backend Server (`server/.env.production`)
+### Backend Server (`/.env.production`)
 
 ```env
 # Required: Server port
@@ -167,6 +164,9 @@ PORT=3001
 
 # Required: Allowed CORS origins (comma-separated)
 CORS_ORIGINS=https://teacher-app.com,https://student-app.com
+
+# Required: URL shown to teachers for the student app
+STUDENT_APP_URL=https://student-app.com/student
 
 # Optional: Logging level (error|warn|info|debug)
 LOG_LEVEL=info
@@ -191,6 +191,10 @@ CLEANUP_INTERVAL=3600000   # 1 hour in milliseconds
 - Comma-separated allowed origins
 - Must match your frontend URLs exactly
 - No trailing slashes
+
+**`STUDENT_APP_URL`** (Required)
+- URL shown to teachers for students to join activities
+- Production: `https://your-backend-domain.com/student`
 
 **`LOG_LEVEL`** (Optional)
 - Controls logging verbosity
@@ -352,13 +356,13 @@ sudo certbot renew --dry-run
 **Container won't start:**
 ```bash
 # Check logs
-docker compose -f docker-compose.prod.yml logs -f
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
 
 # Check specific service
-docker compose -f docker-compose.prod.yml logs backend
+docker compose --env-file .env.production -f docker-compose.prod.yml logs backend
 
 # Rebuild without cache
-docker compose -f docker-compose.prod.yml build --no-cache
+docker compose --env-file .env.production -f docker-compose.prod.yml build --no-cache
 
 # Check resources
 docker system df
@@ -408,7 +412,7 @@ curl http://localhost:3001/health
 
 **Student app not loading:**
 1. Check backend build completed successfully
-2. Verify student app built to `server/public/`
+2. Verify student app built to `packages/server/public/student/`
 3. Check backend logs for errors
 
 ### Build Issues
@@ -421,20 +425,23 @@ npm cache clean --force
 npm install
 npm run build:all
 
-# Check Node version (should be 18+)
+# Check Node version (should be 20.19+ or 22.12+ for Vite 7)
 node --version
 ```
 
 **TypeScript errors:**
 ```bash
-# Check for issues
-npx tsc --noEmit
+# Check teacher app type errors
+npm run typecheck -w @classroom-widgets/teacher
+
+# Check student app type errors
+npm run build -w @classroom-widgets/student
 ```
 
 **Missing environment variables:**
 ```bash
 # Ensure production env files exist
-ls -la .env.production server/.env.production
+ls -la .env.production
 
 # Debug: Print environment in container
 docker exec classroom-widgets-backend env | grep -E "PORT|CORS"
@@ -446,8 +453,9 @@ docker exec classroom-widgets-backend env | grep -E "PORT|CORS"
 1. Check browser console (F12) for errors
 2. Verify build output exists:
 ```bash
-ls -la build/
-# Should contain index.html and static/ folder
+ls -la packages/teacher/build/
+# Should contain index.html and assets/ folder after a teacher build.
+# The Docker production image copies packages/teacher/build.
 ```
 3. Check Nginx configuration:
 ```nginx
@@ -511,19 +519,19 @@ fi
 **Complete system down:**
 ```bash
 # Quick restart
-docker compose -f docker-compose.prod.yml down
-docker compose -f docker-compose.prod.yml up -d
+docker compose --env-file .env.production -f docker-compose.prod.yml down
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 
 # Rollback to previous version
 git checkout <last-working-commit>
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
 **Clear all data and restart:**
 ```bash
-docker compose -f docker-compose.prod.yml down -v
+docker compose --env-file .env.production -f docker-compose.prod.yml down -v
 docker system prune -a
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
 ## Managing the Deployment
@@ -532,13 +540,13 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ```bash
 # All services
-docker compose -f docker-compose.prod.yml logs -f
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
 
 # Specific service with tail
-docker compose -f docker-compose.prod.yml logs -f --tail 100 backend
+docker compose --env-file .env.production -f docker-compose.prod.yml logs -f --tail 100 backend
 
 # Save logs to file
-docker compose -f docker-compose.prod.yml logs > deployment.log
+docker compose --env-file .env.production -f docker-compose.prod.yml logs > deployment.log
 ```
 
 ### Updating
@@ -546,10 +554,10 @@ docker compose -f docker-compose.prod.yml logs > deployment.log
 ```bash
 # Standard update
 git pull
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 
 # Zero-downtime update (requires setup)
-docker compose -f docker-compose.prod.yml up -d --no-deps --build backend
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d --no-deps --build backend
 ```
 
 ### Monitoring
