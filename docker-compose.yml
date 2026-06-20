@@ -29,7 +29,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost,http://127.0.0.1}
       - STUDENT_APP_URL=${STUDENT_APP_URL:-http://localhost:3000/student}
     networks:
       - classroom-widgets
