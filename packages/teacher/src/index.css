@@ -33,6 +33,18 @@ code {
   animation: scale-in 0.1s ease-out;
 }
 
+/* Toolbar clock colon blink — pure CSS so the Clock component doesn't
+   need a 500ms re-render interval */
+@keyframes clock-colon-blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.clock-colon-blink {
+  animation: clock-colon-blink 1s step-end infinite;
+}
+
 /* Sticker button hover animations - fanning out effect */
 .group:hover .smile-sticker {
   transform: translateX(-4px) translateY(1px) rotate(-5deg) scale(1.02) !important;

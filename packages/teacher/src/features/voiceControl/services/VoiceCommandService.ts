@@ -1,6 +1,33 @@
 import { VoiceCommandRequest, VoiceCommandResponse, VoiceContext } from '../types/voiceControl';
 import { debug } from '@shared/utils/debug';
 
+// LLM fallback (Ollama) usually answers in under a second, but a wedged
+// backend would otherwise leave the voice UI waiting forever
+const COMMAND_TIMEOUT_MS = 15000;
+const HEALTH_CHECK_TIMEOUT_MS = 5000;
+
+// AbortSignal.timeout() is newer than the app's build target; fall back to a
+// manual controller so older runtimes still send the request un-bounded by
+// the missing API rather than failing before fetch starts
+function timeoutSignal(ms: number): AbortSignal | undefined {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(ms);
+  }
+  if (typeof AbortController === 'undefined') {
+    return undefined;
+  }
+  const controller = new AbortController();
+  setTimeout(() => {
+    try {
+      controller.abort(new DOMException('The operation timed out', 'TimeoutError'));
+    } catch {
+      // Very old runtimes lack abort(reason)/DOMException constructor
+      controller.abort();
+    }
+  }, ms);
+  return controller.signal;
+}
+
 export class VoiceCommandService {
   private baseUrl: string;
 
@@ -33,7 +60,8 @@ export class VoiceCommandService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
+        signal: timeoutSignal(COMMAND_TIMEOUT_MS)
       });
 
       if (!response.ok) {
@@ -60,7 +88,11 @@ export class VoiceCommandService {
           confidence: 0
         },
         feedback: {
-          message: error instanceof Error ? error.message : 'Failed to process voice command',
+          // A timed-out fetch rejects with a DOMException whose raw message
+          // ("signal timed out") would otherwise be shown to the teacher
+          message: (error as { name?: string } | null)?.name === 'TimeoutError'
+            ? 'Voice command timed out — is the server running?'
+            : error instanceof Error ? error.message : 'Failed to process voice command',
           type: 'error',
           shouldSpeak: false
         }
@@ -89,7 +121,9 @@ export class VoiceCommandService {
    */
   async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/voice-command/health`);
+      const response = await fetch(`${this.baseUrl}/voice-command/health`, {
+        signal: timeoutSignal(HEALTH_CHECK_TIMEOUT_MS)
+      });
       return response.ok;
     } catch (error) {
       debug.error('Voice command service health check failed:', error);

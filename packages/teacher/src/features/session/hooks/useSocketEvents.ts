@@ -27,35 +27,45 @@ export function useSocketEvents({
   const { socket, isConnected } = useSession();
   const eventsRef = useRef(events);
 
-  // Store handler references so we can remove only our handlers on cleanup
-  const handlersRef = useRef<Map<string, (...args: any[]) => void>>(new Map());
-
   // Update events ref to avoid stale closures
   eventsRef.current = events;
+
+  // Re-subscribe only when the SET of event names changes, not when the
+  // events object identity changes — callers typically pass inline objects,
+  // which would otherwise tear down and re-register every listener on every
+  // render (and could drop events emitted in between)
+  const eventNamesKey = Object.keys(events)
+    .filter((name) => events[name as ServerEventName])
+    .sort()
+    .join(',');
 
   // Register/unregister event listeners
   useEffect(() => {
     if (!socket || !isActive) return;
 
-    // Clear previous handlers before registering new ones
-    handlersRef.current.clear();
+    // Register a stable wrapper per event that reads the latest handler at
+    // call time; cleanup removes only OUR wrappers, not all listeners for
+    // the event, so multiple widgets of the same type can coexist
+    const wrappers = new Map<string, (...args: any[]) => void>();
+    const eventNames = eventNamesKey ? eventNamesKey.split(',') : [];
 
-    // Register all event listeners and store handler references
-    Object.entries(events).forEach(([eventName, handler]) => {
-      if (handler) {
-        handlersRef.current.set(eventName, handler);
-        socket.on(eventName, handler);
-      }
+    eventNames.forEach((eventName) => {
+      const wrapper = (...args: any[]) => {
+        const handler = eventsRef.current[eventName as ServerEventName] as
+          | ((...handlerArgs: any[]) => void)
+          | undefined;
+        handler?.(...args);
+      };
+      wrappers.set(eventName, wrapper);
+      socket.on(eventName, wrapper);
     });
 
-    // Cleanup function - remove only OUR handlers, not all listeners for the event
     return () => {
-      handlersRef.current.forEach((handler, eventName) => {
-        socket.off(eventName, handler);
+      wrappers.forEach((wrapper, eventName) => {
+        socket.off(eventName, wrapper);
       });
-      handlersRef.current.clear();
     };
-  }, [socket, events, isActive]);
+  }, [socket, eventNamesKey, isActive]);
   
   // Emit function with type safety
   const emit = useCallback(<T extends ClientEventName>(event: T, data: ClientEventData<T>) => {

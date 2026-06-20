@@ -2,20 +2,20 @@
 
 import React from 'react';
 import { clsx } from 'clsx';
-import { WidgetConfig } from '@shared/types';
+import { WidgetConfig, WidgetType } from '@shared/types';
 
 interface WidgetButtonProps {
   config: WidgetConfig;
-  onClick: () => void;
+  onSelect: (type: WidgetType) => void;
   className?: string;
 }
 
-const WidgetButton: React.FC<WidgetButtonProps> = ({ config, onClick, className }) => {
+const WidgetButton: React.FC<WidgetButtonProps> = ({ config, onSelect, className }) => {
   const Icon = config.icon;
-  
+
   return (
     <button
-      onClick={onClick}
+      onClick={() => onSelect(config.type)}
       className={clsx(
         'px-3 py-2 max-[540px]:px-2 max-[540px]:py-1.5 rounded-lg text-warm-gray-700',
         'bg-white/50 dark:bg-warm-gray-700/50',
@@ -35,4 +35,6 @@ const WidgetButton: React.FC<WidgetButtonProps> = ({ config, onClick, className 
   );
 };
 
-export default WidgetButton;
+// Memoized: BottomBar re-renders on sticker mode and recent-widget changes;
+// onSelect takes the widget type so callers can pass one stable callback
+export default React.memo(WidgetButton);

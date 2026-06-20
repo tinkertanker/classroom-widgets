@@ -253,13 +253,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Helper function for delay with abort support
   const delay = (ms: number, signal?: AbortSignal): Promise<void> => {
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(resolve, ms);
-      if (signal) {
-        signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-          reject(new Error('Aborted'));
-        });
-      }
+      const onAbort = () => {
+        clearTimeout(timeout);
+        reject(new Error('Aborted'));
+      };
+      // Detach the abort listener once the delay completes — recovery retries
+      // reuse the same signal, so leaked listeners would accumulate and fire
+      // stale rejections on a later abort
+      const timeout = setTimeout(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      }, ms);
+      signal?.addEventListener('abort', onAbort, { once: true });
     });
   };
 
@@ -334,8 +339,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         try {
           const response = await new Promise<any>((resolve, reject) => {
-            // Set up timeout for this attempt
+            // Set up timeout for this attempt; detach the abort listener on
+            // this path too — the signal is shared across retry attempts
             const timeoutId = setTimeout(() => {
+              signal.removeEventListener('abort', abortHandler);
               reject(new Error(`Recovery attempt ${attempt} timed out`));
             }, RECOVERY_TIMEOUT);
 
@@ -344,7 +351,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               clearTimeout(timeoutId);
               reject(new Error('Aborted'));
             };
-            signal.addEventListener('abort', abortHandler);
+            signal.addEventListener('abort', abortHandler, { once: true });
 
             // Attempt to rejoin session
             socket.emit('session:create', { existingCode: sessionCode }, (result: any) => {

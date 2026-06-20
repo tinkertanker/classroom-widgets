@@ -100,14 +100,16 @@ export function useWidgetEvents(widgetId: string, handlers: {
 // Hook for creating a new widget
 export function useCreateWidget() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
-  const widgets = useWorkspaceStore(useShallow((state) => state.widgets));
-  const scale = useWorkspaceStore((state) => state.scale);
-  
+
   const createWidget = useCallback((type: WidgetType, position?: Position) => {
     // If position is provided, use it
     if (position) {
       return addWidget(type, position);
     }
+
+    // Read widgets/scale at call time rather than subscribing — callers like
+    // the toolbar would otherwise re-render on every widget move/focus change
+    const { widgets, scale } = useWorkspaceStore.getState();
     
     // Get widget default size from registry
     const widgetConfig = widgetRegistry.get(type);
@@ -167,8 +169,8 @@ export function useCreateWidget() {
     
     // Fallback to default position
     return addWidget(type);
-  }, [addWidget, widgets, scale]);
-  
+  }, [addWidget]);
+
   return createWidget;
 }
 
