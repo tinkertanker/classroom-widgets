@@ -63,7 +63,7 @@ function App() {
   const [screenTooSmall, setScreenTooSmall] = useState(
     typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
   );
-  const { isDashboardMode, isDashboardVisible, setDashboardVisible } = useDesktopDashboardMode();
+  const { isDashboardMode, isDashboardVisible, dashboardTheme, setDashboardVisible } = useDesktopDashboardMode();
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -84,8 +84,9 @@ function App() {
   
   // Apply theme class to document
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-  }, [theme]);
+    const effectiveTheme = isDashboardMode ? dashboardTheme : theme;
+    document.documentElement.classList.toggle('dark', effectiveTheme === 'dark');
+  }, [dashboardTheme, isDashboardMode, theme]);
 
   const updateStickerMode = useCallback((mode: boolean, type?: string | null) => {
     const nextType = mode ? (type ?? stickerStateRef.current.type) : null;

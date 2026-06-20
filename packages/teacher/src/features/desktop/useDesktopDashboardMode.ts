@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
-import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 
 type DashboardBridge = {
   setVisible: (visible: boolean) => void;
@@ -19,6 +18,8 @@ type DashboardInteractiveRegion = {
 type DashboardGlassRegion = DashboardInteractiveRegion & {
   radius: number;
 };
+
+type DashboardTheme = 'light' | 'dark';
 
 declare global {
   interface Window {
@@ -56,6 +57,14 @@ const DASHBOARD_GLASS_SELECTOR = [
 
 const supportsCheckVisibility =
   typeof Element !== 'undefined' && 'checkVisibility' in Element.prototype;
+
+const getSystemDashboardTheme = (): DashboardTheme => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return 'light';
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
 
 function isElementInteractable(element: Element) {
   // pointer-events is inherited and can be re-enabled by descendants
@@ -99,6 +108,7 @@ export function useDesktopDashboardMode() {
 
     return new URLSearchParams(window.location.search).get('visible') !== '0';
   });
+  const [dashboardTheme, setDashboardTheme] = useState<DashboardTheme>(() => getSystemDashboardTheme());
   const [interactiveRegions, setInteractiveRegions] = useState<DashboardInteractiveRegion[]>([]);
 
   const setVisible = useCallback((visible: boolean) => {
@@ -261,15 +271,15 @@ export function useDesktopDashboardMode() {
     };
   }, [isDashboardMode, isDashboardVisible]);
 
-  // WKWebView reports the macOS appearance through prefers-color-scheme, so
-  // the desktop overlay follows the system (including automatic light/dark
-  // switching) instead of the manually toggled in-app theme.
+  // WKWebView reports the macOS appearance through prefers-color-scheme. Keep
+  // this transient so dashboard mode does not overwrite the user's persisted
+  // browser theme preference.
   useEffect(() => {
-    if (!isDashboardMode) return;
+    if (!isDashboardMode || typeof window.matchMedia !== 'function') return;
 
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const applySystemTheme = () => {
-      useWorkspaceStore.getState().setTheme(media.matches ? 'dark' : 'light');
+      setDashboardTheme(media.matches ? 'dark' : 'light');
     };
 
     applySystemTheme();
@@ -324,6 +334,7 @@ export function useDesktopDashboardMode() {
   return {
     isDashboardMode,
     isDashboardVisible,
+    dashboardTheme,
     setDashboardVisible,
     toggleDashboard: toggle
   };
