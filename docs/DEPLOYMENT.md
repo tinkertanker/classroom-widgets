@@ -65,7 +65,7 @@ BACKEND_DOMAIN=your-backend-domain.com
 STUDENT_APP_URL=https://your-backend-domain.com/student
 ```
 
-Use the same `.env.production` file for frontend build-time variables and backend container variables. `FRONTEND_DOMAIN` and `BACKEND_DOMAIN` are for your host Nginx/SSL configuration; the production Compose file publishes the frontend on host port `8080` and the backend on host port `3001`.
+Use the same `.env.production` file for frontend build-time variables and backend container variables. `FRONTEND_DOMAIN` and `BACKEND_DOMAIN` are for your host Nginx/SSL configuration; the production Compose file publishes the frontend on `127.0.0.1:8080` and the backend on `127.0.0.1:3001` for host Nginx to proxy.
 
 3. **Build and deploy**:
 ```bash
@@ -82,8 +82,8 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 ### Architecture
 
 Core services run in Docker:
-- **`frontend`**: Teacher App (React + Vite) served by Nginx on host port `8080`
-- **`backend`**: Express server (API + WebSocket + serves Student App) on host port `3001`
+- **`frontend`**: Teacher App (React + Vite) served by Nginx on `127.0.0.1:8080`
+- **`backend`**: Express server (API + WebSocket + serves Student App) on `127.0.0.1:3001`
 
 Optional services, started only with `--profile analytics`:
 - **`umami`**: Privacy-focused analytics dashboard on host port `3003`

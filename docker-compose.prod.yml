@@ -20,7 +20,7 @@ services:
     image: classroom-widgets-frontend:latest
     container_name: classroom-widgets-frontend
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
     networks:
       - classroom-widgets-prod
     restart: unless-stopped
@@ -37,7 +37,7 @@ services:
     container_name: classroom-widgets-backend
     image: classroom-widgets-backend:latest
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     environment:
       # Application configuration
       - NODE_ENV=production

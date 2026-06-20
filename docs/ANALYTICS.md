@@ -16,10 +16,10 @@ This guide explains how to set up Umami, a privacy-focused analytics solution fo
 
 ```bash
 # Start Umami and its PostgreSQL database
-docker-compose up -d umami umami-db
+docker compose --profile analytics up -d umami umami-db
 
 # Check they're running
-docker-compose ps
+docker compose --profile analytics ps
 ```
 
 ### 2. Access Umami Dashboard
@@ -74,7 +74,6 @@ VITE_UMAMI_WEBSITE_ID=your-production-website-id
 
 # Umami server
 UMAMI_DOMAIN=analytics.yourdomain.com
-UMAMI_EMAIL=admin@yourdomain.com
 
 # Database credentials (use strong passwords!)
 UMAMI_DB_USER=umami
@@ -87,7 +86,7 @@ UMAMI_APP_SECRET=your-secret-key-here
 ### 2. Deploy with Docker Compose
 
 ```bash
-docker-compose -f docker-compose.prod.yml up -d
+docker compose --profile analytics --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
 This starts:
@@ -100,7 +99,7 @@ This starts:
 2. Login and change default password
 3. Create a website for your production domain
 4. Update `VITE_UMAMI_WEBSITE_ID` with the new ID
-5. Rebuild frontend: `docker-compose -f docker-compose.prod.yml up -d --build frontend`
+5. Rebuild frontend: `docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build frontend`
 
 ## What's Tracked
 
@@ -182,10 +181,10 @@ curl http://localhost:3003/script.js
 
 ```bash
 # Check database is healthy
-docker-compose logs umami-db
+docker compose --profile analytics logs umami-db
 
 # Restart services
-docker-compose restart umami umami-db
+docker compose --profile analytics restart umami umami-db
 ```
 
 ### "Password authentication failed"
@@ -199,19 +198,19 @@ This usually means the password in your env doesn't match what's stored in the d
 openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 24
 
 # If you need to change the password, delete the volume first
-docker-compose -f docker-compose.prod.yml down -v
+docker compose --profile analytics --env-file .env.production -f docker-compose.prod.yml down -v
 # Then update .env.production and restart
-docker-compose -f docker-compose.prod.yml up -d
+docker compose --profile analytics --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
 ### "Can't access Umami dashboard"
 
 ```bash
 # Check container is running
-docker-compose ps
+docker compose --profile analytics ps
 
 # View logs
-docker-compose logs umami
+docker compose --profile analytics logs umami
 ```
 
 ## Data Retention
