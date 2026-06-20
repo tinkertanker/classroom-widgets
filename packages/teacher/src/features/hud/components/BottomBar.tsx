@@ -36,6 +36,16 @@ const defaultRecentWidgets = [
   WidgetType.TRAFFIC_LIGHT
 ];
 
+const getVisibleWidgetConfigs = (types: WidgetType[]) => types.flatMap((type) => {
+  const config = widgetRegistry.get(type);
+
+  if (!config || config.features?.hidden) {
+    return [];
+  }
+
+  return [config];
+});
+
 const getStickerState = () => {
   const state = (window as any).getStickerState?.();
 
@@ -241,14 +251,15 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
     });
   };
 
-  // Use recent widgets for the toolbar, fallback to defaults
+  // Use recent widgets for the toolbar, fallback to visible defaults
   const widgetsToShow = recentWidgets && recentWidgets.length > 0
     ? recentWidgets
     : defaultRecentWidgets;
 
-  const recentConfigs = widgetsToShow
-    .map(type => widgetRegistry.get(type))
-    .filter(Boolean);
+  const recentConfigs = getVisibleWidgetConfigs(widgetsToShow);
+  const toolbarWidgetConfigs = recentConfigs.length > 0
+    ? recentConfigs
+    : getVisibleWidgetConfigs(defaultRecentWidgets);
 
   return (
     <>
@@ -303,11 +314,11 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
 
           {/* Middle section - recent widget buttons */}
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0 max-[540px]:hidden">
-            {recentConfigs.map((config) => (
+            {toolbarWidgetConfigs.map((config) => (
               <WidgetButton
-                key={config!.type}
-                config={config!}
-                onClick={() => handleAddWidget(config!.type)}
+                key={config.type}
+                config={config}
+                onClick={() => handleAddWidget(config.type)}
                 className={clsx(
                   stickerMode ? 'opacity-50 cursor-not-allowed' : '',
                   'flex-shrink-0'
