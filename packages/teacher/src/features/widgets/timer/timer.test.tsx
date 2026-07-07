@@ -308,6 +308,44 @@ describe('Timer Widget', () => {
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
   });
 
+  test('mute stops an end sound that is already playing', () => {
+    renderWithModal(<Timer />);
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(11000);
+    });
+
+    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^mute timer sound$/i }));
+
+    expect(global.HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /unmute timer sound/i })).toBeInTheDocument();
+  });
+
+  test('unmuting mid-countdown still plays the end sound', () => {
+    renderWithModal(<Timer />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^mute timer sound$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /unmute timer sound/i }));
+    (global.HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mockClear();
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+  });
+
   test('hides target-time toggle while timer is running', () => {
     renderWithModal(<Timer />);
 

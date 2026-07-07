@@ -44,16 +44,16 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   const [targetTimeExpanded, setTargetTimeExpanded] = useState(false);
   const [targetTime, setTargetTime] = useState<ClockTimeSelection>(() => getDefaultTargetSelection());
 
-  // Disabling the audio while muted also pauses a sound that is already
-  // playing, so muting doubles as a stop button for the end-of-timer sound.
-  const { playSound: playSound2 } = useTimerAudio({
+  // Mute gates playback rather than the hooks' enabled flag, so the Audio
+  // element stays alive (and preloaded) across mute toggles.
+  const { playSound: playSound2, stopSound: stopSound2 } = useTimerAudio({
     soundUrl: timerEndSound2,
-    enabled: !muted && soundMode === 'short'
+    enabled: soundMode === 'short'
   });
 
-  const { playSound: playSound3 } = useTimerAudio({
+  const { playSound: playSound3, stopSound: stopSound3 } = useTimerAudio({
     soundUrl: timerEndSound3,
-    enabled: !muted && soundMode === 'long'
+    enabled: soundMode === 'long'
   });
 
   const playTimerSound = useCallback(() => {
@@ -73,8 +73,11 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   }, []);
 
   const toggleMuted = useCallback(() => {
+    // Muting also cuts off an end-of-timer sound that is already playing.
+    stopSound2();
+    stopSound3();
     setMuted(prev => !prev);
-  }, []);
+  }, [stopSound2, stopSound3]);
 
   const cycleCreature = useCallback(() => {
     setCreature(prev => getNextCreature(prev));
