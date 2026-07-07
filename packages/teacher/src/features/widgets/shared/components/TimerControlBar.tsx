@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaRegClock } from 'react-icons/fa6';
+import { FaRegClock, FaVolumeXmark } from 'react-icons/fa6';
 import { WidgetControlBar } from './WidgetControlBar';
 import { cn, buttons } from '@shared/utils/styles';
 
@@ -21,10 +21,12 @@ interface TimerControlBarProps {
   onRestart: () => void;
   disabled?: boolean;
   className?: string;
-  soundMode?: 'quiet' | 'short' | 'long';
+  soundMode?: 'short' | 'long';
   onSoundModeToggle?: () => void;
   soundModeIcon?: React.ReactNode;
   soundModeTitle?: string;
+  muted?: boolean;
+  onMuteToggle?: () => void;
   showQuickAddToggle?: boolean;
   quickAddExpanded?: boolean;
   onQuickAddToggle?: () => void;
@@ -49,6 +51,8 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
   onSoundModeToggle,
   soundModeIcon,
   soundModeTitle,
+  muted = false,
+  onMuteToggle,
   showQuickAddToggle = false,
   quickAddExpanded = false,
   onQuickAddToggle,
@@ -142,7 +146,7 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
           </button>
         )}
 
-        {onSoundModeToggle && soundModeIcon && (
+        {onSoundModeToggle && soundModeIcon && !muted && (
           <button
             onClick={onSoundModeToggle}
             disabled={disabled}
@@ -150,6 +154,24 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
             title={soundModeTitle || 'Toggle sound mode'}
           >
             {soundModeIcon}
+          </button>
+        )}
+
+        {onMuteToggle && (
+          <button
+            onClick={onMuteToggle}
+            disabled={disabled}
+            className={cn(
+              'p-2 rounded transition-colors',
+              muted
+                ? 'text-dusty-rose-500 hover:text-dusty-rose-600 bg-dusty-rose-50 hover:bg-dusty-rose-100 dark:text-dusty-rose-400 dark:hover:text-dusty-rose-300 dark:bg-dusty-rose-900/30 dark:hover:bg-dusty-rose-900/50'
+                : 'text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700'
+            )}
+            title={muted ? 'Sound muted — click to unmute' : 'Mute timer sound'}
+            aria-label={muted ? 'Unmute timer sound' : 'Mute timer sound'}
+            aria-pressed={muted}
+          >
+            <FaVolumeXmark className="text-xs" />
           </button>
         )}
       </div>

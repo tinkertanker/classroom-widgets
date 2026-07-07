@@ -36,5 +36,12 @@ export function useTimerAudio({ soundUrl, enabled = true }: UseTimerAudioProps) 
     }
   };
 
-  return { playSound };
+  const stopSound = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  return { playSound, stopSound };
 }
