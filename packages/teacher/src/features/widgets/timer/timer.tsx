@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import { useTheme } from "@shared/hooks/useWorkspace";
 import { warmGray } from '@shared/constants/colors';
-import { FaVolumeXmark, FaVolumeLow, FaVolumeHigh } from 'react-icons/fa6';
+import { FaVolumeLow, FaVolumeHigh } from 'react-icons/fa6';
 import { 
   useTimeSegmentEditor, 
   useTimerCountdown, 
@@ -9,7 +9,8 @@ import {
 } from "./hooks";
 import { cn, widgetWrapper, text, transitions, backgrounds, buttons } from '@shared/utils/styles';
 import { TimerControlBar } from '../shared/components';
-import { HamsterAnimation } from './components/HamsterAnimation';
+import { CreatureAnimation } from './components/CreatureAnimation';
+import { CreatureId, getNextCreature, isCreatureId } from './components/creatures';
 import { TimeDisplay } from './components/TimeDisplay';
 import {
   getDefaultTargetSelection,
@@ -19,7 +20,7 @@ import {
 import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
-type SoundMode = 'quiet' | 'short' | 'long';
+type SoundMode = 'short' | 'long';
 
 interface TimerProps {
   savedState?: any;
@@ -28,54 +29,59 @@ interface TimerProps {
 
 const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
   const { isDark } = useTheme();
-  const [soundMode, setSoundMode] = useState<SoundMode>(() => savedState?.soundMode ?? 'short');
+  const [soundMode, setSoundMode] = useState<SoundMode>(() =>
+    savedState?.soundMode === 'long' ? 'long' : 'short'
+  );
+  // Older saved states stored mute as soundMode 'quiet'.
+  const [muted, setMuted] = useState<boolean>(() =>
+    savedState?.muted ?? savedState?.soundMode === 'quiet'
+  );
+  const [creature, setCreature] = useState<CreatureId>(() =>
+    isCreatureId(savedState?.creature) ? savedState.creature : 'hamster'
+  );
   const [showJitter, setShowJitter] = useState(false);
   const [quickAddExpanded, setQuickAddExpanded] = useState(false);
   const [targetTimeExpanded, setTargetTimeExpanded] = useState(false);
   const [targetTime, setTargetTime] = useState<ClockTimeSelection>(() => getDefaultTargetSelection());
 
+  // Disabling the audio while muted also pauses a sound that is already
+  // playing, so muting doubles as a stop button for the end-of-timer sound.
   const { playSound: playSound2 } = useTimerAudio({
     soundUrl: timerEndSound2,
-    enabled: soundMode === 'short'
+    enabled: !muted && soundMode === 'short'
   });
 
   const { playSound: playSound3 } = useTimerAudio({
     soundUrl: timerEndSound3,
-    enabled: soundMode === 'long'
+    enabled: !muted && soundMode === 'long'
   });
 
   const playTimerSound = useCallback(() => {
-    switch (soundMode) {
-      case 'quiet':
-        break;
-      case 'short':
-        playSound2();
-        break;
-      case 'long':
-        playSound3();
-        break;
+    if (muted) {
+      return;
     }
-  }, [soundMode, playSound2, playSound3]);
+
+    if (soundMode === 'short') {
+      playSound2();
+    } else {
+      playSound3();
+    }
+  }, [muted, soundMode, playSound2, playSound3]);
 
   const cycleSoundMode = useCallback(() => {
-    setSoundMode(prev => {
-      switch (prev) {
-        case 'quiet':
-          return 'short';
-        case 'short':
-          return 'long';
-        case 'long':
-          return 'quiet';
-        default:
-          return 'short';
-      }
-    });
+    setSoundMode(prev => (prev === 'short' ? 'long' : 'short'));
+  }, []);
+
+  const toggleMuted = useCallback(() => {
+    setMuted(prev => !prev);
+  }, []);
+
+  const cycleCreature = useCallback(() => {
+    setCreature(prev => getNextCreature(prev));
   }, []);
 
   const getSoundModeIcon = () => {
     switch (soundMode) {
-      case 'quiet':
-        return <FaVolumeXmark className="text-xs" />;
       case 'short':
         return <FaVolumeLow className="text-xs" />;
       case 'long':
@@ -85,12 +91,10 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
 
   const getSoundModeTitle = () => {
     switch (soundMode) {
-      case 'quiet':
-        return 'Sound: Off (Click to cycle: Short → Long → Off)';
       case 'short':
-        return 'Sound: Short (Click to cycle: Long → Off → Short)';
+        return 'End sound: Short (click for Long)';
       case 'long':
-        return 'Sound: Long (Click to cycle: Off → Short → Long)';
+        return 'End sound: Long (click for Short)';
     }
   };
 
@@ -126,9 +130,11 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
     onStateChange?.({
       timer: getPersistedState(),
       soundMode,
+      muted,
+      creature,
       segmentValues: segmentEditor.values,
     });
-  }, [onStateChange, getPersistedState, initialTime, isRunning, isPaused, soundMode, segmentEditor.values, timerFinished]);
+  }, [onStateChange, getPersistedState, initialTime, isRunning, isPaused, soundMode, muted, creature, segmentEditor.values, timerFinished]);
   React.useEffect(() => {
     if (timerFinished) {
       setShowJitter(true);
@@ -253,9 +259,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
         style={{
           containerType: 'size',
           ...(showJitter && {
-            animation: 'jitter 0.1s ease-in-out infinite',
-            borderWidth: '3px',
-            borderColor: 'rgb(153, 27, 27)'
+            animation: 'jitter 0.1s ease-in-out infinite'
           })
         }}
       >
@@ -372,7 +376,12 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
               />
 
               {isRunning && time > 0 && (
-                <HamsterAnimation isRunning={isRunning} progress={progress} />
+                <CreatureAnimation
+                  isRunning={isRunning}
+                  progress={progress}
+                  creature={creature}
+                  onCreatureClick={cycleCreature}
+                />
               )}
             </svg>
 
@@ -475,6 +484,8 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
           onSoundModeToggle={cycleSoundMode}
           soundModeIcon={getSoundModeIcon()}
           soundModeTitle={getSoundModeTitle()}
+          muted={muted}
+          onMuteToggle={toggleMuted}
           showTargetTimeToggle={showTargetTimeToggle}
           targetTimeExpanded={targetTimeExpanded}
           onTargetTimeToggle={handleTargetTimeToggle}
