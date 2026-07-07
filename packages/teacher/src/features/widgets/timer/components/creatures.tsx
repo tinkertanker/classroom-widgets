@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type CreatureId = 'hamster' | 'tortoise' | 'fox' | 'bee' | 'penguin';
+export type CreatureId = 'hamster' | 'pip' | 'tortoise' | 'fox' | 'bee' | 'penguin';
 
 export interface CreatureDefinition {
   id: CreatureId;
@@ -70,6 +70,65 @@ const HamsterShocked: React.FC = () => (
     <circle cx="-2.5" cy="-1.5" r="0.8" fill="#000" />
     <ellipse cx="-4" cy="1" rx="0.8" ry="1.2" fill="#000" />
     <HamsterFeetAndTail />
+  </>
+);
+
+// Pip — the hamster's modern cousin, in the app's terracotta palette.
+const PipCalm: React.FC = () => (
+  <>
+    <circle cx="6" cy="0.4" r="1.2" fill="#db9a6d" stroke="#975230" strokeWidth="0.6" />
+    <ellipse cx="0.6" cy="0.6" rx="5.6" ry="4.4" fill="#db9a6d" stroke="#975230" strokeWidth="0.8" />
+    <ellipse cx="1.2" cy="2.6" rx="2.8" ry="1.8" fill="#f9ede3" opacity="0.85" />
+    <circle cx="-6.6" cy="-6" r="1.6" fill="#db9a6d" stroke="#975230" strokeWidth="0.7" />
+    <circle cx="-1.9" cy="-6.4" r="1.6" fill="#db9a6d" stroke="#975230" strokeWidth="0.7" />
+    <circle cx="-6.6" cy="-6" r="0.75" fill="#e09494" />
+    <circle cx="-1.9" cy="-6.4" r="0.75" fill="#e09494" />
+    <circle cx="-4.2" cy="-2.4" r="4.3" fill="#db9a6d" stroke="#975230" strokeWidth="0.8" />
+    <ellipse cx="-6.1" cy="-0.7" rx="2.3" ry="1.8" fill="#f9ede3" />
+    <circle cx="-5.9" cy="-3.1" r="0.75" fill="#2d2926" />
+    <circle cx="-2.5" cy="-3.3" r="0.75" fill="#2d2926" />
+    <circle cx="-6.15" cy="-3.35" r="0.28" fill="#fff" />
+    <circle cx="-2.75" cy="-3.55" r="0.28" fill="#fff" />
+    <ellipse cx="-8" cy="-2" rx="0.8" ry="0.5" fill="#e09494" opacity="0.75" />
+    <ellipse cx="-1" cy="-2.1" rx="0.8" ry="0.5" fill="#e09494" opacity="0.75" />
+    <ellipse cx="-7.4" cy="-1.1" rx="0.5" ry="0.4" fill="#975230" />
+    <path d="M -7 -0.2 Q -6.3 0.5 -5.5 -0.1" stroke="#975230" strokeWidth="0.45" fill="none" strokeLinecap="round" />
+    <ellipse cx="-3.6" cy="4.4" rx="0.95" ry="1.25" fill="#975230" />
+    <ellipse cx="-1.7" cy="4.7" rx="0.95" ry="1.25" fill="#975230" />
+    <ellipse cx="1.7" cy="4.7" rx="0.95" ry="1.25" fill="#975230" />
+    <ellipse cx="3.5" cy="4.4" rx="0.95" ry="1.25" fill="#975230" />
+  </>
+);
+
+const PipShocked: React.FC = () => (
+  <>
+    <g stroke="#975230" strokeWidth="0.5" fill="none" strokeLinecap="round">
+      <line x1="-8.5" y1="-6.6" x2="-10.3" y2="-8" />
+      <line x1="-6.4" y1="-8.2" x2="-7.4" y2="-10.3" />
+      <line x1="-4.2" y1="-8.8" x2="-4.2" y2="-11.1" />
+      <line x1="-2" y1="-8.2" x2="-1" y2="-10.3" />
+      <line x1="-9.4" y1="-4.2" x2="-11.6" y2="-4.9" />
+    </g>
+    <circle cx="6.2" cy="-0.6" r="1.2" fill="#db9a6d" stroke="#975230" strokeWidth="0.6" />
+    <ellipse cx="0.6" cy="0.6" rx="5.6" ry="4.4" fill="#db9a6d" stroke="#975230" strokeWidth="0.8" />
+    <ellipse cx="1.2" cy="2.6" rx="2.8" ry="1.8" fill="#f9ede3" opacity="0.85" />
+    <circle cx="-7.6" cy="-5.2" r="1.6" fill="#db9a6d" stroke="#975230" strokeWidth="0.7" />
+    <circle cx="-0.9" cy="-6.6" r="1.6" fill="#db9a6d" stroke="#975230" strokeWidth="0.7" />
+    <circle cx="-7.6" cy="-5.2" r="0.75" fill="#e09494" />
+    <circle cx="-0.9" cy="-6.6" r="0.75" fill="#e09494" />
+    <circle cx="-4.2" cy="-2.4" r="4.3" fill="#db9a6d" stroke="#975230" strokeWidth="0.8" />
+    <ellipse cx="-6.1" cy="-0.7" rx="2.3" ry="1.8" fill="#f9ede3" />
+    <circle cx="-5.9" cy="-3.1" r="1.25" fill="#fff" stroke="#975230" strokeWidth="0.35" />
+    <circle cx="-2.5" cy="-3.3" r="1.25" fill="#fff" stroke="#975230" strokeWidth="0.35" />
+    <circle cx="-5.9" cy="-3.1" r="0.5" fill="#2d2926" />
+    <circle cx="-2.5" cy="-3.3" r="0.5" fill="#2d2926" />
+    <ellipse cx="-7.4" cy="-1.4" rx="0.5" ry="0.4" fill="#975230" />
+    <ellipse cx="-6.2" cy="0.2" rx="0.75" ry="0.95" fill="#78422a" />
+    <path d="M 1.6 -8 C 2.5 -6.7 2.6 -5.9 1.6 -5.4 C 0.6 -5.9 0.7 -6.7 1.6 -8 Z" fill="#8fb8dd" />
+    <ellipse cx="-4.4" cy="4.5" rx="0.95" ry="1.25" fill="#975230" />
+    <ellipse cx="-2" cy="4.6" rx="0.95" ry="1.25" fill="#975230" />
+    <ellipse cx="2" cy="4.6" rx="0.95" ry="1.25" fill="#975230" />
+    <ellipse cx="4.3" cy="4.5" rx="0.95" ry="1.25" fill="#975230" />
   </>
 );
 
@@ -295,13 +354,14 @@ const PenguinShocked: React.FC = () => (
 
 export const CREATURES: Record<CreatureId, CreatureDefinition> = {
   hamster: { id: 'hamster', name: 'Hamster', speedFactor: 1, Calm: HamsterCalm, Shocked: HamsterShocked },
+  pip: { id: 'pip', name: 'Pip', speedFactor: 1, Calm: PipCalm, Shocked: PipShocked },
   tortoise: { id: 'tortoise', name: 'Tortoise', speedFactor: 0.85, Calm: TortoiseCalm, Shocked: TortoiseShocked },
   fox: { id: 'fox', name: 'Fox', speedFactor: 1.15, Calm: FoxCalm, Shocked: FoxShocked },
   bee: { id: 'bee', name: 'Bee', speedFactor: 1, Calm: BeeCalm, Shocked: BeeShocked },
   penguin: { id: 'penguin', name: 'Penguin', speedFactor: 1, Calm: PenguinCalm, Shocked: PenguinShocked }
 };
 
-export const CREATURE_ORDER: CreatureId[] = ['hamster', 'tortoise', 'fox', 'bee', 'penguin'];
+export const CREATURE_ORDER: CreatureId[] = ['hamster', 'pip', 'tortoise', 'fox', 'bee', 'penguin'];
 
 export function isCreatureId(value: unknown): value is CreatureId {
   return typeof value === 'string' && value in CREATURES;

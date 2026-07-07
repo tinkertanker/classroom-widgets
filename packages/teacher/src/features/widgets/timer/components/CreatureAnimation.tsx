@@ -62,8 +62,9 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
 
     return (
       <g transform={`rotate(${pulseAngle} 50 50)`}>
+        {/* Anchor sits 5 units inside the ring stroke so the runner rides the track. */}
         <g
-          transform="translate(50, 8) scale(0.9, -0.9)"
+          transform="translate(50, 13) scale(0.9, -0.9)"
           className={onCreatureClick ? 'no-drag' : undefined}
           style={onCreatureClick ? { pointerEvents: 'auto', cursor: 'pointer' } : undefined}
           onClick={onCreatureClick}
