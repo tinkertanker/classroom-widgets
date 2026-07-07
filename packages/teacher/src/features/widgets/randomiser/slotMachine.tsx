@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useState, useRef, useMemo } from 'react';
 
 interface SlotMachineProps {
   items: string[];
@@ -11,10 +11,19 @@ interface SlotMachineProps {
 // Font sizing bounds for slot items (text-3xl = 30px is the original fixed size)
 const MAX_FONT_SIZE = 30;
 const MIN_FONT_SIZE = 16;
+const FONT_WEIGHT = 700; // font-bold on the pill
 const LINE_HEIGHT = 1.2;
 const MIN_ITEM_HEIGHT = 50;
 const ITEM_VERTICAL_PADDING = 16; // py-2 on each item pill
 const ITEM_HORIZONTAL_PADDING = 32; // px-4 on each item pill
+const ITEMS_CONTAINER_PADDING = 32; // px-4 on the items container
+const FIT_MARGIN = 2; // guard against canvas-vs-DOM subpixel differences
+// break-words splits long words at character boundaries, leaving slack at
+// each line end; assume lines only fill to this fraction when estimating
+const CHAR_WRAP_EFFICIENCY = 0.9;
+// Multi-line pills must stay within the middle of the reel, clear of the
+// top/bottom gradient masks, so the winner is fully readable
+const PILL_HEIGHT_BUDGET_RATIO = 0.5;
 // Multi-line fallbacks: cap the font a bit lower as line count grows
 const MULTI_LINE_STEPS = [
   { lines: 2, maxFontSize: 24 },
@@ -26,6 +35,11 @@ interface ItemLayout {
   lines: number;
 }
 
+const DEFAULT_LAYOUT: ItemLayout = { fontSize: MAX_FONT_SIZE, lines: 1 };
+
+const slotFont = (fontSize: number, fontFamily: string) =>
+  `${FONT_WEIGHT} ${fontSize}px ${fontFamily}`;
+
 let measureContext: CanvasRenderingContext2D | null = null;
 
 function measureTextWidth(text: string, font: string): number {
@@ -34,16 +48,18 @@ function measureTextWidth(text: string, font: string): number {
   }
   if (!measureContext) {
     // Rough fallback if canvas is unavailable
-    return text.length * MAX_FONT_SIZE * 0.55;
+    const fontSize = parseFloat(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? `${MAX_FONT_SIZE}`);
+    return text.length * fontSize * 0.55;
   }
   measureContext.font = font;
   return measureContext.measureText(text).width;
 }
 
-// Approximate how many lines the browser's greedy word wrap will use
+// Approximate how many lines the browser's greedy word wrap will use.
+// NBSP is excluded from the split: the browser does not wrap on it.
 function countWrappedLines(text: string, fontSize: number, fontFamily: string, maxWidth: number): number {
-  const font = `700 ${fontSize}px ${fontFamily}`;
-  const words = text.split(/\s+/).filter(Boolean);
+  const font = slotFont(fontSize, fontFamily);
+  const words = text.split(/[^\S\u00A0]+/).filter(Boolean);
   const spaceWidth = measureTextWidth(' ', font);
   let lines = 1;
   let lineWidth = 0;
@@ -51,9 +67,11 @@ function countWrappedLines(text: string, fontSize: number, fontFamily: string, m
     const wordWidth = measureTextWidth(word, font);
     if (wordWidth > maxWidth) {
       // A word wider than the line wraps mid-word (break-words) across several lines
+      const effectiveWidth = maxWidth * CHAR_WRAP_EFFICIENCY;
+      const wordLines = Math.ceil(wordWidth / effectiveWidth);
       if (lineWidth > 0) lines++;
-      lines += Math.ceil(wordWidth / maxWidth) - 1;
-      lineWidth = wordWidth % maxWidth;
+      lines += wordLines - 1;
+      lineWidth = wordWidth - (wordLines - 1) * effectiveWidth;
       continue;
     }
     const widthWithWord = lineWidth > 0 ? lineWidth + spaceWidth + wordWidth : wordWidth;
@@ -80,48 +98,84 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
   const startTimeRef = useRef<number>(0);
   const startIndexRef = useRef<number>(0);
   const targetStepsRef = useRef<number>(0);
-  const slotAreaRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [slotAreaWidth, setSlotAreaWidth] = useState(0);
+  const [rootHeight, setRootHeight] = useState(0);
   const [fontFamily, setFontFamily] = useState('sans-serif');
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
-  useEffect(() => {
-    const element = slotAreaRef.current;
+  // Layout effect + synchronous initial read so the first painted frame
+  // already has real metrics (the parent remount-keys this component on
+  // every spin, so a post-paint effect would flash wrong sizes each time)
+  useLayoutEffect(() => {
+    const element = rootRef.current;
     if (!element) return;
     setFontFamily(getComputedStyle(element).fontFamily);
+    const applySize = (width: number, height: number) => {
+      // Rounded to suppress sub-pixel churn during live widget resizes
+      setSlotAreaWidth(Math.round(width) - ITEMS_CONTAINER_PADDING);
+      setRootHeight(Math.round(height));
+    };
+    const rect = element.getBoundingClientRect();
+    applySize(rect.width, rect.height);
     const observer = new ResizeObserver((entries) => {
-      setSlotAreaWidth(entries[0].contentRect.width);
+      const { width, height } = entries[0].contentRect;
+      applySize(width, height);
     });
     observer.observe(element);
-    return () => observer.disconnect();
+    // Canvas metrics taken before the webfont (Poppins) finishes loading use
+    // fallback-font widths; re-measure once fonts are ready
+    let cancelled = false;
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      document.fonts.ready.then(() => {
+        if (!cancelled) setFontsLoaded(true);
+      });
+    }
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   }, []);
 
   // Shrink long items to fit the widget width; when even the minimum font size
-  // can't fit one line, wrap onto two then three lines (sacrificing slot height)
-  // before finally truncating with an ellipsis.
+  // can't fit one line, wrap onto two then three lines (sacrificing slot height,
+  // within a budget that keeps the pill clear of the gradient masks) before
+  // finally truncating with an ellipsis.
   const itemLayouts = useMemo(() => {
     const layouts = new Map<string, ItemLayout>();
     // max-w-[80%] of the slot area, minus the pill's own padding
-    const availableWidth = slotAreaWidth * 0.8 - ITEM_HORIZONTAL_PADDING;
+    const availableWidth = slotAreaWidth * 0.8 - ITEM_HORIZONTAL_PADDING - FIT_MARGIN;
+    const pillHeightBudget = rootHeight > 0 ? rootHeight * PILL_HEIGHT_BUDGET_RATIO : Infinity;
+    const pillFits = (lines: number, fontSize: number) =>
+      lines * fontSize * LINE_HEIGHT + ITEM_VERTICAL_PADDING <= pillHeightBudget;
     for (const item of items) {
       if (availableWidth <= 0 || !item) {
-        layouts.set(item, { fontSize: MAX_FONT_SIZE, lines: 1 });
+        layouts.set(item, DEFAULT_LAYOUT);
         continue;
       }
-      const fullWidth = measureTextWidth(item, `700 ${MAX_FONT_SIZE}px ${fontFamily}`);
+      const fullWidth = measureTextWidth(item, slotFont(MAX_FONT_SIZE, fontFamily));
       const singleLineFit = (MAX_FONT_SIZE * availableWidth) / fullWidth;
       if (singleLineFit >= MIN_FONT_SIZE) {
         layouts.set(item, { fontSize: Math.min(MAX_FONT_SIZE, singleLineFit), lines: 1 });
         continue;
       }
+      const linesAtMinFont = countWrappedLines(item, MIN_FONT_SIZE, fontFamily, availableWidth);
       let layout: ItemLayout | null = null;
+      let tallestAllowedStep: { lines: number; maxFontSize: number } | null = null;
       for (const step of MULTI_LINE_STEPS) {
-        if (countWrappedLines(item, MIN_FONT_SIZE, fontFamily, availableWidth) <= step.lines) {
-          // Binary search for the largest font size that still wraps within step.lines
+        if (!pillFits(step.lines, MIN_FONT_SIZE)) break; // taller steps won't fit either
+        tallestAllowedStep = step;
+        if (linesAtMinFont <= step.lines) {
+          // Binary search for the largest font size that still wraps within
+          // step.lines and keeps the pill within the height budget
           let low = MIN_FONT_SIZE;
           let high = step.maxFontSize;
           for (let i = 0; i < 7; i++) {
             const mid = (low + high) / 2;
-            if (countWrappedLines(item, mid, fontFamily, availableWidth) <= step.lines) {
+            if (
+              pillFits(step.lines, mid) &&
+              countWrappedLines(item, mid, fontFamily, availableWidth) <= step.lines
+            ) {
               low = mid;
             } else {
               high = mid;
@@ -131,17 +185,27 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
           break;
         }
       }
-      // Extremely long item: keep minimum size at 3 lines; the clamp adds an ellipsis
-      layouts.set(item, layout ?? { fontSize: MIN_FONT_SIZE, lines: 3 });
+      // Extreme cases: clamp at the tallest step the widget height allows
+      // (the clamp adds an ellipsis), or a single ellipsized line on very
+      // short widgets — the pre-existing behavior
+      layouts.set(
+        item,
+        layout ?? { fontSize: MIN_FONT_SIZE, lines: tallestAllowedStep?.lines ?? 1 }
+      );
     }
     return layouts;
-  }, [items, slotAreaWidth, fontFamily]);
+    // fontsLoaded re-runs the measurement after the webfont swap
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, slotAreaWidth, rootHeight, fontFamily, fontsLoaded]);
 
-  // All slot rows share one height (the tallest pill) so the reel stays evenly spaced
-  const maxPillHeight = useMemo(() => {
+  // Multi-line pills stretch the shared row height so the reel stays evenly
+  // spaced; single-line pills keep the original 50px rows
+  const maxMultiLinePillHeight = useMemo(() => {
     let max = 0;
     for (const layout of itemLayouts.values()) {
-      max = Math.max(max, layout.lines * layout.fontSize * LINE_HEIGHT + ITEM_VERTICAL_PADDING);
+      if (layout.lines > 1) {
+        max = Math.max(max, layout.lines * layout.fontSize * LINE_HEIGHT + ITEM_VERTICAL_PADDING);
+      }
     }
     return max;
   }, [itemLayouts]);
@@ -245,10 +309,11 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
   }
   
   // Calculate positions for visible items; multi-line items need taller slots
-  const itemHeight = Math.max(MIN_ITEM_HEIGHT, Math.ceil(maxPillHeight) + 4);
+  // (+4 breathing room between rows)
+  const itemHeight = Math.max(MIN_ITEM_HEIGHT, Math.ceil(maxMultiLinePillHeight) + 4);
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-400 via-pink-400 to-yellow-400 dark:from-purple-600 dark:via-pink-600 dark:to-yellow-600 rounded-lg">
+    <div ref={rootRef} className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-400 via-pink-400 to-yellow-400 dark:from-purple-600 dark:via-pink-600 dark:to-yellow-600 rounded-lg">
       {/* Colorful background overlay for slot machine effect */}
       <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent animate-pulse" />
       
@@ -261,14 +326,14 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
       
       {/* Items container */}
       <div className="absolute inset-0 flex items-center justify-center px-4">
-        <div ref={slotAreaRef} className="relative w-full" style={{ height: `${itemHeight * 2.5}px` }}>
+        <div className="relative w-full" style={{ height: `${itemHeight * 2.5}px` }}>
           {[-2, -1, 0, 1, 2].map((position) => {
             const yOffset = (position - displayOffset) * itemHeight;
             const yPosition = (position - displayOffset) / 1.5; // Normalize to -1 to 1 range for center item
             const opacity = getOpacity(yPosition);
             const scale = getScale(yPosition);
             const item = getItemAtPosition(position);
-            const layout = itemLayouts.get(item) ?? { fontSize: MAX_FONT_SIZE, lines: 1 };
+            const layout = itemLayouts.get(item) ?? DEFAULT_LAYOUT;
 
             return (
               <div
@@ -288,19 +353,14 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
                       overflow clipping on the padded pill would let a clipped
                       extra line show through the bottom padding */}
                   <div
-                    className={layout.lines > 1 ? 'break-words' : 'whitespace-nowrap overflow-hidden text-ellipsis'}
-                    style={{
-                      fontSize: `${layout.fontSize}px`,
-                      lineHeight: LINE_HEIGHT,
-                      ...(layout.lines > 1
-                        ? {
-                            display: '-webkit-box',
-                            WebkitBoxOrient: 'vertical' as const,
-                            WebkitLineClamp: layout.lines,
-                            overflow: 'hidden'
-                          }
-                        : {})
-                    }}
+                    className={
+                      layout.lines === 1
+                        ? 'whitespace-nowrap overflow-hidden text-ellipsis'
+                        : layout.lines === 2
+                          ? 'line-clamp-2 break-words'
+                          : 'line-clamp-3 break-words'
+                    }
+                    style={{ fontSize: `${layout.fontSize}px`, lineHeight: LINE_HEIGHT }}
                   >
                     {item}
                   </div>
