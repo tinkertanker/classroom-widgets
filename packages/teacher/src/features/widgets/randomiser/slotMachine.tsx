@@ -116,8 +116,9 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
       setSlotAreaWidth(Math.round(width) - ITEMS_CONTAINER_PADDING);
       setRootHeight(Math.round(height));
     };
-    const rect = element.getBoundingClientRect();
-    applySize(rect.width, rect.height);
+    // clientWidth/Height are CSS layout pixels, consistent with the observer's
+    // contentRect; getBoundingClientRect would bake in the board's zoom scale
+    applySize(element.clientWidth, element.clientHeight);
     const observer = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
       applySize(width, height);
