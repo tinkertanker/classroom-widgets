@@ -19,10 +19,14 @@ services:
         - VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID}
     image: classroom-widgets-frontend:latest
     container_name: classroom-widgets-frontend
+    environment:
+      - VIRTUAL_HOST=${FRONTEND_DOMAIN}
+      - VIRTUAL_PORT=80
     ports:
-      - "127.0.0.1:8080:80"
+      - "127.0.0.1:18080:80"
     networks:
       - classroom-widgets-prod
+      - devtksg
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:80"]
@@ -44,8 +48,11 @@ services:
       - PORT=3001
       - CORS_ORIGINS=${CORS_ORIGINS}
       - STUDENT_APP_URL=${STUDENT_APP_URL}
+      - VIRTUAL_HOST=${BACKEND_DOMAIN}
+      - VIRTUAL_PORT=3001
     networks:
       - classroom-widgets-prod
+      - devtksg
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3001/health"]
@@ -97,6 +104,8 @@ services:
 networks:
   classroom-widgets-prod:
     driver: bridge
+  devtksg:
+    external: true
 
 volumes:
   umami-db-data:

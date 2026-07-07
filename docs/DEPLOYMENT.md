@@ -65,7 +65,7 @@ BACKEND_DOMAIN=your-backend-domain.com
 STUDENT_APP_URL=https://your-backend-domain.com/student
 ```
 
-Use the same `.env.production` file for frontend build-time variables and backend container variables. `FRONTEND_DOMAIN` and `BACKEND_DOMAIN` are for your host Nginx/SSL configuration; the production Compose file publishes the frontend on `127.0.0.1:8080` and the backend on `127.0.0.1:3001` for host Nginx to proxy.
+Use the same `.env.production` file for frontend build-time variables and backend container variables. `FRONTEND_DOMAIN` and `BACKEND_DOMAIN` are for your host Nginx/SSL configuration; the production Compose file publishes the frontend on `127.0.0.1:18080` and the backend on `127.0.0.1:3001` for host Nginx to proxy.
 
 3. **Build and deploy**:
 ```bash
@@ -82,7 +82,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 ### Architecture
 
 Core services run in Docker:
-- **`frontend`**: Teacher App (React + Vite) served by Nginx on `127.0.0.1:8080`
+- **`frontend`**: Teacher App (React + Vite) served by Nginx on `127.0.0.1:18080`
 - **`backend`**: Express server (API + WebSocket + serves Student App) on `127.0.0.1:3001`
 
 Optional services, started only with `--profile analytics`:
@@ -258,7 +258,7 @@ server {
     server_name your-frontend-domain.com;
 
     location / {
-        proxy_pass http://localhost:8080;
+        proxy_pass http://localhost:18080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -491,7 +491,7 @@ echo "=== Classroom Widgets Health Check ==="
 
 # Check frontend
 echo -n "Frontend: "
-if curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q "200"; then
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:18080 | grep -q "200"; then
     echo "✓ OK"
 else
     echo "✗ FAILED"
