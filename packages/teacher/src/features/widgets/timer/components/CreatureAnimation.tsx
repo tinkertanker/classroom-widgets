@@ -68,7 +68,18 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
           className={onCreatureClick ? 'no-drag' : undefined}
           style={onCreatureClick ? { pointerEvents: 'auto', cursor: 'pointer' } : undefined}
           onClick={onCreatureClick}
+          onKeyDown={
+            onCreatureClick
+              ? (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onCreatureClick();
+                  }
+                }
+              : undefined
+          }
           role={onCreatureClick ? 'button' : undefined}
+          tabIndex={onCreatureClick ? 0 : undefined}
           aria-label={onCreatureClick ? `Timer runner: ${definition.name}. Click to change creature.` : undefined}
         >
           {/* Invisible hit area — the drawn shapes are too thin to be a fair click target. */}

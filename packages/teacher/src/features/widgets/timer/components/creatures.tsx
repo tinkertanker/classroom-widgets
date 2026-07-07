@@ -364,7 +364,7 @@ export const CREATURES: Record<CreatureId, CreatureDefinition> = {
 export const CREATURE_ORDER: CreatureId[] = ['hamster', 'pip', 'tortoise', 'fox', 'bee', 'penguin'];
 
 export function isCreatureId(value: unknown): value is CreatureId {
-  return typeof value === 'string' && value in CREATURES;
+  return typeof value === 'string' && (CREATURE_ORDER as string[]).includes(value);
 }
 
 export function getNextCreature(current: CreatureId): CreatureId {
