@@ -52,6 +52,9 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
     <button
       type="button"
       onClick={onToggleLayout}
+      // Teacher-app chrome: hidden in the macOS dashboard overlay (like TopControls),
+      // so the fixed button never floats over the desktop when the dashboard is dismissed.
+      data-dashboard-chrome="true"
       className={clsx(
         `fixed bottom-2 right-2 ${zIndex.hud} px-2 py-1.5 h-auto`,
         "flex flex-col items-center gap-0.5",
