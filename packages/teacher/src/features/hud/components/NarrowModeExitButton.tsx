@@ -36,8 +36,10 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
   layoutFormat,
   onToggleLayout
 }) => {
-  // Only show in narrow screen mode
-  if (!isNarrowScreen) {
+  // Show whenever the user is in column mode (so there is always a visible
+  // escape hatch back to canvas at any screen width), plus on narrow screens
+  // where column layout is force-enabled.
+  if (!isNarrowScreen && layoutFormat !== 'column') {
     return null;
   }
 
