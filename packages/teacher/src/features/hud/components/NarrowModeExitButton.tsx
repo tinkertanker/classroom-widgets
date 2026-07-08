@@ -36,8 +36,10 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
   layoutFormat,
   onToggleLayout
 }) => {
-  // Only show in narrow screen mode
-  if (!isNarrowScreen) {
+  // Show whenever the user is in column mode (so there is always a visible
+  // escape hatch back to canvas at any screen width), plus on narrow screens
+  // where column layout is force-enabled.
+  if (!isNarrowScreen && layoutFormat !== 'column') {
     return null;
   }
 
@@ -50,6 +52,9 @@ const NarrowModeExitButton: React.FC<NarrowModeExitButtonProps> = ({
     <button
       type="button"
       onClick={onToggleLayout}
+      // Teacher-app chrome: hidden in the macOS dashboard overlay (like TopControls),
+      // so the fixed button never floats over the desktop when the dashboard is dismissed.
+      data-dashboard-chrome="true"
       className={clsx(
         `fixed bottom-2 right-2 ${zIndex.hud} px-2 py-1.5 h-auto`,
         "flex flex-col items-center gap-0.5",

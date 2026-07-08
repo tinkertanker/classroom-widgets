@@ -625,7 +625,7 @@ function App() {
             v{APP_VERSION}
           </a>
 
-          {/* Narrow mode layout toggle - shows when in narrow screen mode */}
+          {/* Layout toggle - shows whenever in column mode (escape hatch to canvas) or on narrow screens */}
           <NarrowModeExitButton
             isNarrowScreen={isNarrowScreen}
             layoutFormat={layoutFormat}
