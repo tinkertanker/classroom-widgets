@@ -127,7 +127,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
                 />
               ) : (
                 <p 
-                  className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300 cursor-pointer hover:text-sage-600 dark:hover:text-sage-400 inline-block"
+                  className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300 cursor-pointer hover:text-sage-600 dark:hover:text-sage-400 inline-block transition-colors duration-200"
                   onClick={(_e) => {
                     pendingTitleFallbackRef.current = title || url;
                     setTempTitle(title);

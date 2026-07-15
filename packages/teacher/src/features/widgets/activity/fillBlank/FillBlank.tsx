@@ -401,7 +401,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
                         className="flex justify-between text-sm text-warm-gray-600 dark:text-warm-gray-400"
                       >
                         <span>{response.studentName}</span>
-                        <span className={response.score === response.total ? 'text-green-600 dark:text-green-400' : ''}>
+                        <span className={response.score === response.total ? 'text-sage-600 dark:text-sage-400' : ''}>
                           {response.score}/{response.total}
                         </span>
                       </div>
@@ -437,7 +437,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
             disabled={!session.isConnected}
             className={`p-2 rounded-lg transition-colors ${
               answersRevealed
-                ? 'bg-sage-500 text-white'
+                ? 'bg-sage-500 hover:bg-sage-600 text-white'
                 : 'bg-warm-gray-200 dark:bg-warm-gray-700 text-warm-gray-600 dark:text-warm-gray-400 hover:bg-warm-gray-300 dark:hover:bg-warm-gray-600'
             }`}
             title={answersRevealed ? 'Hide answers' : 'Show answers'}

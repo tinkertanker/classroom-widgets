@@ -146,7 +146,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
                   href={shortenedLink} 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 text-sm"
+                  className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 text-sm transition-colors duration-200"
                 >
                   {shortenedLink}
                 </a>
@@ -154,7 +154,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
                   onClick={(_e) => {
                     copyToClipboard();
                   }}
-                  className="p-1 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200"
+                  className="p-1 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 transition-colors duration-200"
                   title="Copy to clipboard"
                 >
                   {copied ? (

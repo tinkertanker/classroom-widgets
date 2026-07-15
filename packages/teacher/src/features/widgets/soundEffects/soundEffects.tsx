@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fa6';
 import { IconType } from 'react-icons';
 import { widgetContainer } from '@shared/utils/styles';
+import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 
 // Sound file imports
 import victorySoundFile from "./sounds/victory.mp3";
@@ -40,6 +41,8 @@ interface SoundEffectsProps {
 
 const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  // Press flash for keyboard-triggered sounds (clicks get :active for free)
+  const { value: flashingSound, setTemporaryValue: flashSound } = useTemporaryState<string | null>(null, 100);
 
   // Memoize sound effect definitions to prevent recreation on every render
   const soundButtons: SoundButton[] = useMemo(() => [
@@ -93,14 +96,8 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
     }
 
     // Visual feedback - button press animation
-    const button = document.getElementById(`sound-${soundName}`);
-    if (button) {
-      button.classList.add('scale-95');
-      setTimeout(() => {
-        button.classList.remove('scale-95');
-      }, 100);
-    }
-  }, [soundFilesByName]);
+    flashSound(soundName);
+  }, [soundFilesByName, flashSound]);
 
   // Keyboard shortcuts (1-9 for first 9 sounds, 0 for 10th sound)
   useEffect(() => {
@@ -167,11 +164,12 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
           return (
             <button
               key={sound.name}
-              id={`sound-${sound.name}`}
               onClick={(_e) => {
                 playSound(sound.name);
               }}
-              className={`${sound.color} text-white rounded-md py-2 px-1.5 flex items-center justify-center gap-1.5 transition-all duration-150 transform active:scale-95 shadow-sm`}
+              className={`${sound.color} text-white rounded-md py-2 px-1.5 flex items-center justify-center gap-1.5 transition-all duration-200 transform active:scale-95 shadow-sm ${
+                flashingSound === sound.name ? 'scale-95' : ''
+              }`}
               title={`${sound.name} (Press ${keyNumber})`}
             >
               <Icon className="w-4 h-4" />

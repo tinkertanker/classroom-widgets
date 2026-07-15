@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { FaXmark } from 'react-icons/fa6';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
@@ -67,7 +68,7 @@ const PollSettings: React.FC<PollSettingsProps> = ({
           <div className="flex justify-end">
             <button
               onClick={() => setShowSavedDialog(true)}
-              className="px-3 py-1.5 text-sm bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors"
+              className="px-3 py-1.5 text-sm bg-warm-gray-100 hover:bg-warm-gray-200 dark:bg-warm-gray-700 dark:hover:bg-warm-gray-600 text-warm-gray-700 dark:text-warm-gray-300 rounded-md transition-colors duration-200"
             >
               Saved Polls
             </button>
@@ -101,9 +102,11 @@ const PollSettings: React.FC<PollSettingsProps> = ({
                 {options.length > 2 && (
                   <button
                     onClick={() => removeOption(index)}
-                    className="px-3 py-2 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white rounded-md text-sm"
+                    className="px-3 py-2 bg-dusty-rose-500 hover:bg-dusty-rose-600 text-white rounded text-sm transition-colors duration-200"
+                    title={`Remove option ${index + 1}`}
+                    aria-label={`Remove option ${index + 1}`}
                   >
-                    ✕
+                    <FaXmark />
                   </button>
                 )}
               </div>

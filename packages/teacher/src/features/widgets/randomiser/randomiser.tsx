@@ -19,6 +19,7 @@ import { RandomiserControlBar } from '../shared/components';
 function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   const initialResultFocus = React.useRef(null);
   const widgetRef = React.useRef<HTMLDivElement>(null);
+  const emptyMessageTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [result, setResult] = useState("Enter a list to randomise!");
   const [buttonSettings, setButtonSettings] = useState<"normal" | "result">("normal");
 
@@ -137,7 +138,11 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
       setResult("Nothing to randomise! Click me to enter a list to randomise!");
       setInput("");
       updateChoices([]);
-      setTimeout(() => {
+      if (emptyMessageTimeoutRef.current) {
+        clearTimeout(emptyMessageTimeoutRef.current);
+      }
+      emptyMessageTimeoutRef.current = setTimeout(() => {
+        emptyMessageTimeoutRef.current = null;
         setResult("Enter a list to randomise!");
       }, 2000);
     }
@@ -158,6 +163,15 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
       }
     }
   };
+
+  // Clear the pending empty-list message timer on unmount
+  useEffect(() => {
+    return () => {
+      if (emptyMessageTimeoutRef.current) {
+        clearTimeout(emptyMessageTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Initialize display choices on mount if there are saved choices
   useEffect(() => {

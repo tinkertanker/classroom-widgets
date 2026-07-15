@@ -166,7 +166,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
               })}
             </div>
             {/* Descriptive labels */}
-            <div className="flex justify-between px-4 text-xs text-warm-gray-500">
+            <div className="flex justify-between px-4 text-xs text-warm-gray-500 dark:text-warm-gray-400">
               <span>Too Easy</span>
               <span>Easy</span>
               <span>Just Right</span>

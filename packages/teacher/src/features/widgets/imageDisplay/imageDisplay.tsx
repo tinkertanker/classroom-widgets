@@ -225,7 +225,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
   return (
     <div
       ref={containerRef}
-      className={`${widgetContainer} items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
+      className={`${widgetContainer} group items-center justify-center relative overflow-hidden cursor-pointer transition-all duration-200 ${
         isDragging
           ? 'bg-sage-100 dark:bg-sage-900/30'
           : imageUrl
@@ -275,7 +275,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
             {isDragging ? 'Drop image here' : 'Add an image'}
           </p>
           {error ? (
-            <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+            <p className="text-sm text-dusty-rose-600 dark:text-dusty-rose-400">{error}</p>
           ) : (
             <p className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
               Click to browse, drag & drop, or paste
@@ -284,13 +284,15 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
         </div>
       )}
       
+      {/* group-hover: the hint should appear when hovering the image, not
+          only when hovering the (invisible) hint itself */}
       {imageUrl && (
-        <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 dark:bg-opacity-70 text-white px-2 py-1 rounded text-xs opacity-0 hover:opacity-100 transition-opacity">
+        <div className="absolute bottom-2 right-2 bg-black/50 dark:bg-black/70 text-white px-2 py-1 rounded text-xs opacity-0 group-hover:opacity-100 transition-opacity">
           Double-click to change
         </div>
       )}
       {imageUrl && error && (
-        <div className="absolute bottom-2 left-2 right-2 bg-red-600/90 text-white px-2 py-1 rounded text-xs">
+        <div className="absolute bottom-2 left-2 right-2 bg-dusty-rose-600/90 text-white px-2 py-1 rounded text-xs">
           {error}
         </div>
       )}

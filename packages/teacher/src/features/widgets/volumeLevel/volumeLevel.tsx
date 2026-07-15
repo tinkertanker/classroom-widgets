@@ -170,8 +170,9 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
                             }}
                             onMouseDown={(e) => e.stopPropagation()}
                             onTouchStart={(e) => e.stopPropagation()}
-                            className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none"
-                            style={{ backgroundColor: isEnabled ? '#5e8b5e' : '#d6d2cc' }}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 ${
+                                isEnabled ? 'bg-sage-500' : 'bg-warm-gray-300 dark:bg-warm-gray-600'
+                            }`}
                             title={isEnabled ? 'Disable sound monitoring' : 'Enable sound monitoring'}
                         >
                             <span

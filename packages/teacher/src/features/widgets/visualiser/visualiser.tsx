@@ -241,7 +241,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
             {/* Flip/Mirror button */}
             <button
               onClick={() => setIsMirrored(!isMirrored)}
-              className="p-2 bg-warm-gray-800/80 hover:bg-warm-gray-800/90 text-white rounded-lg transition-colors duration-200"
+              className="p-2 bg-warm-gray-800/80 hover:bg-warm-gray-700/90 text-white rounded-lg transition-colors duration-200"
               title={isMirrored ? "Show normal view" : "Show mirrored view"}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,7 +256,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
                   onClick={(_e) => {
                     setShowDeviceMenu(!showDeviceMenu);
                   }}
-                  className="p-2 bg-warm-gray-800/80 hover:bg-warm-gray-800/90 text-white rounded-lg transition-colors duration-200"
+                  className="p-2 bg-warm-gray-800/80 hover:bg-warm-gray-700/90 text-white rounded-lg transition-colors duration-200"
                   title="Change camera"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -274,7 +274,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
                         onClick={(_e) => {
                           handleDeviceChange(device.deviceId);
                         }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-150 ${
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors duration-200 ${
                           device.deviceId === selectedDeviceId
                             ? 'bg-sage-50 dark:bg-sage-900/20 text-sage-700 dark:text-sage-300'
                             : 'text-warm-gray-700 dark:text-warm-gray-300'

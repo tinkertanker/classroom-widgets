@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { cn, widgetContainer, buttons, text, transitions } from '@shared/utils/styles';
+import { cn, widgetContainer, buttons, text } from '@shared/utils/styles';
 
 interface Position {
   x: number;
@@ -204,14 +204,14 @@ const Snake: React.FC = () => {
           {!gameOver && (
             <button
               onClick={togglePause}
-              className={`${buttons.primary} ${transitions.all} px-3 py-1`}
+              className={`${buttons.primary} px-3 py-1`}
             >
               {isPaused ? 'Start' : 'Pause'}
             </button>
           )}
           <button
             onClick={resetGame}
-            className={`${buttons.secondary} ${transitions.all} px-3 py-1`}
+            className={`${buttons.secondary} px-3 py-1`}
           >
             New Game
           </button>
@@ -237,9 +237,11 @@ const Snake: React.FC = () => {
             const isFood = food.x === x && food.y === y;
 
             return (
+              // No transition here: hundreds of cells recolor on every game
+              // tick, and a 300ms background tween both smears the movement
+              // and keeps the compositor busy for the whole game.
               <div
                 key={index}
-                className={`${transitions.all}`}
                 style={{
                   width: CELL_SIZE,
                   height: CELL_SIZE,
@@ -260,7 +262,7 @@ const Snake: React.FC = () => {
 
       {/* Game Status */}
       {gameOver && (
-        <div className="text-xl font-bold text-red-500">
+        <div className="text-xl font-bold text-dusty-rose-600 dark:text-dusty-rose-400">
           Game Over!
         </div>
       )}

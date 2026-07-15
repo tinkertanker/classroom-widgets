@@ -149,7 +149,7 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
                   transition-all duration-200
                   ${value 
                     ? 'bg-warm-gray-100 dark:bg-warm-gray-700 cursor-default' 
-                    : 'bg-warm-gray-50 dark:bg-warm-gray-750 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 cursor-pointer'
+                    : 'bg-warm-gray-50 dark:bg-warm-gray-800 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 cursor-pointer'
                   }
                   ${getCellStyle(value)}
                   border border-warm-gray-300 dark:border-warm-gray-600

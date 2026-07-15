@@ -187,7 +187,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
             <button
               onClick={handleAddItem}
               disabled={!session.isConnected || !inputValue.trim()}
-              className="flex items-center gap-1.5 px-3 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Add item"
             >
               <FaPlus className="text-xs" />
@@ -236,7 +236,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
                           href={item.content}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 break-all inline-flex items-center gap-1 font-medium"
+                          className="text-sm text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 break-all inline-flex items-center gap-1 font-medium transition-colors"
                         >
                           {item.content}
                           <FaArrowUpRightFromSquare className="text-[10px] flex-shrink-0" />
