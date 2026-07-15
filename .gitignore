@@ -56,3 +56,7 @@ secrets/
 
 # TypeScript build info (incremental compilation cache)
 *.tsbuildinfo
+
+# Compiled byproduct of the student build — Vite would load a stale .js
+# in preference to vite.config.ts if it were present
+packages/student/vite.config.js
