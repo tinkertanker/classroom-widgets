@@ -27,11 +27,11 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   const [removedInput, setRemovedInput] = useState(stringifyChoiceList(removedChoices));
   const [showSavedDialog, setShowSavedDialog] = useState(false);
 
-  const {
-    saveRandomiserList,
-    getRandomiserLists,
-    deleteRandomiserList,
-  } = useWorkspaceStore();
+  // Select actions individually — a bare useWorkspaceStore() re-renders this
+  // panel on every store change (drags, focus, resizes) while it is open.
+  const saveRandomiserList = useWorkspaceStore((state) => state.saveRandomiserList);
+  const getRandomiserLists = useWorkspaceStore((state) => state.getRandomiserLists);
+  const deleteRandomiserList = useWorkspaceStore((state) => state.deleteRandomiserList);
 
   const updateInputAndNotify = (nextInput: string) => {
     setInput(nextInput);

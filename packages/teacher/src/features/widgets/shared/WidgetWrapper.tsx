@@ -82,13 +82,15 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
     move(position);
   }, [resize, move]);
 
-  // Handle zoom changes
+  // Handle zoom changes. Position updates are already handled by the
+  // controlled `position` prop, so this only needs to fire when the scale
+  // changes and react-rnd must recompute its internal offsets.
   useEffect(() => {
     if (widget && rndRef.current && rndRef.current.updatePosition) {
-      // Force position update when scale changes
       rndRef.current.updatePosition({ x: widget.position.x, y: widget.position.y });
     }
-  }, [scale, widget?.position]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scale]);
   
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -118,8 +120,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   const wrapperClasses = clsx(
     'widget-wrapper',
     {
-      // Only apply transitions when NOT dragging - transitions cause input lag during drag
-      'transition-all duration-200': !isBeingDragged && !isResizing,
+      // Only apply transitions when NOT dragging - transitions cause input lag during drag.
+      // Scoped to transform + box-shadow (hover scale, drag ring) — transition-all
+      // would also animate the position/size properties react-rnd writes.
+      'transition-[transform,box-shadow] duration-200': !isBeingDragged && !isResizing,
       'ring-2 ring-sage-500': isBeingDragged && !isTransparent,
       // No hover scale in the macOS overlay: the scaled rect wouldn't match the
       // interactive/glass regions published to native, leaving the blur edge and

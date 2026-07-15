@@ -27,9 +27,10 @@ import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboard
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
-// Audio import for trash sound
+// Audio import for trash sound. Constructed lazily on first play so app boot
+// doesn't spend time building an Audio element nobody may use.
 import trashSound from '../sounds/trash-crumple.mp3';
-const trashAudio = new Audio(trashSound);
+let trashAudio: HTMLAudioElement | null = null;
 
 
 
@@ -139,6 +140,7 @@ function App() {
   // Trash sound effect
   useEffect(() => {
     (window as any).playTrashSound = () => {
+      trashAudio ??= new Audio(trashSound);
       trashAudio.play().catch(err => console.error('Error playing trash sound:', err));
     };
     

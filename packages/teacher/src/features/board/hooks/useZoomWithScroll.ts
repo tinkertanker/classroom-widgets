@@ -16,6 +16,17 @@ export const useZoomWithScroll = (
 ) => {
   const { minScale = 0.5, maxScale = 2, scaleSensitivity = 0.01 } = options;
   const { scale, setScale } = useWorkspace();
+  // Handlers read the scale through a ref so the listener-attaching effect
+  // below doesn't depend on `scale` — otherwise every zoom increment tears
+  // down and re-adds all five native listeners mid-gesture.
+  const currentScaleRef = useRef(scale);
+  currentScaleRef.current = scale;
+  const updateScale = (newScale: number) => {
+    // Keep the ref in sync immediately so back-to-back wheel events within
+    // one render use the value they just set, not a stale one.
+    currentScaleRef.current = newScale;
+    setScale(newScale);
+  };
   const initialDistance = useRef<number | null>(null);
   const initialScale = useRef<number>(1);
   const isScaling = useRef<boolean>(false);
@@ -32,7 +43,7 @@ export const useZoomWithScroll = (
     const container = containerRef.current;
     if (!container) return;
 
-    const currentScale = scale;
+    const currentScale = currentScaleRef.current;
     
     // On first zoom of gesture, calculate and store the board origin point
     if (isFirstZoom) {
@@ -62,7 +73,7 @@ export const useZoomWithScroll = (
     const targetScrollY = zoomOriginBoard.current.y * newScale - zoomCenter.current.y;
     
     // Apply the new scale
-    setScale(newScale);
+    updateScale(newScale);
     
     // Apply scroll after React renders the new scale
     // This is only used for touch pinch gestures now
@@ -100,7 +111,7 @@ export const useZoomWithScroll = (
       if (e.touches.length === 2 && !isScaling.current) {
         touches = e.touches;
         initialDistance.current = getDistance(touches);
-        initialScale.current = scale;
+        initialScale.current = currentScaleRef.current;
         isScaling.current = true;
         
         // Calculate and store the pinch center
@@ -112,7 +123,7 @@ export const useZoomWithScroll = (
         };
         
         // First zoom of the gesture
-        applyZoom(scale, zoomCenter.current.x, zoomCenter.current.y, true);
+        applyZoom(currentScaleRef.current, zoomCenter.current.x, zoomCenter.current.y, true);
         
         e.preventDefault();
       }
@@ -206,12 +217,12 @@ export const useZoomWithScroll = (
         // Start of zoom gesture - store the initial state
         if (!isScaling.current) {
           isScaling.current = true;
-          
+
           // Calculate board coordinates at mouse position
           const scrollX = container.scrollLeft;
           const scrollY = container.scrollTop;
-          const boardX = (scrollX + viewportX) / scale;
-          const boardY = (scrollY + viewportY) / scale;
+          const boardX = (scrollX + viewportX) / currentScaleRef.current;
+          const boardY = (scrollY + viewportY) / currentScaleRef.current;
           
           // Store zoom origin in both coordinate systems
           zoomOriginBoard.current = { x: boardX, y: boardY };
@@ -225,7 +236,7 @@ export const useZoomWithScroll = (
         // Calculate new scale with smoother delta calculation
         const delta = e.deltaY;
         const scaleFactor = 1 + (-delta * 0.001); // Smoother scaling factor
-        const targetScale = scale * scaleFactor;
+        const targetScale = currentScaleRef.current * scaleFactor;
         const newScale = Math.max(
           minScale,
           Math.min(maxScale, targetScale)
@@ -252,9 +263,9 @@ export const useZoomWithScroll = (
           
           const { scale, scrollX, scrollY } = pendingZoom.current;
           pendingZoom.current = null;
-          
+
           // Apply scale
-          setScale(scale);
+          updateScale(scale);
           
           // Force synchronous layout/paint
           container.offsetHeight; // Force reflow
@@ -305,5 +316,8 @@ export const useZoomWithScroll = (
         cancelAnimationFrame(zoomRaf.current);
       }
     };
-  }, [containerRef, scaleRef, scale, setScale, setDebugMarker, setViewportRect, minScale, maxScale, scaleSensitivity]);
+  // `scale` is intentionally absent: handlers read it via currentScaleRef so
+  // the native listeners stay attached across zoom updates.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerRef, scaleRef, setScale, setDebugMarker, setViewportRect, minScale, maxScale, scaleSensitivity]);
 };

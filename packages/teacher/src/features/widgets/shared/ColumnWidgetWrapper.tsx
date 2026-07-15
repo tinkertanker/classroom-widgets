@@ -20,8 +20,11 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   const [showDelete, setShowDelete] = useState(false);
   const hideDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Detect touch devices (no hover capability) - always show delete button on touch
-  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
+  // Detect touch devices (no hover capability) - always show delete button on touch.
+  // Evaluated once — matchMedia doesn't need re-querying on every render.
+  const [isTouchDevice] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.('(hover: none)')?.matches
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {

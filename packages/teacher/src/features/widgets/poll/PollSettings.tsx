@@ -22,7 +22,11 @@ const PollSettings: React.FC<PollSettingsProps> = ({
   const [options, setOptions] = useState(pollData.options?.length > 0 ? pollData.options : ['', '']);
   const [showSavedDialog, setShowSavedDialog] = useState(false);
 
-  const { savePollQuestion, getPollQuestions, deletePollQuestion } = useWorkspaceStore();
+  // Select actions individually — a bare useWorkspaceStore() re-renders this
+  // panel on every store change (drags, focus, resizes) while it is open.
+  const savePollQuestion = useWorkspaceStore((state) => state.savePollQuestion);
+  const getPollQuestions = useWorkspaceStore((state) => state.getPollQuestions);
+  const deletePollQuestion = useWorkspaceStore((state) => state.deletePollQuestion);
 
   const handleSaveToCollection = useCallback((name: string) => {
     if (question && options.filter(o => o).length > 0) {
