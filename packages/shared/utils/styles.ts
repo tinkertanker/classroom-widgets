@@ -236,14 +236,31 @@ export function getStatusColor(status: number | string, type: 'bg' | 'surface' |
 // HUD (Heads-Up Display) Styles
 // ============================================================================
 
-// Z-index layers (standardized hierarchy)
+// Z-index layers (standardized hierarchy).
+// Two tiers share this scale:
+//  • In-chrome layers order elements INSIDE the HUD's own stacking context
+//    (`.fixed-ui` in App.css creates it at z-index: 1000), so their small
+//    values only compete with HUD siblings, never with the board.
+//  • Overlay layers are global `fixed` surfaces. They must clear the raw CSS
+//    chrome layers (`.toolbar-container`: 999 and `.fixed-ui`: 1000 in
+//    App.css), which is why they start above 1000.
 export const zIndex = {
+  // In-chrome ordering (inside .fixed-ui)
   dropdown: "z-50",           // Dropdown menus
-  hud: "z-[100]",             // HUD elements (top controls, toolbar)
+  hud: "z-[100]",             // HUD elements (top controls, session banner)
   hudDropdown: "z-[150]",     // Dropdowns within HUD
-  modal: "z-[200]",           // Modal dialogs
-  tooltip: "z-[300]",         // Tooltips (highest)
-  stickerBanner: "z-[999]"    // Sticker mode banner (special case)
+  tooltip: "z-[300]",         // Tooltips (highest in-chrome layer)
+  // Global overlays (above .toolbar-container 999 / .fixed-ui 1000)
+  stickerBanner: "z-[999]",   // Sticker mode banner (level with the toolbar)
+  modal: "z-[1100]",          // Modal dialogs (ModalContext)
+  modalNested: "z-[1200]",    // Dialogs opened from inside a modal
+  voiceOverlay: "z-[1300]",   // Voice control takes over the whole screen
+  // Confetti renders above every overlay via inline style; see zIndexValue.
+} as const;
+
+// Numeric counterpart for inline-style consumers (e.g. canvas overlays).
+export const zIndexValue = {
+  confetti: 1400              // Celebration layer — above all overlays
 } as const;
 
 // HUD glass-morphism container styles

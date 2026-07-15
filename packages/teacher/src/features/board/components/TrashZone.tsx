@@ -78,7 +78,10 @@ const TrashZone: React.FC = () => {
     'w-16 h-16 cursor-pointer transition-all duration-200',
     'max-[540px]:w-16 max-[540px]:h-16',
     'p-3 max-[540px]:p-2 rounded-lg flex items-center justify-center',
-    'relative z-[1000]', // High z-index to ensure it's above dragged widgets
+    // Orders against siblings inside .toolbar-container's stacking context
+    // (z-index: 999 in App.css); the toolbar context is what actually keeps
+    // the trash above dragged widgets.
+    'relative z-10',
     {
       'bg-dusty-rose-500 transform scale-105': isOverTrash,
       'bg-soft-white/80 dark:bg-warm-gray-800/80': !isOverTrash

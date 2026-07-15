@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useId, ReactNode, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { zIndex } from '@shared/utils/styles';
+import { useFocusTrap } from '@shared/hooks/useFocusTrap';
 
 interface ModalOptions {
   title?: string;
@@ -32,6 +34,10 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [modalOptions, setModalOptions] = useState<ModalOptions | null>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
   const modalTitleId = useId();
+
+  // Keep keyboard focus inside the dialog while it is open, and return it to
+  // the trigger on close.
+  useFocusTrap(modalContentRef, isOpen);
 
   const showModal = useCallback((options: ModalOptions) => {
     setModalOptions(options);
@@ -96,7 +102,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       {children}
       {isOpen && modalOptions && ReactDOM.createPortal(
         <div
-          className={`animate-overlay-in ${modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}`}
+          className={`animate-overlay-in ${modalOptions.overlayClassName || `fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center ${zIndex.modal}`}`}
           onClick={handleOverlayClick}
         >
           <div
@@ -106,6 +112,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             aria-modal="true"
             aria-labelledby={modalOptions.title ? modalTitleId : undefined}
             aria-label={modalOptions.title ? undefined : 'Dialog'}
+            tabIndex={-1}
             className={`animate-dialog-in ${modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}`}
             onClick={(e) => e.stopPropagation()}
           >

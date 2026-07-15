@@ -21,6 +21,7 @@ import SmallScreenWarning from '@shared/components/SmallScreenWarning';
 import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
 import { HudProximityProvider } from '@shared/hooks/useHudProximity';
 import { WidgetType, WidgetCategory } from '@shared/types';
+import { zIndex } from '@shared/utils/styles';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { APP_VERSION } from '../version';
 import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboardMode';
@@ -579,7 +580,7 @@ function App() {
           
           {/* Sticker Mode Banner */}
           {stickerMode && (
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] animate-banner-in">
+            <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 ${zIndex.stickerBanner} animate-banner-in`}>
               <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 relative overflow-hidden">
                 <div className="absolute inset-0 bg-white opacity-20 animate-pulse" />
                 <div className="relative flex items-center gap-2">

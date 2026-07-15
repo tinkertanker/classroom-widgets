@@ -4,6 +4,7 @@ import { normaliseChoiceList, stringifyChoiceList } from './utils/choiceList';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { SavedRandomiserList } from '@shared/types/storage';
+import { zIndex } from '@shared/utils/styles';
 
 interface RandomiserSettingsProps {
   choices: string[];
@@ -224,7 +225,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
 
       {/* Saved Lists Dialog */}
       {showSavedDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1200]">
+        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center ${zIndex.modalNested}`}>
           <SavedCollectionsDialog
             type="randomiser"
             items={getRandomiserLists()}

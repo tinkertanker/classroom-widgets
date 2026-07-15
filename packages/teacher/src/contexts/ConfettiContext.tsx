@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, lazy, Suspense } from 'react';
+import { zIndexValue } from '@shared/utils/styles';
 
 // Lazy-load the confetti renderer - most sessions never trigger it,
 // so we'd rather not ship ~30KB in the main bundle.
@@ -69,7 +70,7 @@ export const ConfettiProvider: React.FC<ConfettiProviderProps> = ({ children }) 
                 top: explosion.position ? `${explosion.position.y}px` : '50%',
                 left: explosion.position ? `${explosion.position.x}px` : '50%',
                 transform: explosion.position ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
-                zIndex: 9999,
+                zIndex: zIndexValue.confetti,
                 pointerEvents: 'none'
               }}
             >

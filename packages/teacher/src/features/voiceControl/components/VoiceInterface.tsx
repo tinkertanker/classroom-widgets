@@ -4,7 +4,8 @@ import { useVoiceRecording } from '../hooks/useVoiceRecording';
 import { useVoiceFeedbackSound } from '../hooks/useVoiceFeedbackSound';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
 import { debug } from '@shared/utils/debug';
-import { cn, buttons, text, borders, borderRadius } from '@shared/utils/styles';
+import { cn, buttons, text, borders, borderRadius, zIndex } from '@shared/utils/styles';
+import { useFocusTrap } from '@shared/hooks/useFocusTrap';
 import '../styles/voiceAnimations.css';
 
 interface VoiceInterfaceProps {
@@ -27,6 +28,10 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   const processedRequestIdsRef = useRef<Set<string>>(new Set());
   const isOpenRef = useRef<boolean>(isOpen);
   const timeoutIdsRef = useRef<number[]>([]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Keep keyboard focus inside the dialog while it is open.
+  useFocusTrap(dialogRef, isOpen);
 
   const {
     isListening,
@@ -352,12 +357,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-overlay-in"
+      className={`fixed inset-0 ${zIndex.voiceOverlay} flex items-center justify-center bg-black/50 backdrop-blur-sm animate-overlay-in`}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className={cn(
+      <div ref={dialogRef} tabIndex={-1} className={cn(
         "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4",
         borders.primary,
         "overflow-hidden animate-dialog-in"
