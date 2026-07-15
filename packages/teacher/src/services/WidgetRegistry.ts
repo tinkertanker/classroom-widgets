@@ -159,6 +159,9 @@ export class WidgetRegistry {
       description: 'Countdown and stopwatch functionality',
       columnSizing: 'aspect-ratio',
       features: {
+        // The timer face is a circle on a transparent wrapper, so rectangular
+        // chrome (drag ring, hover scale, dashboard glass) must not apply.
+        isTransparent: true,
         hasSettings: true,
         hasStateManagement: true,
         hasAudioPlayback: true,

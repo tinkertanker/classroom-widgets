@@ -4,7 +4,6 @@ import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
-import { WidgetType } from '@shared/types';
 import LiquidGlassOverlay from '../../desktop/LiquidGlassOverlay';
 
 interface ColumnWidgetWrapperProps {
@@ -75,7 +74,7 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   if (!config) return null;
   const isTransparent = config.features?.isTransparent || false;
   const isDashboardMode = isDesktopDashboardMode();
-  const showDashboardOverlay = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
+  const showDashboardOverlay = isDashboardMode && dashboardVisible && !isTransparent;
 
   // Height strategy is driven by the widget's columnSizing declaration
   const columnSizing = config.columnSizing ?? 'fixed';

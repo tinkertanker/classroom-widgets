@@ -7,7 +7,7 @@ import { FaTrash, FaXmark } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '@shared/hooks/useWidget';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
-import { Position, Size, WidgetType } from '@shared/types';
+import { Position, Size } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
@@ -146,7 +146,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
 
   if (!widget) return null;
   if (!config) return null;
-  const shouldUseDashboardGlass = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
+  const shouldUseDashboardGlass = isDashboardMode && dashboardVisible && !isTransparent;
 
   return (
     <div 
