@@ -169,6 +169,9 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               onChange={handleCodeChange}
               required={!currentSessionCode}
               autoComplete="off"
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
               aria-describedby={error ? "error-message" : undefined}
               disabled={!!currentSessionCode}
               readOnly={!!currentSessionCode}
@@ -186,7 +189,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
         </div>
         
         {error && (
-          <div id="error-message" className="bg-dusty-rose-50 text-dusty-rose-700 py-3 px-4 rounded-md text-sm mt-4 border border-dusty-rose-200" role="alert">
+          <div id="error-message" className="bg-dusty-rose-50 dark:bg-dusty-rose-900/30 text-dusty-rose-700 dark:text-dusty-rose-300 py-3 px-4 rounded-md text-sm mt-4 border border-dusty-rose-200 dark:border-dusty-rose-700" role="alert">
             {error}
           </div>
         )}
