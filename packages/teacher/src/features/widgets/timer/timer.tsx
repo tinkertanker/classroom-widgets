@@ -370,6 +370,10 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 42}
                 strokeDashoffset={(2 * Math.PI * 42) * (1 - progress)}
+                // While running the offset changes once per second, so a 1s
+                // linear tween turns the stepped updates into a continuous
+                // sweep. Off when stopped so restarts/edits snap instantly.
+                style={{ transition: isRunning ? 'stroke-dashoffset 1s linear' : 'none' }}
                 filter={
                   isRunning
                     ? isDark ? "url(#pulsingGlow) url(#dropShadow)" : "url(#lightModePulsingGlow) url(#dropShadow)"
