@@ -352,7 +352,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-overlay-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
@@ -360,7 +360,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       <div className={cn(
         "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4",
         borders.primary,
-        "overflow-hidden animate-in zoom-in-95 duration-200"
+        "overflow-hidden animate-dialog-in"
       )}>
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-warm-gray-200 dark:border-warm-gray-700">

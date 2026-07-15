@@ -14,14 +14,6 @@
   --timer-arc: #e39b93;
 }
 
-
-.shadow-red {
-  box-shadow: red;
-}
-.shadow-green {
-  box-shadow: green;
-}
-
 .App {
   position: relative;
   width: 100vw;

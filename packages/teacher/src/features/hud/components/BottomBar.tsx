@@ -287,7 +287,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
               'dark:from-sage-900/20 dark:to-sage-800/30',
               'hover:from-sage-100 hover:to-sage-200',
               'dark:hover:from-sage-800/30 dark:hover:to-sage-700/40',
-              'transition-all duration-300 transform hover:scale-110',
+              'transition-all duration-200 transform hover:scale-110',
               'shadow-lg hover:shadow-xl',
               'flex flex-col items-center justify-center gap-1',
               'relative group',

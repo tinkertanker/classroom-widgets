@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { FaClock, FaXmark } from 'react-icons/fa6';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { zIndex } from '@shared/utils/styles';
 
 // Color thresholds (in minutes)
 const WARNING_THRESHOLD = 15;
@@ -43,18 +44,27 @@ const Clock: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    };
 
     if (isDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [isDropdownOpen]);
 
   // Calculate remaining time
@@ -199,51 +209,54 @@ const Clock: React.FC = () => {
 
   return (
     <div ref={dropdownRef} className="relative">
-      {/* Clock Display - Clickable */}
-      <button
-        onClick={() => {
-          if (isDropdownOpen) {
-            setIsDropdownOpen(false);
-            return;
-          }
+      {/* Clock Display - Clickable. The clear button lives beside the clock
+          button, not inside it: nested <button> elements are invalid HTML. */}
+      <div className={clsx('flex items-center gap-2 font-mono tabular-nums transition-colors duration-300', colorClass)}>
+        <button
+          onClick={() => {
+            if (isDropdownOpen) {
+              setIsDropdownOpen(false);
+              return;
+            }
 
-          openDropdown();
-        }}
-        className={clsx(
-          'flex items-center gap-2 font-mono tabular-nums transition-colors duration-300',
-          colorClass
-        )}
-        title={endTime ? `Class ends at ${endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Click to set class end time'}
-      >
-        {/* Current Time */}
-        <span className="text-sm font-medium">
-          {displayHours}
-          <span className="clock-colon-blink">:</span>
-          {displayMinutes}
-          <span className="ml-1 text-xs opacity-75">{ampm}</span>
-        </span>
+            openDropdown();
+          }}
+          className="flex items-center gap-2"
+          title={endTime ? `Class ends at ${endTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : 'Click to set class end time'}
+        >
+          {/* Current Time */}
+          <span className="text-sm font-medium">
+            {displayHours}
+            <span className="clock-colon-blink">:</span>
+            {displayMinutes}
+            <span className="ml-1 text-xs opacity-75">{ampm}</span>
+          </span>
 
-        {/* Remaining Time Badge */}
+          {/* Remaining Time Badge */}
+          {remaining && (
+            <>
+              <span className="text-warm-gray-400 dark:text-warm-gray-500">·</span>
+              <span className={clsx(
+                'text-xs font-medium',
+                remaining.minutes <= URGENT_THRESHOLD && 'font-bold'
+              )}>
+                {remaining.display}
+              </span>
+            </>
+          )}
+        </button>
+
+        {/* Clear button */}
         {remaining && (
-          <>
-            <span className="text-warm-gray-400 dark:text-warm-gray-500">·</span>
-            <span className={clsx(
-              'text-xs font-medium',
-              remaining.minutes <= URGENT_THRESHOLD && 'font-bold'
-            )}>
-              {remaining.display}
-            </span>
-            {/* Clear button */}
-            <button
-              onClick={handleClearEndTime}
-              className="p-0.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 transition-colors"
-              title="Clear end time"
-            >
-              <FaXmark className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
-            </button>
-          </>
+          <button
+            onClick={handleClearEndTime}
+            className="p-0.5 rounded hover:bg-warm-gray-200 dark:hover:bg-warm-gray-600 transition-colors"
+            title="Clear end time"
+          >
+            <FaXmark className="w-2.5 h-2.5 opacity-60 hover:opacity-100" />
+          </button>
         )}
-      </button>
+      </div>
 
       {/* Dropdown for setting end time */}
       {isDropdownOpen && (
@@ -252,7 +265,8 @@ const Clock: React.FC = () => {
           'bg-soft-white/95 dark:bg-warm-gray-800/95',
           'backdrop-blur-sm rounded-lg shadow-lg',
           'border border-warm-gray-200 dark:border-warm-gray-700',
-          'p-4 z-50'
+          'p-4',
+          zIndex.hudDropdown
         )}>
           {/* Header */}
           <div className="flex items-center justify-between mb-3">

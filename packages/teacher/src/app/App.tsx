@@ -579,7 +579,7 @@ function App() {
           
           {/* Sticker Mode Banner */}
           {stickerMode && (
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] animate-in slide-in-from-top-2 duration-300">
+            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[999] animate-banner-in">
               <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-3 relative overflow-hidden">
                 <div className="absolute inset-0 bg-white opacity-20 animate-pulse" />
                 <div className="relative flex items-center gap-2">

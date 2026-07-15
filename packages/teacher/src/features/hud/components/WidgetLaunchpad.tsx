@@ -212,7 +212,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                   className={`group relative flex flex-col items-center p-4 rounded-lg transition-all ${
                     isDisabled
                       ? 'opacity-50 cursor-not-allowed bg-warm-gray-50 dark:bg-warm-gray-700'
-                      : `bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
+                      : `bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-warm-gray-800 ${
                           highlightedIndex === index ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
                         }`
                   }`}
@@ -256,7 +256,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
                         className={`group relative flex flex-col items-center p-4 rounded-lg transition-all ${
                           isDisabled
                             ? 'opacity-50 cursor-not-allowed bg-warm-gray-50 dark:bg-warm-gray-700'
-                            : `bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
+                            : `bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-warm-gray-800 ${
                                 highlightedIndex === globalIndex ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
                               }`
                         }`}

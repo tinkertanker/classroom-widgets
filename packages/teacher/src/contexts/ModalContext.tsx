@@ -61,10 +61,20 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     };
 
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        hideModal();
+      }
+    };
+
     if (isOpen) {
       // Use capture phase to catch clicks before they're stopped
       document.addEventListener('mousedown', handleGlobalClick, true);
-      return () => document.removeEventListener('mousedown', handleGlobalClick, true);
+      document.addEventListener('keydown', handleEscape);
+      return () => {
+        document.removeEventListener('mousedown', handleGlobalClick, true);
+        document.removeEventListener('keydown', handleEscape);
+      };
     }
   }, [isOpen, hideModal]);
 
@@ -86,7 +96,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       {children}
       {isOpen && modalOptions && ReactDOM.createPortal(
         <div
-          className={modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}
+          className={`animate-overlay-in ${modalOptions.overlayClassName || "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1100]"}`}
           onClick={handleOverlayClick}
         >
           <div
@@ -96,7 +106,7 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             aria-modal="true"
             aria-labelledby={modalOptions.title ? modalTitleId : undefined}
             aria-label={modalOptions.title ? undefined : 'Dialog'}
-            className={modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}
+            className={`animate-dialog-in ${modalOptions.className || "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-2xl max-h-[70vh] overflow-auto"}`}
             onClick={(e) => e.stopPropagation()}
           >
             {modalOptions.title && (

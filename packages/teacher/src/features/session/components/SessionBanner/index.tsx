@@ -123,8 +123,9 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
           {/* WiFi Icon - Shows connection status */}
           <div className={clsx(
             'transition-colors duration-200',
+            // Pulse means "in flux" — a steadily connected icon should sit still.
             connected
-              ? 'text-sage-600 dark:text-sage-400 animate-pulse'
+              ? 'text-sage-600 dark:text-sage-400'
               : isReconnecting
               ? 'text-amber-600 dark:text-amber-400 animate-pulse'
               : 'text-warm-gray-400 dark:text-warm-gray-500'
