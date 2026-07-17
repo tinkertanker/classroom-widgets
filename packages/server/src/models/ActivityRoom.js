@@ -98,27 +98,39 @@ class ActivityRoom extends Room {
       return { score: 0, total: 0, correct: [], incorrect: [], submitted: true };
     }
 
-    const { placements = [], textInputs = {} } = answers;
+    // `answers` comes straight from a student socket - never trust its shape.
+    // An uncaught throw here would crash the whole server process.
+    const source = answers && typeof answers === 'object' ? answers : {};
+    const placements = Array.isArray(source.placements) ? source.placements : [];
+    const textInputs = source.textInputs && typeof source.textInputs === 'object'
+      ? source.textInputs
+      : {};
+    const targets = Array.isArray(this.activity.targets) ? this.activity.targets : [];
+    const items = Array.isArray(this.activity.items) ? this.activity.items : [];
     const correct = [];
     const incorrect = [];
     const isCodeActivity = this.activity.type === 'code-fill-blank';
 
     // Evaluate drag-drop placements
-    for (const target of this.activity.targets) {
-      const placement = placements.find(p => p.targetId === target.id);
+    for (const target of targets) {
+      const accepts = Array.isArray(target.accepts) ? target.accepts : [];
+      const placement = placements.find(p => p != null && p.targetId === target.id);
+      const textInput = Object.prototype.hasOwnProperty.call(textInputs, target.id)
+        ? textInputs[target.id]
+        : undefined;
 
       if (placement) {
         // Check if the placed item is in the accepts list
-        if (target.accepts.includes(placement.itemId)) {
+        if (accepts.includes(placement.itemId)) {
           correct.push(target.id);
         } else {
           incorrect.push(target.id);
         }
-      } else if (textInputs[target.id] !== undefined && textInputs[target.id] !== '') {
+      } else if (typeof textInput === 'string' && textInput !== '') {
         // Check text input
-        const userInput = textInputs[target.id];
-        const correctItems = target.accepts.map(itemId => {
-          const item = this.activity.items.find(i => i.id === itemId);
+        const userInput = textInput;
+        const correctItems = accepts.map(itemId => {
+          const item = items.find(i => i.id === itemId);
           return item?.content || '';
         });
 
@@ -139,7 +151,7 @@ class ActivityRoom extends Room {
 
     return {
       score: correct.length,
-      total: this.activity.targets.length,
+      total: targets.length,
       correct,
       incorrect,
       submitted: true
@@ -184,9 +196,10 @@ class ActivityRoom extends Room {
     if (!this.activity) return {};
 
     const correctAnswers = {};
-    for (const target of this.activity.targets) {
+    const targets = Array.isArray(this.activity.targets) ? this.activity.targets : [];
+    for (const target of targets) {
       // Return the first correct item for each target
-      if (target.accepts.length > 0) {
+      if (Array.isArray(target.accepts) && target.accepts.length > 0) {
         correctAnswers[target.id] = target.accepts[0];
       }
     }

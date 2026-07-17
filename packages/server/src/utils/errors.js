@@ -65,6 +65,16 @@ const ERROR_CODES = {
     message: 'Already voted in this poll'
   },
 
+  // Activity errors
+  SUBMISSION_FAILED: {
+    code: 'SUBMISSION_FAILED',
+    message: 'Submission could not be processed'
+  },
+  RETRY_NOT_ALLOWED: {
+    code: 'RETRY_NOT_ALLOWED',
+    message: 'Retrying this activity is not allowed'
+  },
+
   // Server errors
   INTERNAL_ERROR: {
     code: 'INTERNAL_ERROR',

@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import ActivityRoom from './ActivityRoom.js';
+const { describe, it, beforeEach } = require('node:test');
+const assert = require('node:assert/strict');
+const ActivityRoom = require('./ActivityRoom');
 
 describe('ActivityRoom', () => {
   let room;
@@ -9,24 +10,21 @@ describe('ActivityRoom', () => {
   });
 
   describe('constructor', () => {
-    it('should initialize with correct defaults', () => {
-      expect(room.code).toBe('TEST123');
-      expect(room.widgetId).toBe('widget-1');
-      expect(room.activityType).toBeNull();
-      expect(room.activity).toBeNull();
-      expect(room.responses.size).toBe(0);
-      expect(room.isActive).toBe(false);
-      expect(room.answersRevealed).toBe(false);
-    });
-
-    it('should return correct room type', () => {
-      expect(room.getType()).toBe('activity');
+    it('initializes with correct defaults', () => {
+      assert.equal(room.code, 'TEST123');
+      assert.equal(room.widgetId, 'widget-1');
+      assert.equal(room.activityType, null);
+      assert.equal(room.activity, null);
+      assert.equal(room.responses.size, 0);
+      assert.equal(room.isActive, false);
+      assert.equal(room.answersRevealed, false);
+      assert.equal(room.getType(), 'activity');
     });
   });
 
   describe('setActivity', () => {
-    it('should set activity data correctly', () => {
-      const activityData = {
+    it('sets activity data correctly', () => {
+      room.setActivity({
         type: 'fill-blank',
         title: 'Test Activity',
         instructions: 'Fill in the blanks',
@@ -39,52 +37,50 @@ describe('ActivityRoom', () => {
           { id: 'blank-1', accepts: ['item-1'] }
         ],
         uiRecipe: []
-      };
+      });
 
-      room.setActivity(activityData);
-
-      expect(room.activityType).toBe('fill-blank');
-      expect(room.activity.title).toBe('Test Activity');
-      expect(room.activity.items).toHaveLength(2);
-      expect(room.activity.targets).toHaveLength(2);
-      expect(room.showImmediateFeedback).toBe(true);
-      expect(room.allowRetry).toBe(true);
+      assert.equal(room.activityType, 'fill-blank');
+      assert.equal(room.activity.title, 'Test Activity');
+      assert.equal(room.activity.items.length, 2);
+      assert.equal(room.activity.targets.length, 2);
+      assert.equal(room.showImmediateFeedback, true);
+      assert.equal(room.allowRetry, true);
     });
 
-    it('should reset answersRevealed when setting new activity', () => {
+    it('resets answersRevealed when setting new activity', () => {
       room.answersRevealed = true;
       room.setActivity({ type: 'fill-blank', items: [], targets: [] });
-      expect(room.answersRevealed).toBe(false);
+      assert.equal(room.answersRevealed, false);
     });
   });
 
   describe('evaluateTextInput', () => {
-    it('should evaluate exact match correctly', () => {
-      expect(room.evaluateTextInput('hello', ['hello'], 'exact')).toBe(true);
-      expect(room.evaluateTextInput('Hello', ['hello'], 'exact')).toBe(false);
-      expect(room.evaluateTextInput('  hello  ', ['hello'], 'exact')).toBe(true); // trims
-      expect(room.evaluateTextInput('hello world', ['hello'], 'exact')).toBe(false);
+    it('evaluates exact match correctly', () => {
+      assert.equal(room.evaluateTextInput('hello', ['hello'], 'exact'), true);
+      assert.equal(room.evaluateTextInput('Hello', ['hello'], 'exact'), false);
+      assert.equal(room.evaluateTextInput('  hello  ', ['hello'], 'exact'), true); // trims
+      assert.equal(room.evaluateTextInput('hello world', ['hello'], 'exact'), false);
     });
 
-    it('should evaluate whitespace-flexible match correctly', () => {
-      expect(room.evaluateTextInput('hello', ['hello'], 'whitespace-flexible')).toBe(true);
-      expect(room.evaluateTextInput('hello  world', ['hello world'], 'whitespace-flexible')).toBe(true);
-      expect(room.evaluateTextInput('hello\n\nworld', ['hello world'], 'whitespace-flexible')).toBe(true);
-      expect(room.evaluateTextInput('  hello   world  ', ['hello world'], 'whitespace-flexible')).toBe(true);
-      expect(room.evaluateTextInput('helloworld', ['hello world'], 'whitespace-flexible')).toBe(false);
+    it('evaluates whitespace-flexible match correctly', () => {
+      assert.equal(room.evaluateTextInput('hello', ['hello'], 'whitespace-flexible'), true);
+      assert.equal(room.evaluateTextInput('hello  world', ['hello world'], 'whitespace-flexible'), true);
+      assert.equal(room.evaluateTextInput('hello\n\nworld', ['hello world'], 'whitespace-flexible'), true);
+      assert.equal(room.evaluateTextInput('  hello   world  ', ['hello world'], 'whitespace-flexible'), true);
+      assert.equal(room.evaluateTextInput('helloworld', ['hello world'], 'whitespace-flexible'), false);
     });
 
-    it('should evaluate case-insensitive match correctly', () => {
-      expect(room.evaluateTextInput('Hello', ['hello'], 'case-insensitive')).toBe(true);
-      expect(room.evaluateTextInput('HELLO', ['hello'], 'case-insensitive')).toBe(true);
-      expect(room.evaluateTextInput('HeLLo', ['HELLO'], 'case-insensitive')).toBe(true);
-      expect(room.evaluateTextInput('hello world', ['Hello World'], 'case-insensitive')).toBe(true);
+    it('evaluates case-insensitive match correctly', () => {
+      assert.equal(room.evaluateTextInput('Hello', ['hello'], 'case-insensitive'), true);
+      assert.equal(room.evaluateTextInput('HELLO', ['hello'], 'case-insensitive'), true);
+      assert.equal(room.evaluateTextInput('HeLLo', ['HELLO'], 'case-insensitive'), true);
+      assert.equal(room.evaluateTextInput('hello world', ['Hello World'], 'case-insensitive'), true);
     });
 
-    it('should accept any correct answer from the list', () => {
-      expect(room.evaluateTextInput('cat', ['dog', 'cat', 'bird'], 'exact')).toBe(true);
-      expect(room.evaluateTextInput('bird', ['dog', 'cat', 'bird'], 'exact')).toBe(true);
-      expect(room.evaluateTextInput('fish', ['dog', 'cat', 'bird'], 'exact')).toBe(false);
+    it('accepts any correct answer from the list', () => {
+      assert.equal(room.evaluateTextInput('cat', ['dog', 'cat', 'bird'], 'exact'), true);
+      assert.equal(room.evaluateTextInput('bird', ['dog', 'cat', 'bird'], 'exact'), true);
+      assert.equal(room.evaluateTextInput('fish', ['dog', 'cat', 'bird'], 'exact'), false);
     });
   });
 
@@ -104,72 +100,64 @@ describe('ActivityRoom', () => {
       });
     });
 
-    it('should evaluate drag-drop placements correctly', () => {
-      const answers = {
+    it('evaluates drag-drop placements correctly', () => {
+      const results = room.evaluateAnswers({
         placements: [
           { itemId: 'item-0', targetId: 'blank-0' },
           { itemId: 'item-1', targetId: 'blank-1' }
         ],
         textInputs: {}
-      };
+      });
 
-      const results = room.evaluateAnswers(answers);
-
-      expect(results.score).toBe(2);
-      expect(results.total).toBe(2);
-      expect(results.correct).toContain('blank-0');
-      expect(results.correct).toContain('blank-1');
-      expect(results.incorrect).toHaveLength(0);
+      assert.equal(results.score, 2);
+      assert.equal(results.total, 2);
+      assert.ok(results.correct.includes('blank-0'));
+      assert.ok(results.correct.includes('blank-1'));
+      assert.equal(results.incorrect.length, 0);
     });
 
-    it('should mark incorrect placements', () => {
-      const answers = {
+    it('marks incorrect placements', () => {
+      const results = room.evaluateAnswers({
         placements: [
           { itemId: 'item-0', targetId: 'blank-0' }, // correct
           { itemId: 'item-2', targetId: 'blank-1' }  // incorrect (nucleus instead of cell)
         ],
         textInputs: {}
-      };
+      });
 
-      const results = room.evaluateAnswers(answers);
-
-      expect(results.score).toBe(1);
-      expect(results.total).toBe(2);
-      expect(results.correct).toContain('blank-0');
-      expect(results.incorrect).toContain('blank-1');
+      assert.equal(results.score, 1);
+      assert.equal(results.total, 2);
+      assert.ok(results.correct.includes('blank-0'));
+      assert.ok(results.incorrect.includes('blank-1'));
     });
 
-    it('should evaluate text inputs', () => {
-      const answers = {
+    it('evaluates text inputs', () => {
+      const results = room.evaluateAnswers({
         placements: [],
         textInputs: {
           'blank-0': 'mitochondria',
           'blank-1': 'cell'
         }
-      };
+      });
 
-      const results = room.evaluateAnswers(answers);
-
-      expect(results.score).toBe(2);
-      expect(results.total).toBe(2);
+      assert.equal(results.score, 2);
+      assert.equal(results.total, 2);
     });
 
-    it('should mark unanswered targets as incorrect', () => {
-      const answers = {
+    it('marks unanswered targets as incorrect', () => {
+      const results = room.evaluateAnswers({
         placements: [{ itemId: 'item-0', targetId: 'blank-0' }],
         textInputs: {}
-      };
+      });
 
-      const results = room.evaluateAnswers(answers);
-
-      expect(results.score).toBe(1);
-      expect(results.total).toBe(2);
-      expect(results.incorrect).toContain('blank-1');
+      assert.equal(results.score, 1);
+      assert.equal(results.total, 2);
+      assert.ok(results.incorrect.includes('blank-1'));
     });
   });
 
   describe('evaluateAnswers for code-fill-blank', () => {
-    beforeEach(() => {
+    it('uses whitespace-flexible matching by default for code activities', () => {
       room.setActivity({
         type: 'code-fill-blank',
         items: [
@@ -181,42 +169,36 @@ describe('ActivityRoom', () => {
           { id: 'blank-1', accepts: ['item-1'] }
         ]
       });
-    });
 
-    it('should use whitespace-flexible matching by default for code activities', () => {
-      const answers = {
+      const results = room.evaluateAnswers({
         placements: [],
         textInputs: {
           'blank-0': '  def  ', // extra whitespace
           'blank-1': 'return'
         }
-      };
+      });
 
-      const results = room.evaluateAnswers(answers);
-
-      expect(results.score).toBe(2);
-      expect(results.total).toBe(2);
+      assert.equal(results.score, 2);
+      assert.equal(results.total, 2);
     });
 
-    it('should handle code with collapsed whitespace', () => {
+    it('collapses whitespace even inside quoted strings (documented behavior)', () => {
       room.setActivity({
         type: 'code-fill-blank',
         items: [{ id: 'item-0', content: 'print("hello world")' }],
         targets: [{ id: 'blank-0', accepts: ['item-0'] }]
       });
 
-      const answers = {
+      const results = room.evaluateAnswers({
         placements: [],
         textInputs: {
-          'blank-0': 'print("hello   world")'  // extra space in string
+          'blank-0': 'print("hello   world")' // extra space in string
         }
-      };
+      });
 
-      const results = room.evaluateAnswers(answers);
-
-      // This should fail because whitespace inside quotes matters semantically
-      // but our simple whitespace-flexible matching treats it the same
-      expect(results.score).toBe(1); // Currently passes (debatable behavior)
+      // Whitespace inside quotes matters semantically, but the simple
+      // whitespace-flexible matcher treats it the same (debatable behavior).
+      assert.equal(results.score, 1);
     });
   });
 
@@ -230,33 +212,31 @@ describe('ActivityRoom', () => {
       room.isActive = true;
     });
 
-    it('should reject submission when activity is not active', () => {
+    it('rejects submission when activity is not active', () => {
       room.isActive = false;
       const result = room.submitAnswer('socket-1', { placements: [], textInputs: {} });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Activity not active');
+      assert.equal(result.success, false);
+      assert.equal(result.error, 'Activity not active');
     });
 
-    it('should record submission and return results', () => {
-      const answers = {
+    it('records submission and returns results', () => {
+      const result = room.submitAnswer('socket-1', {
         placements: [{ itemId: 'item-0', targetId: 'blank-0' }],
         textInputs: {}
-      };
+      });
 
-      const result = room.submitAnswer('socket-1', answers);
-
-      expect(result.success).toBe(true);
-      expect(result.results.score).toBe(1);
-      expect(result.results.total).toBe(1);
-      expect(room.responses.has('socket-1')).toBe(true);
+      assert.equal(result.success, true);
+      assert.equal(result.results.score, 1);
+      assert.equal(result.results.total, 1);
+      assert.equal(room.responses.has('socket-1'), true);
     });
 
-    it('should track multiple student submissions', () => {
+    it('tracks multiple student submissions', () => {
       room.submitAnswer('socket-1', { placements: [{ itemId: 'item-0', targetId: 'blank-0' }], textInputs: {} });
       room.submitAnswer('socket-2', { placements: [], textInputs: { 'blank-0': 'test' } });
 
-      expect(room.getResponseCount()).toBe(2);
+      assert.equal(room.getResponseCount(), 2);
     });
   });
 
@@ -270,31 +250,22 @@ describe('ActivityRoom', () => {
       room.isActive = true;
     });
 
-    it('should return submit action enabled when not submitted', () => {
-      const actions = room.getActions('socket-1');
-
-      const submitAction = actions.find(a => a.type === 'submit');
-      expect(submitAction).toBeDefined();
-      expect(submitAction.enabled).toBe(true);
+    it('returns submit action enabled when not submitted', () => {
+      const submitAction = room.getActions('socket-1').find(a => a.type === 'submit');
+      assert.ok(submitAction);
+      assert.equal(submitAction.enabled, true);
     });
 
-    it('should return retry action after submission', () => {
+    it('returns retry action and disables submit after submission', () => {
       room.submitAnswer('socket-1', { placements: [], textInputs: {} });
 
       const actions = room.getActions('socket-1');
-
       const retryAction = actions.find(a => a.type === 'retry');
-      expect(retryAction).toBeDefined();
-      expect(retryAction.enabled).toBe(true);
-    });
-
-    it('should disable submit after submission', () => {
-      room.submitAnswer('socket-1', { placements: [], textInputs: {} });
-
-      const actions = room.getActions('socket-1');
-
       const submitAction = actions.find(a => a.type === 'submit');
-      expect(submitAction.enabled).toBe(false);
+
+      assert.ok(retryAction);
+      assert.equal(retryAction.enabled, true);
+      assert.equal(submitAction.enabled, false);
     });
   });
 
@@ -313,19 +284,19 @@ describe('ActivityRoom', () => {
       });
     });
 
-    it('should set answersRevealed flag', () => {
+    it('sets and clears the answersRevealed flag', () => {
       room.revealAnswers(true);
-      expect(room.answersRevealed).toBe(true);
+      assert.equal(room.answersRevealed, true);
 
       room.revealAnswers(false);
-      expect(room.answersRevealed).toBe(false);
+      assert.equal(room.answersRevealed, false);
     });
 
-    it('should return correct answers mapping', () => {
+    it('returns correct answers mapping', () => {
       const correctAnswers = room.getCorrectAnswers();
 
-      expect(correctAnswers['blank-0']).toBe('item-0');
-      expect(correctAnswers['blank-1']).toBe('item-1');
+      assert.equal(correctAnswers['blank-0'], 'item-0');
+      assert.equal(correctAnswers['blank-1'], 'item-1');
     });
   });
 
@@ -339,21 +310,16 @@ describe('ActivityRoom', () => {
       room.isActive = true;
     });
 
-    it('should clear all responses', () => {
+    it('clears all responses and reveal state', () => {
       room.submitAnswer('socket-1', { placements: [], textInputs: {} });
       room.submitAnswer('socket-2', { placements: [], textInputs: {} });
-
-      expect(room.getResponseCount()).toBe(2);
-
-      room.reset();
-
-      expect(room.getResponseCount()).toBe(0);
-    });
-
-    it('should reset answersRevealed', () => {
       room.answersRevealed = true;
+      assert.equal(room.getResponseCount(), 2);
+
       room.reset();
-      expect(room.answersRevealed).toBe(false);
+
+      assert.equal(room.getResponseCount(), 0);
+      assert.equal(room.answersRevealed, false);
     });
   });
 
@@ -367,39 +333,24 @@ describe('ActivityRoom', () => {
       room.isActive = true;
     });
 
-    it('should include results for submitted student', () => {
+    it('includes results only for submitted students', () => {
       room.submitAnswer('socket-1', { placements: [{ itemId: 'item-0', targetId: 'blank-0' }], textInputs: {} });
 
-      const state = room.getStateForStudent('socket-1');
-
-      expect(state.results).toBeDefined();
-      expect(state.results.score).toBe(1);
+      assert.equal(room.getStateForStudent('socket-1').results.score, 1);
+      assert.equal(room.getStateForStudent('socket-2').results, null);
     });
 
-    it('should not include results for non-submitted student', () => {
-      const state = room.getStateForStudent('socket-1');
+    it('includes correctAnswers only when revealed', () => {
+      assert.equal(room.getStateForStudent('socket-1').correctAnswers, null);
 
-      expect(state.results).toBeNull();
-    });
-
-    it('should include correctAnswers when revealed', () => {
       room.revealAnswers(true);
 
-      const state = room.getStateForStudent('socket-1');
-
-      expect(state.correctAnswers).toBeDefined();
-      expect(state.correctAnswers['blank-0']).toBe('item-0');
-    });
-
-    it('should not include correctAnswers when not revealed', () => {
-      const state = room.getStateForStudent('socket-1');
-
-      expect(state.correctAnswers).toBeNull();
+      assert.equal(room.getStateForStudent('socket-1').correctAnswers['blank-0'], 'item-0');
     });
   });
 
   describe('toJSON', () => {
-    it('should serialize room state correctly', () => {
+    it('serializes room state correctly', () => {
       room.setActivity({
         type: 'fill-blank',
         title: 'Test',
@@ -411,12 +362,107 @@ describe('ActivityRoom', () => {
 
       const json = room.toJSON();
 
-      expect(json.code).toBe('TEST123');
-      expect(json.widgetId).toBe('widget-1');
-      expect(json.activityType).toBe('fill-blank');
-      expect(json.isActive).toBe(true);
-      expect(json.answersRevealed).toBe(true);
-      expect(json.responseCount).toBe(0);
+      assert.equal(json.code, 'TEST123');
+      assert.equal(json.widgetId, 'widget-1');
+      assert.equal(json.activityType, 'fill-blank');
+      assert.equal(json.isActive, true);
+      assert.equal(json.answersRevealed, true);
+      assert.equal(json.responseCount, 0);
+    });
+  });
+
+  // Adversarial cases: student-controlled `answers` payloads must never throw,
+  // because an exception in a socket handler crashes the whole server process.
+  describe('malformed submissions', () => {
+    beforeEach(() => {
+      room.setActivity({
+        type: 'fill-blank',
+        items: [{ id: 'item-0', content: 'test' }],
+        targets: [{ id: 'blank-0', accepts: ['item-0'] }]
+      });
+      room.isActive = true;
+    });
+
+    it('handles null/undefined answers without throwing', () => {
+      for (const answers of [null, undefined]) {
+        const result = room.submitAnswer('socket-1', answers);
+        assert.equal(result.success, true);
+        assert.equal(result.results.score, 0);
+        assert.equal(result.results.total, 1);
+      }
+    });
+
+    it('handles non-object answers without throwing', () => {
+      for (const answers of ['string', 42, true, []]) {
+        const result = room.submitAnswer(`socket-${typeof answers}`, answers);
+        assert.equal(result.success, true);
+        assert.equal(result.results.score, 0);
+      }
+    });
+
+    it('handles non-array placements without throwing', () => {
+      for (const placements of ['not-array', 42, {}, null]) {
+        const result = room.submitAnswer('socket-1', { placements, textInputs: {} });
+        assert.equal(result.success, true);
+        assert.equal(result.results.score, 0);
+      }
+    });
+
+    it('handles placements with malformed entries', () => {
+      const result = room.submitAnswer('socket-1', {
+        placements: [null, 42, 'x', {}, { itemId: 'item-0', targetId: 'blank-0' }],
+        textInputs: {}
+      });
+      assert.equal(result.success, true);
+      assert.equal(result.results.score, 1); // valid entry still evaluated
+    });
+
+    it('handles null textInputs without throwing', () => {
+      const result = room.submitAnswer('socket-1', { placements: [], textInputs: null });
+      assert.equal(result.success, true);
+      assert.equal(result.results.score, 0);
+    });
+
+    it('treats non-string text input values as incorrect instead of throwing', () => {
+      for (const value of [42, null, {}, [], true]) {
+        const result = room.submitAnswer('socket-1', {
+          placements: [],
+          textInputs: { 'blank-0': value }
+        });
+        assert.equal(result.success, true);
+        assert.equal(result.results.score, 0, `value ${JSON.stringify(value)} should not score`);
+      }
+    });
+
+    it('does not treat inherited object properties as text answers', () => {
+      // '{}'.constructor exists on the prototype chain; only own keys count.
+      room.setActivity({
+        type: 'fill-blank',
+        items: [{ id: 'item-0', content: 'test' }],
+        targets: [{ id: 'constructor', accepts: ['item-0'] }]
+      });
+      const result = room.submitAnswer('socket-1', { placements: [], textInputs: {} });
+      assert.equal(result.success, true);
+      assert.equal(result.results.score, 0);
+      assert.deepEqual(result.results.incorrect, ['constructor']);
+    });
+
+    it('handles targets without an accepts array', () => {
+      room.setActivity({
+        type: 'fill-blank',
+        items: [{ id: 'item-0', content: 'test' }],
+        targets: [{ id: 'blank-0' }] // no accepts
+      });
+
+      const result = room.submitAnswer('socket-1', {
+        placements: [{ itemId: 'item-0', targetId: 'blank-0' }],
+        textInputs: {}
+      });
+      assert.equal(result.success, true);
+      assert.equal(result.results.score, 0);
+
+      // getCorrectAnswers must not throw either
+      assert.deepEqual(room.getCorrectAnswers(), {});
     });
   });
 });

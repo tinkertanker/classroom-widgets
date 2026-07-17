@@ -5,6 +5,11 @@ const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 
+
+// Socket payloads are client-controlled; normalize to an object so property
+// access on a malformed payload (null, string, number) cannot throw.
+const asObject = (value) => (value && typeof value === 'object' ? value : {});
+
 /**
  * Handle activity-related socket events
  */
@@ -12,6 +17,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
   // Activity update handler (host only)
   socket.on(EVENTS.ACTIVITY.UPDATE, (data) => {
+    data = asObject(data);
     logger.debug('activity:update', 'Received activity update', {
       sessionCode: data.sessionCode,
       widgetId: data.widgetId
@@ -65,6 +71,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
   // Activity reveal handler (host only)
   socket.on(EVENTS.ACTIVITY.REVEAL, (data) => {
+    data = asObject(data);
     logger.debug('activity:reveal', 'Received reveal request', {
       sessionCode: data.sessionCode,
       widgetId: data.widgetId,
@@ -105,6 +112,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
   // Activity reset handler (host only)
   socket.on(EVENTS.ACTIVITY.RESET, (data) => {
+    data = asObject(data);
     logger.debug('activity:reset', 'Received reset request', {
       sessionCode: data.sessionCode,
       widgetId: data.widgetId
@@ -147,7 +155,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
   // Student requests activity state (on join/refresh)
   socket.on(EVENTS.ACTIVITY.REQUEST_STATE, (data) => {
-    const { sessionCode, widgetId } = data;
+    const { sessionCode, widgetId } = asObject(data);
 
     const sessionValidation = validators.sessionCode(sessionCode);
     if (!sessionValidation.valid) {
@@ -184,7 +192,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
   // Student submits activity answer
   socket.on(EVENTS.ACTIVITY.SUBMIT, (data, callback) => {
-    const { sessionCode, widgetId, answers } = data;
+    const { sessionCode, widgetId, answers } = asObject(data);
 
     logger.debug('activity:submit', 'Received submission', {
       sessionCode,
@@ -305,7 +313,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
   // Student requests to retry the activity
   socket.on(EVENTS.ACTIVITY.RETRY, (data, callback) => {
-    const { sessionCode, widgetId } = data;
+    const { sessionCode, widgetId } = asObject(data);
 
     logger.debug('activity:retry', 'Received retry request', {
       sessionCode,
