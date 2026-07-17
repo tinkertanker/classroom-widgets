@@ -1,5 +1,8 @@
 {
   "name": "@classroom-widgets/server",
+  "engines": {
+    "node": ">=22"
+  },
   "version": "0.10.0",
   "main": "src/server.js",
   "scripts": {
@@ -7,7 +10,7 @@
     "dev": "nodemon src/server.js",
     "test": "node scripts/check-startup-warnings.js && npm run test:unit && node test-server.js",
     "test:startup": "node scripts/check-startup-warnings.js",
-    "test:unit": "node --test src/*.test.js src/routes/*.test.js src/services/*.test.js"
+    "test:unit": "node --test \"src/**/*.test.js\""
   },
   "keywords": [],
   "author": "",

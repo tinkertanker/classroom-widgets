@@ -56,3 +56,8 @@ secrets/
 
 # TypeScript build info (incremental compilation cache)
 *.tsbuildinfo
+
+# Compiled output of packages/student's `tsc -b` step (vite.config.ts -> .js).
+# Must never be committed: Vite prefers .js config over .ts, so a stale
+# compiled copy would silently shadow future config edits.
+packages/student/vite.config.js

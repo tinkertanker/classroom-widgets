@@ -141,7 +141,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
     // Listen for response
     const responseEvent = isSession ? 'session:linkShare:submitted' : 'linkShare:submitted';
 
-    const handleResponse = (response: { success: boolean; error?: string }) => {
+    const handleResponse = (response: { success: boolean; error?: string | { code?: string; message?: string } }) => {
       // Clear the timeout since we got a response
       clearTimeout(timeoutId);
       setIsSubmitting(false);
@@ -154,7 +154,11 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
         // Hide success message after 3 seconds
         setTimeout(() => setShowSuccess(false), 3000);
       } else {
-        setError(response.error || 'Failed to submit. Please try again.');
+        // Handle both old (string) and new ({ code, message }) error formats
+        const errorMessage = typeof response.error === 'object'
+          ? response.error?.message
+          : response.error;
+        setError(errorMessage || 'Failed to submit. Please try again.');
       }
     };
 

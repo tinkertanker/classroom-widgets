@@ -54,8 +54,9 @@ class PollRoom extends Room {
     // Check if participant already voted using our voters Set
     if (this.voters.has(participantId)) return false;
 
-    // Record vote
-    if (this.pollData.votes[optionIndex] !== undefined) {
+    // Record vote. Only own keys count - inherited keys like 'constructor'
+    // would pass an `!== undefined` check and corrupt counts to NaN.
+    if (Object.prototype.hasOwnProperty.call(this.pollData.votes, optionIndex)) {
       this.pollData.votes[optionIndex]++;
       this.voters.add(participantId);
       this.updateActivity();

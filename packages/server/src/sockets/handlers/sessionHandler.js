@@ -116,12 +116,24 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
     
     try {
-      const { code, name, studentId } = data;
-      
-      if (!code || !name) {
-        socket.emit('session:joined', { 
-          success: false, 
-          error: 'Code and name are required' 
+      const { code, studentId } = data;
+      let { name } = data;
+
+      if (!code || !name || typeof code !== 'string' || typeof name !== 'string') {
+        socket.emit('session:joined', {
+          success: false,
+          error: 'Code and name are required'
+        });
+        return;
+      }
+
+      // Server-side sanitization: never trust the client to cap these.
+      // Truncate rather than reject so well-meaning clients still join.
+      name = name.trim().slice(0, LIMITS.MAX_STUDENT_NAME_LENGTH);
+      if (!name) {
+        socket.emit('session:joined', {
+          success: false,
+          error: 'Code and name are required'
         });
         return;
       }
@@ -149,8 +161,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
       
-      // Add participant to session
-      session.addParticipant(socket.id, name, studentId || socket.id);
+      // Add participant to session. studentId is client-supplied - only
+      // accept a reasonably-sized string, otherwise fall back to socket.id.
+      const safeStudentId = typeof studentId === 'string' && studentId.length > 0 && studentId.length <= 100
+        ? studentId
+        : socket.id;
+      session.addParticipant(socket.id, name, safeStudentId);
       
       // Join session room
       socket.join(`session:${code}`);

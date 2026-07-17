@@ -173,7 +173,10 @@ class Session {
   getActiveRooms() {
     const rooms = [];
     this.activeRooms.forEach((room, roomId) => {
-      const [roomType, widgetId] = roomId.includes(':') ? roomId.split(':') : [roomId, undefined];
+      // Split on the first ':' only - widget IDs may themselves contain ':'
+      const separatorIndex = roomId.indexOf(':');
+      const roomType = separatorIndex === -1 ? roomId : roomId.slice(0, separatorIndex);
+      const widgetId = separatorIndex === -1 ? undefined : roomId.slice(separatorIndex + 1);
       rooms.push({
         roomType,
         widgetId,

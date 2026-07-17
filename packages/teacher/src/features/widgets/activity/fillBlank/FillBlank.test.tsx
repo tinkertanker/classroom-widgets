@@ -1,281 +1,163 @@
 import { describe, it, expect } from 'vitest';
+import { buildFillBlankActivity, parseAnswers } from '../shared/activityBuilders';
+import type { FillBlankState } from '../shared/activityBuilders';
 
 /**
- * Tests for FillBlank UI recipe generation logic
- * These test the pure functions for building activity definitions
+ * Tests for the REAL fill-blank activity builder that is sent to the server
+ * and drives student scoring (previously these tests exercised an in-file
+ * copy that had silently diverged from the shipping code).
  */
 
-// Helper function extracted from FillBlank.tsx for testing
-function buildActivityDefinition(data: {
-  template: string;
-  answers: string[];
-  distractors: string[];
-  title: string;
-  instructions: string;
-}) {
-  const { template, answers, distractors, title, instructions } = data;
-  if (!template || answers.length === 0) {
-    return { type: 'fill-blank', title, instructions, items: [], targets: [], uiRecipe: [] };
-  }
-
-  // Create items - shuffle ONCE and use everywhere
-  const allWords = [...answers, ...distractors];
-  // For testing, use deterministic "shuffle" (no shuffle)
-  const shuffled = [...allWords];
-  const items = shuffled.map((word, i) => ({
-    id: `item-${i}`,
-    content: word
-  }));
-
-  // Create targets (one per blank)
-  const targets = answers.map((answer, i) => {
-    const itemIndex = shuffled.indexOf(answer);
-    return {
-      id: `blank-${i}`,
-      accepts: [`item-${itemIndex}`]
-    };
-  });
-
-  // Generate UI recipe
-  const parts = template.split(/___[^_]+___/);
-  const recipe: any[] = [];
-
-  // Build inline container for the sentence with blanks
-  const inlineChildren: any[] = [];
-  parts.forEach((part, index) => {
-    if (part) {
-      inlineChildren.push({
-        id: `text-${index}`,
-        type: 'text',
-        props: { content: part, variant: 'inline' }
-      });
-    }
-    if (index < parts.length - 1) {
-      inlineChildren.push({
-        id: `dropzone-${index}`,
-        type: 'drop-zone',
-        props: {
-          targetId: `blank-${index}`,
-          accepts: 'single',
-          inline: true,
-          showFeedback: true
-        }
-      });
-    }
-  });
-
-  recipe.push({
-    id: 'sentence-container',
-    type: 'container',
-    props: { layout: 'inline', className: 'text-lg leading-relaxed' },
-    children: inlineChildren
-  });
-
-  // Word bank
-  const wordBankChildren = items.map(item => ({
-    id: `draggable-${item.id}`,
-    type: 'draggable-item',
-    props: { itemId: item.id, content: item.content }
-  }));
-
-  recipe.push({
-    id: 'word-bank',
-    type: 'container',
-    props: {
-      layout: 'row',
-      gap: '8px',
-      wrap: true,
-      className: 'mt-4 p-4 bg-warm-gray-100 dark:bg-warm-gray-800 rounded-lg'
-    },
-    children: wordBankChildren
-  });
-
+function makeState(overrides: Partial<FillBlankState> = {}): FillBlankState {
   return {
-    type: 'fill-blank',
-    title,
-    instructions,
-    items,
-    targets,
-    uiRecipe: recipe,
-    showImmediateFeedback: true,
-    allowRetry: true
+    template: 'The {{mitochondria}} is the powerhouse of the {{cell}}.',
+    answers: ['mitochondria', 'cell'],
+    distractors: ['nucleus'],
+    title: 'Biology',
+    instructions: 'Drag the words.',
+    ...overrides
   };
 }
 
-describe('FillBlank Recipe Generation', () => {
-  describe('buildActivityDefinition', () => {
-    it('should return empty activity when no template', () => {
-      const result = buildActivityDefinition({
-        template: '',
-        answers: [],
-        distractors: [],
-        title: 'Test',
-        instructions: 'Test instructions'
-      });
+// Map itemId -> content for an activity definition
+function itemContent(activity: ReturnType<typeof buildFillBlankActivity>) {
+  return new Map((activity.items ?? []).map(item => [item.id, item.content]));
+}
 
-      expect(result.items).toHaveLength(0);
-      expect(result.targets).toHaveLength(0);
-      expect(result.uiRecipe).toHaveLength(0);
-    });
+describe('buildFillBlankActivity', () => {
+  it('returns an empty activity when there is no template', () => {
+    const activity = buildFillBlankActivity(makeState({ template: '', answers: [] }));
 
-    it('should parse single blank correctly', () => {
-      const result = buildActivityDefinition({
-        template: 'The ___sun___ is bright.',
-        answers: ['sun'],
-        distractors: [],
-        title: 'Test',
-        instructions: 'Fill in'
-      });
+    expect(activity.type).toBe('fill-blank');
+    expect(activity.items).toEqual([]);
+    expect(activity.targets).toEqual([]);
+    expect(activity.uiRecipe).toEqual([]);
+  });
 
-      expect(result.items).toHaveLength(1);
-      expect(result.items[0].content).toBe('sun');
-      expect(result.targets).toHaveLength(1);
-      expect(result.targets[0].accepts).toContain('item-0');
-    });
+  it('returns an empty activity when there are no answers', () => {
+    const activity = buildFillBlankActivity(makeState({ answers: [] }));
+    expect(activity.items).toEqual([]);
+    expect(activity.targets).toEqual([]);
+  });
 
-    it('should parse multiple blanks correctly', () => {
-      const result = buildActivityDefinition({
-        template: 'The ___mitochondria___ is the powerhouse of the ___cell___.',
-        answers: ['mitochondria', 'cell'],
-        distractors: [],
-        title: 'Biology',
-        instructions: 'Fill in the blanks'
-      });
+  it('creates one item per word (answers + distractors)', () => {
+    const activity = buildFillBlankActivity(makeState());
 
-      expect(result.items).toHaveLength(2);
-      expect(result.targets).toHaveLength(2);
+    expect(activity.items).toHaveLength(3);
+    const contents = (activity.items ?? []).map(i => i.content).sort();
+    expect(contents).toEqual(['cell', 'mitochondria', 'nucleus']);
+  });
 
-      // First blank accepts first item
-      expect(result.targets[0].id).toBe('blank-0');
-      expect(result.targets[0].accepts).toContain('item-0');
+  it('creates one target per blank whose accepts resolve to the answer content', () => {
+    const activity = buildFillBlankActivity(makeState());
+    const contents = itemContent(activity);
 
-      // Second blank accepts second item
-      expect(result.targets[1].id).toBe('blank-1');
-      expect(result.targets[1].accepts).toContain('item-1');
-    });
+    expect(activity.targets).toHaveLength(2);
+    const [first, second] = activity.targets ?? [];
 
-    it('should include distractors in items', () => {
-      const result = buildActivityDefinition({
-        template: 'The ___cat___ sat on the mat.',
-        answers: ['cat'],
-        distractors: ['dog', 'bird'],
-        title: 'Test',
-        instructions: 'Fill in'
-      });
+    expect(first.id).toBe('blank-0');
+    expect(first.accepts.map(id => contents.get(id))).toEqual(['mitochondria']);
+    expect(second.id).toBe('blank-1');
+    expect(second.accepts.map(id => contents.get(id))).toEqual(['cell']);
+  });
 
-      expect(result.items).toHaveLength(3);
-      expect(result.items.map(i => i.content)).toContain('cat');
-      expect(result.items.map(i => i.content)).toContain('dog');
-      expect(result.items.map(i => i.content)).toContain('bird');
-    });
+  it('keeps item ids consistent between definition and word bank despite shuffling', () => {
+    const activity = buildFillBlankActivity(makeState());
+    const wordBank = (activity.uiRecipe ?? []).find(block => block.id === 'word-bank');
 
-    it('should generate correct UI recipe structure', () => {
-      const result = buildActivityDefinition({
-        template: 'Hello ___world___!',
-        answers: ['world'],
-        distractors: [],
-        title: 'Greeting',
-        instructions: 'Complete'
-      });
+    expect(wordBank?.children).toHaveLength(3);
+    const contents = itemContent(activity);
+    for (const child of wordBank?.children ?? []) {
+      expect(child.props.content).toBe(contents.get(child.props.itemId as string));
+    }
+  });
 
-      expect(result.uiRecipe).toHaveLength(2);
+  it('accepts every copy of a word when the same answer fills multiple blanks', () => {
+    // Regression: accepts used shuffled.indexOf(answer), so two blanks with
+    // the same answer both pointed at the FIRST copy, marking the second
+    // (identical) dragged word wrong.
+    const activity = buildFillBlankActivity(makeState({
+      template: '{{the}} cat and {{the}} dog',
+      answers: ['the', 'the'],
+      distractors: []
+    }));
+    const contents = itemContent(activity);
 
-      // First element is sentence container
-      const sentenceContainer = result.uiRecipe[0];
-      expect(sentenceContainer.type).toBe('container');
-      expect(sentenceContainer.props.layout).toBe('inline');
+    for (const target of activity.targets ?? []) {
+      const acceptedWords = target.accepts.map((id: string) => contents.get(id));
+      expect(acceptedWords).toEqual(['the', 'the']);
+    }
+  });
 
-      // Should have text, drop-zone, text children
-      expect(sentenceContainer.children).toHaveLength(3);
-      expect(sentenceContainer.children[0].type).toBe('text');
-      expect(sentenceContainer.children[0].props.content).toBe('Hello ');
-      expect(sentenceContainer.children[1].type).toBe('drop-zone');
-      expect(sentenceContainer.children[1].props.targetId).toBe('blank-0');
-      expect(sentenceContainer.children[2].type).toBe('text');
-      expect(sentenceContainer.children[2].props.content).toBe('!');
+  it('accepts the duplicate copy when an answer also appears as a distractor', () => {
+    const activity = buildFillBlankActivity(makeState({
+      template: 'Water is {{H2O}}',
+      answers: ['H2O'],
+      distractors: ['H2O', 'CO2']
+    }));
+    const contents = itemContent(activity);
 
-      // Second element is word bank
-      const wordBank = result.uiRecipe[1];
-      expect(wordBank.type).toBe('container');
-      expect(wordBank.children).toHaveLength(1);
-      expect(wordBank.children[0].type).toBe('draggable-item');
-    });
+    const target = (activity.targets ?? [])[0];
+    expect(target.accepts).toHaveLength(2);
+    for (const id of target.accepts) {
+      expect(contents.get(id)).toBe('H2O');
+    }
+  });
 
-    it('should handle consecutive blanks', () => {
-      const result = buildActivityDefinition({
-        template: '___Hello___ ___world___',
-        answers: ['Hello', 'world'],
-        distractors: [],
-        title: 'Test',
-        instructions: 'Fill in'
-      });
+  it('builds an inline sentence recipe with one drop zone per blank', () => {
+    const activity = buildFillBlankActivity(makeState());
+    const sentence = (activity.uiRecipe ?? []).find(block => block.id === 'sentence-container');
 
-      expect(result.targets).toHaveLength(2);
+    const dropZones = (sentence?.children ?? []).filter(c => c.type === 'drop-zone');
+    expect(dropZones).toHaveLength(2);
+    expect(dropZones.map(z => z.props.targetId)).toEqual(['blank-0', 'blank-1']);
 
-      const sentenceContainer = result.uiRecipe[0];
-      // Should have: dropzone, text(" "), dropzone
-      expect(sentenceContainer.children).toHaveLength(3);
-      expect(sentenceContainer.children[0].type).toBe('drop-zone');
-      expect(sentenceContainer.children[1].type).toBe('text');
-      expect(sentenceContainer.children[1].props.content).toBe(' ');
-      expect(sentenceContainer.children[2].type).toBe('drop-zone');
-    });
+    const texts = (sentence?.children ?? []).filter(c => c.type === 'text');
+    expect(texts[0].props.content).toBe('The ');
+  });
 
-    it('should set correct metadata', () => {
-      const result = buildActivityDefinition({
-        template: 'Test ___answer___',
-        answers: ['answer'],
-        distractors: [],
-        title: 'My Title',
-        instructions: 'My Instructions'
-      });
+  it('handles a template that starts and ends with blanks', () => {
+    const activity = buildFillBlankActivity(makeState({
+      template: '{{alpha}} middle {{omega}}',
+      answers: ['alpha', 'omega'],
+      distractors: []
+    }));
+    const sentence = (activity.uiRecipe ?? []).find(block => block.id === 'sentence-container');
+    const kinds = (sentence?.children ?? []).map(c => c.type);
 
-      expect(result.type).toBe('fill-blank');
-      expect(result.title).toBe('My Title');
-      expect(result.instructions).toBe('My Instructions');
-      expect(result.showImmediateFeedback).toBe(true);
-      expect(result.allowRetry).toBe(true);
-    });
+    expect(kinds).toEqual(['drop-zone', 'text', 'drop-zone']);
+  });
+
+  it('enables feedback and retry by default', () => {
+    const activity = buildFillBlankActivity(makeState());
+    expect(activity.showImmediateFeedback).toBe(true);
+    expect(activity.allowRetry).toBe(true);
   });
 });
 
-describe('Template Parsing', () => {
-  // Helper to parse template like the editor does
-  function parseAnswers(text: string): string[] {
-    const pattern = /___([^_]+)___/g;
-    const matches = [...text.matchAll(pattern)];
-    return matches.map(m => m[1].trim());
-  }
-
-  it('should extract single answer', () => {
-    const answers = parseAnswers('The ___quick___ brown fox');
-    expect(answers).toEqual(['quick']);
+describe('parseAnswers', () => {
+  it('extracts answers from {{}} markers in order', () => {
+    expect(parseAnswers('The {{mitochondria}} of the {{cell}}')).toEqual(['mitochondria', 'cell']);
   });
 
-  it('should extract multiple answers', () => {
-    const answers = parseAnswers('The ___quick___ brown ___fox___ jumps');
-    expect(answers).toEqual(['quick', 'fox']);
+  it('trims whitespace inside markers', () => {
+    expect(parseAnswers('{{ spaced }} and {{\ttabbed\t}}')).toEqual(['spaced', 'tabbed']);
   });
 
-  it('should handle answers with spaces', () => {
-    const answers = parseAnswers('Say ___hello world___!');
-    expect(answers).toEqual(['hello world']);
+  it('returns an empty array when there are no markers', () => {
+    expect(parseAnswers('no blanks here')).toEqual([]);
+    expect(parseAnswers('')).toEqual([]);
   });
 
-  it('should trim whitespace from answers', () => {
-    const answers = parseAnswers('The ___ quick ___ fox');
-    expect(answers).toEqual(['quick']);
+  it('ignores unclosed markers', () => {
+    expect(parseAnswers('{{open but never closed')).toEqual([]);
   });
 
-  it('should return empty array for no blanks', () => {
-    const answers = parseAnswers('No blanks here');
-    expect(answers).toEqual([]);
+  it('keeps duplicate answers (one per blank)', () => {
+    expect(parseAnswers('{{the}} cat and {{the}} dog')).toEqual(['the', 'the']);
   });
 
-  it('should handle multiline templates', () => {
-    const template = `Line 1 ___answer1___
-Line 2 ___answer2___`;
-    const answers = parseAnswers(template);
-    expect(answers).toEqual(['answer1', 'answer2']);
+  it('supports punctuation and unicode inside markers', () => {
+    expect(parseAnswers('{{"Hello, "}} {{H₂O}} {{a+b=c}}')).toEqual(['"Hello, "', 'H₂O', 'a+b=c']);
   });
 });

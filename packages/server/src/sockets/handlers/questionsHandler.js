@@ -74,6 +74,11 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
       studentName
     );
 
+    if (!question) {
+      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('ROOM_FULL'));
+      return;
+    }
+
     // Send confirmation to student
     socket.emit(EVENTS.QUESTIONS.SUBMITTED, createSuccessResponse({ questionId: question.id }));
 

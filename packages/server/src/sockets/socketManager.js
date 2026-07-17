@@ -2,6 +2,7 @@ const { EVENTS } = require('../config/constants');
 const {
   startHostDisconnectTimeout
 } = require('./hostDisconnectTimeouts');
+const { installSafeSocketEvents } = require('./safeSocketEvents');
 const { logger } = require('../utils/logger');
 
 // Import individual socket handlers
@@ -25,12 +26,18 @@ function setupSocketHandlers(io, sessionManager) {
       logger.info(`Socket connected: ${socket.id}`);
     }
 
+    // All event payloads are client-controlled; make sure a handler that
+    // throws on a malformed payload logs instead of crashing the process.
+    installSafeSocketEvents(socket);
+
     // Track which session this socket belongs to
     let currentSessionCode = null;
 
     // Attach session tracking to socket
     socket.on(EVENTS.SESSION.JOIN, (data) => {
-      currentSessionCode = data.code;
+      if (data && typeof data.code === 'string') {
+        currentSessionCode = data.code;
+      }
     });
 
     // Setup all handlers

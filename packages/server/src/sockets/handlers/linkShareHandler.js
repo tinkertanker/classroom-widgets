@@ -105,6 +105,11 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
 
     const submission = room.addSubmission(studentName, content, isLink);
 
+    if (!submission) {
+      socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('ROOM_FULL'));
+      return;
+    }
+
     // Notify all in the room
     const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
     const submissionData = {

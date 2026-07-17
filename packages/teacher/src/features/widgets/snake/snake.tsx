@@ -29,11 +29,13 @@ export const isSnakeSelfCollision = (
 
 export const generateRandomFood = (occupiedSegments: Position[]): Position | null => {
   const totalCells = GRID_SIZE * GRID_SIZE;
-  if (occupiedSegments.length >= totalCells) {
+  // Count distinct cells - segment lists can transiently contain duplicates
+  // (e.g. the head overlapping the tail on the eating frame), and a raw
+  // length check would falsely report a full grid.
+  const occupied = new Set(occupiedSegments.map(segment => `${segment.x},${segment.y}`));
+  if (occupied.size >= totalCells) {
     return null;
   }
-
-  const occupied = new Set(occupiedSegments.map(segment => `${segment.x},${segment.y}`));
   const startIndex = Math.floor(Math.random() * totalCells);
 
   for (let offset = 0; offset < totalCells; offset += 1) {
