@@ -65,6 +65,36 @@ describe('installSafeSocketEvents', () => {
     });
   });
 
+  it('catches rejections from async handlers', async () => {
+    socket.on('boom', async () => {
+      throw new Error('async handler exploded');
+    });
+
+    let response;
+    socket.emit('boom', { some: 'payload' }, (r) => {
+      response = r;
+    });
+
+    // Rejection surfaces on a later tick; an unhandled rejection here would
+    // fail the test process.
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(response.success, false);
+    assert.equal(response.error.code, 'INTERNAL_ERROR');
+  });
+
+  it('passes through resolved values from async handlers', async () => {
+    const seen = [];
+    socket.on('ok', async (data) => {
+      seen.push(data);
+    });
+
+    socket.emit('ok', 42);
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.deepEqual(seen, [42]);
+  });
+
   it('registers multiple handlers independently', () => {
     const seen = [];
     socket.on('multi', () => seen.push('a'));
