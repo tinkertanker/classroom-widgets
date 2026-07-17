@@ -22,6 +22,10 @@ class SessionManager {
       return this.sessions.get(existingCode);
     }
 
+    if (this.sessions.size >= LIMITS.MAX_SESSIONS) {
+      throw new Error('Server is at capacity. Please try again later.');
+    }
+
     const code = generateSessionCode(this.sessions);
     const session = new Session(code);
     this.sessions.set(code, session);

@@ -1,4 +1,5 @@
 const Room = require('./Room');
+const { LIMITS } = require('../config/constants');
 
 /**
  * Room class to manage questions submissions
@@ -16,8 +17,12 @@ class QuestionsRoom extends Room {
 
   /**
    * Add a new question
+   * @returns {Object|null} The created question, or null if the room is full
    */
   addQuestion(studentId, text, studentName) {
+    if (this.questions.length >= LIMITS.MAX_QUESTIONS_PER_ROOM) {
+      return null;
+    }
     const question = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       studentId,

@@ -1,4 +1,5 @@
 const Room = require('./Room');
+const { LIMITS } = require('../config/constants');
 
 /**
  * Room class to manage link share sessions
@@ -27,8 +28,12 @@ class LinkShareRoom extends Room {
 
   /**
    * Add a new submission (link or text)
+   * @returns {Object|null} The created submission, or null if the room is full
    */
   addSubmission(studentName, content, isLink = true) {
+    if (this.submissions.length >= LIMITS.MAX_SUBMISSIONS_PER_ROOM) {
+      return null;
+    }
     const submission = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       studentName,
