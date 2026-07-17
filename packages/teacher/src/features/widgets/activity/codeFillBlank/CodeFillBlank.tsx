@@ -11,17 +11,11 @@ import CodeFillBlankEditor from './CodeFillBlankEditor';
 import { debug } from '@shared/utils/debug';
 import { withWidgetProvider, WidgetProps } from '../../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../../shared/utils/networkedWidgetHelpers';
-import type { ActivityDefinition, UIBlock } from '@shared/types/activity.types';
+import type { ActivityDefinition } from '@shared/types/activity.types';
+import { buildCodeFillBlankActivity } from '../shared/activityBuilders';
+import type { CodeFillBlankState } from '../shared/activityBuilders';
 import type { ActivityResponseReceivedData } from '@shared/types/socket.types';
 
-interface CodeFillBlankState {
-  template: string;
-  answers: string[];
-  distractors: string[];
-  title: string;
-  instructions: string;
-  language: 'python' | 'javascript' | 'text';
-}
 
 interface StudentResponse {
   studentId: string;
@@ -80,102 +74,12 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     rawToggleActive();
   }, [isWidgetActive, activityData.template, rawToggleActive]);
 
-  // Build activity definition for server (includes UI recipe generation)
-  const buildActivityDefinition = useCallback((data: CodeFillBlankState): Partial<ActivityDefinition> => {
-    const { template, answers, distractors, title, instructions, language } = data;
-    if (!template || answers.length === 0) {
-      return { type: 'code-fill-blank', title, instructions, items: [], targets: [], uiRecipe: [] };
-    }
-
-    // Create items - each answer becomes an item (no need to shuffle for typed input)
-    const items = answers.map((content, i) => ({
-      id: `item-${i}`,
-      content
-    }));
-
-    // Create targets (one per blank) with whitespace-flexible evaluation
-    const targets = answers.map((_, i) => ({
-      id: `blank-${i}`,
-      accepts: [`item-${i}`],
-      evaluationMode: 'whitespace-flexible' as const
-    }));
-
-    // Generate UI recipe - code with inline text inputs for blanks
-    const recipe: UIBlock[] = [];
-
-    // Parse template into lines for code display
-    const lines = template.split('\n');
-    const codeLines: UIBlock[] = [];
-    let blankIndex = 0;
-
-    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-      const line = lines[lineIdx];
-      // Split line by blank markers
-      const parts = line.split(/\{\{[^}]+\}\}/);
-      const blankMatches = line.match(/\{\{[^}]+\}\}/g) || [];
-
-      const lineChildren: UIBlock[] = [];
-
-      for (let i = 0; i < parts.length; i++) {
-        // Add text part
-        if (parts[i]) {
-          lineChildren.push({
-            id: `text-${lineIdx}-${i}`,
-            type: 'text' as const,
-            props: { content: parts[i], variant: 'inline' as const, className: 'font-mono whitespace-pre' }
-          });
-        }
-
-        // Add text input for blank if not the last part
-        if (i < blankMatches.length) {
-          lineChildren.push({
-            id: `input-${blankIndex}`,
-            type: 'text-input' as const,
-            props: {
-              targetId: `blank-${blankIndex}`,
-              placeholder: '___',
-              maxLength: 50
-            }
-          });
-          blankIndex++;
-        }
-      }
-
-      codeLines.push({
-        id: `line-${lineIdx}`,
-        type: 'container' as const,
-        props: { layout: 'inline' as const, className: 'min-h-[24px]' },
-        children: lineChildren
-      });
-    }
-
-    // Code container with language styling
-    recipe.push({
-      id: 'code-container',
-      type: 'container' as const,
-      props: {
-        layout: 'column' as const,
-        gap: '0',
-        className: `font-mono text-sm bg-warm-gray-900 dark:bg-warm-gray-950 p-4 rounded-lg ${
-          language === 'python' ? 'text-blue-300' :
-          language === 'javascript' ? 'text-yellow-300' :
-          'text-warm-gray-200'
-        }`
-      },
-      children: codeLines
-    });
-
-    return {
-      type: 'code-fill-blank',
-      title,
-      instructions,
-      items,
-      targets,
-      uiRecipe: recipe,
-      showImmediateFeedback: true,
-      allowRetry: true
-    };
-  }, []);
+  // Build activity definition for server (includes UI recipe generation).
+  // Logic lives in shared/activityBuilders so it is unit-testable.
+  const buildActivityDefinition = useCallback(
+    (data: CodeFillBlankState): Partial<ActivityDefinition> => buildCodeFillBlankActivity(data),
+    []
+  );
 
   // Socket event handlers
   const socketEvents = useMemo(() => ({

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { FaPlus, FaXmark } from 'react-icons/fa6';
 import { buttons } from '@shared/utils/styles';
+import { parseAnswers } from '../shared/activityBuilders';
 
 interface CodeFillBlankEditorProps {
   initialData?: {
@@ -33,13 +34,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
   const [newDistractor, setNewDistractor] = useState('');
 
-  // Parse answers from template
-  const parseAnswers = useCallback((text: string): string[] => {
-    const pattern = /\{\{([^}]+)\}\}/g;
-    const matches = [...text.matchAll(pattern)];
-    return matches.map(m => m[1].trim());
-  }, []);
-
+  // Parse answers from template ({{answer}} markers)
   const answers = parseAnswers(template);
 
   const handleAddDistractor = () => {

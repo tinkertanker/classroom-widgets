@@ -11,16 +11,11 @@ import FillBlankEditor from './FillBlankEditor';
 import { debug } from '@shared/utils/debug';
 import { withWidgetProvider, WidgetProps } from '../../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../../shared/utils/networkedWidgetHelpers';
-import type { ActivityDefinition, ActivityResults, UIBlock } from '@shared/types/activity.types';
+import type { ActivityDefinition, ActivityResults } from '@shared/types/activity.types';
+import { buildFillBlankActivity } from '../shared/activityBuilders';
+import type { FillBlankState } from '../shared/activityBuilders';
 import type { ActivityResponseReceivedData } from '@shared/types/socket.types';
 
-interface FillBlankState {
-  template: string;
-  answers: string[];
-  distractors: string[];
-  title: string;
-  instructions: string;
-}
 
 interface StudentResponse {
   studentId: string;
@@ -79,97 +74,12 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     rawToggleActive();
   }, [isWidgetActive, activityData.template, rawToggleActive]);
 
-  // Build activity definition for server (includes UI recipe generation)
-  // IMPORTANT: Items must be shuffled once and used for both the definition and UI recipe
-  // to ensure item IDs match their content consistently
-  const buildActivityDefinition = useCallback((data: FillBlankState): Partial<ActivityDefinition> => {
-    const { template, answers, distractors, title, instructions } = data;
-    if (!template || answers.length === 0) {
-      return { type: 'fill-blank', title, instructions, items: [], targets: [], uiRecipe: [] };
-    }
-
-    // Create items - shuffle ONCE and use everywhere
-    const allWords = [...answers, ...distractors];
-    const shuffled = [...allWords].sort(() => Math.random() - 0.5);
-    const items = shuffled.map((word, i) => ({
-      id: `item-${i}`,
-      content: word
-    }));
-
-    // Create targets (one per blank)
-    const targets = answers.map((answer, i) => {
-      const itemIndex = shuffled.indexOf(answer);
-      return {
-        id: `blank-${i}`,
-        accepts: [`item-${itemIndex}`]
-      };
-    });
-
-    // Generate UI recipe using the SAME shuffled items
-    const parts = template.split(/\{\{[^}]+\}\}/);
-    const recipe: UIBlock[] = [];
-
-    // Build inline container for the sentence with blanks
-    const inlineChildren: UIBlock[] = [];
-    parts.forEach((part, index) => {
-      if (part) {
-        inlineChildren.push({
-          id: `text-${index}`,
-          type: 'text' as const,
-          props: { content: part, variant: 'inline' as const }
-        });
-      }
-      if (index < parts.length - 1) {
-        inlineChildren.push({
-          id: `dropzone-${index}`,
-          type: 'drop-zone' as const,
-          props: {
-            targetId: `blank-${index}`,
-            accepts: 'single' as const,
-            inline: true,
-            showFeedback: true
-          }
-        });
-      }
-    });
-
-    recipe.push({
-      id: 'sentence-container',
-      type: 'container' as const,
-      props: { layout: 'inline' as const, className: 'text-lg leading-relaxed' },
-      children: inlineChildren
-    });
-
-    // Word bank using the SAME items (consistent IDs and content)
-    const wordBankChildren: UIBlock[] = items.map(item => ({
-      id: `draggable-${item.id}`,
-      type: 'draggable-item' as const,
-      props: { itemId: item.id, content: item.content }
-    }));
-
-    recipe.push({
-      id: 'word-bank',
-      type: 'container' as const,
-      props: {
-        layout: 'row' as const,
-        gap: '8px',
-        wrap: true,
-        className: 'mt-4 p-4 bg-warm-gray-100 dark:bg-warm-gray-800 rounded-lg'
-      },
-      children: wordBankChildren
-    });
-
-    return {
-      type: 'fill-blank',
-      title,
-      instructions,
-      items,
-      targets,
-      uiRecipe: recipe,
-      showImmediateFeedback: true,
-      allowRetry: true
-    };
-  }, []);
+  // Build activity definition for server (includes UI recipe generation).
+  // Logic lives in shared/activityBuilders so it is unit-testable.
+  const buildActivityDefinition = useCallback(
+    (data: FillBlankState): Partial<ActivityDefinition> => buildFillBlankActivity(data),
+    []
+  );
 
   // Socket event handlers
   const socketEvents = useMemo(() => ({

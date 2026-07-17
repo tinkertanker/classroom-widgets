@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { FaPlus, FaXmark } from 'react-icons/fa6';
 import { buttons } from '@shared/utils/styles';
+import { parseAnswers } from '../shared/activityBuilders';
 
 interface FillBlankEditorProps {
   initialData?: {
@@ -30,13 +31,7 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
   const [newDistractor, setNewDistractor] = useState('');
 
-  // Parse answers from template
-  const parseAnswers = useCallback((text: string): string[] => {
-    const pattern = /\{\{([^}]+)\}\}/g;
-    const matches = [...text.matchAll(pattern)];
-    return matches.map(m => m[1].trim());
-  }, []);
-
+  // Parse answers from template ({{answer}} markers)
   const answers = parseAnswers(template);
 
   const handleAddDistractor = () => {
