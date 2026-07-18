@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0",
+  "id": "mangrove-zonation-hotspots",
+  "metadata": {
+    "title": "Explore a Mangrove Shore",
+    "summary": "An interactive cross-section introduces how tides, muddy sediment and specialised roots shape a mangrove habitat.",
+    "subject": "humanities",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Describe how conditions change from the seaward edge to higher ground and relate visible mangrove adaptations to those conditions.",
+    "estimatedMinutes": 8,
+    "tags": ["geography", "mangroves", "coasts", "adaptation", "hotspots"]
+  },
+  "theme": {
+    "accent": "sky",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [
+    {
+      "id": "mangrove-cross-section",
+      "kind": "image",
+      "mediaType": "image/webp",
+      "width": 1800,
+      "height": 1000,
+      "byteLength": 204800,
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+  ],
+  "variables": [],
+  "screens": [
+    {
+      "id": "shore-profile",
+      "title": "From sea to land",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "How do mangroves cope where land meets sea?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Explore the shore from left to right. After opening each marker, identify one challenge and one feature that helps organisms survive it."
+        },
+        {
+          "id": "mangrove-profile",
+          "kind": "hotspots",
+          "prompt": "Tap each region of the mangrove cross-section to reveal its conditions and adaptations.",
+          "imageAssetId": "mangrove-cross-section",
+          "altText": "A side view from open seawater across a muddy intertidal mangrove shore to higher land, showing prop roots, breathing roots, mudskippers and leaf litter.",
+          "hotspots": [
+            {
+              "id": "tidal-channel",
+              "label": "Tidal channel",
+              "reveal": "Tides repeatedly cover and uncover the shore, changing water depth and salinity and carrying sediment and nutrients.",
+              "shape": { "kind": "rectangle", "x": 0.04, "y": 0.58, "width": 0.24, "height": 0.28 }
+            },
+            {
+              "id": "soft-mud",
+              "label": "Soft, oxygen-poor mud",
+              "reveal": "Fine sediment traps water but contains little oxygen. Animals burrow, while some trees send specialised roots above the surface for gas exchange.",
+              "shape": { "kind": "rectangle", "x": 0.3, "y": 0.67, "width": 0.32, "height": 0.19 }
+            },
+            {
+              "id": "prop-roots",
+              "label": "Prop roots",
+              "reveal": "Arching prop roots brace a tree in unstable mud and slow the water, which encourages more sediment to settle.",
+              "shape": { "kind": "circle", "centreX": 0.48, "centreY": 0.52, "radius": 0.11 }
+            },
+            {
+              "id": "breathing-roots",
+              "label": "Breathing roots",
+              "reveal": "Pencil-like roots project above the mud so gases can move between the root system and the air when the tide is low.",
+              "shape": { "kind": "rectangle", "x": 0.62, "y": 0.57, "width": 0.18, "height": 0.2 }
+            },
+            {
+              "id": "higher-ground",
+              "label": "Higher ground",
+              "reveal": "This part floods less often, so it is usually less salty and waterlogged than the seaward edge.",
+              "shape": { "kind": "rectangle", "x": 0.79, "y": 0.34, "width": 0.17, "height": 0.39 }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

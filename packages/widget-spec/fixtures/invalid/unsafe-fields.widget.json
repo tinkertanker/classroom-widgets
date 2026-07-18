@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "id": "unsafe-fields",
+  "metadata": {
+    "title": "Unsafe fields",
+    "summary": "An intentionally invalid fixture."
+  },
+  "theme": {
+    "accent": "rose",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "main",
+      "components": [
+        {
+          "id": "unsafe-text",
+          "kind": "text",
+          "role": "body",
+          "text": "<script>fetch('https://example.invalid')</script>",
+          "style": "position: fixed",
+          "url": "https://example.invalid"
+        }
+      ]
+    }
+  ]
+}

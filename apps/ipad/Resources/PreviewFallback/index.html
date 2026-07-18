@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Classroom Widget Preview</title>
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #fdfcfb; color: #343330; }
+    #app { width: min(760px, 100%); margin: 0 auto; padding: clamp(24px, 5vw, 56px); }
+    .eyebrow { color: #4c735b; font-size: 12px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+    h1 { margin: 8px 0 10px; font-size: clamp(30px, 6vw, 48px); line-height: 1.08; }
+    .summary { margin: 0 0 28px; color: #686560; font-size: 18px; line-height: 1.55; }
+    .component { margin: 16px 0; padding: 22px; border: 1px solid #dcd8d2; border-radius: 18px; background: white; box-shadow: 0 5px 18px rgba(52,51,48,.05); }
+    .instruction { border-left: 5px solid #4c735b; }
+    .prompt { margin: 0 0 16px; font-size: 20px; font-weight: 700; line-height: 1.35; }
+    .options { display: grid; gap: 10px; }
+    button { width: 100%; padding: 14px 16px; border: 1px solid #b8b3ab; border-radius: 12px; background: #f7f5f2; color: #343330; font: inherit; text-align: left; cursor: pointer; }
+    button:hover, button:focus-visible { border-color: #4c735b; outline: 3px solid rgba(76,115,91,.18); }
+    button.correct { border-color: #4c735b; background: #e2ece5; }
+    button.incorrect { border-color: #b2654c; background: #f7e6df; }
+    .feedback { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: #f7f5f2; line-height: 1.45; }
+    .feedback.visible { display: block; }
+    .placeholder { display: grid; place-items: center; min-height: 180px; color: #686560; background: linear-gradient(145deg, #f7f5f2, #edf2ee); }
+    .meta { margin-top: 30px; font-size: 13px; color: #77736d; }
+  </style>
+</head>
+<body>
+  <main id="app" aria-live="polite">
+    <p class="eyebrow">Student preview</p>
+    <h1>Preparing your widget…</h1>
+  </main>
+  <script>
+    (() => {
+      const app = document.getElementById('app');
+      const post = (message) => window.webkit?.messageHandlers?.studioBridge?.postMessage(message);
+      const contentText = (content) => content?.kind === 'text' ? content.text : content?.altText || 'Image';
+
+      const renderChoice = (component) => {
+        const card = document.createElement('section');
+        card.className = 'component';
+        const prompt = document.createElement('p');
+        prompt.className = 'prompt';
+        prompt.textContent = component.prompt;
+        card.append(prompt);
+        const options = document.createElement('div');
+        options.className = 'options';
+        const feedback = document.createElement('div');
+        feedback.className = 'feedback';
+        for (const option of component.options || []) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = contentText(option.content);
+          button.addEventListener('click', () => {
+            options.querySelectorAll('button').forEach(item => item.className = '');
+            const correct = (component.correctOptionIds || []).includes(option.id);
+            button.className = correct ? 'correct' : 'incorrect';
+            feedback.textContent = correct ? component.feedback?.correct : component.feedback?.incorrect;
+            feedback.classList.add('visible');
+          });
+          options.append(button);
+        }
+        card.append(options, feedback);
+        return card;
+      };
+
+      const renderComponent = (component) => {
+        if (component.kind === 'choiceQuestion') return renderChoice(component);
+        const card = document.createElement('section');
+        card.className = 'component' + (component.role === 'instruction' ? ' instruction' : '');
+        if (component.kind === 'text') {
+          const text = document.createElement(component.role === 'heading' ? 'h2' : 'p');
+          text.textContent = component.text;
+          card.append(text);
+        } else {
+          card.classList.add('placeholder');
+          const label = document.createElement('p');
+          label.textContent = `${component.kind || 'Interactive'} preview`;
+          card.append(label);
+        }
+        return card;
+      };
+
+      const load = (spec) => {
+        try {
+          app.replaceChildren();
+          const eyebrow = document.createElement('p');
+          eyebrow.className = 'eyebrow';
+          eyebrow.textContent = 'Student preview';
+          const title = document.createElement('h1');
+          title.textContent = spec.metadata?.title || 'Untitled widget';
+          const summary = document.createElement('p');
+          summary.className = 'summary';
+          summary.textContent = spec.metadata?.summary || '';
+          app.append(eyebrow, title, summary);
+          for (const screen of spec.screens || []) {
+            for (const component of screen.components || []) app.append(renderComponent(component));
+          }
+          const meta = document.createElement('p');
+          meta.className = 'meta';
+          meta.textContent = 'This preview runs locally and does not collect responses.';
+          app.append(meta);
+        } catch (error) {
+          post({ type: 'error', message: String(error?.message || error) });
+        }
+      };
+
+      window.ClassroomWidgetsPlayer = { load };
+      window.addEventListener('classroom-widgets:load', event => load(event.detail));
+      post({ type: 'ready' });
+    })();
+  </script>
+</body>
+</html>

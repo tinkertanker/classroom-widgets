@@ -1,0 +1,24 @@
+{
+  "name": "@classroom-widgets/studio-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "npm run build -w @classroom-widgets/widget-player",
+    "dev": "wrangler dev",
+    "prebuild": "npm run build -w @classroom-widgets/widget-player",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local"
+  },
+  "dependencies": {
+    "@classroom-widgets/widget-spec": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260718.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.112.0"
+  }
+}

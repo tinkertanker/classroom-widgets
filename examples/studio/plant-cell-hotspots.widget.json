@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "1.0",
+  "id": "plant-cell-hotspots",
+  "metadata": {
+    "title": "Inside a Plant Cell",
+    "summary": "Students inspect a labelled micrograph-style diagram and connect each organelle's structure with its function.",
+    "subject": "science",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Identify major plant-cell structures and explain how each structure contributes to the cell's function.",
+    "estimatedMinutes": 9,
+    "tags": ["biology", "cells", "organelles", "hotspots"]
+  },
+  "theme": {
+    "accent": "sage",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [
+    {
+      "id": "plant-cell-diagram",
+      "kind": "image",
+      "mediaType": "image/webp",
+      "width": 1600,
+      "height": 1100,
+      "byteLength": 196608,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "variables": [],
+  "screens": [
+    {
+      "id": "explore-cell",
+      "title": "Explore the cell",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "Which structures keep a plant cell working?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Tap every highlighted region. For each one, explain the link between what the structure is like and what it enables the cell to do."
+        },
+        {
+          "id": "cell-diagram",
+          "kind": "hotspots",
+          "prompt": "Select an organelle to reveal its role, then compare it with a neighbouring structure.",
+          "imageAssetId": "plant-cell-diagram",
+          "altText": "A rectangular plant cell diagram with a thick outer cell wall, thin cell membrane, large central vacuole, nucleus and several green chloroplasts in cytoplasm.",
+          "hotspots": [
+            {
+              "id": "cell-wall",
+              "label": "Cell wall",
+              "reveal": "The cellulose cell wall is rigid. It supports the cell, helps it keep its shape and resists the pressure created when water enters.",
+              "shape": { "kind": "rectangle", "x": 0.04, "y": 0.08, "width": 0.09, "height": 0.82 }
+            },
+            {
+              "id": "cell-membrane",
+              "label": "Cell membrane",
+              "reveal": "The partially permeable cell membrane controls which substances enter and leave the cell.",
+              "shape": { "kind": "rectangle", "x": 0.14, "y": 0.11, "width": 0.06, "height": 0.76 }
+            },
+            {
+              "id": "vacuole",
+              "label": "Large central vacuole",
+              "reveal": "The vacuole contains cell sap. When filled with water, it pushes outwards and helps keep the plant cell turgid.",
+              "shape": { "kind": "rectangle", "x": 0.34, "y": 0.27, "width": 0.42, "height": 0.45 }
+            },
+            {
+              "id": "nucleus",
+              "label": "Nucleus",
+              "reveal": "The nucleus contains genetic material and controls many of the cell's activities.",
+              "shape": { "kind": "circle", "centreX": 0.27, "centreY": 0.38, "radius": 0.09 }
+            },
+            {
+              "id": "chloroplast",
+              "label": "Chloroplast",
+              "reveal": "Chloroplasts contain chlorophyll, which absorbs light energy for photosynthesis.",
+              "shape": { "kind": "circle", "centreX": 0.81, "centreY": 0.28, "radius": 0.07 }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

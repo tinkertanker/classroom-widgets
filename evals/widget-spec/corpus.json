@@ -1,0 +1,178 @@
+{
+  "minimumCorpusSize": 12,
+  "minimumPerFamily": {
+    "quiz-retrieval": 3,
+    "matching-sorting-sequencing": 3,
+    "diagram-hotspots": 3,
+    "graph-simulation": 3,
+    "ready-tools": 1
+  },
+  "requiredSubjects": ["science", "mathematics", "english", "humanities"],
+  "requiredLevels": ["upper-primary", "secondary"],
+  "cases": [
+    {
+      "file": "packages/widget-spec/fixtures/retrieval-practice.widget.json",
+      "family": "quiz-retrieval",
+      "subject": "science",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["choiceQuestion", "shortAnswerQuestion", "matching", "sorting", "sequencing"],
+        "minimumInteractiveComponents": 5,
+        "minimumFeedbackComponents": 5,
+        "minimumVariables": 2
+      }
+    },
+    {
+      "file": "examples/studio/fraction-equivalence-diagnostic.widget.json",
+      "family": "quiz-retrieval",
+      "subject": "mathematics",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["choiceQuestion", "shortAnswerQuestion"],
+        "minimumInteractiveComponents": 3,
+        "minimumFeedbackComponents": 3
+      }
+    },
+    {
+      "file": "examples/studio/persuasive-language-lab.widget.json",
+      "family": "quiz-retrieval",
+      "subject": "english",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["choiceQuestion", "shortAnswerQuestion"],
+        "minimumInteractiveComponents": 3,
+        "minimumFeedbackComponents": 3
+      }
+    },
+    {
+      "file": "examples/studio/source-reliability-check.widget.json",
+      "family": "quiz-retrieval",
+      "subject": "humanities",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["choiceQuestion", "shortAnswerQuestion"],
+        "minimumInteractiveComponents": 3,
+        "minimumFeedbackComponents": 3
+      }
+    },
+    {
+      "file": "examples/studio/paragraph-structure-sequencer.widget.json",
+      "family": "matching-sorting-sequencing",
+      "subject": "english",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["sorting", "sequencing"],
+        "minimumInteractiveComponents": 2,
+        "minimumFeedbackComponents": 2
+      }
+    },
+    {
+      "file": "examples/studio/singapore-self-government-timeline.widget.json",
+      "family": "matching-sorting-sequencing",
+      "subject": "humanities",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["matching", "sequencing"],
+        "minimumInteractiveComponents": 2,
+        "minimumFeedbackComponents": 2
+      }
+    },
+    {
+      "file": "examples/studio/malay-classroom-vocabulary-match.widget.json",
+      "family": "matching-sorting-sequencing",
+      "subject": "languages",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["matching", "sorting"],
+        "minimumInteractiveComponents": 2,
+        "minimumFeedbackComponents": 2
+      }
+    },
+    {
+      "file": "packages/widget-spec/fixtures/water-cycle-hotspots.widget.json",
+      "family": "diagram-hotspots",
+      "subject": "science",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["hotspots"],
+        "minimumInteractiveComponents": 1,
+        "minimumAssets": 1,
+        "minimumHotspots": 4
+      }
+    },
+    {
+      "file": "examples/studio/plant-cell-hotspots.widget.json",
+      "family": "diagram-hotspots",
+      "subject": "science",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["hotspots"],
+        "minimumInteractiveComponents": 1,
+        "minimumAssets": 1,
+        "minimumHotspots": 5
+      }
+    },
+    {
+      "file": "examples/studio/mangrove-zonation-hotspots.widget.json",
+      "family": "diagram-hotspots",
+      "subject": "humanities",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["hotspots"],
+        "minimumInteractiveComponents": 1,
+        "minimumAssets": 1,
+        "minimumHotspots": 5
+      }
+    },
+    {
+      "file": "packages/widget-spec/fixtures/projectile-motion.widget.json",
+      "family": "graph-simulation",
+      "subject": "science",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["numberControl", "valueDisplay", "plot", "choiceQuestion"],
+        "minimumInteractiveComponents": 4,
+        "minimumFeedbackComponents": 1,
+        "minimumVariables": 3,
+        "minimumPlotSeries": 1
+      }
+    },
+    {
+      "file": "examples/studio/linear-function-explorer.widget.json",
+      "family": "graph-simulation",
+      "subject": "mathematics",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["numberControl", "valueDisplay", "plot", "choiceQuestion"],
+        "minimumInteractiveComponents": 3,
+        "minimumFeedbackComponents": 1,
+        "minimumVariables": 2,
+        "minimumPlotSeries": 1
+      }
+    },
+    {
+      "file": "examples/studio/fixed-perimeter-rectangle-explorer.widget.json",
+      "family": "graph-simulation",
+      "subject": "mathematics",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["numberControl", "valueDisplay", "plot", "choiceQuestion"],
+        "minimumInteractiveComponents": 2,
+        "minimumFeedbackComponents": 1,
+        "minimumVariables": 1,
+        "minimumPlotSeries": 1
+      }
+    },
+    {
+      "file": "examples/studio/classroom-routines-toolkit.widget.json",
+      "family": "ready-tools",
+      "subject": "other",
+      "level": "other",
+      "expect": {
+        "componentKinds": ["timer", "randomiser", "taskList", "trafficLight"],
+        "minimumInteractiveComponents": 4,
+        "requiresInstructionText": false
+      }
+    }
+  ]
+}

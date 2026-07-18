@@ -1,0 +1,106 @@
+{
+  "schemaVersion": "1.0",
+  "id": "water-cycle-hotspots",
+  "metadata": {
+    "title": "Explore the Water Cycle",
+    "summary": "Tap the labelled regions of a water-cycle diagram to reveal what happens at each stage.",
+    "subject": "science",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Describe evaporation, condensation, precipitation and collection as connected stages of the water cycle.",
+    "estimatedMinutes": 8,
+    "tags": ["water-cycle", "diagram", "hotspots"]
+  },
+  "theme": {
+    "accent": "sky",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [
+    {
+      "id": "water-cycle-diagram",
+      "kind": "image",
+      "mediaType": "image/webp",
+      "width": 1600,
+      "height": 1000,
+      "byteLength": 184320,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "variables": [],
+  "screens": [
+    {
+      "id": "diagram",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "Where does the water go?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Open every marker, then use the final sentence of each explanation to describe how one stage leads into the next."
+        },
+        {
+          "id": "cycle-diagram",
+          "kind": "hotspots",
+          "prompt": "Tap each marker, then explain how that stage leads to the next one.",
+          "imageAssetId": "water-cycle-diagram",
+          "altText": "A landscape diagram showing the sea, rising water vapour, clouds, rain over hills and a river returning water to the sea.",
+          "hotspots": [
+            {
+              "id": "evaporation",
+              "label": "Evaporation",
+              "reveal": "Energy from the Sun changes liquid water at the surface into water vapour, which rises into the air.",
+              "shape": {
+                "kind": "rectangle",
+                "x": 0.08,
+                "y": 0.5,
+                "width": 0.2,
+                "height": 0.35
+              }
+            },
+            {
+              "id": "condensation",
+              "label": "Condensation",
+              "reveal": "As water vapour rises and cools, it changes into tiny liquid droplets that gather to form clouds.",
+              "shape": {
+                "kind": "circle",
+                "centreX": 0.48,
+                "centreY": 0.2,
+                "radius": 0.12
+              }
+            },
+            {
+              "id": "precipitation",
+              "label": "Precipitation",
+              "reveal": "When droplets in a cloud become heavy enough, water falls to Earth as rain, snow, sleet or hail.",
+              "shape": {
+                "kind": "rectangle",
+                "x": 0.62,
+                "y": 0.24,
+                "width": 0.2,
+                "height": 0.34
+              }
+            },
+            {
+              "id": "collection",
+              "label": "Collection",
+              "reveal": "Water gathers in rivers, lakes, the ground and the sea before the cycle continues.",
+              "shape": {
+                "kind": "rectangle",
+                "x": 0.45,
+                "y": 0.68,
+                "width": 0.45,
+                "height": 0.2
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "1.0",
+  "id": "ecosystems-retrieval-practice",
+  "metadata": {
+    "title": "Ecosystems Retrieval Practice",
+    "summary": "A short sequence of questions that revisits food chains, roles in an ecosystem and energy transfer.",
+    "subject": "science",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Recall how energy moves through a food chain and distinguish producers, consumers and decomposers.",
+    "estimatedMinutes": 10,
+    "tags": ["ecosystems", "retrieval", "food-chains"]
+  },
+  "theme": {
+    "accent": "sage",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [
+    {
+      "id": "show-hints",
+      "kind": "boolean",
+      "label": "Show teacher hints",
+      "initial": false
+    },
+    {
+      "id": "challenge-level",
+      "kind": "choice",
+      "label": "Challenge level",
+      "options": [
+        { "id": "foundation", "label": "Foundation" },
+        { "id": "stretch", "label": "Stretch" }
+      ],
+      "initialOptionId": "foundation"
+    }
+  ],
+  "screens": [
+    {
+      "id": "recall",
+      "title": "Recall",
+      "components": [
+        {
+          "id": "heading",
+          "kind": "text",
+          "role": "title",
+          "text": "Ecosystems: can you retrieve it?"
+        },
+        {
+          "id": "directions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Answer from memory first. Check your response, read the feedback and improve any answer you were unsure about."
+        },
+        {
+          "id": "hint-control",
+          "kind": "toggleControl",
+          "variableId": "show-hints"
+        },
+        {
+          "id": "challenge-control",
+          "kind": "selectControl",
+          "variableId": "challenge-level"
+        },
+        {
+          "id": "energy-source-question",
+          "kind": "choiceQuestion",
+          "prompt": "What is the original source of energy for most food chains?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "sun", "content": { "kind": "text", "text": "The Sun" } },
+            { "id": "soil", "content": { "kind": "text", "text": "The soil" } },
+            { "id": "water", "content": { "kind": "text", "text": "Water" } },
+            { "id": "predators", "content": { "kind": "text", "text": "Predators" } }
+          ],
+          "correctOptionIds": ["sun"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. Producers capture light energy from the Sun.",
+            "incorrect": "Trace the food chain backwards from a consumer to a plant, then ask where the plant gets its energy.",
+            "explanation": "Green plants capture light energy during photosynthesis, so the Sun is the original source for most food chains."
+          }
+        },
+        {
+          "id": "producer-question",
+          "kind": "shortAnswerQuestion",
+          "prompt": "What term describes an organism that makes its own food?",
+          "acceptedAnswers": ["producer", "a producer"],
+          "placeholder": "Type one scientific term",
+          "normalisation": {
+            "trimWhitespace": true,
+            "collapseWhitespace": true,
+            "caseSensitive": false
+          },
+          "feedback": {
+            "correct": "Yes — it is a producer.",
+            "incorrect": "Think about the first living organism in a food chain.",
+            "explanation": "A producer makes its own food, usually using light energy through photosynthesis."
+          }
+        },
+        {
+          "id": "roles-matching",
+          "kind": "matching",
+          "prompt": "Match each organism with its role.",
+          "items": [
+            { "id": "grass", "content": { "kind": "text", "text": "Grass" } },
+            { "id": "rabbit", "content": { "kind": "text", "text": "Rabbit" } },
+            { "id": "fungus", "content": { "kind": "text", "text": "Fungus" } }
+          ],
+          "targets": [
+            { "id": "producer", "content": { "kind": "text", "text": "Producer" } },
+            { "id": "consumer", "content": { "kind": "text", "text": "Consumer" } },
+            { "id": "decomposer", "content": { "kind": "text", "text": "Decomposer" } }
+          ],
+          "correctMatches": [
+            { "itemId": "grass", "targetId": "producer" },
+            { "itemId": "rabbit", "targetId": "consumer" },
+            { "itemId": "fungus", "targetId": "decomposer" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "All three roles are matched correctly.",
+            "incorrect": "Ask whether each organism makes food, eats another organism, or breaks down dead material.",
+            "explanation": "Grass produces food, a rabbit consumes plants, and fungi decompose dead material."
+          }
+        },
+        {
+          "id": "living-nonliving-sort",
+          "kind": "sorting",
+          "prompt": "Sort each factor into the correct group.",
+          "items": [
+            { "id": "temperature", "content": { "kind": "text", "text": "Temperature" } },
+            { "id": "bacteria", "content": { "kind": "text", "text": "Bacteria" } },
+            { "id": "rainfall", "content": { "kind": "text", "text": "Rainfall" } },
+            { "id": "trees", "content": { "kind": "text", "text": "Trees" } }
+          ],
+          "categories": [
+            {
+              "id": "biotic",
+              "label": "Biotic",
+              "description": "Living parts of an ecosystem"
+            },
+            {
+              "id": "abiotic",
+              "label": "Abiotic",
+              "description": "Non-living physical factors"
+            }
+          ],
+          "correctPlacements": [
+            { "itemId": "temperature", "categoryId": "abiotic" },
+            { "itemId": "bacteria", "categoryId": "biotic" },
+            { "itemId": "rainfall", "categoryId": "abiotic" },
+            { "itemId": "trees", "categoryId": "biotic" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Correct — organisms are biotic; physical conditions are abiotic.",
+            "incorrect": "Biotic means living. Abiotic factors are non-living conditions in the environment."
+          }
+        },
+        {
+          "id": "food-chain-sequence",
+          "kind": "sequencing",
+          "prompt": "Put this food chain in order, beginning with the energy source.",
+          "items": [
+            { "id": "hawk", "content": { "kind": "text", "text": "Hawk" } },
+            { "id": "sunlight", "content": { "kind": "text", "text": "Sunlight" } },
+            { "id": "grass-sequence", "content": { "kind": "text", "text": "Grass" } },
+            { "id": "mouse", "content": { "kind": "text", "text": "Mouse" } }
+          ],
+          "correctOrder": ["sunlight", "grass-sequence", "mouse", "hawk"],
+          "feedback": {
+            "correct": "That sequence shows the direction of energy transfer.",
+            "incorrect": "Begin with the Sun, then identify what captures its energy and what eats next.",
+            "explanation": "Energy moves from sunlight to grass, then to the mouse and finally to the hawk."
+          }
+        }
+      ]
+    }
+  ]
+}

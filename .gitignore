@@ -32,6 +32,7 @@ packages/macos-dashboard/.build/
 .env.staging
 .env.staging.local
 .env.release.local
+.dev.vars
 
 # Only .example files should be committed
 # .env.example ✓ (committed)
@@ -61,3 +62,18 @@ secrets/
 # Must never be committed: Vite prefers .js config over .ts, so a stale
 # compiled copy would silently shadow future config edits.
 packages/student/vite.config.js
+
+# XcodeGen is the source of truth for the Studio project.
+apps/ipad/*.xcodeproj/
+apps/ipad/build/
+apps/ipad/.derived-data/
+**/xcuserdata/
+.wrangler/
+
+# Local Classroom Widgets Studio pilot credentials. These are generated for
+# workshop operations and must never enter source control.
+.studio-pilot-codes.txt
+.studio-smoke-token
+
+# Browser acceptance screenshots are local verification artefacts.
+/output/playwright/

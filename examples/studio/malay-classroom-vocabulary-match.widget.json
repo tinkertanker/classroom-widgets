@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "1.0",
+  "id": "malay-classroom-vocabulary-match",
+  "metadata": {
+    "title": "Padankan Perkataan di Bilik Darjah",
+    "summary": "A bilingual matching and sorting activity for practising common Malay classroom vocabulary in context.",
+    "subject": "languages",
+    "level": "upper-primary",
+    "locale": "ms-SG",
+    "learningObjective": "Match common Malay classroom nouns and verbs with their English meanings and distinguish actions from objects.",
+    "estimatedMinutes": 8,
+    "tags": ["bahasa-melayu", "vocabulary", "matching", "classroom"]
+  },
+  "theme": {
+    "accent": "sage",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "practice",
+      "title": "Latihan kosa kata",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "Apa yang kita buat dan gunakan di kelas?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Padankan setiap perkataan Melayu dengan maksudnya. Kemudian asingkan perkataan kepada perbuatan dan benda."
+        },
+        {
+          "id": "word-match",
+          "kind": "matching",
+          "prompt": "Padankan perkataan dengan maksud bahasa Inggeris yang betul.",
+          "items": [
+            { "id": "membaca", "content": { "kind": "text", "text": "membaca" } },
+            { "id": "menulis", "content": { "kind": "text", "text": "menulis" } },
+            { "id": "buku", "content": { "kind": "text", "text": "buku" } },
+            { "id": "papan-putih", "content": { "kind": "text", "text": "papan putih" } }
+          ],
+          "targets": [
+            { "id": "reading", "content": { "kind": "text", "text": "reading" } },
+            { "id": "writing", "content": { "kind": "text", "text": "writing" } },
+            { "id": "book", "content": { "kind": "text", "text": "book" } },
+            { "id": "whiteboard", "content": { "kind": "text", "text": "whiteboard" } }
+          ],
+          "correctMatches": [
+            { "itemId": "membaca", "targetId": "reading" },
+            { "itemId": "menulis", "targetId": "writing" },
+            { "itemId": "buku", "targetId": "book" },
+            { "itemId": "papan-putih", "targetId": "whiteboard" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Bagus! Semua perkataan dipadankan dengan betul.",
+            "incorrect": "Cuba sebut setiap perkataan dalam ayat kelas yang mudah sebelum memadankannya.",
+            "explanation": "Membaca means reading, menulis means writing, buku means book and papan putih means whiteboard."
+          }
+        },
+        {
+          "id": "word-sort",
+          "kind": "sorting",
+          "prompt": "Asingkan perkataan kepada perbuatan dan benda.",
+          "items": [
+            { "id": "sort-membaca", "content": { "kind": "text", "text": "membaca" } },
+            { "id": "sort-menulis", "content": { "kind": "text", "text": "menulis" } },
+            { "id": "sort-buku", "content": { "kind": "text", "text": "buku" } },
+            { "id": "sort-papan-putih", "content": { "kind": "text", "text": "papan putih" } }
+          ],
+          "categories": [
+            { "id": "perbuatan", "label": "Perbuatan", "description": "Kata yang menunjukkan tindakan" },
+            { "id": "benda", "label": "Benda", "description": "Kata nama untuk objek" }
+          ],
+          "correctPlacements": [
+            { "itemId": "sort-membaca", "categoryId": "perbuatan" },
+            { "itemId": "sort-menulis", "categoryId": "perbuatan" },
+            { "itemId": "sort-buku", "categoryId": "benda" },
+            { "itemId": "sort-papan-putih", "categoryId": "benda" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Tepat. Membaca dan menulis ialah perbuatan; buku dan papan putih ialah benda.",
+            "incorrect": "Tanya: bolehkah saya melakukan perkataan ini, atau bolehkah saya menyentuh bendanya?",
+            "explanation": "Awalan meN- sering muncul pada kata kerja seperti membaca dan menulis, manakala buku dan papan putih ialah kata nama."
+          }
+        }
+      ]
+    }
+  ]
+}

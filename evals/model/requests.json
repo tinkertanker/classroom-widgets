@@ -1,0 +1,166 @@
+{
+  "minimumFirstPassRate": 0.8,
+  "minimumFinalPassRate": 1,
+  "minimumFamilyFidelityRate": 0.8,
+  "cases": [
+    {
+      "id": "p5-fractions",
+      "family": "quiz-retrieval",
+      "expectedKinds": ["choiceQuestion"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "Mathematics",
+        "learningObjective": "Recognise equivalent fractions using visual and numerical representations.",
+        "studentAction": "Choose the equivalent fraction in three short questions and read immediate explanatory feedback.",
+        "durationMinutes": 6
+      }
+    },
+    {
+      "id": "s2-forces",
+      "family": "quiz-retrieval",
+      "expectedKinds": ["choiceQuestion"],
+      "brief": {
+        "level": "Secondary",
+        "subject": "Science",
+        "learningObjective": "Distinguish balanced and unbalanced forces in familiar situations.",
+        "studentAction": "Classify four situations, then use the feedback to explain the resultant force.",
+        "durationMinutes": 8
+      }
+    },
+    {
+      "id": "s2-sources",
+      "family": "quiz-retrieval",
+      "expectedKinds": ["choiceQuestion", "shortAnswerQuestion"],
+      "brief": {
+        "level": "Secondary",
+        "subject": "Humanities",
+        "learningObjective": "Evaluate the reliability of a historical source using provenance and purpose.",
+        "studentAction": "Judge two short source descriptions and justify one answer before checking feedback.",
+        "durationMinutes": 10
+      }
+    },
+    {
+      "id": "p6-persuasive",
+      "family": "quiz-retrieval",
+      "expectedKinds": ["choiceQuestion"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "English",
+        "learningObjective": "Identify persuasive language choices and explain their intended effect.",
+        "studentAction": "Choose the most persuasive sentence for each audience and compare the feedback.",
+        "durationMinutes": 7
+      }
+    },
+    {
+      "id": "p5-paragraph-sequence",
+      "family": "matching-sorting-sequencing",
+      "expectedKinds": ["sequencing"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "English",
+        "learningObjective": "Arrange topic, supporting and concluding sentences into a coherent paragraph.",
+        "studentAction": "Put five sentences in a logical order and check the explanation.",
+        "durationMinutes": 7
+      }
+    },
+    {
+      "id": "s1-self-government",
+      "family": "matching-sorting-sequencing",
+      "expectedKinds": ["sequencing"],
+      "brief": {
+        "level": "Secondary",
+        "subject": "Humanities",
+        "learningObjective": "Sequence key milestones in Singapore's path to internal self-government.",
+        "studentAction": "Arrange five dated events, then check the chronological explanation.",
+        "content": "Use the years 1948, 1955, 1957, 1958 and 1959 without naming any living pupils.",
+        "durationMinutes": 8
+      }
+    },
+    {
+      "id": "p4-malay-match",
+      "family": "matching-sorting-sequencing",
+      "expectedKinds": ["matching"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "Languages",
+        "learningObjective": "Match common Malay classroom words to their English meanings.",
+        "studentAction": "Match six Malay words to meanings and use feedback to practise any errors.",
+        "content": "Include buku, meja, kerusi, pensel, papan putih and beg.",
+        "durationMinutes": 6
+      }
+    },
+    {
+      "id": "s3-linear-functions",
+      "family": "graph-simulation",
+      "expectedKinds": ["numberControl", "plot"],
+      "brief": {
+        "level": "Secondary",
+        "subject": "Mathematics",
+        "learningObjective": "Relate the gradient and intercept in y = mx + c to the graph of a straight line.",
+        "studentAction": "Adjust m and c with sliders, observe the graph and answer a prediction question.",
+        "durationMinutes": 10
+      }
+    },
+    {
+      "id": "s3-projectile",
+      "family": "graph-simulation",
+      "expectedKinds": ["numberControl", "plot"],
+      "brief": {
+        "level": "Secondary",
+        "subject": "Science",
+        "learningObjective": "Relate launch speed and angle to the horizontal range of a projectile.",
+        "studentAction": "Predict, adjust speed and angle, then compare the plotted trajectory with the prediction.",
+        "content": "Use Earth gravity and safe numeric expression trees only.",
+        "durationMinutes": 10
+      }
+    },
+    {
+      "id": "p6-perimeter",
+      "family": "graph-simulation",
+      "expectedKinds": ["numberControl", "valueDisplay"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "Mathematics",
+        "learningObjective": "Explore how rectangle dimensions change while perimeter remains fixed.",
+        "studentAction": "Move a width slider, inspect the calculated length and area, then answer what maximises area.",
+        "durationMinutes": 9
+      }
+    },
+    {
+      "id": "p5-water-cycle-cloze",
+      "family": "quiz-retrieval",
+      "expectedKinds": ["choiceQuestion"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "Science",
+        "learningObjective": "Explain evaporation, condensation and precipitation in the water cycle.",
+        "studentAction": "Complete a three-stage retrieval check and read process-focused feedback.",
+        "durationMinutes": 6
+      }
+    },
+    {
+      "id": "s2-branching-ethics",
+      "family": "quiz-retrieval",
+      "expectedKinds": ["choiceQuestion"],
+      "brief": {
+        "level": "Secondary",
+        "subject": "Humanities",
+        "learningObjective": "Compare stakeholder perspectives when allocating a limited community budget.",
+        "studentAction": "Make three choices in a branching scenario and examine the trade-offs in the feedback.",
+        "durationMinutes": 12
+      }
+    },
+    {
+      "id": "p6-ratio-sort",
+      "family": "matching-sorting-sequencing",
+      "expectedKinds": ["sorting"],
+      "brief": {
+        "level": "Upper primary",
+        "subject": "Mathematics",
+        "learningObjective": "Distinguish equivalent and non-equivalent ratios.",
+        "studentAction": "Sort eight ratio statements into two groups and check each misconception.",
+        "durationMinutes": 7
+      }
+    }
+  ]
+}

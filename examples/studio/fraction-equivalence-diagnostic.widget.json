@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "1.0",
+  "id": "fraction-equivalence-diagnostic",
+  "metadata": {
+    "title": "Fraction Equivalence Detective",
+    "summary": "A misconception-focused check that asks pupils to compare, explain and represent equivalent fractions.",
+    "subject": "mathematics",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Recognise equivalent fractions and explain how multiplying a numerator and denominator by the same number preserves value.",
+    "estimatedMinutes": 9,
+    "tags": ["fractions", "equivalence", "diagnostic", "retrieval"]
+  },
+  "theme": {
+    "accent": "amber",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "diagnose",
+      "title": "Spot the equivalence",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "Are these fractions really equal?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Decide before checking. Use a diagram or multiplication rule if you are unsure, then explain any answer you change."
+        },
+        {
+          "id": "half-check",
+          "kind": "choiceQuestion",
+          "prompt": "Which fraction has the same value as 3/6?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "one-half", "content": { "kind": "text", "text": "1/2" } },
+            { "id": "three-twelfths", "content": { "kind": "text", "text": "3/12" } },
+            { "id": "six-ninths", "content": { "kind": "text", "text": "6/9" } },
+            { "id": "two-sixths", "content": { "kind": "text", "text": "2/6" } }
+          ],
+          "correctOptionIds": ["one-half"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. Dividing both 3 and 6 by 3 gives 1/2.",
+            "incorrect": "Try simplifying 3/6 by dividing its numerator and denominator by the same factor.",
+            "explanation": "Equivalent fractions name the same quantity. Dividing both parts of 3/6 by 3 gives 1/2."
+          }
+        },
+        {
+          "id": "rule-check",
+          "kind": "choiceQuestion",
+          "prompt": "A pupil changes 2/5 to 6/15. Which operation explains why the fractions are equivalent?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "add-four-ten", "content": { "kind": "text", "text": "Add 4 to the numerator and 10 to the denominator" } },
+            { "id": "multiply-three", "content": { "kind": "text", "text": "Multiply both numerator and denominator by 3" } },
+            { "id": "multiply-numerator", "content": { "kind": "text", "text": "Multiply only the numerator by 3" } },
+            { "id": "add-three", "content": { "kind": "text", "text": "Add 3 to both numbers" } }
+          ],
+          "correctOptionIds": ["multiply-three"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Exactly. Multiplying both parts by 3 preserves the fraction's value.",
+            "incorrect": "Check which operation turns 2 into 6 and 5 into 15 in the same way.",
+            "explanation": "Multiplying numerator and denominator by the same non-zero number creates an equivalent fraction."
+          }
+        },
+        {
+          "id": "justify-check",
+          "kind": "shortAnswerQuestion",
+          "prompt": "Complete the statement: 4/6 = 2/3 because both 4 and 6 were divided by ___.",
+          "acceptedAnswers": ["2", "two"],
+          "placeholder": "Enter a number or number word",
+          "normalisation": {
+            "trimWhitespace": true,
+            "collapseWhitespace": true,
+            "caseSensitive": false
+          },
+          "feedback": {
+            "correct": "Yes. Dividing both parts by 2 simplifies 4/6 to 2/3.",
+            "incorrect": "Which common factor changes 4 to 2 and 6 to 3?",
+            "explanation": "The common factor is 2, so dividing numerator and denominator by 2 preserves the value."
+          }
+        }
+      ]
+    }
+  ]
+}

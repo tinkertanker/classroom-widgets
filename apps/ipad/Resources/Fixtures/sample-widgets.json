@@ -1,0 +1,2216 @@
+[
+  {
+    "family": "quiz",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "ecosystems-retrieval-practice",
+      "metadata": {
+        "title": "Ecosystems Retrieval Practice",
+        "summary": "A short sequence of questions that revisits food chains, roles in an ecosystem and energy transfer.",
+        "subject": "science",
+        "level": "upper-primary",
+        "locale": "en-SG",
+        "learningObjective": "Recall how energy moves through a food chain and distinguish producers, consumers and decomposers.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "ecosystems",
+          "retrieval",
+          "food-chains"
+        ]
+      },
+      "theme": {
+        "accent": "sage",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [
+        {
+          "id": "show-hints",
+          "kind": "boolean",
+          "label": "Show teacher hints",
+          "initial": false
+        },
+        {
+          "id": "challenge-level",
+          "kind": "choice",
+          "label": "Challenge level",
+          "options": [
+            {
+              "id": "foundation",
+              "label": "Foundation"
+            },
+            {
+              "id": "stretch",
+              "label": "Stretch"
+            }
+          ],
+          "initialOptionId": "foundation"
+        }
+      ],
+      "screens": [
+        {
+          "id": "recall",
+          "title": "Recall",
+          "components": [
+            {
+              "id": "heading",
+              "kind": "text",
+              "role": "title",
+              "text": "Ecosystems: can you retrieve it?"
+            },
+            {
+              "id": "directions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Answer from memory first. Check your response, read the feedback and improve any answer you were unsure about."
+            },
+            {
+              "id": "hint-control",
+              "kind": "toggleControl",
+              "variableId": "show-hints"
+            },
+            {
+              "id": "challenge-control",
+              "kind": "selectControl",
+              "variableId": "challenge-level"
+            },
+            {
+              "id": "energy-source-question",
+              "kind": "choiceQuestion",
+              "prompt": "What is the original source of energy for most food chains?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "sun",
+                  "content": {
+                    "kind": "text",
+                    "text": "The Sun"
+                  }
+                },
+                {
+                  "id": "soil",
+                  "content": {
+                    "kind": "text",
+                    "text": "The soil"
+                  }
+                },
+                {
+                  "id": "water",
+                  "content": {
+                    "kind": "text",
+                    "text": "Water"
+                  }
+                },
+                {
+                  "id": "predators",
+                  "content": {
+                    "kind": "text",
+                    "text": "Predators"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "sun"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. Producers capture light energy from the Sun.",
+                "incorrect": "Trace the food chain backwards from a consumer to a plant, then ask where the plant gets its energy.",
+                "explanation": "Green plants capture light energy during photosynthesis, so the Sun is the original source for most food chains."
+              }
+            },
+            {
+              "id": "producer-question",
+              "kind": "shortAnswerQuestion",
+              "prompt": "What term describes an organism that makes its own food?",
+              "acceptedAnswers": [
+                "producer",
+                "a producer"
+              ],
+              "placeholder": "Type one scientific term",
+              "normalisation": {
+                "trimWhitespace": true,
+                "collapseWhitespace": true,
+                "caseSensitive": false
+              },
+              "feedback": {
+                "correct": "Yes — it is a producer.",
+                "incorrect": "Think about the first living organism in a food chain.",
+                "explanation": "A producer makes its own food, usually using light energy through photosynthesis."
+              }
+            },
+            {
+              "id": "roles-matching",
+              "kind": "matching",
+              "prompt": "Match each organism with its role.",
+              "items": [
+                {
+                  "id": "grass",
+                  "content": {
+                    "kind": "text",
+                    "text": "Grass"
+                  }
+                },
+                {
+                  "id": "rabbit",
+                  "content": {
+                    "kind": "text",
+                    "text": "Rabbit"
+                  }
+                },
+                {
+                  "id": "fungus",
+                  "content": {
+                    "kind": "text",
+                    "text": "Fungus"
+                  }
+                }
+              ],
+              "targets": [
+                {
+                  "id": "producer",
+                  "content": {
+                    "kind": "text",
+                    "text": "Producer"
+                  }
+                },
+                {
+                  "id": "consumer",
+                  "content": {
+                    "kind": "text",
+                    "text": "Consumer"
+                  }
+                },
+                {
+                  "id": "decomposer",
+                  "content": {
+                    "kind": "text",
+                    "text": "Decomposer"
+                  }
+                }
+              ],
+              "correctMatches": [
+                {
+                  "itemId": "grass",
+                  "targetId": "producer"
+                },
+                {
+                  "itemId": "rabbit",
+                  "targetId": "consumer"
+                },
+                {
+                  "itemId": "fungus",
+                  "targetId": "decomposer"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "All three roles are matched correctly.",
+                "incorrect": "Ask whether each organism makes food, eats another organism, or breaks down dead material.",
+                "explanation": "Grass produces food, a rabbit consumes plants, and fungi decompose dead material."
+              }
+            },
+            {
+              "id": "living-nonliving-sort",
+              "kind": "sorting",
+              "prompt": "Sort each factor into the correct group.",
+              "items": [
+                {
+                  "id": "temperature",
+                  "content": {
+                    "kind": "text",
+                    "text": "Temperature"
+                  }
+                },
+                {
+                  "id": "bacteria",
+                  "content": {
+                    "kind": "text",
+                    "text": "Bacteria"
+                  }
+                },
+                {
+                  "id": "rainfall",
+                  "content": {
+                    "kind": "text",
+                    "text": "Rainfall"
+                  }
+                },
+                {
+                  "id": "trees",
+                  "content": {
+                    "kind": "text",
+                    "text": "Trees"
+                  }
+                }
+              ],
+              "categories": [
+                {
+                  "id": "biotic",
+                  "label": "Biotic",
+                  "description": "Living parts of an ecosystem"
+                },
+                {
+                  "id": "abiotic",
+                  "label": "Abiotic",
+                  "description": "Non-living physical factors"
+                }
+              ],
+              "correctPlacements": [
+                {
+                  "itemId": "temperature",
+                  "categoryId": "abiotic"
+                },
+                {
+                  "itemId": "bacteria",
+                  "categoryId": "biotic"
+                },
+                {
+                  "itemId": "rainfall",
+                  "categoryId": "abiotic"
+                },
+                {
+                  "itemId": "trees",
+                  "categoryId": "biotic"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Correct — organisms are biotic; physical conditions are abiotic.",
+                "incorrect": "Biotic means living. Abiotic factors are non-living conditions in the environment."
+              }
+            },
+            {
+              "id": "food-chain-sequence",
+              "kind": "sequencing",
+              "prompt": "Put this food chain in order, beginning with the energy source.",
+              "items": [
+                {
+                  "id": "hawk",
+                  "content": {
+                    "kind": "text",
+                    "text": "Hawk"
+                  }
+                },
+                {
+                  "id": "sunlight",
+                  "content": {
+                    "kind": "text",
+                    "text": "Sunlight"
+                  }
+                },
+                {
+                  "id": "grass-sequence",
+                  "content": {
+                    "kind": "text",
+                    "text": "Grass"
+                  }
+                },
+                {
+                  "id": "mouse",
+                  "content": {
+                    "kind": "text",
+                    "text": "Mouse"
+                  }
+                }
+              ],
+              "correctOrder": [
+                "sunlight",
+                "grass-sequence",
+                "mouse",
+                "hawk"
+              ],
+              "feedback": {
+                "correct": "That sequence shows the direction of energy transfer.",
+                "incorrect": "Begin with the Sun, then identify what captures its energy and what eats next.",
+                "explanation": "Energy moves from sunlight to grass, then to the mouse and finally to the hawk."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "quiz",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "fraction-equivalence-diagnostic",
+      "metadata": {
+        "title": "Fraction Equivalence Detective",
+        "summary": "A misconception-focused check that asks pupils to compare, explain and represent equivalent fractions.",
+        "subject": "mathematics",
+        "level": "upper-primary",
+        "locale": "en-SG",
+        "learningObjective": "Recognise equivalent fractions and explain how multiplying a numerator and denominator by the same number preserves value.",
+        "estimatedMinutes": 9,
+        "tags": [
+          "fractions",
+          "equivalence",
+          "diagnostic",
+          "retrieval"
+        ]
+      },
+      "theme": {
+        "accent": "amber",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "diagnose",
+          "title": "Spot the equivalence",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "Are these fractions really equal?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Decide before checking. Use a diagram or multiplication rule if you are unsure, then explain any answer you change."
+            },
+            {
+              "id": "half-check",
+              "kind": "choiceQuestion",
+              "prompt": "Which fraction has the same value as 3/6?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "one-half",
+                  "content": {
+                    "kind": "text",
+                    "text": "1/2"
+                  }
+                },
+                {
+                  "id": "three-twelfths",
+                  "content": {
+                    "kind": "text",
+                    "text": "3/12"
+                  }
+                },
+                {
+                  "id": "six-ninths",
+                  "content": {
+                    "kind": "text",
+                    "text": "6/9"
+                  }
+                },
+                {
+                  "id": "two-sixths",
+                  "content": {
+                    "kind": "text",
+                    "text": "2/6"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "one-half"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. Dividing both 3 and 6 by 3 gives 1/2.",
+                "incorrect": "Try simplifying 3/6 by dividing its numerator and denominator by the same factor.",
+                "explanation": "Equivalent fractions name the same quantity. Dividing both parts of 3/6 by 3 gives 1/2."
+              }
+            },
+            {
+              "id": "rule-check",
+              "kind": "choiceQuestion",
+              "prompt": "A pupil changes 2/5 to 6/15. Which operation explains why the fractions are equivalent?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "add-four-ten",
+                  "content": {
+                    "kind": "text",
+                    "text": "Add 4 to the numerator and 10 to the denominator"
+                  }
+                },
+                {
+                  "id": "multiply-three",
+                  "content": {
+                    "kind": "text",
+                    "text": "Multiply both numerator and denominator by 3"
+                  }
+                },
+                {
+                  "id": "multiply-numerator",
+                  "content": {
+                    "kind": "text",
+                    "text": "Multiply only the numerator by 3"
+                  }
+                },
+                {
+                  "id": "add-three",
+                  "content": {
+                    "kind": "text",
+                    "text": "Add 3 to both numbers"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "multiply-three"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Exactly. Multiplying both parts by 3 preserves the fraction's value.",
+                "incorrect": "Check which operation turns 2 into 6 and 5 into 15 in the same way.",
+                "explanation": "Multiplying numerator and denominator by the same non-zero number creates an equivalent fraction."
+              }
+            },
+            {
+              "id": "justify-check",
+              "kind": "shortAnswerQuestion",
+              "prompt": "Complete the statement: 4/6 = 2/3 because both 4 and 6 were divided by ___.",
+              "acceptedAnswers": [
+                "2",
+                "two"
+              ],
+              "placeholder": "Enter a number or number word",
+              "normalisation": {
+                "trimWhitespace": true,
+                "collapseWhitespace": true,
+                "caseSensitive": false
+              },
+              "feedback": {
+                "correct": "Yes. Dividing both parts by 2 simplifies 4/6 to 2/3.",
+                "incorrect": "Which common factor changes 4 to 2 and 6 to 3?",
+                "explanation": "The common factor is 2, so dividing numerator and denominator by 2 preserves the value."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "quiz",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "persuasive-language-lab",
+      "metadata": {
+        "title": "Persuasive Language Lab",
+        "summary": "A compact English-language activity for identifying rhetorical choices and judging their likely effect on an audience.",
+        "subject": "english",
+        "level": "secondary",
+        "locale": "en-SG",
+        "learningObjective": "Identify persuasive language choices and explain how evidence, rhetorical questions and inclusive language shape a reader's response.",
+        "estimatedMinutes": 11,
+        "tags": [
+          "persuasion",
+          "rhetoric",
+          "audience",
+          "close-reading"
+        ]
+      },
+      "theme": {
+        "accent": "terracotta",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "analyse",
+          "title": "Read like a writer",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "How is the writer persuading us?"
+            },
+            {
+              "id": "source",
+              "kind": "text",
+              "role": "body",
+              "text": "Our neighbourhood throws away hundreds of reusable containers each week. If we bring our own, we can cut waste together. Why wait for someone else to act?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Read the short appeal twice. Name the technique, then connect it to a likely effect rather than merely spotting a phrase."
+            },
+            {
+              "id": "inclusive-language",
+              "kind": "choiceQuestion",
+              "prompt": "What is the main effect of the words ‘we’ and ‘together’?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "shared-duty",
+                  "content": {
+                    "kind": "text",
+                    "text": "They create a sense of shared responsibility"
+                  }
+                },
+                {
+                  "id": "technical-tone",
+                  "content": {
+                    "kind": "text",
+                    "text": "They make the appeal sound more technical"
+                  }
+                },
+                {
+                  "id": "uncertainty",
+                  "content": {
+                    "kind": "text",
+                    "text": "They show that the writer is uncertain"
+                  }
+                },
+                {
+                  "id": "past-event",
+                  "content": {
+                    "kind": "text",
+                    "text": "They describe an event in the past"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "shared-duty"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Yes. Inclusive language places the writer and reader on the same side.",
+                "incorrect": "Ask how the reader is positioned when the writer says ‘we’ instead of ‘you’.",
+                "explanation": "Inclusive pronouns create solidarity and make the proposed action feel collective rather than accusatory."
+              }
+            },
+            {
+              "id": "evidence-effect",
+              "kind": "choiceQuestion",
+              "prompt": "Why does the writer mention ‘hundreds of reusable containers each week’?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "scale-evidence",
+                  "content": {
+                    "kind": "text",
+                    "text": "To give concrete evidence of the scale of the problem"
+                  }
+                },
+                {
+                  "id": "comic-effect",
+                  "content": {
+                    "kind": "text",
+                    "text": "To make the reader laugh"
+                  }
+                },
+                {
+                  "id": "expert-quote",
+                  "content": {
+                    "kind": "text",
+                    "text": "To quote an expert directly"
+                  }
+                },
+                {
+                  "id": "counterargument",
+                  "content": {
+                    "kind": "text",
+                    "text": "To present the opposing view fairly"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "scale-evidence"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. The quantity makes the waste problem feel specific and substantial.",
+                "incorrect": "Consider what the number adds that the vague phrase ‘a lot of waste’ would not.",
+                "explanation": "A concrete quantity gives the claim weight, although a critical reader might still ask for the source."
+              }
+            },
+            {
+              "id": "rhetorical-question",
+              "kind": "shortAnswerQuestion",
+              "prompt": "What technique is used in ‘Why wait for someone else to act?’",
+              "acceptedAnswers": [
+                "rhetorical question",
+                "a rhetorical question"
+              ],
+              "placeholder": "Name the technique",
+              "normalisation": {
+                "trimWhitespace": true,
+                "collapseWhitespace": true,
+                "caseSensitive": false
+              },
+              "feedback": {
+                "correct": "Correct — it is a rhetorical question that presses the reader towards action.",
+                "incorrect": "The writer asks something without expecting a literal reply.",
+                "explanation": "A rhetorical question prompts reflection and implies that delaying action is difficult to justify."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "quiz",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "source-reliability-check",
+      "metadata": {
+        "title": "Can We Trust This Source?",
+        "summary": "Students evaluate a short historical claim by considering provenance, purpose and corroboration rather than accepting or rejecting it outright.",
+        "subject": "humanities",
+        "level": "secondary",
+        "locale": "en-SG",
+        "learningObjective": "Evaluate a source's usefulness and reliability by considering who produced it, why it was produced and what other evidence could corroborate it.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "history",
+          "sources",
+          "reliability",
+          "corroboration"
+        ]
+      },
+      "theme": {
+        "accent": "terracotta",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "evaluate",
+          "title": "Question the claim",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "Reliable, useful — or both?"
+            },
+            {
+              "id": "source-context",
+              "kind": "text",
+              "role": "body",
+              "text": "Source A is a campaign leaflet published by a political party before an election. It states: ‘Only our plan can guarantee every family a better future.’"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Do not decide from the claim alone. Use the source's origin, intended audience and purpose, then identify evidence that would help you check it."
+            },
+            {
+              "id": "purpose-question",
+              "kind": "choiceQuestion",
+              "prompt": "Which purpose is most likely to have shaped the wording of Source A?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "win-support",
+                  "content": {
+                    "kind": "text",
+                    "text": "To win voters' support for the party"
+                  }
+                },
+                {
+                  "id": "neutral-record",
+                  "content": {
+                    "kind": "text",
+                    "text": "To create a neutral record for future historians"
+                  }
+                },
+                {
+                  "id": "private-reflection",
+                  "content": {
+                    "kind": "text",
+                    "text": "To record a private personal reflection"
+                  }
+                },
+                {
+                  "id": "scientific-test",
+                  "content": {
+                    "kind": "text",
+                    "text": "To report the result of a controlled scientific test"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "win-support"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. A campaign leaflet is designed to persuade voters, so its wording is likely to promote the party strongly.",
+                "incorrect": "Use both the type of source and the fact that it appeared before an election.",
+                "explanation": "Purpose does not make a source useless, but it tells us why its claims and omissions need careful checking."
+              }
+            },
+            {
+              "id": "best-corroboration",
+              "kind": "choiceQuestion",
+              "prompt": "Which additional evidence would best help a historian test the promise in the leaflet?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "outcomes-and-plans",
+                  "content": {
+                    "kind": "text",
+                    "text": "Independent data about family outcomes and detailed records of the proposed plan"
+                  }
+                },
+                {
+                  "id": "larger-copy",
+                  "content": {
+                    "kind": "text",
+                    "text": "A larger printed copy of the same leaflet"
+                  }
+                },
+                {
+                  "id": "party-colours",
+                  "content": {
+                    "kind": "text",
+                    "text": "A list of colours used in the party's campaign"
+                  }
+                },
+                {
+                  "id": "anonymous-rumour",
+                  "content": {
+                    "kind": "text",
+                    "text": "An anonymous rumour repeated without supporting evidence"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "outcomes-and-plans"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Yes. Independent outcome data and details of the plan let a historian test both the scale and plausibility of the claim.",
+                "incorrect": "Choose evidence that adds independent, relevant information rather than repeating the same claim.",
+                "explanation": "Corroboration is strongest when evidence is relevant, independently produced and detailed enough to compare with the original claim."
+              }
+            },
+            {
+              "id": "judgement-term",
+              "kind": "shortAnswerQuestion",
+              "prompt": "What historical skill means checking a claim against evidence from other sources?",
+              "acceptedAnswers": [
+                "corroboration",
+                "corroborating",
+                "corroborate"
+              ],
+              "placeholder": "Enter one historical term",
+              "normalisation": {
+                "trimWhitespace": true,
+                "collapseWhitespace": true,
+                "caseSensitive": false
+              },
+              "feedback": {
+                "correct": "Correct. Corroboration compares evidence across sources before reaching a judgement.",
+                "incorrect": "Think of the term historians use when they look for agreement or disagreement across sources.",
+                "explanation": "Corroboration helps a historian test whether claims are supported, qualified or contradicted elsewhere."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "matching",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "paragraph-structure-sequencer",
+      "metadata": {
+        "title": "Build a Clear Explanation",
+        "summary": "Pupils sequence and classify sentences to reveal how a coherent explanatory paragraph is organised.",
+        "subject": "english",
+        "level": "upper-primary",
+        "locale": "en-SG",
+        "learningObjective": "Organise an explanatory paragraph using a topic sentence, logically ordered supporting details and a concluding link.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "writing",
+          "paragraphs",
+          "sequencing",
+          "cohesion"
+        ]
+      },
+      "theme": {
+        "accent": "indigo",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "organise",
+          "title": "Organise the explanation",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "How does rain form? Build the paragraph."
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "First sort each sentence by its job. Then put the four sentences in the order that makes the explanation easiest to follow."
+            },
+            {
+              "id": "sentence-jobs",
+              "kind": "sorting",
+              "prompt": "Sort each sentence by the job it performs in the paragraph.",
+              "items": [
+                {
+                  "id": "overall",
+                  "content": {
+                    "kind": "text",
+                    "text": "Rain forms through a series of changes in water in the atmosphere."
+                  }
+                },
+                {
+                  "id": "first-detail",
+                  "content": {
+                    "kind": "text",
+                    "text": "First, warm water evaporates and rises as water vapour."
+                  }
+                },
+                {
+                  "id": "second-detail",
+                  "content": {
+                    "kind": "text",
+                    "text": "Higher in the air, the vapour cools and condenses into droplets."
+                  }
+                },
+                {
+                  "id": "link",
+                  "content": {
+                    "kind": "text",
+                    "text": "When the droplets grow heavy enough, they fall as rain and the cycle continues."
+                  }
+                }
+              ],
+              "categories": [
+                {
+                  "id": "topic",
+                  "label": "Topic sentence",
+                  "description": "Introduces the overall idea"
+                },
+                {
+                  "id": "support",
+                  "label": "Supporting detail",
+                  "description": "Explains a stage or gives information"
+                },
+                {
+                  "id": "conclusion",
+                  "label": "Concluding link",
+                  "description": "Completes the explanation and links back"
+                }
+              ],
+              "correctPlacements": [
+                {
+                  "itemId": "overall",
+                  "categoryId": "topic"
+                },
+                {
+                  "itemId": "first-detail",
+                  "categoryId": "support"
+                },
+                {
+                  "itemId": "second-detail",
+                  "categoryId": "support"
+                },
+                {
+                  "itemId": "link",
+                  "categoryId": "conclusion"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Correct. The topic frames the explanation, details develop it and the final sentence completes the process.",
+                "incorrect": "Look for the broad opening, the sentences that explain individual stages and the sentence that closes the process.",
+                "explanation": "A coherent paragraph guides the reader from an overall claim through ordered detail to a meaningful ending."
+              }
+            },
+            {
+              "id": "paragraph-order",
+              "kind": "sequencing",
+              "prompt": "Now arrange the sentences into the clearest explanatory paragraph.",
+              "items": [
+                {
+                  "id": "order-link",
+                  "content": {
+                    "kind": "text",
+                    "text": "When the droplets grow heavy enough, they fall as rain and the cycle continues."
+                  }
+                },
+                {
+                  "id": "order-detail-two",
+                  "content": {
+                    "kind": "text",
+                    "text": "Higher in the air, the vapour cools and condenses into droplets."
+                  }
+                },
+                {
+                  "id": "order-overall",
+                  "content": {
+                    "kind": "text",
+                    "text": "Rain forms through a series of changes in water in the atmosphere."
+                  }
+                },
+                {
+                  "id": "order-detail-one",
+                  "content": {
+                    "kind": "text",
+                    "text": "First, warm water evaporates and rises as water vapour."
+                  }
+                }
+              ],
+              "correctOrder": [
+                "order-overall",
+                "order-detail-one",
+                "order-detail-two",
+                "order-link"
+              ],
+              "feedback": {
+                "correct": "Well organised. The explanation moves from the main idea through each stage in time order.",
+                "incorrect": "Start with the sentence that introduces the whole process, then follow what happens to the water step by step.",
+                "explanation": "The sequence is signalled by ‘First’, the change higher in the air and the final result when droplets become heavy."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "matching",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "singapore-self-government-timeline",
+      "metadata": {
+        "title": "Road to Self-Government",
+        "summary": "A sequencing and significance activity about major constitutional and political developments in post-war Singapore.",
+        "subject": "humanities",
+        "level": "secondary",
+        "locale": "en-SG",
+        "learningObjective": "Sequence key developments in Singapore's path to internal self-government and connect each event to its historical significance.",
+        "estimatedMinutes": 12,
+        "tags": [
+          "history",
+          "singapore",
+          "self-government",
+          "chronology"
+        ]
+      },
+      "theme": {
+        "accent": "rose",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "timeline",
+          "title": "Sequence and interpret",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "How did political participation expand?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Arrange the developments by date, then match each one to the change it represents. Dates help with order; significance explains why the sequence matters."
+            },
+            {
+              "id": "event-order",
+              "kind": "sequencing",
+              "prompt": "Place the developments in chronological order, earliest first.",
+              "items": [
+                {
+                  "id": "lim-yew-hock-talks",
+                  "content": {
+                    "kind": "text",
+                    "text": "1957: Lim Yew Hock leads successful constitutional talks"
+                  }
+                },
+                {
+                  "id": "first-election",
+                  "content": {
+                    "kind": "text",
+                    "text": "1948: Singapore holds its first limited Legislative Council election"
+                  }
+                },
+                {
+                  "id": "internal-government",
+                  "content": {
+                    "kind": "text",
+                    "text": "1959: Singapore gains full internal self-government"
+                  }
+                },
+                {
+                  "id": "rendel-election",
+                  "content": {
+                    "kind": "text",
+                    "text": "1955: The Rendel Constitution expands elected representation"
+                  }
+                }
+              ],
+              "correctOrder": [
+                "first-election",
+                "rendel-election",
+                "lim-yew-hock-talks",
+                "internal-government"
+              ],
+              "feedback": {
+                "correct": "Correct. The sequence shows political participation and local responsibility expanding over time.",
+                "incorrect": "Use the dates first, then check that the constitutional changes build towards full internal self-government.",
+                "explanation": "Limited elections in 1948 were followed by wider representation in 1955, successful talks in 1957 and internal self-government in 1959."
+              }
+            },
+            {
+              "id": "event-significance",
+              "kind": "matching",
+              "prompt": "Match each development with its main significance.",
+              "items": [
+                {
+                  "id": "development-election",
+                  "content": {
+                    "kind": "text",
+                    "text": "1948 election"
+                  }
+                },
+                {
+                  "id": "development-rendel",
+                  "content": {
+                    "kind": "text",
+                    "text": "Rendel Constitution"
+                  }
+                },
+                {
+                  "id": "development-talks",
+                  "content": {
+                    "kind": "text",
+                    "text": "1957 constitutional talks"
+                  }
+                },
+                {
+                  "id": "development-government",
+                  "content": {
+                    "kind": "text",
+                    "text": "1959 internal self-government"
+                  }
+                }
+              ],
+              "targets": [
+                {
+                  "id": "significance-first-vote",
+                  "content": {
+                    "kind": "text",
+                    "text": "Introduced limited electoral participation"
+                  }
+                },
+                {
+                  "id": "significance-majority",
+                  "content": {
+                    "kind": "text",
+                    "text": "Created a legislature with a majority of elected seats"
+                  }
+                },
+                {
+                  "id": "significance-agreement",
+                  "content": {
+                    "kind": "text",
+                    "text": "Secured agreement for greater local control"
+                  }
+                },
+                {
+                  "id": "significance-local-cabinet",
+                  "content": {
+                    "kind": "text",
+                    "text": "Placed most domestic affairs under an elected local government"
+                  }
+                }
+              ],
+              "correctMatches": [
+                {
+                  "itemId": "development-election",
+                  "targetId": "significance-first-vote"
+                },
+                {
+                  "itemId": "development-rendel",
+                  "targetId": "significance-majority"
+                },
+                {
+                  "itemId": "development-talks",
+                  "targetId": "significance-agreement"
+                },
+                {
+                  "itemId": "development-government",
+                  "targetId": "significance-local-cabinet"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "All matched. You have connected chronology to political significance.",
+                "incorrect": "Distinguish taking part in elections, expanding elected seats, negotiating change and exercising local control.",
+                "explanation": "Each development widened either representation or the responsibilities exercised by locally elected leaders."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "matching",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "malay-classroom-vocabulary-match",
+      "metadata": {
+        "title": "Padankan Perkataan di Bilik Darjah",
+        "summary": "A bilingual matching and sorting activity for practising common Malay classroom vocabulary in context.",
+        "subject": "languages",
+        "level": "upper-primary",
+        "locale": "ms-SG",
+        "learningObjective": "Match common Malay classroom nouns and verbs with their English meanings and distinguish actions from objects.",
+        "estimatedMinutes": 8,
+        "tags": [
+          "bahasa-melayu",
+          "vocabulary",
+          "matching",
+          "classroom"
+        ]
+      },
+      "theme": {
+        "accent": "sage",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "practice",
+          "title": "Latihan kosa kata",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "Apa yang kita buat dan gunakan di kelas?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Padankan setiap perkataan Melayu dengan maksudnya. Kemudian asingkan perkataan kepada perbuatan dan benda."
+            },
+            {
+              "id": "word-match",
+              "kind": "matching",
+              "prompt": "Padankan perkataan dengan maksud bahasa Inggeris yang betul.",
+              "items": [
+                {
+                  "id": "membaca",
+                  "content": {
+                    "kind": "text",
+                    "text": "membaca"
+                  }
+                },
+                {
+                  "id": "menulis",
+                  "content": {
+                    "kind": "text",
+                    "text": "menulis"
+                  }
+                },
+                {
+                  "id": "buku",
+                  "content": {
+                    "kind": "text",
+                    "text": "buku"
+                  }
+                },
+                {
+                  "id": "papan-putih",
+                  "content": {
+                    "kind": "text",
+                    "text": "papan putih"
+                  }
+                }
+              ],
+              "targets": [
+                {
+                  "id": "reading",
+                  "content": {
+                    "kind": "text",
+                    "text": "reading"
+                  }
+                },
+                {
+                  "id": "writing",
+                  "content": {
+                    "kind": "text",
+                    "text": "writing"
+                  }
+                },
+                {
+                  "id": "book",
+                  "content": {
+                    "kind": "text",
+                    "text": "book"
+                  }
+                },
+                {
+                  "id": "whiteboard",
+                  "content": {
+                    "kind": "text",
+                    "text": "whiteboard"
+                  }
+                }
+              ],
+              "correctMatches": [
+                {
+                  "itemId": "membaca",
+                  "targetId": "reading"
+                },
+                {
+                  "itemId": "menulis",
+                  "targetId": "writing"
+                },
+                {
+                  "itemId": "buku",
+                  "targetId": "book"
+                },
+                {
+                  "itemId": "papan-putih",
+                  "targetId": "whiteboard"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Bagus! Semua perkataan dipadankan dengan betul.",
+                "incorrect": "Cuba sebut setiap perkataan dalam ayat kelas yang mudah sebelum memadankannya.",
+                "explanation": "Membaca means reading, menulis means writing, buku means book and papan putih means whiteboard."
+              }
+            },
+            {
+              "id": "word-sort",
+              "kind": "sorting",
+              "prompt": "Asingkan perkataan kepada perbuatan dan benda.",
+              "items": [
+                {
+                  "id": "sort-membaca",
+                  "content": {
+                    "kind": "text",
+                    "text": "membaca"
+                  }
+                },
+                {
+                  "id": "sort-menulis",
+                  "content": {
+                    "kind": "text",
+                    "text": "menulis"
+                  }
+                },
+                {
+                  "id": "sort-buku",
+                  "content": {
+                    "kind": "text",
+                    "text": "buku"
+                  }
+                },
+                {
+                  "id": "sort-papan-putih",
+                  "content": {
+                    "kind": "text",
+                    "text": "papan putih"
+                  }
+                }
+              ],
+              "categories": [
+                {
+                  "id": "perbuatan",
+                  "label": "Perbuatan",
+                  "description": "Kata yang menunjukkan tindakan"
+                },
+                {
+                  "id": "benda",
+                  "label": "Benda",
+                  "description": "Kata nama untuk objek"
+                }
+              ],
+              "correctPlacements": [
+                {
+                  "itemId": "sort-membaca",
+                  "categoryId": "perbuatan"
+                },
+                {
+                  "itemId": "sort-menulis",
+                  "categoryId": "perbuatan"
+                },
+                {
+                  "itemId": "sort-buku",
+                  "categoryId": "benda"
+                },
+                {
+                  "itemId": "sort-papan-putih",
+                  "categoryId": "benda"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Tepat. Membaca dan menulis ialah perbuatan; buku dan papan putih ialah benda.",
+                "incorrect": "Tanya: bolehkah saya melakukan perkataan ini, atau bolehkah saya menyentuh bendanya?",
+                "explanation": "Awalan meN- sering muncul pada kata kerja seperti membaca dan menulis, manakala buku dan papan putih ialah kata nama."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "simulation",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "projectile-motion-explorer",
+      "metadata": {
+        "title": "Projectile Motion Explorer",
+        "summary": "Change launch conditions, predict the trajectory and connect the graph to the underlying physics.",
+        "subject": "science",
+        "level": "secondary",
+        "locale": "en-SG",
+        "learningObjective": "Explain how launch speed, angle and gravitational field strength affect a projectile’s path and range.",
+        "estimatedMinutes": 12,
+        "tags": [
+          "physics",
+          "motion",
+          "graphs",
+          "simulation"
+        ]
+      },
+      "theme": {
+        "accent": "sky",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [
+        {
+          "id": "launch-speed",
+          "kind": "number",
+          "label": "Launch speed",
+          "initial": 20,
+          "minimum": 5,
+          "maximum": 40,
+          "step": 1,
+          "unit": "m/s"
+        },
+        {
+          "id": "launch-angle",
+          "kind": "number",
+          "label": "Launch angle",
+          "initial": 45,
+          "minimum": 10,
+          "maximum": 80,
+          "step": 1,
+          "unit": "°"
+        },
+        {
+          "id": "gravity",
+          "kind": "number",
+          "label": "Gravitational field strength",
+          "initial": 9.81,
+          "minimum": 1.6,
+          "maximum": 24,
+          "step": 0.1,
+          "unit": "m/s²"
+        }
+      ],
+      "screens": [
+        {
+          "id": "explore",
+          "title": "Explore the trajectory",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "How far will it travel?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Predict what will happen before moving one control. Then compare the new curve with your prediction. Air resistance is ignored and launch height is zero."
+            },
+            {
+              "id": "speed-control",
+              "kind": "numberControl",
+              "variableId": "launch-speed",
+              "presentation": "slider"
+            },
+            {
+              "id": "angle-control",
+              "kind": "numberControl",
+              "variableId": "launch-angle",
+              "presentation": "slider"
+            },
+            {
+              "id": "gravity-control",
+              "kind": "numberControl",
+              "variableId": "gravity",
+              "presentation": "slider"
+            },
+            {
+              "id": "range-readout",
+              "kind": "valueDisplay",
+              "label": "Calculated range",
+              "expression": {
+                "kind": "binary",
+                "operator": "divide",
+                "left": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": {
+                    "kind": "binary",
+                    "operator": "power",
+                    "left": {
+                      "kind": "variable",
+                      "variableId": "launch-speed"
+                    },
+                    "right": {
+                      "kind": "literal",
+                      "value": 2
+                    }
+                  },
+                  "right": {
+                    "kind": "unary",
+                    "operator": "sine",
+                    "operand": {
+                      "kind": "binary",
+                      "operator": "multiply",
+                      "left": {
+                        "kind": "literal",
+                        "value": 2
+                      },
+                      "right": {
+                        "kind": "binary",
+                        "operator": "multiply",
+                        "left": {
+                          "kind": "variable",
+                          "variableId": "launch-angle"
+                        },
+                        "right": {
+                          "kind": "binary",
+                          "operator": "divide",
+                          "left": {
+                            "kind": "constant",
+                            "name": "pi"
+                          },
+                          "right": {
+                            "kind": "literal",
+                            "value": 180
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "kind": "variable",
+                  "variableId": "gravity"
+                }
+              },
+              "decimalPlaces": 1,
+              "unit": "m"
+            },
+            {
+              "id": "trajectory-plot",
+              "kind": "plot",
+              "title": "Projectile path",
+              "description": "The horizontal axis shows distance from the launch point; the vertical axis shows height.",
+              "domain": {
+                "variableId": "horizontal-distance",
+                "label": "Horizontal distance",
+                "minimum": 0,
+                "maximum": 100,
+                "step": 0.25,
+                "unit": "m"
+              },
+              "range": {
+                "label": "Height",
+                "minimum": 0,
+                "maximum": 30,
+                "unit": "m"
+              },
+              "series": [
+                {
+                  "id": "trajectory",
+                  "label": "Trajectory",
+                  "colour": "sky",
+                  "yExpression": {
+                    "kind": "binary",
+                    "operator": "subtract",
+                    "left": {
+                      "kind": "binary",
+                      "operator": "multiply",
+                      "left": {
+                        "kind": "variable",
+                        "variableId": "horizontal-distance"
+                      },
+                      "right": {
+                        "kind": "unary",
+                        "operator": "tangent",
+                        "operand": {
+                          "kind": "binary",
+                          "operator": "multiply",
+                          "left": {
+                            "kind": "variable",
+                            "variableId": "launch-angle"
+                          },
+                          "right": {
+                            "kind": "binary",
+                            "operator": "divide",
+                            "left": {
+                              "kind": "constant",
+                              "name": "pi"
+                            },
+                            "right": {
+                              "kind": "literal",
+                              "value": 180
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "right": {
+                      "kind": "binary",
+                      "operator": "divide",
+                      "left": {
+                        "kind": "binary",
+                        "operator": "multiply",
+                        "left": {
+                          "kind": "variable",
+                          "variableId": "gravity"
+                        },
+                        "right": {
+                          "kind": "binary",
+                          "operator": "power",
+                          "left": {
+                            "kind": "variable",
+                            "variableId": "horizontal-distance"
+                          },
+                          "right": {
+                            "kind": "literal",
+                            "value": 2
+                          }
+                        }
+                      },
+                      "right": {
+                        "kind": "binary",
+                        "operator": "multiply",
+                        "left": {
+                          "kind": "literal",
+                          "value": 2
+                        },
+                        "right": {
+                          "kind": "binary",
+                          "operator": "multiply",
+                          "left": {
+                            "kind": "binary",
+                            "operator": "power",
+                            "left": {
+                              "kind": "variable",
+                              "variableId": "launch-speed"
+                            },
+                            "right": {
+                              "kind": "literal",
+                              "value": 2
+                            }
+                          },
+                          "right": {
+                            "kind": "binary",
+                            "operator": "power",
+                            "left": {
+                              "kind": "unary",
+                              "operator": "cosine",
+                              "operand": {
+                                "kind": "binary",
+                                "operator": "multiply",
+                                "left": {
+                                  "kind": "variable",
+                                  "variableId": "launch-angle"
+                                },
+                                "right": {
+                                  "kind": "binary",
+                                  "operator": "divide",
+                                  "left": {
+                                    "kind": "constant",
+                                    "name": "pi"
+                                  },
+                                  "right": {
+                                    "kind": "literal",
+                                    "value": 180
+                                  }
+                                }
+                              }
+                            },
+                            "right": {
+                              "kind": "literal",
+                              "value": 2
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              ],
+              "showGrid": true,
+              "showLegend": false
+            },
+            {
+              "id": "speed-check",
+              "kind": "choiceQuestion",
+              "prompt": "With angle and gravity unchanged, what happens to the range when launch speed is doubled?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "same-range",
+                  "content": {
+                    "kind": "text",
+                    "text": "It stays the same"
+                  }
+                },
+                {
+                  "id": "double-range",
+                  "content": {
+                    "kind": "text",
+                    "text": "It doubles"
+                  }
+                },
+                {
+                  "id": "quadruple-range",
+                  "content": {
+                    "kind": "text",
+                    "text": "It becomes four times as large"
+                  }
+                },
+                {
+                  "id": "half-range",
+                  "content": {
+                    "kind": "text",
+                    "text": "It halves"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "quadruple-range"
+              ],
+              "shuffleOptions": false,
+              "feedback": {
+                "correct": "Exactly — range is proportional to the square of launch speed in this model.",
+                "incorrect": "Try comparing the range readout at 10 m/s and 20 m/s while keeping the other controls fixed.",
+                "explanation": "Doubling speed multiplies speed squared by four, so the range becomes four times as large."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "simulation",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "linear-function-explorer",
+      "metadata": {
+        "title": "Linear Function Explorer",
+        "summary": "Students vary gradient and intercept, predict the change and connect the equation y = mx + c with its graph.",
+        "subject": "mathematics",
+        "level": "secondary",
+        "locale": "en-SG",
+        "learningObjective": "Explain how the gradient and vertical intercept in y = mx + c affect the position and direction of a straight-line graph.",
+        "estimatedMinutes": 12,
+        "tags": [
+          "algebra",
+          "linear-functions",
+          "graphs",
+          "simulation"
+        ]
+      },
+      "theme": {
+        "accent": "indigo",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [
+        {
+          "id": "gradient",
+          "kind": "number",
+          "label": "Gradient m",
+          "initial": 1,
+          "minimum": -3,
+          "maximum": 3,
+          "step": 0.5
+        },
+        {
+          "id": "intercept",
+          "kind": "number",
+          "label": "Vertical intercept c",
+          "initial": 0,
+          "minimum": -5,
+          "maximum": 5,
+          "step": 1
+        }
+      ],
+      "screens": [
+        {
+          "id": "explore-lines",
+          "title": "Change one coefficient",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "What does each number do to the line?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Change only one control at a time. Predict whether the line will turn, shift or stay unchanged before moving the slider."
+            },
+            {
+              "id": "gradient-control",
+              "kind": "numberControl",
+              "variableId": "gradient",
+              "presentation": "slider"
+            },
+            {
+              "id": "intercept-control",
+              "kind": "numberControl",
+              "variableId": "intercept",
+              "presentation": "slider"
+            },
+            {
+              "id": "value-at-two",
+              "kind": "valueDisplay",
+              "label": "Value of y when x = 2",
+              "expression": {
+                "kind": "binary",
+                "operator": "add",
+                "left": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": {
+                    "kind": "variable",
+                    "variableId": "gradient"
+                  },
+                  "right": {
+                    "kind": "literal",
+                    "value": 2
+                  }
+                },
+                "right": {
+                  "kind": "variable",
+                  "variableId": "intercept"
+                }
+              },
+              "decimalPlaces": 1
+            },
+            {
+              "id": "line-plot",
+              "kind": "plot",
+              "title": "Graph of y = mx + c",
+              "description": "The horizontal axis is x and the vertical axis is y. The displayed line updates when m or c changes.",
+              "domain": {
+                "variableId": "x-value",
+                "label": "x",
+                "minimum": -5,
+                "maximum": 5,
+                "step": 0.1
+              },
+              "range": {
+                "label": "y",
+                "minimum": -15,
+                "maximum": 15
+              },
+              "series": [
+                {
+                  "id": "linear-line",
+                  "label": "y = mx + c",
+                  "colour": "indigo",
+                  "yExpression": {
+                    "kind": "binary",
+                    "operator": "add",
+                    "left": {
+                      "kind": "binary",
+                      "operator": "multiply",
+                      "left": {
+                        "kind": "variable",
+                        "variableId": "gradient"
+                      },
+                      "right": {
+                        "kind": "variable",
+                        "variableId": "x-value"
+                      }
+                    },
+                    "right": {
+                      "kind": "variable",
+                      "variableId": "intercept"
+                    }
+                  }
+                }
+              ],
+              "showGrid": true,
+              "showLegend": false
+            },
+            {
+              "id": "negative-gradient-check",
+              "kind": "choiceQuestion",
+              "prompt": "What must be true when the line falls from left to right?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "negative-gradient",
+                  "content": {
+                    "kind": "text",
+                    "text": "The gradient is negative"
+                  }
+                },
+                {
+                  "id": "positive-gradient",
+                  "content": {
+                    "kind": "text",
+                    "text": "The gradient is positive"
+                  }
+                },
+                {
+                  "id": "zero-intercept",
+                  "content": {
+                    "kind": "text",
+                    "text": "The intercept is zero"
+                  }
+                },
+                {
+                  "id": "positive-intercept",
+                  "content": {
+                    "kind": "text",
+                    "text": "The intercept is positive"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "negative-gradient"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. A negative gradient means y decreases as x increases.",
+                "incorrect": "Try a positive and negative value of m while leaving c unchanged. Watch the direction of the line.",
+                "explanation": "The sign of m controls direction. The value of c moves the line vertically but does not decide whether it rises or falls."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "simulation",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "fixed-perimeter-rectangle-explorer",
+      "metadata": {
+        "title": "Rectangles with the Same Perimeter",
+        "summary": "Pupils change a target perimeter and explore the possible length-width pairs on a graph.",
+        "subject": "mathematics",
+        "level": "upper-primary",
+        "locale": "en-SG",
+        "learningObjective": "Generate different rectangles with the same perimeter and reason about the relationship between width and length.",
+        "estimatedMinutes": 11,
+        "tags": [
+          "measurement",
+          "perimeter",
+          "rectangles",
+          "graphs",
+          "simulation"
+        ]
+      },
+      "theme": {
+        "accent": "amber",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [
+        {
+          "id": "target-perimeter",
+          "kind": "number",
+          "label": "Target perimeter",
+          "initial": 24,
+          "minimum": 12,
+          "maximum": 40,
+          "step": 2,
+          "unit": "cm"
+        }
+      ],
+      "screens": [
+        {
+          "id": "explore-pairs",
+          "title": "Explore possible dimensions",
+          "components": [
+            {
+              "id": "title",
+              "kind": "text",
+              "role": "title",
+              "text": "How many rectangles can share one perimeter?"
+            },
+            {
+              "id": "instructions",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Choose an even perimeter. The graph shows possible width-length pairs. Pick whole-number points and check that twice the width plus twice the length gives the target."
+            },
+            {
+              "id": "perimeter-control",
+              "kind": "numberControl",
+              "variableId": "target-perimeter",
+              "presentation": "stepper"
+            },
+            {
+              "id": "side-total",
+              "kind": "valueDisplay",
+              "label": "Width plus length must equal",
+              "expression": {
+                "kind": "binary",
+                "operator": "divide",
+                "left": {
+                  "kind": "variable",
+                  "variableId": "target-perimeter"
+                },
+                "right": {
+                  "kind": "literal",
+                  "value": 2
+                }
+              },
+              "decimalPlaces": 0,
+              "unit": "cm"
+            },
+            {
+              "id": "dimension-plot",
+              "kind": "plot",
+              "title": "Possible width-length pairs",
+              "description": "Each point on the line represents a rectangle whose width plus length is half the chosen perimeter.",
+              "domain": {
+                "variableId": "width-value",
+                "label": "Width",
+                "minimum": 1,
+                "maximum": 19,
+                "step": 0.25,
+                "unit": "cm"
+              },
+              "range": {
+                "label": "Length",
+                "minimum": 0,
+                "maximum": 20,
+                "unit": "cm"
+              },
+              "series": [
+                {
+                  "id": "possible-dimensions",
+                  "label": "length = perimeter ÷ 2 − width",
+                  "colour": "amber",
+                  "yExpression": {
+                    "kind": "binary",
+                    "operator": "subtract",
+                    "left": {
+                      "kind": "binary",
+                      "operator": "divide",
+                      "left": {
+                        "kind": "variable",
+                        "variableId": "target-perimeter"
+                      },
+                      "right": {
+                        "kind": "literal",
+                        "value": 2
+                      }
+                    },
+                    "right": {
+                      "kind": "variable",
+                      "variableId": "width-value"
+                    }
+                  }
+                }
+              ],
+              "showGrid": true,
+              "showLegend": false
+            },
+            {
+              "id": "perimeter-check",
+              "kind": "choiceQuestion",
+              "prompt": "For a perimeter of 24 cm, which width and length form a possible rectangle?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "five-seven",
+                  "content": {
+                    "kind": "text",
+                    "text": "5 cm and 7 cm"
+                  }
+                },
+                {
+                  "id": "six-eight",
+                  "content": {
+                    "kind": "text",
+                    "text": "6 cm and 8 cm"
+                  }
+                },
+                {
+                  "id": "four-six",
+                  "content": {
+                    "kind": "text",
+                    "text": "4 cm and 6 cm"
+                  }
+                },
+                {
+                  "id": "three-seven",
+                  "content": {
+                    "kind": "text",
+                    "text": "3 cm and 7 cm"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "five-seven"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. 2 × 5 + 2 × 7 = 24 cm.",
+                "incorrect": "For a 24 cm perimeter, width plus length must equal 12 cm.",
+                "explanation": "A rectangle's perimeter is 2 × width + 2 × length, so the two different side lengths must add to 12 cm."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "classroomTool",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "classroom-routines-toolkit",
+      "metadata": {
+        "title": "Classroom Routines Toolkit",
+        "summary": "A compact set of ready-made classroom tools for pacing, participation, task tracking and confidence checks.",
+        "subject": "other",
+        "level": "other",
+        "locale": "en-SG",
+        "learningObjective": "Follow a short classroom routine and communicate readiness for the next step.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "routines",
+          "timer",
+          "randomiser",
+          "task-list",
+          "traffic-light"
+        ]
+      },
+      "theme": {
+        "accent": "indigo",
+        "colourScheme": "system",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "classroom-routine",
+          "title": "Ready for learning",
+          "components": [
+            {
+              "id": "settle-in-timer",
+              "kind": "timer",
+              "label": "Settle-in time",
+              "durationSeconds": 300,
+              "completionMessage": "Time is up. Face the front and get ready for the next instruction."
+            },
+            {
+              "id": "discussion-randomiser",
+              "kind": "randomiser",
+              "prompt": "Choose how we will discuss the first question.",
+              "items": [
+                {
+                  "id": "think-pair-share",
+                  "label": "Think, pair, share"
+                },
+                {
+                  "id": "mini-whiteboards",
+                  "label": "Mini whiteboards"
+                },
+                {
+                  "id": "table-spokesperson",
+                  "label": "Table spokesperson"
+                },
+                {
+                  "id": "silent-first",
+                  "label": "Silent thinking first"
+                }
+              ],
+              "allowRepeats": false
+            },
+            {
+              "id": "readiness-checklist",
+              "kind": "taskList",
+              "title": "Before you begin",
+              "items": [
+                {
+                  "id": "materials-ready",
+                  "text": "Place the required materials on your desk"
+                },
+                {
+                  "id": "instructions-read",
+                  "text": "Read the instructions once"
+                },
+                {
+                  "id": "question-ready",
+                  "text": "Prepare one question if anything is unclear"
+                }
+              ],
+              "showProgress": true
+            },
+            {
+              "id": "confidence-signal",
+              "kind": "trafficLight",
+              "title": "How ready are you to begin?",
+              "initialState": "amber",
+              "redLabel": "I need help before I begin",
+              "amberLabel": "I am nearly ready",
+              "greenLabel": "I am ready to begin"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

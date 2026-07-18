@@ -1,0 +1,92 @@
+name: ClassroomWidgetsStudio
+
+options:
+  bundleIdPrefix: sg.tinkertanker
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "26.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "2"
+    SUPPORTS_MACCATALYST: false
+    SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: false
+    DEVELOPMENT_TEAM: PQ6U5ESLN2
+
+targets:
+  ClassroomWidgetsStudio:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Resources/Fixtures
+        type: folder
+        buildPhase: resources
+      - path: Resources/PreviewFallback
+        type: folder
+        buildPhase: resources
+      - path: Resources/widget-player
+        type: folder
+        buildPhase: resources
+      - path: Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sg.tinkertanker.ClassroomWidgetsStudio
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        VERSIONING_SYSTEM: apple-generic
+        TARGETED_DEVICE_FAMILY: "2"
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: Classroom Widgets Studio
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: true
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Choose classroom images to include in a widget.
+        INFOPLIST_KEY_NSCameraUsageDescription: Take a photo of a classroom diagram, worksheet or sketch to include in a widget.
+        INFOPLIST_KEY_StudioAPIBaseURL: "$(STUDIO_API_BASE_URL)"
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          STUDIO_API_BASE_URL: http://127.0.0.1:8787
+        Release:
+          STUDIO_API_BASE_URL: https://classroom-widgets-studio-api.dark-cell-6287.workers.dev
+    scheme:
+      testTargets:
+        - ClassroomWidgetsStudioTests
+        - ClassroomWidgetsStudioUITests
+      gatherCoverageData: true
+
+  ClassroomWidgetsStudioTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: ClassroomWidgetsStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sg.tinkertanker.ClassroomWidgetsStudioTests
+        GENERATE_INFOPLIST_FILE: true
+
+  ClassroomWidgetsStudioUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: ClassroomWidgetsStudio
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: sg.tinkertanker.ClassroomWidgetsStudioUITests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_TARGET_NAME: ClassroomWidgetsStudio

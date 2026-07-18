@@ -1,0 +1,845 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://classroomwidgets.app/schemas/widget-spec/v1.json",
+  "title": "Classroom Widgets WidgetSpec v1",
+  "description": "A constrained, declarative classroom widget. It cannot contain executable code, arbitrary styling or network locations.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "metadata",
+    "theme",
+    "assets",
+    "variables",
+    "screens"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "id": { "$ref": "#/$defs/id" },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "theme": { "$ref": "#/$defs/theme" },
+    "assets": {
+      "type": "array",
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/imageAsset" }
+    },
+    "variables": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/variable" }
+    },
+    "screens": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/screen" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+    },
+    "shortText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "bodyText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "optionalBodyText": {
+      "type": "string",
+      "maxLength": 4000
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 24
+    },
+    "accent": {
+      "enum": ["sage", "terracotta", "sky", "indigo", "amber", "rose"]
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "summary"],
+      "properties": {
+        "title": { "$ref": "#/$defs/shortText" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "subject": {
+          "enum": [
+            "science",
+            "mathematics",
+            "english",
+            "humanities",
+            "languages",
+            "other"
+          ]
+        },
+        "level": { "enum": ["upper-primary", "secondary", "other"] },
+        "locale": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 35,
+          "pattern": "^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$"
+        },
+        "learningObjective": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "estimatedMinutes": { "type": "integer", "minimum": 1, "maximum": 180 },
+        "tags": {
+          "type": "array",
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 40 }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accent", "colourScheme", "density"],
+      "properties": {
+        "accent": { "$ref": "#/$defs/accent" },
+        "colourScheme": { "enum": ["light", "dark", "system"] },
+        "density": { "enum": ["comfortable", "compact"] }
+      }
+    },
+    "imageAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "mediaType", "width", "height", "byteLength", "sha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "image" },
+        "mediaType": { "enum": ["image/jpeg", "image/png", "image/webp"] },
+        "width": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 4096 },
+        "byteLength": { "type": "integer", "minimum": 1, "maximum": 5242880 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "choiceVariableOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/shortText" }
+      }
+    },
+    "numberVariable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "initial", "minimum", "maximum", "step"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "number" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "initial": { "type": "number" },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "$ref": "#/$defs/unit" }
+      }
+    },
+    "booleanVariable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "initial"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "boolean" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "initial": { "type": "boolean" }
+      }
+    },
+    "choiceVariable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "options", "initialOptionId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "choice" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/choiceVariableOption" }
+        },
+        "initialOptionId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "variable": {
+      "oneOf": [
+        { "$ref": "#/$defs/numberVariable" },
+        { "$ref": "#/$defs/booleanVariable" },
+        { "$ref": "#/$defs/choiceVariable" }
+      ]
+    },
+    "numericExpression": {
+      "oneOf": [
+        { "$ref": "#/$defs/literalExpression" },
+        { "$ref": "#/$defs/constantExpression" },
+        { "$ref": "#/$defs/variableExpression" },
+        { "$ref": "#/$defs/unaryExpression" },
+        { "$ref": "#/$defs/binaryExpression" },
+        { "$ref": "#/$defs/clampExpression" }
+      ]
+    },
+    "literalExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "const": "literal" },
+        "value": { "type": "number" }
+      }
+    },
+    "constantExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "name"],
+      "properties": {
+        "kind": { "const": "constant" },
+        "name": { "enum": ["pi", "e"] }
+      }
+    },
+    "variableExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "variableId"],
+      "properties": {
+        "kind": { "const": "variable" },
+        "variableId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "unaryExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "operator", "operand"],
+      "properties": {
+        "kind": { "const": "unary" },
+        "operator": {
+          "enum": [
+            "negate",
+            "absolute",
+            "squareRoot",
+            "sine",
+            "cosine",
+            "tangent",
+            "floor",
+            "ceiling",
+            "round"
+          ]
+        },
+        "operand": { "$ref": "#/$defs/numericExpression" }
+      }
+    },
+    "binaryExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "operator", "left", "right"],
+      "properties": {
+        "kind": { "const": "binary" },
+        "operator": {
+          "enum": [
+            "add",
+            "subtract",
+            "multiply",
+            "divide",
+            "power",
+            "minimum",
+            "maximum"
+          ]
+        },
+        "left": { "$ref": "#/$defs/numericExpression" },
+        "right": { "$ref": "#/$defs/numericExpression" }
+      }
+    },
+    "clampExpression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "minimum", "maximum"],
+      "properties": {
+        "kind": { "const": "clamp" },
+        "value": { "$ref": "#/$defs/numericExpression" },
+        "minimum": { "$ref": "#/$defs/numericExpression" },
+        "maximum": { "$ref": "#/$defs/numericExpression" }
+      }
+    },
+    "textContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "text"],
+      "properties": {
+        "kind": { "const": "text" },
+        "text": { "$ref": "#/$defs/bodyText" }
+      }
+    },
+    "imageContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "assetId", "altText"],
+      "properties": {
+        "kind": { "const": "image" },
+        "assetId": { "$ref": "#/$defs/id" },
+        "altText": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "itemContent": {
+      "oneOf": [
+        { "$ref": "#/$defs/textContent" },
+        { "$ref": "#/$defs/imageContent" }
+      ]
+    },
+    "feedback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correct", "incorrect"],
+      "properties": {
+        "correct": { "$ref": "#/$defs/bodyText" },
+        "incorrect": { "$ref": "#/$defs/bodyText" },
+        "explanation": { "$ref": "#/$defs/bodyText" }
+      }
+    },
+    "choiceOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "content"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "content": { "$ref": "#/$defs/itemContent" }
+      }
+    },
+    "matchingItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "content"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "content": { "$ref": "#/$defs/itemContent" }
+      }
+    },
+    "randomiserItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/shortText" }
+      }
+    },
+    "taskListItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "text": { "$ref": "#/$defs/shortText" }
+      }
+    },
+    "matchingPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemId", "targetId"],
+      "properties": {
+        "itemId": { "$ref": "#/$defs/id" },
+        "targetId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "sortingCategory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "description": { "$ref": "#/$defs/bodyText" }
+      }
+    },
+    "sortingPlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemId", "categoryId"],
+      "properties": {
+        "itemId": { "$ref": "#/$defs/id" },
+        "categoryId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "circleHotspot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "centreX", "centreY", "radius"],
+      "properties": {
+        "kind": { "const": "circle" },
+        "centreX": { "type": "number", "minimum": 0, "maximum": 1 },
+        "centreY": { "type": "number", "minimum": 0, "maximum": 1 },
+        "radius": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.5 }
+      }
+    },
+    "rectangleHotspot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "x", "y", "width", "height"],
+      "properties": {
+        "kind": { "const": "rectangle" },
+        "x": { "type": "number", "minimum": 0, "maximum": 1 },
+        "y": { "type": "number", "minimum": 0, "maximum": 1 },
+        "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+      }
+    },
+    "hotspot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "reveal", "shape"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "reveal": { "$ref": "#/$defs/bodyText" },
+        "shape": {
+          "oneOf": [
+            { "$ref": "#/$defs/circleHotspot" },
+            { "$ref": "#/$defs/rectangleHotspot" }
+          ]
+        }
+      }
+    },
+    "plotDomain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variableId", "label", "minimum", "maximum", "step"],
+      "properties": {
+        "variableId": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "$ref": "#/$defs/unit" }
+      }
+    },
+    "plotRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "minimum", "maximum"],
+      "properties": {
+        "label": { "$ref": "#/$defs/shortText" },
+        "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "unit": { "$ref": "#/$defs/unit" }
+      }
+    },
+    "plotSeries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "colour", "yExpression"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "colour": { "$ref": "#/$defs/accent" },
+        "yExpression": { "$ref": "#/$defs/numericExpression" }
+      }
+    },
+    "textComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "role", "text"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "text" },
+        "role": { "enum": ["title", "heading", "body", "instruction", "caption"] },
+        "text": { "$ref": "#/$defs/bodyText" }
+      }
+    },
+    "imageComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "assetId", "altText", "decorative", "fit"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "image" },
+        "assetId": { "$ref": "#/$defs/id" },
+        "altText": { "type": "string", "maxLength": 500 },
+        "decorative": { "type": "boolean" },
+        "fit": { "enum": ["contain", "crop"] },
+        "caption": { "type": "string", "minLength": 1, "maxLength": 500 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "decorative": { "const": true } }, "required": ["decorative"] },
+          "then": { "properties": { "altText": { "type": "string", "const": "" } } },
+          "else": { "properties": { "altText": { "type": "string", "minLength": 1 } } }
+        }
+      ]
+    },
+    "timerComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "durationSeconds", "completionMessage"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "timer" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "durationSeconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+        "completionMessage": { "$ref": "#/$defs/bodyText" }
+      }
+    },
+    "randomiserComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "prompt", "items", "allowRepeats"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "randomiser" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/randomiserItem" }
+        },
+        "allowRepeats": { "type": "boolean" }
+      }
+    },
+    "taskListComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "title", "items", "showProgress"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "taskList" },
+        "title": { "$ref": "#/$defs/shortText" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": { "$ref": "#/$defs/taskListItem" }
+        },
+        "showProgress": { "type": "boolean" }
+      }
+    },
+    "trafficLightComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "initialState",
+        "redLabel",
+        "amberLabel",
+        "greenLabel"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "trafficLight" },
+        "title": { "$ref": "#/$defs/shortText" },
+        "initialState": { "enum": ["red", "amber", "green"] },
+        "redLabel": { "$ref": "#/$defs/shortText" },
+        "amberLabel": { "$ref": "#/$defs/shortText" },
+        "greenLabel": { "$ref": "#/$defs/shortText" }
+      }
+    },
+    "choiceQuestionComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "prompt",
+        "selectionMode",
+        "options",
+        "correctOptionIds",
+        "shuffleOptions",
+        "feedback"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "choiceQuestion" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "selectionMode": { "enum": ["single", "multiple"] },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/choiceOption" }
+        },
+        "correctOptionIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "shuffleOptions": { "type": "boolean" },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      }
+    },
+    "answerNormalisation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trimWhitespace", "collapseWhitespace", "caseSensitive"],
+      "properties": {
+        "trimWhitespace": { "type": "boolean" },
+        "collapseWhitespace": { "type": "boolean" },
+        "caseSensitive": { "type": "boolean" }
+      }
+    },
+    "shortAnswerQuestionComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "prompt", "acceptedAnswers", "normalisation", "feedback"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "shortAnswerQuestion" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "acceptedAnswers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 240 }
+        },
+        "placeholder": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "normalisation": { "$ref": "#/$defs/answerNormalisation" },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      }
+    },
+    "matchingComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "prompt",
+        "items",
+        "targets",
+        "correctMatches",
+        "shuffleItems",
+        "feedback"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "matching" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/matchingItem" }
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/matchingItem" }
+        },
+        "correctMatches": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/matchingPair" }
+        },
+        "shuffleItems": { "type": "boolean" },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      }
+    },
+    "sortingComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "prompt",
+        "items",
+        "categories",
+        "correctPlacements",
+        "shuffleItems",
+        "feedback"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "sorting" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/matchingItem" }
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/sortingCategory" }
+        },
+        "correctPlacements": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/sortingPlacement" }
+        },
+        "shuffleItems": { "type": "boolean" },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      }
+    },
+    "sequencingComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "prompt", "items", "correctOrder", "feedback"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "sequencing" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "items": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/matchingItem" }
+        },
+        "correctOrder": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" }
+        },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      }
+    },
+    "hotspotsComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "prompt", "imageAssetId", "altText", "hotspots"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "hotspots" },
+        "prompt": { "$ref": "#/$defs/bodyText" },
+        "imageAssetId": { "$ref": "#/$defs/id" },
+        "altText": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "hotspots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/hotspot" }
+        }
+      }
+    },
+    "numberControlComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "variableId", "presentation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "numberControl" },
+        "variableId": { "$ref": "#/$defs/id" },
+        "presentation": { "enum": ["slider", "stepper"] }
+      }
+    },
+    "toggleControlComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "variableId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "toggleControl" },
+        "variableId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "selectControlComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "variableId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "selectControl" },
+        "variableId": { "$ref": "#/$defs/id" }
+      }
+    },
+    "valueDisplayComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "expression", "decimalPlaces"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "valueDisplay" },
+        "label": { "$ref": "#/$defs/shortText" },
+        "expression": { "$ref": "#/$defs/numericExpression" },
+        "decimalPlaces": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "unit": { "$ref": "#/$defs/unit" }
+      }
+    },
+    "plotComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "title",
+        "domain",
+        "range",
+        "series",
+        "showGrid",
+        "showLegend"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "kind": { "const": "plot" },
+        "title": { "$ref": "#/$defs/shortText" },
+        "description": { "$ref": "#/$defs/bodyText" },
+        "domain": { "$ref": "#/$defs/plotDomain" },
+        "range": { "$ref": "#/$defs/plotRange" },
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": { "$ref": "#/$defs/plotSeries" }
+        },
+        "showGrid": { "type": "boolean" },
+        "showLegend": { "type": "boolean" }
+      }
+    },
+    "component": {
+      "oneOf": [
+        { "$ref": "#/$defs/textComponent" },
+        { "$ref": "#/$defs/imageComponent" },
+        { "$ref": "#/$defs/timerComponent" },
+        { "$ref": "#/$defs/randomiserComponent" },
+        { "$ref": "#/$defs/taskListComponent" },
+        { "$ref": "#/$defs/trafficLightComponent" },
+        { "$ref": "#/$defs/choiceQuestionComponent" },
+        { "$ref": "#/$defs/shortAnswerQuestionComponent" },
+        { "$ref": "#/$defs/matchingComponent" },
+        { "$ref": "#/$defs/sortingComponent" },
+        { "$ref": "#/$defs/sequencingComponent" },
+        { "$ref": "#/$defs/hotspotsComponent" },
+        { "$ref": "#/$defs/numberControlComponent" },
+        { "$ref": "#/$defs/toggleControlComponent" },
+        { "$ref": "#/$defs/selectControlComponent" },
+        { "$ref": "#/$defs/valueDisplayComponent" },
+        { "$ref": "#/$defs/plotComponent" }
+      ]
+    },
+    "screen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "components"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "$ref": "#/$defs/shortText" },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/component" }
+        }
+      }
+    }
+  }
+}

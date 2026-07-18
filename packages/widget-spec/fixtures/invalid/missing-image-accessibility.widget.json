@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "id": "missing-image-accessibility",
+  "metadata": {
+    "title": "Missing image accessibility",
+    "summary": "An intentionally invalid fixture."
+  },
+  "theme": {
+    "accent": "sage",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "main",
+      "components": [
+        {
+          "id": "unlabelled-image",
+          "kind": "image",
+          "assetId": "missing-asset",
+          "altText": "",
+          "decorative": false,
+          "fit": "contain"
+        }
+      ]
+    }
+  ]
+}

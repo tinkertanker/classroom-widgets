@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "1.0",
+  "id": "paragraph-structure-sequencer",
+  "metadata": {
+    "title": "Build a Clear Explanation",
+    "summary": "Pupils sequence and classify sentences to reveal how a coherent explanatory paragraph is organised.",
+    "subject": "english",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Organise an explanatory paragraph using a topic sentence, logically ordered supporting details and a concluding link.",
+    "estimatedMinutes": 10,
+    "tags": ["writing", "paragraphs", "sequencing", "cohesion"]
+  },
+  "theme": {
+    "accent": "indigo",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "organise",
+      "title": "Organise the explanation",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "How does rain form? Build the paragraph."
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "First sort each sentence by its job. Then put the four sentences in the order that makes the explanation easiest to follow."
+        },
+        {
+          "id": "sentence-jobs",
+          "kind": "sorting",
+          "prompt": "Sort each sentence by the job it performs in the paragraph.",
+          "items": [
+            { "id": "overall", "content": { "kind": "text", "text": "Rain forms through a series of changes in water in the atmosphere." } },
+            { "id": "first-detail", "content": { "kind": "text", "text": "First, warm water evaporates and rises as water vapour." } },
+            { "id": "second-detail", "content": { "kind": "text", "text": "Higher in the air, the vapour cools and condenses into droplets." } },
+            { "id": "link", "content": { "kind": "text", "text": "When the droplets grow heavy enough, they fall as rain and the cycle continues." } }
+          ],
+          "categories": [
+            { "id": "topic", "label": "Topic sentence", "description": "Introduces the overall idea" },
+            { "id": "support", "label": "Supporting detail", "description": "Explains a stage or gives information" },
+            { "id": "conclusion", "label": "Concluding link", "description": "Completes the explanation and links back" }
+          ],
+          "correctPlacements": [
+            { "itemId": "overall", "categoryId": "topic" },
+            { "itemId": "first-detail", "categoryId": "support" },
+            { "itemId": "second-detail", "categoryId": "support" },
+            { "itemId": "link", "categoryId": "conclusion" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Correct. The topic frames the explanation, details develop it and the final sentence completes the process.",
+            "incorrect": "Look for the broad opening, the sentences that explain individual stages and the sentence that closes the process.",
+            "explanation": "A coherent paragraph guides the reader from an overall claim through ordered detail to a meaningful ending."
+          }
+        },
+        {
+          "id": "paragraph-order",
+          "kind": "sequencing",
+          "prompt": "Now arrange the sentences into the clearest explanatory paragraph.",
+          "items": [
+            { "id": "order-link", "content": { "kind": "text", "text": "When the droplets grow heavy enough, they fall as rain and the cycle continues." } },
+            { "id": "order-detail-two", "content": { "kind": "text", "text": "Higher in the air, the vapour cools and condenses into droplets." } },
+            { "id": "order-overall", "content": { "kind": "text", "text": "Rain forms through a series of changes in water in the atmosphere." } },
+            { "id": "order-detail-one", "content": { "kind": "text", "text": "First, warm water evaporates and rises as water vapour." } }
+          ],
+          "correctOrder": ["order-overall", "order-detail-one", "order-detail-two", "order-link"],
+          "feedback": {
+            "correct": "Well organised. The explanation moves from the main idea through each stage in time order.",
+            "incorrect": "Start with the sentence that introduces the whole process, then follow what happens to the water step by step.",
+            "explanation": "The sequence is signalled by ‘First’, the change higher in the air and the final result when droplets become heavy."
+          }
+        }
+      ]
+    }
+  ]
+}

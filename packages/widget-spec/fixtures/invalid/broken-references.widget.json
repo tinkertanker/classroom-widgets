@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1.0",
+  "id": "broken-references",
+  "metadata": {
+    "title": "Broken references",
+    "summary": "An intentionally invalid fixture."
+  },
+  "theme": {
+    "accent": "amber",
+    "colourScheme": "light",
+    "density": "compact"
+  },
+  "assets": [],
+  "variables": [
+    {
+      "id": "mode",
+      "kind": "boolean",
+      "label": "Mode",
+      "initial": false
+    }
+  ],
+  "screens": [
+    {
+      "id": "main",
+      "components": [
+        {
+          "id": "wrong-control",
+          "kind": "numberControl",
+          "variableId": "mode",
+          "presentation": "slider"
+        },
+        {
+          "id": "broken-match",
+          "kind": "matching",
+          "prompt": "Match the pairs.",
+          "items": [
+            { "id": "one", "content": { "kind": "text", "text": "One" } },
+            { "id": "two", "content": { "kind": "text", "text": "Two" } }
+          ],
+          "targets": [
+            { "id": "first", "content": { "kind": "text", "text": "First" } },
+            { "id": "second", "content": { "kind": "text", "text": "Second" } }
+          ],
+          "correctMatches": [
+            { "itemId": "one", "targetId": "missing-target" },
+            { "itemId": "one", "targetId": "second" }
+          ],
+          "shuffleItems": false,
+          "feedback": {
+            "correct": "Correct.",
+            "incorrect": "Try again."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local development. Never commit real credentials.
+AI_API_KEY=
+AI_PROVIDER=fixture
+AI_MODEL=fixture-v1
+PUBLIC_PLAYER_ORIGIN=http://localhost:8787
+ALLOWED_ORIGINS=http://localhost:8787,http://localhost:3000
+DEVICE_TOKEN_SIGNING_SECRET=replace-with-at-least-32-random-characters

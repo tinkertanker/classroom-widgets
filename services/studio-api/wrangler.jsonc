@@ -1,0 +1,61 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "classroom-widgets-studio-api",
+  "workers_dev": true,
+  "preview_urls": false,
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true
+    }
+  },
+  "triggers": {
+    "crons": ["17 3 * * *"]
+  },
+  "assets": {
+    "directory": "../../apps/widget-player/dist",
+    "binding": "PLAYER_ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": true
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "classroom-widgets-studio",
+      "database_id": "326633d6-8698-4c4c-9ad2-d75e12f80006"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "classroom-widgets-studio-media"
+    }
+  ],
+  "vars": {
+    "AI_PROVIDER": "openai-compatible",
+    "AI_MODEL": "deepseek-v4-flash",
+    "AI_BASE_URL": "https://api.deepseek.com",
+    "PUBLIC_PLAYER_ORIGIN": "https://classroom-widgets-studio-api.dark-cell-6287.workers.dev",
+    "ALLOWED_ORIGINS": "https://classroom-widgets-studio-api.dark-cell-6287.workers.dev",
+    "DAILY_GENERATION_LIMIT": "20",
+    "DAILY_NETWORK_GENERATION_LIMIT": "500",
+    "DAILY_SAFETY_REVIEW_LIMIT": "50",
+    "DAILY_NETWORK_SAFETY_REVIEW_LIMIT": "1000",
+    "DAILY_NETWORK_UPLOAD_LIMIT": "200",
+    "DAILY_NETWORK_UPLOAD_BYTES": "200000000",
+    "DAILY_DRAFT_CREATION_LIMIT": "50",
+    "DAILY_NETWORK_DRAFT_CREATION_LIMIT": "500",
+    "DAILY_NETWORK_REGISTRATION_LIMIT": "50",
+    "MAXIMUM_DRAFTS_PER_OWNER": "100",
+    "PUBLICATION_TTL_DAYS": "90"
+  }
+}
