@@ -1,5 +1,6 @@
-# Agent instructions
+# Agent Instructions
 
-Read @CLAUDE.md for project context, commands, conventions, and architecture.
+Read [`CLAUDE.md`](CLAUDE.md) before making changes. It contains the repository's
+canonical agent guidance.
 
-Topic-specific guides (deployment, macOS distribution, voice commands, etc.) live in [`docs/`](docs/).
+Topic-specific documentation lives in [`docs/`](docs/).
