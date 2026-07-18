@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v node >/dev/null 2>&1 ||
+  ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major === 22 && minor >= 12 ? 0 : 1)'; then
+  echo "Node.js 22.12 or newer on the Node 22 line is unavailable; rerun .agents/setup." >&2
+  exit 1
+fi
+
+if [[ ! -f node_modules/.package-lock.json ]]; then
+  echo "Workspace dependencies are unavailable; rerun .agents/setup." >&2
+  exit 1
+fi
+
+echo "Orb resumed with Node.js $(node --version); no backing services require repair."
