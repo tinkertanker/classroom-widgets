@@ -1,0 +1,146 @@
+{
+  "schemaVersion": "1.0",
+  "id": "linear-function-explorer",
+  "metadata": {
+    "title": "Linear Function Explorer",
+    "summary": "Students vary gradient and intercept, predict the change and connect the equation y = mx + c with its graph.",
+    "subject": "mathematics",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Explain how the gradient and vertical intercept in y = mx + c affect the position and direction of a straight-line graph.",
+    "estimatedMinutes": 12,
+    "tags": ["algebra", "linear-functions", "graphs", "simulation"]
+  },
+  "theme": {
+    "accent": "indigo",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [
+    {
+      "id": "gradient",
+      "kind": "number",
+      "label": "Gradient m",
+      "initial": 1,
+      "minimum": -3,
+      "maximum": 3,
+      "step": 0.5
+    },
+    {
+      "id": "intercept",
+      "kind": "number",
+      "label": "Vertical intercept c",
+      "initial": 0,
+      "minimum": -5,
+      "maximum": 5,
+      "step": 1
+    }
+  ],
+  "screens": [
+    {
+      "id": "explore-lines",
+      "title": "Change one coefficient",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "What does each number do to the line?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Change only one control at a time. Predict whether the line will turn, shift or stay unchanged before moving the slider."
+        },
+        {
+          "id": "gradient-control",
+          "kind": "numberControl",
+          "variableId": "gradient",
+          "presentation": "slider"
+        },
+        {
+          "id": "intercept-control",
+          "kind": "numberControl",
+          "variableId": "intercept",
+          "presentation": "slider"
+        },
+        {
+          "id": "value-at-two",
+          "kind": "valueDisplay",
+          "label": "Value of y when x = 2",
+          "expression": {
+            "kind": "binary",
+            "operator": "add",
+            "left": {
+              "kind": "binary",
+              "operator": "multiply",
+              "left": { "kind": "variable", "variableId": "gradient" },
+              "right": { "kind": "literal", "value": 2 }
+            },
+            "right": { "kind": "variable", "variableId": "intercept" }
+          },
+          "decimalPlaces": 1
+        },
+        {
+          "id": "line-plot",
+          "kind": "plot",
+          "title": "Graph of y = mx + c",
+          "description": "The horizontal axis is x and the vertical axis is y. The displayed line updates when m or c changes.",
+          "domain": {
+            "variableId": "x-value",
+            "label": "x",
+            "minimum": -5,
+            "maximum": 5,
+            "step": 0.1
+          },
+          "range": {
+            "label": "y",
+            "minimum": -20,
+            "maximum": 20
+          },
+          "series": [
+            {
+              "id": "linear-line",
+              "label": "y = mx + c",
+              "colour": "indigo",
+              "yExpression": {
+                "kind": "binary",
+                "operator": "add",
+                "left": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": { "kind": "variable", "variableId": "gradient" },
+                  "right": { "kind": "variable", "variableId": "x-value" }
+                },
+                "right": { "kind": "variable", "variableId": "intercept" }
+              }
+            }
+          ],
+          "showGrid": true,
+          "showLegend": false
+        },
+        {
+          "id": "negative-gradient-check",
+          "kind": "choiceQuestion",
+          "prompt": "What must be true when the line falls from left to right?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "negative-gradient", "content": { "kind": "text", "text": "The gradient is negative" } },
+            { "id": "positive-gradient", "content": { "kind": "text", "text": "The gradient is positive" } },
+            { "id": "zero-intercept", "content": { "kind": "text", "text": "The intercept is zero" } },
+            { "id": "positive-intercept", "content": { "kind": "text", "text": "The intercept is positive" } }
+          ],
+          "correctOptionIds": ["negative-gradient"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. A negative gradient means y decreases as x increases.",
+            "incorrect": "Try a positive and negative value of m while leaving c unchanged. Watch the direction of the line.",
+            "explanation": "The sign of m controls direction. The value of c moves the line vertically but does not decide whether it rises or falls."
+          }
+        }
+      ]
+    }
+  ]
+}

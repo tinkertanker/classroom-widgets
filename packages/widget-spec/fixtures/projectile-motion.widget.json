@@ -1,0 +1,266 @@
+{
+  "schemaVersion": "1.0",
+  "id": "projectile-motion-explorer",
+  "metadata": {
+    "title": "Projectile Motion Explorer",
+    "summary": "Change launch conditions, predict the trajectory and connect the graph to the underlying physics.",
+    "subject": "science",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Explain how launch speed, angle and gravitational field strength affect a projectile’s path and range.",
+    "estimatedMinutes": 12,
+    "tags": ["physics", "motion", "graphs", "simulation"]
+  },
+  "theme": {
+    "accent": "sky",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [
+    {
+      "id": "launch-speed",
+      "kind": "number",
+      "label": "Launch speed",
+      "initial": 20,
+      "minimum": 5,
+      "maximum": 40,
+      "step": 1,
+      "unit": "m/s"
+    },
+    {
+      "id": "launch-angle",
+      "kind": "number",
+      "label": "Launch angle",
+      "initial": 45,
+      "minimum": 10,
+      "maximum": 80,
+      "step": 1,
+      "unit": "°"
+    },
+    {
+      "id": "gravity",
+      "kind": "number",
+      "label": "Gravitational field strength",
+      "initial": 9.81,
+      "minimum": 1.6,
+      "maximum": 24,
+      "step": 0.1,
+      "unit": "m/s²"
+    }
+  ],
+  "screens": [
+    {
+      "id": "explore",
+      "title": "Explore the trajectory",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "How far will it travel?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Predict what will happen before moving one control. Then compare the new curve with your prediction. Air resistance is ignored and launch height is zero."
+        },
+        {
+          "id": "speed-control",
+          "kind": "numberControl",
+          "variableId": "launch-speed",
+          "presentation": "slider"
+        },
+        {
+          "id": "angle-control",
+          "kind": "numberControl",
+          "variableId": "launch-angle",
+          "presentation": "slider"
+        },
+        {
+          "id": "gravity-control",
+          "kind": "numberControl",
+          "variableId": "gravity",
+          "presentation": "slider"
+        },
+        {
+          "id": "range-readout",
+          "kind": "valueDisplay",
+          "label": "Calculated range",
+          "expression": {
+            "kind": "binary",
+            "operator": "divide",
+            "left": {
+              "kind": "binary",
+              "operator": "multiply",
+              "left": {
+                "kind": "binary",
+                "operator": "power",
+                "left": { "kind": "variable", "variableId": "launch-speed" },
+                "right": { "kind": "literal", "value": 2 }
+              },
+              "right": {
+                "kind": "unary",
+                "operator": "sine",
+                "operand": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": { "kind": "literal", "value": 2 },
+                  "right": {
+                    "kind": "binary",
+                    "operator": "multiply",
+                    "left": { "kind": "variable", "variableId": "launch-angle" },
+                    "right": {
+                      "kind": "binary",
+                      "operator": "divide",
+                      "left": { "kind": "constant", "name": "pi" },
+                      "right": { "kind": "literal", "value": 180 }
+                    }
+                  }
+                }
+              }
+            },
+            "right": { "kind": "variable", "variableId": "gravity" }
+          },
+          "decimalPlaces": 1,
+          "unit": "m"
+        },
+        {
+          "id": "trajectory-plot",
+          "kind": "plot",
+          "title": "Projectile path",
+          "description": "The horizontal axis shows distance from the launch point; the vertical axis shows height.",
+          "domain": {
+            "variableId": "horizontal-distance",
+            "label": "Horizontal distance",
+            "minimum": 0,
+            "maximum": 100,
+            "step": 0.25,
+            "unit": "m"
+          },
+          "range": {
+            "label": "Height",
+            "minimum": 0,
+            "maximum": 30,
+            "unit": "m"
+          },
+          "series": [
+            {
+              "id": "trajectory",
+              "label": "Trajectory",
+              "colour": "sky",
+              "yExpression": {
+                "kind": "binary",
+                "operator": "subtract",
+                "left": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": { "kind": "variable", "variableId": "horizontal-distance" },
+                  "right": {
+                    "kind": "unary",
+                    "operator": "tangent",
+                    "operand": {
+                      "kind": "binary",
+                      "operator": "multiply",
+                      "left": { "kind": "variable", "variableId": "launch-angle" },
+                      "right": {
+                        "kind": "binary",
+                        "operator": "divide",
+                        "left": { "kind": "constant", "name": "pi" },
+                        "right": { "kind": "literal", "value": 180 }
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "kind": "binary",
+                  "operator": "divide",
+                  "left": {
+                    "kind": "binary",
+                    "operator": "multiply",
+                    "left": { "kind": "variable", "variableId": "gravity" },
+                    "right": {
+                      "kind": "binary",
+                      "operator": "power",
+                      "left": { "kind": "variable", "variableId": "horizontal-distance" },
+                      "right": { "kind": "literal", "value": 2 }
+                    }
+                  },
+                  "right": {
+                    "kind": "binary",
+                    "operator": "multiply",
+                    "left": { "kind": "literal", "value": 2 },
+                    "right": {
+                      "kind": "binary",
+                      "operator": "multiply",
+                      "left": {
+                        "kind": "binary",
+                        "operator": "power",
+                        "left": { "kind": "variable", "variableId": "launch-speed" },
+                        "right": { "kind": "literal", "value": 2 }
+                      },
+                      "right": {
+                        "kind": "binary",
+                        "operator": "power",
+                        "left": {
+                          "kind": "unary",
+                          "operator": "cosine",
+                          "operand": {
+                            "kind": "binary",
+                            "operator": "multiply",
+                            "left": { "kind": "variable", "variableId": "launch-angle" },
+                            "right": {
+                              "kind": "binary",
+                              "operator": "divide",
+                              "left": { "kind": "constant", "name": "pi" },
+                              "right": { "kind": "literal", "value": 180 }
+                            }
+                          }
+                        },
+                        "right": { "kind": "literal", "value": 2 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "showGrid": true,
+          "showLegend": false
+        },
+        {
+          "id": "speed-check",
+          "kind": "choiceQuestion",
+          "prompt": "With angle and gravity unchanged, what happens to the range when launch speed is doubled?",
+          "selectionMode": "single",
+          "options": [
+            {
+              "id": "same-range",
+              "content": { "kind": "text", "text": "It stays the same" }
+            },
+            {
+              "id": "double-range",
+              "content": { "kind": "text", "text": "It doubles" }
+            },
+            {
+              "id": "quadruple-range",
+              "content": { "kind": "text", "text": "It becomes four times as large" }
+            },
+            {
+              "id": "half-range",
+              "content": { "kind": "text", "text": "It halves" }
+            }
+          ],
+          "correctOptionIds": ["quadruple-range"],
+          "shuffleOptions": false,
+          "feedback": {
+            "correct": "Exactly — range is proportional to the square of launch speed in this model.",
+            "incorrect": "Try comparing the range readout at 10 m/s and 20 m/s while keeping the other controls fixed.",
+            "explanation": "Doubling speed multiplies speed squared by four, so the range becomes four times as large."
+          }
+        }
+      ]
+    }
+  ]
+}

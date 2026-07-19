@@ -1,0 +1,87 @@
+{
+  "schemaVersion": "1.0",
+  "id": "singapore-self-government-timeline",
+  "metadata": {
+    "title": "Road to Self-Government",
+    "summary": "A sequencing and significance activity about major constitutional and political developments in post-war Singapore.",
+    "subject": "humanities",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Sequence key developments in Singapore's path to internal self-government and connect each event to its historical significance.",
+    "estimatedMinutes": 12,
+    "tags": ["history", "singapore", "self-government", "chronology"]
+  },
+  "theme": {
+    "accent": "rose",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "timeline",
+      "title": "Sequence and interpret",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "How did political participation expand?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Arrange the developments by date, then match each one to the change it represents. Dates help with order; significance explains why the sequence matters."
+        },
+        {
+          "id": "event-order",
+          "kind": "sequencing",
+          "prompt": "Place the developments in chronological order, earliest first.",
+          "items": [
+            { "id": "lim-yew-hock-talks", "content": { "kind": "text", "text": "1957: Lim Yew Hock leads successful constitutional talks" } },
+            { "id": "first-election", "content": { "kind": "text", "text": "1948: Singapore holds its first limited Legislative Council election" } },
+            { "id": "internal-government", "content": { "kind": "text", "text": "1959: Singapore gains full internal self-government" } },
+            { "id": "rendel-election", "content": { "kind": "text", "text": "1955: The Rendel Constitution expands elected representation" } }
+          ],
+          "correctOrder": ["first-election", "rendel-election", "lim-yew-hock-talks", "internal-government"],
+          "feedback": {
+            "correct": "Correct. The sequence shows political participation and local responsibility expanding over time.",
+            "incorrect": "Use the dates first, then check that the constitutional changes build towards full internal self-government.",
+            "explanation": "Limited elections in 1948 were followed by wider representation in 1955, successful talks in 1957 and internal self-government in 1959."
+          }
+        },
+        {
+          "id": "event-significance",
+          "kind": "matching",
+          "prompt": "Match each development with its main significance.",
+          "items": [
+            { "id": "development-election", "content": { "kind": "text", "text": "1948 election" } },
+            { "id": "development-rendel", "content": { "kind": "text", "text": "Rendel Constitution" } },
+            { "id": "development-talks", "content": { "kind": "text", "text": "1957 constitutional talks" } },
+            { "id": "development-government", "content": { "kind": "text", "text": "1959 internal self-government" } }
+          ],
+          "targets": [
+            { "id": "significance-first-vote", "content": { "kind": "text", "text": "Introduced limited electoral participation" } },
+            { "id": "significance-majority", "content": { "kind": "text", "text": "Created a legislature with a majority of elected seats" } },
+            { "id": "significance-agreement", "content": { "kind": "text", "text": "Secured agreement for greater local control" } },
+            { "id": "significance-local-cabinet", "content": { "kind": "text", "text": "Placed most domestic affairs under an elected local government" } }
+          ],
+          "correctMatches": [
+            { "itemId": "development-election", "targetId": "significance-first-vote" },
+            { "itemId": "development-rendel", "targetId": "significance-majority" },
+            { "itemId": "development-talks", "targetId": "significance-agreement" },
+            { "itemId": "development-government", "targetId": "significance-local-cabinet" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "All matched. You have connected chronology to political significance.",
+            "incorrect": "Distinguish taking part in elections, expanding elected seats, negotiating change and exercising local control.",
+            "explanation": "Each development widened either representation or the responsibilities exercised by locally elected leaders."
+          }
+        }
+      ]
+    }
+  ]
+}

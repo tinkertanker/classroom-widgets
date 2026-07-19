@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.0",
+  "id": "source-reliability-check",
+  "metadata": {
+    "title": "Can We Trust This Source?",
+    "summary": "Students evaluate a short historical claim by considering provenance, purpose and corroboration rather than accepting or rejecting it outright.",
+    "subject": "humanities",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Evaluate a source's usefulness and reliability by considering who produced it, why it was produced and what other evidence could corroborate it.",
+    "estimatedMinutes": 10,
+    "tags": ["history", "sources", "reliability", "corroboration"]
+  },
+  "theme": {
+    "accent": "terracotta",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "evaluate",
+      "title": "Question the claim",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "Reliable, useful — or both?"
+        },
+        {
+          "id": "source-context",
+          "kind": "text",
+          "role": "body",
+          "text": "Source A is a campaign leaflet published by a political party before an election. It states: ‘Only our plan can guarantee every family a better future.’"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Do not decide from the claim alone. Use the source's origin, intended audience and purpose, then identify evidence that would help you check it."
+        },
+        {
+          "id": "purpose-question",
+          "kind": "choiceQuestion",
+          "prompt": "Which purpose is most likely to have shaped the wording of Source A?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "win-support", "content": { "kind": "text", "text": "To win voters' support for the party" } },
+            { "id": "neutral-record", "content": { "kind": "text", "text": "To create a neutral record for future historians" } },
+            { "id": "private-reflection", "content": { "kind": "text", "text": "To record a private personal reflection" } },
+            { "id": "scientific-test", "content": { "kind": "text", "text": "To report the result of a controlled scientific test" } }
+          ],
+          "correctOptionIds": ["win-support"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. A campaign leaflet is designed to persuade voters, so its wording is likely to promote the party strongly.",
+            "incorrect": "Use both the type of source and the fact that it appeared before an election.",
+            "explanation": "Purpose does not make a source useless, but it tells us why its claims and omissions need careful checking."
+          }
+        },
+        {
+          "id": "best-corroboration",
+          "kind": "choiceQuestion",
+          "prompt": "Which additional evidence would best help a historian test the promise in the leaflet?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "outcomes-and-plans", "content": { "kind": "text", "text": "Independent data about family outcomes and detailed records of the proposed plan" } },
+            { "id": "larger-copy", "content": { "kind": "text", "text": "A larger printed copy of the same leaflet" } },
+            { "id": "party-colours", "content": { "kind": "text", "text": "A list of colours used in the party's campaign" } },
+            { "id": "anonymous-rumour", "content": { "kind": "text", "text": "An anonymous rumour repeated without supporting evidence" } }
+          ],
+          "correctOptionIds": ["outcomes-and-plans"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Yes. Independent outcome data and details of the plan let a historian test both the scale and plausibility of the claim.",
+            "incorrect": "Choose evidence that adds independent, relevant information rather than repeating the same claim.",
+            "explanation": "Corroboration is strongest when evidence is relevant, independently produced and detailed enough to compare with the original claim."
+          }
+        },
+        {
+          "id": "judgement-term",
+          "kind": "shortAnswerQuestion",
+          "prompt": "What historical skill means checking a claim against evidence from other sources?",
+          "acceptedAnswers": ["corroboration", "corroborating", "corroborate"],
+          "placeholder": "Enter one historical term",
+          "normalisation": {
+            "trimWhitespace": true,
+            "collapseWhitespace": true,
+            "caseSensitive": false
+          },
+          "feedback": {
+            "correct": "Correct. Corroboration compares evidence across sources before reaching a judgement.",
+            "incorrect": "Think of the term historians use when they look for agreement or disagreement across sources.",
+            "explanation": "Corroboration helps a historian test whether claims are supported, qualified or contradicted elsewhere."
+          }
+        }
+      ]
+    }
+  ]
+}

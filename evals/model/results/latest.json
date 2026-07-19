@@ -1,0 +1,142 @@
+{
+  "ranAt": "2026-07-18T14:14:32.586Z",
+  "provider": "openai-compatible:deepseek-v4-flash",
+  "cases": 13,
+  "firstPassRate": 0.9230769230769231,
+  "finalPassRate": 1,
+  "familyFidelityRate": 0.8461538461538461,
+  "patchReliabilityRate": 1,
+  "medianLatencyMs": 6445,
+  "results": [
+    {
+      "id": "p5-fractions",
+      "family": "quiz-retrieval",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 7134,
+      "issues": []
+    },
+    {
+      "id": "s2-forces",
+      "family": "quiz-retrieval",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 7505,
+      "issues": []
+    },
+    {
+      "id": "s2-sources",
+      "family": "quiz-retrieval",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": false,
+      "repairAttempts": 0,
+      "latencyMs": 6243,
+      "issues": []
+    },
+    {
+      "id": "p6-persuasive",
+      "family": "quiz-retrieval",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 7711,
+      "issues": []
+    },
+    {
+      "id": "p5-paragraph-sequence",
+      "family": "matching-sorting-sequencing",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 4954,
+      "issues": []
+    },
+    {
+      "id": "s1-self-government",
+      "family": "matching-sorting-sequencing",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 5380,
+      "issues": []
+    },
+    {
+      "id": "p4-malay-match",
+      "family": "matching-sorting-sequencing",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 5247,
+      "issues": []
+    },
+    {
+      "id": "s3-linear-functions",
+      "family": "graph-simulation",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 6635,
+      "issues": []
+    },
+    {
+      "id": "s3-projectile",
+      "family": "graph-simulation",
+      "firstPassValid": false,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 1,
+      "latencyMs": 17695,
+      "issues": []
+    },
+    {
+      "id": "p6-perimeter",
+      "family": "graph-simulation",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 5942,
+      "issues": []
+    },
+    {
+      "id": "p5-water-cycle-cloze",
+      "family": "quiz-retrieval",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 6843,
+      "issues": []
+    },
+    {
+      "id": "s2-branching-ethics",
+      "family": "quiz-retrieval",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": false,
+      "repairAttempts": 0,
+      "latencyMs": 4871,
+      "issues": []
+    },
+    {
+      "id": "p6-ratio-sort",
+      "family": "matching-sorting-sequencing",
+      "firstPassValid": true,
+      "finalValid": true,
+      "familyFidelity": true,
+      "repairAttempts": 0,
+      "latencyMs": 6445,
+      "issues": []
+    }
+  ]
+}

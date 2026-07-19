@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0",
+  "id": "classroom-routines-toolkit",
+  "metadata": {
+    "title": "Classroom Routines Toolkit",
+    "summary": "A compact set of ready-made classroom tools for pacing, participation, task tracking and confidence checks.",
+    "subject": "other",
+    "level": "other",
+    "locale": "en-SG",
+    "learningObjective": "Follow a short classroom routine and communicate readiness for the next step.",
+    "estimatedMinutes": 10,
+    "tags": ["routines", "timer", "randomiser", "task-list", "traffic-light"]
+  },
+  "theme": {
+    "accent": "indigo",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "classroom-routine",
+      "title": "Ready for learning",
+      "components": [
+        {
+          "id": "settle-in-timer",
+          "kind": "timer",
+          "label": "Settle-in time",
+          "durationSeconds": 300,
+          "completionMessage": "Time is up. Face the front and get ready for the next instruction."
+        },
+        {
+          "id": "discussion-randomiser",
+          "kind": "randomiser",
+          "prompt": "Choose how we will discuss the first question.",
+          "items": [
+            { "id": "think-pair-share", "label": "Think, pair, share" },
+            { "id": "mini-whiteboards", "label": "Mini whiteboards" },
+            { "id": "table-spokesperson", "label": "Table spokesperson" },
+            { "id": "silent-first", "label": "Silent thinking first" }
+          ],
+          "allowRepeats": false
+        },
+        {
+          "id": "readiness-checklist",
+          "kind": "taskList",
+          "title": "Before you begin",
+          "items": [
+            { "id": "materials-ready", "text": "Place the required materials on your desk" },
+            { "id": "instructions-read", "text": "Read the instructions once" },
+            { "id": "question-ready", "text": "Prepare one question if anything is unclear" }
+          ],
+          "showProgress": true
+        },
+        {
+          "id": "confidence-signal",
+          "kind": "trafficLight",
+          "title": "How ready are you to begin?",
+          "initialState": "amber",
+          "redLabel": "I need help before I begin",
+          "amberLabel": "I am nearly ready",
+          "greenLabel": "I am ready to begin"
+        }
+      ]
+    }
+  ]
+}

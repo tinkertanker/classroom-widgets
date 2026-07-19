@@ -1,0 +1,130 @@
+{
+  "schemaVersion": "1.0",
+  "id": "fixed-perimeter-rectangle-explorer",
+  "metadata": {
+    "title": "Rectangles with the Same Perimeter",
+    "summary": "Pupils change a target perimeter and explore the possible length-width pairs on a graph.",
+    "subject": "mathematics",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Generate different rectangles with the same perimeter and reason about the relationship between width and length.",
+    "estimatedMinutes": 11,
+    "tags": ["measurement", "perimeter", "rectangles", "graphs", "simulation"]
+  },
+  "theme": {
+    "accent": "amber",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [
+    {
+      "id": "target-perimeter",
+      "kind": "number",
+      "label": "Target perimeter",
+      "initial": 24,
+      "minimum": 12,
+      "maximum": 40,
+      "step": 2,
+      "unit": "cm"
+    }
+  ],
+  "screens": [
+    {
+      "id": "explore-pairs",
+      "title": "Explore possible dimensions",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "How many rectangles can share one perimeter?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Choose an even perimeter. The graph shows possible width-length pairs. Pick whole-number points and check that twice the width plus twice the length gives the target."
+        },
+        {
+          "id": "perimeter-control",
+          "kind": "numberControl",
+          "variableId": "target-perimeter",
+          "presentation": "stepper"
+        },
+        {
+          "id": "side-total",
+          "kind": "valueDisplay",
+          "label": "Width plus length must equal",
+          "expression": {
+            "kind": "binary",
+            "operator": "divide",
+            "left": { "kind": "variable", "variableId": "target-perimeter" },
+            "right": { "kind": "literal", "value": 2 }
+          },
+          "decimalPlaces": 0,
+          "unit": "cm"
+        },
+        {
+          "id": "dimension-plot",
+          "kind": "plot",
+          "title": "Possible width-length pairs",
+          "description": "Each point on the line represents a rectangle whose width plus length is half the chosen perimeter.",
+          "domain": {
+            "variableId": "width-value",
+            "label": "Width",
+            "minimum": 1,
+            "maximum": 5,
+            "step": 0.25,
+            "unit": "cm"
+          },
+          "range": {
+            "label": "Length",
+            "minimum": 0,
+            "maximum": 20,
+            "unit": "cm"
+          },
+          "series": [
+            {
+              "id": "possible-dimensions",
+              "label": "length = perimeter ÷ 2 − width",
+              "colour": "amber",
+              "yExpression": {
+                "kind": "binary",
+                "operator": "subtract",
+                "left": {
+                  "kind": "binary",
+                  "operator": "divide",
+                  "left": { "kind": "variable", "variableId": "target-perimeter" },
+                  "right": { "kind": "literal", "value": 2 }
+                },
+                "right": { "kind": "variable", "variableId": "width-value" }
+              }
+            }
+          ],
+          "showGrid": true,
+          "showLegend": false
+        },
+        {
+          "id": "perimeter-check",
+          "kind": "choiceQuestion",
+          "prompt": "For a perimeter of 24 cm, which width and length form a possible rectangle?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "five-seven", "content": { "kind": "text", "text": "5 cm and 7 cm" } },
+            { "id": "six-eight", "content": { "kind": "text", "text": "6 cm and 8 cm" } },
+            { "id": "four-six", "content": { "kind": "text", "text": "4 cm and 6 cm" } },
+            { "id": "three-seven", "content": { "kind": "text", "text": "3 cm and 7 cm" } }
+          ],
+          "correctOptionIds": ["five-seven"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. 2 × 5 + 2 × 7 = 24 cm.",
+            "incorrect": "For a 24 cm perimeter, width plus length must equal 12 cm.",
+            "explanation": "A rectangle's perimeter is 2 × width + 2 × length, so the two different side lengths must add to 12 cm."
+          }
+        }
+      ]
+    }
+  ]
+}

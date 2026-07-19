@@ -1,0 +1,102 @@
+{
+  "schemaVersion": "1.0",
+  "id": "persuasive-language-lab",
+  "metadata": {
+    "title": "Persuasive Language Lab",
+    "summary": "A compact English-language activity for identifying rhetorical choices and judging their likely effect on an audience.",
+    "subject": "english",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Identify persuasive language choices and explain how evidence, rhetorical questions and inclusive language shape a reader's response.",
+    "estimatedMinutes": 11,
+    "tags": ["persuasion", "rhetoric", "audience", "close-reading"]
+  },
+  "theme": {
+    "accent": "terracotta",
+    "colourScheme": "system",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "analyse",
+      "title": "Read like a writer",
+      "components": [
+        {
+          "id": "title",
+          "kind": "text",
+          "role": "title",
+          "text": "How is the writer persuading us?"
+        },
+        {
+          "id": "source",
+          "kind": "text",
+          "role": "body",
+          "text": "Our neighbourhood throws away hundreds of reusable containers each week. If we bring our own, we can cut waste together. Why wait for someone else to act?"
+        },
+        {
+          "id": "instructions",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Read the short appeal twice. Name the technique, then connect it to a likely effect rather than merely spotting a phrase."
+        },
+        {
+          "id": "inclusive-language",
+          "kind": "choiceQuestion",
+          "prompt": "What is the main effect of the words ‘we’ and ‘together’?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "shared-duty", "content": { "kind": "text", "text": "They create a sense of shared responsibility" } },
+            { "id": "technical-tone", "content": { "kind": "text", "text": "They make the appeal sound more technical" } },
+            { "id": "uncertainty", "content": { "kind": "text", "text": "They show that the writer is uncertain" } },
+            { "id": "past-event", "content": { "kind": "text", "text": "They describe an event in the past" } }
+          ],
+          "correctOptionIds": ["shared-duty"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Yes. Inclusive language places the writer and reader on the same side.",
+            "incorrect": "Ask how the reader is positioned when the writer says ‘we’ instead of ‘you’.",
+            "explanation": "Inclusive pronouns create solidarity and make the proposed action feel collective rather than accusatory."
+          }
+        },
+        {
+          "id": "evidence-effect",
+          "kind": "choiceQuestion",
+          "prompt": "Why does the writer mention ‘hundreds of reusable containers each week’?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "scale-evidence", "content": { "kind": "text", "text": "To give concrete evidence of the scale of the problem" } },
+            { "id": "comic-effect", "content": { "kind": "text", "text": "To make the reader laugh" } },
+            { "id": "expert-quote", "content": { "kind": "text", "text": "To quote an expert directly" } },
+            { "id": "counterargument", "content": { "kind": "text", "text": "To present the opposing view fairly" } }
+          ],
+          "correctOptionIds": ["scale-evidence"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. The quantity makes the waste problem feel specific and substantial.",
+            "incorrect": "Consider what the number adds that the vague phrase ‘a lot of waste’ would not.",
+            "explanation": "A concrete quantity gives the claim weight, although a critical reader might still ask for the source."
+          }
+        },
+        {
+          "id": "rhetorical-question",
+          "kind": "shortAnswerQuestion",
+          "prompt": "What technique is used in ‘Why wait for someone else to act?’",
+          "acceptedAnswers": ["rhetorical question", "a rhetorical question"],
+          "placeholder": "Name the technique",
+          "normalisation": {
+            "trimWhitespace": true,
+            "collapseWhitespace": true,
+            "caseSensitive": false
+          },
+          "feedback": {
+            "correct": "Correct — it is a rhetorical question that presses the reader towards action.",
+            "incorrect": "The writer asks something without expecting a literal reply.",
+            "explanation": "A rhetorical question prompts reflection and implies that delaying action is difficult to justify."
+          }
+        }
+      ]
+    }
+  ]
+}
