@@ -514,9 +514,45 @@ final class StudioAPIClientTests: XCTestCase {
         }
 
         let request = await transport.lastRequest()
-        XCTAssertNil(request)
+        XCTAssertEqual(request?.url?.path, "/v1/devices/refresh")
+        XCTAssertEqual(request?.value(forHTTPHeaderField: "X-Device-Token"), activeToken)
         let storedToken = await credentials.storedToken()
         XCTAssertEqual(storedToken, activeToken)
+    }
+
+    func testSignatureRejectedUnexpiredCredentialAllowsFreshRegistration() async throws {
+        let invalidToken = makeCredential(expiry: Date().addingTimeInterval(86_400))
+        let replacementToken = makeCredential(
+            expiry: Date().addingTimeInterval(172_800),
+            ownerID: String(repeating: "b", count: 32)
+        )
+        let registration = DeviceRegistration(
+            token: replacementToken,
+            expiresAt: "2026-07-21T12:00:00.000Z"
+        )
+        let transport = SequencedRecordingTransport(responses: [
+            .init(
+                data: Data(#"{"error":{"code":"DEVICE_REGISTRATION_REQUIRED","message":"Enter a new workshop code."}}"#.utf8),
+                status: 401
+            ),
+            .init(data: try JSONEncoder().encode(registration), status: 201)
+        ])
+        let credentials = RecordingCredentialStore(value: invalidToken)
+        let client = StudioAPIClient(
+            baseURL: URL(string: "https://studio.example")!,
+            transport: transport,
+            tokenStore: credentials
+        )
+
+        let received = try await client.registerDevice(accessCode: "NEW-CODE-2026")
+
+        XCTAssertEqual(received, registration)
+        let requests = await transport.recordedRequests()
+        XCTAssertEqual(requests.map(\.url?.path), ["/v1/devices/refresh", "/v1/devices/register"])
+        XCTAssertEqual(requests[0].value(forHTTPHeaderField: "X-Device-Token"), invalidToken)
+        XCTAssertNil(requests[1].value(forHTTPHeaderField: "X-Device-Token"))
+        let storedToken = await credentials.storedToken()
+        XCTAssertEqual(storedToken, replacementToken)
     }
 
     func testExpiredCredentialRefreshesWithTheOldOwnerTokenAndPersistsReplacement() async throws {

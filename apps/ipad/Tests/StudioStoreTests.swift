@@ -717,6 +717,53 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertTrue(calls.contains("download:\(record.id)"))
     }
 
+    @MainActor
+    func testExpiredImageDraftReuploadsLocalCanonicalBytesAndRewritesAssetReferences() async throws {
+        let canonicalData = Data("canonical classroom image".utf8)
+        let prepared = PreparedWidgetImage(
+            data: canonicalData,
+            mediaType: "image/jpeg",
+            width: 64,
+            height: 64,
+            sha256: SHA256.hash(data: canonicalData).map { String(format: "%02x", $0) }.joined()
+        )
+        let context = try makeRemoteContext(
+            preparedImage: prepared,
+            canonicalUpload: DownloadedWidgetAsset(data: canonicalData, mediaType: "image/jpeg")
+        )
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        try await context.store.addImage(
+            canonicalData,
+            alternativeText: "A labelled force diagram",
+            decorative: false,
+            projectID: created.id
+        )
+        let before = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        let oldRecordData = try JSONEncoder().encode(try XCTUnwrap(before.spec.assets.first))
+        let oldRecord = try JSONDecoder().decode(WidgetImageAssetRecord.self, from: oldRecordData)
+        await context.api.setMode(.draftNotFoundOnFetch)
+
+        try await context.store.saveDirectEdits(projectID: created.id)
+
+        let recreated = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        let newRecordData = try JSONEncoder().encode(try XCTUnwrap(recreated.spec.assets.first))
+        let newRecord = try JSONDecoder().decode(WidgetImageAssetRecord.self, from: newRecordData)
+        XCTAssertNotEqual(newRecord.id, oldRecord.id)
+        XCTAssertEqual(recreated.localAssets.map(\.id), [newRecord.id])
+        let component = try XCTUnwrap(recreated.spec.screens.first?.components.last)
+        guard case let .object(fields) = component else {
+            return XCTFail("Expected the recreated image component")
+        }
+        XCTAssertEqual(fields["assetId"], .string(newRecord.id))
+        let calls = await context.api.recordedCalls()
+        XCTAssertEqual(calls.filter { $0 == "upload" }.count, 2)
+        XCTAssertTrue(calls.contains("download:\(newRecord.id)"))
+        let accessibility = await context.api.lastUploadedAccessibility()
+        XCTAssertEqual(accessibility?.alternativeText, "A labelled force diagram")
+        XCTAssertEqual(accessibility?.decorative, false)
+    }
+
     func testPublicationExpiresAtTheBoundaryAndInvalidExpiryIsNotTreatedAsLive() {
         let boundary = Date(timeIntervalSince1970: 1_800_000_000.125)
         var publication = WidgetPublication(
@@ -895,6 +942,7 @@ private enum TestAPIMode: Sendable, Equatable {
     case conflictOnSave
     case conflictOnPatch
     case draftNotFoundOnDelete
+    case draftNotFoundOnFetch
     case publicationNotFoundOnRevoke
     case holdPatch
     case holdFetch
@@ -912,6 +960,7 @@ private actor RecordingStudioAPI: StudioAPI {
     private var heldFetch: CheckedContinuation<Void, Never>?
     private var listedPublication: WidgetPublication?
     private var listedPublicationNeedsUpdate = false
+    private var uploadCount = 0
 
     init(spec: WidgetSpec, canonicalUpload: DownloadedWidgetAsset? = nil) {
         self.spec = spec
@@ -931,6 +980,14 @@ private actor RecordingStudioAPI: StudioAPI {
 
     func fetchDraft(draftID: String) async throws -> RemoteDraft {
         calls.append("fetch:\(draftID)")
+        if mode == .draftNotFoundOnFetch {
+            mode = .normal
+            throw StudioAPIError.server(
+                status: 404,
+                code: "DRAFT_NOT_FOUND",
+                message: "This draft expired."
+            )
+        }
         if mode == .holdFetch {
             mode = .normal
             await withCheckedContinuation { continuation in
@@ -1073,15 +1130,19 @@ private actor RecordingStudioAPI: StudioAPI {
         decorative: Bool
     ) async throws -> UploadedWidgetImage {
         calls.append("upload")
+        uploadCount += 1
         uploadedAccessibility = .init(alternativeText: alternativeText, decorative: decorative)
         let canonical = canonicalUpload ?? DownloadedWidgetAsset(
             data: image.data,
             mediaType: image.mediaType
         )
         downloadableAsset = canonical
+        let assetID = uploadCount == 1
+            ? "asset-0123456789abcdef0123456789abcdef"
+            : "asset-fedcba9876543210fedcba9876543210"
         return UploadedWidgetImage(
             asset: WidgetImageAssetRecord(
-                id: "asset-0123456789abcdef0123456789abcdef",
+                id: assetID,
                 kind: "image",
                 mediaType: canonical.mediaType,
                 width: image.width,

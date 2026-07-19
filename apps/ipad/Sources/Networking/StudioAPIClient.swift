@@ -179,9 +179,11 @@ struct StudioAPIClient: StudioAPI, Sendable {
 
     func hasDeviceCredential() async -> Bool {
         guard let token = try? await tokenStore.token() else { return false }
-        if Self.credentialHasTimeRemaining(token) { return true }
-
         do {
+            // The payload is readable locally, but only the service can verify
+            // its signature. Refresh even an apparently unexpired credential
+            // so a rotated secret or corrupted token cannot trap the teacher
+            // between a server 401 and a locally blocked registration flow.
             _ = try await refreshDeviceCredential(using: token)
             return true
         } catch let error as StudioAPIError {

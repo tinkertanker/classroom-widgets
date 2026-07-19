@@ -783,26 +783,33 @@ final class StudioStore {
         }
         let snapshot = projects[initialIndex]
 
-        let remote: RemoteDraft
+        let resolution: RemoteDraftResolution
         if let existing = snapshot.remoteDraft {
             if snapshot.needsRemoteSave {
-                remote = try await saveWithRecovery(snapshot: snapshot, note: note)
+                resolution = try await saveWithRecovery(snapshot: snapshot, note: note)
             } else {
                 do {
-                    remote = try await api.fetchDraft(draftID: existing.id)
+                    resolution = RemoteDraftResolution(
+                        draft: try await api.fetchDraft(draftID: existing.id)
+                    )
                 } catch let error as StudioAPIError {
                     guard error.isServerError(status: 404, code: "DRAFT_NOT_FOUND") else {
                         throw error
                     }
-                    remote = try await api.importDraft(spec: snapshot.spec)
+                    resolution = try await recreateExpiredDraft(snapshot)
                     notice = "The expired server draft was safely recreated"
                 }
             }
         } else {
-            remote = try await api.importDraft(spec: snapshot.spec)
+            resolution = try await importDraftWithAssetRecovery(snapshot)
         }
 
-        try apply(remote, to: projectID, replacing: snapshot.spec)
+        try apply(resolution.draft, to: projectID, replacing: snapshot.spec)
+        if let recreatedAssets = resolution.localAssets,
+           let index = projects.firstIndex(where: { $0.id == projectID }) {
+            projects[index].localAssets = recreatedAssets
+            try persistProjectOrThrow(projectID)
+        }
         let current = try currentProject(projectID)
         if current.needsRemoteSave, current.spec != snapshot.spec {
             guard reconciliationAttempt < 2 else {
@@ -814,24 +821,29 @@ final class StudioStore {
                 reconciliationAttempt: reconciliationAttempt + 1
             )
         }
-        return current.remoteDraft ?? remote.reference
+        return current.remoteDraft ?? resolution.draft.reference
     }
 
-    private func saveWithRecovery(snapshot: WidgetProject, note: String) async throws -> RemoteDraft {
+    private func saveWithRecovery(
+        snapshot: WidgetProject,
+        note: String
+    ) async throws -> RemoteDraftResolution {
         guard let existing = snapshot.remoteDraft else {
-            return try await api.importDraft(spec: snapshot.spec)
+            return try await importDraftWithAssetRecovery(snapshot)
         }
         do {
-            return try await api.save(
-                draftID: existing.id,
-                version: existing.version,
-                spec: snapshot.spec,
-                note: note
+            return RemoteDraftResolution(
+                draft: try await api.save(
+                    draftID: existing.id,
+                    version: existing.version,
+                    spec: snapshot.spec,
+                    note: note
+                )
             )
         } catch let original as StudioAPIError {
             if original.isServerError(status: 404, code: "DRAFT_NOT_FOUND") {
                 notice = "The expired server draft was safely recreated"
-                return try await api.importDraft(spec: snapshot.spec)
+                return try await recreateExpiredDraft(snapshot)
             }
             guard original.needsMutationReconciliation else { throw original }
             let definiteConflict = original.isServerError(
@@ -845,14 +857,14 @@ final class StudioStore {
             } catch let fetchError as StudioAPIError {
                 if fetchError.isServerError(status: 404, code: "DRAFT_NOT_FOUND") {
                     notice = "The expired server draft was safely recreated"
-                    return try await api.importDraft(spec: snapshot.spec)
+                    return try await recreateExpiredDraft(snapshot)
                 }
                 throw original
             }
 
             // The server committed the PUT but its response did not reach us.
             if latest.spec == snapshot.spec {
-                return latest
+                return RemoteDraftResolution(draft: latest)
             }
 
             if definiteConflict || latest.version > existing.version {
@@ -864,22 +876,191 @@ final class StudioStore {
             }
 
             do {
-                return try await api.save(
-                    draftID: latest.id,
-                    version: latest.version,
-                    spec: snapshot.spec,
-                    note: note
+                return RemoteDraftResolution(
+                    draft: try await api.save(
+                        draftID: latest.id,
+                        version: latest.version,
+                        spec: snapshot.spec,
+                        note: note
+                    )
                 )
             } catch let retryError as StudioAPIError {
                 guard retryError.needsMutationReconciliation else { throw retryError }
                 let reconciled = try await api.fetchDraft(draftID: latest.id)
-                if reconciled.spec == snapshot.spec { return reconciled }
+                if reconciled.spec == snapshot.spec {
+                    return RemoteDraftResolution(draft: reconciled)
+                }
                 try preserveConcurrentVersions(
                     local: try currentProject(snapshot.id),
                     remote: reconciled
                 )
                 throw StudioStoreError.remoteSaveConflict
             }
+        }
+    }
+
+    private struct RemoteDraftResolution {
+        let draft: RemoteDraft
+        let localAssets: [LocalWidgetAssetFile]?
+
+        init(draft: RemoteDraft, localAssets: [LocalWidgetAssetFile]? = nil) {
+            self.draft = draft
+            self.localAssets = localAssets
+        }
+    }
+
+    private func importDraftWithAssetRecovery(
+        _ snapshot: WidgetProject
+    ) async throws -> RemoteDraftResolution {
+        do {
+            return RemoteDraftResolution(draft: try await api.importDraft(spec: snapshot.spec))
+        } catch let error as StudioAPIError {
+            guard error.isServerError(status: 422, code: "INVALID_WIDGET_ASSET") else {
+                throw error
+            }
+            return try await recreateExpiredDraft(snapshot)
+        }
+    }
+
+    private func recreateExpiredDraft(
+        _ snapshot: WidgetProject
+    ) async throws -> RemoteDraftResolution {
+        var rewrittenSpec = snapshot.spec
+        var rewrittenAssets = rewrittenSpec.assets
+        var replacements: [String: String] = [:]
+        var recreatedLocalFiles: [LocalWidgetAssetFile] = []
+        var imageAssetCount = 0
+
+        do {
+            for (index, value) in rewrittenSpec.assets.enumerated() {
+                guard case let .object(object) = value,
+                      case let .string(kind)? = object["kind"],
+                      kind == "image"
+                else { continue }
+                imageAssetCount += 1
+                let encoded = try JSONEncoder().encode(value)
+                let record = try JSONDecoder().decode(WidgetImageAssetRecord.self, from: encoded)
+                guard let local = snapshot.localAssets.first(where: { $0.id == record.id }),
+                      let localURL = LocalWidgetAssetStorage.url(for: local),
+                      let localData = try? Data(contentsOf: localURL)
+                else {
+                    throw StudioStoreError.assetRestoreFailed(
+                        "Studio needs the original image to recreate this expired widget, but its local copy is unavailable."
+                    )
+                }
+                let validated = try record.validated(
+                    DownloadedWidgetAsset(data: localData, mediaType: local.mediaType)
+                )
+                let accessibility = imageAccessibility(for: record.id, in: rewrittenSpec)
+                let uploaded = try await api.uploadImage(
+                    PreparedWidgetImage(
+                        data: validated.data,
+                        mediaType: validated.mediaType,
+                        width: record.width,
+                        height: record.height,
+                        sha256: record.sha256
+                    ),
+                    alternativeText: accessibility.alternativeText,
+                    decorative: accessibility.decorative
+                )
+                let canonical = try uploaded.asset.validated(
+                    try await api.downloadAsset(id: uploaded.asset.id)
+                )
+                let recreated = try LocalWidgetAssetStorage.store(canonical, id: uploaded.asset.id)
+                recreatedLocalFiles.append(recreated)
+                replacements[record.id] = uploaded.asset.id
+                rewrittenAssets[index] = uploaded.asset.jsonValue
+            }
+
+            guard replacements.count == imageAssetCount else {
+                throw StudioStoreError.assetRestoreFailed(
+                    "Studio could not find a local copy of every image needed to recreate this widget."
+                )
+            }
+            rewrittenSpec.assets = rewrittenAssets
+            for screenIndex in rewrittenSpec.screens.indices {
+                rewrittenSpec.screens[screenIndex].components = rewrittenSpec.screens[screenIndex].components.map {
+                    replacingAssetReferences(in: $0, using: replacements)
+                }
+            }
+            let remote = try await api.importDraft(spec: rewrittenSpec)
+            return RemoteDraftResolution(draft: remote, localAssets: recreatedLocalFiles)
+        } catch {
+            for local in recreatedLocalFiles { LocalWidgetAssetStorage.remove(local) }
+            throw error
+        }
+    }
+
+    private func imageAccessibility(
+        for assetID: String,
+        in spec: WidgetSpec
+    ) -> (alternativeText: String?, decorative: Bool) {
+        for component in spec.screens.flatMap(\.components) {
+            if let match = imageAccessibility(for: assetID, in: component) { return match }
+        }
+        return (nil, true)
+    }
+
+    private func imageAccessibility(
+        for assetID: String,
+        in value: JSONValue
+    ) -> (alternativeText: String?, decorative: Bool)? {
+        switch value {
+        case let .object(object):
+            let referencesAsset = ["assetId", "imageAssetId"].contains { key in
+                if case let .string(id)? = object[key] { return id == assetID }
+                return false
+            }
+            if referencesAsset {
+                let alternativeText: String?
+                if case let .string(text)? = object["altText"], !text.isEmpty {
+                    alternativeText = text
+                } else {
+                    alternativeText = nil
+                }
+                let decorative: Bool
+                if case let .boolean(value)? = object["decorative"] {
+                    decorative = value
+                } else {
+                    decorative = alternativeText == nil
+                }
+                return (alternativeText, decorative)
+            }
+            for child in object.values {
+                if let match = imageAccessibility(for: assetID, in: child) { return match }
+            }
+            return nil
+        case let .array(values):
+            for child in values {
+                if let match = imageAccessibility(for: assetID, in: child) { return match }
+            }
+            return nil
+        case .string, .integer, .number, .boolean, .null:
+            return nil
+        }
+    }
+
+    private func replacingAssetReferences(
+        in value: JSONValue,
+        using replacements: [String: String]
+    ) -> JSONValue {
+        switch value {
+        case let .object(object):
+            var rewritten: [String: JSONValue] = [:]
+            for (key, child) in object {
+                if ["assetId", "imageAssetId"].contains(key),
+                   case let .string(id) = child,
+                   let replacement = replacements[id] {
+                    rewritten[key] = .string(replacement)
+                } else {
+                    rewritten[key] = replacingAssetReferences(in: child, using: replacements)
+                }
+            }
+            return .object(rewritten)
+        case let .array(values):
+            return .array(values.map { replacingAssetReferences(in: $0, using: replacements) })
+        case .string, .integer, .number, .boolean, .null:
+            return value
         }
     }
 
