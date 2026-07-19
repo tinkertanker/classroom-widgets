@@ -101,6 +101,7 @@
           meta.className = 'meta';
           meta.textContent = 'This preview runs locally and does not collect responses.';
           app.append(meta);
+          post({ type: 'loaded' });
         } catch (error) {
           post({ type: 'error', message: String(error?.message || error) });
         }

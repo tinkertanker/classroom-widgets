@@ -67,6 +67,85 @@ describe('D1StudioRepository atomic publication writes', () => {
     expect(bindings[1]?.[8]).toBe(7);
   });
 
+  it('refreshes a concurrently discovered publication instead of returning its stale snapshot', async () => {
+    const oldSpec = { schemaVersion: '1.0', metadata: { title: 'Old' } };
+    const newSpec = { schemaVersion: '1.0', metadata: { title: 'New' } };
+    const publicationRow = {
+      slug: 'existing-publication',
+      draft_id: 'draft-1',
+      owner_hash: 'owner-a',
+      title: 'Old title',
+      schema_version: '1.0',
+      spec_json: JSON.stringify(oldSpec),
+      created_at: '2026-07-18T00:00:00.000Z',
+      expires_at: '2026-10-16T00:00:00.000Z',
+      revoked_at: null,
+    };
+    const draftRow = {
+      id: 'draft-1',
+      owner_hash: 'owner-a',
+      title: 'New title',
+      schema_version: '1.0',
+      spec_json: JSON.stringify(newSpec),
+      version: 7,
+      created_at: '2026-07-18T00:00:00.000Z',
+      updated_at: '2026-07-19T00:00:00.000Z',
+    };
+    let refreshRuns = 0;
+    const database = {
+      prepare(sql: string) {
+        const statement = {
+          bind() { return statement; },
+          first() {
+            if (sql.includes('FROM publications')) return Promise.resolve(publicationRow);
+            if (sql.includes('FROM drafts')) return Promise.resolve(draftRow);
+            return Promise.resolve(null);
+          },
+          run() {
+            if (sql.includes('UPDATE publications')) {
+              refreshRuns += 1;
+              return Promise.resolve({ meta: { changes: refreshRuns === 1 ? 0 : 1 } });
+            }
+            if (sql.includes('INSERT INTO publications')) {
+              return Promise.reject(new Error('unique constraint'));
+            }
+            return Promise.resolve({ meta: { changes: 1 } });
+          },
+        };
+        return statement;
+      },
+    } as unknown as D1Database;
+    const repository = new D1StudioRepository(database);
+    const draft = {
+      id: 'draft-1',
+      ownerHash: 'owner-a',
+      title: 'New title',
+      schemaVersion: '1.0',
+      spec: newSpec,
+      version: 7,
+      createdAt: draftRow.created_at,
+      updatedAt: draftRow.updated_at,
+    } as Parameters<typeof repository.publish>[0]['draft'];
+
+    const result = await repository.publish({
+      slug: 'unused-new-slug',
+      draft,
+      expiresAt: '2027-01-16T00:00:00.000Z',
+      now: '2026-07-19T00:00:00.000Z',
+    });
+
+    expect(result).toMatchObject({
+      status: 'published',
+      publication: {
+        slug: 'existing-publication',
+        title: 'New title',
+        spec: newSpec,
+        expiresAt: '2027-01-16T00:00:00.000Z',
+      },
+    });
+    expect(refreshRuns).toBe(2);
+  });
+
   it('uses one conditional UPDATE for cumulative extension and its maximum expiry', async () => {
     const statements: string[] = [];
     const bindings: unknown[][] = [];

@@ -283,11 +283,9 @@ export class D1StudioRepository implements StudioRepository {
   }
 
   async publish(input: PublishInput): Promise<PublishResult> {
-    const existing = await this.getActivePublicationForDraft(
-      input.draft.id,
-      input.draft.ownerHash,
-    );
-    if (existing) {
+    const refreshPublication = async (
+      publication: PublicationRecord,
+    ): Promise<PublicationRecord | null> => {
       const refreshed = await this.database
         .prepare(
           `UPDATE publications
@@ -303,24 +301,29 @@ export class D1StudioRepository implements StudioRepository {
           input.draft.schemaVersion,
           JSON.stringify(input.draft.spec),
           input.expiresAt,
-          existing.slug,
+          publication.slug,
           input.draft.ownerHash,
           input.draft.id,
           input.draft.version,
         )
         .run();
-      if ((refreshed.meta.changes ?? 0) === 1) {
-        return {
-          status: 'published',
-          publication: {
-            ...existing,
-            title: input.draft.title,
-            schemaVersion: input.draft.schemaVersion,
-            spec: input.draft.spec,
-            expiresAt: input.expiresAt,
-          },
-        };
-      }
+      if ((refreshed.meta.changes ?? 0) !== 1) return null;
+      return {
+        ...publication,
+        title: input.draft.title,
+        schemaVersion: input.draft.schemaVersion,
+        spec: input.draft.spec,
+        expiresAt: input.expiresAt,
+      };
+    };
+
+    const existing = await this.getActivePublicationForDraft(
+      input.draft.id,
+      input.draft.ownerHash,
+    );
+    if (existing) {
+      const refreshed = await refreshPublication(existing);
+      if (refreshed) return { status: 'published', publication: refreshed };
       const current = await this.getDraft(input.draft.id, input.draft.ownerHash);
       if (!current || current.version !== input.draft.version) {
         return { status: 'version-conflict' };
@@ -358,7 +361,11 @@ export class D1StudioRepository implements StudioRepository {
         input.draft.id,
         input.draft.ownerHash,
       );
-      if (concurrent) return { status: 'published', publication: concurrent };
+      if (concurrent) {
+        const refreshed = await refreshPublication(concurrent);
+        if (refreshed) return { status: 'published', publication: refreshed };
+        return { status: 'version-conflict' };
+      }
       throw error;
     }
 
