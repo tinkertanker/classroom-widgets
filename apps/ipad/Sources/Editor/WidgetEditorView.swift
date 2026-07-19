@@ -39,6 +39,7 @@ struct WidgetEditorView: View {
     @State private var arrangePendingImageData: Data?
     @State private var arrangeImageDescription = ""
     @State private var arrangeImageIsDecorative = false
+    @State private var expiryEvaluationDate = Date.now
 
     var body: some View {
         if let project = store.selectedProject, project.id == projectID {
@@ -90,6 +91,9 @@ struct WidgetEditorView: View {
                 )
                     .presentationDetents([.large])
             }
+            .task(id: project.publication?.expiresAt) {
+                await refreshAtPublicationExpiration(project.publication)
+            }
         } else {
             ContentUnavailableView(
                 "Widget unavailable",
@@ -118,7 +122,7 @@ struct WidgetEditorView: View {
                 Text(project.isExample ? "Example preview" : projectStateTitle(project))
                     .font(.caption)
                     .foregroundStyle(
-                        project.publicationNeedsUpdate ? StudioTheme.terracotta : StudioTheme.mutedInk
+                        projectStateNeedsAttention(project) ? StudioTheme.terracotta : StudioTheme.mutedInk
                     )
             }
 
@@ -142,7 +146,9 @@ struct WidgetEditorView: View {
                     Text(
                         project.publication == nil
                             ? "Publish"
-                            : (project.publicationNeedsUpdate ? "Update link" : "Share")
+                            : (project.publication?.isExpired(at: expiryEvaluationDate) == true
+                                ? (project.publicationNeedsUpdate ? "Update link" : "Extend link")
+                                : (project.publicationNeedsUpdate ? "Update link" : "Share"))
                     )
                 }
                 .buttonStyle(.borderedProminent)
@@ -203,11 +209,20 @@ struct WidgetEditorView: View {
     }
 
     private func projectStateTitle(_ project: WidgetProject) -> String {
+        if project.publication?.isExpired(at: expiryEvaluationDate) == true {
+            return project.publicationNeedsUpdate
+                ? "Student link expired — update to share"
+                : "Student link expired — extend to share"
+        }
         if project.publicationNeedsUpdate { return "Link needs updating" }
         if project.publication != nil { return "Student link live" }
         if project.needsRemoteSave { return "Waiting to back up" }
         if project.remoteDraft != nil { return "Backed up" }
         return "On this iPad"
+    }
+
+    private func projectStateNeedsAttention(_ project: WidgetProject) -> Bool {
+        project.publication?.isExpired(at: expiryEvaluationDate) == true || project.publicationNeedsUpdate
     }
 
     private func draftBinding(_ draft: Binding<String?>, current: String) -> Binding<String> {
@@ -222,6 +237,19 @@ struct WidgetEditorView: View {
         arrangeSummary = nil
         arrangeAccent = nil
         arrangeDensity = nil
+    }
+
+    @MainActor
+    private func refreshAtPublicationExpiration(_ publication: WidgetPublication?) async {
+        let now = Date.now
+        expiryEvaluationDate = now
+        guard let expiration = publication?.expirationRefreshDate(after: now) else { return }
+        do {
+            try await Task.sleep(for: .seconds(expiration.timeIntervalSince(now)))
+        } catch {
+            return
+        }
+        expiryEvaluationDate = expiration
     }
 }
 
@@ -373,6 +401,7 @@ private struct PublishReadinessView: View {
     @State private var errorMessage: String?
     @State private var confirmationMessage: String?
     @State private var confirmUnpublish = false
+    @State private var expiryEvaluationDate = Date.now
 
     private var project: WidgetProject? {
         store.projects.first(where: { $0.id == projectID })
@@ -419,7 +448,13 @@ private struct PublishReadinessView: View {
                     )
                 }
             }
-            .navigationTitle(project?.publication == nil ? "Publish" : "Student link")
+            .navigationTitle(
+                project?.publication == nil
+                    ? "Publish"
+                    : (project?.publication?.isExpired(at: expiryEvaluationDate) == true
+                        ? "Expired student link"
+                        : "Student link")
+            )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -438,6 +473,9 @@ private struct PublishReadinessView: View {
             } message: {
                 Text("Students will no longer be able to open this link. This cannot be undone.")
             }
+        }
+        .task(id: project?.publication?.expiresAt) {
+            await refreshAtPublicationExpiration(project?.publication)
         }
     }
 
@@ -509,85 +547,142 @@ private struct PublishReadinessView: View {
 
     @ViewBuilder
     private func publishedContent(_ project: WidgetProject, publication: WidgetPublication) -> some View {
-        if project.publicationNeedsUpdate {
+        if publication.isExpired(at: expiryEvaluationDate) {
             let report = WidgetPublishReadiness.audit(project.spec)
             VStack(alignment: .leading, spacing: 12) {
-                Label("The draft has newer changes", systemImage: "arrow.triangle.2.circlepath")
+                Label("This student link has expired", systemImage: "clock.badge.exclamationmark")
                     .font(.headline)
-                Text("Update the existing student link when you are ready. Its URL and QR code will stay the same.")
+                    .foregroundStyle(StudioTheme.terracotta)
+                Text(
+                    project.publicationNeedsUpdate
+                        ? "This draft also has newer changes. Update it before sharing so the same URL reopens with the current widget."
+                        : "Extend the link before giving it to students. The same URL will become available again for another 90 days."
+                )
                     .font(.callout)
                     .foregroundStyle(StudioTheme.mutedInk)
-                ForEach(report.checks) { check in
-                    readinessRow(check)
+                Text("Expired \(publication.formattedExpirationDate())")
+                    .font(.caption)
+                    .foregroundStyle(StudioTheme.mutedInk)
+                if project.publicationNeedsUpdate {
+                    ForEach(report.checks) { check in
+                        readinessRow(check)
+                    }
                 }
                 Button {
-                    publish()
+                    if project.publicationNeedsUpdate {
+                        publish()
+                    } else {
+                        extendPublication()
+                    }
                 } label: {
                     HStack {
                         Spacer()
                         if isWorking {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Update student link")
+                            Label(
+                                project.publicationNeedsUpdate
+                                    ? "Update and reactivate link"
+                                    : "Extend link by 90 days",
+                                systemImage: project.publicationNeedsUpdate
+                                    ? "arrow.triangle.2.circlepath"
+                                    : "calendar.badge.plus"
+                            )
                         }
                         Spacer()
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isWorking || !report.isReady || previewLoadState != .ready)
+                .disabled(
+                    isWorking
+                        || (project.publicationNeedsUpdate
+                            && (!report.isReady || previewLoadState != .ready))
+                )
+                .accessibilityIdentifier("extend-expired-publication")
             }
             .padding(16)
-            .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 14))
-        }
-
-        HStack(alignment: .top, spacing: 22) {
-            if let image = qrImage(for: publication.url) {
-                Image(uiImage: image)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 190, height: 190)
-                    .padding(10)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                    .accessibilityLabel("QR code for the student link")
+            .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 14))
+        } else {
+            if project.publicationNeedsUpdate {
+                let report = WidgetPublishReadiness.audit(project.spec)
+                VStack(alignment: .leading, spacing: 12) {
+                    Label("The draft has newer changes", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.headline)
+                    Text("Update the existing student link when you are ready. Its URL and QR code will stay the same.")
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.mutedInk)
+                    ForEach(report.checks) { check in
+                        readinessRow(check)
+                    }
+                    Button {
+                        publish()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isWorking {
+                                ProgressView().tint(.white)
+                            } else {
+                                Text("Update student link")
+                            }
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(isWorking || !report.isReady || previewLoadState != .ready)
+                }
+                .padding(16)
+                .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 14))
             }
 
-            VStack(alignment: .leading, spacing: 14) {
-                Text(publication.url.absoluteString)
-                    .font(.callout.monospaced())
-                    .textSelection(.enabled)
-
-                Text("Expires \(formattedExpiry(publication.expiresAt))")
-                    .font(.caption)
-                    .foregroundStyle(StudioTheme.mutedInk)
-
-                ShareLink(item: publication.url) {
-                    Label("Share link", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
+            HStack(alignment: .top, spacing: 22) {
+                if let image = qrImage(for: publication.url) {
+                    Image(uiImage: image)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 190, height: 190)
+                        .padding(10)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+                        .accessibilityLabel("QR code for the student link")
                 }
-                .buttonStyle(.borderedProminent)
 
-                Button {
-                    UIPasteboard.general.url = publication.url
-                    store.notice = "Student link copied"
-                    confirmationMessage = "Student link copied"
-                } label: {
-                    Label("Copy link", systemImage: "doc.on.doc")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(publication.url.absoluteString)
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
 
-                Button {
-                    extendPublication()
-                } label: {
-                    Label("Extend 90 days", systemImage: "calendar.badge.plus")
-                        .frame(maxWidth: .infinity)
+                    Text("Expires \(publication.formattedExpirationDate())")
+                        .font(.caption)
+                        .foregroundStyle(StudioTheme.mutedInk)
+
+                    ShareLink(item: publication.url) {
+                        Label("Share link", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button {
+                        UIPasteboard.general.url = publication.url
+                        store.notice = "Student link copied"
+                        confirmationMessage = "Student link copied"
+                    } label: {
+                        Label("Copy link", systemImage: "doc.on.doc")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        extendPublication()
+                    } label: {
+                        Label("Extend 90 days", systemImage: "calendar.badge.plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isWorking)
+                    .accessibilityIdentifier("extend-publication")
                 }
-                .buttonStyle(.bordered)
-                .disabled(isWorking)
-                .accessibilityIdentifier("extend-publication")
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
 
         Divider()
@@ -676,8 +771,16 @@ private struct PublishReadinessView: View {
         return UIImage(cgImage: image)
     }
 
-    private func formattedExpiry(_ value: String) -> String {
-        guard let date = ISO8601DateFormatter().date(from: value) else { return value }
-        return date.formatted(date: .abbreviated, time: .omitted)
+    @MainActor
+    private func refreshAtPublicationExpiration(_ publication: WidgetPublication?) async {
+        let now = Date.now
+        expiryEvaluationDate = now
+        guard let expiration = publication?.expirationRefreshDate(after: now) else { return }
+        do {
+            try await Task.sleep(for: .seconds(expiration.timeIntervalSince(now)))
+        } catch {
+            return
+        }
+        expiryEvaluationDate = expiration
     }
 }

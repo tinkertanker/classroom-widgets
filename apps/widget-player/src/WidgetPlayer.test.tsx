@@ -201,6 +201,84 @@ describe('WidgetPlayer', () => {
     );
   });
 
+  it('completes, checks and retries matching and sorting responses', async () => {
+    const user = userEvent.setup();
+    const spec = matchingAndSortingSpec();
+    expect(isWidgetSpec(spec)).toBe(true);
+
+    render(<WidgetPlayer spec={spec} />);
+
+    const checkButton = screen.getByRole('button', { name: 'Check answers' });
+    expect(checkButton).toBeDisabled();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sun' }), 'moon-target');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Moon' }), 'moon-target');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Whale' }), 'mammal');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Robin' }), 'bird');
+
+    expect(checkButton).toBeEnabled();
+    await user.click(checkButton);
+    expect(screen.getByText('1 of 2')).toBeInTheDocument();
+    expect(screen.getByText(/Review the matches and try again/)).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Sun' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('combobox', { name: 'Sun' })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Whale' })).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Check answers' })).toBeDisabled();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sun' }), 'sun-target');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Moon' }), 'moon-target');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Whale' }), 'mammal');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Robin' }), 'bird');
+    await user.click(screen.getByRole('button', { name: 'Check answers' }));
+
+    expect(screen.getByText('2 of 2')).toBeInTheDocument();
+    expect(screen.getByText(/Everything is correct/)).toBeInTheDocument();
+  });
+
+  it('supports keyboard sequencing, correctness and retry', async () => {
+    const user = userEvent.setup();
+    const spec = sequencingSpec();
+    expect(isWidgetSpec(spec)).toBe(true);
+
+    render(<WidgetPlayer spec={spec} />);
+
+    const moveEarlier = screen.getByRole('button', { name: 'Move First step earlier' });
+    moveEarlier.focus();
+    expect(moveEarlier).toHaveFocus();
+    await user.keyboard('[Enter]');
+
+    const checkButton = screen.getByRole('button', { name: 'Check answers' });
+    expect(checkButton).toBeEnabled();
+    await user.click(checkButton);
+    expect(screen.getByText('1 of 1')).toBeInTheDocument();
+    expect(screen.getByText(/Everything is correct/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('button', { name: 'Check answers' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move First step earlier' })).toBeEnabled();
+  });
+
+  it('exposes hotspots as keyboard-operable labelled buttons', async () => {
+    const user = userEvent.setup();
+    const spec = hotspotsSpec();
+    expect(isWidgetSpec(spec)).toBe(true);
+
+    render(<WidgetPlayer spec={spec} assetBaseUrl="https://studio.example/v1/assets/" />);
+
+    const hotspot = screen.getByRole('button', { name: 'Nucleus' });
+    expect(hotspot).toHaveAttribute('aria-pressed', 'false');
+    hotspot.focus();
+    expect(hotspot).toHaveFocus();
+    await user.keyboard('[Space]');
+
+    expect(hotspot).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Nucleus. Controls the activities of the cell.',
+    );
+  });
+
   it('fails closed with a clear message for a future component kind', () => {
     const futureSpec = {
       ...retrievalPracticeFixture,
@@ -220,3 +298,142 @@ describe('WidgetPlayer', () => {
     expect(screen.getByText(/“hologram” component/)).toBeInTheDocument();
   });
 });
+
+function baseSpec(overrides: Pick<WidgetSpec, 'id' | 'screens'>): WidgetSpec {
+  return {
+    schemaVersion: '1.0',
+    id: overrides.id,
+    metadata: {
+      title: 'Renderer behaviour check',
+      summary: 'Exercise one supported student interaction from start to finish.',
+    },
+    theme: { accent: 'sage', colourScheme: 'light', density: 'comfortable' },
+    assets: [],
+    variables: [],
+    screens: overrides.screens,
+  };
+}
+
+function matchingAndSortingSpec(): WidgetSpec {
+  return baseSpec({
+    id: 'matching-sorting-check',
+    screens: [
+      {
+        id: 'main',
+        components: [
+          {
+            id: 'space-match',
+            kind: 'matching',
+            prompt: 'Match each object to its description.',
+            items: [
+              { id: 'sun', content: { kind: 'text', text: 'Sun' } },
+              { id: 'moon', content: { kind: 'text', text: 'Moon' } },
+            ],
+            targets: [
+              { id: 'sun-target', content: { kind: 'text', text: 'A star' } },
+              { id: 'moon-target', content: { kind: 'text', text: 'A satellite' } },
+            ],
+            correctMatches: [
+              { itemId: 'sun', targetId: 'sun-target' },
+              { itemId: 'moon', targetId: 'moon-target' },
+            ],
+            shuffleItems: false,
+            feedback: {
+              correct: 'Every object has the correct description.',
+              incorrect: 'Review the matches and try again.',
+            },
+          },
+          {
+            id: 'animal-sort',
+            kind: 'sorting',
+            prompt: 'Sort each animal into its group.',
+            items: [
+              { id: 'whale', content: { kind: 'text', text: 'Whale' } },
+              { id: 'robin', content: { kind: 'text', text: 'Robin' } },
+            ],
+            categories: [
+              { id: 'mammal', label: 'Mammal' },
+              { id: 'bird', label: 'Bird' },
+            ],
+            correctPlacements: [
+              { itemId: 'whale', categoryId: 'mammal' },
+              { itemId: 'robin', categoryId: 'bird' },
+            ],
+            shuffleItems: false,
+            feedback: {
+              correct: 'Both animals are in the correct group.',
+              incorrect: 'Review the animal groups and try again.',
+            },
+          },
+        ],
+      },
+    ],
+  });
+}
+
+function sequencingSpec(): WidgetSpec {
+  return baseSpec({
+    id: 'sequencing-check',
+    screens: [
+      {
+        id: 'main',
+        components: [
+          {
+            id: 'two-step-sequence',
+            kind: 'sequencing',
+            prompt: 'Put the two steps in order.',
+            items: [
+              { id: 'first', content: { kind: 'text', text: 'First step' } },
+              { id: 'second', content: { kind: 'text', text: 'Second step' } },
+            ],
+            correctOrder: ['first', 'second'],
+            feedback: {
+              correct: 'The steps are in the correct order.',
+              incorrect: 'Move the steps and try again.',
+            },
+          },
+        ],
+      },
+    ],
+  });
+}
+
+function hotspotsSpec(): WidgetSpec {
+  const spec = baseSpec({
+    id: 'hotspots-check',
+    screens: [
+      {
+        id: 'main',
+        components: [
+          {
+            id: 'cell-hotspots',
+            kind: 'hotspots',
+            prompt: 'Choose a cell structure.',
+            imageAssetId: 'cell-image',
+            altText: 'A labelled plant cell diagram viewed through a microscope.',
+            hotspots: [
+              {
+                id: 'nucleus',
+                label: 'Nucleus',
+                reveal: 'Controls the activities of the cell.',
+                shape: { kind: 'circle', centreX: 0.5, centreY: 0.5, radius: 0.1 },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  spec.assets = [
+    {
+      id: 'cell-image',
+      kind: 'image',
+      mediaType: 'image/png',
+      width: 800,
+      height: 600,
+      byteLength: 1_024,
+      sha256: 'a'.repeat(64),
+    },
+  ];
+  return spec;
+}

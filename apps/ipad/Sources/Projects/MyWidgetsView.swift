@@ -54,6 +54,7 @@ struct MyWidgetsView: View {
                                 onPrimary: { store.open(project) },
                                 onDelete: { projectToDelete = project }
                             )
+                            .disabled(store.isRestoringFromStudio)
                         }
                     }
                 }

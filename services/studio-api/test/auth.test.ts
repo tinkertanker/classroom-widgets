@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { deviceTokenFrom, issueDeviceToken, ownerHashFrom, randomSlug, sha256 } from '../src/auth';
+import {
+  deviceTokenFrom,
+  issueDeviceToken,
+  ownerCredentialFrom,
+  ownerHashFrom,
+  randomSlug,
+  refreshDeviceToken,
+  sha256,
+} from '../src/auth';
 import { HttpError } from '../src/http';
 
 describe('device ownership', () => {
@@ -40,6 +48,60 @@ describe('device ownership', () => {
     });
     await expect(
       ownerHashFrom(request, secret, issuedAt.getTime() + 2 * 86_400_000),
+    ).rejects.toMatchObject({ code: 'DEVICE_REGISTRATION_REQUIRED' });
+  });
+
+  it('refreshes a recently expired signed token without changing its owner', async () => {
+    const secret = 'test-device-signing-secret-with-at-least-32-characters';
+    const issuedAt = new Date('2026-07-18T00:00:00.000Z');
+    const refreshAt = new Date('2027-07-18T00:00:00.000Z');
+    const original = await issueDeviceToken(secret, issuedAt, 1);
+    const originalRequest = new Request('https://studio.test/v1/devices/refresh', {
+      headers: { 'x-device-token': original.token },
+    });
+
+    await expect(
+      ownerHashFrom(originalRequest, secret, refreshAt.getTime()),
+    ).rejects.toMatchObject({ code: 'DEVICE_REGISTRATION_REQUIRED' });
+
+    const refreshed = await refreshDeviceToken(originalRequest, secret, refreshAt, 400);
+    const refreshedRequest = new Request('https://studio.test/v1/drafts', {
+      headers: { 'x-device-token': refreshed.token },
+    });
+
+    expect(refreshed.expiresAt).toBe('2028-08-21T00:00:00.000Z');
+    await expect(ownerHashFrom(refreshedRequest, secret, refreshAt.getTime())).resolves.toBe(
+      await ownerHashFrom(originalRequest, secret, issuedAt.getTime()),
+    );
+  });
+
+  it('rejects token recovery after the 365-day recovery window', async () => {
+    const secret = 'test-device-signing-secret-with-at-least-32-characters';
+    const issuedAt = new Date('2025-07-17T00:00:00.000Z');
+    const original = await issueDeviceToken(secret, issuedAt, 1);
+    const request = new Request('https://studio.test/v1/devices/refresh', {
+      headers: { 'x-device-token': original.token },
+    });
+
+    await expect(
+      refreshDeviceToken(request, secret, new Date('2026-07-19T00:00:00.000Z')),
+    ).rejects.toMatchObject({ code: 'DEVICE_REGISTRATION_REQUIRED' });
+  });
+
+  it('exposes the verified owner expiry while rejecting expired normal operations', async () => {
+    const secret = 'test-device-signing-secret-with-at-least-32-characters';
+    const issuedAt = new Date('2026-07-18T00:00:00.000Z');
+    const original = await issueDeviceToken(secret, issuedAt, 1);
+    const request = new Request('https://studio.test/v1/drafts', {
+      headers: { 'x-device-token': original.token },
+    });
+
+    await expect(ownerCredentialFrom(request, secret, issuedAt.getTime())).resolves.toMatchObject({
+      ownerHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      expiresAt: Date.parse('2026-07-19T00:00:00.000Z'),
+    });
+    await expect(
+      ownerCredentialFrom(request, secret, Date.parse('2026-07-19T00:00:00.000Z')),
     ).rejects.toMatchObject({ code: 'DEVICE_REGISTRATION_REQUIRED' });
   });
 

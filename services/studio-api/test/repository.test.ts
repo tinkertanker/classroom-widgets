@@ -88,6 +88,76 @@ describe('MemoryStudioRepository', () => {
     expect(stale).toBeNull();
   });
 
+  it('publishes only the exact draft version supplied by moderation', async () => {
+    const repository = new MemoryStudioRepository();
+    const moderated = await repository.createDraft({
+      id: 'draft-1',
+      ownerHash: 'owner-a',
+      title: 'Forces retrieval',
+      schemaVersion: '1.0',
+      spec: fixture,
+      now: '2026-07-18T00:00:00.000Z',
+    });
+    await repository.updateDraft({
+      id: moderated.id,
+      ownerHash: moderated.ownerHash,
+      title: moderated.title,
+      schemaVersion: moderated.schemaVersion,
+      spec: fixture,
+      expectedVersion: moderated.version,
+      instruction: 'Concurrent revision',
+      now: '2026-07-18T00:01:00.000Z',
+    });
+
+    await expect(repository.publish({
+      slug: 'publication-slug',
+      draft: moderated,
+      expiresAt: '2026-10-16T00:00:00.000Z',
+      now: '2026-07-18T00:02:00.000Z',
+    })).resolves.toEqual({ status: 'version-conflict' });
+    expect(repository.publications.size).toBe(0);
+  });
+
+  it('adds concurrent publication extensions cumulatively without losing an update', async () => {
+    const repository = new MemoryStudioRepository();
+    const draft = await repository.createDraft({
+      id: 'draft-1',
+      ownerHash: 'owner-a',
+      title: 'Forces retrieval',
+      schemaVersion: '1.0',
+      spec: fixture,
+      now: '2026-07-18T00:00:00.000Z',
+    });
+    await repository.publish({
+      slug: 'publication-slug',
+      draft,
+      expiresAt: '2026-10-16T00:00:00.000Z',
+      now: '2026-07-18T00:00:00.000Z',
+    });
+
+    const [first, second] = await Promise.all([
+      repository.extendPublication(
+        'publication-slug',
+        'owner-a',
+        '2026-07-18T00:00:00.000Z',
+        10,
+        '2027-07-19T00:00:00.000Z',
+      ),
+      repository.extendPublication(
+        'publication-slug',
+        'owner-a',
+        '2026-07-18T00:00:00.000Z',
+        20,
+        '2027-07-19T00:00:00.000Z',
+      ),
+    ]);
+
+    expect(first.status).toBe('extended');
+    expect(second.status).toBe('extended');
+    expect((await repository.getPublication('publication-slug'))?.expiresAt)
+      .toBe('2026-11-15T00:00:00.000Z');
+  });
+
   it('revokes only for the owning device and makes owner retries idempotent', async () => {
     const repository = new MemoryStudioRepository();
     const draft = await repository.createDraft({

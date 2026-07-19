@@ -50,6 +50,15 @@ export interface PublishInput {
   now: string;
 }
 
+export type PublishResult =
+  | { status: 'published'; publication: PublicationRecord }
+  | { status: 'version-conflict' };
+
+export type ExtendPublicationResult =
+  | { status: 'extended'; publication: PublicationRecord }
+  | { status: 'not-found' }
+  | { status: 'expiry-limit' };
+
 export type ContentReportReason =
   | 'inappropriate'
   | 'personal-data'
@@ -76,13 +85,19 @@ export interface StudioRepository {
   deleteDraft(id: string, ownerHash: string): Promise<boolean>;
   deleteExpiredDrafts(before: string, now: string, limit?: number): Promise<number>;
   updateDraft(input: UpdateDraftInput): Promise<DraftRecord | null>;
-  publish(input: PublishInput): Promise<PublicationRecord>;
+  publish(input: PublishInput): Promise<PublishResult>;
   getActivePublicationForDraft(
     draftId: string,
     ownerHash: string,
   ): Promise<PublicationRecord | null>;
   getPublication(slug: string): Promise<PublicationRecord | null>;
-  extendPublication(slug: string, ownerHash: string, expiresAt: string): Promise<PublicationRecord | null>;
+  extendPublication(
+    slug: string,
+    ownerHash: string,
+    now: string,
+    days: number,
+    maximumExpiresAt: string,
+  ): Promise<ExtendPublicationResult>;
   revokePublication(slug: string, ownerHash: string, now: string): Promise<boolean>;
   createContentReport(input: ContentReportInput): Promise<boolean>;
   deleteContentReports(before: string): Promise<number>;

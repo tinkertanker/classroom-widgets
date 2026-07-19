@@ -3,6 +3,7 @@ export interface StudioEnv {
   MEDIA: R2Bucket;
   PLAYER_ASSETS: Fetcher;
   AI: Ai;
+  IMAGES: ImagesBinding;
   AI_PROVIDER: string;
   AI_MODEL: string;
   AI_BASE_URL: string;

@@ -55,12 +55,15 @@ async function prepare(): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ spec: validation.value }),
   });
-  const draft = imported.draft as { id?: unknown } | undefined;
-  if (typeof draft?.id !== 'string') throw new Error('Studio did not return a draft ID.');
+  const draft = imported.draft as { id?: unknown; version?: unknown } | undefined;
+  if (typeof draft?.id !== 'string' || !Number.isInteger(draft.version)) {
+    throw new Error('Studio did not return a versioned draft.');
+  }
 
   try {
     const published = await expectJson(`/v1/drafts/${encodeURIComponent(draft.id)}/publish`, {
       method: 'POST',
+      body: JSON.stringify({ expectedVersion: draft.version }),
     });
     const publication = published.publication as { slug?: unknown; url?: unknown } | undefined;
     if (typeof publication?.slug !== 'string' || typeof publication.url !== 'string') {

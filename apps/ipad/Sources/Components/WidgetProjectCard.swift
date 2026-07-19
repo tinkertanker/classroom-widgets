@@ -7,6 +7,7 @@ struct WidgetProjectCard: View {
     var secondaryTitle: String?
     var onSecondary: (() -> Void)?
     var onDelete: (() -> Void)?
+    @State private var expiryEvaluationDate = Date.now
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -55,7 +56,7 @@ struct WidgetProjectCard: View {
                     Text(project.updatedAt, style: .relative)
                 }
                 .font(.caption)
-                .foregroundStyle(project.publicationNeedsUpdate ? StudioTheme.terracotta : StudioTheme.mutedInk)
+                .foregroundStyle(projectStateNeedsAttention ? StudioTheme.terracotta : StudioTheme.mutedInk)
             }
 
             Spacer(minLength: 0)
@@ -73,9 +74,17 @@ struct WidgetProjectCard: View {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .studioCard()
+        .task(id: project.publication?.expiresAt) {
+            await refreshAtPublicationExpiration(project.publication)
+        }
     }
 
     private var projectStateTitle: String {
+        if project.publication?.isExpired(at: expiryEvaluationDate) == true {
+            return project.publicationNeedsUpdate
+                ? "Student link expired — update to share"
+                : "Student link expired — extend to share"
+        }
         if project.publicationNeedsUpdate { return "Link needs updating" }
         if project.publication != nil { return "Student link live" }
         if project.needsRemoteSave { return "Waiting to back up" }
@@ -84,10 +93,30 @@ struct WidgetProjectCard: View {
     }
 
     private var projectStateSymbol: String {
+        if project.publication?.isExpired(at: expiryEvaluationDate) == true {
+            return "clock.badge.exclamationmark"
+        }
         if project.publicationNeedsUpdate { return "arrow.triangle.2.circlepath" }
         if project.publication != nil { return "link" }
         if project.needsRemoteSave { return "icloud.slash" }
         if project.remoteDraft != nil { return "checkmark.icloud" }
         return "ipad"
+    }
+
+    private var projectStateNeedsAttention: Bool {
+        project.publication?.isExpired(at: expiryEvaluationDate) == true || project.publicationNeedsUpdate
+    }
+
+    @MainActor
+    private func refreshAtPublicationExpiration(_ publication: WidgetPublication?) async {
+        let now = Date.now
+        expiryEvaluationDate = now
+        guard let expiration = publication?.expirationRefreshDate(after: now) else { return }
+        do {
+            try await Task.sleep(for: .seconds(expiration.timeIntervalSince(now)))
+        } catch {
+            return
+        }
+        expiryEvaluationDate = expiration
     }
 }

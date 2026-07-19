@@ -27,6 +27,9 @@
   "ai": {
     "binding": "AI"
   },
+  "images": {
+    "binding": "IMAGES"
+  },
   "d1_databases": [
     {
       "binding": "DB",

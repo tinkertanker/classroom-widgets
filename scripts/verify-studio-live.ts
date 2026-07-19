@@ -153,6 +153,7 @@ async function main() {
 
     const published = await jsonRequest(`/v1/drafts/${encodeURIComponent(draftId)}/publish`, {
       method: 'POST',
+      body: JSON.stringify({ expectedVersion: imageDraft.version }),
     });
     const publication = Reflect.get(published.body as object, 'publication') as Record<string, unknown>;
     slug = String(publication.slug);

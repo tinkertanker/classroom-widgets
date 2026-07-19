@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isWidgetSpec, WIDGET_SPEC_VERSION, type WidgetSpec } from '@classroom-widgets/widget-spec';
 
 import { installWidgetPlayerBridge, postStudioBridgeMessage } from './bridge';
@@ -26,11 +26,9 @@ function initialState(slug: string | undefined): PlayerState {
 }
 
 export function App() {
-  const legalPage = useMemo(() => legalPageForPath(window.location.pathname), []);
-  const slug = useMemo(
-    () => (legalPage ? undefined : publicationSlug(window.location.pathname)),
-    [legalPage],
-  );
+  const pathname = window.location.pathname;
+  const legalPage = legalPageForPath(pathname);
+  const slug = legalPage ? undefined : publicationSlug(pathname);
   const [state, setState] = useState<PlayerState>(() => initialState(slug));
   const apiBaseUrl = trustedApiBaseUrl();
 
@@ -59,10 +57,12 @@ export function App() {
     }
   }, [state]);
 
-  if (legalPage) return <LegalPage page={legalPage} />;
+  useEffect(() => {
+    setState(initialState(slug));
+  }, [pathname, slug]);
 
   useEffect(() => {
-    if (!slug || state.status !== 'loading') return;
+    if (legalPage || !slug || state.status !== 'loading') return;
 
     const controller = new AbortController();
     void loadPublication(apiBaseUrl, slug, controller.signal).then((result) => {
@@ -72,7 +72,9 @@ export function App() {
     });
 
     return () => controller.abort();
-  }, [apiBaseUrl, slug, state.status]);
+  }, [apiBaseUrl, legalPage, slug, state.status]);
+
+  if (legalPage) return <LegalPage page={legalPage} />;
 
   if (state.status === 'loading') {
     return (

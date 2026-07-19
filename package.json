@@ -26,6 +26,8 @@
     "build:all": "npm run build",
     "test": "npm run test -w @classroom-widgets/teacher",
     "test:studio": "npm run test -w @classroom-widgets/widget-spec && npm run test -w @classroom-widgets/widget-player && npm run test -w @classroom-widgets/studio-api",
+    "verify:studio": "npm run test:studio && npm run typecheck -w @classroom-widgets/widget-spec && npm run build -w @classroom-widgets/widget-player && npm run typecheck -w @classroom-widgets/studio-api && npm run eval:widget-spec && npm run verify:studio-resources",
+    "verify:studio-resources": "tsx scripts/verify-studio-ipad-resources.ts",
     "eval:widget-spec": "tsx evals/widget-spec/run.ts",
     "eval:model": "tsx evals/model/run.ts",
     "eval:model-moderation": "tsx evals/model/moderation.ts",

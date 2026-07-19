@@ -3,6 +3,7 @@ import type {
   ContentReportInput,
   PublicationRecord,
   PublishInput,
+  PublishResult,
   SaveDraftInput,
   StudioRepository,
   UpdateDraftInput,
@@ -117,10 +118,20 @@ export class MemoryStudioRepository implements StudioRepository {
     return structuredClone(updated);
   }
 
-  async publish(input: PublishInput): Promise<PublicationRecord> {
-    const existing = await this.getActivePublicationForDraft(
-      input.draft.id,
-      input.draft.ownerHash,
+  async publish(input: PublishInput): Promise<PublishResult> {
+    const currentDraft = this.drafts.get(input.draft.id);
+    if (
+      !currentDraft ||
+      currentDraft.ownerHash !== input.draft.ownerHash ||
+      currentDraft.version !== input.draft.version
+    ) {
+      return { status: 'version-conflict' };
+    }
+    const existing = [...this.publications.values()].find(
+      (candidate) =>
+        candidate.draftId === input.draft.id &&
+        candidate.ownerHash === input.draft.ownerHash &&
+        candidate.revokedAt === null,
     );
     if (existing) {
       const updated: PublicationRecord = {
@@ -131,7 +142,7 @@ export class MemoryStudioRepository implements StudioRepository {
         expiresAt: input.expiresAt,
       };
       this.publications.set(updated.slug, updated);
-      return structuredClone(updated);
+      return { status: 'published', publication: structuredClone(updated) };
     }
     if (this.publications.has(input.slug)) throw new Error('Publication slug already exists.');
     const publication: PublicationRecord = {
@@ -146,7 +157,7 @@ export class MemoryStudioRepository implements StudioRepository {
       revokedAt: null,
     };
     this.publications.set(publication.slug, publication);
-    return structuredClone(publication);
+    return { status: 'published', publication: structuredClone(publication) };
   }
 
   async getActivePublicationForDraft(
@@ -170,12 +181,19 @@ export class MemoryStudioRepository implements StudioRepository {
   async extendPublication(
     slug: string,
     ownerHash: string,
-    expiresAt: string,
-  ): Promise<PublicationRecord | null> {
+    now: string,
+    days: number,
+    maximumExpiresAt: string,
+  ) {
     const publication = this.publications.get(slug);
-    if (!publication || publication.ownerHash !== ownerHash || publication.revokedAt) return null;
+    if (!publication || publication.ownerHash !== ownerHash || publication.revokedAt) {
+      return { status: 'not-found' } as const;
+    }
+    const base = Math.max(Date.parse(now), Date.parse(publication.expiresAt));
+    const expiresAt = new Date(base + days * 86_400_000).toISOString();
+    if (expiresAt > maximumExpiresAt) return { status: 'expiry-limit' } as const;
     publication.expiresAt = expiresAt;
-    return structuredClone(publication);
+    return { status: 'extended', publication: structuredClone(publication) } as const;
   }
 
   async revokePublication(slug: string, ownerHash: string, now: string): Promise<boolean> {

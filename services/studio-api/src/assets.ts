@@ -1,6 +1,7 @@
 import { HttpError, readBodyBytes } from './http';
-import { inspectImage } from './imageInspection';
+import { inspectCanonicalJpeg } from './imageInspection';
 import type { ImageSafetyInspector } from './imageSafety';
+import type { ImageNormalizer } from './imageNormalizer';
 import { inspectText } from './moderation';
 
 const MAXIMUM_ASSET_BYTES = 2_000_000;
@@ -108,6 +109,7 @@ export class CloudflareAssetStore implements AssetStore {
   constructor(
     private readonly database: D1Database,
     private readonly bucket: R2Bucket,
+    private readonly normalizer?: ImageNormalizer,
     private readonly imageSafety?: ImageSafetyInspector,
   ) {}
 
@@ -169,39 +171,17 @@ export class CloudflareAssetStore implements AssetStore {
     if (bytes.byteLength === 0 || bytes.byteLength > MAXIMUM_ASSET_BYTES) {
       throw new HttpError(413, 'IMAGE_TOO_LARGE', 'Processed images must be between 1 byte and 2 MB.');
     }
-    const inspected = inspectImage(bytes.slice().buffer as ArrayBuffer, contentType);
-    if (inspected.width !== width || inspected.height !== height) {
-      throw new HttpError(
-        422,
-        'IMAGE_DIMENSIONS_MISMATCH',
-        'The declared image dimensions do not match the processed image.',
-      );
-    }
-    const stored = await this.database
-      .prepare(
-        `SELECT COUNT(*) AS asset_count, COALESCE(SUM(byte_length), 0) AS total_bytes
-           FROM assets WHERE owner_hash = ?1`,
-      )
-      .bind(ownerHash)
-      .first<{ asset_count: number; total_bytes: number }>();
-    if (
-      (stored?.asset_count ?? 0) >= MAXIMUM_STORED_ASSETS ||
-      (stored?.total_bytes ?? 0) + bytes.byteLength > MAXIMUM_STORED_ASSET_BYTES
-    ) {
-      throw new HttpError(
-        429,
-        'ASSET_STORAGE_LIMIT_REACHED',
-        'This device has reached its image storage limit. Remove unused images before uploading more.',
-      );
-    }
-
-    const digestInput = bytes.slice().buffer as ArrayBuffer;
-    const sha256 = hex(await crypto.subtle.digest('SHA-256', digestInput));
+    const originalDigest = hex(
+      await crypto.subtle.digest('SHA-256', bytes.slice().buffer as ArrayBuffer),
+    );
     const suppliedHash = request.headers.get('x-image-sha256')?.toLowerCase();
-    if (suppliedHash && suppliedHash !== sha256) {
+    if (suppliedHash && suppliedHash !== originalDigest) {
       throw new HttpError(422, 'IMAGE_HASH_MISMATCH', 'The image did not upload intact.');
     }
 
+    // Reserve both allowances before the paid decode/re-encode. Rejected dimensions,
+    // malformed canonical output and storage-full owners still consume one attempt,
+    // preventing callers from using Cloudflare Images without meeting a quota.
     const usageDate = now.slice(0, 10);
     const ownerAllowed = await this.consumeUsage(
       ownerHash,
@@ -232,8 +212,60 @@ export class CloudflareAssetStore implements AssetStore {
       );
     }
 
-    // Safety inference is deliberately after quota reservation. Rejected images consume
-    // one upload allowance because the paid review work has already been requested.
+    if (!this.normalizer) {
+      throw new HttpError(
+        503,
+        'IMAGE_NORMALISATION_UNAVAILABLE',
+        'Image normalisation is temporarily unavailable. Try again shortly.',
+      );
+    }
+    const canonicalBytes = await this.normalizer.normalize(bytes, contentType);
+    if (canonicalBytes.byteLength < 1 || canonicalBytes.byteLength > MAXIMUM_ASSET_BYTES) {
+      throw new HttpError(
+        422,
+        'IMAGE_CANONICALISATION_FAILED',
+        'This image could not be safely normalised. Choose a different image and try again.',
+      );
+    }
+    const inspected = inspectCanonicalJpeg(
+      canonicalBytes.buffer.slice(
+        canonicalBytes.byteOffset,
+        canonicalBytes.byteOffset + canonicalBytes.byteLength,
+      ) as ArrayBuffer,
+    );
+    if (inspected.width !== width || inspected.height !== height) {
+      throw new HttpError(
+        422,
+        'IMAGE_DIMENSIONS_MISMATCH',
+        'The declared image dimensions do not match the processed image.',
+      );
+    }
+    const stored = await this.database
+      .prepare(
+        `SELECT COUNT(*) AS asset_count, COALESCE(SUM(byte_length), 0) AS total_bytes
+           FROM assets WHERE owner_hash = ?1`,
+      )
+      .bind(ownerHash)
+      .first<{ asset_count: number; total_bytes: number }>();
+    if (
+      (stored?.asset_count ?? 0) >= MAXIMUM_STORED_ASSETS ||
+      (stored?.total_bytes ?? 0) + canonicalBytes.byteLength > MAXIMUM_STORED_ASSET_BYTES
+    ) {
+      throw new HttpError(
+        429,
+        'ASSET_STORAGE_LIMIT_REACHED',
+        'This device has reached its image storage limit. Remove unused images before uploading more.',
+      );
+    }
+
+    const digestInput = canonicalBytes.buffer.slice(
+      canonicalBytes.byteOffset,
+      canonicalBytes.byteOffset + canonicalBytes.byteLength,
+    ) as ArrayBuffer;
+    const sha256 = hex(await crypto.subtle.digest('SHA-256', digestInput));
+
+    // Safety inference is also after quota reservation. Rejected images consume
+    // one upload allowance because paid processing has already been requested.
     if (!this.imageSafety) {
       throw new HttpError(
         503,
@@ -241,13 +273,13 @@ export class CloudflareAssetStore implements AssetStore {
         'The image safety check is temporarily unavailable. Try again shortly.',
       );
     }
-    await this.imageSafety.inspect(bytes, contentType);
+    await this.imageSafety.inspect(canonicalBytes, 'image/jpeg');
 
     const id = randomAssetId();
-    const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.split('/')[1];
-    const objectKey = `assets/${ownerHash.slice(0, 12)}/${id}.${extension}`;
-    await this.bucket.put(objectKey, bytes, {
-      httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' },
+    const canonicalContentType = 'image/jpeg';
+    const objectKey = `assets/${ownerHash.slice(0, 12)}/${id}.jpg`;
+    await this.bucket.put(objectKey, canonicalBytes, {
+      httpMetadata: { contentType: canonicalContentType, cacheControl: 'public, max-age=31536000, immutable' },
       customMetadata: { sha256, width: String(width), height: String(height) },
     });
 
@@ -263,8 +295,8 @@ export class CloudflareAssetStore implements AssetStore {
           id,
           ownerHash,
           objectKey,
-          contentType,
-          bytes.byteLength,
+          canonicalContentType,
+          canonicalBytes.byteLength,
           width,
           height,
           sha256,
@@ -282,8 +314,8 @@ export class CloudflareAssetStore implements AssetStore {
       id,
       ownerHash,
       objectKey,
-      contentType,
-      byteLength: bytes.byteLength,
+      contentType: canonicalContentType,
+      byteLength: canonicalBytes.byteLength,
       width,
       height,
       sha256,

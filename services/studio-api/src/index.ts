@@ -3,6 +3,7 @@ import { createStudioApp } from './app';
 import { CloudflareAssetStore } from './assets';
 import { readConfig, type StudioEnv } from './env';
 import { CloudflareImageSafetyInspector } from './imageSafety';
+import { CloudflareImageNormalizer } from './imageNormalizer';
 import { D1StudioRepository } from './storage/d1Repository';
 
 export default {
@@ -24,6 +25,7 @@ export default {
       assets: new CloudflareAssetStore(
         env.DB,
         env.MEDIA,
+        new CloudflareImageNormalizer(env.IMAGES),
         new CloudflareImageSafetyInspector(env.AI),
       ),
     }).fetch(request);

@@ -9,6 +9,13 @@ interface DeviceTokenPayload {
   expiresAt: number;
 }
 
+export const DEVICE_TOKEN_RECOVERY_DAYS = 365;
+
+export interface VerifiedOwnerCredential {
+  ownerHash: string;
+  expiresAt: number;
+}
+
 export function deviceTokenFrom(request: Request): string {
   const token = request.headers.get('x-device-token')?.trim() ?? '';
   if (!DEVICE_TOKEN_PATTERN.test(token)) {
@@ -33,10 +40,32 @@ export async function issueDeviceToken(
   now: Date,
   lifetimeDays = 400,
 ): Promise<{ token: string; expiresAt: string }> {
+  return issueDeviceTokenForOwner(secret, randomSlug(24), now, lifetimeDays);
+}
+
+export async function refreshDeviceToken(
+  request: Request,
+  secret: string,
+  now: Date,
+  lifetimeDays = 400,
+): Promise<{ token: string; expiresAt: string }> {
+  const payload = await verifiedDeviceTokenPayload(deviceTokenFrom(request), secret);
+  if (payload.expiresAt + DEVICE_TOKEN_RECOVERY_DAYS * 86_400_000 <= now.getTime()) {
+    throw invalidDeviceToken();
+  }
+  return issueDeviceTokenForOwner(secret, payload.ownerId, now, lifetimeDays);
+}
+
+async function issueDeviceTokenForOwner(
+  secret: string,
+  ownerId: string,
+  now: Date,
+  lifetimeDays: number,
+): Promise<{ token: string; expiresAt: string }> {
   const expiresAt = new Date(now.getTime() + lifetimeDays * 86_400_000);
   const payload: DeviceTokenPayload = {
     version: 1,
-    ownerId: randomSlug(24),
+    ownerId,
     expiresAt: expiresAt.getTime(),
   };
   const encodedPayload = base64Url(new TextEncoder().encode(JSON.stringify(payload)));
@@ -49,7 +78,26 @@ export async function ownerHashFrom(
   secret: string,
   nowMilliseconds = Date.now(),
 ): Promise<string> {
-  const token = deviceTokenFrom(request);
+  return (await ownerCredentialFrom(request, secret, nowMilliseconds)).ownerHash;
+}
+
+export async function ownerCredentialFrom(
+  request: Request,
+  secret: string,
+  nowMilliseconds = Date.now(),
+): Promise<VerifiedOwnerCredential> {
+  const payload = await verifiedDeviceTokenPayload(deviceTokenFrom(request), secret);
+  if (payload.expiresAt <= nowMilliseconds) throw invalidDeviceToken();
+  return {
+    ownerHash: await sha256(`owner:${payload.ownerId}`),
+    expiresAt: payload.expiresAt,
+  };
+}
+
+async function verifiedDeviceTokenPayload(
+  token: string,
+  secret: string,
+): Promise<DeviceTokenPayload> {
   const match = SIGNED_TOKEN_PATTERN.exec(token);
   if (!match) throw invalidDeviceToken();
   const encodedPayload = match[1];
@@ -58,21 +106,25 @@ export async function ownerHashFrom(
   const expectedSignature = await sign(encodedPayload, secret);
   if (!constantTimeEqual(suppliedSignature, expectedSignature)) throw invalidDeviceToken();
 
-  let payload: DeviceTokenPayload;
+  let candidate: unknown;
   try {
-    payload = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(fromBase64Url(encodedPayload))) as DeviceTokenPayload;
+    candidate = JSON.parse(
+      new TextDecoder('utf-8', { fatal: true }).decode(fromBase64Url(encodedPayload)),
+    );
   } catch {
     throw invalidDeviceToken();
   }
+  if (!candidate || typeof candidate !== 'object') throw invalidDeviceToken();
+  const payload = candidate as Partial<DeviceTokenPayload>;
   if (
     payload.version !== 1 ||
+    typeof payload.ownerId !== 'string' ||
     !/^[A-Za-z0-9_-]{32}$/.test(payload.ownerId) ||
-    !Number.isSafeInteger(payload.expiresAt) ||
-    payload.expiresAt <= nowMilliseconds
+    !Number.isSafeInteger(payload.expiresAt)
   ) {
     throw invalidDeviceToken();
   }
-  return sha256(`owner:${payload.ownerId}`);
+  return payload as DeviceTokenPayload;
 }
 
 export async function networkHashFrom(request: Request): Promise<string> {

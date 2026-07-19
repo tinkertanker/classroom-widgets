@@ -60,6 +60,7 @@ final class StudioStore {
     private let defaults: UserDefaults
     private let projectFiles: StudioProjectFileStore?
     private let api: any StudioAPI
+    private let prepareImage: @Sendable (Data) async throws -> PreparedWidgetImage
     private let isUITesting: Bool
     private var activeRemoteProjectIDs: Set<String> = []
 
@@ -68,11 +69,17 @@ final class StudioStore {
         defaults: UserDefaults = .standard,
         storageDirectory: URL? = nil,
         bundle: Bundle = .main,
-        api: any StudioAPI = StudioAPIClient.live()
+        api: any StudioAPI = StudioAPIClient.live(),
+        prepareImage: @escaping @Sendable (Data) async throws -> PreparedWidgetImage = { input in
+            try await Task.detached(priority: .userInitiated) {
+                try WidgetImageProcessor.prepare(input)
+            }.value
+        }
     ) {
         let loadedExamples = repository.loadExamples(from: bundle)
         self.defaults = defaults
         self.api = api
+        self.prepareImage = prepareImage
         isUITesting = ProcessInfo.processInfo.arguments.contains("--ui-testing-reset")
         examples = loadedExamples
         projects = []
@@ -474,16 +481,17 @@ final class StudioStore {
         guard decorative || !cleanDescription.isEmpty else {
             throw WidgetImageError.descriptionRequired
         }
+        let persistedDescription = decorative ? "" : cleanDescription
 
-        let prepared = try await Task.detached(priority: .userInitiated) {
-            try WidgetImageProcessor.prepare(input)
-        }.value
+        let prepared = try await prepareImage(input)
         let uploaded = try await api.uploadImage(
             prepared,
-            alternativeText: cleanDescription.isEmpty ? nil : cleanDescription,
+            alternativeText: persistedDescription.isEmpty ? nil : persistedDescription,
             decorative: decorative
         )
-        let localFile = try LocalWidgetAssetStorage.store(prepared, id: uploaded.asset.id)
+        let downloaded = try await api.downloadAsset(id: uploaded.asset.id)
+        let canonicalAsset = try uploaded.asset.validated(downloaded)
+        let localFile = try LocalWidgetAssetStorage.store(canonicalAsset, id: uploaded.asset.id)
 
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else {
             LocalWidgetAssetStorage.remove(localFile)
@@ -498,7 +506,7 @@ final class StudioStore {
             "id": .string("image-\(uploaded.asset.id.dropFirst(6))"),
             "kind": .string("image"),
             "assetId": .string(uploaded.asset.id),
-            "altText": .string(cleanDescription),
+            "altText": .string(persistedDescription),
             "decorative": .boolean(decorative),
             "fit": .string("contain")
         ])
@@ -564,7 +572,10 @@ final class StudioStore {
         defer { finishRemoteOperation(projectID) }
         let remote = try await ensureRemote(projectID: projectID, note: "Prepare for publishing")
         let projectBeforePublishing = try currentProject(projectID)
-        let publication = try await api.publish(draftID: remote.id)
+        guard projectBeforePublishing.spec == project.spec else {
+            throw StudioStoreError.remoteRevisionRestored
+        }
+        let publication = try await api.publish(draftID: remote.id, version: remote.version)
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else {
             if projectBeforePublishing.publication == nil {
                 try? await api.revoke(slug: publication.slug)
@@ -645,7 +656,7 @@ final class StudioStore {
     }
 
     func deleteLocalProject(projectID: String) throws {
-        guard !activeRemoteProjectIDs.contains(projectID) else {
+        guard !isRestoringFromStudio, !activeRemoteProjectIDs.contains(projectID) else {
             throw StudioStoreError.operationInProgress
         }
         guard let project = projects.first(where: { $0.id == projectID }) else { return }
@@ -693,7 +704,12 @@ final class StudioStore {
                         local: local,
                         remote: remote,
                         selectLocalCopy: false,
-                        remoteAssets: restoredAssets
+                        remoteAssets: restoredAssets,
+                        restoredPublication: RestoredPublicationState(
+                            publication: summary.publication,
+                            needsUpdate: summary.publication != nil
+                                && (summary.publicationNeedsUpdate ?? false)
+                        )
                     )
                     conflictCount += 1
                 } else if !local.needsRemoteSave || local.spec == remote.spec {
@@ -702,13 +718,15 @@ final class StudioStore {
                     projects[index].remoteDraft = remote.reference
                     projects[index].publication = summary.publication
                     projects[index].localAssets = restoredAssets
-                    projects[index].publicationNeedsUpdate = false
+                    projects[index].publicationNeedsUpdate = summary.publicationNeedsUpdate ?? false
                     projects[index].needsRemoteSave = false
                     projects[index].previousSpec = nil
                     projects[index].updatedAt = Self.date(from: remote.updatedAt) ?? .now
                     try persistProjectOrThrow(local.id)
                 } else {
                     projects[index].publication = summary.publication
+                    projects[index].publicationNeedsUpdate = summary.publication != nil
+                        && ((summary.publicationNeedsUpdate ?? false) || local.spec != remote.spec)
                     try persistProjectOrThrow(local.id)
                 }
                 continue
@@ -723,7 +741,7 @@ final class StudioStore {
                 remoteDraft: remote.reference,
                 publication: summary.publication,
                 localAssets: restoredAssets,
-                publicationNeedsUpdate: false,
+                publicationNeedsUpdate: summary.publicationNeedsUpdate ?? false,
                 needsRemoteSave: false
             )
             projects.insert(restored, at: 0)
@@ -894,9 +912,11 @@ final class StudioStore {
 
             let latest = try await api.fetchDraft(draftID: draft.id)
             if latest.version > draft.version {
-                // The model patch committed once; use that exact revision rather
-                // than issuing the same natural-language instruction twice.
-                return latest
+                // Without a mutation identifier, a higher revision may be an
+                // unrelated edit from another iPad. Surface the conflict and
+                // keep the teacher's prompt visible instead of claiming it was
+                // the result of this request.
+                throw PatchReconciliationError.remoteChanged(latest)
             }
 
             do {
@@ -913,7 +933,9 @@ final class StudioStore {
                 }
                 guard retryError.isAmbiguousCommit else { throw retryError }
                 let reconciled = try await api.fetchDraft(draftID: latest.id)
-                if reconciled.version > latest.version { return reconciled }
+                if reconciled.version > latest.version {
+                    throw PatchReconciliationError.remoteChanged(reconciled)
+                }
                 throw retryError
             }
         }
@@ -927,7 +949,7 @@ final class StudioStore {
     }
 
     private func beginRemoteOperation(_ projectID: String) throws {
-        guard !activeRemoteProjectIDs.contains(projectID) else {
+        guard !isRestoringFromStudio, !activeRemoteProjectIDs.contains(projectID) else {
             throw StudioStoreError.operationInProgress
         }
         activeRemoteProjectIDs.insert(projectID)
@@ -950,6 +972,9 @@ final class StudioStore {
         } else {
             if projects[index].spec != remote.spec {
                 projects[index].previousSpec = nil
+                if projects[index].publication != nil {
+                    projects[index].publicationNeedsUpdate = true
+                }
             }
             projects[index].spec = remote.spec
             projects[index].needsRemoteSave = false
@@ -962,7 +987,8 @@ final class StudioStore {
         local: WidgetProject,
         remote: RemoteDraft,
         selectLocalCopy: Bool = true,
-        remoteAssets: [LocalWidgetAssetFile]? = nil
+        remoteAssets: [LocalWidgetAssetFile]? = nil,
+        restoredPublication: RestoredPublicationState? = nil
     ) throws {
         guard let index = projects.firstIndex(where: { $0.id == local.id }) else { return }
         var localCopy = local
@@ -979,6 +1005,10 @@ final class StudioStore {
         projects[index].family = family(for: remote.spec)
         projects[index].remoteDraft = remote.reference
         if let remoteAssets { projects[index].localAssets = remoteAssets }
+        if let restoredPublication {
+            projects[index].publication = restoredPublication.publication
+            projects[index].publicationNeedsUpdate = restoredPublication.needsUpdate
+        }
         projects[index].needsRemoteSave = false
         projects[index].previousSpec = nil
         projects[index].updatedAt = .now
@@ -986,6 +1016,11 @@ final class StudioStore {
         if selectLocalCopy { selectedProjectID = localCopy.id }
         try persistOrThrow()
         notice = "Kept both versions; your edits are in Local Copy"
+    }
+
+    private struct RestoredPublicationState {
+        let publication: WidgetPublication?
+        let needsUpdate: Bool
     }
 
     private func persistOrThrow() throws {
@@ -1241,7 +1276,8 @@ private extension StudioAPIError {
         switch self {
         case .transport, .decoding, .invalidResponse:
             true
-        case .invalidURL, .deviceTokenUnavailable, .deviceRegistrationRequired, .server:
+        case .invalidURL, .deviceTokenUnavailable, .deviceRegistrationRequired,
+             .deviceCredentialAlreadyActive, .server:
             false
         }
     }

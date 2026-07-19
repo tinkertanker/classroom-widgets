@@ -100,6 +100,9 @@ struct ArrangeEditorPanel: View {
                         .disabled(imageIsDecorative)
 
                     Toggle("Decorative image", isOn: $imageIsDecorative)
+                        .onChange(of: imageIsDecorative) { _, isDecorative in
+                            if isDecorative { imageDescription = "" }
+                        }
 
                     Button {
                         addImage(pendingImageData)

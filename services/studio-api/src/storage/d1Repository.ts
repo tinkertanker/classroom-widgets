@@ -2,8 +2,10 @@ import type { WidgetSpec } from '@classroom-widgets/widget-spec';
 import type {
   DraftRecord,
   ContentReportInput,
+  ExtendPublicationResult,
   PublicationRecord,
   PublishInput,
+  PublishResult,
   SaveDraftInput,
   StudioRepository,
   UpdateDraftInput,
@@ -280,7 +282,7 @@ export class D1StudioRepository implements StudioRepository {
     return this.getDraft(input.id, input.ownerHash);
   }
 
-  async publish(input: PublishInput): Promise<PublicationRecord> {
+  async publish(input: PublishInput): Promise<PublishResult> {
     const existing = await this.getActivePublicationForDraft(
       input.draft.id,
       input.draft.ownerHash,
@@ -290,7 +292,11 @@ export class D1StudioRepository implements StudioRepository {
         .prepare(
           `UPDATE publications
               SET title = ?1, schema_version = ?2, spec_json = ?3, expires_at = ?4
-            WHERE slug = ?5 AND owner_hash = ?6 AND revoked_at IS NULL`,
+            WHERE slug = ?5 AND owner_hash = ?6 AND revoked_at IS NULL
+              AND EXISTS (
+                SELECT 1 FROM drafts
+                 WHERE id = ?7 AND owner_hash = ?6 AND version = ?8
+              )`,
         )
         .bind(
           input.draft.title,
@@ -299,25 +305,36 @@ export class D1StudioRepository implements StudioRepository {
           input.expiresAt,
           existing.slug,
           input.draft.ownerHash,
+          input.draft.id,
+          input.draft.version,
         )
         .run();
       if ((refreshed.meta.changes ?? 0) === 1) {
         return {
-          ...existing,
-          title: input.draft.title,
-          schemaVersion: input.draft.schemaVersion,
-          spec: input.draft.spec,
-          expiresAt: input.expiresAt,
+          status: 'published',
+          publication: {
+            ...existing,
+            title: input.draft.title,
+            schemaVersion: input.draft.schemaVersion,
+            spec: input.draft.spec,
+            expiresAt: input.expiresAt,
+          },
         };
+      }
+      const current = await this.getDraft(input.draft.id, input.draft.ownerHash);
+      if (!current || current.version !== input.draft.version) {
+        return { status: 'version-conflict' };
       }
     }
 
     try {
-      await this.database
+      const inserted = await this.database
         .prepare(
           `INSERT INTO publications
              (slug, draft_id, owner_hash, title, schema_version, spec_json, created_at, expires_at)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+           SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
+             FROM drafts
+            WHERE id = ?2 AND owner_hash = ?3 AND version = ?9`,
         )
         .bind(
           input.slug,
@@ -328,27 +345,36 @@ export class D1StudioRepository implements StudioRepository {
           JSON.stringify(input.draft.spec),
           input.now,
           input.expiresAt,
+          input.draft.version,
         )
         .run();
+      if ((inserted.meta.changes ?? 0) !== 1) return { status: 'version-conflict' };
     } catch (error) {
+      const current = await this.getDraft(input.draft.id, input.draft.ownerHash);
+      if (!current || current.version !== input.draft.version) {
+        return { status: 'version-conflict' };
+      }
       const concurrent = await this.getActivePublicationForDraft(
         input.draft.id,
         input.draft.ownerHash,
       );
-      if (concurrent) return concurrent;
+      if (concurrent) return { status: 'published', publication: concurrent };
       throw error;
     }
 
     return {
-      slug: input.slug,
-      draftId: input.draft.id,
-      ownerHash: input.draft.ownerHash,
-      title: input.draft.title,
-      schemaVersion: input.draft.schemaVersion,
-      spec: input.draft.spec,
-      createdAt: input.now,
-      expiresAt: input.expiresAt,
-      revokedAt: null,
+      status: 'published',
+      publication: {
+        slug: input.slug,
+        draftId: input.draft.id,
+        ownerHash: input.draft.ownerHash,
+        title: input.draft.title,
+        schemaVersion: input.draft.schemaVersion,
+        spec: input.draft.spec,
+        createdAt: input.now,
+        expiresAt: input.expiresAt,
+        revokedAt: null,
+      },
     };
   }
 
@@ -378,17 +404,31 @@ export class D1StudioRepository implements StudioRepository {
   async extendPublication(
     slug: string,
     ownerHash: string,
-    expiresAt: string,
-  ): Promise<PublicationRecord | null> {
+    now: string,
+    days: number,
+    maximumExpiresAt: string,
+  ): Promise<ExtendPublicationResult> {
     const result = await this.database
       .prepare(
-        `UPDATE publications SET expires_at = ?1
-          WHERE slug = ?2 AND owner_hash = ?3 AND revoked_at IS NULL`,
+        `UPDATE publications
+            SET expires_at = strftime(
+              '%Y-%m-%dT%H:%M:%fZ',
+              julianday(CASE WHEN expires_at > ?1 THEN expires_at ELSE ?1 END) + ?2
+            )
+          WHERE slug = ?3 AND owner_hash = ?4 AND revoked_at IS NULL
+            AND julianday(CASE WHEN expires_at > ?1 THEN expires_at ELSE ?1 END) + ?2
+                <= julianday(?5)
+          RETURNING *`,
       )
-      .bind(expiresAt, slug, ownerHash)
-      .run();
-    if ((result.meta.changes ?? 0) !== 1) return null;
-    return this.getPublication(slug);
+      .bind(now, days, slug, ownerHash, maximumExpiresAt)
+      .all<PublicationRow>();
+    const extended = result.results[0];
+    if (extended) return { status: 'extended', publication: publicationFrom(extended) };
+    const existing = await this.getPublication(slug);
+    if (!existing || existing.ownerHash !== ownerHash || existing.revokedAt) {
+      return { status: 'not-found' };
+    }
+    return { status: 'expiry-limit' };
   }
 
   async revokePublication(slug: string, ownerHash: string, now: string): Promise<boolean> {

@@ -1,4 +1,5 @@
 import CryptoKit
+import UIKit
 import XCTest
 @testable import ClassroomWidgetsStudio
 
@@ -98,7 +99,7 @@ final class StudioStoreTests: XCTestCase {
                 "fetch:draft-1",
                 "patch:draft-1:1",
                 "fetch:draft-1",
-                "publish:draft-1",
+                "publish:draft-1:2",
                 "extend:student-link:90",
                 "revoke:student-link"
             ]
@@ -211,17 +212,43 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testLostPatchResponseUsesCommittedRevisionWithoutPatchingTwice() async throws {
+    func testLostPatchResponseSurfacesTheFetchedRevisionWithoutClaimingPromptSuccess() async throws {
         let context = try makeRemoteContext()
         defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
         let created = try await context.store.createApprovedBrief(sampleBrief())
         await context.api.setMode(.losePatchResponseAfterCommit)
 
-        try await context.store.refine("Use a bus-stop example", projectID: created.id)
+        do {
+            try await context.store.refine("Use a bus-stop example", projectID: created.id)
+            XCTFail("Expected the ambiguous result to require review")
+        } catch StudioStoreError.remoteRevisionRestored {}
 
         let saved = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
         XCTAssertEqual(saved.remoteDraft?.version, 2)
         XCTAssertEqual(saved.spec.metadata.summary, "Revised: Use a bus-stop example")
+        XCTAssertTrue(saved.revisionNotes.isEmpty)
+        XCTAssertEqual(context.store.notice, "Restored the latest server revision")
+        let calls = await context.api.recordedCalls()
+        XCTAssertEqual(calls.filter { $0.hasPrefix("patch:") }.count, 1)
+    }
+
+    @MainActor
+    func testAmbiguousPatchNeverAttributesAnUnrelatedHigherRevisionToThePrompt() async throws {
+        let context = try makeRemoteContext()
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        await context.api.setMode(.ambiguousPatchWithUnrelatedRevision)
+
+        do {
+            try await context.store.refine("Add one more hint", projectID: created.id)
+            XCTFail("Expected the unrelated revision to be surfaced")
+        } catch StudioStoreError.remoteRevisionRestored {}
+
+        let restored = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        XCTAssertEqual(restored.remoteDraft?.version, 2)
+        XCTAssertEqual(restored.spec.metadata.summary, "Changed independently on another iPad")
+        XCTAssertFalse(restored.spec.metadata.summary.contains("Add one more hint"))
+        XCTAssertTrue(restored.revisionNotes.isEmpty)
         let calls = await context.api.recordedCalls()
         XCTAssertEqual(calls.filter { $0.hasPrefix("patch:") }.count, 1)
     }
@@ -330,6 +357,30 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testPublishStopsWhenSynchronisationRestoresANewerCrossDeviceRevision() async throws {
+        let context = try makeRemoteContext()
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        let existingPublication = try await context.store.publish(projectID: created.id)
+        var remoteSpec = created.spec
+        remoteSpec.metadata.summary = "Changed on the other iPad after this preview"
+        await context.api.replaceSpecForRestore(remoteSpec, download: nil)
+
+        do {
+            _ = try await context.store.publish(projectID: created.id)
+            XCTFail("Expected the newer revision to require another review")
+        } catch StudioStoreError.remoteRevisionRestored {}
+
+        let restored = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        XCTAssertEqual(restored.spec.metadata.summary, remoteSpec.metadata.summary)
+        XCTAssertEqual(restored.remoteDraft?.version, 2)
+        XCTAssertEqual(restored.publication, existingPublication)
+        XCTAssertTrue(restored.publicationNeedsUpdate)
+        let calls = await context.api.recordedCalls()
+        XCTAssertEqual(calls.filter { $0.hasPrefix("publish:") }.count, 1)
+    }
+
+    @MainActor
     func testProjectRejectsASecondPromptWhileFirstIsInFlight() async throws {
         let context = try makeRemoteContext()
         defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
@@ -384,6 +435,108 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertEqual(added, 1)
         XCTAssertEqual(secondAdded, 0)
         XCTAssertEqual(context.store.projects.filter { $0.remoteDraft?.id == "draft-1" }.count, 1)
+    }
+
+    @MainActor
+    func testRestoreMarksAStudentLinkStaleWhenTheDraftChangedAfterPublishing() async throws {
+        let context = try makeRemoteContext()
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        let publication = try await context.store.publish(projectID: created.id)
+        var newerSpec = created.spec
+        newerSpec.metadata.summary = "Newer draft that was never published"
+        await context.api.replaceSpecForRestore(newerSpec, download: nil)
+        await context.api.setPublicationForRestore(publication, needsUpdate: true)
+        try context.store.deleteLocalProject(projectID: created.id)
+
+        _ = try await context.store.restoreFromStudio()
+
+        let restored = try XCTUnwrap(context.store.projects.first(where: { $0.remoteDraft?.id == "draft-1" }))
+        XCTAssertEqual(restored.spec.metadata.summary, newerSpec.metadata.summary)
+        XCTAssertEqual(restored.publication, publication)
+        XCTAssertTrue(restored.publicationNeedsUpdate)
+    }
+
+    @MainActor
+    func testRestoreMarksANewlyDiscoveredLinkStaleAgainstUnsavedLocalEdits() async throws {
+        let context = try makeRemoteContext()
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        context.store.updateDetails(
+            for: created.id,
+            title: "Unsaved local teaching version",
+            summary: created.spec.metadata.summary,
+            accent: created.spec.theme.accent,
+            density: created.spec.theme.density
+        )
+        let publication = samplePublication()
+        await context.api.setPublicationForRestore(publication, needsUpdate: false)
+
+        _ = try await context.store.restoreFromStudio()
+
+        let local = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        XCTAssertEqual(local.spec.metadata.title, "Unsaved local teaching version")
+        XCTAssertEqual(local.publication, publication)
+        XCTAssertTrue(local.publicationNeedsUpdate)
+    }
+
+    @MainActor
+    func testRestoreKeepsTheLiveLinkOnTheRemoteHalfOfAConflict() async throws {
+        let context = try makeRemoteContext()
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        context.store.updateDetails(
+            for: created.id,
+            title: "Unsaved local teaching version",
+            summary: created.spec.metadata.summary,
+            accent: created.spec.theme.accent,
+            density: created.spec.theme.density
+        )
+        var remoteSpec = created.spec
+        remoteSpec.metadata.summary = "Newer published server version"
+        await context.api.replaceSpecForRestore(remoteSpec, download: nil)
+        let publication = samplePublication()
+        await context.api.setPublicationForRestore(publication, needsUpdate: false)
+
+        _ = try await context.store.restoreFromStudio()
+
+        let remote = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        XCTAssertEqual(remote.spec.metadata.summary, remoteSpec.metadata.summary)
+        XCTAssertEqual(remote.publication, publication)
+        XCTAssertFalse(remote.publicationNeedsUpdate)
+        let localCopy = try XCTUnwrap(
+            context.store.projects.first(where: { $0.spec.metadata.title.contains("Local Copy") })
+        )
+        XCTAssertNil(localCopy.publication)
+    }
+
+    @MainActor
+    func testRestoreBlocksRemoteAndLocalDeletionUntilItsSnapshotIsApplied() async throws {
+        let context = try makeRemoteContext()
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+        await context.api.setMode(.holdFetch)
+        let restoration = Task { @MainActor in
+            try await context.store.restoreFromStudio()
+        }
+        while !(await context.api.recordedCalls()).contains(where: { $0.hasPrefix("fetch:") }) {
+            await Task.yield()
+        }
+
+        do {
+            try await context.store.deleteProject(projectID: created.id)
+            XCTFail("Expected remote deletion to wait for restoration")
+        } catch StudioStoreError.operationInProgress {}
+        do {
+            try context.store.deleteLocalProject(projectID: created.id)
+            XCTFail("Expected local deletion to wait for restoration")
+        } catch StudioStoreError.operationInProgress {}
+
+        await context.api.releaseHeldFetch()
+        _ = try await restoration.value
+        XCTAssertNotNil(context.store.projects.first(where: { $0.id == created.id }))
+        let calls = await context.api.recordedCalls()
+        XCTAssertFalse(calls.contains(where: { $0.hasPrefix("delete:") }))
     }
 
     @MainActor
@@ -486,6 +639,117 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertTrue(WidgetPublishReadiness.audit(spec).isReady)
     }
 
+    @MainActor
+    func testDecorativeImageIgnoresExistingDescriptionInUploadAndPersistedSpec() async throws {
+        let imageData = Data("prepared image".utf8)
+        let prepared = PreparedWidgetImage(
+            data: imageData,
+            mediaType: "image/jpeg",
+            width: 64,
+            height: 64,
+            sha256: SHA256.hash(data: imageData).map { String(format: "%02x", $0) }.joined()
+        )
+        let context = try makeRemoteContext(preparedImage: prepared)
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+
+        try await context.store.addImage(
+            imageData,
+            alternativeText: "This must not survive the decorative toggle",
+            decorative: true,
+            projectID: created.id
+        )
+
+        let accessibility = await context.api.lastUploadedAccessibility()
+        XCTAssertEqual(accessibility?.alternativeText, nil)
+        XCTAssertEqual(accessibility?.decorative, true)
+        let saved = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        let image = try XCTUnwrap(saved.spec.screens.first?.components.last)
+        guard case let .object(component) = image else {
+            return XCTFail("Expected an image component")
+        }
+        XCTAssertEqual(component["altText"], .string(""))
+        XCTAssertEqual(component["decorative"], .boolean(true))
+        XCTAssertTrue(WidgetPublishReadiness.audit(saved.spec).isReady)
+    }
+
+    @MainActor
+    func testImageUploadCachesValidatedCanonicalServerBytes() async throws {
+        let preparedData = Data("prepared bytes with encoder metadata".utf8)
+        let canonicalData = Data("canonical bytes returned by Studio".utf8)
+        let prepared = PreparedWidgetImage(
+            data: preparedData,
+            mediaType: "image/jpeg",
+            width: 64,
+            height: 64,
+            sha256: SHA256.hash(data: preparedData).map { String(format: "%02x", $0) }.joined()
+        )
+        let context = try makeRemoteContext(
+            preparedImage: prepared,
+            canonicalUpload: DownloadedWidgetAsset(data: canonicalData, mediaType: "image/jpeg")
+        )
+        defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
+        let created = try await context.store.createApprovedBrief(sampleBrief())
+
+        try await context.store.addImage(
+            preparedData,
+            alternativeText: "A force diagram",
+            decorative: false,
+            projectID: created.id
+        )
+
+        let saved = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
+        let local = try XCTUnwrap(saved.localAssets.first)
+        let localURL = try XCTUnwrap(LocalWidgetAssetStorage.url(for: local))
+        XCTAssertEqual(try Data(contentsOf: localURL), canonicalData)
+        XCTAssertNotEqual(try Data(contentsOf: localURL), preparedData)
+
+        let recordValue = try XCTUnwrap(saved.spec.assets.first)
+        let recordData = try JSONEncoder().encode(recordValue)
+        let record = try JSONDecoder().decode(WidgetImageAssetRecord.self, from: recordData)
+        XCTAssertEqual(record.byteLength, canonicalData.count)
+        XCTAssertEqual(
+            record.sha256,
+            SHA256.hash(data: canonicalData).map { String(format: "%02x", $0) }.joined()
+        )
+        let calls = await context.api.recordedCalls()
+        XCTAssertTrue(calls.contains("upload"))
+        XCTAssertTrue(calls.contains("download:\(record.id)"))
+    }
+
+    func testPublicationExpiresAtTheBoundaryAndInvalidExpiryIsNotTreatedAsLive() {
+        let boundary = Date(timeIntervalSince1970: 1_800_000_000.125)
+        var publication = WidgetPublication(
+            slug: "student-link",
+            url: URL(string: "https://studio.example/student-link")!,
+            title: "Forces",
+            schemaVersion: "1.0",
+            createdAt: "2026-07-18T12:00:00.000Z",
+            expiresAt: "2027-01-15T08:00:00.125Z",
+            revokedAt: nil
+        )
+
+        XCTAssertFalse(publication.isExpired(at: boundary.addingTimeInterval(-0.001)))
+        XCTAssertTrue(publication.isExpired(at: boundary))
+        XCTAssertTrue(publication.isExpired(at: boundary.addingTimeInterval(0.001)))
+        XCTAssertEqual(
+            publication.expirationRefreshDate(after: boundary.addingTimeInterval(-0.001)),
+            boundary
+        )
+        XCTAssertNil(publication.expirationRefreshDate(after: boundary))
+        XCTAssertEqual(
+            publication.formattedExpirationDate(
+                locale: Locale(identifier: "en_GB"),
+                timeZone: TimeZone(secondsFromGMT: 0)!
+            ),
+            "15 Jan 2027"
+        )
+
+        publication.expiresAt = "not-a-date"
+        XCTAssertTrue(publication.isExpired(at: boundary))
+        XCTAssertEqual(publication.formattedExpirationDate(), "not-a-date")
+    }
+
     func testImagePrivacyTextPatterns() {
         XCTAssertTrue(WidgetImagePrivacyScanner.containsObviousPersonalData(in: "Contact teacher@example.edu.sg"))
         XCTAssertTrue(WidgetImagePrivacyScanner.containsObviousPersonalData(in: "S1234567D"))
@@ -518,7 +782,10 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
-    private func makeRemoteContext() throws -> RemoteTestContext {
+    private func makeRemoteContext(
+        preparedImage: PreparedWidgetImage? = nil,
+        canonicalUpload: DownloadedWidgetAsset? = nil
+    ) throws -> RemoteTestContext {
         let (suiteName, defaults) = makeDefaults()
         let storage = makeStorageDirectory()
         let fixtureStorage = makeStorageDirectory()
@@ -531,13 +798,24 @@ final class StudioStoreTests: XCTestCase {
         var spec = try XCTUnwrap(fixtureStore.examples.first).spec
         spec.id = "widget-from-service"
         defaults.removePersistentDomain(forName: suiteName)
-        let api = RecordingStudioAPI(spec: spec)
-        let store = StudioStore(
-            defaults: defaults,
-            storageDirectory: storage,
-            bundle: Bundle(for: StudioStore.self),
-            api: api
-        )
+        let api = RecordingStudioAPI(spec: spec, canonicalUpload: canonicalUpload)
+        let store: StudioStore
+        if let preparedImage {
+            store = StudioStore(
+                defaults: defaults,
+                storageDirectory: storage,
+                bundle: Bundle(for: StudioStore.self),
+                api: api,
+                prepareImage: { _ in preparedImage }
+            )
+        } else {
+            store = StudioStore(
+                defaults: defaults,
+                storageDirectory: storage,
+                bundle: Bundle(for: StudioStore.self),
+                api: api
+            )
+        }
         return RemoteTestContext(
             suiteName: suiteName,
             defaults: defaults,
@@ -555,6 +833,18 @@ final class StudioStoreTests: XCTestCase {
         brief.feedback = "Compare the size and direction of each force"
         brief.classroomFit = "Six minutes individually"
         return brief
+    }
+
+    private func samplePublication() -> WidgetPublication {
+        WidgetPublication(
+            slug: "student-link",
+            url: URL(string: "https://studio.example/student-link")!,
+            title: "Forces",
+            schemaVersion: "1.0",
+            createdAt: "2026-07-18T12:00:00.000Z",
+            expiresAt: "2026-10-16T12:00:00.000Z",
+            revokedAt: nil
+        )
     }
 
     private func imageAssetRecord(id: String, data: Data) -> WidgetImageAssetRecord {
@@ -600,24 +890,32 @@ private struct RemoteTestContext {
 private enum TestAPIMode: Sendable, Equatable {
     case normal
     case losePatchResponseAfterCommit
+    case ambiguousPatchWithUnrelatedRevision
     case loseSaveResponseAfterCommit
     case conflictOnSave
     case conflictOnPatch
     case draftNotFoundOnDelete
     case publicationNotFoundOnRevoke
     case holdPatch
+    case holdFetch
 }
 
 private actor RecordingStudioAPI: StudioAPI {
     private var spec: WidgetSpec
     private var version = 1
     private var downloadableAsset: DownloadedWidgetAsset?
+    private var uploadedAccessibility: UploadedWidgetImage.Accessibility?
+    private let canonicalUpload: DownloadedWidgetAsset?
     private var calls: [String] = []
     private var mode: TestAPIMode = .normal
     private var heldPatch: CheckedContinuation<Void, Never>?
+    private var heldFetch: CheckedContinuation<Void, Never>?
+    private var listedPublication: WidgetPublication?
+    private var listedPublicationNeedsUpdate = false
 
-    init(spec: WidgetSpec) {
+    init(spec: WidgetSpec, canonicalUpload: DownloadedWidgetAsset? = nil) {
         self.spec = spec
+        self.canonicalUpload = canonicalUpload
     }
 
     func generate(from brief: GuidedBriefDraft) async throws -> RemoteDraft {
@@ -633,6 +931,12 @@ private actor RecordingStudioAPI: StudioAPI {
 
     func fetchDraft(draftID: String) async throws -> RemoteDraft {
         calls.append("fetch:\(draftID)")
+        if mode == .holdFetch {
+            mode = .normal
+            await withCheckedContinuation { continuation in
+                heldFetch = continuation
+            }
+        }
         return draft()
     }
 
@@ -646,7 +950,8 @@ private actor RecordingStudioAPI: StudioAPI {
                 version: version,
                 createdAt: "2026-07-18T12:00:00.000Z",
                 updatedAt: "2026-07-18T12:00:00.000Z",
-                publication: nil
+                publication: listedPublication,
+                publicationNeedsUpdate: listedPublicationNeedsUpdate
             )
         ]
     }
@@ -661,6 +966,12 @@ private actor RecordingStudioAPI: StudioAPI {
 
     func patch(draftID: String, version: Int, instruction: String) async throws -> RemoteDraft {
         calls.append("patch:\(draftID):\(version)")
+        if mode == .ambiguousPatchWithUnrelatedRevision {
+            mode = .normal
+            self.version += 1
+            spec.metadata.summary = "Changed independently on another iPad"
+            throw StudioAPIError.transport("The response was interrupted")
+        }
         if mode == .conflictOnPatch {
             mode = .normal
             self.version += 1
@@ -718,8 +1029,8 @@ private actor RecordingStudioAPI: StudioAPI {
         }
     }
 
-    func publish(draftID: String) async throws -> WidgetPublication {
-        calls.append("publish:\(draftID)")
+    func publish(draftID: String, version: Int) async throws -> WidgetPublication {
+        calls.append("publish:\(draftID):\(version)")
         return WidgetPublication(
             slug: "student-link",
             url: URL(string: "https://studio.example/student-link")!,
@@ -762,21 +1073,33 @@ private actor RecordingStudioAPI: StudioAPI {
         decorative: Bool
     ) async throws -> UploadedWidgetImage {
         calls.append("upload")
+        uploadedAccessibility = .init(alternativeText: alternativeText, decorative: decorative)
+        let canonical = canonicalUpload ?? DownloadedWidgetAsset(
+            data: image.data,
+            mediaType: image.mediaType
+        )
+        downloadableAsset = canonical
         return UploadedWidgetImage(
             asset: WidgetImageAssetRecord(
                 id: "asset-0123456789abcdef0123456789abcdef",
                 kind: "image",
-                mediaType: image.mediaType,
+                mediaType: canonical.mediaType,
                 width: image.width,
                 height: image.height,
-                byteLength: image.data.count,
-                sha256: image.sha256
+                byteLength: canonical.data.count,
+                sha256: SHA256.hash(data: canonical.data)
+                    .map { String(format: "%02x", $0) }
+                    .joined()
             ),
             accessibility: .init(alternativeText: alternativeText, decorative: decorative)
         )
     }
 
     func recordedCalls() -> [String] { calls }
+
+    func lastUploadedAccessibility() -> UploadedWidgetImage.Accessibility? {
+        uploadedAccessibility
+    }
 
     func setMode(_ value: TestAPIMode) { mode = value }
 
@@ -786,9 +1109,19 @@ private actor RecordingStudioAPI: StudioAPI {
         downloadableAsset = download
     }
 
+    func setPublicationForRestore(_ publication: WidgetPublication, needsUpdate: Bool) {
+        listedPublication = publication
+        listedPublicationNeedsUpdate = needsUpdate
+    }
+
     func releaseHeldPatch() {
         heldPatch?.resume()
         heldPatch = nil
+    }
+
+    func releaseHeldFetch() {
+        heldFetch?.resume()
+        heldFetch = nil
     }
 
     private func draft() -> RemoteDraft {

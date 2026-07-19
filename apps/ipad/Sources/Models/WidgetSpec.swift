@@ -159,6 +159,7 @@ struct RemoteDraftSummary: Codable, Equatable, Identifiable, Sendable {
     var createdAt: String
     var updatedAt: String
     var publication: WidgetPublication?
+    var publicationNeedsUpdate: Bool? = nil
 }
 
 struct WidgetPublication: Codable, Equatable, Sendable {
@@ -169,6 +170,36 @@ struct WidgetPublication: Codable, Equatable, Sendable {
     var createdAt: String
     var expiresAt: String
     var revokedAt: String?
+
+    func isExpired(at date: Date = .now) -> Bool {
+        guard let expirationDate else { return true }
+        return expirationDate <= date
+    }
+
+    var expirationDate: Date? {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: expiresAt) { return date }
+        return ISO8601DateFormatter().date(from: expiresAt)
+    }
+
+    func expirationRefreshDate(after date: Date = .now) -> Date? {
+        guard let expirationDate, expirationDate > date else { return nil }
+        return expirationDate
+    }
+
+    func formattedExpirationDate(
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String {
+        guard let expirationDate else { return expiresAt }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: expirationDate)
+    }
 }
 
 struct RevisionNote: Codable, Equatable, Identifiable, Sendable {

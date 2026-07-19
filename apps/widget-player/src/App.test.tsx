@@ -97,14 +97,43 @@ describe('public player entry', () => {
     );
   });
 
-  it('serves the public privacy notice without treating it as a widget slug', () => {
-    window.history.replaceState({}, '', '/privacy');
+  it.each([
+    ['/privacy', 'Privacy notice'],
+    ['/terms', 'Terms of use'],
+  ])('serves %s without starting the publication loader', (path, heading) => {
+    window.history.replaceState({}, '', path);
     const fetchMock = vi.spyOn(globalThis, 'fetch');
 
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Privacy notice' })).toBeInTheDocument();
-    expect(screen.getByText(/DeepSeek processes teacher text/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps hooks stable and starts loading when the same app moves from a legal route to a publication', async () => {
+    window.history.replaceState({}, '', '/privacy');
+    window.__CLASSROOM_WIDGET_API_BASE_URL__ = 'https://studio.example/';
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ spec: retrievalPracticeFixture }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const { rerender } = render(<App />);
+
+    expect(screen.getByRole('heading', { name: 'Privacy notice' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    window.history.replaceState({}, '', '/RerenderedWidget123');
+    rerender(<App />);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'How plants make food' }),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://studio.example/v1/publications/RerenderedWidget123',
+      expect.objectContaining({ credentials: 'omit', method: 'GET' }),
+    );
   });
 });

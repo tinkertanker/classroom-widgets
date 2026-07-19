@@ -2,7 +2,16 @@ import { validateWidgetSpec, type WidgetSpec } from '@classroom-widgets/widget-s
 import type { ModelProvider, TeacherBrief } from './ai/provider';
 import { ModelProviderError } from './ai/provider';
 import type { AssetStore, StoredAsset } from './assets';
-import { issueDeviceToken, networkHashFrom, ownerHashFrom, randomSlug, sha256 } from './auth';
+import {
+  DEVICE_TOKEN_RECOVERY_DAYS,
+  issueDeviceToken,
+  networkHashFrom,
+  ownerCredentialFrom,
+  ownerHashFrom,
+  randomSlug,
+  refreshDeviceToken,
+  sha256,
+} from './auth';
 import type { StudioConfig } from './env';
 import {
   generateWidgetSpec,
@@ -59,6 +68,10 @@ interface SaveBody {
   note?: string;
 }
 
+interface PublishBody {
+  expectedVersion: number;
+}
+
 interface ExtendBody {
   days?: number;
 }
@@ -93,6 +106,19 @@ function draftResponse(draft: DraftRecord) {
   };
 }
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(',')}]`;
+  }
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 function draftSummaryResponse(
   draft: DraftRecord,
   publication: PublicationRecord | null,
@@ -108,6 +134,8 @@ function draftSummaryResponse(
     publication: publication
       ? publicationResponse(publication, publicPlayerOrigin)
       : null,
+    publicationNeedsUpdate: publication !== null
+      && canonicalJson(publication.spec) !== canonicalJson(draft.spec),
   };
 }
 
@@ -382,6 +410,15 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
       return json(credential, { status: 201 });
     }
 
+    if (request.method === 'POST' && url.pathname === '/v1/devices/refresh') {
+      const credential = await refreshDeviceToken(
+        request,
+        dependencies.config.deviceTokenSigningSecret,
+        now(),
+      );
+      return json(credential);
+    }
+
     if (request.method === 'POST' && url.pathname === '/v1/drafts/generate') {
       const ownerHash = await ownerHashFrom(request, dependencies.config.deviceTokenSigningSecret, now().getTime());
       const brief = parseBrief(
@@ -529,8 +566,19 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
       }
 
       if (request.method === 'POST' && action === 'publish') {
+        const body = objectBody<PublishBody>(await readJson<unknown>(request, 1_000));
+        if (!Number.isInteger(body.expectedVersion) || body.expectedVersion < 1) {
+          throw new HttpError(422, 'INVALID_VERSION', 'A valid expectedVersion is required.');
+        }
         const draft = await dependencies.repository.getDraft(draftId, ownerHash);
         if (!draft) throw new HttpError(404, 'DRAFT_NOT_FOUND', 'This draft is unavailable.');
+        if (draft.version !== body.expectedVersion) {
+          throw new HttpError(
+            409,
+            'DRAFT_VERSION_CONFLICT',
+            'This widget changed on another iPad. Review the latest version before publishing.',
+          );
+        }
         await validatedOwnedSpec(draft.spec, ownerHash);
 
         const timestamp = now();
@@ -548,13 +596,22 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
         let latestError: unknown;
         for (let attempt = 0; attempt < 3 && !publication; attempt += 1) {
           try {
-            publication = await dependencies.repository.publish({
+            const result = await dependencies.repository.publish({
               slug: createSlug(),
               draft,
               now: timestamp.toISOString(),
               expiresAt: addDays(timestamp, dependencies.config.publicationTtlDays),
             });
+            if (result.status === 'version-conflict') {
+              throw new HttpError(
+                409,
+                'DRAFT_VERSION_CONFLICT',
+                'This widget changed during safety review. Review the latest version before publishing.',
+              );
+            }
+            publication = result.publication;
           } catch (error) {
+            if (error instanceof HttpError) throw error;
             latestError = error;
           }
         }
@@ -752,7 +809,12 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
         );
       }
 
-      const ownerHash = await ownerHashFrom(request, dependencies.config.deviceTokenSigningSecret, now().getTime());
+      const ownerCredential = await ownerCredentialFrom(
+        request,
+        dependencies.config.deviceTokenSigningSecret,
+        now().getTime(),
+      );
+      const ownerHash = ownerCredential.ownerHash;
       if (request.method === 'DELETE') {
         const revoked = await dependencies.repository.revokePublication(
           slug,
@@ -769,16 +831,29 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
         if (!Number.isInteger(days) || days < 1 || days > 365) {
           throw new HttpError(422, 'INVALID_EXPIRY', 'Expiry must be between 1 and 365 days.');
         }
-        const publication = await dependencies.repository.extendPublication(
+        const timestamp = now();
+        const maximumExpiresAt = new Date(
+          ownerCredential.expiresAt + DEVICE_TOKEN_RECOVERY_DAYS * 86_400_000,
+        ).toISOString();
+        const result = await dependencies.repository.extendPublication(
           slug,
           ownerHash,
-          addDays(now(), days),
+          timestamp.toISOString(),
+          days,
+          maximumExpiresAt,
         );
-        if (!publication) {
+        if (result.status === 'not-found') {
           throw new HttpError(404, 'PUBLICATION_NOT_FOUND', 'This publication is unavailable.');
         }
+        if (result.status === 'expiry-limit') {
+          throw new HttpError(
+            422,
+            'PUBLICATION_EXPIRY_LIMIT_REACHED',
+            'Refresh this iPad’s Studio access before extending the link that far.',
+          );
+        }
         return json({
-          publication: publicationResponse(publication, dependencies.config.publicPlayerOrigin),
+          publication: publicationResponse(result.publication, dependencies.config.publicPlayerOrigin),
         });
       }
     }
