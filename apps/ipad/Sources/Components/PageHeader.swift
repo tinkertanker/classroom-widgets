@@ -1,21 +1,16 @@
 import SwiftUI
 
 struct PageHeader: View {
-    let eyebrow: String
     let title: String
     let subtitle: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(eyebrow.uppercased())
-                .font(.caption.weight(.bold))
-                .tracking(1.2)
-                .foregroundStyle(StudioTheme.sage)
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(StudioTheme.ink)
             Text(subtitle)
-                .font(.title3)
+                .font(.body)
                 .foregroundStyle(StudioTheme.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }

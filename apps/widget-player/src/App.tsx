@@ -53,6 +53,12 @@ export function App() {
     });
   }, []);
 
+  useEffect(() => {
+    if (state.status === 'ready' && state.revision > 0) {
+      postStudioBridgeMessage({ type: 'loaded' });
+    }
+  }, [state]);
+
   if (legalPage) return <LegalPage page={legalPage} />;
 
   useEffect(() => {

@@ -18,8 +18,8 @@ enum StudioSection: String, CaseIterable, Identifiable, Sendable {
 
     var symbolName: String {
         switch self {
-        case .explore: "sparkle.magnifyingglass"
-        case .make: "wand.and.sparkles"
+        case .explore: "square.grid.2x2"
+        case .make: "plus.square"
         case .myWidgets: "square.stack.3d.up"
         }
     }
@@ -51,6 +51,11 @@ final class StudioStore {
     var showsWorkshopAccess = false
     var notice: String?
     var errorMessage: String?
+    var guidedMakeDraft = GuidedBriefDraft()
+    var guidedMakeQuestionIndex = 0
+    var guidedMakeResponse = ""
+    var guidedMakeShowsSummary = false
+    private(set) var isCreatingGuidedDraft = false
 
     private let defaults: UserDefaults
     private let projectFiles: StudioProjectFileStore?
@@ -155,6 +160,11 @@ final class StudioStore {
 
     func refreshWorkshopAccess() async {
         if isUITesting {
+            if ProcessInfo.processInfo.arguments.contains("--ui-testing-registration-required") {
+                workshopAccessState = .registrationRequired
+                showsWorkshopAccess = true
+                return
+            }
             workshopAccessState = .ready
             showsWorkshopAccess = false
             return
@@ -172,7 +182,6 @@ final class StudioStore {
     }
 
     func dismissWorkshopAccess() {
-        guard workshopAccessState == .ready else { return }
         showsWorkshopAccess = false
     }
 
@@ -209,6 +218,13 @@ final class StudioStore {
 
     func closeEditor() {
         selectedProjectID = nil
+    }
+
+    func resetGuidedMake() {
+        guidedMakeDraft = GuidedBriefDraft()
+        guidedMakeQuestionIndex = 0
+        guidedMakeResponse = ""
+        guidedMakeShowsSummary = false
     }
 
     @discardableResult
@@ -346,6 +362,9 @@ final class StudioStore {
 
     @discardableResult
     func createApprovedBrief(_ brief: GuidedBriefDraft) async throws -> WidgetProject {
+        guard !isCreatingGuidedDraft else { throw StudioStoreError.operationInProgress }
+        isCreatingGuidedDraft = true
+        defer { isCreatingGuidedDraft = false }
         if isUITesting { return create(from: brief) }
         let remote = try await api.generate(from: brief)
         let project = WidgetProject(

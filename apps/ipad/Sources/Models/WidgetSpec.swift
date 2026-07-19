@@ -65,16 +65,6 @@ enum WidgetFamily: String, Codable, CaseIterable, Sendable {
         case .classroomTool: "Classroom tool"
         }
     }
-
-    var symbolName: String {
-        switch self {
-        case .quiz: "checkmark.bubble"
-        case .matching: "square.grid.2x2"
-        case .diagram: "point.topleft.down.to.point.bottomright.curvepath"
-        case .simulation: "chart.xyaxis.line"
-        case .classroomTool: "timer"
-        }
-    }
 }
 
 struct WidgetProject: Codable, Equatable, Identifiable, Sendable {

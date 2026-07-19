@@ -8,6 +8,7 @@ struct ClassroomWidgetsStudioApp: App {
         WindowGroup {
             StudioRootView(store: store)
                 .tint(StudioTheme.sage)
+                .preferredColorScheme(.light)
         }
     }
 }

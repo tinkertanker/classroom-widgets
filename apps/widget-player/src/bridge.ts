@@ -2,6 +2,7 @@ import { isWidgetSpec, type WidgetSpec } from '@classroom-widgets/widget-spec';
 
 export type StudioBridgeMessage =
   | { type: 'ready'; schemaVersion: string }
+  | { type: 'loaded' }
   | { type: 'error'; message: string };
 
 export interface WidgetPlayerBridge {

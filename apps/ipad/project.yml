@@ -47,6 +47,7 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: Take a photo of a classroom diagram, worksheet or sketch to include in a widget.
         INFOPLIST_KEY_StudioAPIBaseURL: "$(STUDIO_API_BASE_URL)"
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UIUserInterfaceStyle: Light
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad:
           - UIInterfaceOrientationPortrait

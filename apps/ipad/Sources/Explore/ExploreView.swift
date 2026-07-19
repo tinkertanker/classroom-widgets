@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ExploreView: View {
     let store: StudioStore
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var selectedFamily: WidgetFamily?
 
     private var visibleExamples: [WidgetProject] {
@@ -14,31 +15,34 @@ struct ExploreView: View {
         return WidgetFamily.allCases.filter(present.contains)
     }
 
-    private let columns = [GridItem(.adaptive(minimum: 270), spacing: 18)]
+    private var columns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 270), spacing: 18)]
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 PageHeader(
-                    eyebrow: "Explore",
-                    title: "Start with something proven",
-                    subtitle: "Preview a classroom-ready widget, or remix it for your learners. No blank canvas required."
+                    title: "Start with an example",
+                    subtitle: "Preview a classroom-ready widget, or remix it for your learners."
                 )
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
-                        filterButton(title: "All", symbol: "square.grid.2x2", family: nil)
+                        filterButton(title: "All", family: nil)
                         ForEach(availableFamilies, id: \.self) { family in
-                            filterButton(title: family.title, symbol: family.symbolName, family: family)
+                            filterButton(title: family.title, family: family)
                         }
                     }
                 }
 
                 if visibleExamples.isEmpty {
                     ContentUnavailableView(
-                        "More examples are coming",
-                        systemImage: "sparkles",
-                        description: Text("Choose All to see the current classroom-ready set.")
+                        "No examples in this category yet",
+                        systemImage: "tray",
+                        description: Text("Choose All to see the current set.")
                     )
                     .frame(maxWidth: .infinity, minHeight: 360)
                 } else {
@@ -56,30 +60,24 @@ struct ExploreView: View {
             }
             .padding(32)
         }
-        .navigationTitle("Explore")
         .accessibilityIdentifier("explore-screen")
     }
 
     @ViewBuilder
-    private func filterButton(title: String, symbol: String, family: WidgetFamily?) -> some View {
+    private func filterButton(title: String, family: WidgetFamily?) -> some View {
         if family == selectedFamily {
-            Button {
+            Button(title) {
                 selectedFamily = family
-            } label: {
-                Label(title, systemImage: symbol)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal, 4)
             }
+            .font(.subheadline.weight(.medium))
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
+            .accessibilityAddTraits(.isSelected)
         } else {
-            Button {
+            Button(title) {
                 selectedFamily = family
-            } label: {
-                Label(title, systemImage: symbol)
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal, 4)
             }
+            .font(.subheadline.weight(.medium))
             .buttonStyle(.bordered)
             .buttonBorderShape(.capsule)
         }

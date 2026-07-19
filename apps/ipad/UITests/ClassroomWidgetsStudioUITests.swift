@@ -4,17 +4,38 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     @MainActor
     func testLaunchesIntoExploreWithoutABlankCanvas() {
         let app = launchApp()
-        XCTAssertTrue(app.staticTexts["Start with something proven"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["No blank canvas required."].exists || app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'No blank canvas'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'classroom-ready widget'")).firstMatch.exists)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == 'Preview'")).firstMatch.exists)
+    }
+
+    @MainActor
+    func testExamplePreviewRendersInPortraitAndFullScreen() {
+        XCUIDevice.shared.orientation = .portrait
+        let app = launchApp()
+        let preview = app.buttons.matching(NSPredicate(format: "label == 'Preview'")).firstMatch
+        XCTAssertTrue(preview.waitForExistence(timeout: 8))
+        preview.tap()
+
+        let playerHeading = app.staticTexts["Ecosystems: can you retrieve it?"]
+        XCTAssertTrue(
+            playerHeading.waitForExistence(timeout: 12),
+            "The bundled student player should render the example, not a blank web view."
+        )
+
+        let fullScreen = app.buttons["Open full-screen student preview"]
+        XCTAssertTrue(fullScreen.waitForExistence(timeout: 5))
+        XCTAssertTrue(waitUntilEnabled(fullScreen, timeout: 5))
+        fullScreen.tap()
+
+        XCTAssertTrue(playerHeading.waitForExistence(timeout: 12))
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
     }
 
     @MainActor
     func testGuidedMakeReachesApprovalAndCreatesAProject() throws {
         let app = launchApp()
-        let makeItem = app.descendants(matching: .any)["sidebar-make"]
-        XCTAssertTrue(makeItem.waitForExistence(timeout: 5))
-        makeItem.tap()
+        selectSidebarItem(label: "Make", in: app)
         XCTAssertTrue(app.staticTexts["Who are you teaching?"].waitForExistence(timeout: 5))
 
         let answers = [
@@ -40,10 +61,42 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchApp() -> XCUIApplication {
+    func testWorkshopAccessCanBeDeferred() {
+        let app = launchApp(extraArguments: ["--ui-testing-registration-required"])
+        let notNow = app.buttons["Not now"]
+        XCTAssertTrue(notNow.waitForExistence(timeout: 5))
+        notNow.tap()
+        XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func selectSidebarItem(label: String, in app: XCUIApplication) {
+        let item = app.staticTexts[label].firstMatch
+        if !item.waitForExistence(timeout: 2) {
+            let sidebarButton = app.buttons.matching(
+                NSPredicate(format: "label CONTAINS[c] 'sidebar'")
+            ).firstMatch
+            XCTAssertTrue(sidebarButton.waitForExistence(timeout: 5))
+            sidebarButton.tap()
+        }
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.tap()
+    }
+
+    @MainActor
+    private func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "enabled == true"),
+            object: element
+        )
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func launchApp(extraArguments: [String] = []) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing-reset"]
+        app.launchArguments = ["--ui-testing-reset"] + extraArguments
         app.launch()
         return app
     }

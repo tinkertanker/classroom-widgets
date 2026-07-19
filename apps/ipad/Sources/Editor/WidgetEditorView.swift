@@ -27,7 +27,18 @@ struct WidgetEditorView: View {
     @State private var mode: EditorMode = .prompt
     @State private var showStudentPreview = false
     @State private var showPublishReadiness = false
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var previewLoadState: PreviewLoadState = .loading
+    @State private var promptDraft = ""
+    @State private var arrangeTitle: String?
+    @State private var arrangeSummary: String?
+    @State private var arrangeAccent: String?
+    @State private var arrangeDensity: String?
+    @State private var promptIsSubmitting = false
+    @State private var arrangeIsSaving = false
+    @State private var arrangeIsAddingImage = false
+    @State private var arrangePendingImageData: Data?
+    @State private var arrangeImageDescription = ""
+    @State private var arrangeImageIsDecorative = false
 
     var body: some View {
         if let project = store.selectedProject, project.id == projectID {
@@ -35,21 +46,34 @@ struct WidgetEditorView: View {
                 editorHeader(project)
                 Divider()
 
-                if horizontalSizeClass == .compact {
-                    VStack(spacing: 0) {
-                        PreviewSurface(project: project, showFullScreen: $showStudentPreview)
-                            .frame(minHeight: 380)
-                        Divider()
-                        editorPanel(project)
-                            .frame(minHeight: 320)
-                    }
-                } else {
-                    HStack(spacing: 0) {
-                        PreviewSurface(project: project, showFullScreen: $showStudentPreview)
+                GeometryReader { proxy in
+                    if proxy.size.width < 760 {
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                PreviewSurface(
+                                    project: project,
+                                    showFullScreen: $showStudentPreview,
+                                    loadState: $previewLoadState
+                                )
+                                .frame(height: max(430, min(560, proxy.size.width * 0.78)))
+                                Divider()
+                                editorPanel(project)
+                                    .frame(height: max(520, proxy.size.height * 0.8))
+                            }
+                        }
+                    } else {
+                        HStack(spacing: 0) {
+                            PreviewSurface(
+                                project: project,
+                                showFullScreen: $showStudentPreview,
+                                loadState: $previewLoadState
+                            )
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        Divider()
-                        editorPanel(project)
-                            .frame(width: 370)
+                            .layoutPriority(1)
+                            Divider()
+                            editorPanel(project)
+                                .frame(minWidth: 340, idealWidth: 370, maxWidth: 390)
+                        }
                     }
                 }
             }
@@ -59,7 +83,11 @@ struct WidgetEditorView: View {
                 StudentPreviewView(project: project)
             }
             .sheet(isPresented: $showPublishReadiness) {
-                PublishReadinessView(store: store, projectID: project.id)
+                PublishReadinessView(
+                    store: store,
+                    projectID: project.id,
+                    previewLoadState: $previewLoadState
+                )
                     .presentationDetents([.large])
             }
         } else {
@@ -87,9 +115,11 @@ struct WidgetEditorView: View {
                 Text(project.spec.metadata.title)
                     .font(.headline)
                     .lineLimit(1)
-                Text(project.isExample ? "Example preview" : "Saved on this iPad")
+                Text(project.isExample ? "Example preview" : projectStateTitle(project))
                     .font(.caption)
-                    .foregroundStyle(StudioTheme.mutedInk)
+                    .foregroundStyle(
+                        project.publicationNeedsUpdate ? StudioTheme.terracotta : StudioTheme.mutedInk
+                    )
             }
 
             Spacer()
@@ -100,26 +130,27 @@ struct WidgetEditorView: View {
                 }
                 .buttonStyle(.borderedProminent)
             } else {
-                Button {
+                Button("Test as student") {
                     showStudentPreview = true
-                } label: {
-                    Label("Test as student", systemImage: "rectangle.inset.filled.and.person.filled")
                 }
                 .buttonStyle(.bordered)
+                .disabled(previewLoadState != .ready)
 
                 Button {
                     showPublishReadiness = true
                 } label: {
-                    Label(
+                    Text(
                         project.publication == nil
                             ? "Publish"
-                            : (project.publicationNeedsUpdate ? "Update link" : "Share"),
-                        systemImage: project.publication == nil
-                            ? "link.badge.plus"
-                            : (project.publicationNeedsUpdate ? "arrow.triangle.2.circlepath" : "square.and.arrow.up")
+                            : (project.publicationNeedsUpdate ? "Update link" : "Share")
                     )
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityHint(
+                    previewLoadState == .ready
+                        ? "Review publishing checks and create a student link."
+                        : "The student preview has not been checked. The publishing sheet will explain what to do."
+                )
                 .accessibilityIdentifier("publish-widget")
             }
         }
@@ -137,29 +168,67 @@ struct WidgetEditorView: View {
             }
             .pickerStyle(.segmented)
             .padding(16)
+            .disabled(promptIsSubmitting || arrangeIsSaving || arrangeIsAddingImage)
 
             Divider()
 
-            Group {
-                switch mode {
-                case .prompt:
-                    PromptEditorPanel(store: store, project: project)
-                case .arrange:
-                    ArrangeEditorPanel(store: store, project: project)
-                case .inspect:
-                    InspectEditorPanel(project: project)
-                }
+            switch mode {
+            case .prompt:
+                PromptEditorPanel(
+                    store: store,
+                    project: project,
+                    prompt: $promptDraft,
+                    isSubmitting: $promptIsSubmitting
+                )
+            case .arrange:
+                ArrangeEditorPanel(
+                    store: store,
+                    project: project,
+                    title: draftBinding($arrangeTitle, current: project.spec.metadata.title),
+                    summary: draftBinding($arrangeSummary, current: project.spec.metadata.summary),
+                    accent: draftBinding($arrangeAccent, current: project.spec.theme.accent),
+                    density: draftBinding($arrangeDensity, current: project.spec.theme.density),
+                    isSaving: $arrangeIsSaving,
+                    isAddingImage: $arrangeIsAddingImage,
+                    pendingImageData: $arrangePendingImageData,
+                    imageDescription: $arrangeImageDescription,
+                    imageIsDecorative: $arrangeImageIsDecorative,
+                    didFinishSaving: clearArrangeDraft
+                )
+            case .inspect:
+                InspectEditorPanel(project: project)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(StudioTheme.surface)
+    }
+
+    private func projectStateTitle(_ project: WidgetProject) -> String {
+        if project.publicationNeedsUpdate { return "Link needs updating" }
+        if project.publication != nil { return "Student link live" }
+        if project.needsRemoteSave { return "Waiting to back up" }
+        if project.remoteDraft != nil { return "Backed up" }
+        return "On this iPad"
+    }
+
+    private func draftBinding(_ draft: Binding<String?>, current: String) -> Binding<String> {
+        Binding(
+            get: { draft.wrappedValue ?? current },
+            set: { draft.wrappedValue = $0 }
+        )
+    }
+
+    private func clearArrangeDraft() {
+        arrangeTitle = nil
+        arrangeSummary = nil
+        arrangeAccent = nil
+        arrangeDensity = nil
     }
 }
 
 private struct PreviewSurface: View {
     let project: WidgetProject
     @Binding var showFullScreen: Bool
-    @State private var loadState: PreviewLoadState = .loading
+    @Binding var loadState: PreviewLoadState
 
     var body: some View {
         VStack(spacing: 0) {
@@ -175,20 +244,21 @@ private struct PreviewSurface: View {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                 }
                 .buttonStyle(.borderless)
+                .frame(width: 44, height: 44)
+                .disabled(loadState != .ready)
                 .accessibilityLabel("Open full-screen student preview")
             }
             .padding(.horizontal, 18)
-            .padding(.vertical, 12)
+            .padding(.vertical, 6)
             .background(StudioTheme.surface)
 
-            WidgetPreviewWebView(spec: project.spec, localAssets: project.localAssets, state: $loadState)
+            PreviewPlayer(project: project, loadState: $loadState)
                 .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(StudioTheme.border, lineWidth: 1)
                 }
-                .shadow(color: .black.opacity(0.08), radius: 15, y: 6)
                 .padding(22)
         }
         .background(StudioTheme.canvas)
@@ -198,17 +268,78 @@ private struct PreviewSurface: View {
     private var previewStatus: some View {
         switch loadState {
         case .loading:
-            HStack(spacing: 6) {
-                ProgressView().controlSize(.small)
-                Text("Loading")
-            }
-            .foregroundStyle(StudioTheme.mutedInk)
+            ProgressView("Opening preview")
+                .controlSize(.small)
+                .labelsHidden()
+                .accessibilityLabel("Opening student preview")
         case .ready:
-            Label("Local & private", systemImage: "checkmark.shield")
-                .foregroundStyle(StudioTheme.sage)
+            EmptyView()
         case .failed:
             Label("Preview issue", systemImage: "exclamationmark.triangle")
                 .foregroundStyle(StudioTheme.terracotta)
+        }
+    }
+}
+
+private struct PreviewPlayer: View {
+    let project: WidgetProject
+    @Binding var loadState: PreviewLoadState
+    @State private var reloadID = UUID()
+
+    var body: some View {
+        ZStack {
+            WidgetPreviewWebView(
+                spec: project.spec,
+                localAssets: project.localAssets,
+                state: $loadState
+            )
+            .id(reloadID)
+            .allowsHitTesting(loadState == .ready)
+            .accessibilityHidden(loadState != .ready)
+            .accessibilityIdentifier(
+                loadState == .ready ? "widget-preview-ready" : "widget-preview-loading"
+            )
+
+            switch loadState {
+            case .loading:
+                VStack(spacing: 12) {
+                    ProgressView()
+                    Text("Opening student preview…")
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.mutedInk)
+                }
+                .padding(24)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                .accessibilityElement(children: .combine)
+            case .ready:
+                EmptyView()
+            case let .failed(message):
+                VStack(spacing: 12) {
+                    Image(systemName: "arrow.clockwise.circle")
+                        .font(.title)
+                        .foregroundStyle(StudioTheme.terracotta)
+                        .accessibilityHidden(true)
+                    Text("Preview unavailable")
+                        .font(.headline)
+                    Text(message)
+                        .font(.callout)
+                        .foregroundStyle(StudioTheme.mutedInk)
+                        .multilineTextAlignment(.center)
+                    Button("Reload preview") {
+                        loadState = .loading
+                        reloadID = UUID()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: 360)
+                .padding(24)
+                .background(StudioTheme.surface, in: RoundedRectangle(cornerRadius: 14))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(StudioTheme.border, lineWidth: 1)
+                }
+                .padding(24)
+            }
         }
     }
 }
@@ -220,15 +351,11 @@ private struct StudentPreviewView: View {
 
     var body: some View {
         NavigationStack {
-            WidgetPreviewWebView(spec: project.spec, localAssets: project.localAssets, state: $loadState)
+            PreviewPlayer(project: project, loadState: $loadState)
                 .background(Color.white)
                 .navigationTitle(project.spec.metadata.title)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Label("Student view", systemImage: "person.crop.circle")
-                            .foregroundStyle(StudioTheme.mutedInk)
-                    }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { dismiss() }
                     }
@@ -240,9 +367,11 @@ private struct StudentPreviewView: View {
 private struct PublishReadinessView: View {
     let store: StudioStore
     let projectID: String
+    @Binding var previewLoadState: PreviewLoadState
     @Environment(\.dismiss) private var dismiss
     @State private var isWorking = false
     @State private var errorMessage: String?
+    @State private var confirmationMessage: String?
     @State private var confirmUnpublish = false
 
     private var project: WidgetProject? {
@@ -254,6 +383,18 @@ private struct PublishReadinessView: View {
             ScrollView {
                 if let project {
                     VStack(alignment: .leading, spacing: 22) {
+                        if let confirmationMessage {
+                            Label(confirmationMessage, systemImage: "checkmark.circle.fill")
+                                .font(.callout.weight(.semibold))
+                                .foregroundStyle(StudioTheme.sage)
+                                .padding(14)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 14))
+                                .accessibilityIdentifier("publish-confirmation")
+                        }
+
+                        previewNotice
+
                         if let publication = project.publication {
                             publishedContent(project, publication: publication)
                         } else {
@@ -301,14 +442,40 @@ private struct PublishReadinessView: View {
     }
 
     @ViewBuilder
+    private var previewNotice: some View {
+        switch previewLoadState {
+        case .ready:
+            EmptyView()
+        case .loading:
+            Label {
+                Text("The student preview is still opening. You can review the publishing checks now, but test the widget before sharing its link.")
+            } icon: {
+                ProgressView().controlSize(.small)
+            }
+            .font(.callout)
+            .foregroundStyle(StudioTheme.mutedInk)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+        case .failed:
+            Label(
+                "The student preview has not loaded. Reload and test it before sharing the link.",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .font(.callout.weight(.semibold))
+            .foregroundStyle(StudioTheme.terracotta)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    @ViewBuilder
     private func readinessContent(_ project: WidgetProject) -> some View {
         let report = WidgetPublishReadiness.audit(project.spec)
-        Label(
-            report.isReady ? "Ready for a student link" : "Finish the publish checks",
-            systemImage: report.isReady ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
-        )
+        Text(report.isReady ? "Ready to publish" : "A few things to fix first")
             .font(.title2.weight(.semibold))
-            .foregroundStyle(report.isReady ? StudioTheme.sage : StudioTheme.terracotta)
+            .foregroundStyle(StudioTheme.ink)
 
         VStack(alignment: .leading, spacing: 12) {
             ForEach(report.checks) { check in
@@ -329,23 +496,19 @@ private struct PublishReadinessView: View {
                     ProgressView()
                         .tint(.white)
                 } else {
-                    Label("Publish student link", systemImage: "link.badge.plus")
+                    Text("Publish student link")
                 }
                 Spacer()
             }
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(isWorking || !report.isReady)
+        .disabled(isWorking || !report.isReady || previewLoadState != .ready)
         .accessibilityIdentifier("confirm-publish-widget")
     }
 
     @ViewBuilder
     private func publishedContent(_ project: WidgetProject, publication: WidgetPublication) -> some View {
-        Label("Your student link is ready", systemImage: "checkmark.seal.fill")
-            .font(.title2.weight(.semibold))
-            .foregroundStyle(StudioTheme.sage)
-
         if project.publicationNeedsUpdate {
             let report = WidgetPublishReadiness.audit(project.spec)
             VStack(alignment: .leading, spacing: 12) {
@@ -365,13 +528,13 @@ private struct PublishReadinessView: View {
                         if isWorking {
                             ProgressView().tint(.white)
                         } else {
-                            Label("Update student link", systemImage: "arrow.triangle.2.circlepath")
+                            Text("Update student link")
                         }
                         Spacer()
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isWorking || !report.isReady)
+                .disabled(isWorking || !report.isReady || previewLoadState != .ready)
             }
             .padding(16)
             .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 14))
@@ -407,6 +570,7 @@ private struct PublishReadinessView: View {
                 Button {
                     UIPasteboard.general.url = publication.url
                     store.notice = "Student link copied"
+                    confirmationMessage = "Student link copied"
                 } label: {
                     Label("Copy link", systemImage: "doc.on.doc")
                         .frame(maxWidth: .infinity)
@@ -450,12 +614,17 @@ private struct PublishReadinessView: View {
     }
 
     private func publish() {
+        let updatesExistingLink = project?.publication != nil
         isWorking = true
         errorMessage = nil
+        confirmationMessage = nil
         Task { @MainActor in
             defer { isWorking = false }
             do {
                 _ = try await store.publish(projectID: projectID)
+                confirmationMessage = updatesExistingLink
+                    ? "Student link updated"
+                    : "Student link ready"
             } catch {
                 store.handleStudioError(error)
                 errorMessage = error.localizedDescription
@@ -466,10 +635,12 @@ private struct PublishReadinessView: View {
     private func unpublish() {
         isWorking = true
         errorMessage = nil
+        confirmationMessage = nil
         Task { @MainActor in
             defer { isWorking = false }
             do {
                 try await store.unpublish(projectID: projectID)
+                confirmationMessage = "Widget unpublished"
             } catch {
                 store.handleStudioError(error)
                 errorMessage = error.localizedDescription
@@ -480,10 +651,12 @@ private struct PublishReadinessView: View {
     private func extendPublication() {
         isWorking = true
         errorMessage = nil
+        confirmationMessage = nil
         Task { @MainActor in
             defer { isWorking = false }
             do {
                 _ = try await store.extendPublication(projectID: projectID)
+                confirmationMessage = "Student link extended by 90 days"
             } catch {
                 store.handleStudioError(error)
                 errorMessage = error.localizedDescription

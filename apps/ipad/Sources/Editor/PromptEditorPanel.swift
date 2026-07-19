@@ -4,8 +4,8 @@ struct PromptEditorPanel: View {
     let store: StudioStore
     let project: WidgetProject
 
-    @State private var prompt = ""
-    @State private var isSubmitting = false
+    @Binding var prompt: String
+    @Binding var isSubmitting: Bool
     @State private var submissionError: String?
     @FocusState private var promptIsFocused: Bool
 
@@ -20,9 +20,9 @@ struct PromptEditorPanel: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Ask for one change")
+                    Text("Describe a change")
                         .font(.headline)
-                    Text("Studio keeps the working parts and prepares a small, validated revision.")
+                    Text("Studio keeps the working parts wherever possible while it makes your change.")
                         .font(.subheadline)
                         .foregroundStyle(StudioTheme.mutedInk)
                 }
@@ -40,9 +40,12 @@ struct PromptEditorPanel: View {
                                     .padding(.horizontal, 15)
                                     .padding(.vertical, 18)
                                     .allowsHitTesting(false)
+                                    .accessibilityHidden(true)
                             }
                         }
                         .focused($promptIsFocused)
+                        .accessibilityLabel("Describe a change")
+                        .accessibilityHint("Ask Studio to change one part of the widget.")
                         .disabled(project.isExample || isSubmitting)
 
                     Button {
@@ -55,7 +58,7 @@ struct PromptEditorPanel: View {
                                     Text("Updating…")
                                 }
                             } else {
-                                Label("Update preview", systemImage: "arrow.up.circle.fill")
+                                Text("Update preview")
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -87,7 +90,7 @@ struct PromptEditorPanel: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Dependable refinements")
+                    Text("Suggestions")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(StudioTheme.mutedInk)
                     ForEach(quickPrompts, id: \.self) { suggestion in
@@ -138,7 +141,9 @@ struct PromptEditorPanel: View {
         Task {
             do {
                 try await store.refine(instruction, projectID: project.id)
-                prompt = ""
+                if prompt.trimmingCharacters(in: .whitespacesAndNewlines) == instruction {
+                    prompt = ""
+                }
             } catch {
                 store.handleStudioError(error)
                 submissionError = error.localizedDescription

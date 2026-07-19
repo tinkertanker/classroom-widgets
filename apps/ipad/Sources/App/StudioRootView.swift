@@ -1,65 +1,51 @@
 import SwiftUI
+import UIKit
 
 struct StudioRootView: View {
     @Bindable var store: StudioStore
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
 
     var body: some View {
-        NavigationSplitView {
-            List {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            List(
+                selection: Binding<StudioSection?>(
+                    get: { store.selectedSection },
+                    set: { section in
+                        guard let section else { return }
+                        store.selectedSection = section
+                        store.closeEditor()
+                    }
+                )
+            ) {
                 Section {
                     ForEach(StudioSection.allCases) { section in
-                        Button {
-                            store.selectedSection = section
-                            store.closeEditor()
-                        } label: {
-                            Label(section.title, systemImage: section.symbolName)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(store.selectedSection == section ? StudioTheme.sage : StudioTheme.ink)
-                            .listRowBackground(store.selectedSection == section ? StudioTheme.sageSoft : Color.clear)
+                        Label(section.title, systemImage: section.symbolName)
+                            .tag(section)
                             .accessibilityIdentifier("sidebar-\(section.rawValue)")
                     }
                 }
-
-                Section("Designed for class") {
-                    Label("No student accounts", systemImage: "person.crop.circle.badge.xmark")
-                    Label("No response collection", systemImage: "tray.and.arrow.down.fill")
-                    Label("One focused widget", systemImage: "link")
-                }
-                .font(.caption)
-                .foregroundStyle(StudioTheme.mutedInk)
 
                 Section {
                     Button {
                         store.requestWorkshopAccess()
                     } label: {
-                        Label(
-                            store.workshopAccessState == .ready ? "Workshop access active" : "Enter workshop access",
-                            systemImage: store.workshopAccessState == .ready ? "checkmark.shield.fill" : "key.fill"
-                        )
+                        HStack {
+                            Label("Workshop access", systemImage: "key")
+                            Spacer()
+                            if store.workshopAccessState == .ready {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(StudioTheme.sage)
+                            }
+                        }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityValue(workshopAccessValue)
                 }
             }
             .scrollContentBackground(.hidden)
             .background(StudioTheme.canvas)
             .navigationTitle("Classroom Widgets")
-            .safeAreaInset(edge: .top) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.grid.2x2.fill")
-                        .foregroundStyle(StudioTheme.sage)
-                    Text("STUDIO")
-                        .font(.caption.weight(.bold))
-                        .tracking(1.4)
-                        .foregroundStyle(StudioTheme.sage)
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-                .background(StudioTheme.canvas)
-            }
         } detail: {
             Group {
                 if let project = store.selectedProject {
@@ -82,6 +68,11 @@ struct StudioRootView: View {
         .onChange(of: store.selectedSection) {
             store.closeEditor()
         }
+        .onChange(of: store.selectedProjectID) { _, projectID in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                columnVisibility = projectID == nil ? .automatic : .detailOnly
+            }
+        }
         .task {
             await store.refreshWorkshopAccess()
         }
@@ -92,7 +83,6 @@ struct StudioRootView: View {
             )
         ) {
             WorkshopAccessView(store: store)
-                .interactiveDismissDisabled(store.workshopAccessState != .ready)
         }
         .alert(
             "Project recovery",
@@ -104,6 +94,56 @@ struct StudioRootView: View {
             Button("OK") { store.dismissRecoveryNotice() }
         } message: {
             Text(store.recoveryNotice ?? "")
+        }
+        .overlay(alignment: .bottom) {
+            if let notice = store.notice {
+                HStack(spacing: 12) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(StudioTheme.sage)
+                        .accessibilityHidden(true)
+                    Text(notice)
+                        .font(.callout.weight(.medium))
+                    Button {
+                        withAnimation { store.notice = nil }
+                    } label: {
+                        Image(systemName: "xmark")
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss message")
+                }
+                .foregroundStyle(StudioTheme.ink)
+                .padding(.leading, 16)
+                .padding(.trailing, 8)
+                .padding(.vertical, 8)
+                .background(.regularMaterial, in: Capsule())
+                .overlay {
+                    Capsule().stroke(StudioTheme.border, lineWidth: 1)
+                }
+                .padding(20)
+                .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+                .accessibilityElement(children: .contain)
+                .task(id: notice) {
+                    guard !UIAccessibility.isVoiceOverRunning else { return }
+                    try? await Task.sleep(for: .seconds(4))
+                    guard store.notice == notice else { return }
+                    withAnimation { store.notice = nil }
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: store.notice)
+        .onChange(of: store.notice) { _, notice in
+            guard let notice else { return }
+            UIAccessibility.post(notification: .announcement, argument: notice)
+        }
+    }
+
+    private var workshopAccessValue: String {
+        switch store.workshopAccessState {
+        case .checking: "Checking"
+        case .registrationRequired: "Not active"
+        case .ready: "Active"
         }
     }
 }

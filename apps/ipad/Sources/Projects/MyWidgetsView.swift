@@ -2,42 +2,31 @@ import SwiftUI
 
 struct MyWidgetsView: View {
     let store: StudioStore
-    private let columns = [GridItem(.adaptive(minimum: 280), spacing: 18)]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var projectToDelete: WidgetProject?
     @State private var isDeleting = false
     @State private var deletionError: String?
     @State private var restorationError: String?
 
+    private var columns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 280), spacing: 18)]
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                HStack(alignment: .bottom) {
-                    PageHeader(
-                        eyebrow: "My Widgets",
-                        title: "Your lesson tools",
-                        subtitle: "Drafts are saved on this iPad and synchronised privately when you generate, refine or publish."
-                    )
-                    Spacer()
-                    Button {
-                        restoreFromStudio()
-                    } label: {
-                        if store.isRestoringFromStudio {
-                            HStack(spacing: 8) {
-                                ProgressView().controlSize(.small)
-                                Text("Restoring…")
-                            }
-                        } else {
-                            Label("Restore from Studio", systemImage: "icloud.and.arrow.down")
-                        }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .bottom) {
+                        pageHeader
+                        Spacer()
+                        headerActions
                     }
-                    .buttonStyle(.bordered)
-                    .disabled(store.isRestoringFromStudio)
-                    Button {
-                        store.selectedSection = .make
-                    } label: {
-                        Label("Make a widget", systemImage: "plus")
+                    VStack(alignment: .leading, spacing: 14) {
+                        pageHeader
+                        headerActions
                     }
-                    .buttonStyle(.borderedProminent)
                 }
 
                 if let restorationError {
@@ -48,15 +37,14 @@ struct MyWidgetsView: View {
 
                 if store.projects.isEmpty {
                     ContentUnavailableView {
-                        Label("No widgets yet", systemImage: "square.stack.3d.up.slash")
+                        Label("No widgets yet", systemImage: "square.stack.3d.up")
                     } description: {
                         Text("Answer a few guided questions to make your first classroom widget.")
                     } actions: {
-                        Button("Start with guidance") { store.selectedSection = .make }
+                        Button("Make a widget") { store.selectedSection = .make }
                             .buttonStyle(.borderedProminent)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 420)
-                    .studioCard()
+                    .frame(maxWidth: .infinity, minHeight: 360)
                 } else {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
                         ForEach(store.projects.sorted(by: { $0.updatedAt > $1.updatedAt })) { project in
@@ -72,7 +60,6 @@ struct MyWidgetsView: View {
             }
             .padding(32)
         }
-        .navigationTitle("My Widgets")
         .accessibilityIdentifier("my-widgets-screen")
         .alert(
             "Couldn’t delete widget",
@@ -106,6 +93,38 @@ struct MyWidgetsView: View {
             }
         } message: {
             Text("Delete everywhere also disables the student link. If Studio cannot verify that deletion, you can explicitly remove only the local copy; its server draft or link may remain active.")
+        }
+    }
+
+    private var pageHeader: some View {
+        PageHeader(
+            title: "Your widgets",
+            subtitle: "Drafts stay on this iPad and are backed up when Studio saves a change."
+        )
+    }
+
+    private var headerActions: some View {
+        HStack {
+            Button {
+                restoreFromStudio()
+            } label: {
+                if store.isRestoringFromStudio {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Restoring…")
+                    }
+                } else {
+                    Label("Restore from Studio", systemImage: "icloud.and.arrow.down")
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(store.isRestoringFromStudio)
+            Button {
+                store.selectedSection = .make
+            } label: {
+                Label("Make a widget", systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 

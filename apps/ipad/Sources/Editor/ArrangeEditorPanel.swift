@@ -5,36 +5,28 @@ import UIKit
 struct ArrangeEditorPanel: View {
     let store: StudioStore
     let project: WidgetProject
+    @Binding var title: String
+    @Binding var summary: String
+    @Binding var accent: String
+    @Binding var density: String
+    @Binding var isSaving: Bool
+    @Binding var isAddingImage: Bool
+    @Binding var pendingImageData: Data?
+    @Binding var imageDescription: String
+    @Binding var imageIsDecorative: Bool
+    let didFinishSaving: () -> Void
 
-    @State private var title: String
-    @State private var summary: String
-    @State private var accent: String
-    @State private var density: String
     @State private var didSave = false
-    @State private var isSaving = false
     @State private var saveError: String?
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showsFileImporter = false
     @State private var showsCamera = false
-    @State private var pendingImageData: Data?
-    @State private var imageDescription = ""
-    @State private var imageIsDecorative = false
-    @State private var isAddingImage = false
 
     private let accents = ["sage", "terracotta", "sky", "indigo", "amber", "rose"]
 
-    init(store: StudioStore, project: WidgetProject) {
-        self.store = store
-        self.project = project
-        _title = State(initialValue: project.spec.metadata.title)
-        _summary = State(initialValue: project.spec.metadata.summary)
-        _accent = State(initialValue: project.spec.theme.accent)
-        _density = State(initialValue: project.spec.theme.density)
-    }
-
     var body: some View {
         Form {
-            Section("Words students see") {
+            Section("Text students see") {
                 TextField("Title", text: $title)
                     .disabled(project.isExample)
                 TextField("Short introduction", text: $summary, axis: .vertical)
@@ -119,7 +111,7 @@ struct ArrangeEditorPanel: View {
                                     Text("Preparing and uploading…")
                                 }
                             } else {
-                                Label("Add to widget", systemImage: "plus.circle.fill")
+                                Text("Add to widget")
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -148,10 +140,7 @@ struct ArrangeEditorPanel: View {
                                 Text("Saving…")
                             }
                         } else {
-                            Label(
-                                didSave ? "Saved" : "Save changes",
-                                systemImage: didSave ? "checkmark" : "square.and.arrow.down"
-                            )
+                            Text(didSave ? "Saved" : "Save changes")
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -169,8 +158,6 @@ struct ArrangeEditorPanel: View {
                         .font(.callout)
                         .foregroundStyle(StudioTheme.terracotta)
                 }
-            } footer: {
-                Text("Content and interaction controls will appear here as the shared widget player adds them.")
             }
         }
         .formStyle(.grouped)
@@ -215,6 +202,7 @@ struct ArrangeEditorPanel: View {
             do {
                 try await store.saveDirectEdits(projectID: project.id)
                 didSave = true
+                didFinishSaving()
             } catch {
                 store.handleStudioError(error)
                 saveError = error.localizedDescription

@@ -11,18 +11,10 @@ struct WidgetProjectCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top) {
-                Image(systemName: project.family.symbolName)
-                    .font(.title2)
-                    .foregroundStyle(StudioTheme.sage)
-                    .frame(width: 48, height: 48)
-                    .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 13))
-                Spacer()
                 Text(project.family.title)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(StudioTheme.mutedInk)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(StudioTheme.canvas, in: Capsule())
+                Spacer()
                 if let onDelete {
                     Menu {
                         Button("Delete widget", systemImage: "trash", role: .destructive, action: onDelete)
@@ -38,11 +30,11 @@ struct WidgetProjectCard: View {
                 Text(project.spec.metadata.title)
                     .font(.headline)
                     .foregroundStyle(StudioTheme.ink)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(project.spec.metadata.summary)
                     .font(.subheadline)
                     .foregroundStyle(StudioTheme.mutedInk)
-                    .lineLimit(3)
+                    .lineLimit(4)
             }
 
             HStack(spacing: 12) {
@@ -55,6 +47,16 @@ struct WidgetProjectCard: View {
             }
             .font(.caption)
             .foregroundStyle(StudioTheme.mutedInk)
+
+            if !project.isExample {
+                HStack(spacing: 8) {
+                    Label(projectStateTitle, systemImage: projectStateSymbol)
+                    Spacer()
+                    Text(project.updatedAt, style: .relative)
+                }
+                .font(.caption)
+                .foregroundStyle(project.publicationNeedsUpdate ? StudioTheme.terracotta : StudioTheme.mutedInk)
+            }
 
             Spacer(minLength: 0)
 
@@ -69,7 +71,23 @@ struct WidgetProjectCard: View {
             }
         }
         .padding(20)
-        .frame(maxWidth: .infinity, minHeight: 260, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .studioCard()
+    }
+
+    private var projectStateTitle: String {
+        if project.publicationNeedsUpdate { return "Link needs updating" }
+        if project.publication != nil { return "Student link live" }
+        if project.needsRemoteSave { return "Waiting to back up" }
+        if project.remoteDraft != nil { return "Backed up" }
+        return "On this iPad"
+    }
+
+    private var projectStateSymbol: String {
+        if project.publicationNeedsUpdate { return "arrow.triangle.2.circlepath" }
+        if project.publication != nil { return "link" }
+        if project.needsRemoteSave { return "icloud.slash" }
+        if project.remoteDraft != nil { return "checkmark.icloud" }
+        return "ipad"
     }
 }

@@ -1,39 +1,28 @@
 import SwiftUI
 
 struct GuidedMakeView: View {
-    private enum Phase {
-        case questions
-        case summary
-    }
-
     let store: StudioStore
-    @State private var draft = GuidedBriefDraft()
-    @State private var questionIndex = 0
-    @State private var response = ""
-    @State private var phase: Phase = .questions
-    @State private var isCreating = false
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var creationError: String?
     @FocusState private var responseIsFocused: Bool
 
     private var question: BriefQuestion {
-        BriefQuestion.all[questionIndex]
+        BriefQuestion.all[store.guidedMakeQuestionIndex]
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 PageHeader(
-                    eyebrow: "Make",
                     title: "What does your next lesson need?",
-                    subtitle: "Studio asks one useful question at a time, then lets you approve the brief before anything is made."
+                    subtitle: "Answer a few questions, then approve the brief before anything is made."
                 )
 
                 Group {
-                    switch phase {
-                    case .questions:
-                        questionCard
-                    case .summary:
+                    if store.guidedMakeShowsSummary {
                         summaryCard
+                    } else {
+                        questionCard
                     }
                 }
                 .frame(maxWidth: 760)
@@ -41,7 +30,6 @@ struct GuidedMakeView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(32)
         }
-        .navigationTitle("Make")
         .accessibilityIdentifier("make-screen")
     }
 
@@ -49,26 +37,24 @@ struct GuidedMakeView: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Question \(questionIndex + 1) of \(BriefQuestion.all.count)")
+                    Text("Question \(store.guidedMakeQuestionIndex + 1) of \(BriefQuestion.all.count)")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(StudioTheme.sage)
+                        .foregroundStyle(StudioTheme.mutedInk)
                     Spacer()
                     if question.isOptional {
-                        Text("OPTIONAL")
-                            .font(.caption2.weight(.bold))
-                            .tracking(0.8)
+                        Text("Optional")
+                            .font(.caption)
                             .foregroundStyle(StudioTheme.mutedInk)
                     }
                 }
-                ProgressView(value: Double(questionIndex + 1), total: Double(BriefQuestion.all.count))
+                ProgressView(
+                    value: Double(store.guidedMakeQuestionIndex + 1),
+                    total: Double(BriefQuestion.all.count)
+                )
                     .tint(StudioTheme.sage)
             }
 
             VStack(alignment: .leading, spacing: 9) {
-                Text(question.eyebrow.uppercased())
-                    .font(.caption.weight(.bold))
-                    .tracking(1.1)
-                    .foregroundStyle(StudioTheme.terracotta)
                 Text(question.prompt)
                     .font(.title.weight(.semibold))
                     .foregroundStyle(StudioTheme.ink)
@@ -77,22 +63,30 @@ struct GuidedMakeView: View {
                     .foregroundStyle(StudioTheme.mutedInk)
             }
 
-            TextEditor(text: $response)
+            TextEditor(
+                text: Binding(
+                    get: { store.guidedMakeResponse },
+                    set: { store.guidedMakeResponse = $0 }
+                )
+            )
                 .font(.body)
                 .frame(minHeight: 112)
                 .padding(12)
                 .scrollContentBackground(.hidden)
                 .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(alignment: .topLeading) {
-                    if response.isEmpty {
+                    if store.guidedMakeResponse.isEmpty {
                         Text(question.placeholder)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 17)
                             .padding(.vertical, 20)
                             .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
                 }
                 .focused($responseIsFocused)
+                .accessibilityLabel(question.prompt)
+                .accessibilityHint(question.supportingText)
                 .accessibilityIdentifier("guided-answer")
 
             VStack(alignment: .leading, spacing: 9) {
@@ -102,7 +96,7 @@ struct GuidedMakeView: View {
                 FlowLayout(spacing: 8) {
                     ForEach(question.suggestions, id: \.self) { suggestion in
                         Button(suggestion) {
-                            response = suggestion
+                            store.guidedMakeResponse = suggestion
                         }
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
@@ -116,13 +110,13 @@ struct GuidedMakeView: View {
             HStack {
                 Button("Back") { moveBack() }
                     .buttonStyle(.bordered)
-                    .disabled(questionIndex == 0)
+                    .disabled(store.guidedMakeQuestionIndex == 0)
                 Spacer()
                 if question.isOptional && cleanResponse.isEmpty {
                     Button("Skip") { moveForward() }
                         .buttonStyle(.bordered)
                 }
-                Button(questionIndex == BriefQuestion.all.count - 1 ? "Review brief" : "Continue") {
+                Button(store.guidedMakeQuestionIndex == BriefQuestion.all.count - 1 ? "Review brief" : "Continue") {
                     moveForward()
                 }
                 .buttonStyle(.borderedProminent)
@@ -136,39 +130,36 @@ struct GuidedMakeView: View {
 
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 24) {
-            HStack(alignment: .top, spacing: 16) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.largeTitle)
-                    .foregroundStyle(StudioTheme.sage)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Check the brief")
-                        .font(.title.weight(.semibold))
-                    Text("Studio will make one focused, front-end-only classroom widget from this plan.")
-                        .foregroundStyle(StudioTheme.mutedInk)
-                }
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Check the brief")
+                    .font(.title.weight(.semibold))
+                Text("Studio will make one focused widget from this plan. You can keep refining it afterwards.")
+                    .foregroundStyle(StudioTheme.mutedInk)
             }
 
             VStack(spacing: 0) {
-                summaryRow(label: "For", value: draft.learnerContext)
+                summaryRow(label: "For", value: store.guidedMakeDraft.learnerContext)
                 Divider()
-                summaryRow(label: "Learning", value: draft.learningObjective)
+                summaryRow(label: "Learning", value: store.guidedMakeDraft.learningObjective)
                 Divider()
-                summaryRow(label: "Students will", value: draft.studentAction)
+                summaryRow(label: "Students will", value: store.guidedMakeDraft.studentAction)
                 Divider()
-                summaryRow(label: "Include", value: draft.sourceContent.isEmpty ? "No required source content" : draft.sourceContent)
+                summaryRow(
+                    label: "Include",
+                    value: store.guidedMakeDraft.sourceContent.isEmpty
+                        ? "No required source content"
+                        : store.guidedMakeDraft.sourceContent
+                )
                 Divider()
-                summaryRow(label: "Feedback", value: draft.feedback)
+                summaryRow(label: "Feedback", value: store.guidedMakeDraft.feedback)
                 Divider()
-                summaryRow(label: "Lesson fit", value: draft.classroomFit)
+                summaryRow(label: "Lesson fit", value: store.guidedMakeDraft.classroomFit)
             }
             .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
 
-            Label(
-                "This V1 widget will not collect responses, identify students or call external services.",
-                systemImage: "hand.raised.fill"
-            )
-            .font(.footnote)
-            .foregroundStyle(StudioTheme.mutedInk)
+            Text("The widget will not collect responses, identify students or call external services.")
+                .font(.footnote)
+                .foregroundStyle(StudioTheme.mutedInk)
 
             if let creationError {
                 Label(creationError, systemImage: "exclamationmark.triangle.fill")
@@ -181,26 +172,29 @@ struct GuidedMakeView: View {
 
             HStack {
                 Button("Edit answers") {
-                    phase = .questions
-                    questionIndex = BriefQuestion.all.count - 1
-                    response = draft.answer(at: questionIndex)
+                    store.guidedMakeShowsSummary = false
+                    store.guidedMakeQuestionIndex = BriefQuestion.all.count - 1
+                    store.guidedMakeResponse = store.guidedMakeDraft.answer(
+                        at: store.guidedMakeQuestionIndex
+                    )
                 }
                 .buttonStyle(.bordered)
+                .disabled(store.isCreatingGuidedDraft)
                 Spacer()
                 Button {
                     createDraft()
                 } label: {
-                    if isCreating {
+                    if store.isCreatingGuidedDraft {
                         HStack(spacing: 8) {
                             ProgressView().controlSize(.small)
                             Text("Making your widget…")
                         }
                     } else {
-                        Label("Create first draft", systemImage: "wand.and.sparkles")
+                        Text("Create first draft")
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(isCreating)
+                .disabled(store.isCreatingGuidedDraft)
                 .accessibilityIdentifier("approve-brief")
             }
         }
@@ -209,53 +203,75 @@ struct GuidedMakeView: View {
     }
 
     private func summaryRow(label: String, value: String) -> some View {
-        HStack(alignment: .top, spacing: 20) {
-            Text(label)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(StudioTheme.mutedInk)
-                .frame(width: 110, alignment: .leading)
-            Text(value)
-                .font(.body)
-                .foregroundStyle(StudioTheme.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 6) {
+                    summaryLabel(label)
+                    summaryValue(value)
+                }
+            } else {
+                HStack(alignment: .top, spacing: 20) {
+                    summaryLabel(label)
+                        .frame(width: 110, alignment: .leading)
+                    summaryValue(value)
+                }
+            }
         }
         .padding(14)
     }
 
+    private func summaryLabel(_ label: String) -> some View {
+            Text(label)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(StudioTheme.mutedInk)
+    }
+
+    private func summaryValue(_ value: String) -> some View {
+            Text(value)
+                .font(.body)
+                .foregroundStyle(StudioTheme.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var cleanResponse: String {
-        response.trimmingCharacters(in: .whitespacesAndNewlines)
+        store.guidedMakeResponse.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func moveForward() {
-        draft.setAnswer(cleanResponse, at: questionIndex)
-        if questionIndex == BriefQuestion.all.count - 1 {
-            phase = .summary
+        guard !store.isCreatingGuidedDraft else { return }
+        store.guidedMakeDraft.setAnswer(cleanResponse, at: store.guidedMakeQuestionIndex)
+        if store.guidedMakeQuestionIndex == BriefQuestion.all.count - 1 {
+            store.guidedMakeShowsSummary = true
             responseIsFocused = false
         } else {
-            questionIndex += 1
-            response = draft.answer(at: questionIndex)
+            store.guidedMakeQuestionIndex += 1
+            store.guidedMakeResponse = store.guidedMakeDraft.answer(
+                at: store.guidedMakeQuestionIndex
+            )
             responseIsFocused = true
         }
     }
 
     private func moveBack() {
-        guard questionIndex > 0 else { return }
-        draft.setAnswer(cleanResponse, at: questionIndex)
-        questionIndex -= 1
-        response = draft.answer(at: questionIndex)
+        guard !store.isCreatingGuidedDraft else { return }
+        guard store.guidedMakeQuestionIndex > 0 else { return }
+        store.guidedMakeDraft.setAnswer(cleanResponse, at: store.guidedMakeQuestionIndex)
+        store.guidedMakeQuestionIndex -= 1
+        store.guidedMakeResponse = store.guidedMakeDraft.answer(
+            at: store.guidedMakeQuestionIndex
+        )
     }
 
     private func createDraft() {
-        isCreating = true
         creationError = nil
         Task {
             do {
-                _ = try await store.createApprovedBrief(draft)
+                _ = try await store.createApprovedBrief(store.guidedMakeDraft)
+                store.resetGuidedMake()
             } catch {
                 store.handleStudioError(error)
                 creationError = error.localizedDescription
             }
-            isCreating = false
         }
     }
 }

@@ -191,6 +191,14 @@ describe('WidgetPlayer', () => {
       'src',
       'classroom-widget-asset://assets/leaf-image',
     );
+
+    rerender(
+      <WidgetPlayer spec={spec} assetBaseUrl="classroom-widget://studio/assets/" />,
+    );
+    expect(screen.getByRole('img', { name: 'A green leaf' })).toHaveAttribute(
+      'src',
+      'classroom-widget://studio/assets/leaf-image',
+    );
   });
 
   it('fails closed with a clear message for a future component kind', () => {

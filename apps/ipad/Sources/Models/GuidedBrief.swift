@@ -31,7 +31,6 @@ struct GuidedBriefDraft: Equatable, Sendable {
 
 struct BriefQuestion: Identifiable, Sendable {
     let id: Int
-    let eyebrow: String
     let prompt: String
     let supportingText: String
     let placeholder: String
@@ -41,7 +40,6 @@ struct BriefQuestion: Identifiable, Sendable {
     static let all: [BriefQuestion] = [
         BriefQuestion(
             id: 0,
-            eyebrow: "Learners",
             prompt: "Who are you teaching?",
             supportingText: "A level and subject is enough. You can add language or support needs too.",
             placeholder: "For example, Secondary 3 Physics",
@@ -50,7 +48,6 @@ struct BriefQuestion: Identifiable, Sendable {
         ),
         BriefQuestion(
             id: 1,
-            eyebrow: "Learning intention",
             prompt: "What should they understand or be able to do?",
             supportingText: "Start with the learning, not the screen you want to build.",
             placeholder: "Relate launch angle and speed to projectile range",
@@ -59,7 +56,6 @@ struct BriefQuestion: Identifiable, Sendable {
         ),
         BriefQuestion(
             id: 2,
-            eyebrow: "Student action",
             prompt: "What should students do on screen?",
             supportingText: "Choose one focused interaction. Studio can suggest a suitable format later.",
             placeholder: "Adjust two sliders, predict, then compare",
@@ -68,7 +64,6 @@ struct BriefQuestion: Identifiable, Sendable {
         ),
         BriefQuestion(
             id: 3,
-            eyebrow: "Content",
             prompt: "What must the widget include?",
             supportingText: "Add examples, vocabulary, values or instructions. Avoid student names and personal information.",
             placeholder: "Use metres, seconds and Earth gravity",
@@ -77,16 +72,14 @@ struct BriefQuestion: Identifiable, Sendable {
         ),
         BriefQuestion(
             id: 4,
-            eyebrow: "Feedback",
             prompt: "How should the widget respond?",
-            supportingText: "Published V1 widgets work locally and do not collect student responses.",
+            supportingText: "Student widgets work locally and do not collect responses.",
             placeholder: "Reveal a hint, then explain the answer",
             suggestions: ["Immediate explanation", "Hints before answers", "No marking — exploration only"],
             isOptional: false
         ),
         BriefQuestion(
             id: 5,
-            eyebrow: "Classroom fit",
             prompt: "How will this fit into the lesson?",
             supportingText: "A rough duration and mode helps Studio keep the activity focused.",
             placeholder: "Eight minutes, students work in pairs on phones",

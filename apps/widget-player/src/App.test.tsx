@@ -64,6 +64,7 @@ describe('public player entry', () => {
     await waitFor(() =>
       expect(postMessage).toHaveBeenCalledWith({ type: 'ready', schemaVersion: '1.0' }),
     );
+    expect(postMessage).toHaveBeenCalledWith({ type: 'loaded' });
   });
 
   it('offers an anonymous fixed-choice report on published widgets', async () => {

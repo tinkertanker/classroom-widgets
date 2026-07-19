@@ -316,7 +316,8 @@ function assetResolver(baseUrl: string): AssetResolver {
       if (
         base.protocol !== 'https:' &&
         base.protocol !== 'http:' &&
-        base.protocol !== 'classroom-widget-asset:'
+        base.protocol !== 'classroom-widget-asset:' &&
+        base.protocol !== 'classroom-widget:'
       ) {
         return undefined;
       }

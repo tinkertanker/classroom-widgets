@@ -12,7 +12,6 @@ struct InspectEditorPanel: View {
                     inspectionRow(label: "Schema", value: project.spec.schemaVersion)
                     inspectionRow(label: "Screens", value: "\(project.spec.screens.count)")
                     inspectionRow(label: "Components", value: "\(project.spec.componentCount)")
-                    inspectionRow(label: "Network access", value: "None")
                 }
                 .padding(14)
                 .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
@@ -33,8 +32,8 @@ struct InspectEditorPanel: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
-                    .background(Color(red: 35 / 255, green: 36 / 255, blue: 34 / 255), in: RoundedRectangle(cornerRadius: 12))
-                    .foregroundStyle(Color(red: 224 / 255, green: 236 / 255, blue: 226 / 255))
+                    .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 12))
+                    .foregroundStyle(StudioTheme.ink)
             }
             .padding(18)
         }
