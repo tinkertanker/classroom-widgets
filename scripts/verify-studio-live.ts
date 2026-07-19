@@ -113,7 +113,7 @@ async function main() {
         'X-Image-Alt': 'The Classroom Widgets Studio app icon.',
         'X-Image-Decorative': 'false',
       },
-      body: imageBytes,
+      body: Uint8Array.from(imageBytes),
     });
     const uploadedBody = await uploadedImage.json().catch(() => undefined) as
       | { asset?: Record<string, unknown> }
@@ -122,6 +122,8 @@ async function main() {
       throw new Error(`Live image upload failed (${uploadedImage.status}): ${JSON.stringify(uploadedBody)}`);
     }
     assetId = uploadedBody.asset.id;
+    const canonicalMediaType = String(uploadedBody.asset.mediaType);
+    const canonicalHash = String(uploadedBody.asset.sha256);
     const imageSpec = structuredClone(revised.spec) as Record<string, unknown>;
     const assets = imageSpec.assets as Array<Record<string, unknown>>;
     assets.push(uploadedBody.asset);
@@ -189,8 +191,8 @@ async function main() {
     const publicImageBytes = Buffer.from(await publicImage.arrayBuffer());
     if (
       !publicImage.ok ||
-      publicImage.headers.get('content-type') !== 'image/png' ||
-      createHash('sha256').update(publicImageBytes).digest('hex') !== imageHash
+      publicImage.headers.get('content-type') !== canonicalMediaType ||
+      createHash('sha256').update(publicImageBytes).digest('hex') !== canonicalHash
     ) {
       throw new Error('Published image could not be loaded intact without credentials.');
     }
@@ -209,18 +211,39 @@ async function main() {
     if (deletedAsset.status !== 404) {
       throw new Error(`Deleted draft's image returned ${deletedAsset.status}, not 404.`);
     }
+    assetId = undefined;
 
     console.log('Live Studio flow passed: generate, revise, upload image, publish, extend, public player/image, revoke, delete.');
-  } finally {
+  } catch (error) {
+    const cleanupErrors: string[] = [];
     if (draftId) {
-      const cleanup = await fetch(`${origin}/v1/drafts/${encodeURIComponent(draftId)}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json', 'X-Device-Token': token },
-      });
-      if (!cleanup.ok && cleanup.status !== 404) {
-        throw new Error(`DELETE /v1/drafts/${encodeURIComponent(draftId)} failed (${cleanup.status}).`);
+      try {
+        const cleanup = await fetch(`${origin}/v1/drafts/${encodeURIComponent(draftId)}`, {
+          method: 'DELETE',
+          headers: { Accept: 'application/json', 'X-Device-Token': token },
+        });
+        if (!cleanup.ok && cleanup.status !== 404) {
+          cleanupErrors.push(`draft cleanup returned ${cleanup.status}`);
+        }
+      } catch (cleanupError) {
+        cleanupErrors.push(`draft cleanup failed: ${String(cleanupError)}`);
       }
     }
+    if (assetId) {
+      try {
+        const cleanup = await fetch(`${origin}/v1/assets/${encodeURIComponent(assetId)}`, {
+          method: 'DELETE',
+          headers: { Accept: 'application/json', 'X-Device-Token': token },
+        });
+        if (!cleanup.ok && cleanup.status !== 404) {
+          cleanupErrors.push(`asset cleanup returned ${cleanup.status}`);
+        }
+      } catch (cleanupError) {
+        cleanupErrors.push(`asset cleanup failed: ${String(cleanupError)}`);
+      }
+    }
+    if (cleanupErrors.length > 0) console.error(`Live cleanup warning: ${cleanupErrors.join('; ')}`);
+    throw error;
   }
 }
 

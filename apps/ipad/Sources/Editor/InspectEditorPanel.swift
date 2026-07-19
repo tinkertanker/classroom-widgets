@@ -6,6 +6,7 @@ struct InspectEditorPanel: View {
     @State private var copied = false
 
     var body: some View {
+        let formattedJSON = project.spec.prettyPrintedJSON()
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -21,13 +22,17 @@ struct InspectEditorPanel: View {
                         .font(.headline)
                     Spacer()
                     Button(copied ? "Copied" : "Copy JSON") {
-                        UIPasteboard.general.string = project.spec.prettyPrintedJSON()
+                        UIPasteboard.general.string = formattedJSON
                         copied = true
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(2))
+                            copied = false
+                        }
                     }
                     .font(.caption)
                 }
 
-                Text(project.spec.prettyPrintedJSON())
+                Text(formattedJSON)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)

@@ -181,10 +181,9 @@ function PrivacyContent() {
       <section>
         <h2>Service providers</h2>
         <p>
-          DeepSeek processes teacher text to generate, revise and safety-check widgets.
-          Cloudflare provides hosting, storage, delivery, abuse protection and image safety
-          review. Content may therefore be processed outside Singapore under those providers’
-          applicable terms and safeguards.
+          Trusted service providers process teacher text for generation and safety checks, and
+          provide hosting, storage, delivery, abuse protection and image review. Content may be
+          processed outside Singapore under those providers’ applicable terms and safeguards.
         </p>
       </section>
       <section>
@@ -192,8 +191,9 @@ function PrivacyContent() {
         <p>
           Published widgets require no account, set no tracking cookie and contain no behavioural
           analytics. Answers and interaction state remain in the browser and are not submitted to
-          Studio. Cloudflare still processes ordinary network requests needed to deliver and
-          protect the page. A safety report contains only a fixed concern category, not free text.
+          Studio. Our delivery provider still processes ordinary network requests needed to
+          deliver and protect the page. A safety report contains only a fixed concern category,
+          not free text.
         </p>
       </section>
       <section>

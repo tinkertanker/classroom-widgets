@@ -324,6 +324,22 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
     }
   }
 
+  async function consumeContentReportQuota(request: Request, timestamp: Date): Promise<void> {
+    const usageDate = timestamp.toISOString().slice(0, 10);
+    const allowed = await dependencies.repository.consumeGeneration(
+      `network-report:${await networkHashFrom(request)}`,
+      usageDate,
+      20,
+    );
+    if (!allowed) {
+      throw new HttpError(
+        429,
+        'REPORT_RATE_LIMIT_REACHED',
+        'This network has sent enough reports for today. Try again tomorrow.',
+      );
+    }
+  }
+
   async function validatedOwnedSpec(input: unknown, ownerHash: string): Promise<WidgetSpec> {
     const validation = validateWidgetSpec(input);
     if (!validation.valid) {
@@ -726,11 +742,13 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
       if (!CONTENT_REPORT_REASONS.has(body.reason)) {
         throw new HttpError(422, 'INVALID_REPORT_REASON', 'Choose a valid reason for the report.');
       }
+      const timestamp = now();
+      await consumeContentReportQuota(request, timestamp);
       const created = await dependencies.repository.createContentReport({
         id: crypto.randomUUID(),
         publicationSlug: slug,
         reason: body.reason,
-        now: now().toISOString(),
+        now: timestamp.toISOString(),
         maximumPerPublication: 100,
       });
       if (!created) {

@@ -528,7 +528,7 @@ final class StudioStore {
     }
 
     func removeImage(assetID: String, projectID: String) {
-        guard !activeRemoteProjectIDs.contains(projectID) else {
+        guard !isRestoringFromStudio, !activeRemoteProjectIDs.contains(projectID) else {
             errorMessage = "Wait for the current Studio update before removing this image."
             return
         }

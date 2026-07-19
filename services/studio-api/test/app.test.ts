@@ -442,6 +442,30 @@ describe('Studio API', () => {
     expect(repository.contentReports).toHaveLength(1);
   });
 
+  it('throttles anonymous content reports by network before filling moderation', async () => {
+    await app.fetch(request('/v1/drafts/generate', 'POST', validBrief()));
+    await app.fetch(publishRequest());
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const response = await app.fetch(
+        request(`/v1/publications/${PUBLICATION_SLUG}/reports`, 'POST', {
+          reason: 'accessibility',
+        }),
+      );
+      expect(response.status).toBe(204);
+    }
+
+    const throttled = await app.fetch(
+      request(`/v1/publications/${PUBLICATION_SLUG}/reports`, 'POST', {
+        reason: 'accessibility',
+      }),
+    );
+    const body = await throttled.json() as { error: { code: string } };
+    expect(throttled.status).toBe(429);
+    expect(body.error.code).toBe('REPORT_RATE_LIMIT_REACHED');
+    expect(repository.contentReports).toHaveLength(20);
+  });
+
   it('returns a friendly expired response', async () => {
     await app.fetch(request('/v1/drafts/generate', 'POST', validBrief()));
     await app.fetch(publishRequest());

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import type {
   AssetSpec,
   ChoiceQuestionComponent,
@@ -465,6 +465,11 @@ function HotspotsRenderer({
   resolveAsset,
 }: ComponentRendererProps & { component: HotspotsComponent }) {
   const [selectedId, setSelectedId] = useState<string>();
+
+  useEffect(() => {
+    setSelectedId(undefined);
+  }, [component]);
+
   const selected = component.hotspots.find((hotspot) => hotspot.id === selectedId);
   const asset = findImageAsset(spec, component.imageAssetId);
   const source = asset && resolveAsset?.(asset);
@@ -570,7 +575,7 @@ function NumberControlRenderer({
         <span id={`${component.id}-label`}>
           {variable.label}:{' '}
           <strong className="control-value">
-            {value} {variable.unit}
+            {value}{variable.unit ? ` ${variable.unit}` : ''}
           </strong>
         </span>
         <div className="toggle-options" role="group" aria-labelledby={`${component.id}-label`}>
@@ -606,7 +611,7 @@ function NumberControlRenderer({
       <label htmlFor={component.id}>
         {variable.label}:{' '}
         <output className="control-value" htmlFor={component.id}>
-          {value} {variable.unit}
+          {value}{variable.unit ? ` ${variable.unit}` : ''}
         </output>
       </label>
       <input

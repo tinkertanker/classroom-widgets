@@ -97,8 +97,8 @@
           },
           "range": {
             "label": "y",
-            "minimum": -15,
-            "maximum": 15
+            "minimum": -20,
+            "maximum": 20
           },
           "series": [
             {

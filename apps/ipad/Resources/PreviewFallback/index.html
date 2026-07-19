@@ -53,12 +53,27 @@
           button.type = 'button';
           button.textContent = contentText(option.content);
           button.addEventListener('click', () => {
-            options.querySelectorAll('button').forEach(item => item.className = '');
+            const multiple = component.selectionMode === 'multiple';
+            if (!multiple) options.querySelectorAll('button').forEach(item => item.className = '');
             const correct = (component.correctOptionIds || []).includes(option.id);
-            button.className = correct ? 'correct' : 'incorrect';
-            feedback.textContent = correct ? component.feedback?.correct : component.feedback?.incorrect;
+            if (multiple && button.className) {
+              button.className = '';
+            } else {
+              button.className = correct ? 'correct' : 'incorrect';
+            }
+            const selected = [...options.querySelectorAll('button')]
+              .filter(item => item.className)
+              .map(item => component.options[Number(item.dataset.index)].id);
+            const expected = component.correctOptionIds || [];
+            const answerCorrect = multiple
+              ? selected.length === expected.length && selected.every(id => expected.includes(id))
+              : correct;
+            feedback.textContent = answerCorrect
+              ? component.feedback?.correct
+              : component.feedback?.incorrect;
             feedback.classList.add('visible');
           });
+          button.dataset.index = String(options.children.length);
           options.append(button);
         }
         card.append(options, feedback);

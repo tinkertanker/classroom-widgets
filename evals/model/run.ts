@@ -111,7 +111,12 @@ async function main() {
     return result;
   });
 
-  const patchCandidates = results.filter((result) => result.spec).slice(0, 4);
+  const seenFamilies = new Set<string>();
+  const patchCandidates = results.filter((result) => {
+    if (!result.spec || seenFamilies.has(result.family)) return false;
+    seenFamilies.add(result.family);
+    return true;
+  });
   let patchPasses = 0;
   for (const result of patchCandidates) {
     try {

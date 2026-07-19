@@ -5,7 +5,7 @@
     ui-rounded, "SF Pro Rounded", "Avenir Next", "Segoe UI", system-ui,
     sans-serif;
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  text-rendering: optimizelegibility;
   -webkit-font-smoothing: antialiased;
   --paper: #f7f5f2;
   --surface: #fdfcfb;
@@ -458,7 +458,7 @@ textarea {
 .question-feedback {
   margin: 0.8rem 0 0;
   padding-left: 0.85rem;
-  border-left: 3px solid currentColor;
+  border-left: 3px solid currentcolor;
   font-size: 0.94rem;
   font-weight: 650;
   line-height: 1.5;
@@ -880,7 +880,7 @@ textarea {
 .timer-display {
   display: block;
   color: var(--ink);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: clamp(3.5rem, 14vw, 7.25rem);
   font-variant-numeric: tabular-nums;
   font-weight: 760;
@@ -1281,7 +1281,7 @@ textarea {
   padding: 0 !important;
   margin: -1px !important;
   overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
   white-space: nowrap !important;
   border: 0 !important;
 }
