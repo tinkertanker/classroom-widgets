@@ -26,7 +26,8 @@ struct ExploreView: View {
             VStack(alignment: .leading, spacing: 28) {
                 PageHeader(
                     title: "Start with an example",
-                    subtitle: "Preview a classroom-ready widget, or remix it for your learners."
+                    subtitle: "Preview a classroom-ready widget, or remix it for your learners.",
+                    sticker: .greetings
                 )
 
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -67,15 +68,20 @@ struct ExploreView: View {
     private func filterButton(title: String, family: WidgetFamily?) -> some View {
         if family == selectedFamily {
             Button(title) {
-                selectedFamily = family
+                withAnimation(.snappy(duration: 0.24)) {
+                    selectedFamily = family
+                }
             }
             .font(.subheadline.weight(.medium))
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
             .accessibilityAddTraits(.isSelected)
+            .contentTransition(.interpolate)
         } else {
             Button(title) {
-                selectedFamily = family
+                withAnimation(.snappy(duration: 0.24)) {
+                    selectedFamily = family
+                }
             }
             .font(.subheadline.weight(.medium))
             .buttonStyle(.bordered)

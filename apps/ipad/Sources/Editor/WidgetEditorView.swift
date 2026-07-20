@@ -122,7 +122,7 @@ struct WidgetEditorView: View {
                 Text(project.isExample ? "Example preview" : projectStateTitle(project))
                     .font(.caption)
                     .foregroundStyle(
-                        projectStateNeedsAttention(project) ? StudioTheme.terracotta : StudioTheme.mutedInk
+                        projectStateNeedsAttention(project) ? StudioTheme.danger : StudioTheme.mutedInk
                     )
             }
 
@@ -304,7 +304,7 @@ private struct PreviewSurface: View {
             EmptyView()
         case .failed:
             Label("Preview issue", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(StudioTheme.terracotta)
+                .foregroundStyle(StudioTheme.danger)
         }
     }
 }
@@ -345,7 +345,7 @@ private struct PreviewPlayer: View {
                 VStack(spacing: 12) {
                     Image(systemName: "arrow.clockwise.circle")
                         .font(.title)
-                        .foregroundStyle(StudioTheme.terracotta)
+                        .foregroundStyle(StudioTheme.danger)
                         .accessibilityHidden(true)
                     Text("Preview unavailable")
                         .font(.headline)
@@ -415,10 +415,10 @@ private struct PublishReadinessView: View {
                         if let confirmationMessage {
                             Label(confirmationMessage, systemImage: "checkmark.circle.fill")
                                 .font(.callout.weight(.semibold))
-                                .foregroundStyle(StudioTheme.sage)
+                                .foregroundStyle(StudioTheme.accent)
                                 .padding(14)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 14))
+                                .background(StudioTheme.accentSoft, in: RoundedRectangle(cornerRadius: 14))
                                 .accessibilityIdentifier("publish-confirmation")
                         }
 
@@ -433,10 +433,10 @@ private struct PublishReadinessView: View {
                         if let errorMessage {
                             Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                                 .font(.callout)
-                                .foregroundStyle(StudioTheme.terracotta)
+                                .foregroundStyle(StudioTheme.danger)
                                 .padding(14)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 14))
+                                .background(StudioTheme.dangerSoft, in: RoundedRectangle(cornerRadius: 14))
                         }
                     }
                     .padding(28)
@@ -501,10 +501,10 @@ private struct PublishReadinessView: View {
                 systemImage: "exclamationmark.triangle.fill"
             )
             .font(.callout.weight(.semibold))
-            .foregroundStyle(StudioTheme.terracotta)
+            .foregroundStyle(StudioTheme.danger)
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 14))
+            .background(StudioTheme.dangerSoft, in: RoundedRectangle(cornerRadius: 14))
         }
     }
 
@@ -552,7 +552,7 @@ private struct PublishReadinessView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Label("This student link has expired", systemImage: "clock.badge.exclamationmark")
                     .font(.headline)
-                    .foregroundStyle(StudioTheme.terracotta)
+                    .foregroundStyle(StudioTheme.danger)
                 Text(
                     project.publicationNeedsUpdate
                         ? "This draft also has newer changes. Update it before sharing so the same URL reopens with the current widget."
@@ -601,7 +601,7 @@ private struct PublishReadinessView: View {
                 .accessibilityIdentifier("extend-expired-publication")
             }
             .padding(16)
-            .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 14))
+            .background(StudioTheme.dangerSoft, in: RoundedRectangle(cornerRadius: 14))
         } else {
             if project.publicationNeedsUpdate {
                 let report = WidgetPublishReadiness.audit(project.spec)
@@ -631,7 +631,7 @@ private struct PublishReadinessView: View {
                     .disabled(isWorking || !report.isReady || previewLoadState != .ready)
                 }
                 .padding(16)
-                .background(StudioTheme.sageSoft, in: RoundedRectangle(cornerRadius: 14))
+                .background(StudioTheme.accentSoft, in: RoundedRectangle(cornerRadius: 14))
             }
 
             HStack(alignment: .top, spacing: 22) {
@@ -696,7 +696,7 @@ private struct PublishReadinessView: View {
     private func readinessRow(_ check: WidgetPublishReadinessCheck) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: check.isPassing ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .foregroundStyle(check.isPassing ? StudioTheme.sage : StudioTheme.terracotta)
+                .foregroundStyle(check.isPassing ? StudioTheme.accent : StudioTheme.danger)
             VStack(alignment: .leading, spacing: 2) {
                 Text(check.title)
                     .font(.callout.weight(.semibold))

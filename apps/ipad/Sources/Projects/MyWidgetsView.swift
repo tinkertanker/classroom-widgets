@@ -32,18 +32,22 @@ struct MyWidgetsView: View {
                 if let restorationError {
                     Label(restorationError, systemImage: "exclamationmark.icloud.fill")
                         .font(.callout)
-                        .foregroundStyle(StudioTheme.terracotta)
+                        .foregroundStyle(StudioTheme.danger)
                 }
 
                 if store.projects.isEmpty {
-                    ContentUnavailableView {
-                        Label("No widgets yet", systemImage: "square.stack.3d.up")
-                    } description: {
+                    VStack(spacing: 16) {
+                        TKRobotStickerView(sticker: .happy, size: 136)
+                        Text("No widgets yet")
+                            .font(StudioTheme.Typography.question)
+                            .foregroundStyle(StudioTheme.ink)
                         Text("Answer a few guided questions to make your first classroom widget.")
-                    } actions: {
+                            .foregroundStyle(StudioTheme.mutedInk)
+                            .multilineTextAlignment(.center)
                         Button("Make a widget") { store.selectedSection = .make }
                             .buttonStyle(.borderedProminent)
                     }
+                    .frame(maxWidth: 420)
                     .frame(maxWidth: .infinity, minHeight: 360)
                 } else {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {

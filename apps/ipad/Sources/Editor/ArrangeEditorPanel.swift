@@ -159,7 +159,7 @@ struct ArrangeEditorPanel: View {
                 if let saveError {
                     Label(saveError, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout)
-                        .foregroundStyle(StudioTheme.terracotta)
+                        .foregroundStyle(StudioTheme.danger)
                 }
             }
         }

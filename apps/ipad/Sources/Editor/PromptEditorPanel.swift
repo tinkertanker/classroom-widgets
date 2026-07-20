@@ -75,7 +75,7 @@ struct PromptEditorPanel: View {
                 if let submissionError {
                     Label(submissionError, systemImage: "exclamationmark.triangle.fill")
                         .font(.callout)
-                        .foregroundStyle(StudioTheme.terracotta)
+                        .foregroundStyle(StudioTheme.danger)
                 }
 
                 if project.previousSpec != nil {

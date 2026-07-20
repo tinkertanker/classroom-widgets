@@ -15,7 +15,7 @@ struct WorkshopAccessView: View {
                     if store.workshopAccessState == .ready {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 52))
-                            .foregroundStyle(StudioTheme.sage)
+                            .foregroundStyle(StudioTheme.accent)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Studio is active")
@@ -48,7 +48,7 @@ struct WorkshopAccessView: View {
                         if let registrationError {
                             Label(registrationError, systemImage: "exclamationmark.triangle.fill")
                                 .font(.callout)
-                                .foregroundStyle(StudioTheme.terracotta)
+                                .foregroundStyle(StudioTheme.danger)
                         }
 
                         Button {

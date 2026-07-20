@@ -8,13 +8,17 @@ struct WidgetProjectCard: View {
     var onSecondary: (() -> Void)?
     var onDelete: (() -> Void)?
     @State private var expiryEvaluationDate = Date.now
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .top) {
                 Text(project.family.title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(StudioTheme.mutedInk)
+                    .font(StudioTheme.Typography.eyebrow)
+                    .foregroundStyle(StudioTheme.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(StudioTheme.accentSoft, in: Capsule())
                 Spacer()
                 if let onDelete {
                     Menu {
@@ -29,13 +33,13 @@ struct WidgetProjectCard: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(project.spec.metadata.title)
-                    .font(.headline)
+                    .font(StudioTheme.Typography.cardTitle)
                     .foregroundStyle(StudioTheme.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(project.spec.metadata.summary)
                     .font(.subheadline)
                     .foregroundStyle(StudioTheme.mutedInk)
-                    .lineLimit(4)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 4)
             }
 
             HStack(spacing: 12) {
@@ -56,7 +60,7 @@ struct WidgetProjectCard: View {
                     Text(project.updatedAt, style: .relative)
                 }
                 .font(.caption)
-                .foregroundStyle(projectStateNeedsAttention ? StudioTheme.terracotta : StudioTheme.mutedInk)
+                .foregroundStyle(projectStateNeedsAttention ? StudioTheme.danger : StudioTheme.mutedInk)
             }
 
             Spacer(minLength: 0)

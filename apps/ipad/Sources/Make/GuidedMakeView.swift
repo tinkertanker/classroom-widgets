@@ -15,7 +15,8 @@ struct GuidedMakeView: View {
             VStack(alignment: .leading, spacing: 28) {
                 PageHeader(
                     title: "What does your next lesson need?",
-                    subtitle: "Answer a few questions, then approve the brief before anything is made."
+                    subtitle: "Answer a few questions, then approve the brief before anything is made.",
+                    sticker: .handraise
                 )
 
                 Group {
@@ -38,7 +39,7 @@ struct GuidedMakeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("Question \(store.guidedMakeQuestionIndex + 1) of \(BriefQuestion.all.count)")
-                        .font(.caption.weight(.semibold))
+                        .font(StudioTheme.Typography.eyebrow)
                         .foregroundStyle(StudioTheme.mutedInk)
                     Spacer()
                     if question.isOptional {
@@ -51,12 +52,12 @@ struct GuidedMakeView: View {
                     value: Double(store.guidedMakeQuestionIndex + 1),
                     total: Double(BriefQuestion.all.count)
                 )
-                    .tint(StudioTheme.sage)
+                    .tint(StudioTheme.accent)
             }
 
             VStack(alignment: .leading, spacing: 9) {
                 Text(question.prompt)
-                    .font(.title.weight(.semibold))
+                    .font(StudioTheme.Typography.question)
                     .foregroundStyle(StudioTheme.ink)
                 Text(question.supportingText)
                     .font(.body)
@@ -73,7 +74,7 @@ struct GuidedMakeView: View {
                 .frame(minHeight: 112)
                 .padding(12)
                 .scrollContentBackground(.hidden)
-                .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if store.guidedMakeResponse.isEmpty {
                         Text(question.placeholder)
@@ -91,7 +92,7 @@ struct GuidedMakeView: View {
 
             VStack(alignment: .leading, spacing: 9) {
                 Text("Or start here")
-                    .font(.caption.weight(.semibold))
+                    .font(StudioTheme.Typography.eyebrow)
                     .foregroundStyle(StudioTheme.mutedInk)
                 FlowLayout(spacing: 8) {
                     ForEach(question.suggestions, id: \.self) { suggestion in
@@ -132,7 +133,7 @@ struct GuidedMakeView: View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Check the brief")
-                    .font(.title.weight(.semibold))
+                    .font(StudioTheme.Typography.question)
                 Text("Studio will make one focused widget from this plan. You can keep refining it afterwards.")
                     .foregroundStyle(StudioTheme.mutedInk)
             }
@@ -155,7 +156,7 @@ struct GuidedMakeView: View {
                 Divider()
                 summaryRow(label: "Lesson fit", value: store.guidedMakeDraft.classroomFit)
             }
-            .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+            .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Text("The widget will not collect responses, identify students or call external services.")
                 .font(.footnote)
@@ -164,10 +165,10 @@ struct GuidedMakeView: View {
             if let creationError {
                 Label(creationError, systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
-                    .foregroundStyle(StudioTheme.terracotta)
+                    .foregroundStyle(StudioTheme.danger)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 12))
+                    .background(StudioTheme.dangerSoft, in: RoundedRectangle(cornerRadius: 12))
             }
 
             HStack {

@@ -34,7 +34,7 @@ struct StudioRootView: View {
                             Spacer()
                             if store.workshopAccessState == .ready {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(StudioTheme.sage)
+                                    .foregroundStyle(StudioTheme.accent)
                             }
                         }
                         .contentShape(Rectangle())
@@ -99,7 +99,7 @@ struct StudioRootView: View {
             if let notice = store.notice {
                 HStack(spacing: 12) {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(StudioTheme.sage)
+                        .foregroundStyle(StudioTheme.accent)
                         .accessibilityHidden(true)
                     Text(notice)
                         .font(.callout.weight(.medium))

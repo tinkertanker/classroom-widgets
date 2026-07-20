@@ -7,7 +7,7 @@ struct ClassroomWidgetsStudioApp: App {
     var body: some Scene {
         WindowGroup {
             StudioRootView(store: store)
-                .tint(StudioTheme.sage)
+                .tint(StudioTheme.accent)
                 .preferredColorScheme(.light)
         }
     }
