@@ -1,5 +1,5 @@
 {
-  "minimumCorpusSize": 12,
+  "minimumCorpusSize": 18,
   "minimumPerFamily": {
     "quiz-retrieval": 3,
     "matching-sorting-sequencing": 3,
@@ -7,8 +7,15 @@
     "graph-simulation": 3,
     "ready-tools": 1
   },
-  "requiredSubjects": ["science", "mathematics", "english", "humanities"],
+  "requiredSubjects": ["science", "mathematics", "english", "humanities", "languages"],
   "requiredLevels": ["upper-primary", "secondary"],
+  "requiredSubjectLevels": {
+    "science": ["upper-primary", "secondary"],
+    "mathematics": ["upper-primary", "secondary"],
+    "english": ["upper-primary", "secondary"],
+    "humanities": ["upper-primary", "secondary"],
+    "languages": ["upper-primary", "secondary"]
+  },
   "cases": [
     {
       "file": "packages/widget-spec/fixtures/retrieval-practice.widget.json",

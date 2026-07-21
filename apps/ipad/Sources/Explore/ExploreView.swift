@@ -17,12 +17,12 @@ struct ExploreView: View {
 
     private var availableSubjects: [String] {
         let present = Set(store.examples.compactMap(\.spec.metadata.subject))
-        return ExampleFilters.subjectOrder.filter(present.contains)
+        return ExampleFilters.orderedValues(present, preferred: ExampleFilters.subjectOrder)
     }
 
     private var availableLevels: [String] {
         let present = Set(store.examples.compactMap(\.spec.metadata.level))
-        return ExampleFilters.levelOrder.filter(present.contains)
+        return ExampleFilters.orderedValues(present, preferred: ExampleFilters.levelOrder)
     }
 
     private var columns: [GridItem] {
@@ -205,6 +205,7 @@ struct ExploreView: View {
                 Text(title)
             }
         }
+        .accessibilityAddTraits(filters.family == family ? .isSelected : [])
     }
 
     private var exampleCountLabel: String {
@@ -219,6 +220,14 @@ struct ExampleFilters: Equatable {
     var subject: String? = nil
     var level: String? = nil
     var family: WidgetFamily? = nil
+
+    static func orderedValues(_ present: Set<String>, preferred: [String]) -> [String] {
+        let preferredValues = preferred.filter(present.contains)
+        let remainingValues = present.subtracting(preferred).sorted {
+            $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
+        }
+        return preferredValues + remainingValues
+    }
 
     var isActive: Bool {
         subject != nil || level != nil || family != nil

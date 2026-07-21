@@ -40,6 +40,7 @@ interface CorpusManifest {
   minimumPerFamily: Record<Family, number>;
   requiredSubjects: string[];
   requiredLevels: string[];
+  requiredSubjectLevels: Record<string, string[]>;
   cases: CorpusCase[];
 }
 
@@ -195,6 +196,14 @@ async function main(): Promise<void> {
   });
   manifest.requiredLevels.forEach((level) => {
     record((levelCounts.get(level) ?? 0) > 0, `corpus: missing required level ${level}`);
+  });
+  Object.entries(manifest.requiredSubjectLevels).forEach(([subject, levels]) => {
+    levels.forEach((level) => {
+      record(
+        manifest.cases.some((entry) => entry.subject === subject && entry.level === level),
+        `corpus: missing required ${subject} example at level ${level}`,
+      );
+    });
   });
 
   for (const entry of manifest.cases) {

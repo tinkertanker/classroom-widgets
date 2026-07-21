@@ -260,6 +260,28 @@ describe('WidgetPlayer', () => {
     expect(screen.getByRole('button', { name: 'Move First step earlier' })).toBeEnabled();
   });
 
+  it('localises student controls and accessibility labels for Malay activities', () => {
+    const spec = matchingAndSortingSpec();
+    spec.metadata = {
+      ...spec.metadata,
+      locale: 'ms-SG',
+      subject: 'languages',
+      level: 'secondary',
+      learningObjective: 'Gunakan bahasa yang sesuai mengikut khalayak dan situasi.',
+    };
+
+    render(<WidgetPlayer spec={spec} reportEndpoint="/v1/reports/example" />);
+
+    expect(screen.getByText('Bahasa')).toBeInTheDocument();
+    expect(screen.getByText('Sekolah menengah')).toBeInTheDocument();
+    expect(screen.getByText('Matlamat pembelajaran')).toBeInTheDocument();
+    expect(screen.getByText(/Pilih padanan bagi setiap item/)).toBeInTheDocument();
+    expect(screen.getAllByRole('option', { name: 'Pilih padanan' })).toHaveLength(2);
+    expect(screen.getByText('Letakkan setiap item dalam satu kategori.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Semak jawapan' })).toBeDisabled();
+    expect(screen.getByText('Laporkan widget ini')).toBeInTheDocument();
+  });
+
   it('exposes hotspots as keyboard-operable labelled buttons', async () => {
     const user = userEvent.setup();
     const spec = hotspotsSpec();

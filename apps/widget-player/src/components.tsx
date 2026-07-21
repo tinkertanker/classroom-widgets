@@ -30,6 +30,7 @@ import {
   type RuntimeValue,
   type RuntimeValues,
 } from './runtime';
+import { playerCopy } from './localisation';
 import { RandomiserRenderer } from './readyMade/RandomiserRenderer';
 import { TaskListRenderer } from './readyMade/TaskListRenderer';
 import { TimerRenderer } from './readyMade/TimerRenderer';
@@ -159,6 +160,7 @@ function ChoiceQuestionRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: ChoiceQuestionComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const selected = Array.isArray(response) ? response : [];
   const correct = submitted && isCorrectResponse(component, response);
   const feedbackId = `${component.id}-feedback`;
@@ -183,7 +185,7 @@ function ChoiceQuestionRenderer({
     >
       <legend>
         {questionNumber ? (
-          <span className="question-number">Question {questionNumber}</span>
+          <span className="question-number">{copy.question(questionNumber)}</span>
         ) : null}
         {component.prompt}
       </legend>
@@ -236,8 +238,10 @@ function ShortAnswerRenderer({
   response,
   submitted,
   questionNumber,
+  spec,
   onResponseChange,
 }: ComponentRendererProps & { component: ShortAnswerQuestionComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const inputId = useId();
   const answer = typeof response === 'string' ? response : '';
   const correct = submitted && isCorrectResponse(component, response);
@@ -247,7 +251,7 @@ function ShortAnswerRenderer({
     <div className="question">
       <label className="question-label" htmlFor={inputId}>
         {questionNumber ? (
-          <span className="question-number">Question {questionNumber}</span>
+          <span className="question-number">{copy.question(questionNumber)}</span>
         ) : null}
         {component.prompt}
       </label>
@@ -281,6 +285,7 @@ function MatchingRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: MatchingComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const answers = responseMap(response);
   const correct = submitted && isCorrectResponse(component, response);
 
@@ -289,10 +294,7 @@ function MatchingRenderer({
       <h2 className="interaction-heading" id={`${component.id}-heading`}>
         {component.prompt}
       </h2>
-      <p className="interaction-instructions">
-        Choose the match for each item. Each menu works with touch, a keyboard or
-        a screen reader.
-      </p>
+      <p className="interaction-instructions">{copy.matchingInstructions}</p>
       <ul className="response-list">
         {component.items.map((item) => (
           <li className="response-row" key={item.id}>
@@ -314,7 +316,7 @@ function MatchingRenderer({
                 })
               }
             >
-              <option value="">Choose a match</option>
+              <option value="">{copy.chooseMatch}</option>
               {component.targets.map((target) => (
                 <option key={target.id} value={target.id}>
                   {contentLabel(target.content)}
@@ -339,6 +341,7 @@ function SortingRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: SortingComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const answers = responseMap(response);
   const correct = submitted && isCorrectResponse(component, response);
 
@@ -347,7 +350,7 @@ function SortingRenderer({
       <h2 className="interaction-heading" id={`${component.id}-heading`}>
         {component.prompt}
       </h2>
-      <p className="interaction-instructions">Place every item in a category.</p>
+      <p className="interaction-instructions">{copy.sortingInstructions}</p>
       <ul className="response-list">
         {component.items.map((item) => (
           <li className="response-row" key={item.id}>
@@ -369,7 +372,7 @@ function SortingRenderer({
                 })
               }
             >
-              <option value="">Choose a category</option>
+              <option value="">{copy.chooseCategory}</option>
               {component.categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.label}
@@ -394,6 +397,7 @@ function SequencingRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: SequencingComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const itemIds = component.items.map((item) => item.id);
   const order = Array.isArray(response)
     ? response
@@ -413,9 +417,7 @@ function SequencingRenderer({
       <h2 className="interaction-heading" id={`${component.id}-heading`}>
         {component.prompt}
       </h2>
-      <p className="interaction-instructions">
-        Use the arrow buttons to put the steps in order.
-      </p>
+      <p className="interaction-instructions">{copy.sequencingInstructions}</p>
       <ol className="sequence-list">
         {order.map((itemId, index) => {
           const item = component.items.find((candidate) => candidate.id === itemId);
@@ -433,7 +435,7 @@ function SequencingRenderer({
                   className="sequence-action"
                   type="button"
                   disabled={submitted || index === 0}
-                  aria-label={`Move ${label} earlier`}
+                  aria-label={copy.moveEarlier(label)}
                   onClick={() => move(index, -1)}
                 >
                   ↑
@@ -442,7 +444,7 @@ function SequencingRenderer({
                   className="sequence-action"
                   type="button"
                   disabled={submitted || index === order.length - 1}
-                  aria-label={`Move ${label} later`}
+                  aria-label={copy.moveLater(label)}
                   onClick={() => move(index, 1)}
                 >
                   ↓

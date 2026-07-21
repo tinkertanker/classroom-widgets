@@ -25,7 +25,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Padankan Perkataan di Bilik Darjah"].exists)
 
         app.buttons["example-filter-clear"].tap()
-        XCTAssertTrue(app.staticTexts["15 examples"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Padankan Perkataan di Bilik Darjah"].waitForExistence(timeout: 3))
     }
 
     @MainActor

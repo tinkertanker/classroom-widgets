@@ -43,6 +43,17 @@ final class WidgetSpecTests: XCTestCase {
         XCTAssertTrue(filters.matches(project))
     }
 
+    func testExampleFilterOrderingKeepsUnexpectedMetadataAvailable() {
+        XCTAssertEqual(
+            ExampleFilters.orderedValues(
+                Set(["computing", "science", "art-and-design"]),
+                preferred: ExampleFilters.subjectOrder
+            ),
+            ["science", "art-and-design", "computing"]
+        )
+        XCTAssertEqual(ExampleFilters.subjectTitle("art-and-design"), "Art And Design")
+    }
+
     func testWidgetSpecRoundTripsUnknownDeclarativeComponents() throws {
         let original = try XCTUnwrap(FixtureRepository.builtInExamples.first?.spec)
         let data = try JSONEncoder().encode(original)
