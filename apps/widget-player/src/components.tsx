@@ -148,7 +148,12 @@ function ImageRenderer({
           data-fit={component.fit}
         />
       ) : (
-        <MissingImage altText={component.altText} decorative={component.decorative} copy={copy} />
+        <MissingImage
+          altText={component.altText}
+          decorative={component.decorative}
+          copy={copy}
+          contentLocale={spec.metadata.locale}
+        />
       )}
       {component.caption ? <figcaption>{component.caption}</figcaption> : null}
     </figure>
@@ -496,7 +501,12 @@ function HotspotsRenderer({
         {source ? (
           <img src={source} alt={component.altText} decoding="async" />
         ) : (
-          <MissingImage altText={component.altText} decorative={false} copy={copy} />
+          <MissingImage
+            altText={component.altText}
+            decorative={false}
+            copy={copy}
+            contentLocale={spec.metadata.locale}
+          />
         )}
         {source ? (
           <svg
@@ -923,10 +933,12 @@ function MissingImage({
   altText,
   decorative,
   copy,
+  contentLocale,
 }: {
   altText: string;
   decorative: boolean;
   copy: PlayerCopy;
+  contentLocale?: string;
 }) {
   const descriptionId = useId();
   const fallbackId = useId();
@@ -939,7 +951,7 @@ function MissingImage({
     >
       {!decorative ? (
         <>
-          <span className="visually-hidden" id={descriptionId}>{altText}.</span>
+          <span className="visually-hidden" id={descriptionId} lang={contentLocale}>{altText}.</span>
           <span className="visually-hidden" id={fallbackId} lang={copy.locale}>{copy.imageUnavailableShort}.</span>
         </>
       ) : null}
