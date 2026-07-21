@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TimerComponent } from '@classroom-widgets/widget-spec';
+import type { PlayerCopy } from '../localisation';
 
 interface TimerRendererProps {
   component: TimerComponent;
+  copy: PlayerCopy;
 }
 
-export function TimerRenderer({ component }: TimerRendererProps) {
+export function TimerRenderer({ component, copy }: TimerRendererProps) {
   const [remainingSeconds, setRemainingSeconds] = useState(component.durationSeconds);
   const [running, setRunning] = useState(false);
   const deadline = useRef<number>();
@@ -75,7 +77,7 @@ export function TimerRenderer({ component }: TimerRendererProps) {
           type="button"
           onClick={running ? pause : start}
         >
-          {running ? 'Pause' : complete ? 'Start again' : 'Start'}
+          <span lang={copy.locale}>{running ? copy.pause : complete ? copy.startAgain : copy.start}</span>
         </button>
         <button
           className="secondary-action"
@@ -83,7 +85,7 @@ export function TimerRenderer({ component }: TimerRendererProps) {
           disabled={!running && remainingSeconds === component.durationSeconds}
           onClick={reset}
         >
-          Reset
+          <span lang={copy.locale}>{copy.reset}</span>
         </button>
       </div>
       {complete ? (

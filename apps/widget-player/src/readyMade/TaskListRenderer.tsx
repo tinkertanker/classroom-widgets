@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { TaskListComponent } from '@classroom-widgets/widget-spec';
+import type { PlayerCopy } from '../localisation';
 
 interface TaskListRendererProps {
   component: TaskListComponent;
+  copy: PlayerCopy;
 }
 
-export function TaskListRenderer({ component }: TaskListRendererProps) {
+export function TaskListRenderer({ component, copy }: TaskListRendererProps) {
   const [completedIds, setCompletedIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
@@ -29,9 +31,10 @@ export function TaskListRenderer({ component }: TaskListRendererProps) {
           className="task-progress"
           role="status"
           aria-live="polite"
-          aria-label={`${completedIds.size} of ${component.items.length} complete`}
+          aria-label={copy.taskProgress(completedIds.size, component.items.length)}
+          lang={copy.locale}
         >
-          <strong>{completedIds.size}</strong> of {component.items.length} complete
+          {copy.taskProgress(completedIds.size, component.items.length)}
         </p>
       ) : null}
       <ul className="task-list">
@@ -54,7 +57,7 @@ export function TaskListRenderer({ component }: TaskListRendererProps) {
         disabled={completedIds.size === 0}
         onClick={() => setCompletedIds(new Set())}
       >
-        Clear checks
+        <span lang={copy.locale}>{copy.clearChecks}</span>
       </button>
     </section>
   );

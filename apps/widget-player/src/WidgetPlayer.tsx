@@ -60,6 +60,7 @@ export function WidgetPlayer({
       <PlayerError
         title={copy.noPageTitle}
         message={copy.noPageMessage}
+        locale={copy.locale}
       />
     );
   }
@@ -114,10 +115,10 @@ export function WidgetPlayer({
         <header className="widget-header">
           <p className="widget-context">
             {spec.metadata.subject ? (
-              <span>{subjectLabel(spec.metadata.subject, spec.metadata.locale)}</span>
+              <span lang={copy.locale}>{subjectLabel(spec.metadata.subject, spec.metadata.locale)}</span>
             ) : null}
             {spec.metadata.level ? (
-              <span>{levelLabel(spec.metadata.level, spec.metadata.locale)}</span>
+              <span lang={copy.locale}>{levelLabel(spec.metadata.level, spec.metadata.locale)}</span>
             ) : null}
             {spec.metadata.estimatedMinutes ? (
               <span>{spec.metadata.estimatedMinutes} min</span>
@@ -127,7 +128,7 @@ export function WidgetPlayer({
           <p className="widget-summary">{spec.metadata.summary}</p>
           {spec.metadata.learningObjective ? (
             <p className="learning-objective">
-              <strong>{copy.learningGoal}</strong>
+              <strong lang={copy.locale}>{copy.learningGoal}</strong>
               <span>{spec.metadata.learningObjective}</span>
             </p>
           ) : null}
@@ -163,15 +164,15 @@ export function WidgetPlayer({
             <div className="activity-actions">
               {screenSubmitted ? (
                 <>
-                  <p className="result-summary" role="status" aria-live="polite">
+                  <p className="result-summary" role="status" aria-live="polite" lang={copy.locale}>
                     <strong>
-                      {score} of {assessable.length}
+                      {copy.score(score, assessable.length)}
                     </strong>{' '}
                     {score === assessable.length
                       ? copy.everythingCorrect
                       : copy.reviewFeedback}
                   </p>
-                  <button className="secondary-action" type="button" onClick={retryScreen}>
+                  <button className="secondary-action" type="button" onClick={retryScreen} lang={copy.locale}>
                     {copy.tryAgain}
                   </button>
                 </>
@@ -182,11 +183,12 @@ export function WidgetPlayer({
                     type="button"
                     disabled={!allComplete}
                     onClick={checkScreen}
+                    lang={copy.locale}
                   >
                     {copy.checkAnswers}
                   </button>
                   {!allComplete ? (
-                    <p className="result-summary">{copy.answerEveryQuestion}</p>
+                    <p className="result-summary" lang={copy.locale}>{copy.answerEveryQuestion}</p>
                   ) : null}
                 </>
               )}
@@ -195,7 +197,7 @@ export function WidgetPlayer({
         </section>
 
         {spec.screens.length > 1 ? (
-          <nav className="screen-navigation" aria-label={copy.activityPages}>
+          <nav className="screen-navigation" aria-label={copy.activityPages} lang={copy.locale}>
             <button
               type="button"
               disabled={screenIndex === 0}
@@ -252,7 +254,7 @@ function ContentReport({ endpoint, locale }: { endpoint: string; locale?: string
   }
 
   return (
-    <footer className="widget-safety-footer">
+    <footer className="widget-safety-footer" lang={copy.locale}>
       <details>
         <summary>{copy.reportWidget}</summary>
         {status === 'sent' ? (
@@ -286,9 +288,17 @@ function ContentReport({ endpoint, locale }: { endpoint: string; locale?: string
   );
 }
 
-export function PlayerError({ title, message }: { title: string; message: string }) {
+export function PlayerError({
+  title,
+  message,
+  locale = 'en',
+}: {
+  title: string;
+  message: string;
+  locale?: string;
+}) {
   return (
-    <main className="player-shell player-error-page">
+    <main className="player-shell player-error-page" lang={locale}>
       <section className="player-error" role="alert">
         <h1>{title}</h1>
         <p>{message}</p>

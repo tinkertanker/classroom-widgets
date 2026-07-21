@@ -29,6 +29,21 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     }
 
     @MainActor
+    func testMalayExampleUsesMalayPlayerChrome() {
+        let app = launchApp()
+        XCTAssertTrue(app.buttons["example-filter-subject-languages"].waitForExistence(timeout: 8))
+        app.buttons["example-filter-subject-languages"].tap()
+        app.buttons["example-filter-level-secondary"].tap()
+
+        let preview = app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch
+        XCTAssertTrue(preview.waitForExistence(timeout: 3))
+        preview.tap()
+
+        XCTAssertTrue(app.buttons["Semak jawapan"].waitForExistence(timeout: 25))
+        XCTAssertFalse(app.buttons["Check answers"].exists)
+    }
+
+    @MainActor
     func testExamplePreviewRendersInPortraitAndFullScreen() {
         XCUIDevice.shared.orientation = .portrait
         let app = launchApp()

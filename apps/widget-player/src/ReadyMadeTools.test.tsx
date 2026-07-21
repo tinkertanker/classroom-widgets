@@ -61,6 +61,22 @@ describe('ready-made classroom tools', () => {
     expect(amber).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(green);
     expect(green).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('Current signal: I am ready to begin')).toBeInTheDocument();
+    expect(screen.getByText('Current signal:', { exact: false }).closest('p')).toHaveTextContent(
+      'Current signal: I am ready to begin',
+    );
+  });
+
+  it('localises ready-made tool chrome for Malay activities', () => {
+    const spec = structuredClone(classroomRoutines);
+    spec.metadata.locale = 'ms-SG';
+    render(<WidgetPlayer spec={spec} />);
+
+    expect(screen.getByRole('button', { name: 'Mula' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pilih' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tetapkan semula pilihan' })).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: '0 daripada 3 selesai' })).toBeInTheDocument();
+    expect(screen.getByText('Isyarat semasa:', { exact: false }).closest('p')).toHaveTextContent(
+      'Isyarat semasa: I am nearly ready',
+    );
   });
 });
