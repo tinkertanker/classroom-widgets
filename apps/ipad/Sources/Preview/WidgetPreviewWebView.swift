@@ -100,10 +100,16 @@ struct WidgetPreviewWebView: UIViewRepresentable {
         private var handshakeTask: Task<Void, Never>?
         private var loadTask: Task<Void, Never>?
         private var inFlightFingerprint: Data?
+        private let navigationTimeout: Duration
 
-        init(state: Binding<PreviewLoadState>, localAssets: [LocalWidgetAssetFile]) {
+        init(
+            state: Binding<PreviewLoadState>,
+            localAssets: [LocalWidgetAssetFile],
+            navigationTimeout: Duration = .seconds(30)
+        ) {
             self.state = state
             resourceSchemeHandler = StudioResourceSchemeHandler(localAssets: localAssets)
+            self.navigationTimeout = navigationTimeout
         }
 
         func attach(_ webView: WKWebView) {
@@ -166,6 +172,8 @@ struct WidgetPreviewWebView: UIViewRepresentable {
                 }
             case "error":
                 let message = body["message"] as? String ?? "The student preview could not render this widget."
+                navigationTask?.cancel()
+                navigationTask = nil
                 handshakeTask?.cancel()
                 handshakeTask = nil
                 loadTask?.cancel()
@@ -189,9 +197,10 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             state.wrappedValue = .loading
 
             let generation = navigationGeneration
+            let timeout = navigationTimeout
             navigationTask?.cancel()
             navigationTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(30))
+                try? await Task.sleep(for: timeout)
                 guard let self,
                       !Task.isCancelled,
                       self.navigationGeneration == generation,

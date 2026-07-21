@@ -126,8 +126,8 @@ final class StudioProjectFileStore {
             let current = try Data(contentsOf: destination)
             try write(current, to: backupURL(for: destination))
         }
-        try write(data, to: destination)
         try markInitialised()
+        try write(data, to: destination)
     }
 
     func markInitialised() throws {

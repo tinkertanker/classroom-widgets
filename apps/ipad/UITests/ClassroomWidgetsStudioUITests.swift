@@ -19,7 +19,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
 
         let playerHeading = app.staticTexts["Ecosystems: can you retrieve it?"]
         XCTAssertTrue(
-            playerHeading.waitForExistence(timeout: 35),
+            playerHeading.waitForExistence(timeout: 25),
             "The bundled student player should render the example, not a blank web view."
         )
 

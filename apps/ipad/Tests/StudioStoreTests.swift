@@ -1,9 +1,38 @@
 import CryptoKit
+import SwiftUI
 import UIKit
+@preconcurrency import WebKit
 import XCTest
 @testable import ClassroomWidgetsStudio
 
 final class StudioStoreTests: XCTestCase {
+    @MainActor
+    func testPreviewNavigationWatchdogFailsAStalledLoad() async {
+        var loadState = PreviewLoadState.ready
+        let coordinator = WidgetPreviewWebView.Coordinator(
+            state: Binding(
+                get: { loadState },
+                set: { loadState = $0 }
+            ),
+            localAssets: [],
+            navigationTimeout: .milliseconds(100)
+        )
+
+        coordinator.webView(
+            WKWebView(frame: .zero),
+            didStartProvisionalNavigation: nil
+        )
+        XCTAssertEqual(loadState, .loading)
+
+        try? await Task.sleep(for: .milliseconds(500))
+
+        XCTAssertEqual(
+            loadState,
+            .failed("The student preview took too long to open. Reload it and try again.")
+        )
+        coordinator.detach()
+    }
+
     @MainActor
     func testGuidedBriefCreatesAFrontEndOnlyDraftAndPersistsIt() throws {
         let (suiteName, defaults) = makeDefaults()
