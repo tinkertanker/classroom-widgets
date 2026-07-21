@@ -35,6 +35,7 @@ enum StudioOperation: Equatable, Sendable {
     case activation
     case generation
     case refinement
+    case undo
     case directSave
     case publish
     case unpublish
@@ -100,6 +101,14 @@ struct StudioErrorPresentation: Equatable, Sendable {
                 )
             }
 
+            if apiError.isServerError(status: 422, code: "POSSIBLE_PERSONAL_DATA") {
+                return .init(
+                    title: "Remove personal information",
+                    message: "Remove student names or other personal information, then try again.",
+                    requestsWorkshopAccess: false
+                )
+            }
+
             if case .deviceCredentialAlreadyActive = apiError {
                 return .init(
                     title: "Studio is already active",
@@ -121,6 +130,7 @@ struct StudioErrorPresentation: Equatable, Sendable {
         case .activation: "Could not activate Studio"
         case .generation: "Could not make the widget"
         case .refinement: "Could not update the widget"
+        case .undo: "Previous version restored on this iPad"
         case .directSave: "Could not save changes"
         case .publish: "Could not confirm the student link"
         case .unpublish: "Could not confirm the link was turned off"
@@ -140,6 +150,8 @@ struct StudioErrorPresentation: Equatable, Sendable {
             "Your answers are still here. Check your connection and try again."
         case .refinement:
             "Your current widget is unchanged. Your prompt is still here; try again when you are ready."
+        case .undo:
+            "The previous version is restored on this iPad, but Studio could not update its recovery copy. Keep Studio open and try saving again when you are connected."
         case .directSave:
             "Your edits are still in this widget on this iPad. Keep Studio open and try again."
         case .publish:
@@ -165,7 +177,7 @@ struct StudioErrorPresentation: Equatable, Sendable {
             "Enter your workshop code to activate Studio."
         case .generation:
             "Enter your workshop code to make a widget. Your answers are still here."
-        case .refinement, .directSave, .image:
+        case .refinement, .undo, .directSave, .image:
             "Enter your workshop code to continue. Your current widget is still on this iPad."
         case .publish, .unpublish, .extend:
             "Enter your workshop code to manage the student link. The widget remains unchanged until Studio confirms the update."
@@ -569,6 +581,7 @@ final class StudioStore {
             try preserveConcurrentVersions(local: local, remote: revised)
             throw StudioStoreError.remoteSaveConflict
         }
+        let projectBeforeRefinement = projects[index]
         projects[index].spec = revised.spec
         projects[index].family = family(for: revised.spec)
         projects[index].previousSpec = baseSpec
@@ -580,7 +593,12 @@ final class StudioStore {
             RevisionNote(id: UUID(), prompt: cleanPrompt, createdAt: .now),
             at: 0
         )
-        try persistProjectOrThrow(projectID)
+        do {
+            try persistProjectOrThrow(projectID)
+        } catch {
+            projects[index] = projectBeforeRefinement
+            throw error
+        }
         notice = "Preview updated"
     }
 

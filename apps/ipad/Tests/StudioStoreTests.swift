@@ -82,6 +82,28 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertFalse(generated.message.contains("Redis"))
         XCTAssertFalse(generated.message.contains("/v1/drafts"))
 
+        let personalData = StudioErrorPresentation.presenting(
+            StudioAPIError.server(
+                status: 422,
+                code: "POSSIBLE_PERSONAL_DATA",
+                message: "Internal classifier result: entity=PERSON"
+            ),
+            during: .generation
+        )
+        XCTAssertEqual(personalData.title, "Remove personal information")
+        XCTAssertEqual(
+            personalData.message,
+            "Remove student names or other personal information, then try again."
+        )
+        XCTAssertFalse(personalData.message.contains("classifier"))
+
+        let undo = StudioErrorPresentation.presenting(
+            StudioAPIError.transport("offline"),
+            during: .undo
+        )
+        XCTAssertEqual(undo.title, "Previous version restored on this iPad")
+        XCTAssertTrue(undo.message.contains("could not update its recovery copy"))
+
         let image = StudioErrorPresentation.presenting(
             WidgetImageError.descriptionRequired,
             during: .image

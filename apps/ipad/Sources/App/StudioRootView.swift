@@ -153,7 +153,7 @@ struct StudioRootView: View {
     private var workshopAccessColour: Color {
         switch store.workshopAccessState {
         case .checking: StudioTheme.mutedInk
-        case .registrationRequired: StudioTheme.danger
+        case .registrationRequired: StudioTheme.mutedInk
         case .ready: StudioTheme.accent
         }
     }

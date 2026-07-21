@@ -110,7 +110,8 @@ struct PromptEditorPanel: View {
                         .foregroundStyle(StudioTheme.mutedInk)
                     ForEach(quickPrompts, id: \.self) { suggestion in
                         Button {
-                            prompt = suggestion
+                            let existing = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+                            prompt = existing.isEmpty ? suggestion : "\(existing)\n\(suggestion)"
                             promptIsFocused = true
                         } label: {
                             HStack {
@@ -176,7 +177,7 @@ struct PromptEditorPanel: View {
             do {
                 try await store.undoLastGeneratedChange(projectID: project.id)
             } catch {
-                submissionError = store.present(error, during: .refinement)
+                submissionError = store.present(error, during: .undo)
             }
             isSubmitting = false
         }

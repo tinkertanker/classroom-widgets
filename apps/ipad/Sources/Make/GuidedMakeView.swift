@@ -101,6 +101,7 @@ struct GuidedMakeView: View {
                         }
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
+                        .controlSize(.large)
                         .font(.subheadline)
                         .accessibilityHint(
                             cleanResponse.isEmpty
@@ -116,16 +117,19 @@ struct GuidedMakeView: View {
             HStack {
                 Button("Back") { moveBack() }
                     .buttonStyle(.bordered)
+                    .controlSize(.large)
                     .disabled(store.guidedMakeQuestionIndex == 0)
                 Spacer()
                 if question.isOptional && cleanResponse.isEmpty {
                     Button("Skip") { moveForward() }
                         .buttonStyle(.bordered)
+                        .controlSize(.large)
                 }
                 Button(store.guidedMakeQuestionIndex == BriefQuestion.all.count - 1 ? "Review answers" : "Continue") {
                     moveForward()
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(!question.isOptional && cleanResponse.isEmpty)
                 .accessibilityIdentifier("guided-continue")
             }
@@ -194,6 +198,7 @@ struct GuidedMakeView: View {
                     editAnswer(at: 0)
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.large)
                 .disabled(store.isCreatingGuidedDraft)
                 Spacer()
                 Button {
@@ -209,6 +214,7 @@ struct GuidedMakeView: View {
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(store.isCreatingGuidedDraft)
                 .accessibilityIdentifier("approve-brief")
             }

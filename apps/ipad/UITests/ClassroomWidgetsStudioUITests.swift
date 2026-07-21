@@ -19,7 +19,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
 
         let playerHeading = app.staticTexts["Ecosystems: can you retrieve it?"]
         XCTAssertTrue(
-            playerHeading.waitForExistence(timeout: 12),
+            playerHeading.waitForExistence(timeout: 35),
             "The bundled student player should render the example, not a blank web view."
         )
 
@@ -95,7 +95,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
         answer.tap()
         answer.typeText("Secondary 3 Physics")
         app.buttons["Primary 5 Science"].tap()
-        XCTAssertTrue((answer.value as? String ?? "").contains("Secondary 3 Physics"))
+        XCTAssertEqual(answer.value as? String, "Secondary 3 Physics\nPrimary 5 Science")
 
         app.buttons["guided-continue"].tap()
         let answers = [

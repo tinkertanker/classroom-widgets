@@ -98,6 +98,10 @@ struct WorkshopAccessView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(store.workshopAccessState == .ready ? "Done" : "Explore examples") {
+                        if store.workshopAccessState != .ready {
+                            store.selectedSection = .explore
+                            store.selectedProjectID = nil
+                        }
                         store.dismissWorkshopAccess()
                     }
                     .disabled(isRegistering)
