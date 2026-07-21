@@ -303,6 +303,11 @@ describe('WidgetPlayer', () => {
     expect(screen.getByRole('button', { name: 'Check answers' })).toHaveAttribute('lang', 'en');
     expect(screen.getByText(/Choose the match for each item/)).toHaveAttribute('lang', 'en');
 
+    spec.metadata.locale = 'msa';
+    rerender(<WidgetPlayer spec={spec} />);
+    expect(document.documentElement).toHaveAttribute('lang', 'msa');
+    expect(screen.getByRole('button', { name: 'Check answers' })).toHaveAttribute('lang', 'en');
+
     const sequence = sequencingSpec();
     sequence.metadata.locale = 'fr-FR';
     const firstItem = sequence.screens[0]?.components[0];

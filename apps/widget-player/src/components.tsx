@@ -30,7 +30,7 @@ import {
   type RuntimeValue,
   type RuntimeValues,
 } from './runtime';
-import { playerCopy, type PlayerCopy } from './localisation';
+import { localeUsesLanguage, playerCopy, type PlayerCopy } from './localisation';
 import { RandomiserRenderer } from './readyMade/RandomiserRenderer';
 import { TaskListRenderer } from './readyMade/TaskListRenderer';
 import { TimerRenderer } from './readyMade/TimerRenderer';
@@ -753,7 +753,7 @@ function PlotRenderer({
   const sampleCount = Math.min(240, Math.max(2, requestedSteps));
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
   const hasLocalisedChrome =
-    !spec.metadata.locale || spec.metadata.locale.toLowerCase().startsWith(copy.locale);
+    !spec.metadata.locale || localeUsesLanguage(spec.metadata.locale, copy.locale);
 
   const xPosition = (value: number) =>
     margin.left + ((value - component.domain.minimum) / xSpan) * plotWidth;

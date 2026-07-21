@@ -6,7 +6,7 @@ import {
 import type { WidgetComponent, WidgetSpec } from '@classroom-widgets/widget-spec';
 
 import { ComponentRenderer, type AssetResolver } from './components';
-import { playerCopy } from './localisation';
+import { localeUsesLanguage, playerCopy } from './localisation';
 import {
   hasCompleteResponse,
   initialRuntimeValues,
@@ -311,7 +311,7 @@ function subjectLabel(
   subject: NonNullable<WidgetSpec['metadata']['subject']>,
   locale?: string,
 ): string {
-  if (locale?.toLowerCase().startsWith('ms')) {
+  if (localeUsesLanguage(locale, 'ms')) {
     const labels: Record<string, string> = {
       science: 'Sains',
       mathematics: 'Matematik',
@@ -326,7 +326,7 @@ function subjectLabel(
 }
 
 function levelLabel(level: NonNullable<WidgetSpec['metadata']['level']>, locale?: string): string {
-  if (locale?.toLowerCase().startsWith('ms')) {
+  if (localeUsesLanguage(locale, 'ms')) {
     switch (level) {
       case 'upper-primary':
         return 'Sekolah rendah tahap atas';

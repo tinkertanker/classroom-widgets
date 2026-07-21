@@ -221,5 +221,9 @@ const malay: PlayerCopy = {
 };
 
 export function playerCopy(locale?: string): PlayerCopy {
-  return locale?.toLowerCase().startsWith('ms') ? malay : english;
+  return localeUsesLanguage(locale, 'ms') ? malay : english;
+}
+
+export function localeUsesLanguage(locale: string | undefined, language: string): boolean {
+  return locale?.split('-', 1)[0]?.toLowerCase() === language.toLowerCase();
 }
