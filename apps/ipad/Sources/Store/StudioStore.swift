@@ -1613,7 +1613,8 @@ private extension StudioAPIError {
         case .deviceRegistrationRequired:
             true
         case let .server(status, code, _):
-            status == 401 && ["DEVICE_REGISTRATION_REQUIRED", "DEVICE_TOKEN_REQUIRED"].contains(code)
+            status == 401
+                && (code == "DEVICE_REGISTRATION_REQUIRED" || code == "DEVICE_TOKEN_REQUIRED")
         case .invalidURL, .invalidResponse, .deviceTokenUnavailable, .deviceCredentialAlreadyActive,
              .transport, .decoding:
             false
