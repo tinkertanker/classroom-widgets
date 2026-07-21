@@ -97,10 +97,9 @@ struct WorkshopAccessView: View {
             .navigationTitle("Studio access")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(store.workshopAccessState == .ready ? "Done" : "Explore examples") {
-                        if store.workshopAccessState != .ready {
+                    Button(accessDismissalTitle) {
+                        if store.workshopAccessState != .ready, store.selectedProjectID == nil {
                             store.selectedSection = .explore
-                            store.selectedProjectID = nil
                         }
                         store.dismissWorkshopAccess()
                     }
@@ -117,6 +116,11 @@ struct WorkshopAccessView: View {
 
     private var cleanedAccessCode: String {
         accessCode.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var accessDismissalTitle: String {
+        if store.workshopAccessState == .ready { return "Done" }
+        return store.selectedProjectID == nil ? "Explore examples" : "Not now"
     }
 
     private var accessCodeIsTooShort: Bool {
