@@ -26,6 +26,7 @@ struct WidgetProjectCard: View {
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.title3)
+                            .frame(width: 44, height: 44)
                     }
                     .accessibilityLabel("More actions for \(project.spec.metadata.title)")
                 }
@@ -61,16 +62,29 @@ struct WidgetProjectCard: View {
                 }
                 .font(.caption)
                 .foregroundStyle(projectStateNeedsAttention ? StudioTheme.danger : StudioTheme.mutedInk)
+
+                if let publication = project.publication,
+                   !publication.isExpired(at: expiryEvaluationDate) {
+                    Text("Students can open this until \(publication.formattedExpirationDate()).")
+                        .font(.caption)
+                        .foregroundStyle(StudioTheme.mutedInk)
+                }
             }
 
             Spacer(minLength: 0)
 
             HStack {
-                Button(primaryTitle, action: onPrimary)
+                Button(action: onPrimary) {
+                    Text(primaryTitle)
+                        .frame(minHeight: 44)
+                }
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("project-primary-\(project.id)")
                 if let secondaryTitle, let onSecondary {
-                    Button(secondaryTitle, action: onSecondary)
+                    Button(action: onSecondary) {
+                        Text(secondaryTitle)
+                            .frame(minHeight: 44)
+                    }
                         .buttonStyle(.bordered)
                 }
             }
@@ -86,14 +100,14 @@ struct WidgetProjectCard: View {
     private var projectStateTitle: String {
         if project.publication?.isExpired(at: expiryEvaluationDate) == true {
             return project.publicationNeedsUpdate
-                ? "Student link expired — update to share"
-                : "Student link expired — extend to share"
+                ? "Link expired — update to share"
+                : "Link expired — reactivate to share"
         }
-        if project.publicationNeedsUpdate { return "Link needs updating" }
-        if project.publication != nil { return "Student link live" }
-        if project.needsRemoteSave { return "Waiting to back up" }
-        if project.remoteDraft != nil { return "Backed up" }
-        return "On this iPad"
+        if project.publicationNeedsUpdate { return "Changes not shared" }
+        if project.publication != nil { return "Shared with students" }
+        if project.needsRemoteSave { return "Waiting to save a recovery copy" }
+        if project.remoteDraft != nil { return "Not shared" }
+        return "Saved on this iPad"
     }
 
     private var projectStateSymbol: String {

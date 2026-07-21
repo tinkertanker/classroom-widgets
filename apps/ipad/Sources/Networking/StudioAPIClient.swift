@@ -528,17 +528,15 @@ enum StudioAPIError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidURL, .invalidResponse:
-            "Studio’s service address is invalid."
+            "Studio could not complete this request. Try again in a moment."
         case .deviceTokenUnavailable:
             "Studio could not create secure ownership for this iPad."
         case .deviceRegistrationRequired:
             "Enter your workshop access code before using Studio."
         case .deviceCredentialAlreadyActive:
             "Studio access is already active. Your existing ownership was kept safe."
-        case let .transport(message), let .decoding(message):
-            message
-        case let .server(_, _, message):
-            message
+        case .transport, .decoding, .server:
+            "Studio could not complete this request. Check your connection and try again."
         }
     }
 }

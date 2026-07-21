@@ -4,6 +4,7 @@ struct ExploreView: View {
     let store: StudioStore
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var selectedFamily: WidgetFamily?
+    @State private var exampleToTry: WidgetProject?
 
     private var visibleExamples: [WidgetProject] {
         guard let selectedFamily else { return store.examples }
@@ -26,7 +27,7 @@ struct ExploreView: View {
             VStack(alignment: .leading, spacing: 28) {
                 PageHeader(
                     title: "Start with an example",
-                    subtitle: "Preview a classroom-ready widget, or remix it for your learners.",
+                    subtitle: "Try a classroom-ready activity as a student, then make a copy for your learners.",
                     sticker: .greetings
                 )
 
@@ -51,8 +52,9 @@ struct ExploreView: View {
                         ForEach(visibleExamples) { project in
                             WidgetProjectCard(
                                 project: project,
-                                onPrimary: { store.open(project) },
-                                secondaryTitle: "Remix",
+                                primaryTitle: "Try as student",
+                                onPrimary: { exampleToTry = project },
+                                secondaryTitle: "Make a copy",
                                 onSecondary: { store.remix(project) }
                             )
                         }
@@ -62,15 +64,21 @@ struct ExploreView: View {
             .padding(32)
         }
         .accessibilityIdentifier("explore-screen")
+        .fullScreenCover(item: $exampleToTry) { project in
+            StudentPreviewView(project: project)
+        }
     }
 
     @ViewBuilder
     private func filterButton(title: String, family: WidgetFamily?) -> some View {
         if family == selectedFamily {
-            Button(title) {
+            Button {
                 withAnimation(.snappy(duration: 0.24)) {
                     selectedFamily = family
                 }
+            } label: {
+                Text(title)
+                    .frame(minHeight: 44)
             }
             .font(.subheadline.weight(.medium))
             .buttonStyle(.borderedProminent)
@@ -78,10 +86,13 @@ struct ExploreView: View {
             .accessibilityAddTraits(.isSelected)
             .contentTransition(.interpolate)
         } else {
-            Button(title) {
+            Button {
                 withAnimation(.snappy(duration: 0.24)) {
                     selectedFamily = family
                 }
+            } label: {
+                Text(title)
+                    .frame(minHeight: 44)
             }
             .font(.subheadline.weight(.medium))
             .buttonStyle(.bordered)

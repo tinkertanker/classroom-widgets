@@ -5,8 +5,10 @@ struct MyWidgetsView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var projectToDelete: WidgetProject?
     @State private var isDeleting = false
-    @State private var deletionError: String?
-    @State private var restorationError: String?
+    @State private var failedRemoteDeletionProject: WidgetProject?
+    @State private var remoteDeletionError: StudioErrorPresentation?
+    @State private var localDeletionError: StudioErrorPresentation?
+    @State private var restorationError: StudioErrorPresentation?
 
     private var columns: [GridItem] {
         dynamicTypeSize.isAccessibilitySize
@@ -30,22 +32,30 @@ struct MyWidgetsView: View {
                 }
 
                 if let restorationError {
-                    Label(restorationError, systemImage: "exclamationmark.icloud.fill")
-                        .font(.callout)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(restorationError.title)
+                            .font(.callout.weight(.semibold))
+                        Text(restorationError.message)
+                            .font(.callout)
+                    }
                         .foregroundStyle(StudioTheme.danger)
                 }
 
                 if store.projects.isEmpty {
                     VStack(spacing: 16) {
                         TKRobotStickerView(sticker: .happy, size: 136)
-                        Text("No widgets yet")
+                        Text("Your widgets will appear here")
                             .font(StudioTheme.Typography.question)
                             .foregroundStyle(StudioTheme.ink)
-                        Text("Answer a few guided questions to make your first classroom widget.")
+                        Text("Make a widget from your lesson needs, or start with an example.")
                             .foregroundStyle(StudioTheme.mutedInk)
                             .multilineTextAlignment(.center)
-                        Button("Make a widget") { store.selectedSection = .make }
-                            .buttonStyle(.borderedProminent)
+                        HStack {
+                            Button("Make a widget") { store.selectedSection = .make }
+                                .buttonStyle(.borderedProminent)
+                            Button("Browse examples") { store.selectedSection = .explore }
+                                .buttonStyle(.bordered)
+                        }
                     }
                     .frame(maxWidth: 420)
                     .frame(maxWidth: .infinity, minHeight: 360)
@@ -67,15 +77,37 @@ struct MyWidgetsView: View {
         }
         .accessibilityIdentifier("my-widgets-screen")
         .alert(
-            "Couldn’t delete widget",
+            localDeletionError?.title ?? "Couldn’t remove this iPad copy",
             isPresented: Binding(
-                get: { deletionError != nil },
-                set: { if !$0 { deletionError = nil } }
+                get: { localDeletionError != nil },
+                set: { if !$0 { localDeletionError = nil } }
             )
         ) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(deletionError ?? "Try again.")
+            Text(localDeletionError?.message ?? "Try again.")
+        }
+        .alert(
+            remoteDeletionError?.title ?? "Studio could not verify deletion everywhere",
+            isPresented: Binding(
+                get: { failedRemoteDeletionProject != nil },
+                set: { if !$0 { failedRemoteDeletionProject = nil } }
+            )
+        ) {
+            Button("Try again") {
+                guard let project = failedRemoteDeletionProject else { return }
+                failedRemoteDeletionProject = nil
+                projectToDelete = project
+                deleteSelectedProject()
+            }
+            Button("Remove from this iPad only", role: .destructive) {
+                removeFailedProjectFromThisIPad()
+            }
+            Button("Keep widget", role: .cancel) {
+                failedRemoteDeletionProject = nil
+            }
+        } message: {
+            Text("\(remoteDeletionError?.message ?? "Studio could not verify deletion everywhere.") Removing it only from this iPad can leave the recovery copy and student link available. You will no longer be able to manage it here.")
         }
         .confirmationDialog(
             "Delete \(projectToDelete?.spec.metadata.title ?? "this widget")?",
@@ -85,26 +117,22 @@ struct MyWidgetsView: View {
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete everywhere", role: .destructive) {
-                deleteSelectedProject(localOnly: false)
-            }
-            .disabled(isDeleting)
-            Button("Remove from this iPad only", role: .destructive) {
-                deleteSelectedProject(localOnly: true)
+            Button("Delete widget", role: .destructive) {
+                deleteSelectedProject()
             }
             .disabled(isDeleting)
             Button("Cancel", role: .cancel) {
                 projectToDelete = nil
             }
         } message: {
-            Text("Delete everywhere also disables the student link. If Studio cannot verify that deletion, you can explicitly remove only the local copy; its server draft or link may remain active.")
+            Text("This removes the Studio copy and disables the student link. If Studio cannot verify that, it will leave this widget on your iPad so you can try again.")
         }
     }
 
     private var pageHeader: some View {
         PageHeader(
             title: "Your widgets",
-            subtitle: "Drafts stay on this iPad and are backed up when Studio saves a change."
+            subtitle: "Widgets stay on this iPad, with a recovery copy saved when Studio is connected."
         )
     }
 
@@ -119,7 +147,7 @@ struct MyWidgetsView: View {
                         Text("Restoring…")
                     }
                 } else {
-                    Label("Restore from Studio", systemImage: "icloud.and.arrow.down")
+                    Label("Find missing widgets", systemImage: "icloud.and.arrow.down")
                 }
             }
             .buttonStyle(.bordered)
@@ -133,7 +161,7 @@ struct MyWidgetsView: View {
         }
     }
 
-    private func deleteSelectedProject(localOnly: Bool) {
+    private func deleteSelectedProject() {
         guard let project = projectToDelete else { return }
         isDeleting = true
         Task { @MainActor in
@@ -142,14 +170,24 @@ struct MyWidgetsView: View {
                 projectToDelete = nil
             }
             do {
-                if localOnly {
-                    try store.deleteLocalProject(projectID: project.id)
-                } else {
-                    try await store.deleteProject(projectID: project.id)
-                }
+                try await store.deleteProject(projectID: project.id)
             } catch {
-                store.handleStudioError(error)
-                deletionError = error.localizedDescription
+                remoteDeletionError = store.present(error, during: .delete)
+                failedRemoteDeletionProject = project
+            }
+        }
+    }
+
+    private func removeFailedProjectFromThisIPad() {
+        guard let project = failedRemoteDeletionProject else { return }
+        isDeleting = true
+        failedRemoteDeletionProject = nil
+        Task { @MainActor in
+            defer { isDeleting = false }
+            do {
+                try store.deleteLocalProject(projectID: project.id)
+            } catch {
+                localDeletionError = store.present(error, during: .delete)
             }
         }
     }
@@ -164,8 +202,7 @@ struct MyWidgetsView: View {
             do {
                 _ = try await store.restoreFromStudio()
             } catch {
-                store.handleStudioError(error)
-                restorationError = error.localizedDescription
+                restorationError = store.present(error, during: .restore)
             }
         }
     }

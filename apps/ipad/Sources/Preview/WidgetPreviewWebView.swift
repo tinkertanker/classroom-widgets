@@ -213,7 +213,9 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             loadTask?.cancel()
             loadTask = nil
             inFlightFingerprint = nil
-            state.wrappedValue = .failed(error.localizedDescription)
+            state.wrappedValue = .failed(
+                "The student preview could not open. Reload it and try again."
+            )
         }
 
         func webView(
@@ -226,7 +228,9 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             loadTask?.cancel()
             loadTask = nil
             inFlightFingerprint = nil
-            state.wrappedValue = .failed(error.localizedDescription)
+            state.wrappedValue = .failed(
+                "The student preview could not open. Reload it and try again."
+            )
         }
 
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
@@ -292,7 +296,9 @@ struct WidgetPreviewWebView: UIViewRepresentable {
                     self.loadTask = nil
                     self.inFlightFingerprint = nil
                     if self.pendingFingerprint == fingerprint {
-                        self.state.wrappedValue = .failed(error.localizedDescription)
+                        self.state.wrappedValue = .failed(
+                            "The student preview could not update. Reload it and try again."
+                        )
                     } else {
                         self.sendPendingIfPossible()
                     }

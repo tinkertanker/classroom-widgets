@@ -6,7 +6,7 @@ struct PromptEditorPanel: View {
 
     @Binding var prompt: String
     @Binding var isSubmitting: Bool
-    @State private var submissionError: String?
+    @State private var submissionError: StudioErrorPresentation?
     @FocusState private var promptIsFocused: Bool
 
     private let quickPrompts = [
@@ -48,17 +48,15 @@ struct PromptEditorPanel: View {
                         .accessibilityHint("Ask Studio to change one part of the widget.")
                         .disabled(project.isExample || isSubmitting)
 
-                    Button {
-                        submit()
-                    } label: {
+                    Button { submit() } label: {
                         Group {
                             if isSubmitting {
                                 HStack(spacing: 8) {
                                     ProgressView().controlSize(.small)
-                                    Text("Updating…")
+                                    Text("Making change…")
                                 }
                             } else {
-                                Text("Update preview")
+                                Text("Make this change")
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -72,10 +70,27 @@ struct PromptEditorPanel: View {
                     .accessibilityIdentifier("submit-refinement")
                 }
 
+                if isSubmitting {
+                    Label(
+                        "Studio is updating the activity. This can take up to two minutes; your current student preview stays visible while it works.",
+                        systemImage: "clock"
+                    )
+                    .font(.callout)
+                    .foregroundStyle(StudioTheme.mutedInk)
+                    .accessibilityElement(children: .combine)
+                }
+
                 if let submissionError {
-                    Label(submissionError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.callout)
-                        .foregroundStyle(StudioTheme.danger)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(submissionError.title)
+                            .font(.callout.weight(.semibold))
+                        Text(submissionError.message)
+                            .font(.callout)
+                    }
+                    .foregroundStyle(StudioTheme.danger)
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(StudioTheme.dangerSoft, in: RoundedRectangle(cornerRadius: 12))
                 }
 
                 if project.previousSpec != nil {
@@ -96,7 +111,7 @@ struct PromptEditorPanel: View {
                     ForEach(quickPrompts, id: \.self) { suggestion in
                         Button {
                             prompt = suggestion
-                            submit()
+                            promptIsFocused = true
                         } label: {
                             HStack {
                                 Text(suggestion)
@@ -107,6 +122,8 @@ struct PromptEditorPanel: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.bordered)
+                        .frame(minHeight: 44)
+                        .accessibilityHint("Adds this suggestion to the change field. Review it, then make the change.")
                         .disabled(project.isExample || isSubmitting)
                     }
                 }
@@ -145,8 +162,7 @@ struct PromptEditorPanel: View {
                     prompt = ""
                 }
             } catch {
-                store.handleStudioError(error)
-                submissionError = error.localizedDescription
+                submissionError = store.present(error, during: .refinement)
             }
             isSubmitting = false
         }
@@ -160,8 +176,7 @@ struct PromptEditorPanel: View {
             do {
                 try await store.undoLastGeneratedChange(projectID: project.id)
             } catch {
-                store.handleStudioError(error)
-                submissionError = error.localizedDescription
+                submissionError = store.present(error, during: .refinement)
             }
             isSubmitting = false
         }

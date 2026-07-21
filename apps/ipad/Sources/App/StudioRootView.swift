@@ -30,12 +30,11 @@ struct StudioRootView: View {
                         store.requestWorkshopAccess()
                     } label: {
                         HStack {
-                            Label("Workshop access", systemImage: "key")
+                            Label("Studio access", systemImage: "key")
                             Spacer()
-                            if store.workshopAccessState == .ready {
-                                Image(systemName: "checkmark")
-                                    .foregroundStyle(StudioTheme.accent)
-                            }
+                            Text(workshopAccessLabel)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(workshopAccessColour)
                         }
                         .contentShape(Rectangle())
                     }
@@ -107,7 +106,7 @@ struct StudioRootView: View {
                         withAnimation { store.notice = nil }
                     } label: {
                         Image(systemName: "xmark")
-                            .frame(width: 32, height: 32)
+                            .frame(width: 44, height: 44)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Dismiss message")
@@ -142,8 +141,20 @@ struct StudioRootView: View {
     private var workshopAccessValue: String {
         switch store.workshopAccessState {
         case .checking: "Checking"
-        case .registrationRequired: "Not active"
-        case .ready: "Active"
+        case .registrationRequired: "Code needed"
+        case .ready: "Ready"
+        }
+    }
+
+    private var workshopAccessLabel: String {
+        workshopAccessValue
+    }
+
+    private var workshopAccessColour: Color {
+        switch store.workshopAccessState {
+        case .checking: StudioTheme.mutedInk
+        case .registrationRequired: StudioTheme.danger
+        case .ready: StudioTheme.accent
         }
     }
 }

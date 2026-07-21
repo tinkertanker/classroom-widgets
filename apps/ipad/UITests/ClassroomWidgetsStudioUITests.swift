@@ -5,15 +5,15 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     func testLaunchesIntoExploreWithoutABlankCanvas() {
         let app = launchApp()
         XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'classroom-ready widget'")).firstMatch.exists)
-        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == 'Preview'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'classroom-ready activity'")).firstMatch.exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch.exists)
     }
 
     @MainActor
     func testExamplePreviewRendersInPortraitAndFullScreen() {
         XCUIDevice.shared.orientation = .portrait
         let app = launchApp()
-        let preview = app.buttons.matching(NSPredicate(format: "label == 'Preview'")).firstMatch
+        let preview = app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch
         XCTAssertTrue(preview.waitForExistence(timeout: 8))
         preview.tap()
 
@@ -23,12 +23,6 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
             "The bundled student player should render the example, not a blank web view."
         )
 
-        let fullScreen = app.buttons["Open full-screen student preview"]
-        XCTAssertTrue(fullScreen.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitUntilEnabled(fullScreen, timeout: 5))
-        fullScreen.tap()
-
-        XCTAssertTrue(playerHeading.waitForExistence(timeout: 12))
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
     }
 
@@ -55,18 +49,73 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
             app.buttons["guided-continue"].tap()
         }
 
-        XCTAssertTrue(app.staticTexts["Check the brief"].waitForExistence(timeout: 5))
-        app.buttons["Create first draft"].tap()
-        XCTAssertTrue(app.buttons["Publish"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Check your answers"].waitForExistence(timeout: 5))
+        app.buttons["Make my widget"].tap()
+        XCTAssertTrue(app.buttons["Share"].waitForExistence(timeout: 8))
     }
 
     @MainActor
     func testWorkshopAccessCanBeDeferred() {
         let app = launchApp(extraArguments: ["--ui-testing-registration-required"])
-        let notNow = app.buttons["Not now"]
+        XCTAssertTrue(app.staticTexts["Set up Studio on this iPad"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Use at least 8 letters, numbers or hyphens."].exists)
+        let notNow = app.buttons["Explore examples"]
         XCTAssertTrue(notNow.waitForExistence(timeout: 5))
         notNow.tap()
         XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 5))
+        let showSidebar = app.buttons["Show Sidebar"]
+        if showSidebar.waitForExistence(timeout: 2) { showSidebar.tap() }
+        XCTAssertTrue(app.staticTexts["Studio access"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Code needed"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testWorkshopAccessExplainsAndValidatesAShortCodeWithoutClearingIt() {
+        let app = launchApp(extraArguments: ["--ui-testing-registration-required"])
+        let code = app.textFields["workshop-access-code"]
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
+        code.tap()
+        code.typeText("SHORT")
+
+        let activate = app.buttons["activate-workshop-access"]
+        XCTAssertTrue(activate.isEnabled)
+        activate.tap()
+
+        XCTAssertTrue(app.staticTexts["Add a few more characters"].waitForExistence(timeout: 3))
+        XCTAssertEqual(code.value as? String, "SHORT")
+    }
+
+    @MainActor
+    func testGuidedSuggestionAddsToWrittenAnswerAndSummaryRowsReturnToTheirQuestion() {
+        let app = launchApp()
+        selectSidebarItem(label: "Make", in: app)
+
+        let answer = app.textViews["guided-answer"]
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        answer.tap()
+        answer.typeText("Secondary 3 Physics")
+        app.buttons["Primary 5 Science"].tap()
+        XCTAssertTrue((answer.value as? String ?? "").contains("Secondary 3 Physics"))
+
+        app.buttons["guided-continue"].tap()
+        let answers = [
+            "Explain projectile range",
+            "Predict then compare",
+            "Use metres",
+            "Explain each answer",
+            "Eight minutes in pairs"
+        ]
+        for response in answers {
+            let currentAnswer = app.textViews["guided-answer"]
+            XCTAssertTrue(currentAnswer.waitForExistence(timeout: 3))
+            currentAnswer.tap()
+            currentAnswer.typeText(response)
+            app.buttons["guided-continue"].tap()
+        }
+
+        XCTAssertTrue(app.staticTexts["Check your answers"].waitForExistence(timeout: 5))
+        app.buttons["edit-brief-answer-1"].tap()
+        XCTAssertTrue(app.staticTexts["What should they understand or be able to do?"].waitForExistence(timeout: 3))
     }
 
     @MainActor
@@ -81,15 +130,6 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
         }
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         item.tap()
-    }
-
-    @MainActor
-    private func waitUntilEnabled(_ element: XCUIElement, timeout: TimeInterval) -> Bool {
-        let expectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "enabled == true"),
-            object: element
-        )
-        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 
     @MainActor

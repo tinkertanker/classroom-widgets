@@ -44,7 +44,89 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertNotEqual(remix.id, example.id)
         XCTAssertEqual(store.examples.first?.id, example.id)
         XCTAssertFalse(remix.isExample)
-        XCTAssertTrue(remix.spec.metadata.title.hasSuffix("Remix"))
+        XCTAssertTrue(remix.spec.metadata.title.hasSuffix("Copy"))
+    }
+
+    @MainActor
+    func testNewInstallStartsWithNoProjectsAndStaysEmptyAfterRestart() throws {
+        let (suiteName, defaults) = makeDefaults()
+        let storage = makeStorageDirectory()
+        defer { cleanUp(suiteName: suiteName, defaults: defaults, storage: storage) }
+
+        let firstLaunch = StudioStore(
+            defaults: defaults,
+            storageDirectory: storage,
+            bundle: Bundle(for: StudioStore.self)
+        )
+        XCTAssertTrue(firstLaunch.projects.isEmpty)
+        XCTAssertFalse(firstLaunch.examples.isEmpty)
+
+        let restarted = StudioStore(
+            defaults: defaults,
+            storageDirectory: storage,
+            bundle: Bundle(for: StudioStore.self)
+        )
+        XCTAssertTrue(restarted.projects.isEmpty)
+    }
+
+    func testTeacherFacingErrorPresentationHidesRawServiceDetailsAndKeepsCuratedMessages() {
+        let serverError = StudioAPIError.server(
+            status: 500,
+            code: "WORKER_EXCEPTION",
+            message: "upstream Redis socket closed at /v1/drafts"
+        )
+
+        let generated = StudioErrorPresentation.presenting(serverError, during: .generation)
+        XCTAssertEqual(generated.title, "Could not make the widget")
+        XCTAssertEqual(generated.message, "Your answers are still here. Check your connection and try again.")
+        XCTAssertFalse(generated.message.contains("Redis"))
+        XCTAssertFalse(generated.message.contains("/v1/drafts"))
+
+        let image = StudioErrorPresentation.presenting(
+            WidgetImageError.descriptionRequired,
+            during: .image
+        )
+        XCTAssertEqual(
+            image.message,
+            "Describe the image for students, or mark it as decorative."
+        )
+
+        let deletion = StudioErrorPresentation.presenting(
+            StudioStoreError.remoteDeletionUnverified,
+            during: .delete
+        )
+        XCTAssertEqual(
+            deletion.message,
+            "Studio could not verify that the recovery copy and student link were deleted, so the widget remains on this iPad. Try again when you are connected."
+        )
+    }
+
+    @MainActor
+    func testRegistrationRequiredPresentationReopensAccessWithoutDiscardingTeacherWork() throws {
+        let (suiteName, defaults) = makeDefaults()
+        let storage = makeStorageDirectory()
+        defer { cleanUp(suiteName: suiteName, defaults: defaults, storage: storage) }
+        let store = StudioStore(defaults: defaults, storageDirectory: storage, bundle: Bundle(for: StudioStore.self))
+        let project = store.create(from: sampleBrief())
+        store.guidedMakeDraft = sampleBrief()
+        let error = StudioAPIError.server(
+            status: 401,
+            code: "DEVICE_REGISTRATION_REQUIRED",
+            message: "JWT signature verification failed"
+        )
+
+        let presentation = store.present(error, during: .generation)
+
+        XCTAssertTrue(presentation.requestsWorkshopAccess)
+        XCTAssertEqual(presentation.title, "Studio access needed")
+        XCTAssertEqual(
+            presentation.message,
+            "Enter your workshop code to make a widget. Your answers are still here."
+        )
+        XCTAssertTrue(store.showsWorkshopAccess)
+        XCTAssertEqual(store.workshopAccessState, .registrationRequired)
+        XCTAssertEqual(store.projects.map(\.id), [project.id])
+        XCTAssertEqual(store.guidedMakeDraft.learningObjective, sampleBrief().learningObjective)
     }
 
     @MainActor
@@ -116,7 +198,7 @@ final class StudioStoreTests: XCTestCase {
             try? FileManager.default.removeItem(at: seedStorage)
         }
         let seed = StudioStore(defaults: defaults, storageDirectory: seedStorage, bundle: Bundle(for: StudioStore.self))
-        let project = try XCTUnwrap(seed.projects.first)
+        let project = seed.create(from: sampleBrief())
         var object = try XCTUnwrap(
             JSONSerialization.jsonObject(with: JSONEncoder().encode(project)) as? [String: Any]
         )
@@ -140,7 +222,7 @@ final class StudioStoreTests: XCTestCase {
         let storage = makeStorageDirectory()
         defer { cleanUp(suiteName: suiteName, defaults: defaults, storage: storage) }
         let store = StudioStore(defaults: defaults, storageDirectory: storage, bundle: Bundle(for: StudioStore.self))
-        let project = try XCTUnwrap(store.projects.first)
+        let project = store.create(from: sampleBrief())
         store.updateDetails(
             for: project.id,
             title: "Latest title",
@@ -165,7 +247,8 @@ final class StudioStoreTests: XCTestCase {
         let storage = makeStorageDirectory()
         defer { cleanUp(suiteName: suiteName, defaults: defaults, storage: storage) }
         let store = StudioStore(defaults: defaults, storageDirectory: storage, bundle: Bundle(for: StudioStore.self))
-        let project = try XCTUnwrap(store.projects.first)
+        let project = store.create(from: sampleBrief())
+        let otherProject = store.create(from: sampleBrief())
         store.updateDetails(
             for: project.id,
             title: "Create backup",
@@ -174,6 +257,7 @@ final class StudioStoreTests: XCTestCase {
             density: project.spec.theme.density
         )
         let otherIDs = Set(store.projects.filter { $0.id != project.id }.map(\.id))
+        XCTAssertEqual(otherIDs, Set([otherProject.id]))
         let primary = try projectFile(for: project.id, in: storage)
         try Data("damaged".utf8).write(to: primary, options: .atomic)
         try Data("also damaged".utf8).write(
@@ -194,7 +278,7 @@ final class StudioStoreTests: XCTestCase {
         let storage = makeStorageDirectory()
         defer { cleanUp(suiteName: suiteName, defaults: defaults, storage: storage) }
         let store = StudioStore(defaults: defaults, storageDirectory: storage, bundle: Bundle(for: StudioStore.self))
-        let project = try XCTUnwrap(store.projects.first)
+        let project = store.create(from: sampleBrief())
         store.updateDetails(
             for: project.id,
             title: "Create backup",
@@ -227,7 +311,7 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertEqual(saved.remoteDraft?.version, 2)
         XCTAssertEqual(saved.spec.metadata.summary, "Revised: Use a bus-stop example")
         XCTAssertTrue(saved.revisionNotes.isEmpty)
-        XCTAssertEqual(context.store.notice, "Restored the latest server revision")
+        XCTAssertEqual(context.store.notice, "Opened the latest saved version")
         let calls = await context.api.recordedCalls()
         XCTAssertEqual(calls.filter { $0.hasPrefix("patch:") }.count, 1)
     }
@@ -315,7 +399,7 @@ final class StudioStoreTests: XCTestCase {
         } catch StudioStoreError.remoteSaveConflict {}
 
         XCTAssertEqual(context.store.projects.count, initialCount + 2)
-        let localCopy = try XCTUnwrap(context.store.projects.first(where: { $0.spec.metadata.title.contains("Local Copy") }))
+        let localCopy = try XCTUnwrap(context.store.projects.first(where: { $0.spec.metadata.title.hasSuffix(" Copy") }))
         XCTAssertTrue(localCopy.spec.metadata.title.contains("My local change"))
         XCTAssertNil(localCopy.remoteDraft)
         let remoteCopy = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
@@ -353,7 +437,7 @@ final class StudioStoreTests: XCTestCase {
         try await context.store.unpublish(projectID: created.id)
 
         XCTAssertNil(context.store.projects.first(where: { $0.id == created.id })?.publication)
-        XCTAssertEqual(context.store.notice, "Widget unpublished")
+        XCTAssertEqual(context.store.notice, "Student link turned off")
     }
 
     @MainActor
@@ -505,7 +589,7 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertEqual(remote.publication, publication)
         XCTAssertFalse(remote.publicationNeedsUpdate)
         let localCopy = try XCTUnwrap(
-            context.store.projects.first(where: { $0.spec.metadata.title.contains("Local Copy") })
+            context.store.projects.first(where: { $0.spec.metadata.title.hasSuffix(" Copy") })
         )
         XCTAssertNil(localCopy.publication)
     }
@@ -593,14 +677,14 @@ final class StudioStoreTests: XCTestCase {
         let unchanged = try XCTUnwrap(context.store.projects.first(where: { $0.id == created.id }))
         XCTAssertEqual(unchanged.spec.metadata.title, "My unsynchronised title")
         XCTAssertTrue(unchanged.localAssets.isEmpty)
-        XCTAssertNil(context.store.projects.first(where: { $0.spec.metadata.title.contains("Local Copy") }))
+        XCTAssertNil(context.store.projects.first(where: { $0.spec.metadata.title.hasSuffix(" Copy") }))
     }
 
     @MainActor
     func testPublishReadinessFailureMakesNoNetworkRequest() async throws {
         let context = try makeRemoteContext()
         defer { cleanUp(suiteName: context.suiteName, defaults: context.defaults, storage: context.storage) }
-        let project = try XCTUnwrap(context.store.projects.first)
+        let project = context.store.create(from: sampleBrief())
         context.store.updateDetails(
             for: project.id,
             title: "  ",

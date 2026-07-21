@@ -5,7 +5,6 @@ import UIKit
 private enum EditorMode: String, CaseIterable, Identifiable {
     case prompt
     case arrange
-    case inspect
 
     var id: String { rawValue }
 
@@ -13,9 +12,8 @@ private enum EditorMode: String, CaseIterable, Identifiable {
 
     var symbolName: String {
         switch self {
-        case .prompt: "text.bubble"
+        case .prompt: "sparkles"
         case .arrange: "slider.horizontal.3"
-        case .inspect: "list.bullet.rectangle"
         }
     }
 }
@@ -26,6 +24,7 @@ struct WidgetEditorView: View {
 
     @State private var mode: EditorMode = .prompt
     @State private var showStudentPreview = false
+    @State private var showTechnicalDetails = false
     @State private var showPublishReadiness = false
     @State private var previewLoadState: PreviewLoadState = .loading
     @State private var promptDraft = ""
@@ -83,6 +82,18 @@ struct WidgetEditorView: View {
             .fullScreenCover(isPresented: $showStudentPreview) {
                 StudentPreviewView(project: project)
             }
+            .sheet(isPresented: $showTechnicalDetails) {
+                NavigationStack {
+                    InspectEditorPanel(project: project)
+                        .navigationTitle("Technical details")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showTechnicalDetails = false }
+                            }
+                        }
+                }
+            }
             .sheet(isPresented: $showPublishReadiness) {
                 PublishReadinessView(
                     store: store,
@@ -129,7 +140,7 @@ struct WidgetEditorView: View {
             Spacer()
 
             if project.isExample {
-                Button("Remix to edit") {
+                Button("Make a copy") {
                     store.remix(project)
                 }
                 .buttonStyle(.borderedProminent)
@@ -145,7 +156,7 @@ struct WidgetEditorView: View {
                 } label: {
                     Text(
                         project.publication == nil
-                            ? "Publish"
+                            ? "Share"
                             : (project.publication?.isExpired(at: expiryEvaluationDate) == true
                                 ? (project.publicationNeedsUpdate ? "Update link" : "Extend link")
                                 : (project.publicationNeedsUpdate ? "Update link" : "Share"))
@@ -159,6 +170,19 @@ struct WidgetEditorView: View {
                 )
                 .accessibilityIdentifier("publish-widget")
             }
+
+            Menu {
+                Button {
+                    showTechnicalDetails = true
+                } label: {
+                    Label("Technical details", systemImage: "list.bullet.rectangle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("More editor options")
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 13)
@@ -169,7 +193,7 @@ struct WidgetEditorView: View {
         VStack(spacing: 0) {
             Picker("Editing mode", selection: $mode) {
                 ForEach(EditorMode.allCases) { item in
-                    Label(item.title, systemImage: item.symbolName).tag(item)
+                    Label(editorModeTitle(item), systemImage: item.symbolName).tag(item)
                 }
             }
             .pickerStyle(.segmented)
@@ -201,8 +225,6 @@ struct WidgetEditorView: View {
                     imageIsDecorative: $arrangeImageIsDecorative,
                     didFinishSaving: clearArrangeDraft
                 )
-            case .inspect:
-                InspectEditorPanel(project: project)
             }
         }
         .background(StudioTheme.surface)
@@ -211,14 +233,21 @@ struct WidgetEditorView: View {
     private func projectStateTitle(_ project: WidgetProject) -> String {
         if project.publication?.isExpired(at: expiryEvaluationDate) == true {
             return project.publicationNeedsUpdate
-                ? "Student link expired — update to share"
-                : "Student link expired — extend to share"
+                ? "Link expired — update to share"
+                : "Link expired — reactivate to share"
         }
-        if project.publicationNeedsUpdate { return "Link needs updating" }
-        if project.publication != nil { return "Student link live" }
-        if project.needsRemoteSave { return "Waiting to back up" }
-        if project.remoteDraft != nil { return "Backed up" }
-        return "On this iPad"
+        if project.publicationNeedsUpdate { return "Changes not shared" }
+        if project.publication != nil { return "Shared with students" }
+        if project.needsRemoteSave { return "Waiting to save a recovery copy" }
+        if project.remoteDraft != nil { return "Not shared" }
+        return "Saved on this iPad"
+    }
+
+    private func editorModeTitle(_ mode: EditorMode) -> String {
+        switch mode {
+        case .prompt: "Ask Studio"
+        case .arrange: "Edit details"
+        }
     }
 
     private func projectStateNeedsAttention(_ project: WidgetProject) -> Bool {
@@ -313,6 +342,7 @@ private struct PreviewPlayer: View {
     let project: WidgetProject
     @Binding var loadState: PreviewLoadState
     @State private var reloadID = UUID()
+    @State private var hasDisplayedPreview = false
 
     var body: some View {
         ZStack {
@@ -323,22 +353,37 @@ private struct PreviewPlayer: View {
             )
             .id(reloadID)
             .allowsHitTesting(loadState == .ready)
-            .accessibilityHidden(loadState != .ready)
             .accessibilityIdentifier(
                 loadState == .ready ? "widget-preview-ready" : "widget-preview-loading"
             )
 
             switch loadState {
             case .loading:
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Opening student preview…")
-                        .font(.callout)
-                        .foregroundStyle(StudioTheme.mutedInk)
+                if hasDisplayedPreview {
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 8) {
+                            ProgressView().controlSize(.small)
+                            Text("Updating preview…")
+                                .font(.callout.weight(.medium))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(.regularMaterial, in: Capsule())
+                        .padding(18)
+                        .accessibilityElement(children: .combine)
+                    }
+                } else {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Opening student preview…")
+                            .font(.callout)
+                            .foregroundStyle(StudioTheme.mutedInk)
+                    }
+                    .padding(24)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .accessibilityElement(children: .combine)
                 }
-                .padding(24)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-                .accessibilityElement(children: .combine)
             case .ready:
                 EmptyView()
             case let .failed(message):
@@ -369,10 +414,13 @@ private struct PreviewPlayer: View {
                 .padding(24)
             }
         }
+        .onChange(of: loadState) { _, newState in
+            if newState == .ready { hasDisplayedPreview = true }
+        }
     }
 }
 
-private struct StudentPreviewView: View {
+struct StudentPreviewView: View {
     let project: WidgetProject
     @Environment(\.dismiss) private var dismiss
     @State private var loadState: PreviewLoadState = .loading
@@ -398,10 +446,11 @@ private struct PublishReadinessView: View {
     @Binding var previewLoadState: PreviewLoadState
     @Environment(\.dismiss) private var dismiss
     @State private var isWorking = false
-    @State private var errorMessage: String?
+    @State private var errorPresentation: StudioErrorPresentation?
     @State private var confirmationMessage: String?
     @State private var confirmUnpublish = false
     @State private var expiryEvaluationDate = Date.now
+    @State private var operationStatus = ""
 
     private var project: WidgetProject? {
         store.projects.first(where: { $0.id == projectID })
@@ -430,9 +479,13 @@ private struct PublishReadinessView: View {
                             readinessContent(project)
                         }
 
-                        if let errorMessage {
-                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
-                                .font(.callout)
+                        if let errorPresentation {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(errorPresentation.title)
+                                    .font(.callout.weight(.semibold))
+                                Text(errorPresentation.message)
+                                    .font(.callout)
+                            }
                                 .foregroundStyle(StudioTheme.danger)
                                 .padding(14)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -450,7 +503,7 @@ private struct PublishReadinessView: View {
             }
             .navigationTitle(
                 project?.publication == nil
-                    ? "Publish"
+                    ? "Share with students"
                     : (project?.publication?.isExpired(at: expiryEvaluationDate) == true
                         ? "Expired student link"
                         : "Student link")
@@ -459,21 +512,23 @@ private struct PublishReadinessView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                        .disabled(isWorking)
                 }
             }
             .confirmationDialog(
-                "Unpublish this widget?",
+                "Turn off this student link?",
                 isPresented: $confirmUnpublish,
                 titleVisibility: .visible
             ) {
-                Button("Unpublish", role: .destructive) {
+                Button("Turn off link", role: .destructive) {
                     unpublish()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Students will no longer be able to open this link. This cannot be undone.")
+                Text("Students will no longer be able to open this link. If you publish again later, Studio will create a new URL and QR code.")
             }
         }
+        .interactiveDismissDisabled(isWorking)
         .task(id: project?.publication?.expiresAt) {
             await refreshAtPublicationExpiration(project?.publication)
         }
@@ -511,7 +566,7 @@ private struct PublishReadinessView: View {
     @ViewBuilder
     private func readinessContent(_ project: WidgetProject) -> some View {
         let report = WidgetPublishReadiness.audit(project.spec)
-        Text(report.isReady ? "Ready to publish" : "A few things to fix first")
+        Text(report.isReady ? "Ready to share" : "A few things to fix first")
             .font(.title2.weight(.semibold))
             .foregroundStyle(StudioTheme.ink)
 
@@ -521,7 +576,11 @@ private struct PublishReadinessView: View {
             }
         }
 
-        Text("Publishing creates an unlisted link. Anyone with the link can use this widget, so check the student preview first and do not include student names or personal information.")
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Students do not need an account.", systemImage: "person.badge.key")
+            Label("The link is unlisted, but anyone with it can open the activity.", systemImage: "link")
+            Label("It works for 90 days. Do not include student names or personal information.", systemImage: "calendar")
+        }
             .font(.callout)
             .foregroundStyle(StudioTheme.mutedInk)
 
@@ -533,8 +592,9 @@ private struct PublishReadinessView: View {
                 if isWorking {
                     ProgressView()
                         .tint(.white)
+                    Text(operationStatus)
                 } else {
-                    Text("Publish student link")
+                    Text("Create student link")
                 }
                 Spacer()
             }
@@ -555,12 +615,12 @@ private struct PublishReadinessView: View {
                     .foregroundStyle(StudioTheme.danger)
                 Text(
                     project.publicationNeedsUpdate
-                        ? "This draft also has newer changes. Update it before sharing so the same URL reopens with the current widget."
-                        : "Extend the link before giving it to students. The same URL will become available again for another 90 days."
+                        ? "This widget also has newer changes. Update it before sharing; the existing URL and QR code will open the current widget."
+                        : "Students cannot open it right now. Reactivate the same URL and QR code for another 90 days when you are ready."
                 )
                     .font(.callout)
                     .foregroundStyle(StudioTheme.mutedInk)
-                Text("Expired \(publication.formattedExpirationDate())")
+                Text("Expired on \(publication.formattedExpirationDate())")
                     .font(.caption)
                     .foregroundStyle(StudioTheme.mutedInk)
                 if project.publicationNeedsUpdate {
@@ -579,11 +639,12 @@ private struct PublishReadinessView: View {
                         Spacer()
                         if isWorking {
                             ProgressView().tint(.white)
+                            Text(operationStatus)
                         } else {
                             Label(
                                 project.publicationNeedsUpdate
                                     ? "Update and reactivate link"
-                                    : "Extend link by 90 days",
+                                    : "Reactivate for 90 days",
                                 systemImage: project.publicationNeedsUpdate
                                     ? "arrow.triangle.2.circlepath"
                                     : "calendar.badge.plus"
@@ -606,7 +667,7 @@ private struct PublishReadinessView: View {
             if project.publicationNeedsUpdate {
                 let report = WidgetPublishReadiness.audit(project.spec)
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("The draft has newer changes", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Changes not shared", systemImage: "arrow.triangle.2.circlepath")
                         .font(.headline)
                     Text("Update the existing student link when you are ready. Its URL and QR code will stay the same.")
                         .font(.callout)
@@ -621,6 +682,7 @@ private struct PublishReadinessView: View {
                             Spacer()
                             if isWorking {
                                 ProgressView().tint(.white)
+                                Text(operationStatus)
                             } else {
                                 Text("Update student link")
                             }
@@ -634,60 +696,21 @@ private struct PublishReadinessView: View {
                 .background(StudioTheme.accentSoft, in: RoundedRectangle(cornerRadius: 14))
             }
 
-            HStack(alignment: .top, spacing: 22) {
-                if let image = qrImage(for: publication.url) {
-                    Image(uiImage: image)
-                        .interpolation(.none)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 190, height: 190)
-                        .padding(10)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
-                        .accessibilityLabel("QR code for the student link")
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 22) {
+                    qrCode(for: publication)
+                    shareControls(for: publication)
                 }
-
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(publication.url.absoluteString)
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
-
-                    Text("Expires \(publication.formattedExpirationDate())")
-                        .font(.caption)
-                        .foregroundStyle(StudioTheme.mutedInk)
-
-                    ShareLink(item: publication.url) {
-                        Label("Share link", systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button {
-                        UIPasteboard.general.url = publication.url
-                        store.notice = "Student link copied"
-                        confirmationMessage = "Student link copied"
-                    } label: {
-                        Label("Copy link", systemImage: "doc.on.doc")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button {
-                        extendPublication()
-                    } label: {
-                        Label("Extend 90 days", systemImage: "calendar.badge.plus")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .disabled(isWorking)
-                    .accessibilityIdentifier("extend-publication")
+                VStack(alignment: .leading, spacing: 20) {
+                    qrCode(for: publication)
+                    shareControls(for: publication)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
 
         Divider()
 
-        Button("Unpublish widget", role: .destructive) {
+        Button("Turn off student link", role: .destructive) {
             confirmUnpublish = true
         }
         .disabled(isWorking)
@@ -708,44 +731,113 @@ private struct PublishReadinessView: View {
         }
     }
 
+    @ViewBuilder
+    private func qrCode(for publication: WidgetPublication) -> some View {
+        if let image = qrImage(for: publication.url) {
+            VStack(spacing: 8) {
+                Image(uiImage: image)
+                    .interpolation(.none)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 190, height: 190)
+                    .padding(10)
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 14))
+                    .accessibilityLabel("QR code for \(project?.spec.metadata.title ?? "the student activity")")
+                    .accessibilityHint("Students can scan this to open the activity.")
+                Text("Students can scan this QR code to open the activity.")
+                    .font(.caption)
+                    .foregroundStyle(StudioTheme.mutedInk)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 210)
+            }
+        }
+    }
+
+    private func shareControls(for publication: WidgetPublication) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(publication.url.absoluteString)
+                .font(.callout.monospaced())
+                .textSelection(.enabled)
+
+            Text("Works until \(publication.formattedExpirationDate())")
+                .font(.caption)
+                .foregroundStyle(StudioTheme.mutedInk)
+
+            Text("Share this link or QR code with students. They do not need an account.")
+                .font(.callout)
+                .foregroundStyle(StudioTheme.mutedInk)
+
+            ShareLink(item: publication.url) {
+                Label("Share with students", systemImage: "square.and.arrow.up")
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+
+            Button {
+                UIPasteboard.general.url = publication.url
+                store.notice = "Student link copied"
+                confirmationMessage = "Student link copied"
+            } label: {
+                Label("Copy link", systemImage: "doc.on.doc")
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+
+            Button {
+                extendPublication()
+            } label: {
+                Label("Keep active 90 days longer", systemImage: "calendar.badge.plus")
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+            .disabled(isWorking)
+            .accessibilityIdentifier("extend-publication")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private func publish() {
         let updatesExistingLink = project?.publication != nil
         isWorking = true
-        errorMessage = nil
+        operationStatus = updatesExistingLink ? "Updating student link…" : "Publishing student link…"
+        errorPresentation = nil
         confirmationMessage = nil
         Task { @MainActor in
             defer { isWorking = false }
             do {
                 _ = try await store.publish(projectID: projectID)
                 confirmationMessage = updatesExistingLink
-                    ? "Student link updated"
-                    : "Student link ready"
+                    ? "Student link updated — share the existing link or QR code with students."
+                    : "Student link ready — share the link or QR code with students."
             } catch {
-                store.handleStudioError(error)
-                errorMessage = error.localizedDescription
+                errorPresentation = store.present(error, during: .publish)
             }
         }
     }
 
     private func unpublish() {
         isWorking = true
-        errorMessage = nil
+        operationStatus = "Turning off student link…"
+        errorPresentation = nil
         confirmationMessage = nil
         Task { @MainActor in
             defer { isWorking = false }
             do {
                 try await store.unpublish(projectID: projectID)
-                confirmationMessage = "Widget unpublished"
+                confirmationMessage = "Student link turned off. Publishing again will create a new URL and QR code."
             } catch {
-                store.handleStudioError(error)
-                errorMessage = error.localizedDescription
+                errorPresentation = store.present(error, during: .unpublish)
             }
         }
     }
 
     private func extendPublication() {
         isWorking = true
-        errorMessage = nil
+        operationStatus = "Extending student link…"
+        errorPresentation = nil
         confirmationMessage = nil
         Task { @MainActor in
             defer { isWorking = false }
@@ -753,8 +845,7 @@ private struct PublishReadinessView: View {
                 _ = try await store.extendPublication(projectID: projectID)
                 confirmationMessage = "Student link extended by 90 days"
             } catch {
-                store.handleStudioError(error)
-                errorMessage = error.localizedDescription
+                errorPresentation = store.present(error, during: .extend)
             }
         }
     }
