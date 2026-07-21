@@ -74,7 +74,7 @@
             "variableId": "width-value",
             "label": "Width",
             "minimum": 1,
-            "maximum": 5,
+            "maximum": 19,
             "step": 0.25,
             "unit": "cm"
           },
@@ -108,20 +108,20 @@
         {
           "id": "perimeter-check",
           "kind": "choiceQuestion",
-          "prompt": "For a perimeter of 24 cm, which width and length form a possible rectangle?",
+          "prompt": "Which equation always checks whether width w and length l match a chosen perimeter P?",
           "selectionMode": "single",
           "options": [
-            { "id": "five-seven", "content": { "kind": "text", "text": "5 cm and 7 cm" } },
-            { "id": "six-eight", "content": { "kind": "text", "text": "6 cm and 8 cm" } },
-            { "id": "four-six", "content": { "kind": "text", "text": "4 cm and 6 cm" } },
-            { "id": "three-seven", "content": { "kind": "text", "text": "3 cm and 7 cm" } }
+            { "id": "double-sum", "content": { "kind": "text", "text": "2 × (w + l) = P" } },
+            { "id": "single-sum", "content": { "kind": "text", "text": "w + l = P" } },
+            { "id": "double-product", "content": { "kind": "text", "text": "2 × w × l = P" } },
+            { "id": "area-rule", "content": { "kind": "text", "text": "w × l = P" } }
           ],
-          "correctOptionIds": ["five-seven"],
+          "correctOptionIds": ["double-sum"],
           "shuffleOptions": true,
           "feedback": {
-            "correct": "Correct. 2 × 5 + 2 × 7 = 24 cm.",
-            "incorrect": "For a 24 cm perimeter, width plus length must equal 12 cm.",
-            "explanation": "A rectangle's perimeter is 2 × width + 2 × length, so the two different side lengths must add to 12 cm."
+            "correct": "Correct. A rectangle has two widths and two lengths, so its perimeter is twice their sum.",
+            "incorrect": "Count both widths and both lengths around the rectangle.",
+            "explanation": "The perimeter rule 2w + 2l = P can be factorised as 2 × (w + l) = P for every value of the control."
           }
         }
       ]

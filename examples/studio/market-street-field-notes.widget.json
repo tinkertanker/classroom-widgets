@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "1.0",
+  "id": "market-street-field-notes",
+  "metadata": {
+    "title": "Market Street Field Notes",
+    "summary": "Students separate observations from interpretations, then choose evidence that can support a claim about neighbourhood change.",
+    "subject": "humanities",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Distinguish direct observations from interpretations and identify further evidence needed to support a geographical claim.",
+    "estimatedMinutes": 10,
+    "tags": ["geography", "fieldwork", "evidence", "inference", "neighbourhoods"]
+  },
+  "theme": {
+    "accent": "sage",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "sort-field-notes",
+      "title": "1. Read the street carefully",
+      "components": [
+        {
+          "id": "fieldwork-context",
+          "kind": "text",
+          "role": "body",
+          "text": "A class walks along a fictional Market Street to investigate how the neighbourhood may be changing. Good fieldworkers record what they can directly see or measure before deciding what it might mean."
+        },
+        {
+          "id": "fieldwork-instruction",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Sort each note as a direct observation, a cautious interpretation of the observations, or a claim that needs more evidence."
+        },
+        {
+          "id": "field-note-sort",
+          "kind": "sorting",
+          "prompt": "What kind of field note is each statement?",
+          "items": [
+            { "id": "vacant-units", "content": { "kind": "text", "text": "Four ground-floor units display For Rent signs" } },
+            { "id": "footfall-count", "content": { "kind": "text", "text": "Thirty-two people pass the junction in ten minutes" } },
+            { "id": "new-cycle-racks", "content": { "kind": "text", "text": "Six new bicycle racks stand beside the bus stop" } },
+            { "id": "travel-changing", "content": { "kind": "text", "text": "More residents may be combining cycling with public transport" } },
+            { "id": "area-unpopular", "content": { "kind": "text", "text": "The whole neighbourhood is becoming unpopular" } },
+            { "id": "young-families-left", "content": { "kind": "text", "text": "Most young families have moved away" } }
+          ],
+          "categories": [
+            { "id": "observation", "label": "Direct observation", "description": "Seen, counted or measured during the visit" },
+            { "id": "interpretation", "label": "Cautious interpretation", "description": "A possible meaning suggested by evidence" },
+            { "id": "needs-evidence", "label": "Needs more evidence", "description": "A broad claim the notes cannot yet support" }
+          ],
+          "correctPlacements": [
+            { "itemId": "vacant-units", "categoryId": "observation" },
+            { "itemId": "footfall-count", "categoryId": "observation" },
+            { "itemId": "new-cycle-racks", "categoryId": "observation" },
+            { "itemId": "travel-changing", "categoryId": "interpretation" },
+            { "itemId": "area-unpopular", "categoryId": "needs-evidence" },
+            { "itemId": "young-families-left", "categoryId": "needs-evidence" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Careful work. The observations are specific and checkable, while the wider claims need additional evidence.",
+            "incorrect": "Ask whether the note was directly seen or measured, cautiously inferred, or claimed without enough support.",
+            "explanation": "Fieldwork becomes more trustworthy when observations are kept separate from interpretations and broad conclusions."
+          }
+        }
+      ]
+    },
+    {
+      "id": "corroborate-change",
+      "title": "2. Strengthen the conclusion",
+      "components": [
+        {
+          "id": "shade-claim",
+          "kind": "text",
+          "role": "body",
+          "text": "The class notices twelve recently planted shade trees and records a pavement temperature of 30°C beneath them. They suggest that the trees have made the street cooler in the afternoon."
+        },
+        {
+          "id": "corroboration-question",
+          "kind": "choiceQuestion",
+          "prompt": "Which additional evidence would best test the class's claim?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "matched-temperatures", "content": { "kind": "text", "text": "Temperature measurements from the same places, times and similar weather before and after the trees were planted" } },
+            { "id": "tree-photograph", "content": { "kind": "text", "text": "One attractive photograph of the new trees" } },
+            { "id": "favourite-tree", "content": { "kind": "text", "text": "A survey asking pupils which tree they like best" } },
+            { "id": "shop-count", "content": { "kind": "text", "text": "A count of the shops on a different street" } }
+          ],
+          "correctOptionIds": ["matched-temperatures"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Yes. Matched measurements make the before-and-after temperature comparison much more meaningful.",
+            "incorrect": "Choose evidence that measures temperature while keeping place, time and weather as similar as possible.",
+            "explanation": "A fair comparison helps separate the possible effect of the trees from differences in weather, time or location."
+          }
+        },
+        {
+          "id": "conclusion-instruction",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Build a responsible fieldwork conclusion that shows what is known, what it might mean and what should be checked next."
+        },
+        {
+          "id": "conclusion-sequence",
+          "kind": "sequencing",
+          "prompt": "Arrange the conclusion in a clear evidence-to-inference order.",
+          "items": [
+            { "id": "state-observation", "content": { "kind": "text", "text": "State the specific observations and measurements" } },
+            { "id": "offer-inference", "content": { "kind": "text", "text": "Offer a cautious interpretation using words such as may or suggests" } },
+            { "id": "acknowledge-limit", "content": { "kind": "text", "text": "Acknowledge what the current evidence cannot prove" } },
+            { "id": "name-next-evidence", "content": { "kind": "text", "text": "Name the additional evidence needed to test the interpretation" } }
+          ],
+          "correctOrder": ["state-observation", "offer-inference", "acknowledge-limit", "name-next-evidence"],
+          "feedback": {
+            "correct": "That conclusion is transparent about both the evidence and its limits.",
+            "incorrect": "Begin with what was recorded, interpret it cautiously, then identify limitations and the next useful evidence.",
+            "explanation": "Responsible geographical reasoning does not hide the gap between a direct observation and a wider claim."
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1.0",
+  "id": "bahasa-ikut-situasi",
+  "metadata": {
+    "title": "Bahasa Ikut Situasi",
+    "summary": "Pelajar memadankan ungkapan dengan khalayak yang sesuai, kemudian membaiki nada dan susunan sebuah e-mel rasmi.",
+    "subject": "languages",
+    "level": "secondary",
+    "locale": "ms-SG",
+    "learningObjective": "Memilih laras bahasa Melayu yang sesuai dengan khalayak dan tujuan serta menyusun mesej rasmi dengan jelas.",
+    "estimatedMinutes": 10,
+    "tags": ["bahasa-melayu", "laras-bahasa", "khalayak", "e-mel-rasmi", "komunikasi"]
+  },
+  "theme": {
+    "accent": "rose",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "padankan-khalayak",
+      "title": "1. Kenali khalayak",
+      "components": [
+        {
+          "id": "pengenalan-laras",
+          "kind": "text",
+          "role": "body",
+          "text": "Cara kita menulis berubah mengikut penerima, tujuan dan keadaan. Mesej kepada rakan boleh mesra dan santai, manakala permohonan kepada guru perlu sopan, lengkap dan jelas."
+        },
+        {
+          "id": "arahan-padanan",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Padankan setiap petikan dengan situasi komunikasi yang paling sesuai."
+        },
+        {
+          "id": "padanan-situasi",
+          "kind": "matching",
+          "prompt": "Siapakah penerima yang paling sesuai bagi setiap petikan?",
+          "items": [
+            { "id": "jom-ulang-kaji", "content": { "kind": "text", "text": "Hai Faris, jom kita ulang kaji selepas sekolah!" } },
+            { "id": "mohon-kebenaran", "content": { "kind": "text", "text": "Salam sejahtera. Saya ingin memohon kebenaran untuk menggunakan perpustakaan." } },
+            { "id": "para-peserta", "content": { "kind": "text", "text": "Para peserta diminta berkumpul di dewan pada pukul 2 petang." } },
+            { "id": "terima-kasih-cikgu", "content": { "kind": "text", "text": "Terima kasih, Cikgu Aisyah, atas bimbingan yang diberikan." } }
+          ],
+          "targets": [
+            { "id": "mesej-rakan", "content": { "kind": "text", "text": "Mesej santai kepada rakan" } },
+            { "id": "emel-guru", "content": { "kind": "text", "text": "E-mel rasmi kepada guru" } },
+            { "id": "pengumuman-sekolah", "content": { "kind": "text", "text": "Pengumuman sekolah" } },
+            { "id": "nota-penghargaan", "content": { "kind": "text", "text": "Nota penghargaan kepada guru" } }
+          ],
+          "correctMatches": [
+            { "itemId": "jom-ulang-kaji", "targetId": "mesej-rakan" },
+            { "itemId": "mohon-kebenaran", "targetId": "emel-guru" },
+            { "itemId": "para-peserta", "targetId": "pengumuman-sekolah" },
+            { "itemId": "terima-kasih-cikgu", "targetId": "nota-penghargaan" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Tepat. Pilihan kata, sapaan dan bentuk ayat sesuai dengan penerima serta tujuan masing-masing.",
+            "incorrect": "Perhatikan tahap kesopanan, jenis sapaan dan sama ada petikan itu ditujukan kepada seorang penerima atau sekumpulan orang.",
+            "explanation": "Laras bahasa yang berkesan membantu mesej kedengaran wajar dan mudah difahami dalam situasinya."
+          }
+        }
+      ]
+    },
+    {
+      "id": "baiki-emel",
+      "title": "2. Baiki mesej rasmi",
+      "components": [
+        {
+          "id": "konteks-emel",
+          "kind": "text",
+          "role": "body",
+          "text": "Seorang pelajar mahu meminta borang penyertaan daripada gurunya. Draf pertamanya berbunyi: “Kau kena bagi aku borang tu cepat.”"
+        },
+        {
+          "id": "pilih-pembaikan",
+          "kind": "choiceQuestion",
+          "prompt": "Ayat manakah paling sesuai digunakan dalam e-mel kepada guru?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "sila-serahkan", "content": { "kind": "text", "text": "Bolehkah cikgu menghantar borang penyertaan tersebut kepada saya sebelum hari Jumaat?" } },
+            { "id": "bagi-sekarang", "content": { "kind": "text", "text": "Eh, bagi borang itu sekarang." } },
+            { "id": "jangan-lupa", "content": { "kind": "text", "text": "Borang itu, kau jangan lupa." } },
+            { "id": "nak-cepat", "content": { "kind": "text", "text": "Saya nak borang itu cepat." } }
+          ],
+          "correctOptionIds": ["sila-serahkan"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Betul. Ayat itu sopan, khusus dan menyatakan tempoh masa dengan jelas.",
+            "incorrect": "Pilih ayat yang menggunakan panggilan hormat, permintaan yang sopan dan maklumat yang khusus.",
+            "explanation": "Mesej rasmi tidak perlu berbunga-bunga, tetapi nada, penerima, perkara yang diminta dan tempoh masa harus jelas."
+          }
+        },
+        {
+          "id": "arahan-emel",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Susun bahagian e-mel supaya pembaca memahami tujuan dan tindakan yang diminta."
+        },
+        {
+          "id": "susunan-emel",
+          "kind": "sequencing",
+          "prompt": "Susun e-mel rasmi ini dari awal hingga akhir.",
+          "items": [
+            { "id": "sapaan", "content": { "kind": "text", "text": "Salam sejahtera, Cikgu Farah." } },
+            { "id": "tujuan", "content": { "kind": "text", "text": "Saya ingin menyertai bengkel penulisan pada cuti sekolah." } },
+            { "id": "permintaan", "content": { "kind": "text", "text": "Bolehkah cikgu menghantar borang penyertaan kepada saya sebelum hari Jumaat?" } },
+            { "id": "penghargaan", "content": { "kind": "text", "text": "Terima kasih atas bantuan cikgu." } },
+            { "id": "penutup", "content": { "kind": "text", "text": "Yang benar, Nadia" } }
+          ],
+          "correctOrder": ["sapaan", "tujuan", "permintaan", "penghargaan", "penutup"],
+          "feedback": {
+            "correct": "Bagus. E-mel itu bergerak daripada sapaan dan tujuan kepada permintaan, penghargaan dan penutup.",
+            "incorrect": "Mulakan dengan sapaan dan tujuan, nyatakan permintaan, kemudian akhiri dengan penghargaan serta nama pengirim.",
+            "explanation": "Susunan yang teratur membolehkan penerima memahami konteks sebelum membaca tindakan yang diminta."
+          }
+        }
+      ]
+    }
+  ]
+}

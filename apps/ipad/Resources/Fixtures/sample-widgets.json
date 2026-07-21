@@ -1387,6 +1387,785 @@
     }
   },
   {
+    "family": "matching",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "bahasa-ikut-situasi",
+      "metadata": {
+        "title": "Bahasa Ikut Situasi",
+        "summary": "Pelajar memadankan ungkapan dengan khalayak yang sesuai, kemudian membaiki nada dan susunan sebuah e-mel rasmi.",
+        "subject": "languages",
+        "level": "secondary",
+        "locale": "ms-SG",
+        "learningObjective": "Memilih laras bahasa Melayu yang sesuai dengan khalayak dan tujuan serta menyusun mesej rasmi dengan jelas.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "bahasa-melayu",
+          "laras-bahasa",
+          "khalayak",
+          "e-mel-rasmi",
+          "komunikasi"
+        ]
+      },
+      "theme": {
+        "accent": "rose",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "padankan-khalayak",
+          "title": "1. Kenali khalayak",
+          "components": [
+            {
+              "id": "pengenalan-laras",
+              "kind": "text",
+              "role": "body",
+              "text": "Cara kita menulis berubah mengikut penerima, tujuan dan keadaan. Mesej kepada rakan boleh mesra dan santai, manakala permohonan kepada guru perlu sopan, lengkap dan jelas."
+            },
+            {
+              "id": "arahan-padanan",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Padankan setiap petikan dengan situasi komunikasi yang paling sesuai."
+            },
+            {
+              "id": "padanan-situasi",
+              "kind": "matching",
+              "prompt": "Siapakah penerima yang paling sesuai bagi setiap petikan?",
+              "items": [
+                {
+                  "id": "jom-ulang-kaji",
+                  "content": {
+                    "kind": "text",
+                    "text": "Hai Faris, jom kita ulang kaji selepas sekolah!"
+                  }
+                },
+                {
+                  "id": "mohon-kebenaran",
+                  "content": {
+                    "kind": "text",
+                    "text": "Salam sejahtera. Saya ingin memohon kebenaran untuk menggunakan perpustakaan."
+                  }
+                },
+                {
+                  "id": "para-peserta",
+                  "content": {
+                    "kind": "text",
+                    "text": "Para peserta diminta berkumpul di dewan pada pukul 2 petang."
+                  }
+                },
+                {
+                  "id": "terima-kasih-cikgu",
+                  "content": {
+                    "kind": "text",
+                    "text": "Terima kasih, Cikgu Aisyah, atas bimbingan yang diberikan."
+                  }
+                }
+              ],
+              "targets": [
+                {
+                  "id": "mesej-rakan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Mesej santai kepada rakan"
+                  }
+                },
+                {
+                  "id": "emel-guru",
+                  "content": {
+                    "kind": "text",
+                    "text": "E-mel rasmi kepada guru"
+                  }
+                },
+                {
+                  "id": "pengumuman-sekolah",
+                  "content": {
+                    "kind": "text",
+                    "text": "Pengumuman sekolah"
+                  }
+                },
+                {
+                  "id": "nota-penghargaan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Nota penghargaan kepada guru"
+                  }
+                }
+              ],
+              "correctMatches": [
+                {
+                  "itemId": "jom-ulang-kaji",
+                  "targetId": "mesej-rakan"
+                },
+                {
+                  "itemId": "mohon-kebenaran",
+                  "targetId": "emel-guru"
+                },
+                {
+                  "itemId": "para-peserta",
+                  "targetId": "pengumuman-sekolah"
+                },
+                {
+                  "itemId": "terima-kasih-cikgu",
+                  "targetId": "nota-penghargaan"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Tepat. Pilihan kata, sapaan dan bentuk ayat sesuai dengan penerima serta tujuan masing-masing.",
+                "incorrect": "Perhatikan tahap kesopanan, jenis sapaan dan sama ada petikan itu ditujukan kepada seorang penerima atau sekumpulan orang.",
+                "explanation": "Laras bahasa yang berkesan membantu mesej kedengaran wajar dan mudah difahami dalam situasinya."
+              }
+            }
+          ]
+        },
+        {
+          "id": "baiki-emel",
+          "title": "2. Baiki mesej rasmi",
+          "components": [
+            {
+              "id": "konteks-emel",
+              "kind": "text",
+              "role": "body",
+              "text": "Seorang pelajar mahu meminta borang penyertaan daripada gurunya. Draf pertamanya berbunyi: “Kau kena bagi aku borang tu cepat.”"
+            },
+            {
+              "id": "pilih-pembaikan",
+              "kind": "choiceQuestion",
+              "prompt": "Ayat manakah paling sesuai digunakan dalam e-mel kepada guru?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "sila-serahkan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Bolehkah cikgu menghantar borang penyertaan tersebut kepada saya sebelum hari Jumaat?"
+                  }
+                },
+                {
+                  "id": "bagi-sekarang",
+                  "content": {
+                    "kind": "text",
+                    "text": "Eh, bagi borang itu sekarang."
+                  }
+                },
+                {
+                  "id": "jangan-lupa",
+                  "content": {
+                    "kind": "text",
+                    "text": "Borang itu, kau jangan lupa."
+                  }
+                },
+                {
+                  "id": "nak-cepat",
+                  "content": {
+                    "kind": "text",
+                    "text": "Saya nak borang itu cepat."
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "sila-serahkan"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Betul. Ayat itu sopan, khusus dan menyatakan tempoh masa dengan jelas.",
+                "incorrect": "Pilih ayat yang menggunakan panggilan hormat, permintaan yang sopan dan maklumat yang khusus.",
+                "explanation": "Mesej rasmi tidak perlu berbunga-bunga, tetapi nada, penerima, perkara yang diminta dan tempoh masa harus jelas."
+              }
+            },
+            {
+              "id": "arahan-emel",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Susun bahagian e-mel supaya pembaca memahami tujuan dan tindakan yang diminta."
+            },
+            {
+              "id": "susunan-emel",
+              "kind": "sequencing",
+              "prompt": "Susun e-mel rasmi ini dari awal hingga akhir.",
+              "items": [
+                {
+                  "id": "sapaan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Salam sejahtera, Cikgu Farah."
+                  }
+                },
+                {
+                  "id": "tujuan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Saya ingin menyertai bengkel penulisan pada cuti sekolah."
+                  }
+                },
+                {
+                  "id": "permintaan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Bolehkah cikgu menghantar borang penyertaan kepada saya sebelum hari Jumaat?"
+                  }
+                },
+                {
+                  "id": "penghargaan",
+                  "content": {
+                    "kind": "text",
+                    "text": "Terima kasih atas bantuan cikgu."
+                  }
+                },
+                {
+                  "id": "penutup",
+                  "content": {
+                    "kind": "text",
+                    "text": "Yang benar, Nadia"
+                  }
+                }
+              ],
+              "correctOrder": [
+                "sapaan",
+                "tujuan",
+                "permintaan",
+                "penghargaan",
+                "penutup"
+              ],
+              "feedback": {
+                "correct": "Bagus. E-mel itu bergerak daripada sapaan dan tujuan kepada permintaan, penghargaan dan penutup.",
+                "incorrect": "Mulakan dengan sapaan dan tujuan, nyatakan permintaan, kemudian akhiri dengan penghargaan serta nama pengirim.",
+                "explanation": "Susunan yang teratur membolehkan penerima memahami konteks sebelum membaca tindakan yang diminta."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "matching",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "market-street-field-notes",
+      "metadata": {
+        "title": "Market Street Field Notes",
+        "summary": "Students separate observations from interpretations, then choose evidence that can support a claim about neighbourhood change.",
+        "subject": "humanities",
+        "level": "upper-primary",
+        "locale": "en-SG",
+        "learningObjective": "Distinguish direct observations from interpretations and identify further evidence needed to support a geographical claim.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "geography",
+          "fieldwork",
+          "evidence",
+          "inference",
+          "neighbourhoods"
+        ]
+      },
+      "theme": {
+        "accent": "sage",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "sort-field-notes",
+          "title": "1. Read the street carefully",
+          "components": [
+            {
+              "id": "fieldwork-context",
+              "kind": "text",
+              "role": "body",
+              "text": "A class walks along a fictional Market Street to investigate how the neighbourhood may be changing. Good fieldworkers record what they can directly see or measure before deciding what it might mean."
+            },
+            {
+              "id": "fieldwork-instruction",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Sort each note as a direct observation, a cautious interpretation of the observations, or a claim that needs more evidence."
+            },
+            {
+              "id": "field-note-sort",
+              "kind": "sorting",
+              "prompt": "What kind of field note is each statement?",
+              "items": [
+                {
+                  "id": "vacant-units",
+                  "content": {
+                    "kind": "text",
+                    "text": "Four ground-floor units display For Rent signs"
+                  }
+                },
+                {
+                  "id": "footfall-count",
+                  "content": {
+                    "kind": "text",
+                    "text": "Thirty-two people pass the junction in ten minutes"
+                  }
+                },
+                {
+                  "id": "new-cycle-racks",
+                  "content": {
+                    "kind": "text",
+                    "text": "Six new bicycle racks stand beside the bus stop"
+                  }
+                },
+                {
+                  "id": "travel-changing",
+                  "content": {
+                    "kind": "text",
+                    "text": "More residents may be combining cycling with public transport"
+                  }
+                },
+                {
+                  "id": "area-unpopular",
+                  "content": {
+                    "kind": "text",
+                    "text": "The whole neighbourhood is becoming unpopular"
+                  }
+                },
+                {
+                  "id": "young-families-left",
+                  "content": {
+                    "kind": "text",
+                    "text": "Most young families have moved away"
+                  }
+                }
+              ],
+              "categories": [
+                {
+                  "id": "observation",
+                  "label": "Direct observation",
+                  "description": "Seen, counted or measured during the visit"
+                },
+                {
+                  "id": "interpretation",
+                  "label": "Cautious interpretation",
+                  "description": "A possible meaning suggested by evidence"
+                },
+                {
+                  "id": "needs-evidence",
+                  "label": "Needs more evidence",
+                  "description": "A broad claim the notes cannot yet support"
+                }
+              ],
+              "correctPlacements": [
+                {
+                  "itemId": "vacant-units",
+                  "categoryId": "observation"
+                },
+                {
+                  "itemId": "footfall-count",
+                  "categoryId": "observation"
+                },
+                {
+                  "itemId": "new-cycle-racks",
+                  "categoryId": "observation"
+                },
+                {
+                  "itemId": "travel-changing",
+                  "categoryId": "interpretation"
+                },
+                {
+                  "itemId": "area-unpopular",
+                  "categoryId": "needs-evidence"
+                },
+                {
+                  "itemId": "young-families-left",
+                  "categoryId": "needs-evidence"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Careful work. The observations are specific and checkable, while the wider claims need additional evidence.",
+                "incorrect": "Ask whether the note was directly seen or measured, cautiously inferred, or claimed without enough support.",
+                "explanation": "Fieldwork becomes more trustworthy when observations are kept separate from interpretations and broad conclusions."
+              }
+            }
+          ]
+        },
+        {
+          "id": "corroborate-change",
+          "title": "2. Strengthen the conclusion",
+          "components": [
+            {
+              "id": "shade-claim",
+              "kind": "text",
+              "role": "body",
+              "text": "The class notices twelve recently planted shade trees and records a pavement temperature of 30°C beneath them. They suggest that the trees have made the street cooler in the afternoon."
+            },
+            {
+              "id": "corroboration-question",
+              "kind": "choiceQuestion",
+              "prompt": "Which additional evidence would best test the class's claim?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "matched-temperatures",
+                  "content": {
+                    "kind": "text",
+                    "text": "Temperature measurements from the same places, times and similar weather before and after the trees were planted"
+                  }
+                },
+                {
+                  "id": "tree-photograph",
+                  "content": {
+                    "kind": "text",
+                    "text": "One attractive photograph of the new trees"
+                  }
+                },
+                {
+                  "id": "favourite-tree",
+                  "content": {
+                    "kind": "text",
+                    "text": "A survey asking pupils which tree they like best"
+                  }
+                },
+                {
+                  "id": "shop-count",
+                  "content": {
+                    "kind": "text",
+                    "text": "A count of the shops on a different street"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "matched-temperatures"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Yes. Matched measurements make the before-and-after temperature comparison much more meaningful.",
+                "incorrect": "Choose evidence that measures temperature while keeping place, time and weather as similar as possible.",
+                "explanation": "A fair comparison helps separate the possible effect of the trees from differences in weather, time or location."
+              }
+            },
+            {
+              "id": "conclusion-instruction",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Build a responsible fieldwork conclusion that shows what is known, what it might mean and what should be checked next."
+            },
+            {
+              "id": "conclusion-sequence",
+              "kind": "sequencing",
+              "prompt": "Arrange the conclusion in a clear evidence-to-inference order.",
+              "items": [
+                {
+                  "id": "state-observation",
+                  "content": {
+                    "kind": "text",
+                    "text": "State the specific observations and measurements"
+                  }
+                },
+                {
+                  "id": "offer-inference",
+                  "content": {
+                    "kind": "text",
+                    "text": "Offer a cautious interpretation using words such as may or suggests"
+                  }
+                },
+                {
+                  "id": "acknowledge-limit",
+                  "content": {
+                    "kind": "text",
+                    "text": "Acknowledge what the current evidence cannot prove"
+                  }
+                },
+                {
+                  "id": "name-next-evidence",
+                  "content": {
+                    "kind": "text",
+                    "text": "Name the additional evidence needed to test the interpretation"
+                  }
+                }
+              ],
+              "correctOrder": [
+                "state-observation",
+                "offer-inference",
+                "acknowledge-limit",
+                "name-next-evidence"
+              ],
+              "feedback": {
+                "correct": "That conclusion is transparent about both the evidence and its limits.",
+                "incorrect": "Begin with what was recorded, interpret it cautiously, then identify limitations and the next useful evidence.",
+                "explanation": "Responsible geographical reasoning does not hide the gap between a direct observation and a wider claim."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "matching",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "cool-box-fair-test-lab",
+      "metadata": {
+        "title": "Cool Box Fair-Test Lab",
+        "summary": "Students classify variables, diagnose a flawed comparison and rebuild a fair insulation test.",
+        "subject": "science",
+        "level": "upper-primary",
+        "locale": "en-SG",
+        "learningObjective": "Identify independent, dependent and controlled variables, then improve a method so that it tests one factor fairly.",
+        "estimatedMinutes": 10,
+        "tags": [
+          "science-inquiry",
+          "experimental-design",
+          "variables",
+          "fair-test",
+          "sequencing"
+        ]
+      },
+      "theme": {
+        "accent": "indigo",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [],
+      "screens": [
+        {
+          "id": "plan-variables",
+          "title": "1. Plan the comparison",
+          "components": [
+            {
+              "id": "investigation-context",
+              "kind": "text",
+              "role": "body",
+              "text": "A class wants to find which lining material keeps chilled water coolest. Each team will wrap an identical bottle, wait twenty minutes and measure the temperature increase."
+            },
+            {
+              "id": "variable-instruction",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Sort each part of the plan by the job it does in the investigation."
+            },
+            {
+              "id": "variable-sort",
+              "kind": "sorting",
+              "prompt": "Which factor is changed, measured or kept the same?",
+              "items": [
+                {
+                  "id": "lining-material",
+                  "content": {
+                    "kind": "text",
+                    "text": "The lining material around each bottle"
+                  }
+                },
+                {
+                  "id": "temperature-rise",
+                  "content": {
+                    "kind": "text",
+                    "text": "The water's temperature increase after twenty minutes"
+                  }
+                },
+                {
+                  "id": "water-volume",
+                  "content": {
+                    "kind": "text",
+                    "text": "The volume of water in each bottle"
+                  }
+                },
+                {
+                  "id": "starting-temperature",
+                  "content": {
+                    "kind": "text",
+                    "text": "The starting temperature of the water"
+                  }
+                },
+                {
+                  "id": "bottle-type",
+                  "content": {
+                    "kind": "text",
+                    "text": "The bottle size and material"
+                  }
+                },
+                {
+                  "id": "test-location",
+                  "content": {
+                    "kind": "text",
+                    "text": "Where the bottles are placed during the test"
+                  }
+                }
+              ],
+              "categories": [
+                {
+                  "id": "independent-variable",
+                  "label": "Changed on purpose",
+                  "description": "The independent variable"
+                },
+                {
+                  "id": "dependent-variable",
+                  "label": "Measured as the result",
+                  "description": "The dependent variable"
+                },
+                {
+                  "id": "controlled-variable",
+                  "label": "Kept the same",
+                  "description": "Controlled variables"
+                }
+              ],
+              "correctPlacements": [
+                {
+                  "itemId": "lining-material",
+                  "categoryId": "independent-variable"
+                },
+                {
+                  "itemId": "temperature-rise",
+                  "categoryId": "dependent-variable"
+                },
+                {
+                  "itemId": "water-volume",
+                  "categoryId": "controlled-variable"
+                },
+                {
+                  "itemId": "starting-temperature",
+                  "categoryId": "controlled-variable"
+                },
+                {
+                  "itemId": "bottle-type",
+                  "categoryId": "controlled-variable"
+                },
+                {
+                  "itemId": "test-location",
+                  "categoryId": "controlled-variable"
+                }
+              ],
+              "shuffleItems": true,
+              "feedback": {
+                "correct": "Well planned. One factor changes, one outcome is measured and the other conditions stay consistent.",
+                "incorrect": "Ask whether each factor is deliberately changed, observed as the result or held constant.",
+                "explanation": "Changing only the lining material helps connect any difference in temperature rise to that material rather than another condition."
+              }
+            }
+          ]
+        },
+        {
+          "id": "repair-method",
+          "title": "2. Diagnose and repair",
+          "components": [
+            {
+              "id": "flawed-method",
+              "kind": "text",
+              "role": "body",
+              "text": "Ravi wraps one bottle in cork and leaves it on a sunny windowsill at 11 am. He wraps another bottle in felt and places it in an air-conditioned storeroom at 2 pm. He then compares their temperature increases."
+            },
+            {
+              "id": "diagnose-flaws",
+              "kind": "choiceQuestion",
+              "prompt": "Which differences make it impossible to tell whether cork or felt is the better insulator? Select both.",
+              "selectionMode": "multiple",
+              "options": [
+                {
+                  "id": "different-locations",
+                  "content": {
+                    "kind": "text",
+                    "text": "The bottles are tested in different locations"
+                  }
+                },
+                {
+                  "id": "different-times",
+                  "content": {
+                    "kind": "text",
+                    "text": "The bottles are tested at different times"
+                  }
+                },
+                {
+                  "id": "same-outcome",
+                  "content": {
+                    "kind": "text",
+                    "text": "Temperature increase is measured for both bottles"
+                  }
+                },
+                {
+                  "id": "different-linings",
+                  "content": {
+                    "kind": "text",
+                    "text": "The lining materials are different"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "different-locations",
+                "different-times"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. Sunlight, air conditioning and time-of-day conditions could change the result independently of the lining.",
+                "incorrect": "The lining must change and the same outcome should be measured. Look for other conditions that changed as well.",
+                "explanation": "Both bottles need to experience the same surroundings at the same time so the lining material is the only planned difference."
+              }
+            },
+            {
+              "id": "repair-instruction",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Now put the repaired method in an order that gives a fair comparison."
+            },
+            {
+              "id": "repair-sequence",
+              "kind": "sequencing",
+              "prompt": "Arrange the method from preparation to conclusion.",
+              "items": [
+                {
+                  "id": "prepare-bottles",
+                  "content": {
+                    "kind": "text",
+                    "text": "Choose identical bottles and label them cork and felt"
+                  }
+                },
+                {
+                  "id": "add-water",
+                  "content": {
+                    "kind": "text",
+                    "text": "Add equal volumes of water at the same starting temperature"
+                  }
+                },
+                {
+                  "id": "apply-linings",
+                  "content": {
+                    "kind": "text",
+                    "text": "Wrap each bottle with the same thickness of its labelled lining"
+                  }
+                },
+                {
+                  "id": "place-together",
+                  "content": {
+                    "kind": "text",
+                    "text": "Place both bottles side by side for twenty minutes"
+                  }
+                },
+                {
+                  "id": "compare-rise",
+                  "content": {
+                    "kind": "text",
+                    "text": "Measure and compare each bottle's temperature increase"
+                  }
+                }
+              ],
+              "correctOrder": [
+                "prepare-bottles",
+                "add-water",
+                "apply-linings",
+                "place-together",
+                "compare-rise"
+              ],
+              "feedback": {
+                "correct": "That method changes only the lining and makes the temperature comparison meaningful.",
+                "incorrect": "Prepare equivalent bottles first, apply the one planned difference, expose them together, then measure the result.",
+                "explanation": "A fair sequence establishes the controlled conditions before the test and measures the dependent variable only after equal exposure."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     "family": "simulation",
     "spec": {
       "schemaVersion": "1.0",
@@ -2025,7 +2804,7 @@
                 "variableId": "width-value",
                 "label": "Width",
                 "minimum": 1,
-                "maximum": 5,
+                "maximum": 19,
                 "step": 0.25,
                 "unit": "cm"
               },
@@ -2068,46 +2847,398 @@
             {
               "id": "perimeter-check",
               "kind": "choiceQuestion",
-              "prompt": "For a perimeter of 24 cm, which width and length form a possible rectangle?",
+              "prompt": "Which equation always checks whether width w and length l match a chosen perimeter P?",
               "selectionMode": "single",
               "options": [
                 {
-                  "id": "five-seven",
+                  "id": "double-sum",
                   "content": {
                     "kind": "text",
-                    "text": "5 cm and 7 cm"
+                    "text": "2 × (w + l) = P"
                   }
                 },
                 {
-                  "id": "six-eight",
+                  "id": "single-sum",
                   "content": {
                     "kind": "text",
-                    "text": "6 cm and 8 cm"
+                    "text": "w + l = P"
                   }
                 },
                 {
-                  "id": "four-six",
+                  "id": "double-product",
                   "content": {
                     "kind": "text",
-                    "text": "4 cm and 6 cm"
+                    "text": "2 × w × l = P"
                   }
                 },
                 {
-                  "id": "three-seven",
+                  "id": "area-rule",
                   "content": {
                     "kind": "text",
-                    "text": "3 cm and 7 cm"
+                    "text": "w × l = P"
                   }
                 }
               ],
               "correctOptionIds": [
-                "five-seven"
+                "double-sum"
               ],
               "shuffleOptions": true,
               "feedback": {
-                "correct": "Correct. 2 × 5 + 2 × 7 = 24 cm.",
-                "incorrect": "For a 24 cm perimeter, width plus length must equal 12 cm.",
-                "explanation": "A rectangle's perimeter is 2 × width + 2 × length, so the two different side lengths must add to 12 cm."
+                "correct": "Correct. A rectangle has two widths and two lengths, so its perimeter is twice their sum.",
+                "incorrect": "Count both widths and both lengths around the rectangle.",
+                "explanation": "The perimeter rule 2w + 2l = P can be factorised as 2 × (w + l) = P for every value of the control."
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "family": "simulation",
+    "spec": {
+      "schemaVersion": "1.0",
+      "id": "catchment-under-pressure",
+      "metadata": {
+        "title": "Catchment Under Pressure",
+        "summary": "Students predict flood pressure, then test how rainfall, hard surfaces and drainage capacity interact in a simplified catchment model.",
+        "subject": "humanities",
+        "level": "secondary",
+        "locale": "en-SG",
+        "learningObjective": "Explain how rainfall intensity, impermeable surface cover and drainage capacity combine to affect surface-water accumulation.",
+        "estimatedMinutes": 12,
+        "tags": [
+          "geography",
+          "catchments",
+          "urban-flooding",
+          "systems-thinking",
+          "simulation"
+        ]
+      },
+      "theme": {
+        "accent": "sky",
+        "colourScheme": "light",
+        "density": "comfortable"
+      },
+      "assets": [],
+      "variables": [
+        {
+          "id": "rainfall-intensity",
+          "kind": "number",
+          "label": "Rainfall intensity",
+          "initial": 40,
+          "minimum": 10,
+          "maximum": 80,
+          "step": 5,
+          "unit": "mm/h"
+        },
+        {
+          "id": "hard-surface-cover",
+          "kind": "number",
+          "label": "Impermeable surface cover",
+          "initial": 60,
+          "minimum": 10,
+          "maximum": 100,
+          "step": 10,
+          "unit": "%"
+        },
+        {
+          "id": "drainage-capacity",
+          "kind": "number",
+          "label": "Drainage capacity",
+          "initial": 15,
+          "minimum": 5,
+          "maximum": 50,
+          "step": 5,
+          "unit": "mm/h"
+        }
+      ],
+      "screens": [
+        {
+          "id": "predict-pressure",
+          "title": "1. Predict the pressure",
+          "components": [
+            {
+              "id": "model-context",
+              "kind": "text",
+              "role": "body",
+              "text": "A neighbourhood drains into one canal. Rain falling on roofs and paved ground reaches the drains quickly, while rain on planted ground is absorbed or delayed. The next page uses a deliberately simplified teaching model, not a real flood forecast."
+            },
+            {
+              "id": "prediction-instruction",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Choose the combination you expect to create the greatest surface-water accumulation. Commit to a prediction before testing the controls."
+            },
+            {
+              "id": "pressure-prediction",
+              "kind": "choiceQuestion",
+              "prompt": "Which catchment is under the greatest pressure?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "gentle-green-strong",
+                  "content": {
+                    "kind": "text",
+                    "text": "Gentle rain, little paved ground and high drainage capacity"
+                  }
+                },
+                {
+                  "id": "heavy-hard-low",
+                  "content": {
+                    "kind": "text",
+                    "text": "Heavy rain, extensive paved ground and low drainage capacity"
+                  }
+                },
+                {
+                  "id": "heavy-green-strong",
+                  "content": {
+                    "kind": "text",
+                    "text": "Heavy rain, little paved ground and high drainage capacity"
+                  }
+                },
+                {
+                  "id": "gentle-hard-strong",
+                  "content": {
+                    "kind": "text",
+                    "text": "Gentle rain, extensive paved ground and high drainage capacity"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "heavy-hard-low"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Good prediction. More rapid runoff enters a system with less capacity to remove it.",
+                "incorrect": "Compare both the water entering the drains and the system's capacity to carry it away.",
+                "explanation": "Rainfall raises the input, impermeable cover increases the share reaching drains quickly, and drainage capacity removes part of that flow."
+              }
+            }
+          ]
+        },
+        {
+          "id": "test-catchment",
+          "title": "2. Test the catchment",
+          "components": [
+            {
+              "id": "model-rule",
+              "kind": "text",
+              "role": "instruction",
+              "text": "Change one control at a time. In this model, rapid runoff equals rainfall intensity multiplied by the paved share. Surface water accumulates only when that runoff exceeds drainage capacity."
+            },
+            {
+              "id": "rainfall-control",
+              "kind": "numberControl",
+              "variableId": "rainfall-intensity",
+              "presentation": "slider"
+            },
+            {
+              "id": "surface-control",
+              "kind": "numberControl",
+              "variableId": "hard-surface-cover",
+              "presentation": "slider"
+            },
+            {
+              "id": "drain-control",
+              "kind": "numberControl",
+              "variableId": "drainage-capacity",
+              "presentation": "slider"
+            },
+            {
+              "id": "rapid-runoff",
+              "kind": "valueDisplay",
+              "label": "Rapid runoff entering drains",
+              "expression": {
+                "kind": "binary",
+                "operator": "divide",
+                "left": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": {
+                    "kind": "variable",
+                    "variableId": "rainfall-intensity"
+                  },
+                  "right": {
+                    "kind": "variable",
+                    "variableId": "hard-surface-cover"
+                  }
+                },
+                "right": {
+                  "kind": "literal",
+                  "value": 100
+                }
+              },
+              "decimalPlaces": 1,
+              "unit": "mm/h"
+            },
+            {
+              "id": "accumulation-rate",
+              "kind": "valueDisplay",
+              "label": "Surface-water accumulation rate",
+              "expression": {
+                "kind": "binary",
+                "operator": "maximum",
+                "left": {
+                  "kind": "literal",
+                  "value": 0
+                },
+                "right": {
+                  "kind": "binary",
+                  "operator": "subtract",
+                  "left": {
+                    "kind": "binary",
+                    "operator": "divide",
+                    "left": {
+                      "kind": "binary",
+                      "operator": "multiply",
+                      "left": {
+                        "kind": "variable",
+                        "variableId": "rainfall-intensity"
+                      },
+                      "right": {
+                        "kind": "variable",
+                        "variableId": "hard-surface-cover"
+                      }
+                    },
+                    "right": {
+                      "kind": "literal",
+                      "value": 100
+                    }
+                  },
+                  "right": {
+                    "kind": "variable",
+                    "variableId": "drainage-capacity"
+                  }
+                }
+              },
+              "decimalPlaces": 1,
+              "unit": "mm/h"
+            },
+            {
+              "id": "accumulation-plot",
+              "kind": "plot",
+              "title": "Accumulated surface water during one hour",
+              "description": "The line starts at zero. Its slope shows how quickly surface water accumulates when rapid runoff is greater than drainage capacity; otherwise it remains at zero.",
+              "domain": {
+                "variableId": "elapsed-minutes",
+                "label": "Elapsed time",
+                "minimum": 0,
+                "maximum": 60,
+                "step": 2,
+                "unit": "min"
+              },
+              "range": {
+                "label": "Accumulated surface water",
+                "minimum": 0,
+                "maximum": 80,
+                "unit": "mm"
+              },
+              "series": [
+                {
+                  "id": "surface-water-series",
+                  "label": "Simplified accumulation",
+                  "colour": "sky",
+                  "yExpression": {
+                    "kind": "binary",
+                    "operator": "multiply",
+                    "left": {
+                      "kind": "binary",
+                      "operator": "maximum",
+                      "left": {
+                        "kind": "literal",
+                        "value": 0
+                      },
+                      "right": {
+                        "kind": "binary",
+                        "operator": "subtract",
+                        "left": {
+                          "kind": "binary",
+                          "operator": "divide",
+                          "left": {
+                            "kind": "binary",
+                            "operator": "multiply",
+                            "left": {
+                              "kind": "variable",
+                              "variableId": "rainfall-intensity"
+                            },
+                            "right": {
+                              "kind": "variable",
+                              "variableId": "hard-surface-cover"
+                            }
+                          },
+                          "right": {
+                            "kind": "literal",
+                            "value": 100
+                          }
+                        },
+                        "right": {
+                          "kind": "variable",
+                          "variableId": "drainage-capacity"
+                        }
+                      }
+                    },
+                    "right": {
+                      "kind": "binary",
+                      "operator": "divide",
+                      "left": {
+                        "kind": "variable",
+                        "variableId": "elapsed-minutes"
+                      },
+                      "right": {
+                        "kind": "literal",
+                        "value": 60
+                      }
+                    }
+                  }
+                }
+              ],
+              "showGrid": true,
+              "showLegend": false
+            },
+            {
+              "id": "threshold-question",
+              "kind": "choiceQuestion",
+              "prompt": "In this model, when will the plotted line remain flat at zero?",
+              "selectionMode": "single",
+              "options": [
+                {
+                  "id": "capacity-meets-runoff",
+                  "content": {
+                    "kind": "text",
+                    "text": "When drainage capacity is equal to or greater than rapid runoff"
+                  }
+                },
+                {
+                  "id": "rainfall-is-nonzero",
+                  "content": {
+                    "kind": "text",
+                    "text": "Whenever any rain is falling"
+                  }
+                },
+                {
+                  "id": "hard-cover-over-half",
+                  "content": {
+                    "kind": "text",
+                    "text": "Whenever impermeable cover is more than half of the catchment"
+                  }
+                },
+                {
+                  "id": "after-thirty-minutes",
+                  "content": {
+                    "kind": "text",
+                    "text": "Only during the first thirty minutes"
+                  }
+                }
+              ],
+              "correctOptionIds": [
+                "capacity-meets-runoff"
+              ],
+              "shuffleOptions": true,
+              "feedback": {
+                "correct": "Correct. The model shows no surface accumulation while the drains can carry away the rapid runoff.",
+                "incorrect": "Compare the rapid-runoff readout with the drainage-capacity control.",
+                "explanation": "The model clamps negative values to zero: capacity at least as large as rapid runoff gives an accumulation rate of zero."
               }
             }
           ]

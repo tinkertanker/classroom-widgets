@@ -5,8 +5,27 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     func testLaunchesIntoExploreWithoutABlankCanvas() {
         let app = launchApp()
         XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'classroom-ready activity'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Choose a subject and learner level'")).firstMatch.exists)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch.exists)
+    }
+
+    @MainActor
+    func testExploreFiltersBySubjectAndLevelAndCanReset() {
+        let app = launchApp()
+        let languages = app.buttons["example-filter-subject-languages"]
+        XCTAssertTrue(languages.waitForExistence(timeout: 8))
+        languages.tap()
+
+        let secondary = app.buttons["example-filter-level-secondary"]
+        XCTAssertTrue(secondary.waitForExistence(timeout: 3))
+        secondary.tap()
+
+        XCTAssertTrue(app.staticTexts["Bahasa Ikut Situasi"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["1 example"].exists)
+        XCTAssertFalse(app.staticTexts["Padankan Perkataan di Bilik Darjah"].exists)
+
+        app.buttons["example-filter-clear"].tap()
+        XCTAssertTrue(app.staticTexts["15 examples"].waitForExistence(timeout: 3))
     }
 
     @MainActor

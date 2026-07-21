@@ -1,0 +1,128 @@
+{
+  "schemaVersion": "1.0",
+  "id": "cool-box-fair-test-lab",
+  "metadata": {
+    "title": "Cool Box Fair-Test Lab",
+    "summary": "Students classify variables, diagnose a flawed comparison and rebuild a fair insulation test.",
+    "subject": "science",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Identify independent, dependent and controlled variables, then improve a method so that it tests one factor fairly.",
+    "estimatedMinutes": 10,
+    "tags": ["science-inquiry", "experimental-design", "variables", "fair-test", "sequencing"]
+  },
+  "theme": {
+    "accent": "indigo",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [],
+  "screens": [
+    {
+      "id": "plan-variables",
+      "title": "1. Plan the comparison",
+      "components": [
+        {
+          "id": "investigation-context",
+          "kind": "text",
+          "role": "body",
+          "text": "A class wants to find which lining material keeps chilled water coolest. Each team will wrap an identical bottle, wait twenty minutes and measure the temperature increase."
+        },
+        {
+          "id": "variable-instruction",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Sort each part of the plan by the job it does in the investigation."
+        },
+        {
+          "id": "variable-sort",
+          "kind": "sorting",
+          "prompt": "Which factor is changed, measured or kept the same?",
+          "items": [
+            { "id": "lining-material", "content": { "kind": "text", "text": "The lining material around each bottle" } },
+            { "id": "temperature-rise", "content": { "kind": "text", "text": "The water's temperature increase after twenty minutes" } },
+            { "id": "water-volume", "content": { "kind": "text", "text": "The volume of water in each bottle" } },
+            { "id": "starting-temperature", "content": { "kind": "text", "text": "The starting temperature of the water" } },
+            { "id": "bottle-type", "content": { "kind": "text", "text": "The bottle size and material" } },
+            { "id": "test-location", "content": { "kind": "text", "text": "Where the bottles are placed during the test" } }
+          ],
+          "categories": [
+            { "id": "independent-variable", "label": "Changed on purpose", "description": "The independent variable" },
+            { "id": "dependent-variable", "label": "Measured as the result", "description": "The dependent variable" },
+            { "id": "controlled-variable", "label": "Kept the same", "description": "Controlled variables" }
+          ],
+          "correctPlacements": [
+            { "itemId": "lining-material", "categoryId": "independent-variable" },
+            { "itemId": "temperature-rise", "categoryId": "dependent-variable" },
+            { "itemId": "water-volume", "categoryId": "controlled-variable" },
+            { "itemId": "starting-temperature", "categoryId": "controlled-variable" },
+            { "itemId": "bottle-type", "categoryId": "controlled-variable" },
+            { "itemId": "test-location", "categoryId": "controlled-variable" }
+          ],
+          "shuffleItems": true,
+          "feedback": {
+            "correct": "Well planned. One factor changes, one outcome is measured and the other conditions stay consistent.",
+            "incorrect": "Ask whether each factor is deliberately changed, observed as the result or held constant.",
+            "explanation": "Changing only the lining material helps connect any difference in temperature rise to that material rather than another condition."
+          }
+        }
+      ]
+    },
+    {
+      "id": "repair-method",
+      "title": "2. Diagnose and repair",
+      "components": [
+        {
+          "id": "flawed-method",
+          "kind": "text",
+          "role": "body",
+          "text": "Ravi wraps one bottle in cork and leaves it on a sunny windowsill at 11 am. He wraps another bottle in felt and places it in an air-conditioned storeroom at 2 pm. He then compares their temperature increases."
+        },
+        {
+          "id": "diagnose-flaws",
+          "kind": "choiceQuestion",
+          "prompt": "Which differences make it impossible to tell whether cork or felt is the better insulator? Select both.",
+          "selectionMode": "multiple",
+          "options": [
+            { "id": "different-locations", "content": { "kind": "text", "text": "The bottles are tested in different locations" } },
+            { "id": "different-times", "content": { "kind": "text", "text": "The bottles are tested at different times" } },
+            { "id": "same-outcome", "content": { "kind": "text", "text": "Temperature increase is measured for both bottles" } },
+            { "id": "different-linings", "content": { "kind": "text", "text": "The lining materials are different" } }
+          ],
+          "correctOptionIds": ["different-locations", "different-times"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. Sunlight, air conditioning and time-of-day conditions could change the result independently of the lining.",
+            "incorrect": "The lining must change and the same outcome should be measured. Look for other conditions that changed as well.",
+            "explanation": "Both bottles need to experience the same surroundings at the same time so the lining material is the only planned difference."
+          }
+        },
+        {
+          "id": "repair-instruction",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Now put the repaired method in an order that gives a fair comparison."
+        },
+        {
+          "id": "repair-sequence",
+          "kind": "sequencing",
+          "prompt": "Arrange the method from preparation to conclusion.",
+          "items": [
+            { "id": "prepare-bottles", "content": { "kind": "text", "text": "Choose identical bottles and label them cork and felt" } },
+            { "id": "add-water", "content": { "kind": "text", "text": "Add equal volumes of water at the same starting temperature" } },
+            { "id": "apply-linings", "content": { "kind": "text", "text": "Wrap each bottle with the same thickness of its labelled lining" } },
+            { "id": "place-together", "content": { "kind": "text", "text": "Place both bottles side by side for twenty minutes" } },
+            { "id": "compare-rise", "content": { "kind": "text", "text": "Measure and compare each bottle's temperature increase" } }
+          ],
+          "correctOrder": ["prepare-bottles", "add-water", "apply-linings", "place-together", "compare-rise"],
+          "feedback": {
+            "correct": "That method changes only the lining and makes the temperature comparison meaningful.",
+            "incorrect": "Prepare equivalent bottles first, apply the one planned difference, expose them together, then measure the result.",
+            "explanation": "A fair sequence establishes the controlled conditions before the test and measures the dependent variable only after equal exposure."
+          }
+        }
+      ]
+    }
+  ]
+}
