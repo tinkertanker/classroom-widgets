@@ -3,7 +3,7 @@ import SwiftUI
 struct GuidedMakeView: View {
     let store: StudioStore
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @State private var creationError: String?
+    @State private var creationError: StudioErrorPresentation?
     @FocusState private var responseIsFocused: Bool
 
     private var question: BriefQuestion {
@@ -14,8 +14,9 @@ struct GuidedMakeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 PageHeader(
-                    title: "What does your next lesson need?",
-                    subtitle: "Answer a few questions, then approve the brief before anything is made."
+                    title: "Plan your classroom widget",
+                    subtitle: "Answer six quick questions. You can review and change every answer before Studio makes your widget.",
+                    sticker: .handraise
                 )
 
                 Group {
@@ -38,7 +39,7 @@ struct GuidedMakeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text("Question \(store.guidedMakeQuestionIndex + 1) of \(BriefQuestion.all.count)")
-                        .font(.caption.weight(.semibold))
+                        .font(StudioTheme.Typography.eyebrow)
                         .foregroundStyle(StudioTheme.mutedInk)
                     Spacer()
                     if question.isOptional {
@@ -51,12 +52,12 @@ struct GuidedMakeView: View {
                     value: Double(store.guidedMakeQuestionIndex + 1),
                     total: Double(BriefQuestion.all.count)
                 )
-                    .tint(StudioTheme.sage)
+                    .tint(StudioTheme.accent)
             }
 
             VStack(alignment: .leading, spacing: 9) {
                 Text(question.prompt)
-                    .font(.title.weight(.semibold))
+                    .font(StudioTheme.Typography.question)
                     .foregroundStyle(StudioTheme.ink)
                 Text(question.supportingText)
                     .font(.body)
@@ -73,7 +74,7 @@ struct GuidedMakeView: View {
                 .frame(minHeight: 112)
                 .padding(12)
                 .scrollContentBackground(.hidden)
-                .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+                .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if store.guidedMakeResponse.isEmpty {
                         Text(question.placeholder)
@@ -91,16 +92,22 @@ struct GuidedMakeView: View {
 
             VStack(alignment: .leading, spacing: 9) {
                 Text("Or start here")
-                    .font(.caption.weight(.semibold))
+                    .font(StudioTheme.Typography.eyebrow)
                     .foregroundStyle(StudioTheme.mutedInk)
                 FlowLayout(spacing: 8) {
                     ForEach(question.suggestions, id: \.self) { suggestion in
                         Button(suggestion) {
-                            store.guidedMakeResponse = suggestion
+                            addSuggestion(suggestion)
                         }
                         .buttonStyle(.bordered)
                         .buttonBorderShape(.capsule)
+                        .controlSize(.large)
                         .font(.subheadline)
+                        .accessibilityHint(
+                            cleanResponse.isEmpty
+                                ? "Uses this suggestion as your answer."
+                                : "Adds this idea after the answer you have already written."
+                        )
                     }
                 }
             }
@@ -110,16 +117,19 @@ struct GuidedMakeView: View {
             HStack {
                 Button("Back") { moveBack() }
                     .buttonStyle(.bordered)
+                    .controlSize(.large)
                     .disabled(store.guidedMakeQuestionIndex == 0)
                 Spacer()
                 if question.isOptional && cleanResponse.isEmpty {
                     Button("Skip") { moveForward() }
                         .buttonStyle(.bordered)
+                        .controlSize(.large)
                 }
-                Button(store.guidedMakeQuestionIndex == BriefQuestion.all.count - 1 ? "Review brief" : "Continue") {
+                Button(store.guidedMakeQuestionIndex == BriefQuestion.all.count - 1 ? "Review answers" : "Continue") {
                     moveForward()
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(!question.isOptional && cleanResponse.isEmpty)
                 .accessibilityIdentifier("guided-continue")
             }
@@ -131,54 +141,64 @@ struct GuidedMakeView: View {
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Check the brief")
-                    .font(.title.weight(.semibold))
-                Text("Studio will make one focused widget from this plan. You can keep refining it afterwards.")
+                Text(store.isCreatingGuidedDraft ? "Making your widget" : "Check your answers")
+                    .font(StudioTheme.Typography.question)
+                Text(
+                    store.isCreatingGuidedDraft
+                        ? "Studio is working from the answers below."
+                        : "Tap any answer to change it, then make your widget. You can keep refining it afterwards."
+                )
                     .foregroundStyle(StudioTheme.mutedInk)
             }
 
+            if store.isCreatingGuidedDraft {
+                generationStatus
+            }
+
             VStack(spacing: 0) {
-                summaryRow(label: "For", value: store.guidedMakeDraft.learnerContext)
+                summaryRow(label: "Students", value: store.guidedMakeDraft.learnerContext, questionIndex: 0)
                 Divider()
-                summaryRow(label: "Learning", value: store.guidedMakeDraft.learningObjective)
+                summaryRow(label: "Learning goal", value: store.guidedMakeDraft.learningObjective, questionIndex: 1)
                 Divider()
-                summaryRow(label: "Students will", value: store.guidedMakeDraft.studentAction)
+                summaryRow(label: "Students will", value: store.guidedMakeDraft.studentAction, questionIndex: 2)
                 Divider()
                 summaryRow(
-                    label: "Include",
+                    label: "Must include",
                     value: store.guidedMakeDraft.sourceContent.isEmpty
                         ? "No required source content"
-                        : store.guidedMakeDraft.sourceContent
+                        : store.guidedMakeDraft.sourceContent,
+                    questionIndex: 3
                 )
                 Divider()
-                summaryRow(label: "Feedback", value: store.guidedMakeDraft.feedback)
+                summaryRow(label: "How it responds", value: store.guidedMakeDraft.feedback, questionIndex: 4)
                 Divider()
-                summaryRow(label: "Lesson fit", value: store.guidedMakeDraft.classroomFit)
+                summaryRow(label: "In the lesson", value: store.guidedMakeDraft.classroomFit, questionIndex: 5)
             }
-            .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 14))
+            .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Text("The widget will not collect responses, identify students or call external services.")
                 .font(.footnote)
                 .foregroundStyle(StudioTheme.mutedInk)
 
             if let creationError {
-                Label(creationError, systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout)
-                    .foregroundStyle(StudioTheme.terracotta)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(creationError.title, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout.weight(.semibold))
+                    Text(creationError.message)
+                        .font(.callout)
+                }
+                    .foregroundStyle(StudioTheme.danger)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(StudioTheme.terracottaSoft, in: RoundedRectangle(cornerRadius: 12))
+                    .background(StudioTheme.dangerSoft, in: RoundedRectangle(cornerRadius: 12))
             }
 
             HStack {
-                Button("Edit answers") {
-                    store.guidedMakeShowsSummary = false
-                    store.guidedMakeQuestionIndex = BriefQuestion.all.count - 1
-                    store.guidedMakeResponse = store.guidedMakeDraft.answer(
-                        at: store.guidedMakeQuestionIndex
-                    )
+                Button("Change answers") {
+                    editAnswer(at: 0)
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.large)
                 .disabled(store.isCreatingGuidedDraft)
                 Spacer()
                 Button {
@@ -190,10 +210,11 @@ struct GuidedMakeView: View {
                             Text("Making your widget…")
                         }
                     } else {
-                        Text("Create first draft")
+                        Text("Make my widget")
                     }
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(store.isCreatingGuidedDraft)
                 .accessibilityIdentifier("approve-brief")
             }
@@ -202,35 +223,74 @@ struct GuidedMakeView: View {
         .studioCard()
     }
 
-    private func summaryRow(label: String, value: String) -> some View {
-        Group {
+    private var generationStatus: some View {
+        HStack(alignment: .top, spacing: 14) {
+            ProgressView()
+                .controlSize(.large)
+                .tint(StudioTheme.accent)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text("This usually takes one to two minutes.")
+                    .font(.body.weight(.semibold))
+                Text("Your answers are still here and will be used to make your widget. There is nothing else you need to do right now.")
+                    .font(.callout)
+                    .foregroundStyle(StudioTheme.mutedInk)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(StudioTheme.border, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Making your widget. This usually takes one to two minutes. Your answers are still here and will be used to make your widget.")
+    }
+
+    private func summaryRow(label: String, value: String, questionIndex: Int) -> some View {
+        Button {
+            editAnswer(at: questionIndex)
+        } label: {
             if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 6) {
-                    summaryLabel(label)
-                    summaryValue(value)
+                    Text(label)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(StudioTheme.mutedInk)
+                    Text(value)
+                        .font(.body)
+                        .foregroundStyle(StudioTheme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Edit answer")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.accent)
                 }
             } else {
                 HStack(alignment: .top, spacing: 20) {
-                    summaryLabel(label)
+                    Text(label)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(StudioTheme.mutedInk)
                         .frame(width: 110, alignment: .leading)
-                    summaryValue(value)
+                    Text(value)
+                        .font(.body)
+                        .foregroundStyle(StudioTheme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(StudioTheme.mutedInk)
+                        .padding(.top, 4)
+                        .accessibilityHidden(true)
                 }
             }
         }
+        .buttonStyle(.plain)
+        .contentShape(Rectangle())
         .padding(14)
-    }
-
-    private func summaryLabel(_ label: String) -> some View {
-            Text(label)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(StudioTheme.mutedInk)
-    }
-
-    private func summaryValue(_ value: String) -> some View {
-            Text(value)
-                .font(.body)
-                .foregroundStyle(StudioTheme.ink)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        .disabled(store.isCreatingGuidedDraft)
+        .accessibilityLabel("Edit \(label) answer")
+        .accessibilityValue(value)
+        .accessibilityHint("Returns to question \(questionIndex + 1).")
+        .accessibilityIdentifier("edit-brief-answer-\(questionIndex)")
     }
 
     private var cleanResponse: String {
@@ -260,6 +320,28 @@ struct GuidedMakeView: View {
         store.guidedMakeResponse = store.guidedMakeDraft.answer(
             at: store.guidedMakeQuestionIndex
         )
+        responseIsFocused = true
+    }
+
+    private func addSuggestion(_ suggestion: String) {
+        guard !store.isCreatingGuidedDraft else { return }
+        guard !cleanResponse.isEmpty else {
+            store.guidedMakeResponse = suggestion
+            responseIsFocused = true
+            return
+        }
+        guard !store.guidedMakeResponse.contains(suggestion) else { return }
+        store.guidedMakeResponse += store.guidedMakeResponse.hasSuffix("\n") ? suggestion : "\n\(suggestion)"
+        responseIsFocused = true
+    }
+
+    private func editAnswer(at questionIndex: Int) {
+        guard !store.isCreatingGuidedDraft else { return }
+        creationError = nil
+        store.guidedMakeShowsSummary = false
+        store.guidedMakeQuestionIndex = questionIndex
+        store.guidedMakeResponse = store.guidedMakeDraft.answer(at: questionIndex)
+        responseIsFocused = true
     }
 
     private func createDraft() {
@@ -269,8 +351,7 @@ struct GuidedMakeView: View {
                 _ = try await store.createApprovedBrief(store.guidedMakeDraft)
                 store.resetGuidedMake()
             } catch {
-                store.handleStudioError(error)
-                creationError = error.localizedDescription
+                creationError = store.present(error, during: .generation)
             }
         }
     }

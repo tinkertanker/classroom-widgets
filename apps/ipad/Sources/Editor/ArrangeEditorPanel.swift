@@ -17,10 +17,11 @@ struct ArrangeEditorPanel: View {
     let didFinishSaving: () -> Void
 
     @State private var didSave = false
-    @State private var saveError: String?
+    @State private var saveError: StudioErrorPresentation?
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showsFileImporter = false
     @State private var showsCamera = false
+    @State private var imageToRemove: LocalWidgetAssetFile?
 
     private let accents = ["sage", "terracotta", "sky", "indigo", "amber", "rose"]
 
@@ -53,13 +54,24 @@ struct ArrangeEditorPanel: View {
 
             Section {
                 ForEach(project.localAssets) { asset in
-                    HStack {
-                        Label("Classroom image", systemImage: "photo")
-                        Spacer()
+                    HStack(alignment: .center, spacing: 12) {
+                        imageThumbnail(for: asset)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Classroom image")
+                                .font(.body.weight(.medium))
+                            let details = imageDetails(for: asset.id)
+                            Text(details.decorative ? "Decorative image" : details.description)
+                                .font(.caption)
+                                .foregroundStyle(StudioTheme.mutedInk)
+                                .lineLimit(2)
+                        }
+                        Spacer(minLength: 8)
                         Button("Remove", role: .destructive) {
-                            removeImage(asset.id)
+                            imageToRemove = asset
                         }
                         .disabled(project.isExample || isAddingImage || isSaving)
+                        .frame(minHeight: 44)
                     }
                 }
 
@@ -95,14 +107,20 @@ struct ArrangeEditorPanel: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .accessibilityHidden(true)
 
-                    TextField("Describe the image for students", text: $imageDescription, axis: .vertical)
+                    TextField("What should students know about this image?", text: $imageDescription, axis: .vertical)
                         .lineLimit(2...4)
                         .disabled(imageIsDecorative)
 
-                    Toggle("Decorative image", isOn: $imageIsDecorative)
+                    Toggle("This image is decorative", isOn: $imageIsDecorative)
                         .onChange(of: imageIsDecorative) { _, isDecorative in
                             if isDecorative { imageDescription = "" }
                         }
+
+                    if imageIsDecorative {
+                        Text("Students do not need this image to understand the activity.")
+                            .font(.caption)
+                            .foregroundStyle(StudioTheme.mutedInk)
+                    }
 
                     Button {
                         addImage(pendingImageData)
@@ -111,7 +129,7 @@ struct ArrangeEditorPanel: View {
                             if isAddingImage {
                                 HStack(spacing: 8) {
                                     ProgressView().controlSize(.small)
-                                    Text("Preparing and uploading…")
+                                    Text("Checking and adding image…")
                                 }
                             } else {
                                 Text("Add to widget")
@@ -157,9 +175,13 @@ struct ArrangeEditorPanel: View {
                 )
 
                 if let saveError {
-                    Label(saveError, systemImage: "exclamationmark.triangle.fill")
-                        .font(.callout)
-                        .foregroundStyle(StudioTheme.terracotta)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(saveError.title)
+                            .font(.callout.weight(.semibold))
+                        Text(saveError.message)
+                            .font(.callout)
+                    }
+                        .foregroundStyle(StudioTheme.danger)
                 }
             }
         }
@@ -177,16 +199,36 @@ struct ArrangeEditorPanel: View {
         }
         .sheet(isPresented: $showsCamera) {
             CameraImagePicker { data in
+                guard let data else {
+                    showsCamera = false
+                    return
+                }
                 do {
-                    guard let data else { throw WidgetImageError.invalidImage }
                     try acceptPendingImage(data)
                 } catch {
                     pendingImageData = nil
-                    saveError = error.localizedDescription
+                    saveError = store.present(error, during: .image)
                 }
                 showsCamera = false
             }
             .ignoresSafeArea()
+        }
+        .confirmationDialog(
+            "Remove this image?",
+            isPresented: Binding(
+                get: { imageToRemove != nil },
+                set: { if !$0 { imageToRemove = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove image", role: .destructive) {
+                guard let imageToRemove else { return }
+                removeImage(imageToRemove.id)
+                self.imageToRemove = nil
+            }
+            Button("Keep image", role: .cancel) { imageToRemove = nil }
+        } message: {
+            Text("This removes the image from this activity. If you have already shared a student link, update it before sharing again so students get the version without this image.")
         }
     }
 
@@ -207,8 +249,7 @@ struct ArrangeEditorPanel: View {
                 didSave = true
                 didFinishSaving()
             } catch {
-                store.handleStudioError(error)
-                saveError = error.localizedDescription
+                saveError = store.present(error, during: .directSave)
             }
             isSaving = false
         }
@@ -225,7 +266,7 @@ struct ArrangeEditorPanel: View {
                 try acceptPendingImage(data)
             } catch {
                 pendingImageData = nil
-                saveError = error.localizedDescription
+                saveError = store.present(error, during: .image)
             }
         }
     }
@@ -244,7 +285,7 @@ struct ArrangeEditorPanel: View {
             try acceptPendingImage(Data(contentsOf: url, options: [.mappedIfSafe]))
         } catch {
             pendingImageData = nil
-            saveError = error.localizedDescription
+            saveError = store.present(error, during: .image)
         }
     }
 
@@ -273,8 +314,7 @@ struct ArrangeEditorPanel: View {
                 imageDescription = ""
                 imageIsDecorative = false
             } catch {
-                store.handleStudioError(error)
-                saveError = error.localizedDescription
+                saveError = store.present(error, during: .image)
             }
         }
     }
@@ -288,9 +328,65 @@ struct ArrangeEditorPanel: View {
                 try await store.saveDirectEdits(projectID: project.id, note: "Remove classroom image")
                 store.discardLocalAsset(assetID: assetID, projectID: project.id)
             } catch {
-                store.handleStudioError(error)
-                saveError = error.localizedDescription
+                saveError = store.present(error, during: .directSave)
             }
         }
+    }
+
+    @ViewBuilder
+    private func imageThumbnail(for asset: LocalWidgetAssetFile) -> some View {
+        if let url = LocalWidgetAssetStorage.url(for: asset),
+           let image = UIImage(contentsOfFile: url.path) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: "photo")
+                .frame(width: 52, height: 52)
+                .foregroundStyle(StudioTheme.mutedInk)
+                .background(StudioTheme.canvas, in: RoundedRectangle(cornerRadius: 8))
+                .accessibilityHidden(true)
+        }
+    }
+
+    private func imageDetails(for assetID: String) -> (description: String, decorative: Bool) {
+        var pending = project.spec.screens.flatMap(\.components)
+        while let value = pending.popLast() {
+            switch value {
+            case let .object(object):
+                let referencedAssetID: String?
+                if case let .string(assetID)? = object["assetId"] {
+                    referencedAssetID = assetID
+                } else if case let .string(assetID)? = object["imageAssetId"] {
+                    referencedAssetID = assetID
+                } else {
+                    referencedAssetID = nil
+                }
+                if referencedAssetID == assetID {
+                    let description: String
+                    if case let .string(text)? = object["altText"], !text.isEmpty {
+                        description = text
+                    } else {
+                        description = "No student description"
+                    }
+                    let decorative: Bool
+                    if case let .boolean(value)? = object["decorative"] {
+                        decorative = value
+                    } else {
+                        decorative = false
+                    }
+                    return (description, decorative)
+                }
+                pending.append(contentsOf: object.values)
+            case let .array(values):
+                pending.append(contentsOf: values)
+            case .string, .integer, .number, .boolean, .null:
+                break
+            }
+        }
+        return ("No student description", false)
     }
 }

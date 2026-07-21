@@ -31,6 +31,166 @@ enum WorkshopAccessState: Equatable, Sendable {
     case ready
 }
 
+enum StudioOperation: Equatable, Sendable {
+    case activation
+    case generation
+    case refinement
+    case undo
+    case directSave
+    case publish
+    case unpublish
+    case extend
+    case preview
+    case restore
+    case delete
+    case image
+}
+
+struct StudioErrorPresentation: Equatable, Sendable {
+    let title: String
+    let message: String
+    let requestsWorkshopAccess: Bool
+
+    static func presenting(_ error: Error, during operation: StudioOperation) -> StudioErrorPresentation {
+        if let storeError = error as? StudioStoreError {
+            return .init(
+                title: title(for: operation),
+                message: storeError.teacherFacingDescription,
+                requestsWorkshopAccess: false
+            )
+        }
+
+        if let imageError = error as? WidgetImageError {
+            return .init(
+                title: "Choose another image",
+                message: imageError.errorDescription ?? fallbackMessage(for: .image),
+                requestsWorkshopAccess: false
+            )
+        }
+
+        if let accessError = error as? StudioAccessError {
+            return .init(
+                title: "Check the access code",
+                message: accessError.errorDescription ?? fallbackMessage(for: .activation),
+                requestsWorkshopAccess: false
+            )
+        }
+
+        if let apiError = error as? StudioAPIError {
+            if apiError.requiresWorkshopAccess {
+                return .init(
+                    title: "Studio access needed",
+                    message: workshopAccessMessage(for: operation),
+                    requestsWorkshopAccess: true
+                )
+            }
+
+            if apiError.isPublicationExpiryLimit {
+                return .init(
+                    title: "Student link cannot be extended",
+                    message: "This link has reached its maximum sharing period. Turn it off, then create a new student link when you are ready.",
+                    requestsWorkshopAccess: false
+                )
+            }
+
+            if apiError.isDraftVersionConflict {
+                return .init(
+                    title: "A newer widget version is available",
+                    message: "Studio kept your current work safe. Check the widget, then try your change again.",
+                    requestsWorkshopAccess: false
+                )
+            }
+
+            if apiError.isServerError(status: 422, code: "POSSIBLE_PERSONAL_DATA") {
+                return .init(
+                    title: "Remove personal information",
+                    message: "Remove student names or other personal information, then try again.",
+                    requestsWorkshopAccess: false
+                )
+            }
+
+            if case .deviceCredentialAlreadyActive = apiError {
+                return .init(
+                    title: "Studio is already active",
+                    message: apiError.errorDescription ?? fallbackMessage(for: .activation),
+                    requestsWorkshopAccess: false
+                )
+            }
+        }
+
+        return .init(
+            title: title(for: operation),
+            message: fallbackMessage(for: operation),
+            requestsWorkshopAccess: false
+        )
+    }
+
+    private static func title(for operation: StudioOperation) -> String {
+        switch operation {
+        case .activation: "Could not activate Studio"
+        case .generation: "Could not make the widget"
+        case .refinement: "Could not update the widget"
+        case .undo: "Previous version restored on this iPad"
+        case .directSave: "Could not save changes"
+        case .publish: "Could not confirm the student link"
+        case .unpublish: "Could not confirm the link was turned off"
+        case .extend: "Could not extend the student link"
+        case .preview: "Preview unavailable"
+        case .restore: "Could not restore widgets"
+        case .delete: "Could not delete the widget"
+        case .image: "Could not add the image"
+        }
+    }
+
+    private static func fallbackMessage(for operation: StudioOperation) -> String {
+        switch operation {
+        case .activation:
+            "Check the access code and your connection, then try again."
+        case .generation:
+            "Your answers are still here. Check your connection and try again."
+        case .refinement:
+            "Your current widget is unchanged. Your prompt is still here; try again when you are ready."
+        case .undo:
+            "The previous version is restored on this iPad, but Studio could not update its recovery copy. Keep Studio open and try saving again when you are connected."
+        case .directSave:
+            "Your edits are still in this widget on this iPad. Keep Studio open and try again."
+        case .publish:
+            "Studio could not confirm a student link. Check this widget before sharing, then try again."
+        case .unpublish:
+            "The existing student link may still be active. Keep the widget until Studio confirms the link is turned off."
+        case .extend:
+            "Studio could not confirm a new expiry date. Check the widget before sharing the link."
+        case .preview:
+            "Your widget has not been changed. Try again in a moment."
+        case .restore:
+            "Some Studio widgets may not have been restored. The widgets already on this iPad were kept. Try again when you are connected."
+        case .delete:
+            "The widget remains on this iPad. Its recovery copy or student link may still be active."
+        case .image:
+            "Studio could not confirm the image update. Check the widget before sharing it."
+        }
+    }
+
+    private static func workshopAccessMessage(for operation: StudioOperation) -> String {
+        switch operation {
+        case .activation:
+            "Enter your workshop code to activate Studio."
+        case .generation:
+            "Enter your workshop code to make a widget. Your answers are still here."
+        case .refinement, .undo, .directSave, .image:
+            "Enter your workshop code to continue. Your current widget is still on this iPad."
+        case .publish, .unpublish, .extend:
+            "Enter your workshop code to manage the student link. The widget remains unchanged until Studio confirms the update."
+        case .preview:
+            "Enter your workshop code to continue. Your widget has not been changed."
+        case .restore:
+            "Enter your workshop code to find missing widgets. The widgets already on this iPad were kept."
+        case .delete:
+            "Enter your workshop code to delete the recovery copy. The widget remains on this iPad."
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class StudioStore {
@@ -84,12 +244,10 @@ final class StudioStore {
         examples = loadedExamples
         projects = []
 
-        var storageFailure: Error?
         do {
             projectFiles = try StudioProjectFileStore(directory: storageDirectory)
         } catch {
             projectFiles = nil
-            storageFailure = error
         }
 
         if isUITesting {
@@ -102,9 +260,9 @@ final class StudioStore {
                let legacy = Self.decodeLegacyProjects(data).projects {
                 projects = legacy
             } else {
-                projects = Self.seedProjects(from: loadedExamples)
+                projects = []
             }
-            recoveryNotice = "Studio could not open its protected project folder. Your widgets remain in memory, but new changes may not survive a restart. \(storageFailure?.localizedDescription ?? "")"
+            recoveryNotice = "Studio could not open its protected project folder. Existing project files were left unchanged, but new widgets may not survive a restart."
             return
         }
 
@@ -148,16 +306,13 @@ final class StudioStore {
                     )
                 }
             } else if !loaded.hadStoredProjects {
-                projects = Self.seedProjects(from: loadedExamples)
-                for project in projects {
-                    try projectFiles.save(project)
-                }
+                projects = []
                 try projectFiles.markInitialised()
             }
 
             recoveryNotice = recoveryMessages.isEmpty ? nil : recoveryMessages.joined(separator: " ")
         } catch {
-            recoveryNotice = "Studio could not safely open all project files. Existing files were left in place. \(error.localizedDescription)"
+            recoveryNotice = "Studio could not safely open all project files. Existing files were left in place."
         }
     }
 
@@ -200,17 +355,21 @@ final class StudioStore {
         _ = try await api.registerDevice(accessCode: cleaned)
         workshopAccessState = .ready
         showsWorkshopAccess = false
-        notice = "Workshop access active"
+        notice = "Studio access ready"
+    }
+
+    @discardableResult
+    func present(_ error: Error, during operation: StudioOperation) -> StudioErrorPresentation {
+        let presentation = StudioErrorPresentation.presenting(error, during: operation)
+        if presentation.requestsWorkshopAccess {
+            workshopAccessState = .registrationRequired
+            showsWorkshopAccess = true
+        }
+        return presentation
     }
 
     func handleStudioError(_ error: Error) {
-        guard let apiError = error as? StudioAPIError,
-              case let .server(status, code, _) = apiError,
-              status == 401,
-              ["DEVICE_REGISTRATION_REQUIRED", "DEVICE_TOKEN_REQUIRED"].contains(code)
-        else { return }
-        workshopAccessState = .registrationRequired
-        showsWorkshopAccess = true
+        _ = present(error, during: .directSave)
     }
 
     var selectedProject: WidgetProject? {
@@ -239,7 +398,7 @@ final class StudioStore {
         var project = example
         project.id = "project-\(UUID().uuidString.lowercased())"
         project.spec.id = "widget-\(UUID().uuidString.lowercased())"
-        project.spec.metadata.title += " Remix"
+        project.spec.metadata.title += " Copy"
         project.isExample = false
         project.updatedAt = .now
         project.revisionNotes = []
@@ -413,7 +572,7 @@ final class StudioStore {
             )
         } catch PatchReconciliationError.remoteChanged(let latest) {
             try apply(latest, to: projectID, replacing: baseSpec)
-            notice = "Restored the latest server revision"
+            notice = "Opened the latest saved version"
             throw StudioStoreError.remoteRevisionRestored
         }
         guard let index = projects.firstIndex(where: { $0.id == projectID }) else { return }
@@ -422,6 +581,7 @@ final class StudioStore {
             try preserveConcurrentVersions(local: local, remote: revised)
             throw StudioStoreError.remoteSaveConflict
         }
+        let projectBeforeRefinement = projects[index]
         projects[index].spec = revised.spec
         projects[index].family = family(for: revised.spec)
         projects[index].previousSpec = baseSpec
@@ -433,7 +593,12 @@ final class StudioStore {
             RevisionNote(id: UUID(), prompt: cleanPrompt, createdAt: .now),
             at: 0
         )
-        try persistProjectOrThrow(projectID)
+        do {
+            try persistProjectOrThrow(projectID)
+        } catch {
+            projects[index] = projectBeforeRefinement
+            throw error
+        }
         notice = "Preview updated"
     }
 
@@ -617,7 +782,7 @@ final class StudioStore {
         projects[currentIndex].publication = nil
         projects[currentIndex].publicationNeedsUpdate = false
         try persistProjectOrThrow(projectID)
-        notice = "Widget unpublished"
+        notice = "Student link turned off"
     }
 
     @discardableResult
@@ -691,7 +856,7 @@ final class StudioStore {
                 restoredAssets = try await restoreLocalAssets(for: remote.spec)
             } catch {
                 throw StudioStoreError.assetRestoreFailed(
-                    "Studio could not restore the images in \(remote.title). Nothing in the local widget was changed. \(error.localizedDescription)"
+                    "Studio could not restore one or more images. The local widget was not changed."
                 )
             }
 
@@ -797,7 +962,7 @@ final class StudioStore {
                         throw error
                     }
                     resolution = try await recreateExpiredDraft(snapshot)
-                    notice = "The expired server draft was safely recreated"
+                    notice = "Studio recreated the recovery copy"
                 }
             }
         } else {
@@ -842,7 +1007,7 @@ final class StudioStore {
             )
         } catch let original as StudioAPIError {
             if original.isServerError(status: 404, code: "DRAFT_NOT_FOUND") {
-                notice = "The expired server draft was safely recreated"
+                notice = "Studio recreated the recovery copy"
                 return try await recreateExpiredDraft(snapshot)
             }
             guard original.needsMutationReconciliation else { throw original }
@@ -856,7 +1021,7 @@ final class StudioStore {
                 latest = try await api.fetchDraft(draftID: existing.id)
             } catch let fetchError as StudioAPIError {
                 if fetchError.isServerError(status: 404, code: "DRAFT_NOT_FOUND") {
-                    notice = "The expired server draft was safely recreated"
+                    notice = "Studio recreated the recovery copy"
                     return try await recreateExpiredDraft(snapshot)
                 }
                 throw original
@@ -1175,7 +1340,7 @@ final class StudioStore {
         var localCopy = local
         localCopy.id = "project-\(UUID().uuidString.lowercased())"
         localCopy.spec.id = "widget-\(UUID().uuidString.lowercased())"
-        localCopy.spec.metadata.title += " Local Copy"
+        localCopy.spec.metadata.title += " Copy"
         localCopy.remoteDraft = nil
         localCopy.publication = nil
         localCopy.publicationNeedsUpdate = false
@@ -1196,7 +1361,7 @@ final class StudioStore {
         projects.insert(localCopy, at: index)
         if selectLocalCopy { selectedProjectID = localCopy.id }
         try persistOrThrow()
-        notice = "Kept both versions; your edits are in Local Copy"
+        notice = "Kept both versions; your edits are in a separate copy"
     }
 
     private struct RestoredPublicationState {
@@ -1228,7 +1393,7 @@ final class StudioStore {
         do {
             try persistOrThrow()
         } catch {
-            errorMessage = "Studio could not safely save one of your widgets: \(error.localizedDescription)"
+            errorMessage = "Studio could not save every local change. Existing project files were left unchanged; keep Studio open and try again."
             recoveryNotice = errorMessage
         }
     }
@@ -1270,17 +1435,6 @@ final class StudioStore {
         let fractional = ISO8601DateFormatter()
         fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return fractional.date(from: value) ?? ISO8601DateFormatter().date(from: value)
-    }
-
-    private static func seedProjects(from examples: [WidgetProject]) -> [WidgetProject] {
-        examples.prefix(2).enumerated().map { index, example in
-            var project = example
-            project.id = "project-\(UUID().uuidString.lowercased())"
-            project.spec.id = "starter-\(index + 1)"
-            project.isExample = false
-            project.updatedAt = .now.addingTimeInterval(TimeInterval(-index * 3600))
-            return project
-        }
     }
 
     private func conciseTitle(from brief: GuidedBriefDraft) -> String {
@@ -1412,18 +1566,24 @@ enum StudioStoreError: LocalizedError {
         case .projectUnavailable:
             "This widget is no longer available on this iPad."
         case .remoteRevisionRestored:
-            "Studio restored a newer server revision. Check the preview, then ask for your change again."
+            "Studio opened a newer saved version. Check the preview, then ask for your change again."
         case .localEditsChangedDuringUpdate:
-            "Your local edits were kept, but the generated revision was not applied. Save those edits, then try the prompt again."
+            "Your edits were kept on this iPad, but Studio did not apply the generated change. Save your edits, then try the request again."
         case .remoteDeletionUnverified:
-            "Studio could not verify that the server copy and student link were deleted, so the widget remains on this iPad. Try again when you are connected."
+            "Studio could not verify that the recovery copy and student link were deleted, so the widget remains on this iPad. Try again when you are connected."
         case .remoteSaveConflict:
-            "This widget also changed on another restored iPad. Studio kept your edits as a separate Local Copy and restored the server version alongside it."
+            "This widget also changed on another restored iPad. Studio kept your edits as a separate copy and opened the other saved version alongside it."
         case .operationInProgress:
             "Wait for the current Studio update to finish before starting another one."
         case let .publishReadinessFailed(message), let .assetRestoreFailed(message):
             message
         }
+    }
+}
+
+private extension StudioStoreError {
+    var teacherFacingDescription: String {
+        errorDescription ?? "Studio could not complete this update. Your existing widget was kept safe."
     }
 }
 
@@ -1448,6 +1608,27 @@ private enum StudioAccessError: LocalizedError {
 }
 
 private extension StudioAPIError {
+    var requiresWorkshopAccess: Bool {
+        switch self {
+        case .deviceRegistrationRequired:
+            true
+        case let .server(status, code, _):
+            status == 401
+                && (code == "DEVICE_REGISTRATION_REQUIRED" || code == "DEVICE_TOKEN_REQUIRED")
+        case .invalidURL, .invalidResponse, .deviceTokenUnavailable, .deviceCredentialAlreadyActive,
+             .transport, .decoding:
+            false
+        }
+    }
+
+    var isPublicationExpiryLimit: Bool {
+        isServerError(status: 422, code: "PUBLICATION_EXPIRY_LIMIT_REACHED")
+    }
+
+    var isDraftVersionConflict: Bool {
+        isServerError(status: 409, code: "DRAFT_VERSION_CONFLICT")
+    }
+
     func isServerError(status expectedStatus: Int, code expectedCode: String) -> Bool {
         guard case let .server(status, code, _) = self else { return false }
         return status == expectedStatus && code == expectedCode

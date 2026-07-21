@@ -96,13 +96,20 @@ struct WidgetPreviewWebView: UIViewRepresentable {
         private var sentFingerprint: Data?
         private var playerIsReady = false
         private var navigationGeneration = 0
+        private var navigationTask: Task<Void, Never>?
         private var handshakeTask: Task<Void, Never>?
         private var loadTask: Task<Void, Never>?
         private var inFlightFingerprint: Data?
+        private let navigationTimeout: Duration
 
-        init(state: Binding<PreviewLoadState>, localAssets: [LocalWidgetAssetFile]) {
+        init(
+            state: Binding<PreviewLoadState>,
+            localAssets: [LocalWidgetAssetFile],
+            navigationTimeout: Duration = .seconds(30)
+        ) {
             self.state = state
             resourceSchemeHandler = StudioResourceSchemeHandler(localAssets: localAssets)
+            self.navigationTimeout = navigationTimeout
         }
 
         func attach(_ webView: WKWebView) {
@@ -110,6 +117,8 @@ struct WidgetPreviewWebView: UIViewRepresentable {
         }
 
         func detach() {
+            navigationTask?.cancel()
+            navigationTask = nil
             handshakeTask?.cancel()
             handshakeTask = nil
             loadTask?.cancel()
@@ -139,6 +148,8 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             switch type {
             case "ready":
                 playerIsReady = true
+                navigationTask?.cancel()
+                navigationTask = nil
                 webView?.evaluateJavaScript("window.__CLASSROOM_WIDGET_PREVIEW_BOOTED__ = true;")
                 handshakeTask?.cancel()
                 handshakeTask = nil
@@ -161,6 +172,8 @@ struct WidgetPreviewWebView: UIViewRepresentable {
                 }
             case "error":
                 let message = body["message"] as? String ?? "The student preview could not render this widget."
+                navigationTask?.cancel()
+                navigationTask = nil
                 handshakeTask?.cancel()
                 handshakeTask = nil
                 loadTask?.cancel()
@@ -182,9 +195,27 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             loadTask = nil
             inFlightFingerprint = nil
             state.wrappedValue = .loading
+
+            let generation = navigationGeneration
+            let timeout = navigationTimeout
+            navigationTask?.cancel()
+            navigationTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(for: timeout)
+                guard let self,
+                      !Task.isCancelled,
+                      self.navigationGeneration == generation,
+                      !self.playerIsReady
+                else { return }
+                self.navigationTask = nil
+                self.state.wrappedValue = .failed(
+                    "The student preview took too long to open. Reload it and try again."
+                )
+            }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            navigationTask?.cancel()
+            navigationTask = nil
             sendPendingIfPossible()
             guard !playerIsReady else { return }
 
@@ -208,12 +239,16 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             didFail navigation: WKNavigation!,
             withError error: Error
         ) {
+            navigationTask?.cancel()
+            navigationTask = nil
             handshakeTask?.cancel()
             handshakeTask = nil
             loadTask?.cancel()
             loadTask = nil
             inFlightFingerprint = nil
-            state.wrappedValue = .failed(error.localizedDescription)
+            state.wrappedValue = .failed(
+                "The student preview could not open. Reload it and try again."
+            )
         }
 
         func webView(
@@ -221,15 +256,21 @@ struct WidgetPreviewWebView: UIViewRepresentable {
             didFailProvisionalNavigation navigation: WKNavigation!,
             withError error: Error
         ) {
+            navigationTask?.cancel()
+            navigationTask = nil
             handshakeTask?.cancel()
             handshakeTask = nil
             loadTask?.cancel()
             loadTask = nil
             inFlightFingerprint = nil
-            state.wrappedValue = .failed(error.localizedDescription)
+            state.wrappedValue = .failed(
+                "The student preview could not open. Reload it and try again."
+            )
         }
 
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            navigationTask?.cancel()
+            navigationTask = nil
             handshakeTask?.cancel()
             handshakeTask = nil
             loadTask?.cancel()
@@ -292,7 +333,9 @@ struct WidgetPreviewWebView: UIViewRepresentable {
                     self.loadTask = nil
                     self.inFlightFingerprint = nil
                     if self.pendingFingerprint == fingerprint {
-                        self.state.wrappedValue = .failed(error.localizedDescription)
+                        self.state.wrappedValue = .failed(
+                            "The student preview could not update. Reload it and try again."
+                        )
                     } else {
                         self.sendPendingIfPossible()
                     }
