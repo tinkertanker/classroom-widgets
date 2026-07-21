@@ -17,15 +17,11 @@ export interface PlayerCopy {
   sortingInstructions: string;
   chooseCategory: string;
   sequencingInstructions: string;
-  moveEarlier: (label: string) => string;
-  moveLater: (label: string) => string;
   moveBefore: string;
   earlierAfter: string;
   laterAfter: string;
   interactivePoints: string;
   chooseNumberedPoint: string;
-  decrease: (label: string) => string;
-  increase: (label: string) => string;
   decreaseBefore: string;
   increaseBefore: string;
   off: string;
@@ -51,7 +47,6 @@ export interface PlayerCopy {
   startAgain: string;
   start: string;
   reset: string;
-  currentSignal: (label: string) => string;
   currentSignalBefore: string;
   reportWidget: string;
   reportThanks: string;
@@ -84,15 +79,11 @@ const english: PlayerCopy = {
   sortingInstructions: 'Place every item in a category.',
   chooseCategory: 'Choose a category',
   sequencingInstructions: 'Use the arrow buttons to put the steps in order.',
-  moveEarlier: (label) => `Move ${label} earlier`,
-  moveLater: (label) => `Move ${label} later`,
   moveBefore: 'Move',
   earlierAfter: 'earlier',
   laterAfter: 'later',
   interactivePoints: 'Interactive points',
   chooseNumberedPoint: 'Choose a numbered point to learn more.',
-  decrease: (label) => `Decrease ${label}`,
-  increase: (label) => `Increase ${label}`,
   decreaseBefore: 'Decrease',
   increaseBefore: 'Increase',
   off: 'Off',
@@ -123,7 +114,6 @@ const english: PlayerCopy = {
   startAgain: 'Start again',
   start: 'Start',
   reset: 'Reset',
-  currentSignal: (label) => `Current signal: ${label}`,
   currentSignalBefore: 'Current signal:',
   reportWidget: 'Report this widget',
   reportThanks: 'Thank you. This widget has been flagged for review.',
@@ -162,15 +152,11 @@ const malay: PlayerCopy = {
   sortingInstructions: 'Letakkan setiap item dalam satu kategori.',
   chooseCategory: 'Pilih kategori',
   sequencingInstructions: 'Gunakan butang anak panah untuk menyusun langkah mengikut urutan.',
-  moveEarlier: (label) => `Alihkan ${label} ke atas`,
-  moveLater: (label) => `Alihkan ${label} ke bawah`,
   moveBefore: 'Alihkan',
   earlierAfter: 'ke atas',
   laterAfter: 'ke bawah',
   interactivePoints: 'Titik interaktif',
   chooseNumberedPoint: 'Pilih titik bernombor untuk mengetahui lebih lanjut.',
-  decrease: (label) => `Kurangkan ${label}`,
-  increase: (label) => `Tambahkan ${label}`,
   decreaseBefore: 'Kurangkan',
   increaseBefore: 'Tambahkan',
   off: 'Tutup',
@@ -201,7 +187,6 @@ const malay: PlayerCopy = {
   startAgain: 'Mula lagi',
   start: 'Mula',
   reset: 'Tetapkan semula',
-  currentSignal: (label) => `Isyarat semasa: ${label}`,
   currentSignalBefore: 'Isyarat semasa:',
   reportWidget: 'Laporkan widget ini',
   reportThanks: 'Terima kasih. Widget ini telah ditandai untuk semakan.',
