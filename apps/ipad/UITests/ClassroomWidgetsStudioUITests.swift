@@ -5,8 +5,41 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     func testLaunchesIntoExploreWithoutABlankCanvas() {
         let app = launchApp()
         XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'classroom-ready activity'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Choose a subject and learner level'")).firstMatch.exists)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch.exists)
+    }
+
+    @MainActor
+    func testExploreFiltersBySubjectAndLevelAndCanReset() {
+        let app = launchApp()
+        let languages = app.buttons["example-filter-subject-languages"]
+        XCTAssertTrue(languages.waitForExistence(timeout: 8))
+        languages.tap()
+
+        let upperPrimary = app.buttons["example-filter-level-upper-primary"]
+        XCTAssertTrue(upperPrimary.waitForExistence(timeout: 3))
+        upperPrimary.tap()
+
+        XCTAssertTrue(app.staticTexts["Padankan Perkataan di Bilik Darjah"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["1 example"].exists)
+
+        app.buttons["example-filter-clear"].tap()
+        XCTAssertTrue(app.staticTexts["Padankan Perkataan di Bilik Darjah"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testMalayExampleUsesMalayPlayerChrome() {
+        let app = launchApp()
+        XCTAssertTrue(app.buttons["example-filter-subject-languages"].waitForExistence(timeout: 8))
+        app.buttons["example-filter-subject-languages"].tap()
+        app.buttons["example-filter-level-upper-primary"].tap()
+
+        let preview = app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch
+        XCTAssertTrue(preview.waitForExistence(timeout: 3))
+        preview.tap()
+
+        XCTAssertTrue(app.buttons["Semak jawapan"].waitForExistence(timeout: 25))
+        XCTAssertFalse(app.buttons["Check answers"].exists)
     }
 
     @MainActor

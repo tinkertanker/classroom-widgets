@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import type { TrafficLightComponent } from '@classroom-widgets/widget-spec';
+import type { PlayerCopy } from '../localisation';
 
 interface TrafficLightRendererProps {
   component: TrafficLightComponent;
+  copy: PlayerCopy;
 }
 
 type TrafficLightState = TrafficLightComponent['initialState'];
 
-export function TrafficLightRenderer({ component }: TrafficLightRendererProps) {
+export function TrafficLightRenderer({ component, copy }: TrafficLightRendererProps) {
   const [state, setState] = useState<TrafficLightState>(component.initialState);
 
   useEffect(() => {
@@ -39,7 +41,8 @@ export function TrafficLightRenderer({ component }: TrafficLightRendererProps) {
         ))}
       </div>
       <p className="ready-tool-message" role="status" aria-live="polite">
-        Current signal: {options.find((option) => option.state === state)?.label}
+        <span lang={copy.locale}>{copy.currentSignalBefore} </span>
+        <span>{options.find((option) => option.state === state)?.label}</span>
       </p>
     </fieldset>
   );

@@ -6,6 +6,7 @@ import {
 import type { WidgetComponent, WidgetSpec } from '@classroom-widgets/widget-spec';
 
 import { ComponentRenderer, type AssetResolver } from './components';
+import { localeUsesLanguage, playerCopy } from './localisation';
 import {
   hasCompleteResponse,
   initialRuntimeValues,
@@ -39,6 +40,7 @@ export function WidgetPlayer({
   const [submitted, setSubmitted] = useState<Set<string>>(() => new Set());
   const numbers = useMemo(() => questionNumberMap(spec), [spec]);
   const resolveAsset = useMemo(() => assetResolver(assetBaseUrl), [assetBaseUrl]);
+  const copy = playerCopy(spec.metadata.locale);
 
   useEffect(() => {
     document.title = spec.metadata.title;
@@ -56,8 +58,9 @@ export function WidgetPlayer({
   if (!screen) {
     return (
       <PlayerError
-        title="This widget has no page to show"
-        message="Ask the teacher to republish the activity, then open the link again."
+        title={copy.noPageTitle}
+        message={copy.noPageMessage}
+        locale={copy.locale}
       />
     );
   }
@@ -111,8 +114,12 @@ export function WidgetPlayer({
       <article className="player-page">
         <header className="widget-header">
           <p className="widget-context">
-            {spec.metadata.subject ? <span>{subjectLabel(spec.metadata.subject)}</span> : null}
-            {spec.metadata.level ? <span>{levelLabel(spec.metadata.level)}</span> : null}
+            {spec.metadata.subject ? (
+              <span lang={copy.locale}>{subjectLabel(spec.metadata.subject, spec.metadata.locale)}</span>
+            ) : null}
+            {spec.metadata.level ? (
+              <span lang={copy.locale}>{levelLabel(spec.metadata.level, spec.metadata.locale)}</span>
+            ) : null}
             {spec.metadata.estimatedMinutes ? (
               <span>{spec.metadata.estimatedMinutes} min</span>
             ) : null}
@@ -121,7 +128,7 @@ export function WidgetPlayer({
           <p className="widget-summary">{spec.metadata.summary}</p>
           {spec.metadata.learningObjective ? (
             <p className="learning-objective">
-              <strong>Learning goal</strong>
+              <strong lang={copy.locale}>{copy.learningGoal}</strong>
               <span>{spec.metadata.learningObjective}</span>
             </p>
           ) : null}
@@ -157,16 +164,16 @@ export function WidgetPlayer({
             <div className="activity-actions">
               {screenSubmitted ? (
                 <>
-                  <p className="result-summary" role="status" aria-live="polite">
+                  <p className="result-summary" role="status" aria-live="polite" lang={copy.locale}>
                     <strong>
-                      {score} of {assessable.length}
+                      {copy.score(score, assessable.length)}
                     </strong>{' '}
                     {score === assessable.length
-                      ? 'Everything is correct.'
-                      : 'Review the feedback, then try again.'}
+                      ? copy.everythingCorrect
+                      : copy.reviewFeedback}
                   </p>
-                  <button className="secondary-action" type="button" onClick={retryScreen}>
-                    Try again
+                  <button className="secondary-action" type="button" onClick={retryScreen} lang={copy.locale}>
+                    {copy.tryAgain}
                   </button>
                 </>
               ) : (
@@ -176,11 +183,12 @@ export function WidgetPlayer({
                     type="button"
                     disabled={!allComplete}
                     onClick={checkScreen}
+                    lang={copy.locale}
                   >
-                    Check answers
+                    {copy.checkAnswers}
                   </button>
                   {!allComplete ? (
-                    <p className="result-summary">Answer every question to check your work.</p>
+                    <p className="result-summary" lang={copy.locale}>{copy.answerEveryQuestion}</p>
                   ) : null}
                 </>
               )}
@@ -189,28 +197,28 @@ export function WidgetPlayer({
         </section>
 
         {spec.screens.length > 1 ? (
-          <nav className="screen-navigation" aria-label="Activity pages">
+          <nav className="screen-navigation" aria-label={copy.activityPages} lang={copy.locale}>
             <button
               type="button"
               disabled={screenIndex === 0}
               onClick={() => goToScreen(screenIndex - 1)}
             >
-              Previous
+              {copy.previous}
             </button>
             <span className="screen-progress" aria-live="polite">
-              Page {screenIndex + 1} of {spec.screens.length}
+              {copy.pageProgress(screenIndex + 1, spec.screens.length)}
             </span>
             <button
               type="button"
               disabled={screenIndex === spec.screens.length - 1}
               onClick={() => goToScreen(screenIndex + 1)}
             >
-              Next
+              {copy.next}
             </button>
           </nav>
         ) : null}
 
-        {reportEndpoint ? <ContentReport endpoint={reportEndpoint} /> : null}
+        {reportEndpoint ? <ContentReport endpoint={reportEndpoint} locale={spec.metadata.locale} /> : null}
       </article>
     </main>
   );
@@ -223,9 +231,10 @@ type ReportReason =
   | 'accessibility'
   | 'other';
 
-function ContentReport({ endpoint }: { endpoint: string }) {
+function ContentReport({ endpoint, locale }: { endpoint: string; locale?: string }) {
   const [reason, setReason] = useState<ReportReason>('inappropriate');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
+  const copy = playerCopy(locale);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -245,31 +254,31 @@ function ContentReport({ endpoint }: { endpoint: string }) {
   }
 
   return (
-    <footer className="widget-safety-footer">
+    <footer className="widget-safety-footer" lang={copy.locale}>
       <details>
-        <summary>Report this widget</summary>
+        <summary>{copy.reportWidget}</summary>
         {status === 'sent' ? (
-          <p role="status">Thank you. This widget has been flagged for review.</p>
+          <p role="status">{copy.reportThanks}</p>
         ) : (
           <form className="report-form" onSubmit={(event) => void submit(event)}>
-            <label htmlFor="report-reason">What is the concern?</label>
+            <label htmlFor="report-reason">{copy.reportConcern}</label>
             <select
               id="report-reason"
               value={reason}
               onChange={(event) => setReason(event.target.value as ReportReason)}
             >
-              <option value="inappropriate">Inappropriate content</option>
-              <option value="personal-data">Personal information</option>
-              <option value="copyright">Copyright concern</option>
-              <option value="accessibility">Accessibility problem</option>
-              <option value="other">Another safety concern</option>
+              <option value="inappropriate">{copy.reportReasons.inappropriate}</option>
+              <option value="personal-data">{copy.reportReasons['personal-data']}</option>
+              <option value="copyright">{copy.reportReasons.copyright}</option>
+              <option value="accessibility">{copy.reportReasons.accessibility}</option>
+              <option value="other">{copy.reportReasons.other}</option>
             </select>
             <button className="secondary-action" type="submit" disabled={status === 'sending'}>
-              {status === 'sending' ? 'Sending…' : 'Send report'}
+              {status === 'sending' ? copy.sending : copy.sendReport}
             </button>
             {status === 'failed' ? (
               <p className="report-error" role="alert">
-                The report could not be sent. Check your connection and try again.
+                {copy.reportFailed}
               </p>
             ) : null}
           </form>
@@ -279,9 +288,17 @@ function ContentReport({ endpoint }: { endpoint: string }) {
   );
 }
 
-export function PlayerError({ title, message }: { title: string; message: string }) {
+export function PlayerError({
+  title,
+  message,
+  locale = 'en',
+}: {
+  title: string;
+  message: string;
+  locale?: string;
+}) {
   return (
-    <main className="player-shell player-error-page">
+    <main className="player-shell player-error-page" lang={locale}>
       <section className="player-error" role="alert">
         <h1>{title}</h1>
         <p>{message}</p>
@@ -290,11 +307,35 @@ export function PlayerError({ title, message }: { title: string; message: string
   );
 }
 
-function subjectLabel(subject: NonNullable<WidgetSpec['metadata']['subject']>): string {
+function subjectLabel(
+  subject: NonNullable<WidgetSpec['metadata']['subject']>,
+  locale?: string,
+): string {
+  if (localeUsesLanguage(locale, 'ms')) {
+    const labels: Record<string, string> = {
+      science: 'Sains',
+      mathematics: 'Matematik',
+      english: 'Bahasa Inggeris',
+      humanities: 'Kemanusiaan',
+      languages: 'Bahasa',
+      other: 'Lain-lain',
+    };
+    return labels[subject] ?? subject;
+  }
   return subject.charAt(0).toUpperCase() + subject.slice(1);
 }
 
-function levelLabel(level: NonNullable<WidgetSpec['metadata']['level']>): string {
+function levelLabel(level: NonNullable<WidgetSpec['metadata']['level']>, locale?: string): string {
+  if (localeUsesLanguage(locale, 'ms')) {
+    switch (level) {
+      case 'upper-primary':
+        return 'Sekolah rendah tahap atas';
+      case 'secondary':
+        return 'Sekolah menengah';
+      case 'other':
+        return 'Semua peringkat';
+    }
+  }
   switch (level) {
     case 'upper-primary':
       return 'Upper primary';

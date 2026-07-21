@@ -30,6 +30,7 @@ import {
   type RuntimeValue,
   type RuntimeValues,
 } from './runtime';
+import { localeUsesLanguage, playerCopy, type PlayerCopy } from './localisation';
 import { RandomiserRenderer } from './readyMade/RandomiserRenderer';
 import { TaskListRenderer } from './readyMade/TaskListRenderer';
 import { TimerRenderer } from './readyMade/TimerRenderer';
@@ -51,6 +52,7 @@ export interface ComponentRendererProps {
 
 export function ComponentRenderer(props: ComponentRendererProps) {
   const { component } = props;
+  const copy = playerCopy(props.spec.metadata.locale);
 
   switch (component.kind) {
     case 'text':
@@ -60,6 +62,7 @@ export function ComponentRenderer(props: ComponentRendererProps) {
         <ImageRenderer
           component={component}
           spec={props.spec}
+          copy={copy}
           resolveAsset={props.resolveAsset}
         />
       );
@@ -86,15 +89,15 @@ export function ComponentRenderer(props: ComponentRendererProps) {
     case 'plot':
       return <PlotRenderer {...props} component={component} />;
     case 'timer':
-      return <TimerRenderer component={component} />;
+      return <TimerRenderer component={component} copy={copy} />;
     case 'randomiser':
-      return <RandomiserRenderer component={component} />;
+      return <RandomiserRenderer component={component} copy={copy} />;
     case 'taskList':
-      return <TaskListRenderer component={component} />;
+      return <TaskListRenderer component={component} copy={copy} />;
     case 'trafficLight':
-      return <TrafficLightRenderer component={component} />;
+      return <TrafficLightRenderer component={component} copy={copy} />;
     default:
-      return <UnsupportedComponent component={component} />;
+      return <UnsupportedComponent component={component} copy={copy} />;
   }
 }
 
@@ -124,10 +127,12 @@ function TextRenderer({ component }: { component: TextComponent }) {
 function ImageRenderer({
   component,
   spec,
+  copy,
   resolveAsset,
 }: {
   component: Extract<WidgetComponent, { kind: 'image' }>;
   spec: WidgetSpec;
+  copy: PlayerCopy;
   resolveAsset?: AssetResolver;
 }) {
   const asset = findImageAsset(spec, component.assetId);
@@ -143,7 +148,12 @@ function ImageRenderer({
           data-fit={component.fit}
         />
       ) : (
-        <MissingImage altText={component.altText} decorative={component.decorative} />
+        <MissingImage
+          altText={component.altText}
+          decorative={component.decorative}
+          copy={copy}
+          contentLocale={spec.metadata.locale}
+        />
       )}
       {component.caption ? <figcaption>{component.caption}</figcaption> : null}
     </figure>
@@ -159,6 +169,7 @@ function ChoiceQuestionRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: ChoiceQuestionComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const selected = Array.isArray(response) ? response : [];
   const correct = submitted && isCorrectResponse(component, response);
   const feedbackId = `${component.id}-feedback`;
@@ -183,7 +194,7 @@ function ChoiceQuestionRenderer({
     >
       <legend>
         {questionNumber ? (
-          <span className="question-number">Question {questionNumber}</span>
+          <span className="question-number" lang={copy.locale}>{copy.question(questionNumber)}</span>
         ) : null}
         {component.prompt}
       </legend>
@@ -236,8 +247,10 @@ function ShortAnswerRenderer({
   response,
   submitted,
   questionNumber,
+  spec,
   onResponseChange,
 }: ComponentRendererProps & { component: ShortAnswerQuestionComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const inputId = useId();
   const answer = typeof response === 'string' ? response : '';
   const correct = submitted && isCorrectResponse(component, response);
@@ -247,7 +260,7 @@ function ShortAnswerRenderer({
     <div className="question">
       <label className="question-label" htmlFor={inputId}>
         {questionNumber ? (
-          <span className="question-number">Question {questionNumber}</span>
+          <span className="question-number" lang={copy.locale}>{copy.question(questionNumber)}</span>
         ) : null}
         {component.prompt}
       </label>
@@ -281,6 +294,7 @@ function MatchingRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: MatchingComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const answers = responseMap(response);
   const correct = submitted && isCorrectResponse(component, response);
 
@@ -289,10 +303,7 @@ function MatchingRenderer({
       <h2 className="interaction-heading" id={`${component.id}-heading`}>
         {component.prompt}
       </h2>
-      <p className="interaction-instructions">
-        Choose the match for each item. Each menu works with touch, a keyboard or
-        a screen reader.
-      </p>
+      <p className="interaction-instructions" lang={copy.locale}>{copy.matchingInstructions}</p>
       <ul className="response-list">
         {component.items.map((item) => (
           <li className="response-row" key={item.id}>
@@ -314,7 +325,7 @@ function MatchingRenderer({
                 })
               }
             >
-              <option value="">Choose a match</option>
+              <option value="" lang={copy.locale}>{copy.chooseMatch}</option>
               {component.targets.map((target) => (
                 <option key={target.id} value={target.id}>
                   {contentLabel(target.content)}
@@ -339,6 +350,7 @@ function SortingRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: SortingComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const answers = responseMap(response);
   const correct = submitted && isCorrectResponse(component, response);
 
@@ -347,7 +359,7 @@ function SortingRenderer({
       <h2 className="interaction-heading" id={`${component.id}-heading`}>
         {component.prompt}
       </h2>
-      <p className="interaction-instructions">Place every item in a category.</p>
+      <p className="interaction-instructions" lang={copy.locale}>{copy.sortingInstructions}</p>
       <ul className="response-list">
         {component.items.map((item) => (
           <li className="response-row" key={item.id}>
@@ -369,7 +381,7 @@ function SortingRenderer({
                 })
               }
             >
-              <option value="">Choose a category</option>
+              <option value="" lang={copy.locale}>{copy.chooseCategory}</option>
               {component.categories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.label}
@@ -394,6 +406,7 @@ function SequencingRenderer({
   resolveAsset,
   onResponseChange,
 }: ComponentRendererProps & { component: SequencingComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const itemIds = component.items.map((item) => item.id);
   const order = Array.isArray(response)
     ? response
@@ -413,9 +426,7 @@ function SequencingRenderer({
       <h2 className="interaction-heading" id={`${component.id}-heading`}>
         {component.prompt}
       </h2>
-      <p className="interaction-instructions">
-        Use the arrow buttons to put the steps in order.
-      </p>
+      <p className="interaction-instructions" lang={copy.locale}>{copy.sequencingInstructions}</p>
       <ol className="sequence-list">
         {order.map((itemId, index) => {
           const item = component.items.find((candidate) => candidate.id === itemId);
@@ -433,19 +444,25 @@ function SequencingRenderer({
                   className="sequence-action"
                   type="button"
                   disabled={submitted || index === 0}
-                  aria-label={`Move ${label} earlier`}
+                  aria-labelledby={`${component.id}-${item.id}-earlier-before ${component.id}-${item.id}-earlier-label ${component.id}-${item.id}-earlier-after`}
                   onClick={() => move(index, -1)}
                 >
-                  ↑
+                  <span className="visually-hidden" id={`${component.id}-${item.id}-earlier-before`} lang={copy.locale}>{copy.moveBefore}</span>
+                  <span className="visually-hidden" id={`${component.id}-${item.id}-earlier-label`} lang={spec.metadata.locale}>{label}</span>
+                  <span className="visually-hidden" id={`${component.id}-${item.id}-earlier-after`} lang={copy.locale}>{copy.earlierAfter}</span>
+                  <span aria-hidden="true">↑</span>
                 </button>
                 <button
                   className="sequence-action"
                   type="button"
                   disabled={submitted || index === order.length - 1}
-                  aria-label={`Move ${label} later`}
+                  aria-labelledby={`${component.id}-${item.id}-later-before ${component.id}-${item.id}-later-label ${component.id}-${item.id}-later-after`}
                   onClick={() => move(index, 1)}
                 >
-                  ↓
+                  <span className="visually-hidden" id={`${component.id}-${item.id}-later-before`} lang={copy.locale}>{copy.moveBefore}</span>
+                  <span className="visually-hidden" id={`${component.id}-${item.id}-later-label`} lang={spec.metadata.locale}>{label}</span>
+                  <span className="visually-hidden" id={`${component.id}-${item.id}-later-after`} lang={copy.locale}>{copy.laterAfter}</span>
+                  <span aria-hidden="true">↓</span>
                 </button>
               </span>
             </li>
@@ -464,6 +481,7 @@ function HotspotsRenderer({
   spec,
   resolveAsset,
 }: ComponentRendererProps & { component: HotspotsComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const [selectedId, setSelectedId] = useState<string>();
 
   useEffect(() => {
@@ -483,14 +501,20 @@ function HotspotsRenderer({
         {source ? (
           <img src={source} alt={component.altText} decoding="async" />
         ) : (
-          <MissingImage altText={component.altText} decorative={false} />
+          <MissingImage
+            altText={component.altText}
+            decorative={false}
+            copy={copy}
+            contentLocale={spec.metadata.locale}
+          />
         )}
         {source ? (
           <svg
             className="hotspot-overlay"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
-            aria-label="Interactive points"
+            aria-label={copy.interactivePoints}
+            lang={copy.locale}
           >
             {component.hotspots.map((hotspot, index) => {
               const position = hotspotPosition(hotspot.shape);
@@ -503,6 +527,7 @@ function HotspotsRenderer({
                   tabIndex={0}
                   aria-label={hotspot.label}
                   aria-pressed={selectedId === hotspot.id}
+                  lang={spec.metadata.locale}
                   onClick={select}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter' || event.key === ' ') {
@@ -552,7 +577,7 @@ function HotspotsRenderer({
           <strong>{selected.label}.</strong> {selected.reveal}
         </div>
       ) : (
-        <p className="interaction-instructions">Choose a numbered point to learn more.</p>
+        <p className="interaction-instructions" lang={copy.locale}>{copy.chooseNumberedPoint}</p>
       )}
     </section>
   );
@@ -564,8 +589,9 @@ function NumberControlRenderer({
   values,
   onVariableChange,
 }: ComponentRendererProps & { component: NumberControlComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const variable = findVariable(spec, component.variableId, 'number');
-  if (!variable) return <BrokenReference label="number control" />;
+  if (!variable) return <BrokenReference label="number control" copy={copy} />;
   const currentValue = values[variable.id];
   const value = typeof currentValue === 'number' ? currentValue : variable.initial;
 
@@ -583,23 +609,27 @@ function NumberControlRenderer({
             className="secondary-action"
             type="button"
             disabled={value <= variable.minimum}
-            aria-label={`Decrease ${variable.label}`}
+            aria-labelledby={`${component.id}-decrease-before ${component.id}-decrease-label`}
             onClick={() =>
               onVariableChange(variable.id, Math.max(variable.minimum, value - variable.step))
             }
           >
-            −
+            <span className="visually-hidden" id={`${component.id}-decrease-before`} lang={copy.locale}>{copy.decreaseBefore}</span>
+            <span className="visually-hidden" id={`${component.id}-decrease-label`} lang={spec.metadata.locale}>{variable.label}</span>
+            <span aria-hidden="true">−</span>
           </button>
           <button
             className="secondary-action"
             type="button"
             disabled={value >= variable.maximum}
-            aria-label={`Increase ${variable.label}`}
+            aria-labelledby={`${component.id}-increase-before ${component.id}-increase-label`}
             onClick={() =>
               onVariableChange(variable.id, Math.min(variable.maximum, value + variable.step))
             }
           >
-            +
+            <span className="visually-hidden" id={`${component.id}-increase-before`} lang={copy.locale}>{copy.increaseBefore}</span>
+            <span className="visually-hidden" id={`${component.id}-increase-label`} lang={spec.metadata.locale}>{variable.label}</span>
+            <span aria-hidden="true">+</span>
           </button>
         </div>
       </div>
@@ -633,8 +663,9 @@ function ToggleControlRenderer({
   values,
   onVariableChange,
 }: ComponentRendererProps & { component: ToggleControlComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const variable = findVariable(spec, component.variableId, 'boolean');
-  if (!variable) return <BrokenReference label="toggle control" />;
+  if (!variable) return <BrokenReference label="toggle control" copy={copy} />;
   const currentValue = values[variable.id];
   const value = typeof currentValue === 'boolean' ? currentValue : variable.initial;
 
@@ -649,7 +680,7 @@ function ToggleControlRenderer({
             checked={!value}
             onChange={() => onVariableChange(variable.id, false)}
           />
-          <span>Off</span>
+          <span lang={copy.locale}>{copy.off}</span>
         </label>
         <label>
           <input
@@ -658,7 +689,7 @@ function ToggleControlRenderer({
             checked={value}
             onChange={() => onVariableChange(variable.id, true)}
           />
-          <span>On</span>
+          <span lang={copy.locale}>{copy.on}</span>
         </label>
       </div>
     </fieldset>
@@ -671,8 +702,9 @@ function SelectControlRenderer({
   values,
   onVariableChange,
 }: ComponentRendererProps & { component: SelectControlComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const variable = findVariable(spec, component.variableId, 'choice');
-  if (!variable) return <BrokenReference label="choice control" />;
+  if (!variable) return <BrokenReference label="choice control" copy={copy} />;
   const currentValue = values[variable.id];
   const value = typeof currentValue === 'string' ? currentValue : variable.initialOptionId;
 
@@ -696,14 +728,16 @@ function SelectControlRenderer({
 
 function ValueDisplayRenderer({
   component,
+  spec,
   values,
 }: ComponentRendererProps & { component: ValueDisplayComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const value = evaluateExpression(component.expression, values);
   return (
     <div className="value-display" aria-live="polite">
       <span className="value-display-label">{component.label}</span>
       <output className="value-display-output">
-        {value === undefined ? 'Unavailable' : value.toFixed(component.decimalPlaces)}
+        {value === undefined ? <span lang={copy.locale}>{copy.unavailable}</span> : value.toFixed(component.decimalPlaces)}
         {value !== undefined && component.unit ? ` ${component.unit}` : ''}
       </output>
     </div>
@@ -712,8 +746,10 @@ function ValueDisplayRenderer({
 
 function PlotRenderer({
   component,
+  spec,
   values,
 }: ComponentRendererProps & { component: PlotComponent }) {
+  const copy = playerCopy(spec.metadata.locale);
   const titleId = `${component.id}-plot-title`;
   const descriptionId = `${component.id}-plot-description`;
   const width = 640;
@@ -726,6 +762,8 @@ function PlotRenderer({
   const requestedSteps = Math.ceil(xSpan / component.domain.step);
   const sampleCount = Math.min(240, Math.max(2, requestedSteps));
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
+  const hasLocalisedChrome =
+    !spec.metadata.locale || localeUsesLanguage(spec.metadata.locale, copy.locale);
 
   const xPosition = (value: number) =>
     margin.left + ((value - component.domain.minimum) / xSpan) * plotWidth;
@@ -747,9 +785,14 @@ function PlotRenderer({
           aria-labelledby={`${titleId} ${descriptionId}`}
         >
           <title id={titleId}>{component.title}</title>
-          <desc id={descriptionId}>
+          <desc
+            id={descriptionId}
+            lang={component.description || !hasLocalisedChrome ? spec.metadata.locale : copy.locale}
+          >
             {component.description ??
-              `A graph of ${component.range.label} against ${component.domain.label}.`}
+              (hasLocalisedChrome
+                ? copy.graphDescription(component.range.label, component.domain.label)
+                : `${component.range.label}. ${component.domain.label}.`)}
           </desc>
           {component.showGrid
             ? gridLines.flatMap((position) => [
@@ -828,9 +871,9 @@ function PlotRenderer({
         </svg>
       </div>
       {component.showLegend ? (
-        <ul className="plot-legend" aria-label="Graph lines">
+        <ul className="plot-legend" aria-label={copy.graphLines} lang={copy.locale}>
           {component.series.map((series) => (
-            <li key={series.id}>
+            <li key={series.id} lang={spec.metadata.locale}>
               <span data-series-colour={series.colour} />
               {series.label}
             </li>
@@ -889,41 +932,51 @@ function ItemContentRenderer({
 function MissingImage({
   altText,
   decorative,
+  copy,
+  contentLocale,
 }: {
   altText: string;
   decorative: boolean;
+  copy: PlayerCopy;
+  contentLocale?: string;
 }) {
+  const descriptionId = useId();
+  const fallbackId = useId();
   return (
     <div
       className="asset-unavailable"
       role={decorative ? undefined : 'img'}
-      aria-label={decorative ? undefined : `${altText}. Image unavailable.`}
+      aria-labelledby={decorative ? undefined : `${descriptionId} ${fallbackId}`}
       aria-hidden={decorative || undefined}
     >
+      {!decorative ? (
+        <>
+          <span className="visually-hidden" id={descriptionId} lang={contentLocale}>{altText}.</span>
+          <span className="visually-hidden" id={fallbackId} lang={copy.locale}>{copy.imageUnavailableShort}.</span>
+        </>
+      ) : null}
       <span aria-hidden="true">▧</span>
-      {!decorative ? <small>Image unavailable</small> : null}
+      {!decorative ? <small aria-hidden="true" lang={copy.locale}>{copy.imageUnavailableShort}</small> : null}
     </div>
   );
 }
 
-function UnsupportedComponent({ component }: { component: never }) {
+function UnsupportedComponent({ component, copy }: { component: never; copy: PlayerCopy }) {
   const kind = (component as { kind?: unknown }).kind;
   return (
-    <section className="unsupported-component" role="status">
-      <h2>This part needs a newer player</h2>
-      <p>
-        Update Classroom Widgets to display
-        {typeof kind === 'string' ? ` the “${kind}” component` : ' this component'}.
-      </p>
+    <section className="unsupported-component" role="status" lang={copy.locale}>
+      <h2>{copy.unsupportedTitle}</h2>
+      <p>{copy.unsupportedMessage(typeof kind === 'string' ? kind : undefined)}</p>
     </section>
   );
 }
 
-function BrokenReference({ label }: { label: string }) {
+function BrokenReference({ label, copy }: { label: string; copy: PlayerCopy }) {
+  const localisedLabel = copy.brokenReferenceLabels[label] ?? label;
   return (
-    <section className="unsupported-component" role="status">
-      <h2>This {label} is unavailable</h2>
-      <p>The activity refers to a setting that could not be found.</p>
+    <section className="unsupported-component" role="status" lang={copy.locale}>
+      <h2>{copy.brokenReferenceTitle(localisedLabel)}</h2>
+      <p>{copy.brokenReferenceMessage}</p>
     </section>
   );
 }

@@ -260,6 +260,68 @@ describe('WidgetPlayer', () => {
     expect(screen.getByRole('button', { name: 'Move First step earlier' })).toBeEnabled();
   });
 
+  it('localises student controls and accessibility labels for Malay activities', async () => {
+    const user = userEvent.setup();
+    const spec = matchingAndSortingSpec();
+    spec.metadata = {
+      ...spec.metadata,
+      locale: 'ms-SG',
+      subject: 'languages',
+      level: 'secondary',
+      learningObjective: 'Gunakan bahasa yang sesuai mengikut khalayak dan situasi.',
+    };
+
+    render(<WidgetPlayer spec={spec} reportEndpoint="/v1/reports/example" />);
+
+    expect(screen.getByText('Bahasa')).toBeInTheDocument();
+    expect(screen.getByText('Sekolah menengah')).toBeInTheDocument();
+    expect(screen.getByText('Matlamat pembelajaran')).toBeInTheDocument();
+    expect(screen.getByText(/Pilih padanan bagi setiap item/)).toBeInTheDocument();
+    expect(screen.getAllByRole('option', { name: 'Pilih padanan' })).toHaveLength(2);
+    expect(screen.getByText('Letakkan setiap item dalam satu kategori.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Semak jawapan' })).toBeDisabled();
+    expect(screen.getByText('Laporkan widget ini')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sun' }), 'sun-target');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Moon' }), 'moon-target');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Whale' }), 'mammal');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Robin' }), 'bird');
+    await user.click(screen.getByRole('button', { name: 'Semak jawapan' }));
+
+    expect(screen.getByText('2 daripada 2')).toBeInTheDocument();
+    expect(screen.getByText('Semua jawapan betul.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cuba lagi' })).toBeInTheDocument();
+  });
+
+  it('marks fallback player chrome as English without changing authored locale', () => {
+    const spec = matchingAndSortingSpec();
+    spec.metadata.locale = 'fr-FR';
+
+    const { rerender } = render(<WidgetPlayer spec={spec} />);
+
+    expect(document.documentElement).toHaveAttribute('lang', 'fr-FR');
+    expect(screen.getByRole('button', { name: 'Check answers' })).toHaveAttribute('lang', 'en');
+    expect(screen.getByText(/Choose the match for each item/)).toHaveAttribute('lang', 'en');
+
+    spec.metadata.locale = 'msa';
+    rerender(<WidgetPlayer spec={spec} />);
+    expect(document.documentElement).toHaveAttribute('lang', 'msa');
+    expect(screen.getByRole('button', { name: 'Check answers' })).toHaveAttribute('lang', 'en');
+
+    const sequence = sequencingSpec();
+    sequence.metadata.locale = 'fr-FR';
+    const firstItem = sequence.screens[0]?.components[0];
+    if (firstItem?.kind !== 'sequencing') throw new Error('Expected sequencing fixture');
+    firstItem.items[0]!.content = { kind: 'text', text: 'Première étape' };
+
+    rerender(<WidgetPlayer spec={sequence} />);
+    const moveEarlier = screen.getByRole('button', { name: 'Move Première étape earlier' });
+    const labelledBy = moveEarlier.getAttribute('aria-labelledby')?.split(' ') ?? [];
+    expect(document.getElementById(labelledBy[0]!)).toHaveAttribute('lang', 'en');
+    expect(document.getElementById(labelledBy[1]!)).toHaveAttribute('lang', 'fr-FR');
+    expect(document.getElementById(labelledBy[2]!)).toHaveAttribute('lang', 'en');
+  });
+
   it('exposes hotspots as keyboard-operable labelled buttons', async () => {
     const user = userEvent.setup();
     const spec = hotspotsSpec();

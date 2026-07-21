@@ -1,0 +1,231 @@
+{
+  "schemaVersion": "1.0",
+  "id": "catchment-under-pressure",
+  "metadata": {
+    "title": "Catchment Under Pressure",
+    "summary": "Students predict flood pressure, then test how rainfall, hard surfaces and drainage capacity interact in a simplified catchment model.",
+    "subject": "humanities",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Explain how rainfall intensity, impermeable surface cover and drainage capacity combine to affect surface-water accumulation.",
+    "estimatedMinutes": 12,
+    "tags": ["geography", "catchments", "urban-flooding", "systems-thinking", "simulation"]
+  },
+  "theme": {
+    "accent": "sky",
+    "colourScheme": "light",
+    "density": "comfortable"
+  },
+  "assets": [],
+  "variables": [
+    {
+      "id": "rainfall-intensity",
+      "kind": "number",
+      "label": "Rainfall intensity",
+      "initial": 40,
+      "minimum": 10,
+      "maximum": 80,
+      "step": 5,
+      "unit": "mm/h"
+    },
+    {
+      "id": "hard-surface-cover",
+      "kind": "number",
+      "label": "Impermeable surface cover",
+      "initial": 60,
+      "minimum": 10,
+      "maximum": 100,
+      "step": 10,
+      "unit": "%"
+    },
+    {
+      "id": "drainage-capacity",
+      "kind": "number",
+      "label": "Drainage capacity",
+      "initial": 15,
+      "minimum": 5,
+      "maximum": 50,
+      "step": 5,
+      "unit": "mm/h"
+    }
+  ],
+  "screens": [
+    {
+      "id": "predict-pressure",
+      "title": "1. Predict the pressure",
+      "components": [
+        {
+          "id": "model-context",
+          "kind": "text",
+          "role": "body",
+          "text": "A neighbourhood drains into one canal. Rain falling on roofs and paved ground reaches the drains quickly, while rain on planted ground is absorbed or delayed. The next page uses a deliberately simplified teaching model, not a real flood forecast."
+        },
+        {
+          "id": "prediction-instruction",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Choose the combination you expect to create the greatest surface-water accumulation. Commit to a prediction before testing the controls."
+        },
+        {
+          "id": "pressure-prediction",
+          "kind": "choiceQuestion",
+          "prompt": "Which catchment is under the greatest pressure?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "gentle-green-strong", "content": { "kind": "text", "text": "Gentle rain, little paved ground and high drainage capacity" } },
+            { "id": "heavy-hard-low", "content": { "kind": "text", "text": "Heavy rain, extensive paved ground and low drainage capacity" } },
+            { "id": "heavy-green-strong", "content": { "kind": "text", "text": "Heavy rain, little paved ground and high drainage capacity" } },
+            { "id": "gentle-hard-strong", "content": { "kind": "text", "text": "Gentle rain, extensive paved ground and high drainage capacity" } }
+          ],
+          "correctOptionIds": ["heavy-hard-low"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Good prediction. More rapid runoff enters a system with less capacity to remove it.",
+            "incorrect": "Compare both the water entering the drains and the system's capacity to carry it away.",
+            "explanation": "Rainfall raises the input, impermeable cover increases the share reaching drains quickly, and drainage capacity removes part of that flow."
+          }
+        }
+      ]
+    },
+    {
+      "id": "test-catchment",
+      "title": "2. Test the catchment",
+      "components": [
+        {
+          "id": "model-rule",
+          "kind": "text",
+          "role": "instruction",
+          "text": "Change one control at a time. In this model, rapid runoff equals rainfall intensity multiplied by the paved share. Surface water accumulates only when that runoff exceeds drainage capacity."
+        },
+        { "id": "rainfall-control", "kind": "numberControl", "variableId": "rainfall-intensity", "presentation": "slider" },
+        { "id": "surface-control", "kind": "numberControl", "variableId": "hard-surface-cover", "presentation": "slider" },
+        { "id": "drain-control", "kind": "numberControl", "variableId": "drainage-capacity", "presentation": "slider" },
+        {
+          "id": "rapid-runoff",
+          "kind": "valueDisplay",
+          "label": "Rapid runoff entering drains",
+          "expression": {
+            "kind": "binary",
+            "operator": "divide",
+            "left": {
+              "kind": "binary",
+              "operator": "multiply",
+              "left": { "kind": "variable", "variableId": "rainfall-intensity" },
+              "right": { "kind": "variable", "variableId": "hard-surface-cover" }
+            },
+            "right": { "kind": "literal", "value": 100 }
+          },
+          "decimalPlaces": 1,
+          "unit": "mm/h"
+        },
+        {
+          "id": "accumulation-rate",
+          "kind": "valueDisplay",
+          "label": "Surface-water accumulation rate",
+          "expression": {
+            "kind": "binary",
+            "operator": "maximum",
+            "left": { "kind": "literal", "value": 0 },
+            "right": {
+              "kind": "binary",
+              "operator": "subtract",
+              "left": {
+                "kind": "binary",
+                "operator": "divide",
+                "left": {
+                  "kind": "binary",
+                  "operator": "multiply",
+                  "left": { "kind": "variable", "variableId": "rainfall-intensity" },
+                  "right": { "kind": "variable", "variableId": "hard-surface-cover" }
+                },
+                "right": { "kind": "literal", "value": 100 }
+              },
+              "right": { "kind": "variable", "variableId": "drainage-capacity" }
+            }
+          },
+          "decimalPlaces": 1,
+          "unit": "mm/h"
+        },
+        {
+          "id": "accumulation-plot",
+          "kind": "plot",
+          "title": "Accumulated surface water during one hour",
+          "description": "The line starts at zero. Its slope shows how quickly surface water accumulates when rapid runoff is greater than drainage capacity; otherwise it remains at zero.",
+          "domain": {
+            "variableId": "elapsed-minutes",
+            "label": "Elapsed time",
+            "minimum": 0,
+            "maximum": 60,
+            "step": 2,
+            "unit": "min"
+          },
+          "range": {
+            "label": "Accumulated surface water",
+            "minimum": 0,
+            "maximum": 80,
+            "unit": "mm"
+          },
+          "series": [
+            {
+              "id": "surface-water-series",
+              "label": "Simplified accumulation",
+              "colour": "sky",
+              "yExpression": {
+                "kind": "binary",
+                "operator": "multiply",
+                "left": {
+                  "kind": "binary",
+                  "operator": "maximum",
+                  "left": { "kind": "literal", "value": 0 },
+                  "right": {
+                    "kind": "binary",
+                    "operator": "subtract",
+                    "left": {
+                      "kind": "binary",
+                      "operator": "divide",
+                      "left": {
+                        "kind": "binary",
+                        "operator": "multiply",
+                        "left": { "kind": "variable", "variableId": "rainfall-intensity" },
+                        "right": { "kind": "variable", "variableId": "hard-surface-cover" }
+                      },
+                      "right": { "kind": "literal", "value": 100 }
+                    },
+                    "right": { "kind": "variable", "variableId": "drainage-capacity" }
+                  }
+                },
+                "right": {
+                  "kind": "binary",
+                  "operator": "divide",
+                  "left": { "kind": "variable", "variableId": "elapsed-minutes" },
+                  "right": { "kind": "literal", "value": 60 }
+                }
+              }
+            }
+          ],
+          "showGrid": true,
+          "showLegend": false
+        },
+        {
+          "id": "threshold-question",
+          "kind": "choiceQuestion",
+          "prompt": "In this model, when will the plotted line remain flat at zero?",
+          "selectionMode": "single",
+          "options": [
+            { "id": "capacity-meets-runoff", "content": { "kind": "text", "text": "When drainage capacity is equal to or greater than rapid runoff" } },
+            { "id": "rainfall-is-nonzero", "content": { "kind": "text", "text": "Whenever any rain is falling" } },
+            { "id": "hard-cover-over-half", "content": { "kind": "text", "text": "Whenever impermeable cover is more than half of the catchment" } },
+            { "id": "after-thirty-minutes", "content": { "kind": "text", "text": "Only during the first thirty minutes" } }
+          ],
+          "correctOptionIds": ["capacity-meets-runoff"],
+          "shuffleOptions": true,
+          "feedback": {
+            "correct": "Correct. The model shows no surface accumulation while the drains can carry away the rapid runoff.",
+            "incorrect": "Compare the rapid-runoff readout with the drainage-capacity control.",
+            "explanation": "The model clamps negative values to zero: capacity at least as large as rapid runoff gives an accumulation rate of zero."
+          }
+        }
+      ]
+    }
+  ]
+}

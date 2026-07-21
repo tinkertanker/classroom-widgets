@@ -1,5 +1,5 @@
 {
-  "minimumCorpusSize": 12,
+  "minimumCorpusSize": 17,
   "minimumPerFamily": {
     "quiz-retrieval": 3,
     "matching-sorting-sequencing": 3,
@@ -7,8 +7,15 @@
     "graph-simulation": 3,
     "ready-tools": 1
   },
-  "requiredSubjects": ["science", "mathematics", "english", "humanities"],
+  "requiredSubjects": ["science", "mathematics", "english", "humanities", "languages"],
   "requiredLevels": ["upper-primary", "secondary"],
+  "requiredSubjectLevels": {
+    "science": ["upper-primary", "secondary"],
+    "mathematics": ["upper-primary", "secondary"],
+    "english": ["upper-primary", "secondary"],
+    "humanities": ["upper-primary", "secondary"],
+    "languages": ["upper-primary"]
+  },
   "cases": [
     {
       "file": "packages/widget-spec/fixtures/retrieval-practice.widget.json",
@@ -89,6 +96,28 @@
       }
     },
     {
+      "file": "examples/studio/market-street-field-notes.widget.json",
+      "family": "matching-sorting-sequencing",
+      "subject": "humanities",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["sorting", "choiceQuestion", "sequencing"],
+        "minimumInteractiveComponents": 3,
+        "minimumFeedbackComponents": 3
+      }
+    },
+    {
+      "file": "examples/studio/cool-box-fair-test-lab.widget.json",
+      "family": "matching-sorting-sequencing",
+      "subject": "science",
+      "level": "upper-primary",
+      "expect": {
+        "componentKinds": ["sorting", "choiceQuestion", "sequencing"],
+        "minimumInteractiveComponents": 3,
+        "minimumFeedbackComponents": 3
+      }
+    },
+    {
       "file": "packages/widget-spec/fixtures/water-cycle-hotspots.widget.json",
       "family": "diagram-hotspots",
       "subject": "science",
@@ -160,6 +189,19 @@
         "minimumInteractiveComponents": 2,
         "minimumFeedbackComponents": 1,
         "minimumVariables": 1,
+        "minimumPlotSeries": 1
+      }
+    },
+    {
+      "file": "examples/studio/catchment-under-pressure.widget.json",
+      "family": "graph-simulation",
+      "subject": "humanities",
+      "level": "secondary",
+      "expect": {
+        "componentKinds": ["numberControl", "valueDisplay", "plot", "choiceQuestion"],
+        "minimumInteractiveComponents": 5,
+        "minimumFeedbackComponents": 2,
+        "minimumVariables": 3,
         "minimumPlotSeries": 1
       }
     },

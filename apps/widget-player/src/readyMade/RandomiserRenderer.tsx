@@ -3,12 +3,14 @@ import type {
   RandomiserComponent,
   RandomiserItemSpec,
 } from '@classroom-widgets/widget-spec';
+import type { PlayerCopy } from '../localisation';
 
 interface RandomiserRendererProps {
   component: RandomiserComponent;
+  copy: PlayerCopy;
 }
 
-export function RandomiserRenderer({ component }: RandomiserRendererProps) {
+export function RandomiserRenderer({ component, copy }: RandomiserRendererProps) {
   const [selected, setSelected] = useState<RandomiserItemSpec>();
   const [drawnIds, setDrawnIds] = useState<Set<string>>(() => new Set());
   const available = component.allowRepeats
@@ -41,11 +43,11 @@ export function RandomiserRenderer({ component }: RandomiserRendererProps) {
       <div className="randomiser-result" role="status" aria-live="polite">
         {selected ? (
           <>
-            <span>Chosen</span>
+            <span lang={copy.locale}>{copy.chosen}</span>
             <strong>{selected.label}</strong>
           </>
         ) : (
-          <span>Ready to choose from {component.items.length} options.</span>
+          <span lang={copy.locale}>{copy.readyToChoose(component.items.length)}</span>
         )}
       </div>
       <div className="ready-tool-actions">
@@ -55,7 +57,7 @@ export function RandomiserRenderer({ component }: RandomiserRendererProps) {
           disabled={available.length === 0}
           onClick={draw}
         >
-          Choose
+          <span lang={copy.locale}>{copy.choose}</span>
         </button>
         <button
           className="secondary-action"
@@ -63,11 +65,11 @@ export function RandomiserRenderer({ component }: RandomiserRendererProps) {
           disabled={!selected && drawnIds.size === 0}
           onClick={reset}
         >
-          Reset choices
+          <span lang={copy.locale}>{copy.resetChoices}</span>
         </button>
       </div>
       {!component.allowRepeats && available.length === 0 ? (
-        <p className="ready-tool-note">Every option has been chosen. Reset to begin again.</p>
+        <p className="ready-tool-note" lang={copy.locale}>{copy.allChosen}</p>
       ) : null}
     </section>
   );
