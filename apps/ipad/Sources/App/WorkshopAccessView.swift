@@ -29,13 +29,13 @@ struct WorkshopAccessView: View {
                             Text("Set up Studio on this iPad")
                                 .font(.largeTitle.bold())
                                 .fixedSize(horizontal: false, vertical: true)
-                            Text("Enter the one-time code from your workshop facilitator to make and share classroom widgets. It does not create an account, and students never need a code or account.")
+                            Text("Enter your shared class code to make and share classroom widgets. It does not create an account, and students never need a code or account.")
                                 .font(.body)
                                 .foregroundStyle(StudioTheme.mutedInk)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
 
-                        TextField("Workshop code", text: $accessCode)
+                        TextField("Class code", text: $accessCode)
                             .textInputAutocapitalization(.characters)
                             .autocorrectionDisabled()
                             .font(.title3.monospaced().weight(.semibold))
@@ -45,7 +45,7 @@ struct WorkshopAccessView: View {
                             .accessibilityIdentifier("workshop-access-code")
                             .disabled(isRegistering)
 
-                        Label("Use at least 8 letters, numbers or hyphens.", systemImage: "info.circle")
+                        Label("Enter four numbers followed by four letters, for example 1234ABCD. A hyphen is optional.", systemImage: "info.circle")
                             .font(.footnote)
                             .foregroundStyle(accessCodeIsTooShort ? StudioTheme.danger : StudioTheme.mutedInk)
 
@@ -131,8 +131,8 @@ struct WorkshopAccessView: View {
         guard !isRegistering else { return }
         guard !cleanedAccessCode.isEmpty else {
             registrationError = StudioErrorPresentation(
-                title: "Enter your facilitator code",
-                message: "Ask your workshop facilitator for the code that activates Studio on this iPad.",
+                title: "Enter your class code",
+                message: "Ask your workshop facilitator for the class code that activates Studio on this iPad.",
                 requestsWorkshopAccess: false
             )
             codeIsFocused = true
@@ -140,8 +140,8 @@ struct WorkshopAccessView: View {
         }
         guard !accessCodeIsTooShort else {
             registrationError = StudioErrorPresentation(
-                title: "Add a few more characters",
-                message: "Facilitator codes are at least 8 characters. Your code is still in the field above.",
+                title: "Complete the class code",
+                message: "Enter all four numbers and four letters. Your code is still in the field above.",
                 requestsWorkshopAccess: false
             )
             codeIsFocused = true

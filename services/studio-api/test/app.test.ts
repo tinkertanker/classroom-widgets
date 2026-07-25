@@ -77,7 +77,7 @@ describe('Studio API', () => {
         dailyDraftCreationLimit: 50,
         dailyNetworkDraftCreationLimit: 500,
         maximumDraftsPerOwner: 100,
-        dailyNetworkRegistrationLimit: 50,
+        dailyNetworkRegistrationLimit: 100,
         publicationTtlDays: 90,
         deviceTokenSigningSecret: SIGNING_SECRET,
       },
@@ -87,19 +87,19 @@ describe('Studio API', () => {
     });
   });
 
-  it('registers one iPad with a valid pilot access code and rejects reuse', async () => {
-    const accessCode = 'WORKSHOP-2026';
+  it('normalises a class code and allows exactly its fixed number of registrations', async () => {
+    const accessCode = '1234ABCD';
     const codeHash = createHash('sha256')
-      .update(`pilot-code:${accessCode}`)
+      .update(`class-code:${accessCode}`)
       .digest('hex');
-    repository.pilotCodes.set(codeHash, {
-      maximumUses: 1,
+    repository.classCodes.set(codeHash, {
+      maximumUses: 2,
       uses: 0,
       expiresAt: '2026-07-19T00:00:00.000Z',
     });
 
     const registration = await app.fetch(
-      request('/v1/devices/register', 'POST', { accessCode: accessCode.toLowerCase() }),
+      request('/v1/devices/register', 'POST', { accessCode: '1234-abcd' }),
     );
     const credential = await registration.json() as { token: string; expiresAt: string };
 
@@ -112,12 +112,61 @@ describe('Studio API', () => {
     );
     expect(authorised.status).toBe(404);
 
-    const reused = await app.fetch(
+    const secondRegistration = await app.fetch(
       request('/v1/devices/register', 'POST', { accessCode }),
     );
-    const reusedBody = await reused.json() as { error: { code: string } };
-    expect(reused.status).toBe(403);
-    expect(reusedBody.error.code).toBe('INVALID_ACCESS_CODE');
+    expect(secondRegistration.status).toBe(201);
+
+    const overCapacity = await app.fetch(
+      request('/v1/devices/register', 'POST', { accessCode }),
+    );
+    const overCapacityBody = await overCapacity.json() as { error: { code: string; message: string } };
+    expect(overCapacity.status).toBe(403);
+    expect(overCapacityBody.error.code).toBe('INVALID_ACCESS_CODE');
+    expect(overCapacityBody.error.message).toContain('activation limit');
+    expect(repository.classCodes.get(codeHash)?.uses).toBe(2);
+  });
+
+  it('lets a class on one shared network reach its full 100-use capacity', async () => {
+    const accessCode = '1234ABCD';
+    const codeHash = createHash('sha256')
+      .update(`class-code:${accessCode}`)
+      .digest('hex');
+    repository.classCodes.set(codeHash, {
+      maximumUses: 100,
+      uses: 0,
+      expiresAt: '2026-07-19T00:00:00.000Z',
+    });
+
+    // All requests in this test share the same synthetic network hash, so this
+    // exercises the production coupling between DAILY_NETWORK_REGISTRATION_LIMIT
+    // and the maximum class-code capacity (see migration 0007 and wrangler.jsonc).
+    for (let use = 0; use < 100; use += 1) {
+      const registration = await app.fetch(
+        request('/v1/devices/register', 'POST', { accessCode }),
+      );
+      expect(registration.status).toBe(201);
+    }
+
+    expect(repository.classCodes.get(codeHash)?.uses).toBe(100);
+  });
+
+  it('rejects malformed class codes', async () => {
+    for (const accessCode of [
+      '123-ABCD',
+      '12345-ABCD',
+      '1234-ABC1',
+      'ABCD-1234',
+      '1234--ABCD',
+      'CW-AUG26-ABCD-EFGH',
+    ]) {
+      const response = await app.fetch(
+        request('/v1/devices/register', 'POST', { accessCode }),
+      );
+      const body = await response.json() as { error: { code: string } };
+      expect(response.status).toBe(403);
+      expect(body.error.code).toBe('INVALID_ACCESS_CODE');
+    }
   });
 
   it('refreshes an expired credential while preserving access to the same drafts', async () => {

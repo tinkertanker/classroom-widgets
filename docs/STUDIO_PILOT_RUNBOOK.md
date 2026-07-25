@@ -19,19 +19,32 @@ The production resources are in Wrangler's `tinkertanker` profile; keep
 
 ## Before inviting teachers
 
+**Important:** Before any class-code verification, trash the legacy `.studio-pilot-codes.txt` and any stale pre-cutover `.studio-smoke-token` from prior pilot runs. The new `.studio-smoke-token` created afterwards remains active and ignored.
+
 1. Confirm `GET /health` returns 200.
 2. Apply remote D1 migrations with
    `npx wrangler d1 migrations apply DB --remote --profile tinkertanker`.
-3. Confirm the Worker has both `AI_API_KEY` and
-   `DEVICE_TOKEN_SIGNING_SECRET` secrets configured.
-4. Generate workshop access codes once with
-   `npm run provision:studio-pilot -- 25`. The ignored
-   `.studio-pilot-codes.txt` file is created with owner-only permissions. Give
-   each teacher a different numbered code; reserve `SMOKE` for automated live
-   verification.
-5. Run the live flow once by setting `STUDIO_PILOT_ACCESS_CODE` to the `SMOKE`
-   code and running `npm run verify:studio-live`. Later runs reuse the ignored,
-   owner-only `.studio-smoke-token` file.
+   Dropping `pilot_codes` only removes the old provisioning table; it does not
+   revoke any device token already issued to a pilot iPad.
+3. Rotate `DEVICE_TOKEN_SIGNING_SECRET` as part of this cutover so that every
+   pilot iPad's existing device token is actually invalidated (device tokens
+   are long-lived and are verified only against this secret, not looked up in
+   the database). Generate a fresh secret and set it without ever displaying,
+   logging or storing it:
+   `openssl rand -base64 48 | npx wrangler secret put DEVICE_TOKEN_SIGNING_SECRET --profile tinkertanker`.
+   Afterwards every pilot iPad receives `DEVICE_REGISTRATION_REQUIRED` and must
+   re-register with a new class code; confirm `AI_API_KEY` is also configured.
+4. Provision one shared code for each class with
+   `npm run provision:studio-class -- 1234 30`, replacing `1234` with the
+   four-digit class number and `30` with the required activation limit from 1
+   to 100. The generated code contains those four numbers followed by four
+   random letters. Its ignored `.studio-class-codes/1234.txt` file has
+   owner-only permissions. Each successful iPad activation consumes one use;
+   the code remains valid until it reaches the configured limit or expires.
+5. Provision class `0000` with a 100-use limit for automated live verification.
+   Set `STUDIO_CLASS_ACCESS_CODE` to that code and run
+   `npm run verify:studio-live`. Later runs reuse the ignored, owner-only
+   `.studio-smoke-token` file.
 6. For external TestFlight or App Store review, place a still-valid multi-use
    workshop code in App Review notes. Verify it immediately before submission
    and keep it valid until review has completed; never put it in source control
@@ -43,9 +56,10 @@ The production resources are in Wrangler's `tinkertanker` profile; keep
    VoiceOver, portrait and landscape. Revoke every link and verify that the
    student sees the unavailable state.
 
-If access codes must be replaced, use `trash .studio-pilot-codes.txt`, delete
-only the known pilot-code rows after verifying their labels, and provision a
-new set. Never paste access codes into issues, commits, chat logs or screenshots.
+If a class code must be replaced, use `trash .studio-class-codes/1234.txt`,
+delete only the matching `Class 1234` row after checking its label and usage,
+then provision a replacement. Never paste class codes into issues, commits,
+chat logs or screenshots.
 
 ## Review public content reports
 
@@ -110,4 +124,5 @@ one is current.
 3. Revoke the smoke-test publication if one remains.
 4. Keep teacher publications until their displayed expiry unless a teacher asks
    for earlier deletion.
-5. Rotate the pilot access-code set before any later workshop.
+5. Rotate each class code before a later workshop and set a fresh activation
+   limit for that class.

@@ -209,8 +209,14 @@ struct StudioAPIClient: StudioAPI, Sendable {
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let cleanedAccessCode = accessCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let compactAccessCode = cleanedAccessCode.replacingOccurrences(of: "-", with: "")
+        let isClassCode = cleanedAccessCode.range(
+            of: #"^\d{4}-?[A-Z]{4}$"#,
+            options: .regularExpression
+        ) != nil
         request.httpBody = try JSONEncoder().encode(
-            RegistrationRequest(accessCode: accessCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased())
+            RegistrationRequest(accessCode: isClassCode ? compactAccessCode : cleanedAccessCode)
         )
         let (data, _) = try await execute(request)
         let registration = try decodeDeviceRegistration(data)

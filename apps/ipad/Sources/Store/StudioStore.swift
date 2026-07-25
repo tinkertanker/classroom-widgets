@@ -349,10 +349,12 @@ final class StudioStore {
 
     func registerWorkshopAccess(_ code: String) async throws {
         let cleaned = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard cleaned.range(of: #"^[A-Z0-9-]{8,80}$"#, options: .regularExpression) != nil else {
+        let compact = cleaned.replacingOccurrences(of: "-", with: "")
+        let isClassCode = cleaned.range(of: #"^\d{4}-?[A-Z]{4}$"#, options: .regularExpression) != nil
+        guard isClassCode else {
             throw StudioAccessError.invalidAccessCodeFormat
         }
-        _ = try await api.registerDevice(accessCode: cleaned)
+        _ = try await api.registerDevice(accessCode: compact)
         workshopAccessState = .ready
         showsWorkshopAccess = false
         notice = "Studio access ready"
@@ -1603,7 +1605,7 @@ private enum StudioAccessError: LocalizedError {
     case invalidAccessCodeFormat
 
     var errorDescription: String? {
-        "Enter the 8-character or longer access code provided by your workshop facilitator."
+        "Enter four class numbers followed by four letters, such as 1234ABCD."
     }
 }
 

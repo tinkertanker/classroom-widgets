@@ -478,7 +478,7 @@ final class StudioAPIClientTests: XCTestCase {
             tokenStore: credentials
         )
 
-        let received = try await client.registerDevice(accessCode: " pilot-ab12 ")
+        let received = try await client.registerDevice(accessCode: " 1234-abcd ")
         let recordedRequest = await transport.lastRequest()
         let request = try XCTUnwrap(recordedRequest)
         let body = try XCTUnwrap(request.httpBody)
@@ -488,7 +488,7 @@ final class StudioAPIClientTests: XCTestCase {
         XCTAssertEqual(request.url?.absoluteString, "https://studio.example/v1/devices/register")
         XCTAssertEqual(request.httpMethod, "POST")
         XCTAssertNil(request.value(forHTTPHeaderField: "X-Device-Token"))
-        XCTAssertEqual(object["accessCode"], "PILOT-AB12")
+        XCTAssertEqual(object["accessCode"], "1234ABCD")
         let storedToken = try await credentials.token()
         XCTAssertEqual(storedToken, token)
     }

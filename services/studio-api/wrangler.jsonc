@@ -57,7 +57,9 @@
     "DAILY_NETWORK_UPLOAD_BYTES": "200000000",
     "DAILY_DRAFT_CREATION_LIMIT": "50",
     "DAILY_NETWORK_DRAFT_CREATION_LIMIT": "500",
-    "DAILY_NETWORK_REGISTRATION_LIMIT": "50",
+    // Must stay >= the class_codes.maximum_uses ceiling (100, see migration
+    // 0007) so a class sharing one NAT can reach its configured capacity.
+    "DAILY_NETWORK_REGISTRATION_LIMIT": "100",
     "MAXIMUM_DRAFTS_PER_OWNER": "100",
     "PUBLICATION_TTL_DAYS": "90"
   }

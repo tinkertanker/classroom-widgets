@@ -78,7 +78,7 @@ export interface StudioRepository {
   consumeGeneration(ownerHash: string, usageDate: string, limit: number): Promise<boolean>;
   countDrafts(ownerHash: string): Promise<number>;
   purgeUsage(beforeDate: string): Promise<void>;
-  consumePilotCode(codeHash: string, now: string): Promise<boolean>;
+  consumeClassCode(codeHash: string, now: string): Promise<boolean>;
   createDraft(input: SaveDraftInput): Promise<DraftRecord>;
   getDraft(id: string, ownerHash: string): Promise<DraftRecord | null>;
   listDrafts(ownerHash: string): Promise<DraftRecord[]>;

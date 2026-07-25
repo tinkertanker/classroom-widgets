@@ -91,7 +91,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     func testWorkshopAccessCanBeDeferred() {
         let app = launchApp(extraArguments: ["--ui-testing-registration-required"])
         XCTAssertTrue(app.staticTexts["Set up Studio on this iPad"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Use at least 8 letters, numbers or hyphens."].exists)
+        XCTAssertTrue(app.staticTexts["Enter four numbers followed by four letters, for example 1234ABCD. A hyphen is optional."].exists)
         let notNow = app.buttons["Explore examples"]
         XCTAssertTrue(notNow.waitForExistence(timeout: 5))
         notNow.tap()
@@ -114,7 +114,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
         XCTAssertTrue(activate.isEnabled)
         activate.tap()
 
-        XCTAssertTrue(app.staticTexts["Add a few more characters"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Complete the class code"].waitForExistence(timeout: 3))
         XCTAssertEqual(code.value as? String, "SHORT")
     }
 

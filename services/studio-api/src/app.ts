@@ -162,6 +162,13 @@ function requiredString(value: unknown, label: string, maximum: number): string 
   return trimmed;
 }
 
+function normaliseAccessCode(value: string): string | null {
+  const uppercased = value.toUpperCase();
+  const classCode = uppercased.match(/^(\d{4})-?([A-Z]{4})$/);
+  if (classCode) return `${classCode[1]}${classCode[2]}`;
+  return null;
+}
+
 function optionalString(value: unknown, label: string, maximum: number): string | undefined {
   if (value === undefined || value === null || value === '') return undefined;
   return requiredString(value, label, maximum);
@@ -397,9 +404,10 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
 
     if (request.method === 'POST' && url.pathname === '/v1/devices/register') {
       const body = objectBody<RegisterBody>(await readJson<unknown>(request, 1_000));
-      const accessCode = requiredString(body.accessCode, 'Workshop access code', 80).toUpperCase();
-      if (!/^[A-Z0-9-]{8,80}$/.test(accessCode)) {
-        throw new HttpError(403, 'INVALID_ACCESS_CODE', 'This workshop access code is not valid.');
+      const suppliedCode = requiredString(body.accessCode, 'Class code', 80);
+      const accessCode = normaliseAccessCode(suppliedCode);
+      if (!accessCode) {
+        throw new HttpError(403, 'INVALID_ACCESS_CODE', 'This class code is not valid.');
       }
       const timestamp = now();
       const usageDate = timestamp.toISOString().slice(0, 10);
@@ -415,9 +423,13 @@ export function createStudioApp(dependencies: StudioAppDependencies) {
           'This network has reached today’s workshop registration limit.',
         );
       }
-      const codeHash = await sha256(`pilot-code:${accessCode}`);
-      if (!await dependencies.repository.consumePilotCode(codeHash, timestamp.toISOString())) {
-        throw new HttpError(403, 'INVALID_ACCESS_CODE', 'This workshop access code is invalid or has already been used.');
+      const codeHash = await sha256(`class-code:${accessCode}`);
+      if (!await dependencies.repository.consumeClassCode(codeHash, timestamp.toISOString())) {
+        throw new HttpError(
+          403,
+          'INVALID_ACCESS_CODE',
+          'This class code is invalid, expired or has reached its activation limit.',
+        );
       }
       const credential = await issueDeviceToken(
         dependencies.config.deviceTokenSigningSecret,

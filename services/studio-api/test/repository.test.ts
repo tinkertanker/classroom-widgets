@@ -18,21 +18,24 @@ describe('MemoryStudioRepository', () => {
     expect(await repository.consumeGeneration('owner', '2026-07-19', 2)).toBe(true);
   });
 
-  it('consumes a one-use pilot code exactly once before it expires', async () => {
+  it('consumes a class code exactly up to its fixed activation limit', async () => {
     const repository = new MemoryStudioRepository();
-    repository.pilotCodes.set('pilot-code-hash', {
-      maximumUses: 1,
+    repository.classCodes.set('class-code-hash', {
+      maximumUses: 2,
       uses: 0,
       expiresAt: '2026-07-19T00:00:00.000Z',
     });
 
     expect(
-      await repository.consumePilotCode('pilot-code-hash', '2026-07-18T00:00:00.000Z'),
+      await repository.consumeClassCode('class-code-hash', '2026-07-18T00:00:00.000Z'),
     ).toBe(true);
     expect(
-      await repository.consumePilotCode('pilot-code-hash', '2026-07-18T00:00:01.000Z'),
+      await repository.consumeClassCode('class-code-hash', '2026-07-18T00:00:01.000Z'),
+    ).toBe(true);
+    expect(
+      await repository.consumeClassCode('class-code-hash', '2026-07-18T00:00:02.000Z'),
     ).toBe(false);
-    expect(repository.pilotCodes.get('pilot-code-hash')?.uses).toBe(1);
+    expect(repository.classCodes.get('class-code-hash')?.uses).toBe(2);
   });
 
   it('keeps drafts private to their device owner', async () => {

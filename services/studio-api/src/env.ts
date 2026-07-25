@@ -89,7 +89,7 @@ export function readConfig(env: StudioEnv): StudioConfig {
     maximumDraftsPerOwner: boundedInteger(env.MAXIMUM_DRAFTS_PER_OWNER, 100, 10, 1_000),
     dailyNetworkRegistrationLimit: boundedInteger(
       env.DAILY_NETWORK_REGISTRATION_LIMIT,
-      50,
+      100,
       5,
       500,
     ),

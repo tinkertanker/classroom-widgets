@@ -1,6 +1,37 @@
 import { describe, expect, it } from 'vitest';
 import { D1StudioRepository } from '../src/storage/d1Repository';
 
+describe('D1StudioRepository class-code activation', () => {
+  it('atomically consumes one use only while the code has capacity and has not expired', async () => {
+    const statements: string[] = [];
+    const bindings: unknown[][] = [];
+    const database = {
+      prepare(sql: string) {
+        statements.push(sql);
+        const statement = {
+          bind(...values: unknown[]) {
+            bindings.push(values);
+            return statement;
+          },
+          run: () => Promise.resolve({ meta: { changes: 1 } }),
+        };
+        return statement;
+      },
+    } as unknown as D1Database;
+    const repository = new D1StudioRepository(database);
+
+    await expect(repository.consumeClassCode(
+      'class-code-hash',
+      '2026-07-25T00:00:00.000Z',
+    )).resolves.toBe(true);
+
+    expect(statements[0]).toContain('UPDATE class_codes');
+    expect(statements[0]).toContain('use_count < maximum_uses');
+    expect(statements[0]).toContain('expires_at > ?1');
+    expect(bindings[0]).toEqual(['2026-07-25T00:00:00.000Z', 'class-code-hash']);
+  });
+});
+
 describe('D1StudioRepository draft deletion', () => {
   it('uses RETURNING instead of unreliable batch change metadata', async () => {
     const statements: string[] = [];

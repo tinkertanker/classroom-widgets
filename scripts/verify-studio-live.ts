@@ -6,9 +6,12 @@ import { validateWidgetSpec } from '../packages/widget-spec/src/index.js';
 const origin = (process.env.STUDIO_LIVE_ORIGIN ??
   'https://classroom-widgets-studio-api.tinkertanker.workers.dev').replace(/\/$/, '');
 const tokenPath = resolve('.studio-smoke-token');
-const pilotCodesPath = resolve('.studio-pilot-codes.txt');
+const smokeCodePath = resolve('.studio-class-codes/0000.txt');
+const explicitAccessCode = process.env.STUDIO_CLASS_ACCESS_CODE?.trim();
+// An explicit class code means the caller wants to verify the registration path
+// itself, so it must win over any cached token rather than silently bypassing it.
 let token = process.env.STUDIO_DEVICE_TOKEN?.trim() ||
-  (existsSync(tokenPath) ? readFileSync(tokenPath, 'utf8').trim() : '');
+  (!explicitAccessCode && existsSync(tokenPath) ? readFileSync(tokenPath, 'utf8').trim() : '');
 const headers: Record<string, string> = {
   Accept: 'application/json',
   'Content-Type': 'application/json',
@@ -19,13 +22,13 @@ async function ensureDeviceToken(): Promise<void> {
     headers['X-Device-Token'] = token;
     return;
   }
-  const localSmokeCode = existsSync(pilotCodesPath)
-    ? /^SMOKE\.\s+([A-Z0-9-]+)$/m.exec(readFileSync(pilotCodesPath, 'utf8'))?.[1]
+  const localSmokeCode = existsSync(smokeCodePath)
+    ? /^(\d{4}[A-Z]{4})$/m.exec(readFileSync(smokeCodePath, 'utf8'))?.[1]
     : undefined;
-  const accessCode = process.env.STUDIO_PILOT_ACCESS_CODE?.trim() || localSmokeCode;
+  const accessCode = explicitAccessCode || localSmokeCode;
   if (!accessCode) {
     throw new Error(
-      'Set STUDIO_PILOT_ACCESS_CODE for the first live verification, or restore .studio-smoke-token.',
+      'Set STUDIO_CLASS_ACCESS_CODE for the first live verification, provision class 0000, or restore .studio-smoke-token.',
     );
   }
   const response = await fetch(`${origin}/v1/devices/register`, {
@@ -43,7 +46,9 @@ async function ensureDeviceToken(): Promise<void> {
   }
   token = body.token;
   headers['X-Device-Token'] = token;
-  writeFileSync(tokenPath, `${token}\n`, { encoding: 'utf8', mode: 0o600, flag: 'wx' });
+  // Overwrite rather than fail-if-exists: a fresh registration must replace any
+  // stale cached token instead of leaving it in place for the next run to reuse.
+  writeFileSync(tokenPath, `${token}\n`, { encoding: 'utf8', mode: 0o600 });
 }
 
 async function jsonRequest(path: string, init: RequestInit = {}) {

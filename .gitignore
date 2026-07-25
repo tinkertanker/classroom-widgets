@@ -70,9 +70,9 @@ apps/ipad/.derived-data/
 **/xcuserdata/
 .wrangler/
 
-# Local Classroom Widgets Studio pilot credentials. These are generated for
-# workshop operations and must never enter source control.
-.studio-pilot-codes.txt
+# Local Classroom Widgets Studio access credentials. These are generated for
+# class operations and must never enter source control.
+.studio-class-codes/
 .studio-smoke-token
 
 # Browser acceptance screenshots are local verification artefacts.

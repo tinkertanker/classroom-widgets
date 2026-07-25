@@ -93,10 +93,10 @@ export class D1StudioRepository implements StudioRepository {
       .run();
   }
 
-  async consumePilotCode(codeHash: string, now: string): Promise<boolean> {
+  async consumeClassCode(codeHash: string, now: string): Promise<boolean> {
     const result = await this.database
       .prepare(
-        `UPDATE pilot_codes
+        `UPDATE class_codes
             SET use_count = use_count + 1, last_used_at = ?1
           WHERE code_hash = ?2
             AND use_count < maximum_uses

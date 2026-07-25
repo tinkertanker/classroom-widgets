@@ -15,7 +15,7 @@ export class MemoryStudioRepository implements StudioRepository {
   readonly publications = new Map<string, PublicationRecord>();
   private readonly generationUsage = new Map<string, number>();
   readonly contentReports: ContentReportInput[] = [];
-  readonly pilotCodes = new Map<string, { maximumUses: number; uses: number; expiresAt: string }>();
+  readonly classCodes = new Map<string, { maximumUses: number; uses: number; expiresAt: string }>();
 
   async consumeGeneration(ownerHash: string, usageDate: string, limit: number): Promise<boolean> {
     const key = `${ownerHash}:${usageDate}`;
@@ -36,8 +36,8 @@ export class MemoryStudioRepository implements StudioRepository {
     }
   }
 
-  async consumePilotCode(codeHash: string, now: string): Promise<boolean> {
-    const code = this.pilotCodes.get(codeHash);
+  async consumeClassCode(codeHash: string, now: string): Promise<boolean> {
+    const code = this.classCodes.get(codeHash);
     if (!code || code.expiresAt <= now || code.uses >= code.maximumUses) return false;
     code.uses += 1;
     return true;
