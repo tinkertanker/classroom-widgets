@@ -66,7 +66,7 @@ writeFileSync(outputPath, contents, { encoding: 'utf8', mode: 0o600, flag: 'wx' 
 
 const result = spawnSync(
   'npx',
-  ['wrangler', 'd1', 'execute', 'DB', '--remote', '--profile', 'default', '--command', statements.join('\n')],
+  ['wrangler', 'd1', 'execute', 'DB', '--remote', '--profile', 'tinkertanker', '--command', statements.join('\n')],
   { cwd: serviceDirectory, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
 );
 if (result.status !== 0) {

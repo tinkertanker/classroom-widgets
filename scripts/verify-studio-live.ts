@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { validateWidgetSpec } from '../packages/widget-spec/src/index.js';
 
 const origin = (process.env.STUDIO_LIVE_ORIGIN ??
-  'https://classroom-widgets-studio-api.dark-cell-6287.workers.dev').replace(/\/$/, '');
+  'https://classroom-widgets-studio-api.tinkertanker.workers.dev').replace(/\/$/, '');
 const tokenPath = resolve('.studio-smoke-token');
 const pilotCodesPath = resolve('.studio-pilot-codes.txt');
 let token = process.env.STUDIO_DEVICE_TOKEN?.trim() ||
@@ -97,7 +97,7 @@ async function main() {
 
     const imageBytes = stripPngTextMetadata(
       readFileSync(
-        resolve('apps/ipad/Sources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png'),
+        resolve('packages/teacher/public/logo.png'),
       ),
     );
     const imageHash = createHash('sha256').update(imageBytes).digest('hex');
@@ -107,10 +107,10 @@ async function main() {
         Accept: 'application/json',
         'Content-Type': 'image/png',
         'X-Device-Token': token,
-        'X-Image-Width': '1024',
-        'X-Image-Height': '1024',
+        'X-Image-Width': '534',
+        'X-Image-Height': '547',
         'X-Image-Sha256': imageHash,
-        'X-Image-Alt': 'The Classroom Widgets Studio app icon.',
+        'X-Image-Alt': 'A colourful grid of classroom widgets.',
         'X-Image-Decorative': 'false',
       },
       body: Uint8Array.from(imageBytes),
@@ -132,7 +132,7 @@ async function main() {
       id: 'live-smoke-image',
       kind: 'image',
       assetId,
-      altText: 'The Classroom Widgets Studio app icon.',
+      altText: 'A colourful grid of classroom widgets.',
       decorative: false,
       fit: 'contain',
       caption: 'Image delivery check',

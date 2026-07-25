@@ -34,7 +34,7 @@
     {
       "binding": "DB",
       "database_name": "classroom-widgets-studio",
-      "database_id": "326633d6-8698-4c4c-9ad2-d75e12f80006"
+      "database_id": "07b82514-099c-419c-aeeb-0165738d3b17"
     }
   ],
   "r2_buckets": [
@@ -47,8 +47,8 @@
     "AI_PROVIDER": "openai-compatible",
     "AI_MODEL": "deepseek-v4-flash",
     "AI_BASE_URL": "https://api.deepseek.com",
-    "PUBLIC_PLAYER_ORIGIN": "https://classroom-widgets-studio-api.dark-cell-6287.workers.dev",
-    "ALLOWED_ORIGINS": "https://classroom-widgets-studio-api.dark-cell-6287.workers.dev",
+    "PUBLIC_PLAYER_ORIGIN": "https://classroom-widgets-studio-api.tinkertanker.workers.dev",
+    "ALLOWED_ORIGINS": "https://classroom-widgets-studio-api.tinkertanker.workers.dev",
     "DAILY_GENERATION_LIMIT": "20",
     "DAILY_NETWORK_GENERATION_LIMIT": "500",
     "DAILY_SAFETY_REVIEW_LIMIT": "50",

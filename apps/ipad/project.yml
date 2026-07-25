@@ -60,7 +60,7 @@ targets:
         Debug:
           STUDIO_API_BASE_URL: http://127.0.0.1:8787
         Release:
-          STUDIO_API_BASE_URL: https://classroom-widgets-studio-api.dark-cell-6287.workers.dev
+          STUDIO_API_BASE_URL: https://classroom-widgets-studio-api.tinkertanker.workers.dev
     scheme:
       testTargets:
         - ClassroomWidgetsStudioTests

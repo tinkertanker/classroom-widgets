@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { validateWidgetSpec } from '../packages/widget-spec/src/index.js';
 
 const origin = (process.env.STUDIO_LIVE_ORIGIN ??
-  'https://classroom-widgets-studio-api.dark-cell-6287.workers.dev').replace(/\/$/, '');
+  'https://classroom-widgets-studio-api.tinkertanker.workers.dev').replace(/\/$/, '');
 const root = resolve(process.env.INIT_CWD ?? process.cwd());
 const statePath = resolve(tmpdir(), 'classroom-widgets-studio-browser-fixture.json');
 const action = process.argv[2];

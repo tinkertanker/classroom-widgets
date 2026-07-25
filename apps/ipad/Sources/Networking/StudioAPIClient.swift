@@ -167,7 +167,7 @@ struct StudioAPIClient: StudioAPI, Sendable {
         #if DEBUG
         let fallback = "http://127.0.0.1:8787"
         #else
-        let fallback = "https://classroom-widgets-studio-api.dark-cell-6287.workers.dev"
+        let fallback = "https://classroom-widgets-studio-api.tinkertanker.workers.dev"
         #endif
         let value = environmentValue ?? configuredValue ?? fallback
         return StudioAPIClient(
