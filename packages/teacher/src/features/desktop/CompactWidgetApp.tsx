@@ -92,7 +92,7 @@ const CompactWidgetApp = () => {
       },
       saveRandomiserList: (name, choices) => {
         const currentSnapshot = snapshotRef.current;
-        if (!currentSnapshot) return;
+        if (!currentSnapshot || closingRef.current) return;
         window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
           type: 'randomiser-list-save',
           schemaVersion: 1,
@@ -103,7 +103,7 @@ const CompactWidgetApp = () => {
       },
       deleteRandomiserList: (id) => {
         const currentSnapshot = snapshotRef.current;
-        if (!currentSnapshot) return;
+        if (!currentSnapshot || closingRef.current) return;
         window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
           type: 'randomiser-list-delete',
           schemaVersion: 1,
@@ -115,6 +115,11 @@ const CompactWidgetApp = () => {
         const currentSnapshot = snapshotRef.current;
         const pendingState = queuedStateRef.current ?? inFlightStateRef.current;
         closingRef.current = true;
+        window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+          type: 'panel-writes-checkpoint',
+          schemaVersion: 1,
+          widgetId: requestedWidgetId
+        });
         queuedStateRef.current = null;
         inFlightStateRef.current = null;
         if (!currentSnapshot || pendingState === null) return null;

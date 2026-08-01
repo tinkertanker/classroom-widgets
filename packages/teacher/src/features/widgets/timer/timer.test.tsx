@@ -301,6 +301,24 @@ describe('Timer Widget', () => {
     expect(onStateChange).not.toHaveBeenCalled();
   });
 
+  test('preserves a restored running timer deadline', () => {
+    const onStateChange = vi.fn();
+    const endTime = Date.now() + 3100;
+
+    renderWithModal(<Timer savedState={{ timer: {
+      endTime,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: true,
+      isPaused: false,
+      pausedTimeRemaining: 0
+    } }} onStateChange={onStateChange} />);
+
+    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      timer: expect.objectContaining({ endTime })
+    }));
+  });
+
   test('hides quick-add controls after the timer finishes and still plays audio', () => {
     renderWithModal(<Timer />);
 

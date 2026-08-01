@@ -39,6 +39,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private var hasReceivedWidgetInventory = false
     private var compactWidgetCreationPending = false
     private var pendingDashboardRecoveryChanges: [WidgetPanelStateChange]?
+    private var pendingHostWriteCount = 0
+    private var pendingHostWriteFailed = false
+    private var hostWriteGeneration = 0
+    private var pendingHostWriteWaiters: [(@MainActor (Bool) -> Void)] = []
 
     var isDashboardVisible: Bool { dashboardVisible }
     var onVisibilityChanged: (@MainActor (Bool) -> Void)?
@@ -223,12 +227,16 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Web content process terminated; reloading dashboard")
         guard windowMode == .compact, !isChangingWindowMode else {
+            resetHostWriteTracking()
             loadDashboard()
             return
         }
         isChangingWindowMode = true
-        widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges in
+        widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges, _ in
             guard let self else { return }
+            // Any outstanding host call targeted the terminated web process;
+            // invalidate its callbacks before loading the replacement host.
+            self.resetHostWriteTracking()
             self.pendingDashboardRecoveryChanges = pendingChanges
             self.widgetPanelCoordinator.enterCanvas()
             self.loadDashboard()
@@ -309,8 +317,13 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             return
         }
         isChangingWindowMode = true
-        widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges in
-            self?.finishDashboardReload(pendingChanges)
+        widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges, prepared in
+            guard let self else { return }
+            guard prepared else {
+                self.abortCompactTransition()
+                return
+            }
+            self.finishDashboardReload(pendingChanges)
         }
     }
 
@@ -319,12 +332,18 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         guard windowMode == .compact else { return true }
 
         isChangingWindowMode = true
-        guard let pendingChanges = await resultWithTimeout(nanoseconds: 2_000_000_000) { completion in
-            widgetPanelCoordinator.prepareToEnterCanvas(completion: completion)
-        } else {
+        guard let preparation: ([WidgetPanelStateChange], Bool) = await resultWithTimeout(
+            nanoseconds: 2_000_000_000,
+            operation: { completion in
+                widgetPanelCoordinator.prepareToEnterCanvas { changes, prepared in
+                    completion((changes, prepared))
+                }
+            }
+        ), preparation.1 else {
             abortCompactTransition()
             return false
         }
+        let pendingChanges = preparation.0
         for retriesRemaining in stride(from: 20, through: 0, by: -1) {
             if await resultWithTimeout(operation: { completion in
                 applyFinalPanelStateChanges(pendingChanges, completion: completion)
@@ -395,8 +414,13 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         guard window != nil, !isChangingWindowMode else { return }
         if windowMode == .compact, mode == .canvas {
             isChangingWindowMode = true
-            widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges in
-                self?.finishCanvasTransition(pendingChanges)
+            widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges, prepared in
+                guard let self else { return }
+                guard prepared else {
+                    self.abortCompactTransition()
+                    return
+                }
+                self.finishCanvasTransition(pendingChanges)
             }
             return
         }
@@ -502,6 +526,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         // the compact surfaces rather than re-showing those inert web views.
         widgetPanelCoordinator.enterCanvas()
         isChangingWindowMode = false
+        resetHostWriteTracking()
         let hasCompactPanels = widgetPanelCoordinator.enterCompact()
         guard dashboardVisible else {
             widgetPanelCoordinator.hideAll()
@@ -517,6 +542,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             // compact-to-Canvas fallback and restart the exhausted loop.
             window?.makeKeyAndOrderFront(nil)
         }
+    }
+
+    private func resetHostWriteTracking() {
+        let waiters = pendingHostWriteWaiters
+        pendingHostWriteWaiters.removeAll()
+        hostWriteGeneration += 1
+        pendingHostWriteCount = 0
+        pendingHostWriteFailed = false
+        waiters.forEach { $0(false) }
     }
 
     private func finishDashboardRecovery(
@@ -543,7 +577,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         completion: @escaping @MainActor (Bool) -> Void
     ) {
         guard !changes.isEmpty else {
-            completion(true)
+            awaitPendingHostWrites(completion: completion)
             return
         }
         var remaining = changes.count
@@ -553,10 +587,31 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
                 allApplied = allApplied && applied
                 remaining -= 1
                 if remaining == 0 {
-                    completion(allApplied)
+                    self.awaitPendingHostWrites { writesApplied in
+                        completion(allApplied && writesApplied)
+                    }
                 }
             }
         }
+    }
+
+    private func awaitPendingHostWrites(completion: @escaping @MainActor (Bool) -> Void) {
+        guard pendingHostWriteCount > 0 else {
+            completion(!pendingHostWriteFailed)
+            return
+        }
+        pendingHostWriteWaiters.append(completion)
+    }
+
+    private func finishHostWrite(succeeded: Bool, generation: Int) {
+        guard generation == hostWriteGeneration else { return }
+        pendingHostWriteCount = max(0, pendingHostWriteCount - 1)
+        pendingHostWriteFailed = pendingHostWriteFailed || !succeeded
+        guard pendingHostWriteCount == 0, !pendingHostWriteWaiters.isEmpty else { return }
+        let waiters = pendingHostWriteWaiters
+        pendingHostWriteWaiters.removeAll()
+        let allSucceeded = !pendingHostWriteFailed
+        waiters.forEach { $0(allSucceeded) }
     }
 
     private func configureWindow(for mode: DashboardWindowMode) {
@@ -718,7 +773,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private func applyPanelStateChange(_ change: WidgetPanelStateChange, completion: (@MainActor (Bool) -> Void)? = nil) {
         webView.callAsyncJavaScript(
             """
-            (() => {
+            return (() => {
               const host = window.classroomPanelHost;
               if (!host?.applyStateChange) return false;
               return host.applyStateChange(change);
@@ -740,9 +795,17 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func applyRandomiserListChange(_ change: WidgetPanelRandomiserListChange) {
+        let generation = hostWriteGeneration
+        pendingHostWriteCount += 1
+        var completed = false
+        let finish: @MainActor (Bool) -> Void = { [weak self] succeeded in
+            guard !completed else { return }
+            completed = true
+            self?.finishHostWrite(succeeded: succeeded, generation: generation)
+        }
         webView.callAsyncJavaScript(
             """
-            (() => {
+            return (() => {
               const host = window.classroomPanelHost;
               if (!host?.applyRandomiserListChange) return false;
               return host.applyRandomiserListChange(change);
@@ -755,6 +818,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             if case let .failure(error) = result {
                 DashboardLog.web.error("Unable to apply randomiser list change: \(error.localizedDescription, privacy: .public)")
             }
+            guard case let .success(value) = result else {
+                finish(false)
+                return
+            }
+            finish(value as? Bool == true)
+        }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            finish(false)
         }
     }
 
@@ -762,7 +834,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         compactWidgetCreationPending = true
         webView.callAsyncJavaScript(
             """
-            (() => {
+            return (() => {
               const host = window.classroomPanelHost;
               if (!host?.addWidget) return false;
               return host.addWidget(widgetType);
@@ -787,7 +859,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private func removeCompactWidget(_ widgetID: String) {
         webView.callAsyncJavaScript(
             """
-            (() => {
+            return (() => {
               const host = window.classroomPanelHost;
               if (!host?.removeWidget) return false;
               return host.removeWidget(widgetID);

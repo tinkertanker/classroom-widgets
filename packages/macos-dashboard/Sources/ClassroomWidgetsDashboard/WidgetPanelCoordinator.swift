@@ -190,34 +190,36 @@ final class WidgetPanelCoordinator: NSObject {
         panelControllers.removeAll()
     }
 
-    func prepareToEnterCanvas(completion: @escaping @MainActor ([WidgetPanelStateChange]) -> Void) {
+    func prepareToEnterCanvas(completion: @escaping @MainActor ([WidgetPanelStateChange], Bool) -> Void) {
         compactPresentationActive = false
         let controllers = Array(panelControllers.values)
         guard !controllers.isEmpty else {
-            completion([])
+            completion([], true)
             return
         }
 
         var pendingChanges: [WidgetPanelStateChange] = []
+        var allPrepared = true
         var remaining = controllers.count
         for controller in controllers {
             controller.hide()
             var completed = false
-            let finish: @MainActor (WidgetPanelStateChange?) -> Void = { change in
+            let finish: @MainActor (WidgetPanelStateChange?, Bool) -> Void = { change, prepared in
                 guard !completed else { return }
                 completed = true
                 if let change {
                     pendingChanges.append(change)
                 }
+                allPrepared = allPrepared && prepared
                 remaining -= 1
                 if remaining == 0 {
-                    completion(pendingChanges)
+                    completion(pendingChanges, allPrepared)
                 }
             }
             controller.takePendingState(completion: finish)
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                finish(nil)
+                finish(nil, false)
             }
         }
     }
@@ -564,14 +566,39 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         window?.close()
     }
 
-    func takePendingState(completion: @escaping @MainActor (WidgetPanelStateChange?) -> Void) {
+    func takePendingState(completion: @escaping @MainActor (WidgetPanelStateChange?, Bool) -> Void) {
+        var receivedCheckpoint = false
+        var receivedResult = false
+        var resultPrepared = true
+        var pendingChange: WidgetPanelStateChange?
+        var completed = false
+        let finishIfReady: @MainActor () -> Void = { [weak self] in
+            guard !completed, receivedCheckpoint, receivedResult else { return }
+            completed = true
+            self?.messageHandler.onWritesCheckpoint = nil
+            completion(pendingChange, resultPrepared)
+        }
+        messageHandler.onWritesCheckpoint = {
+            receivedCheckpoint = true
+            finishIfReady()
+        }
         webView.callAsyncJavaScript(
-            "window.classroomWidgetPanel?.takePendingState?.() ?? null",
+            "return window.classroomWidgetPanel?.takePendingState?.() ?? null",
             arguments: [:],
             in: nil,
             in: .page
         ) { result in
-            guard case let .success(value) = result,
+            receivedResult = true
+            guard case let .success(value) = result else {
+                resultPrepared = false
+                finishIfReady()
+                return
+            }
+            if value is NSNull {
+                finishIfReady()
+                return
+            }
+            guard
                   let payload = value as? [String: Any],
                   (payload["schemaVersion"] as? NSNumber)?.intValue == 1,
                   let widgetID = payload["widgetId"] as? String,
@@ -579,12 +606,21 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
                   payload["baseRevision"] is NSNumber,
                   payload["state"] != nil
             else {
-                completion(nil)
+                resultPrepared = false
+                finishIfReady()
                 return
             }
             var finalPayload = payload
             finalPayload["flush"] = true
-            completion(WidgetPanelStateChange(widgetID: widgetID, payload: finalPayload))
+            pendingChange = WidgetPanelStateChange(widgetID: widgetID, payload: finalPayload)
+            finishIfReady()
+        }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            guard !completed else { return }
+            completed = true
+            self?.messageHandler.onWritesCheckpoint = nil
+            completion(nil, false)
         }
     }
 
@@ -979,6 +1015,7 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onDashboardHideRequested: (@MainActor () -> Void)?
+    var onWritesCheckpoint: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
 
     private let widgetID: String
@@ -1021,6 +1058,8 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
             onRandomiserListChange?(WidgetPanelRandomiserListChange(payload: body))
         case "dashboard-hide-requested":
             onDashboardHideRequested?()
+        case "panel-writes-checkpoint":
+            onWritesCheckpoint?()
         case "canvas-requested":
             onCanvasRequested?(widgetID)
         default:

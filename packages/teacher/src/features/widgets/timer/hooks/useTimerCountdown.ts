@@ -63,7 +63,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   const [scheduleVersion, setScheduleVersion] = useState(0);
   // Track the absolute end time for persistence
   const endTimeRef = useRef<number | null>(
-    restored?.isRunning && restored.time > 0 ? Date.now() + restored.time * 1000 : null
+    restored?.isRunning ? restoredState?.endTime ?? null : null
   );
 
   // Store callbacks in refs to avoid dependency issues
