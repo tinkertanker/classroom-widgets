@@ -565,7 +565,7 @@ function App() {
 
           {isDashboardMode && (
             <>
-              <CompactPanelHost />
+              <CompactPanelHost dashboardTheme={dashboardTheme} />
               <DesktopWindowControls
                 mode={windowMode}
                 onModeChange={requestWindowMode}

@@ -1,4 +1,5 @@
 import type { Size, WidgetType } from './index';
+import type { SavedRandomiserList } from './storage';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -7,6 +8,7 @@ export interface CompactWidgetSnapshot {
   schemaVersion: 1;
   workspaceId: string;
   revision: number;
+  stateRevision: number;
   widgetId: string;
   widgetType: WidgetType;
   title: string;
@@ -17,6 +19,7 @@ export interface CompactWidgetSnapshot {
   maintainsAspectRatio: boolean;
   state: JsonValue | null;
   theme: 'light' | 'dark';
+  savedRandomiserLists: SavedRandomiserList[];
 }
 
 export interface CompactWidgetOption {
@@ -45,12 +48,29 @@ export interface CompactPanelStateChange {
   state: JsonValue;
 }
 
+export type CompactRandomiserListChange = {
+  type: 'randomiser-list-save';
+  schemaVersion: 1;
+  widgetId: string;
+  name: string;
+  choices: string[];
+} | {
+  type: 'randomiser-list-delete';
+  schemaVersion: 1;
+  widgetId: string;
+  id: string;
+};
+
 export interface CompactPanelHostBridge {
   applyStateChange: (change: CompactPanelStateChange) => boolean;
+  applyRandomiserListChange: (change: CompactRandomiserListChange) => boolean;
   addWidget: (widgetType: WidgetType) => boolean;
   removeWidget: (widgetId: string) => boolean;
 }
 
 export interface CompactWidgetPanelBridge {
   receiveSnapshot: (snapshot: CompactWidgetSnapshot) => void;
+  getRandomiserLists: () => SavedRandomiserList[];
+  saveRandomiserList: (name: string, choices: string[]) => void;
+  deleteRandomiserList: (id: string) => void;
 }

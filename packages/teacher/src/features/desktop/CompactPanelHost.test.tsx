@@ -30,6 +30,7 @@ describe('CompactPanelHost', () => {
   afterEach(() => {
     delete window.classroomPanelHost;
     delete window.webkit;
+    vi.restoreAllMocks();
   });
 
   it('publishes eligible widgets as native panel snapshots', async () => {
@@ -60,6 +61,18 @@ describe('CompactPanelHost', () => {
         ])
       }));
     });
+  });
+
+  it('publishes the effective dashboard theme and updates on appearance changes', async () => {
+    const { rerender } = render(<CompactPanelHost dashboardTheme="dark" />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+    expect(postMessage.mock.calls[0][0].widgets[0].theme).toBe('dark');
+    const stateRevision = postMessage.mock.calls[0][0].widgets[0].stateRevision;
+
+    rerender(<CompactPanelHost dashboardTheme="light" />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(2));
+    expect(postMessage.mock.calls[1][0].widgets[0].theme).toBe('light');
+    expect(postMessage.mock.calls[1][0].widgets[0].stateRevision).toBe(stateRevision);
   });
 
   it('publishes fixed size and aspect ratio constraints for Task Cue', async () => {
@@ -181,6 +194,38 @@ describe('CompactPanelHost', () => {
     });
 
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 10 } });
+  });
+
+  it('applies Randomiser collection changes to the authoritative workspace store', () => {
+    useWorkspaceStore.setState({
+      widgets: [{
+        id: 'randomiser-1',
+        type: WidgetType.RANDOMISER,
+        position: { x: 0, y: 0 },
+        size: { width: 350, height: 415 },
+        zIndex: 0
+      }]
+    });
+    const saveRandomiserList = vi.spyOn(useWorkspaceStore.getState(), 'saveRandomiserList').mockReturnValue('saved-1');
+    const deleteRandomiserList = vi.spyOn(useWorkspaceStore.getState(), 'deleteRandomiserList').mockImplementation(() => undefined);
+    render(<CompactPanelHost />);
+
+    expect(window.classroomPanelHost?.applyRandomiserListChange({
+      type: 'randomiser-list-save',
+      schemaVersion: 1,
+      widgetId: 'randomiser-1',
+      name: 'Class names',
+      choices: ['Ada', 'Bea']
+    })).toBe(true);
+    expect(saveRandomiserList).toHaveBeenCalledWith('Class names', ['Ada', 'Bea']);
+
+    expect(window.classroomPanelHost?.applyRandomiserListChange({
+      type: 'randomiser-list-delete',
+      schemaVersion: 1,
+      widgetId: 'randomiser-1',
+      id: 'saved-1'
+    })).toBe(true);
+    expect(deleteRandomiserList).toHaveBeenCalledWith('saved-1');
   });
 
   it('adds a supported widget without opening Canvas', () => {

@@ -136,6 +136,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         widgetPanelCoordinator.onPanelStateChange = { [weak self] change in
             self?.applyPanelStateChange(change)
         }
+        widgetPanelCoordinator.onRandomiserListChange = { [weak self] change in
+            self?.applyRandomiserListChange(change)
+        }
         widgetPanelCoordinator.onCanvasRequested = { [weak self] _ in
             self?.setWindowMode(.canvas)
         }
@@ -496,6 +499,25 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         ) { result in
             if case let .failure(error) = result {
                 DashboardLog.web.error("Unable to apply widget panel state: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func applyRandomiserListChange(_ change: WidgetPanelRandomiserListChange) {
+        webView.callAsyncJavaScript(
+            """
+            (() => {
+              const host = window.classroomPanelHost;
+              if (!host?.applyRandomiserListChange) return false;
+              return host.applyRandomiserListChange(change);
+            })()
+            """,
+            arguments: ["change": change.payload],
+            in: nil,
+            in: .page
+        ) { result in
+            if case let .failure(error) = result {
+                DashboardLog.web.error("Unable to apply randomiser list change: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

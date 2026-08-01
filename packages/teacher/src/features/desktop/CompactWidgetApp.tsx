@@ -43,6 +43,18 @@ const CompactWidgetApp = () => {
       receiveSnapshot: (nextSnapshot) => {
         if (nextSnapshot.schemaVersion !== 1 || nextSnapshot.widgetId !== requestedWidgetId) return;
         if (nextSnapshot.revision <= (snapshotRef.current?.revision ?? -1)) return;
+        const currentSnapshot = snapshotRef.current;
+        const stateRevisionAdvanced = nextSnapshot.stateRevision > (currentSnapshot?.stateRevision ?? -1);
+        if (!stateRevisionAdvanced && inFlightStateRef.current !== null) {
+          const optimisticState = queuedStateRef.current ?? inFlightStateRef.current;
+          const metadataSnapshot = {
+            ...nextSnapshot,
+            state: JSON.parse(optimisticState) as JsonValue
+          };
+          snapshotRef.current = metadataSnapshot;
+          setSnapshot(metadataSnapshot);
+          return;
+        }
         snapshotRef.current = nextSnapshot;
         const echoedState = JSON.stringify(nextSnapshot.state);
         lastReportedStateRef.current = echoedState;
@@ -56,10 +68,32 @@ const CompactWidgetApp = () => {
           };
           snapshotRef.current = optimisticSnapshot;
           setSnapshot(optimisticSnapshot);
-          reportState(queuedState, nextSnapshot.revision);
+          reportState(queuedState, nextSnapshot.stateRevision);
         } else {
           setSnapshot(nextSnapshot);
         }
+      },
+      getRandomiserLists: () => snapshotRef.current?.savedRandomiserLists ?? [],
+      saveRandomiserList: (name, choices) => {
+        const currentSnapshot = snapshotRef.current;
+        if (!currentSnapshot) return;
+        window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+          type: 'randomiser-list-save',
+          schemaVersion: 1,
+          widgetId: currentSnapshot.widgetId,
+          name,
+          choices
+        });
+      },
+      deleteRandomiserList: (id) => {
+        const currentSnapshot = snapshotRef.current;
+        if (!currentSnapshot) return;
+        window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+          type: 'randomiser-list-delete',
+          schemaVersion: 1,
+          widgetId: currentSnapshot.widgetId,
+          id
+        });
       }
     };
     window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
@@ -88,7 +122,7 @@ const CompactWidgetApp = () => {
       return;
     }
     if (serializedState === lastReportedStateRef.current) return;
-    reportState(serializedState, currentSnapshot.revision);
+    reportState(serializedState, currentSnapshot.stateRevision);
   }, [reportState]);
 
   if (!snapshot) {

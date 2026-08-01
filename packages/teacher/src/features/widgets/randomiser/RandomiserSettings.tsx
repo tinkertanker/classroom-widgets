@@ -28,10 +28,14 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   const [showSavedDialog, setShowSavedDialog] = useState(false);
 
   const {
-    saveRandomiserList,
-    getRandomiserLists,
-    deleteRandomiserList,
+    saveRandomiserList: saveRandomiserListToWorkspace,
+    getRandomiserLists: getWorkspaceRandomiserLists,
+    deleteRandomiserList: deleteWorkspaceRandomiserList,
   } = useWorkspaceStore();
+  const panelBridge = window.__CLASSROOM_WIDGET_PANEL__ ? window.classroomWidgetPanel : undefined;
+  const saveRandomiserList = panelBridge?.saveRandomiserList ?? saveRandomiserListToWorkspace;
+  const getRandomiserLists = panelBridge?.getRandomiserLists ?? getWorkspaceRandomiserLists;
+  const deleteRandomiserList = panelBridge?.deleteRandomiserList ?? deleteWorkspaceRandomiserList;
 
   const updateInputAndNotify = (nextInput: string) => {
     setInput(nextInput);

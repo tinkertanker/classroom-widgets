@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/shallow';
 import type {
   CompactPanelHostBridge,
+  CompactRandomiserListChange,
   CompactPanelStateChange,
   CompactWidgetOption,
   CompactWidgetPanelInventory,
   CompactWidgetSnapshot,
   JsonValue
 } from '@shared/types/compactPanel';
+import { WidgetType } from '@shared/types';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 
@@ -30,15 +32,24 @@ const createHostInstanceId = (): string => {
   return `compact-host-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
-const CompactPanelHost = () => {
+interface CompactPanelHostProps {
+  dashboardTheme?: 'light' | 'dark';
+}
+
+const CompactPanelHost = ({ dashboardTheme = 'light' }: CompactPanelHostProps) => {
   const revisionRef = useRef(0);
-  const widgetRevisionsRef = useRef(new Map<string, { revision: number; signature: string }>());
+  const widgetRevisionsRef = useRef(new Map<string, {
+    revision: number;
+    signature: string;
+    stateRevision: number;
+    stateSignature: string;
+  }>());
   const hostInstanceIdRef = useRef(createHostInstanceId());
   const workspace = useWorkspaceStore(useShallow((state) => ({
     currentWorkspaceId: state.currentWorkspaceId,
     widgets: state.widgets,
     widgetStates: state.widgetStates,
-    theme: state.theme
+    savedCollections: state.savedCollections
   })));
 
   const compactWidgetOptions = useMemo<CompactWidgetOption[]>(() => (
@@ -72,6 +83,7 @@ const CompactPanelHost = () => {
         schemaVersion: 1,
         workspaceId: workspace.currentWorkspaceId || 'default',
         revision: 0,
+        stateRevision: 0,
         widgetId: widget.id,
         widgetType: widget.type,
         title: config.name,
@@ -81,21 +93,36 @@ const CompactPanelHost = () => {
         isResizable: config.features?.isResizable !== false,
         maintainsAspectRatio: config.maintainAspectRatio === true,
         state: asJsonValue(workspace.widgetStates.get(widget.id)),
-        theme: workspace.theme
+        theme: dashboardTheme,
+        savedRandomiserLists: widget.type === WidgetType.RANDOMISER
+          ? Object.values(workspace.savedCollections.randomiserLists).sort((a, b) => b.updatedAt - a.updatedAt)
+          : []
       } satisfies CompactWidgetSnapshot];
     });
-  }, [workspace]);
+  }, [dashboardTheme, workspace]);
 
   useEffect(() => {
     const revision = revisionRef.current + 1;
     revisionRef.current = revision;
-    const nextWidgetRevisions = new Map<string, { revision: number; signature: string }>();
+    const nextWidgetRevisions = new Map<string, {
+      revision: number;
+      signature: string;
+      stateRevision: number;
+      stateSignature: string;
+    }>();
     const publishedSnapshots = snapshots.map((snapshot) => {
       const signature = JSON.stringify(snapshot);
+      const stateSignature = JSON.stringify(snapshot.state);
       const previous = widgetRevisionsRef.current.get(snapshot.widgetId);
       const widgetRevision = previous?.signature === signature ? previous.revision : revision;
-      nextWidgetRevisions.set(snapshot.widgetId, { revision: widgetRevision, signature });
-      return { ...snapshot, revision: widgetRevision };
+      const stateRevision = previous?.stateSignature === stateSignature ? previous.stateRevision : revision;
+      nextWidgetRevisions.set(snapshot.widgetId, {
+        revision: widgetRevision,
+        signature,
+        stateRevision,
+        stateSignature
+      });
+      return { ...snapshot, revision: widgetRevision, stateRevision };
     });
     widgetRevisionsRef.current = nextWidgetRevisions;
     const inventory: CompactWidgetPanelInventory = {
@@ -116,8 +143,23 @@ const CompactPanelHost = () => {
         if (change.schemaVersion !== 1) return false;
         const widgetExists = useWorkspaceStore.getState().widgets.some((widget) => widget.id === change.widgetId);
         if (!widgetExists) return false;
-        if (widgetRevisionsRef.current.get(change.widgetId)?.revision !== change.baseRevision) return false;
+        if (widgetRevisionsRef.current.get(change.widgetId)?.stateRevision !== change.baseRevision) return false;
         useWorkspaceStore.getState().updateWidgetState(change.widgetId, change.state);
+        return true;
+      },
+      applyRandomiserListChange: (change: CompactRandomiserListChange) => {
+        if (change.schemaVersion !== 1) return false;
+        const randomiserExists = useWorkspaceStore.getState().widgets.some(
+          (widget) => widget.id === change.widgetId && widget.type === WidgetType.RANDOMISER
+        );
+        if (!randomiserExists) return false;
+        if (change.type === 'randomiser-list-save') {
+          if (!change.name.trim() || !Array.isArray(change.choices)) return false;
+          useWorkspaceStore.getState().saveRandomiserList(change.name, change.choices);
+          return true;
+        }
+        if (!change.id) return false;
+        useWorkspaceStore.getState().deleteRandomiserList(change.id);
         return true;
       },
       addWidget: (widgetType) => {

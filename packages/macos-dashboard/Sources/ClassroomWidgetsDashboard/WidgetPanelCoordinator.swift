@@ -77,6 +77,10 @@ struct WidgetPanelStateChange {
     let payload: [String: Any]
 }
 
+struct WidgetPanelRandomiserListChange {
+    let payload: [String: Any]
+}
+
 /// Coordinates the bounded, one-widget-per-window compact presentation.
 /// It deliberately owns native placement only; widget content and state still
 /// arrive through the versioned host snapshot and per-panel web bridge.
@@ -84,6 +88,7 @@ struct WidgetPanelStateChange {
 final class WidgetPanelCoordinator: NSObject {
     var onPanelReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onPanelStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
+    var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onAllPanelsHidden: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
@@ -252,6 +257,9 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onStateChange = { [weak self] stateChange in
             self?.onPanelStateChange?(stateChange)
         }
+        controller.onRandomiserListChange = { [weak self] change in
+            self?.onRandomiserListChange?(change)
+        }
         controller.onHidden = { [weak self] in
             guard let self,
                   !self.panelControllers.values.contains(where: { !$0.isHiddenByUser }) else { return }
@@ -270,8 +278,14 @@ final class WidgetPanelCoordinator: NSObject {
             self?.persist(frame: frame, for: widgetID)
         }
 
-        if descriptor.isResizable, let storedFrame = storedFrame(for: descriptor.id) {
-            controller.setFrame(clampedFrame(storedFrame, on: NSScreen.main), animate: false)
+        if let storedFrame = storedFrame(for: descriptor.id) {
+            let targetScreen = NSScreen.screens.max {
+                intersectionArea($0.frame, storedFrame) < intersectionArea($1.frame, storedFrame)
+            }.flatMap { intersectionArea($0.frame, storedFrame) > 0 ? $0 : nil } ?? NSScreen.main
+            let restoredFrame = descriptor.isResizable
+                ? storedFrame
+                : NSRect(origin: storedFrame.origin, size: controller.preferredFrameSize)
+            controller.setFrame(clampedFrame(restoredFrame, on: targetScreen), animate: false)
         } else {
             controller.setFrame(initialFrame(for: controller), animate: false)
         }
@@ -315,6 +329,12 @@ final class WidgetPanelCoordinator: NSObject {
         "widgetPanelFrameV1.\(widgetID)"
     }
 
+    private func intersectionArea(_ first: NSRect, _ second: NSRect) -> CGFloat {
+        let intersection = first.intersection(second)
+        guard !intersection.isNull else { return 0 }
+        return intersection.width * intersection.height
+    }
+
     private func clampedFrame(_ frame: NSRect, on screen: NSScreen?) -> NSRect {
         guard let screen else { return frame }
         let visibleFrame = screen.visibleFrame.insetBy(dx: 12, dy: 12)
@@ -335,6 +355,7 @@ final class WidgetPanelCoordinator: NSObject {
 private final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate {
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
+    var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onHidden: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
@@ -418,6 +439,9 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         }
         messageHandler.onStateChange = { [weak self] stateChange in
             self?.onStateChange?(stateChange)
+        }
+        messageHandler.onRandomiserListChange = { [weak self] change in
+            self?.onRandomiserListChange?(change)
         }
         messageHandler.onCanvasRequested = { [weak self] widgetID in
             self?.onCanvasRequested?(widgetID)
@@ -874,6 +898,7 @@ private final class WidgetPanelWebViewFactory {
 private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHandler {
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
+    var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
 
     private let widgetID: String
@@ -898,6 +923,20 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
         case "panel-state-change":
             guard revision != nil, body["state"] != nil else { return }
             onStateChange?(WidgetPanelStateChange(widgetID: widgetID, payload: body))
+        case "randomiser-list-save":
+            guard (body["schemaVersion"] as? NSNumber)?.intValue == 1,
+                  let name = body["name"] as? String,
+                  !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let choices = body["choices"] as? [String],
+                  choices.count <= 10_000
+            else { return }
+            onRandomiserListChange?(WidgetPanelRandomiserListChange(payload: body))
+        case "randomiser-list-delete":
+            guard (body["schemaVersion"] as? NSNumber)?.intValue == 1,
+                  let id = body["id"] as? String,
+                  !id.isEmpty
+            else { return }
+            onRandomiserListChange?(WidgetPanelRandomiserListChange(payload: body))
         case "canvas-requested":
             onCanvasRequested?(widgetID)
         default:
@@ -921,12 +960,16 @@ private enum WidgetPanelLayoutEngine {
             var x = usableFrame.minX
             var y = usableFrame.maxY
             var rowHeight: CGFloat = 0
-            for panel in panels {
+            for (index, panel) in panels.enumerated() {
                 let size = constrained(panel.size, to: usableFrame.size)
                 if x + size.width > usableFrame.maxX, x > usableFrame.minX {
                     x = usableFrame.minX
                     y -= rowHeight + gap
                     rowHeight = 0
+                }
+                if y - size.height < usableFrame.minY {
+                    addCascadedFrames(for: panels[index...], to: &frames, usableFrame: usableFrame, gap: gap)
+                    return frames
                 }
                 frames[panel.id] = NSRect(x: x, y: y - size.height, width: size.width, height: size.height)
                 x += size.width + gap
@@ -944,23 +987,7 @@ private enum WidgetPanelLayoutEngine {
                     columnWidth = 0
                 }
                 if x + size.width > usableFrame.maxX {
-                    let overflowPanels = panels[index...]
-                    let overflowCount = CGFloat(overflowPanels.count)
-                    for (overflowIndex, overflowPanel) in overflowPanels.enumerated() {
-                        let overflowSize = constrained(overflowPanel.size, to: usableFrame.size)
-                        let availableOffset = min(
-                            usableFrame.width - overflowSize.width,
-                            usableFrame.height - overflowSize.height
-                        )
-                        let step = min(gap, max(0, availableOffset) / overflowCount)
-                        let offset = CGFloat(overflowIndex + 1) * step
-                        frames[overflowPanel.id] = NSRect(
-                            x: usableFrame.minX + offset,
-                            y: usableFrame.maxY - overflowSize.height - offset,
-                            width: overflowSize.width,
-                            height: overflowSize.height
-                        )
-                    }
+                    addCascadedFrames(for: panels[index...], to: &frames, usableFrame: usableFrame, gap: gap)
                     return frames
                 }
                 y -= size.height
@@ -970,6 +997,27 @@ private enum WidgetPanelLayoutEngine {
             }
         }
         return frames
+    }
+
+    private static func addCascadedFrames(
+        for panels: ArraySlice<(id: String, size: NSSize)>,
+        to frames: inout [String: NSRect],
+        usableFrame: NSRect,
+        gap: CGFloat
+    ) {
+        let panelCount = CGFloat(panels.count)
+        for (index, panel) in panels.enumerated() {
+            let size = constrained(panel.size, to: usableFrame.size)
+            let availableOffset = min(usableFrame.width - size.width, usableFrame.height - size.height)
+            let step = min(gap, max(0, availableOffset) / panelCount)
+            let offset = CGFloat(index + 1) * step
+            frames[panel.id] = NSRect(
+                x: usableFrame.minX + offset,
+                y: usableFrame.maxY - size.height - offset,
+                width: size.width,
+                height: size.height
+            )
+        }
     }
 
     private static func constrained(_ size: NSSize, to maximumSize: NSSize) -> NSSize {

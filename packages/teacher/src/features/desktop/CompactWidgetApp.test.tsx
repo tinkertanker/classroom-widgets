@@ -28,10 +28,15 @@ interface ProbeWidgetProps {
   onStateChange?: (state: unknown) => void;
 }
 
-const snapshot = (state: CompactWidgetSnapshot['state'], revision = 1): CompactWidgetSnapshot => ({
+const snapshot = (
+  state: CompactWidgetSnapshot['state'],
+  revision = 1,
+  stateRevision = revision
+): CompactWidgetSnapshot => ({
   schemaVersion: 1,
   workspaceId: 'workspace-1',
   revision,
+  stateRevision,
   widgetId: 'timer-1',
   widgetType: WidgetType.TIMER,
   title: 'Timer',
@@ -41,7 +46,8 @@ const snapshot = (state: CompactWidgetSnapshot['state'], revision = 1): CompactW
   isResizable: true,
   maintainsAspectRatio: true,
   state,
-  theme: 'light'
+  theme: 'light',
+  savedRandomiserLists: []
 });
 
 const panelConfig = (component: React.ComponentType<ProbeWidgetProps>): WidgetConfig => ({
@@ -145,6 +151,40 @@ describe('CompactWidgetApp', () => {
     expect(await screen.findByTestId('saved-state')).toHaveTextContent('{"elapsed":10}');
   });
 
+  it('routes saved Randomiser collections through the native panel bridge', () => {
+    const list = {
+      id: 'saved-1',
+      name: 'Class names',
+      type: 'randomiser' as const,
+      choices: ['Ada', 'Bea'],
+      createdAt: 1,
+      updatedAt: 1
+    };
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(() => null));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot({
+      ...snapshot(null),
+      widgetType: WidgetType.RANDOMISER,
+      savedRandomiserLists: [list]
+    }));
+
+    expect(window.classroomWidgetPanel?.getRandomiserLists()).toEqual([list]);
+    window.classroomWidgetPanel?.saveRandomiserList('New list', ['Cora']);
+    window.classroomWidgetPanel?.deleteRandomiserList('saved-1');
+
+    expect(panelPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'randomiser-list-save',
+      widgetId: 'timer-1',
+      name: 'New list',
+      choices: ['Cora']
+    }));
+    expect(panelPostMessage).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'randomiser-list-delete',
+      widgetId: 'timer-1',
+      id: 'saved-1'
+    }));
+  });
+
   it('queues a second rapid edit until the first edit is acknowledged', async () => {
     const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
       <>
@@ -166,6 +206,34 @@ describe('CompactWidgetApp', () => {
     expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
       [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })],
       [expect.objectContaining({ baseRevision: 2, state: { elapsed: 2 } })]
+    ]);
+  });
+
+  it('does not treat a metadata-only snapshot as a state acknowledgement', async () => {
+    const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
+      <>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 1 })}>First</button>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 2 })}>Second</button>
+      </>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(EditingProbe));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1, 1)));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'First' }));
+    act(() => window.classroomWidgetPanel?.receiveSnapshot({
+      ...snapshot({ elapsed: 0 }, 2, 1),
+      theme: 'dark'
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })]
+    ]);
+
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 1 }, 3, 3)));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })],
+      [expect.objectContaining({ baseRevision: 3, state: { elapsed: 2 } })]
     ]);
   });
 
