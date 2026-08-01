@@ -363,6 +363,12 @@ describe('Timer Widget', () => {
       pausedTimeRemaining: 0
     } }} /></React.StrictMode>);
 
+    expect(global.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
   });
