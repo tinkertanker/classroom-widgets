@@ -303,7 +303,7 @@ describe('Timer Widget', () => {
 
   test('preserves a restored running timer deadline', () => {
     const onStateChange = vi.fn();
-    const endTime = Date.now() + 3100;
+    const endTime = Date.now() + 60_000;
 
     renderWithModal(<Timer savedState={{ timer: {
       endTime,
@@ -334,6 +334,8 @@ describe('Timer Widget', () => {
   });
 
   test('restores a finished timer without replaying its end sound', () => {
+    const onStateChange = vi.fn();
+
     renderWithModal(<Timer savedState={{ timer: {
       endTime: null,
       initialTime: 10,
@@ -342,10 +344,27 @@ describe('Timer Widget', () => {
       isPaused: false,
       pausedTimeRemaining: 0,
       timerFinished: true
-    } }} />);
+    } }} onStateChange={onStateChange} />);
 
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
     expect(global.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      timer: expect.objectContaining({ timerFinished: true })
+    }));
+  });
+
+  test('notifies once when a running timer expired while unmounted in StrictMode', () => {
+    renderWithModal(<React.StrictMode><Timer savedState={{ timer: {
+      endTime: Date.now() - 1000,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: true,
+      isPaused: false,
+      pausedTimeRemaining: 0
+    } }} /></React.StrictMode>);
+
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
   });
 
   test('mute stops an end sound that is already playing', () => {

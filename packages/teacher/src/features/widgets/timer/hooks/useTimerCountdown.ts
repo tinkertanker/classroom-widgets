@@ -69,6 +69,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   // Store callbacks in refs to avoid dependency issues
   const onTimeUpRef = useRef(onTimeUp);
   const onTickRef = useRef(onTick);
+  const restoredNotificationDeliveredRef = useRef(false);
 
   useEffect(() => {
     onTimeUpRef.current = onTimeUp;
@@ -88,7 +89,8 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   }, [getElapsedSeconds]);
 
   useEffect(() => {
-    if (restored?.notifyTimeUp) {
+    if (restored?.notifyTimeUp && !restoredNotificationDeliveredRef.current) {
+      restoredNotificationDeliveredRef.current = true;
       onTimeUpRef.current?.();
     }
     // The restored snapshot is intentionally read only on mount.
