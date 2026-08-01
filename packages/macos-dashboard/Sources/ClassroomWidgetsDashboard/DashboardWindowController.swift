@@ -378,17 +378,28 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
-    private func finishCanvasTransition(_ pendingChanges: [WidgetPanelStateChange]) {
+    private func finishCanvasTransition(
+        _ pendingChanges: [WidgetPanelStateChange],
+        retriesRemaining: Int = 20
+    ) {
         applyFinalPanelStateChanges(pendingChanges) { [weak self] applied in
             guard let self else { return }
             guard applied else {
-                self.retryCanvasTransition(pendingChanges)
+                guard retriesRemaining > 0 else {
+                    self.abortCompactTransition()
+                    return
+                }
+                self.retryCanvasTransition(pendingChanges, retriesRemaining: retriesRemaining - 1)
                 return
             }
             self.setWebWindowMode(.canvas) { [weak self] activated in
                 guard let self else { return }
                 guard activated else {
-                    self.retryCanvasTransition(pendingChanges)
+                    guard retriesRemaining > 0 else {
+                        self.abortCompactTransition()
+                        return
+                    }
+                    self.retryCanvasTransition(pendingChanges, retriesRemaining: retriesRemaining - 1)
                     return
                 }
                 self.persistFrame(for: self.windowMode)
@@ -405,28 +416,60 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
-    private func retryCanvasTransition(_ pendingChanges: [WidgetPanelStateChange]) {
+    private func retryCanvasTransition(
+        _ pendingChanges: [WidgetPanelStateChange],
+        retriesRemaining: Int
+    ) {
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 150_000_000)
             guard let self, self.isChangingWindowMode, self.windowMode == .compact else { return }
-            self.finishCanvasTransition(pendingChanges)
+            self.finishCanvasTransition(pendingChanges, retriesRemaining: retriesRemaining)
         }
     }
 
-    private func finishDashboardReload(_ pendingChanges: [WidgetPanelStateChange]) {
+    private func finishDashboardReload(
+        _ pendingChanges: [WidgetPanelStateChange],
+        retriesRemaining: Int = 20
+    ) {
         applyFinalPanelStateChanges(pendingChanges) { [weak self] applied in
             guard let self else { return }
             guard applied else {
+                guard retriesRemaining > 0 else {
+                    self.abortCompactTransition()
+                    return
+                }
                 Task { @MainActor [weak self] in
                     try? await Task.sleep(nanoseconds: 150_000_000)
                     guard let self, self.isChangingWindowMode, self.windowMode == .compact else { return }
-                    self.finishDashboardReload(pendingChanges)
+                    self.finishDashboardReload(pendingChanges, retriesRemaining: retriesRemaining - 1)
                 }
                 return
             }
             self.widgetPanelCoordinator.enterCanvas()
             self.isChangingWindowMode = false
             self.loadDashboard()
+        }
+    }
+
+    private func abortCompactTransition() {
+        // Preparing a handoff marks each panel bridge as closing, so recreate
+        // the compact surfaces rather than re-showing those inert web views.
+        widgetPanelCoordinator.enterCanvas()
+        isChangingWindowMode = false
+        let hasCompactPanels = widgetPanelCoordinator.enterCompact()
+        guard dashboardVisible else {
+            widgetPanelCoordinator.hideAll()
+            if let window {
+                scheduleOrderOut(window)
+            }
+            return
+        }
+        if hasCompactPanels {
+            window?.orderOut(nil)
+        } else {
+            // Do not route an empty inventory back through the normal
+            // compact-to-Canvas fallback and restart the exhausted loop.
+            window?.makeKeyAndOrderFront(nil)
         }
     }
 
@@ -705,8 +748,12 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             arguments: ["widgetID": widgetID],
             in: nil,
             in: .page
-        ) { result in
+        ) { [weak self] result in
+            if case let .success(value) = result, value as? Bool != true {
+                self?.syncWindowVisibility()
+            }
             if case let .failure(error) = result {
+                self?.syncWindowVisibility()
                 DashboardLog.web.error("Unable to remove compact widget: \(error.localizedDescription, privacy: .public)")
             }
         }
