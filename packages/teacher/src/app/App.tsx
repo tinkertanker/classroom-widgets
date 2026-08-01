@@ -113,7 +113,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const usesColumnLayout = isNarrowScreen;
+    const usesColumnLayout = isNarrowScreen && !(isDashboardMode && windowMode === 'compact');
     const previouslyUsedColumnLayout = previousUsesColumnLayoutRef.current;
 
     if (usesColumnLayout && !previouslyUsedColumnLayout) {
@@ -127,7 +127,7 @@ function App() {
     }
 
     previousUsesColumnLayoutRef.current = usesColumnLayout;
-  }, [isNarrowScreen, setLayoutFormat]);
+  }, [isDashboardMode, isNarrowScreen, setLayoutFormat, windowMode]);
 
   // Handler to toggle layout in narrow mode
   // Also update the stashed layout so the user's choice survives narrow mode.

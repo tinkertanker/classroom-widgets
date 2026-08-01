@@ -20,11 +20,13 @@ import QrCodePage from './pages/widgets/QrCodePage';
 import SoundEffectsPage from './pages/widgets/SoundEffectsPage';
 import CompactWidgetApp from './features/desktop/CompactWidgetApp';
 
+const isCompactWidgetPanel = new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
+
 // Load Umami analytics conditionally (only if env vars are set)
 const umamiScriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL;
 const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
 
-if (umamiScriptUrl && umamiWebsiteId) {
+if (!isCompactWidgetPanel && umamiScriptUrl && umamiWebsiteId) {
   const script = document.createElement('script');
   script.defer = true;
   script.src = umamiScriptUrl;
@@ -38,7 +40,6 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-const isCompactWidgetPanel = new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
 
 root.render(
   <React.StrictMode>

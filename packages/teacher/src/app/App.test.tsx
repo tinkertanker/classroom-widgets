@@ -123,7 +123,7 @@ describe('App narrow layout', () => {
 
   it('keeps compact mode as a panel host without changing the saved canvas layout', async () => {
     window.history.replaceState({}, '', '/?dashboard=1&mode=compact');
-    setWindowWidth(1200);
+    setWindowWidth(500);
 
     render(<App />);
 

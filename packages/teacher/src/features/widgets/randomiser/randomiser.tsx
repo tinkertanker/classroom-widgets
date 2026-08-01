@@ -111,7 +111,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
           }}
         />
       ),
-      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl max-w-3xl"
+      className: "bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-xl w-[calc(100vw-1rem)] max-w-3xl max-h-[calc(100vh-1rem)] overflow-auto"
     });
   };
 

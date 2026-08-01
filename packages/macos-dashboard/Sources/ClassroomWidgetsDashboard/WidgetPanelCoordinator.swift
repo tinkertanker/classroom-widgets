@@ -229,10 +229,12 @@ final class WidgetPanelCoordinator: NSObject {
     func restoreFreeformFrames() {
         layout = .freeform
         for controller in orderedControllers {
-            let frame = freeformFrames[controller.widgetID]
-                ?? (controller.isResizable ? storedFrame(for: controller.widgetID) : nil)
-                ?? controller.defaultFrame()
-            controller.setFrame(clampedFrame(frame, on: controller.window?.screen ?? NSScreen.main), animate: true)
+            let savedFrame = freeformFrames[controller.widgetID] ?? storedFrame(for: controller.widgetID)
+            let frame = savedFrame.map {
+                controller.isResizable ? $0 : NSRect(origin: $0.origin, size: controller.preferredFrameSize)
+            } ?? controller.defaultFrame()
+            let targetScreen = screen(containingMostOf: frame) ?? controller.window?.screen ?? NSScreen.main
+            controller.setFrame(clampedFrame(frame, on: targetScreen), animate: true)
         }
     }
 
@@ -279,9 +281,7 @@ final class WidgetPanelCoordinator: NSObject {
         }
 
         if let storedFrame = storedFrame(for: descriptor.id) {
-            let targetScreen = NSScreen.screens.max {
-                intersectionArea($0.frame, storedFrame) < intersectionArea($1.frame, storedFrame)
-            }.flatMap { intersectionArea($0.frame, storedFrame) > 0 ? $0 : nil } ?? NSScreen.main
+            let targetScreen = screen(containingMostOf: storedFrame) ?? NSScreen.main
             let restoredFrame = descriptor.isResizable
                 ? storedFrame
                 : NSRect(origin: storedFrame.origin, size: controller.preferredFrameSize)
@@ -333,6 +333,12 @@ final class WidgetPanelCoordinator: NSObject {
         let intersection = first.intersection(second)
         guard !intersection.isNull else { return 0 }
         return intersection.width * intersection.height
+    }
+
+    private func screen(containingMostOf frame: NSRect) -> NSScreen? {
+        NSScreen.screens.max {
+            intersectionArea($0.frame, frame) < intersectionArea($1.frame, frame)
+        }.flatMap { intersectionArea($0.frame, frame) > 0 ? $0 : nil }
     }
 
     private func clampedFrame(_ frame: NSRect, on screen: NSScreen?) -> NSRect {
