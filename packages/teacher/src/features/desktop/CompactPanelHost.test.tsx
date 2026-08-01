@@ -282,7 +282,7 @@ describe('CompactPanelHost', () => {
     ]));
   });
 
-  it('removes a widget when its native panel closes', () => {
+  it('removes a widget when native requests panel removal', () => {
     render(<CompactPanelHost />);
 
     act(() => {

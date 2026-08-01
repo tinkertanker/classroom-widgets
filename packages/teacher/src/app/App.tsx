@@ -71,6 +71,7 @@ function App() {
     windowMode,
     compactLayout,
     setCompactLayout,
+    setDashboardVisible,
     requestWindowMode
   } = useDesktopDashboardMode();
 
@@ -184,6 +185,20 @@ function App() {
         return;
       }
 
+      if (
+        isDashboardMode &&
+        isDashboardVisible &&
+        e.key === 'Escape' &&
+        !e.defaultPrevented &&
+        !isVoiceControlActive &&
+        !(e.target instanceof HTMLElement && e.target.isContentEditable) &&
+        !document.querySelector('[role="dialog"], [role="menu"]')
+      ) {
+        e.preventDefault();
+        setDashboardVisible(false);
+        return;
+      }
+
       // Handle Command/Ctrl key press for voice activation (only when Cmd is pressed alone)
       // This should NOT trigger for Cmd+letter combinations
       // Only enable when voice control alpha feature is enabled
@@ -232,7 +247,17 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode]);
+  }, [
+    isDashboardMode,
+    isDashboardVisible,
+    isVoiceControlActive,
+    lastCommandPress,
+    setDashboardVisible,
+    stickerMode,
+    updateStickerMode,
+    voiceControlEnabled,
+    voiceTimeout
+  ]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {

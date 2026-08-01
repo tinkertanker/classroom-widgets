@@ -92,6 +92,7 @@ final class WidgetPanelCoordinator: NSObject {
     var onAllPanelsHidden: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
+    var onWidgetRemovalRequested: (@MainActor (String) -> Void)?
 
     private let webViewFactory = WidgetPanelWebViewFactory()
     private var panelControllers: [String: WidgetPanelController] = [:]
@@ -215,7 +216,7 @@ final class WidgetPanelCoordinator: NSObject {
         if panelControllers.isEmpty, let lastSnapshot {
             reconcile(snapshot: lastSnapshot)
         }
-        guard panelControllers.values.contains(where: { !$0.isHiddenByUser }) else { return false }
+        guard !panelControllers.isEmpty else { return false }
         showAll()
         return true
     }
@@ -288,10 +289,8 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onRandomiserListChange = { [weak self] change in
             self?.onRandomiserListChange?(change)
         }
-        controller.onHidden = { [weak self] in
-            guard let self,
-                  !self.panelControllers.values.contains(where: { !$0.isHiddenByUser }) else { return }
-            self.onAllPanelsHidden?()
+        controller.onRemovalRequested = { [weak self] widgetID in
+            self?.onWidgetRemovalRequested?(widgetID)
         }
         controller.onCanvasRequested = { [weak self] widgetID in
             self?.onCanvasRequested?(widgetID)
@@ -388,7 +387,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
-    var onHidden: (@MainActor () -> Void)?
+    var onRemovalRequested: (@MainActor (String) -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
@@ -404,8 +403,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var chromeTrackingArea: NSTrackingArea?
     private var chromeHideGeneration = 0
     private var chromeVisible = false
-    private var isUserHidden = false
-    var isHiddenByUser: Bool { isUserHidden }
     private var isProgrammaticallyChangingFrame = false
     private var isClosingPermanently = false
     private var widgetCreationOptions: [CompactWidgetOption] = []
@@ -525,7 +522,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func show() {
-        guard !isUserHidden else { return }
         let wasVisible = window?.isVisible == true
         window?.orderFront(nil)
         if !wasVisible {
@@ -624,9 +620,8 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         if isClosingPermanently {
             return true
         }
-        isUserHidden = true
         hide()
-        onHidden?()
+        onRemovalRequested?(widgetID)
         return false
     }
 

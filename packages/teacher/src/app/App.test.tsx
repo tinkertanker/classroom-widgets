@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
@@ -131,6 +131,18 @@ describe('App narrow layout', () => {
       expect(useWorkspaceStore.getState().layoutFormat).toBe('canvas');
       expect(screen.queryByTestId('column-widget-list')).not.toBeInTheDocument();
       expect(screen.queryByTestId('widget-list')).not.toBeInTheDocument();
+    });
+  });
+
+  it('dismisses a visible dashboard with Escape', async () => {
+    window.history.replaceState({}, '', '/?dashboard=1&visible=1&mode=canvas');
+    setWindowWidth(1200);
+    render(<App />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(document.documentElement).toHaveClass('desktop-dashboard-hidden');
     });
   });
 });

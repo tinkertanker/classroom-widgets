@@ -122,7 +122,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         scriptMessageHandler.onVisibilityChanged = { [weak self] visible in
             guard let self else { return }
             self.dashboardVisible = visible
-            self.syncWindowVisibility()
+            if !self.isChangingWindowMode || !visible {
+                self.syncWindowVisibility()
+            }
             self.onVisibilityChanged?(visible)
         }
         scriptMessageHandler.onWindowModeRequested = { [weak self] mode in
@@ -145,6 +147,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
         widgetPanelCoordinator.onWidgetCreationRequested = { [weak self] widgetType in
             self?.createCompactWidget(widgetType)
+        }
+        widgetPanelCoordinator.onWidgetRemovalRequested = { [weak self] widgetID in
+            self?.removeCompactWidget(widgetID)
         }
         widgetPanelCoordinator.onAllPanelsHidden = { [weak self] in
             guard let self, self.dashboardVisible, self.windowMode == .compact else { return }
