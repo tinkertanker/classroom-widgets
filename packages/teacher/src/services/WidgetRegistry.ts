@@ -30,12 +30,6 @@ import { GiSnake } from 'react-icons/gi';
 import { WidgetType, WidgetConfig, WidgetCategory, WidgetFeatures, Size, ColumnSizing } from '@shared/types';
 import { WIDGET_TYPES } from '@shared/constants/widgetTypes';
 
-declare global {
-  interface Window {
-    __CLASSROOM_WIDGET_PANEL__?: boolean;
-  }
-}
-
 // Preload all widget chunks immediately so they're browser-cached
 // before React.lazy needs them (prevents "Loading widget..." flash)
 const widgetImports = {
@@ -66,7 +60,9 @@ const widgetImports = {
 // Warm widget chunks during idle time after first paint.
 // React.lazy will hit the cached resolved modules on first render, so users
 // don't see a "Loading widget..." flash - without blocking the critical path.
-if (typeof window !== 'undefined' && !window.__CLASSROOM_WIDGET_PANEL__) {
+const isCompactWidgetPanel = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
+if (typeof window !== 'undefined' && !isCompactWidgetPanel) {
   const warmCaches = () => {
     Object.values(widgetImports).forEach(fn => {
       // Fire and forget; chunk errors are logged but don't bubble

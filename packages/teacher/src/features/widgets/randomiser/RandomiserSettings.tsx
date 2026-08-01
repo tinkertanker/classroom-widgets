@@ -32,7 +32,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
     getRandomiserLists: getWorkspaceRandomiserLists,
     deleteRandomiserList: deleteWorkspaceRandomiserList,
   } = useWorkspaceStore();
-  const panelBridge = window.__CLASSROOM_WIDGET_PANEL__ ? window.classroomWidgetPanel : undefined;
+  const panelBridge = window.classroomWidgetPanel;
   const saveRandomiserList = panelBridge?.saveRandomiserList ?? saveRandomiserListToWorkspace;
   const getRandomiserLists = panelBridge?.getRandomiserLists ?? getWorkspaceRandomiserLists;
   const deleteRandomiserList = panelBridge?.deleteRandomiserList ?? deleteWorkspaceRandomiserList;
