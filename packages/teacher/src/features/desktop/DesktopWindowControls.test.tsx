@@ -19,7 +19,7 @@ describe('DesktopWindowControls', () => {
 
     expect(onModeChange).toHaveBeenCalledWith('canvas');
     expect(screen.queryByText('Canvas')).not.toBeInTheDocument();
-    expect(screen.queryByText('Row')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Arrange widgets in a column' })).toBeInTheDocument();
   });
 
   it('returns the canvas to the compact overlay', () => {

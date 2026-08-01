@@ -37,9 +37,11 @@ export const useZoomWithScroll = (
   const zoomCenter = useRef({ x: 0, y: 0 });
   const zoomOriginBoard = useRef<{ x: number; y: number } | null>(null);
   const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelEndTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRaf = useRef<number | null>(null);
 
   const { minScale = 0.5, maxScale = 2, scaleSensitivity = 0.01 } = options;
+  const wheelSensitivity = 0.01;
 
   useEffect(() => {
     currentScaleRef.current = scale;
@@ -47,8 +49,7 @@ export const useZoomWithScroll = (
 
   useEffect(() => {
     const container = containerRef.current;
-    const scaleElement = scaleRef.current;
-    if (!container || !scaleElement) return;
+    if (!container || !scaleRef.current) return;
 
     const getDistance = (touches: TouchList): number => {
       const firstTouch = touches[0];
@@ -79,6 +80,7 @@ export const useZoomWithScroll = (
       const origin = zoomOriginBoard.current;
       if (!origin) return;
 
+      currentScaleRef.current = newScale;
       setScale(newScale);
       scheduleScroll(
         origin.x * newScale - zoomCenter.current.x,
@@ -87,6 +89,10 @@ export const useZoomWithScroll = (
     };
 
     const startZoomGesture = (clientX: number, clientY: number) => {
+      if (resetTimeout.current) {
+        clearTimeout(resetTimeout.current);
+        resetTimeout.current = null;
+      }
       initialScale.current = currentScaleRef.current;
       isScaling.current = true;
 
@@ -177,6 +183,24 @@ export const useZoomWithScroll = (
       event.preventDefault();
     };
 
+    const handleWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      if (!isScaling.current) startZoomGesture(event.clientX, event.clientY);
+      const nextScale = Math.max(
+        minScale,
+        Math.min(maxScale, currentScaleRef.current * Math.exp(-event.deltaY * wheelSensitivity))
+      );
+      applyZoom(nextScale);
+      if (wheelEndTimeout.current) {
+        clearTimeout(wheelEndTimeout.current);
+      }
+      wheelEndTimeout.current = setTimeout(() => {
+        resetZoomGesture();
+        wheelEndTimeout.current = null;
+      }, 100);
+      event.preventDefault();
+    };
+
     container.addEventListener('touchstart', handleTouchStart, { passive: false });
     container.addEventListener('touchmove', handleTouchMove, { passive: false });
     container.addEventListener('touchend', handleTouchEnd);
@@ -184,6 +208,7 @@ export const useZoomWithScroll = (
     container.addEventListener('gesturestart', handleGestureStart, { passive: false });
     container.addEventListener('gesturechange', handleGestureChange, { passive: false });
     container.addEventListener('gestureend', handleGestureEnd, { passive: false });
+    container.addEventListener('wheel', handleWheel, { passive: false });
 
     return () => {
       container.removeEventListener('touchstart', handleTouchStart);
@@ -193,9 +218,13 @@ export const useZoomWithScroll = (
       container.removeEventListener('gesturestart', handleGestureStart);
       container.removeEventListener('gesturechange', handleGestureChange);
       container.removeEventListener('gestureend', handleGestureEnd);
+      container.removeEventListener('wheel', handleWheel);
 
       if (resetTimeout.current) {
         clearTimeout(resetTimeout.current);
+      }
+      if (wheelEndTimeout.current) {
+        clearTimeout(wheelEndTimeout.current);
       }
       if (scrollRaf.current !== null) {
         cancelAnimationFrame(scrollRaf.current);

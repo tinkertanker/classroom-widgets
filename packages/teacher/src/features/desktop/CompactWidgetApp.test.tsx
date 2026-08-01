@@ -129,4 +129,87 @@ describe('CompactWidgetApp', () => {
       ([message]) => (message as { type?: string }).type === 'panel-state-change'
     )).toHaveLength(stateChangeCount);
   });
+
+  it('ignores snapshots that arrive out of revision order', async () => {
+    const StateProbe = ({ savedState }: ProbeWidgetProps) => (
+      <div data-testid="saved-state">{JSON.stringify(savedState)}</div>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(StateProbe));
+    render(<CompactWidgetApp />);
+
+    act(() => {
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 10 }, 2));
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 5 }, 1));
+    });
+
+    expect(await screen.findByTestId('saved-state')).toHaveTextContent('{"elapsed":10}');
+  });
+
+  it('queues a second rapid edit until the first edit is acknowledged', async () => {
+    const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
+      <>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 1 })}>First</button>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 2 })}>Second</button>
+      </>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(EditingProbe));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1)));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'First' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })]
+    ]);
+
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 1 }, 2)));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })],
+      [expect.objectContaining({ baseRevision: 2, state: { elapsed: 2 } })]
+    ]);
+  });
+
+  it('drops an intermediate queued edit when the latest state matches the in-flight edit', async () => {
+    const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
+      <>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 1 })}>One</button>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 2 })}>Two</button>
+      </>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(EditingProbe));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1)));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'One' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Two' }));
+    fireEvent.click(screen.getByRole('button', { name: 'One' }));
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 1 }, 2)));
+
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })]
+    ]);
+  });
+
+  it('keeps queued state optimistic while acknowledging rapid edits', async () => {
+    const PersistingProbe = ({ savedState, onStateChange }: ProbeWidgetProps) => {
+      const [state, setState] = useState(savedState);
+      useEffect(() => setState(savedState), [savedState]);
+      useEffect(() => onStateChange?.(state), [onStateChange, state]);
+      return <button type="button" onClick={() => setState({ elapsed: (state as { elapsed: number }).elapsed + 1 })}>Increment</button>;
+    };
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(PersistingProbe));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1)));
+
+    const button = await screen.findByRole('button', { name: 'Increment' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 1 }, 2)));
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 2 }, 3)));
+
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })],
+      [expect.objectContaining({ baseRevision: 2, state: { elapsed: 2 } })]
+    ]);
+  });
 });

@@ -32,6 +32,7 @@ const createHostInstanceId = (): string => {
 
 const CompactPanelHost = () => {
   const revisionRef = useRef(0);
+  const widgetRevisionsRef = useRef(new Map<string, { revision: number; signature: string }>());
   const hostInstanceIdRef = useRef(createHostInstanceId());
   const workspace = useWorkspaceStore(useShallow((state) => ({
     currentWorkspaceId: state.currentWorkspaceId,
@@ -49,32 +50,34 @@ const CompactPanelHost = () => {
   ), []);
 
   const snapshots = useMemo<CompactWidgetSnapshot[]>(() => {
-    revisionRef.current += 1;
-    const revision = revisionRef.current;
-
     return workspace.widgets.flatMap((widget) => {
       const config = widgetRegistry.get(widget.type);
       if (!config?.compactPanel?.supported) return [];
 
       const compactPanel = config.compactPanel;
       const minimumSize = compactPanel.minimumSize ?? config.minSize ?? { width: 220, height: 180 };
-      const preferredWidth = compactPanel.preferredSize?.width
-        ?? Math.max(minimumSize.width, Math.min(widget.size.width, 420));
-      const preferredHeight = compactPanel.preferredSize?.height
-        ?? (config.columnSizing === 'aspect-ratio'
+      const maximumSize = config.maxSize ?? null;
+      const preferredWidth = Math.max(minimumSize.width, Math.min(
+        compactPanel.preferredSize?.width ?? widget.size.width,
+        maximumSize?.width ?? 420
+      ));
+      const preferredHeight = Math.max(minimumSize.height, Math.min(
+        compactPanel.preferredSize?.height ?? (config.columnSizing === 'aspect-ratio'
           ? preferredWidth * (config.defaultSize.height / config.defaultSize.width)
-          : (config.columnHeight ?? widget.size.height));
+          : (config.columnHeight ?? widget.size.height)),
+        maximumSize?.height ?? Infinity
+      ));
 
       return [{
         schemaVersion: 1,
         workspaceId: workspace.currentWorkspaceId || 'default',
-        revision,
+        revision: 0,
         widgetId: widget.id,
         widgetType: widget.type,
         title: config.name,
         preferredSize: { width: Math.round(preferredWidth), height: Math.round(preferredHeight) },
         minimumSize,
-        maximumSize: config.maxSize ?? null,
+        maximumSize,
         isResizable: config.features?.isResizable !== false,
         maintainsAspectRatio: config.maintainAspectRatio === true,
         state: asJsonValue(workspace.widgetStates.get(widget.id)),
@@ -84,12 +87,23 @@ const CompactPanelHost = () => {
   }, [workspace]);
 
   useEffect(() => {
+    const revision = revisionRef.current + 1;
+    revisionRef.current = revision;
+    const nextWidgetRevisions = new Map<string, { revision: number; signature: string }>();
+    const publishedSnapshots = snapshots.map((snapshot) => {
+      const signature = JSON.stringify(snapshot);
+      const previous = widgetRevisionsRef.current.get(snapshot.widgetId);
+      const widgetRevision = previous?.signature === signature ? previous.revision : revision;
+      nextWidgetRevisions.set(snapshot.widgetId, { revision: widgetRevision, signature });
+      return { ...snapshot, revision: widgetRevision };
+    });
+    widgetRevisionsRef.current = nextWidgetRevisions;
     const inventory: CompactWidgetPanelInventory = {
       type: 'widget-panels-changed',
       schemaVersion: 1,
       hostInstanceId: hostInstanceIdRef.current,
-      inventoryRevision: revisionRef.current,
-      widgets: snapshots,
+      inventoryRevision: revision,
+      widgets: publishedSnapshots,
       compactWidgetOptions
     };
 
@@ -102,6 +116,7 @@ const CompactPanelHost = () => {
         if (change.schemaVersion !== 1) return false;
         const widgetExists = useWorkspaceStore.getState().widgets.some((widget) => widget.id === change.widgetId);
         if (!widgetExists) return false;
+        if (widgetRevisionsRef.current.get(change.widgetId)?.revision !== change.baseRevision) return false;
         useWorkspaceStore.getState().updateWidgetState(change.widgetId, change.state);
         return true;
       },

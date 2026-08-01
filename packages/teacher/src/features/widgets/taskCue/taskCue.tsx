@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as React from 'react'
+import type { IconType } from 'react-icons';
 // @ts-ignore
 import { 
   FaVolumeXmark,     // Silence
@@ -21,7 +22,7 @@ interface TaskCueProps {
 function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) {
     const [selectedIndex, setSelectedIndex] = useState(savedState?.index ?? 0);
 
-    const taskModes = [
+    const taskModes: { icon: IconType; label: string; color: string }[] = [
         { icon: FaVolumeXmark, label: 'Silence', color: 'text-dusty-rose-500' },
         { icon: FaVolumeLow, label: 'Whisper', color: 'text-terracotta-500' },
         { icon: FaComments, label: 'Discuss with neighbour', color: 'text-sage-600' },
@@ -75,7 +76,7 @@ function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) 
                     onClick={handleNextState}
                     title="Click to cycle to next state"
                 >
-                    {React.createElement(taskModes[selectedIndex].icon as any, {
+                    {React.createElement(taskModes[selectedIndex].icon, {
                         className: `w-2/3 h-2/3 ${taskModes[selectedIndex].color}`,
                         style: { maxWidth: '200px', maxHeight: '200px' }
                     })}
@@ -100,7 +101,7 @@ function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) 
                                     }`}
                                     title={mode.label}
                                 >
-                                    {React.createElement(Icon as any, { className: "w-5 h-5 text-warm-gray-700 dark:text-warm-gray-300" })}
+                                    {React.createElement(Icon, { className: "w-5 h-5 text-warm-gray-700 dark:text-warm-gray-300" })}
                                 </button>
                             );
                         })}

@@ -130,6 +130,7 @@ describe('App narrow layout', () => {
     await waitFor(() => {
       expect(useWorkspaceStore.getState().layoutFormat).toBe('canvas');
       expect(screen.queryByTestId('column-widget-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('widget-list')).not.toBeInTheDocument();
     });
   });
 });

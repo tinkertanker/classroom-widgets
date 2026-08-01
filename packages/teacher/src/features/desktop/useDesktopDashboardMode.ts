@@ -3,6 +3,7 @@ import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 
 export type DashboardWindowMode = 'compact' | 'canvas';
 export type CompactWidgetLayout = 'row' | 'column';
+const COMPACT_LAYOUT_STORAGE_KEY = 'classroom-dashboard-compact-layout';
 
 type DashboardBridge = {
   setVisible: (visible: boolean) => void;
@@ -53,7 +54,11 @@ const getInitialCompactLayout = (): CompactWidgetLayout => {
   if (typeof window === 'undefined') return 'row';
   const requestedLayout = new URLSearchParams(window.location.search).get('compactLayout');
   if (requestedLayout === 'row' || requestedLayout === 'column') return requestedLayout;
-  return window.localStorage.getItem('classroom-dashboard-compact-layout') === 'column' ? 'column' : 'row';
+  try {
+    return window.localStorage.getItem(COMPACT_LAYOUT_STORAGE_KEY) === 'column' ? 'column' : 'row';
+  } catch {
+    return 'row';
+  }
 };
 
 const clampOpacity = (opacity: number): number => Math.min(1, Math.max(0, opacity));
@@ -143,7 +148,11 @@ export function useDesktopDashboardMode() {
 
   useEffect(() => {
     if (!isDashboardMode) return;
-    window.localStorage.setItem('classroom-dashboard-compact-layout', compactLayout);
+    try {
+      window.localStorage.setItem(COMPACT_LAYOUT_STORAGE_KEY, compactLayout);
+    } catch {
+      // The in-memory selection still applies when storage is unavailable.
+    }
   }, [compactLayout, isDashboardMode]);
 
   // WKWebView reports the macOS appearance through prefers-color-scheme. Keep

@@ -20,15 +20,46 @@ const CompactWidgetApp = () => {
   const [snapshot, setSnapshot] = useState<CompactWidgetSnapshot | null>(null);
   const snapshotRef = useRef<CompactWidgetSnapshot | null>(null);
   const lastReportedStateRef = useRef<string | undefined>(undefined);
+  const inFlightStateRef = useRef<string | null>(null);
+  const queuedStateRef = useRef<string | null>(null);
+
+  const reportState = useCallback((serializedState: string, baseRevision: number) => {
+    const currentSnapshot = snapshotRef.current;
+    if (!currentSnapshot) return;
+    inFlightStateRef.current = serializedState;
+    lastReportedStateRef.current = serializedState;
+    window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+      type: 'panel-state-change',
+      schemaVersion: 1,
+      widgetId: currentSnapshot.widgetId,
+      baseRevision,
+      state: JSON.parse(serializedState) as JsonValue
+    });
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.add('compact-widget-panel');
     window.classroomWidgetPanel = {
       receiveSnapshot: (nextSnapshot) => {
         if (nextSnapshot.schemaVersion !== 1 || nextSnapshot.widgetId !== requestedWidgetId) return;
+        if (nextSnapshot.revision <= (snapshotRef.current?.revision ?? -1)) return;
         snapshotRef.current = nextSnapshot;
-        lastReportedStateRef.current = JSON.stringify(nextSnapshot.state);
-        setSnapshot(nextSnapshot);
+        const echoedState = JSON.stringify(nextSnapshot.state);
+        lastReportedStateRef.current = echoedState;
+        inFlightStateRef.current = null;
+        const queuedState = queuedStateRef.current;
+        queuedStateRef.current = null;
+        if (queuedState !== null && queuedState !== echoedState) {
+          const optimisticSnapshot = {
+            ...nextSnapshot,
+            state: JSON.parse(queuedState) as JsonValue
+          };
+          snapshotRef.current = optimisticSnapshot;
+          setSnapshot(optimisticSnapshot);
+          reportState(queuedState, nextSnapshot.revision);
+        } else {
+          setSnapshot(nextSnapshot);
+        }
       }
     };
     window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
@@ -41,7 +72,7 @@ const CompactWidgetApp = () => {
       document.documentElement.classList.remove('compact-widget-panel', 'dark');
       delete window.classroomWidgetPanel;
     };
-  }, [requestedWidgetId]);
+  }, [reportState, requestedWidgetId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', snapshot?.theme === 'dark');
@@ -52,17 +83,13 @@ const CompactWidgetApp = () => {
     if (!currentSnapshot) return;
     const serializedState = JSON.stringify(state);
     if (serializedState === undefined) return;
+    if (inFlightStateRef.current !== null) {
+      queuedStateRef.current = serializedState;
+      return;
+    }
     if (serializedState === lastReportedStateRef.current) return;
-
-    lastReportedStateRef.current = serializedState;
-    window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
-      type: 'panel-state-change',
-      schemaVersion: 1,
-      widgetId: currentSnapshot.widgetId,
-      baseRevision: currentSnapshot.revision,
-      state: JSON.parse(serializedState) as JsonValue
-    });
-  }, []);
+    reportState(serializedState, currentSnapshot.revision);
+  }, [reportState]);
 
   if (!snapshot) {
     return <div className="compact-widget-panel-loading" aria-label="Loading widget" />;

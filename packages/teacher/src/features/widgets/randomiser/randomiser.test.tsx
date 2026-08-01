@@ -52,6 +52,11 @@ describe('Randomiser', () => {
   });
 
   it('restores removed choices when opened in a compact panel', () => {
+    const updateRemovedChoices = vi.fn();
+    vi.mocked(useChoiceManager).mockReturnValueOnce({
+      ...vi.mocked(useChoiceManager)({}),
+      updateRemovedChoices
+    });
     render(<Randomiser savedState={{
       input: 'Ada\nBea',
       choices: ['Ada', 'Bea'],
@@ -61,5 +66,6 @@ describe('Randomiser', () => {
     expect(vi.mocked(useChoiceManager)).toHaveBeenCalledWith(expect.objectContaining({
       initialRemovedChoices: ['Ada']
     }));
+    expect(updateRemovedChoices).toHaveBeenCalledWith(['Ada']);
   });
 });

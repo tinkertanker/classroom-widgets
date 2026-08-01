@@ -44,6 +44,10 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
     onStateChange
   });
 
+  useEffect(() => {
+    if (savedState?.removedChoices) updateRemovedChoices(savedState.removedChoices);
+  }, [savedState?.removedChoices, updateRemovedChoices]);
+
   // Slot machine animation
   const {
     selectedItemIndex,

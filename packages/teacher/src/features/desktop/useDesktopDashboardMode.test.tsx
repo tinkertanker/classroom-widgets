@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDesktopDashboardMode } from './useDesktopDashboardMode';
 
@@ -19,6 +19,9 @@ describe('useDesktopDashboardMode', () => {
   });
 
   afterEach(() => {
+    cleanup();
+    document.documentElement.className = '';
+    document.documentElement.style.removeProperty('--desktop-dashboard-background-opacity');
     postMessage.mockReset();
     window.history.replaceState({}, '', '/');
     delete window.classroomDashboard;

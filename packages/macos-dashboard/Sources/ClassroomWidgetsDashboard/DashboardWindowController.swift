@@ -36,6 +36,8 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private var chromeHideGeneration = 0
     private var compactChromeVisible = true
     private var isChangingWindowMode = false
+    private var hasReceivedWidgetInventory = false
+    private var compactWidgetCreationPending = false
 
     var isDashboardVisible: Bool { dashboardVisible }
     var onVisibilityChanged: (@MainActor (Bool) -> Void)?
@@ -140,8 +142,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         widgetPanelCoordinator.onWidgetCreationRequested = { [weak self] widgetType in
             self?.createCompactWidget(widgetType)
         }
-        widgetPanelCoordinator.onPanelHidden = { [weak self] widgetID in
-            self?.removeCompactWidget(widgetID)
+        widgetPanelCoordinator.onAllPanelsHidden = { [weak self] in
+            guard let self, self.dashboardVisible, self.windowMode == .compact else { return }
+            self.setWindowMode(.canvas)
         }
         webView.configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
         loadDashboard()
@@ -242,7 +245,6 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     func showDashboard() {
-        setWindowMode(.canvas)
         showCurrentPresentation()
     }
 
@@ -266,6 +268,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     func addCompactWidget(_ widgetType: Int) {
+        compactWidgetCreationPending = true
         if windowMode != .compact {
             setWindowMode(.compact)
         }
@@ -400,8 +403,13 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
         hideGeneration += 1
         if windowMode == .compact {
-            window.orderOut(nil)
-            widgetPanelCoordinator.enterCompact()
+            if widgetPanelCoordinator.enterCompact() {
+                window.orderOut(nil)
+            } else if !hasReceivedWidgetInventory || compactWidgetCreationPending {
+                window.makeKeyAndOrderFront(nil)
+            } else {
+                setWindowMode(.canvas)
+            }
         } else {
             widgetPanelCoordinator.enterCanvas()
             window.makeKeyAndOrderFront(nil)
@@ -412,17 +420,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func reconcileWidgetPanels(_ inventory: WidgetPanelInventoryPayload) {
+        hasReceivedWidgetInventory = true
+        compactWidgetCreationPending = false
         let descriptors = inventory.widgets.compactMap(Self.widgetPanelDescriptor(from:))
         widgetPanelCoordinator.reconcile(snapshot: WidgetPanelSnapshot(
             hostInstanceID: inventory.hostInstanceID,
             revision: inventory.revision,
             widgets: descriptors
         ))
-        if dashboardVisible && windowMode == .compact {
-            widgetPanelCoordinator.showAll()
-        } else {
-            widgetPanelCoordinator.hideAll()
-        }
+        syncWindowVisibility()
     }
 
     private func setCompactWidgetOptions(_ options: [CompactWidgetOption]) {
@@ -495,6 +501,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func createCompactWidget(_ widgetType: Int) {
+        compactWidgetCreationPending = true
         webView.callAsyncJavaScript(
             """
             (() => {
@@ -506,8 +513,14 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             arguments: ["widgetType": widgetType],
             in: nil,
             in: .page
-        ) { result in
+        ) { [weak self] result in
+            if case let .success(value) = result, value as? Bool != true {
+                self?.compactWidgetCreationPending = false
+                self?.syncWindowVisibility()
+            }
             if case let .failure(error) = result {
+                self?.compactWidgetCreationPending = false
+                self?.syncWindowVisibility()
                 DashboardLog.web.error("Unable to add compact widget: \(error.localizedDescription, privacy: .public)")
             }
         }

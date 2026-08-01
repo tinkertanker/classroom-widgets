@@ -84,7 +84,7 @@ struct WidgetPanelStateChange {
 final class WidgetPanelCoordinator: NSObject {
     var onPanelReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onPanelStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
-    var onPanelHidden: (@MainActor (String) -> Void)?
+    var onAllPanelsHidden: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
 
@@ -119,6 +119,10 @@ final class WidgetPanelCoordinator: NSObject {
     /// from resurrecting or removing panels. A fresh web process has a new
     /// host instance ID, so its revision may safely restart at zero.
     func reconcile(snapshot: WidgetPanelSnapshot) {
+        if let lastSnapshot, snapshot.hostInstanceID != lastSnapshot.hostInstanceID {
+            panelControllers.values.forEach { $0.closePermanently() }
+            panelControllers.removeAll()
+        }
         if let lastSnapshot,
            snapshot.hostInstanceID == lastSnapshot.hostInstanceID,
            snapshot.revision < lastSnapshot.revision {
@@ -131,7 +135,7 @@ final class WidgetPanelCoordinator: NSObject {
             return
         }
 
-        let descriptorsByID = Dictionary(uniqueKeysWithValues: snapshot.widgets.map { ($0.id, $0) })
+        let descriptorsByID = Dictionary(snapshot.widgets.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
         let removedIDs = Set(panelControllers.keys).subtracting(descriptorsByID.keys)
         for id in removedIDs {
             panelControllers[id]?.closePermanently()
@@ -175,12 +179,15 @@ final class WidgetPanelCoordinator: NSObject {
         panelControllers.removeAll()
     }
 
-    func enterCompact() {
+    @discardableResult
+    func enterCompact() -> Bool {
         compactPresentationActive = true
         if panelControllers.isEmpty, let lastSnapshot {
             reconcile(snapshot: lastSnapshot)
         }
+        guard panelControllers.values.contains(where: { !$0.isHiddenByUser }) else { return false }
         showAll()
+        return true
     }
 
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
@@ -245,8 +252,10 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onStateChange = { [weak self] stateChange in
             self?.onPanelStateChange?(stateChange)
         }
-        controller.onHidden = { [weak self] widgetID in
-            self?.onPanelHidden?(widgetID)
+        controller.onHidden = { [weak self] in
+            guard let self,
+                  !self.panelControllers.values.contains(where: { !$0.isHiddenByUser }) else { return }
+            self.onAllPanelsHidden?()
         }
         controller.onCanvasRequested = { [weak self] widgetID in
             self?.onCanvasRequested?(widgetID)
@@ -326,7 +335,7 @@ final class WidgetPanelCoordinator: NSObject {
 private final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate {
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
-    var onHidden: (@MainActor (String) -> Void)?
+    var onHidden: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
@@ -340,12 +349,10 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var compactAccessoryController: NSTitlebarAccessoryViewController?
     private weak var chromeTrackingView: NSView?
     private var chromeTrackingArea: NSTrackingArea?
-    private var localMouseMonitor: Any?
-    private var globalMouseMonitor: Any?
-    private var pointerWasInChromeRevealArea = false
     private var chromeHideGeneration = 0
     private var chromeVisible = false
     private var isUserHidden = false
+    var isHiddenByUser: Bool { isUserHidden }
     private var isProgrammaticallyChangingFrame = false
     private var isClosingPermanently = false
     private var widgetCreationOptions: [CompactWidgetOption] = []
@@ -418,7 +425,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
-        installChromeMouseMonitors()
         scheduleChromeHide()
         loadWidget()
     }
@@ -429,12 +435,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     deinit {
         MainActor.assumeIsolated {
-            if let localMouseMonitor {
-                NSEvent.removeMonitor(localMouseMonitor)
-            }
-            if let globalMouseMonitor {
-                NSEvent.removeMonitor(globalMouseMonitor)
-            }
             webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomWidgetPanel")
         }
     }
@@ -545,7 +545,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         }
         isUserHidden = true
         hide()
-        onHidden?(widgetID)
+        onHidden?()
         return false
     }
 
@@ -705,29 +705,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         chromeTrackingArea = area
     }
 
-    private func installChromeMouseMonitors() {
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
-            self?.updateChromeForCurrentPointerLocation()
-            return event
-        }
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                self?.updateChromeForCurrentPointerLocation()
-            }
-        }
-    }
-
-    private func updateChromeForCurrentPointerLocation() {
-        let pointerIsInside = pointerIsInChromeRevealArea
-        guard pointerIsInside != pointerWasInChromeRevealArea else { return }
-        pointerWasInChromeRevealArea = pointerIsInside
-        if pointerIsInside {
-            revealChrome()
-        } else {
-            scheduleChromeHide()
-        }
-    }
-
     private func revealChrome() {
         chromeHideGeneration += 1
         setChromeVisible(true)
@@ -874,7 +851,7 @@ private final class WidgetPanelWebViewFactory {
 
     func makeWebView(widgetID: String) -> (webView: WKWebView, messageHandler: WidgetPanelScriptMessageHandler) {
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = .default()
+        configuration.websiteDataStore = .nonPersistent()
         configuration.setURLSchemeHandler(StaticFileSchemeHandler(webRoot: webRoot), forURLScheme: dashboardURLScheme)
 
         let userContentController = WKUserContentController()
@@ -957,11 +934,39 @@ private enum WidgetPanelLayoutEngine {
             }
         case .column:
             var y = usableFrame.maxY
-            for panel in panels {
+            var x = usableFrame.minX
+            var columnWidth: CGFloat = 0
+            for (index, panel) in panels.enumerated() {
                 let size = constrained(panel.size, to: usableFrame.size)
+                if y - size.height < usableFrame.minY, y < usableFrame.maxY {
+                    x += columnWidth + gap
+                    y = usableFrame.maxY
+                    columnWidth = 0
+                }
+                if x + size.width > usableFrame.maxX {
+                    let overflowPanels = panels[index...]
+                    let overflowCount = CGFloat(overflowPanels.count)
+                    for (overflowIndex, overflowPanel) in overflowPanels.enumerated() {
+                        let overflowSize = constrained(overflowPanel.size, to: usableFrame.size)
+                        let availableOffset = min(
+                            usableFrame.width - overflowSize.width,
+                            usableFrame.height - overflowSize.height
+                        )
+                        let step = min(gap, max(0, availableOffset) / overflowCount)
+                        let offset = CGFloat(overflowIndex + 1) * step
+                        frames[overflowPanel.id] = NSRect(
+                            x: usableFrame.minX + offset,
+                            y: usableFrame.maxY - overflowSize.height - offset,
+                            width: overflowSize.width,
+                            height: overflowSize.height
+                        )
+                    }
+                    return frames
+                }
                 y -= size.height
-                frames[panel.id] = NSRect(x: usableFrame.minX, y: y, width: size.width, height: size.height)
+                frames[panel.id] = NSRect(x: x, y: y, width: size.width, height: size.height)
                 y -= gap
+                columnWidth = max(columnWidth, size.width)
             }
         }
         return frames

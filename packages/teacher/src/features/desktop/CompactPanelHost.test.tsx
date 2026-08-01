@@ -108,6 +108,35 @@ describe('CompactPanelHost', () => {
     });
   });
 
+  it('preserves an unchanged widget revision when another widget changes', async () => {
+    useWorkspaceStore.setState({
+      widgets: [
+        ...useWorkspaceStore.getState().widgets,
+        { id: 'qr-1', type: WidgetType.QRCODE, position: { x: 0, y: 0 }, size: { width: 350, height: 415 }, zIndex: 1 }
+      ],
+      widgetStates: new Map([
+        ['timer-1', { timer: { time: 10 } }],
+        ['qr-1', { text: 'first' }]
+      ])
+    });
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+    const firstInventory = postMessage.mock.calls[0][0];
+    const timerRevision = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').revision;
+
+    act(() => {
+      useWorkspaceStore.setState({ widgetStates: new Map([
+        ['timer-1', { timer: { time: 10 } }],
+        ['qr-1', { text: 'second' }]
+      ]) });
+    });
+
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(2));
+    const secondInventory = postMessage.mock.calls[1][0];
+    expect(secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').revision).toBe(timerRevision);
+    expect(secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1').revision).toBeGreaterThan(timerRevision);
+  });
+
   it('starts a new host instance when the dashboard host reloads', async () => {
     const { unmount } = render(<CompactPanelHost />);
 
@@ -136,6 +165,22 @@ describe('CompactPanelHost', () => {
     });
 
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
+  });
+
+  it('rejects a panel state change based on a stale snapshot revision', async () => {
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      expect(window.classroomPanelHost?.applyStateChange({
+        schemaVersion: 1,
+        widgetId: 'timer-1',
+        baseRevision: 0,
+        state: { timer: { time: 25 } }
+      })).toBe(false);
+    });
+
+    expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 10 } });
   });
 
   it('adds a supported widget without opening Canvas', () => {

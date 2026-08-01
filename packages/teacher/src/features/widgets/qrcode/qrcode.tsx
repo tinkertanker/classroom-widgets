@@ -24,6 +24,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const qrContainerRef = useRef<HTMLDivElement>(null);
   const pendingTitleFallbackRef = useRef('');
+  const resizeTimeoutRef = useRef<number | null>(null);
 
   const renderQRCode = useCallback(() => {
     const canvas = canvasRef.current;
@@ -55,9 +56,15 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     const container = qrContainerRef.current;
     if (!container || typeof ResizeObserver === 'undefined') return;
 
-    const observer = new ResizeObserver(renderQRCode);
+    const observer = new ResizeObserver(() => {
+      if (resizeTimeoutRef.current !== null) window.clearTimeout(resizeTimeoutRef.current);
+      resizeTimeoutRef.current = window.setTimeout(renderQRCode, 150);
+    });
     observer.observe(container);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (resizeTimeoutRef.current !== null) window.clearTimeout(resizeTimeoutRef.current);
+    };
   }, [renderQRCode]);
 
   const handleSubmit = (e: React.FormEvent) => {

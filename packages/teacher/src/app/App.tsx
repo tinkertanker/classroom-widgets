@@ -56,7 +56,7 @@ function App() {
   );
   const previousUsesColumnLayoutRef = useRef(false);
   // Use a ref to stash the layout before narrow mode.
-  const layoutBeforeCompactRef = useRef<'canvas' | 'column' | null>(null);
+  const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
@@ -118,12 +118,12 @@ function App() {
 
     if (usesColumnLayout && !previouslyUsedColumnLayout) {
       // Narrow browser windows use the readable multi-widget column.
-      layoutBeforeCompactRef.current = useWorkspaceStore.getState().layoutFormat;
+      layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
       setLayoutFormat('column');
-    } else if (!usesColumnLayout && previouslyUsedColumnLayout && layoutBeforeCompactRef.current) {
+    } else if (!usesColumnLayout && previouslyUsedColumnLayout && layoutBeforeNarrowRef.current) {
       // A wider browser restores the teacher's previous workspace arrangement.
-      setLayoutFormat(layoutBeforeCompactRef.current);
-      layoutBeforeCompactRef.current = null;
+      setLayoutFormat(layoutBeforeNarrowRef.current);
+      layoutBeforeNarrowRef.current = null;
     }
 
     previousUsesColumnLayoutRef.current = usesColumnLayout;
@@ -135,7 +135,7 @@ function App() {
     const currentLayout = useWorkspaceStore.getState().layoutFormat;
     const newFormat = currentLayout === 'canvas' ? 'column' : 'canvas';
     setLayoutFormat(newFormat);
-    layoutBeforeCompactRef.current = newFormat;
+    layoutBeforeNarrowRef.current = newFormat;
   }, [setLayoutFormat]);
 
 
