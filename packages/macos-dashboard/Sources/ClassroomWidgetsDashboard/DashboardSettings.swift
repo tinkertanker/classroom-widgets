@@ -14,6 +14,7 @@ enum DashboardSettingKeys {
     static let clickThroughEmptyAreas = "clickThroughEmptyAreas"
     static let keepOnAllSpaces = "keepOnAllSpaces"
     static let floatingOverlay = "floatingOverlay"
+    static let compactBackgroundOpacity = "compactBackgroundOpacity"
     static let showMenuBarIcon = "showMenuBarIcon"
     static let hasSeenMenuBarHideInfo = "hasSeenMenuBarHideInfo"
 }
@@ -36,6 +37,7 @@ enum DashboardDefaults {
             DashboardSettingKeys.clickThroughEmptyAreas: true,
             DashboardSettingKeys.keepOnAllSpaces: true,
             DashboardSettingKeys.floatingOverlay: true,
+            DashboardSettingKeys.compactBackgroundOpacity: 1.0,
             DashboardSettingKeys.showMenuBarIcon: true,
             DashboardSettingKeys.hasSeenMenuBarHideInfo: false
         ])
@@ -109,9 +111,8 @@ final class DashboardSettingsContext {
 
 struct DashboardGeneralSettingsView: View {
     @AppStorage(DashboardSettingKeys.showDashboardAtLaunch) private var showDashboardAtLaunch = false
-    @AppStorage(DashboardSettingKeys.clickThroughEmptyAreas) private var clickThroughEmptyAreas = true
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
-    @AppStorage(DashboardSettingKeys.floatingOverlay) private var floatingOverlay = true
+    @AppStorage(DashboardSettingKeys.compactBackgroundOpacity) private var compactBackgroundOpacity = 1.0
     @AppStorage(DashboardSettingKeys.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(DashboardSettingKeys.hasSeenMenuBarHideInfo) private var hasSeenMenuBarHideInfo = false
     @State private var launchAtLoginEnabled = false
@@ -172,12 +173,21 @@ struct DashboardGeneralSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Section("Dashboard Layer") {
+            Section("Compact Overlay") {
                 Toggle("Show on all Spaces", isOn: $keepOnAllSpaces)
 
-                Toggle("Float above other windows", isOn: $floatingOverlay)
+                HStack {
+                    Text("Background opacity")
+                    Slider(value: $compactBackgroundOpacity, in: 0...1, step: 0.05)
+                    Text("\(Int((compactBackgroundOpacity * 100).rounded()))%")
+                        .monospacedDigit()
+                        .frame(width: 38, alignment: .trailing)
+                }
 
-                Toggle("Click through empty dashboard areas", isOn: $clickThroughEmptyAreas)
+                Text("The compact overlay is a normal, floating window. Switch to Canvas from the dashboard when you need a large window or macOS full screen.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .formStyle(.grouped)
@@ -243,11 +253,7 @@ struct DashboardGeneralSettingsView: View {
     }
 
     private var windowBehaviorSignature: String {
-        [
-            clickThroughEmptyAreas,
-            keepOnAllSpaces,
-            floatingOverlay
-        ].map(String.init).joined(separator: ":")
+        "\(keepOnAllSpaces):\(compactBackgroundOpacity)"
     }
 }
 

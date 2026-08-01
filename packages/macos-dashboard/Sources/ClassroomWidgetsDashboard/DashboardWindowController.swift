@@ -1,26 +1,50 @@
 import AppKit
 import WebKit
 
+/// The two deliberate surfaces offered by the native shell.  These are kept
+/// separate from the web UI's layout modes: the same web view is merely given
+/// a different, ordinary AppKit window to live in.
+enum DashboardWindowMode: String {
+    case compact
+    case canvas
+
+    init?(bridgeValue: String) {
+        self.init(rawValue: bridgeValue)
+    }
+}
+
 @MainActor
-final class DashboardWindowController: NSWindowController, WKNavigationDelegate, WKUIDelegate {
+final class DashboardWindowController: NSWindowController, WKNavigationDelegate, WKUIDelegate, NSWindowDelegate {
+    private static let compactFrameDefaultsKey = "dashboardCompactWindowFrameV3"
+    private static let canvasFrameDefaultsKey = "dashboardCanvasWindowFrameV2"
+
     private let webView: WKWebView
+    private let compactNavigationBar = NSVisualEffectView()
+    private let compactDragRegion = CompactDragRegionView()
+    private let compactChromeTrackingView = CompactChromeTrackingView()
     private let scriptMessageHandler: DashboardScriptMessageHandler
-    private let backdropContainer = NSView()
-    private var glassBackdropViews: [NSVisualEffectView] = []
-    private var glassRegions: [DashboardGlassRegion] = []
+    private let widgetPanelCoordinator: WidgetPanelCoordinator
     private var dashboardVisible: Bool
-    private var interactiveRegions: [CGRect] = []
-    private var localMouseMonitor: Any?
-    private var globalMouseMonitor: Any?
+    private var windowMode: DashboardWindowMode
     private var pendingWidgetLauncherOpen = false
     private var widgetLauncherOpenAttemptInFlight = false
     private var hideGeneration = 0
     private var visibilityPushGeneration = 0
+    private var modePushGeneration = 0
+    private var backgroundOpacityPushGeneration = 0
+    private var chromeVisibilityPushGeneration = 0
+    private var chromeHideGeneration = 0
+    private var compactChromeVisible = true
+    private var isChangingWindowMode = false
+
     var isDashboardVisible: Bool { dashboardVisible }
     var onVisibilityChanged: (@MainActor (Bool) -> Void)?
+    var onCompactWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
+    private(set) var compactWidgetOptions: [CompactWidgetOption] = []
 
     init() {
         dashboardVisible = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch)
+        windowMode = .compact
 
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(
@@ -33,61 +57,64 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             forMainFrameOnly: false
         ))
         scriptMessageHandler = DashboardScriptMessageHandler()
+        widgetPanelCoordinator = WidgetPanelCoordinator()
 
         webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.setValue(false, forKey: "drawsBackground")
+        // This is intentionally an opaque, bounded AppKit window.  The
+        // previous transparent, display-sized window made input routing depend
+        // on asynchronous DOM hit regions.
+        webView.setValue(true, forKey: "drawsBackground")
 
         let window = DashboardWindow(
-            contentRect: Self.combinedVisibleFrame(),
-            styleMask: [.borderless],
+            contentRect: Self.defaultFrame(for: .compact),
+            styleMask: Self.styleMask(for: .compact),
             backing: .buffered,
             defer: false
         )
-        window.backgroundColor = .clear
-        window.isOpaque = false
-        window.hasShadow = false
-        window.level = .floating
-        window.ignoresMouseEvents = !dashboardVisible
-
-        // The backdrop layer sits behind the (transparent) web view and hosts
-        // NSVisualEffectViews aligned with the web layer's glass surfaces, so
-        // widgets get a real desktop blur that CSS backdrop-filter cannot do.
-        let contentView = NSView()
-        window.contentView = contentView
-        backdropContainer.frame = contentView.bounds
-        backdropContainer.autoresizingMask = [.width, .height]
-        // Layer-backed so alphaValue is a well-defined layer opacity animation
-        // for the hosted NSVisualEffectViews.
-        backdropContainer.wantsLayer = true
-        backdropContainer.alphaValue = dashboardVisible ? 1 : 0
-        backdropContainer.postsFrameChangedNotifications = true
-        contentView.addSubview(backdropContainer)
-        webView.frame = contentView.bounds
+        window.title = "Classroom Widgets"
+        window.backgroundColor = .windowBackgroundColor
+        window.isOpaque = true
+        window.hasShadow = true
+        window.isReleasedWhenClosed = false
+        window.contentMinSize = Self.minimumContentSize(for: .compact)
+        window.contentView = NSView()
+        compactNavigationBar.material = .headerView
+        compactNavigationBar.blendingMode = .withinWindow
+        compactNavigationBar.state = .active
+        compactNavigationBar.setAccessibilityElement(false)
+        compactNavigationBar.wantsLayer = true
+        compactNavigationBar.layer?.cornerRadius = 10
+        compactNavigationBar.layer?.cornerCurve = .continuous
+        compactNavigationBar.layer?.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        compactNavigationBar.layer?.masksToBounds = true
+        webView.frame = window.contentView?.bounds ?? .zero
         webView.autoresizingMask = [.width, .height]
-        contentView.addSubview(webView)
+        window.contentView?.addSubview(compactNavigationBar)
+        window.contentView?.addSubview(webView)
+        window.contentView?.addSubview(compactDragRegion)
+        window.contentView?.addSubview(compactChromeTrackingView)
 
         super.init(window: window)
+        window.delegate = self
+        window.acceptsMouseMovedEvents = true
         webView.navigationDelegate = self
         webView.uiDelegate = self
-        applySettings()
-        installMouseMonitors()
 
-        // Backdrops are positioned from a snapshot of the container height at
-        // message time, so re-place them whenever the window (and thus the
-        // container) resizes, and re-fit the window when the display layout
-        // changes underneath it.
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(backdropContainerFrameDidChange),
-            name: NSView.frameDidChangeNotification,
-            object: backdropContainer
+        compactChromeTrackingView.onPointerEntered = { [weak self] in
+            self?.revealCompactChrome()
+        }
+        compactChromeTrackingView.onPointerExited = { [weak self] in
+            self?.scheduleCompactChromeHide()
+        }
+
+        restoreFrame(for: .compact)
+        configureWindow(for: .compact)
+        widgetPanelCoordinator.applyPresentationSettings(
+            backgroundOpacity: compactBackgroundOpacity,
+            keepOnAllSpaces: UserDefaults.standard.bool(forKey: DashboardSettingKeys.keepOnAllSpaces)
         )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(screenParametersDidChange),
-            name: NSApplication.didChangeScreenParametersNotification,
-            object: nil
-        )
+        layoutCompactDragRegion()
+        scheduleCompactChromeHide()
 
         scriptMessageHandler.onVisibilityChanged = { [weak self] visible in
             guard let self else { return }
@@ -95,15 +122,26 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             self.syncWindowVisibility()
             self.onVisibilityChanged?(visible)
         }
-        scriptMessageHandler.onInteractiveRegionsChanged = { [weak self] regions in
-            guard let self else { return }
-            self.interactiveRegions = regions
-            self.updateMousePassthrough()
+        scriptMessageHandler.onWindowModeRequested = { [weak self] mode in
+            self?.setWindowMode(mode)
         }
-        scriptMessageHandler.onGlassRegionsChanged = { [weak self] regions in
-            guard let self else { return }
-            self.glassRegions = regions
-            self.updateGlassBackdrops()
+        scriptMessageHandler.onWidgetPanelsChanged = { [weak self] inventory in
+            self?.reconcileWidgetPanels(inventory)
+        }
+        scriptMessageHandler.onCompactWidgetOptionsChanged = { [weak self] options in
+            self?.setCompactWidgetOptions(options)
+        }
+        widgetPanelCoordinator.onPanelStateChange = { [weak self] change in
+            self?.applyPanelStateChange(change)
+        }
+        widgetPanelCoordinator.onCanvasRequested = { [weak self] _ in
+            self?.setWindowMode(.canvas)
+        }
+        widgetPanelCoordinator.onWidgetCreationRequested = { [weak self] widgetType in
+            self?.createCompactWidget(widgetType)
+        }
+        widgetPanelCoordinator.onPanelHidden = { [weak self] widgetID in
+            self?.removeCompactWidget(widgetID)
         }
         webView.configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
         loadDashboard()
@@ -115,12 +153,6 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
     deinit {
         MainActor.assumeIsolated {
-            if let localMouseMonitor {
-                NSEvent.removeMonitor(localMouseMonitor)
-            }
-            if let globalMouseMonitor {
-                NSEvent.removeMonitor(globalMouseMonitor)
-            }
             NotificationCenter.default.removeObserver(self)
             webView.configuration.userContentController.removeScriptMessageHandler(forName: "classroomDashboard")
         }
@@ -128,6 +160,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebDashboardVisible(dashboardVisible)
+        setWebWindowMode(windowMode)
+        setWebBackgroundOpacity(compactBackgroundOpacity)
+        setWebWindowChromeVisible(compactChromeVisible || windowMode == .canvas)
 
         if pendingWidgetLauncherOpen && !widgetLauncherOpenAttemptInFlight {
             openWidgetLauncher()
@@ -135,10 +170,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     // The dashboard must never navigate away from the bundled app. Allow only
-    // our custom scheme; hand any other URL (including student-submitted links
-    // rendered inside widgets) to the user's browser. Without this a single
-    // link click would replace the chromeless full-screen overlay with
-    // arbitrary web content that still has access to the native bridge.
+    // our custom scheme; hand links from a widget to the user's browser.
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
@@ -149,8 +181,6 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             return
         }
 
-        // Our bundle (custom scheme) plus about:blank, which WebKit may use
-        // internally during setup. Everything else is foreign content.
         if url.scheme == dashboardURLScheme || url.scheme == "about" {
             decisionHandler(.allow)
             return
@@ -162,8 +192,6 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
-    // target="_blank" / window.open links: open externally instead of spawning
-    // a chromeless child web view.
     func webView(
         _ webView: WKWebView,
         createWebViewWith configuration: WKWebViewConfiguration,
@@ -176,52 +204,60 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         return nil
     }
 
-    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        // The old page's regions don't apply to whatever is loading; drop them
-        // so stale blur slabs and click-through holes don't linger.
-        clearWebDrivenState()
-    }
-
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Web content process terminated; reloading dashboard")
-        clearWebDrivenState()
         loadDashboard()
     }
 
-    private func clearWebDrivenState() {
-        interactiveRegions = []
-        glassRegions = []
-        updateGlassBackdrops()
-        updateMousePassthrough()
+    func windowDidMove(_ notification: Notification) {
+        guard !isChangingWindowMode else { return }
+        persistFrame(for: windowMode)
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        layoutCompactDragRegion()
+        guard !isChangingWindowMode else { return }
+        persistFrame(for: windowMode)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        layoutCompactDragRegion()
+        revealCompactChrome()
+        scheduleCompactChromeHide()
+    }
+
+    func windowDidResignKey(_ notification: Notification) {
+        guard windowMode == .compact else { return }
+        setCompactChromeVisible(false)
+    }
+
+    // A utility app must stay recoverable from its menu-bar and global
+    // shortcuts. Closing its one web window therefore hides it, just like
+    // closing many Apple utility panels, without destroying its lesson state.
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if dashboardVisible {
+            toggleDashboard()
+        }
+        return false
     }
 
     func showDashboard() {
-        dashboardVisible = true
-        DashboardLog.windowing.info("Showing dashboard")
-        let frame = Self.combinedVisibleFrame()
-        window?.setFrame(frame, display: true)
-        applySettings()
-        syncWindowVisibility(activateApp: true)
-        NSApp.activate(ignoringOtherApps: true)
-        setWebDashboardVisible(true)
+        setWindowMode(.canvas)
+        showCurrentPresentation()
     }
 
     func toggleDashboard() {
-        dashboardVisible.toggle()
-        DashboardLog.windowing.info("Dashboard visibility changed to \(self.dashboardVisible, privacy: .public)")
-        setWebDashboardVisible(dashboardVisible)
-
         if dashboardVisible {
-            window?.setFrame(Self.combinedVisibleFrame(), display: true)
+            setPresentationVisible(false, activateApp: false)
+        } else {
+            showDashboard()
         }
-
-        syncWindowVisibility(activateApp: dashboardVisible)
-        onVisibilityChanged?(dashboardVisible)
     }
 
     func showWidgetLauncher() {
         pendingWidgetLauncherOpen = true
         DashboardLog.windowing.info("Opening widget launcher")
+        setWindowMode(.canvas)
         showDashboard()
 
         if !webView.isLoading {
@@ -229,44 +265,132 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
+    func addCompactWidget(_ widgetType: Int) {
+        if windowMode != .compact {
+            setWindowMode(.compact)
+        }
+        showCurrentPresentation()
+        createCompactWidget(widgetType)
+    }
+
     func reloadDashboard() {
         DashboardLog.web.info("Reloading bundled dashboard")
         pendingWidgetLauncherOpen = false
         widgetLauncherOpenAttemptInFlight = false
-        clearWebDrivenState()
-        // Rebuild the URL from current state rather than reloadFromOrigin(),
-        // which would reload the stale launch-time ?visible= value (and, after
-        // an external navigation slipped through, the wrong page entirely).
         loadDashboard()
     }
 
     func applySettings() {
+        // Legacy overlay settings deliberately no longer influence input
+        // routing.  A bounded window naturally leaves every other app alone.
+        configureWindow(for: windowMode)
+        setWebBackgroundOpacity(compactBackgroundOpacity)
+        widgetPanelCoordinator.applyPresentationSettings(
+            backgroundOpacity: compactBackgroundOpacity,
+            keepOnAllSpaces: UserDefaults.standard.bool(forKey: DashboardSettingKeys.keepOnAllSpaces)
+        )
+        syncWindowVisibility()
+    }
+
+    private func showCurrentPresentation() {
+        setPresentationVisible(true, activateApp: true)
+    }
+
+    private func setPresentationVisible(_ visible: Bool, activateApp: Bool) {
+        dashboardVisible = visible
+        DashboardLog.windowing.info(
+            "Dashboard visibility changed to \(visible, privacy: .public) in \(self.windowMode.rawValue, privacy: .public) mode"
+        )
+        setWebDashboardVisible(visible)
+        syncWindowVisibility(activateApp: activateApp)
+        onVisibilityChanged?(visible)
+    }
+
+    private func setWindowMode(_ mode: DashboardWindowMode) {
+        guard mode != windowMode else {
+            setWebWindowMode(mode)
+            return
+        }
+
+        guard window != nil else { return }
+        isChangingWindowMode = true
+        persistFrame(for: windowMode)
+        windowMode = mode
+        configureWindow(for: mode)
+        restoreFrame(for: mode)
+        isChangingWindowMode = false
+        setWebWindowMode(mode)
+        setWebBackgroundOpacity(compactBackgroundOpacity)
+        if mode == .compact {
+            widgetPanelCoordinator.enterCompact()
+        } else {
+            widgetPanelCoordinator.enterCanvas()
+        }
+
+        if dashboardVisible {
+            syncWindowVisibility(activateApp: true)
+        }
+    }
+
+    private func configureWindow(for mode: DashboardWindowMode) {
         guard let window else { return }
 
-        window.level = UserDefaults.standard.bool(forKey: DashboardSettingKeys.floatingOverlay) ? .floating : .normal
+        // Changing a style mask does not replace the content view, so the one
+        // WKWebView (and its React/Zustand state) survives each transition.
+        window.styleMask = Self.styleMask(for: mode)
+        window.contentMinSize = Self.minimumContentSize(for: mode)
+        window.titleVisibility = mode == .compact ? .hidden : .visible
+        window.titlebarAppearsTransparent = mode == .compact
+        window.level = mode == .compact ? .floating : .normal
 
-        var behavior: NSWindow.CollectionBehavior = [.stationary]
-        if UserDefaults.standard.bool(forKey: DashboardSettingKeys.keepOnAllSpaces) {
+        applyBackgroundAppearance(for: mode)
+
+        var behavior: NSWindow.CollectionBehavior = [.managed]
+        if mode == .canvas {
+            behavior.insert(.fullScreenPrimary)
+        } else if UserDefaults.standard.bool(forKey: DashboardSettingKeys.keepOnAllSpaces) {
             behavior.insert(.canJoinAllSpaces)
-            behavior.insert(.fullScreenAuxiliary)
         }
         window.collectionBehavior = behavior
+        compactNavigationBar.isHidden = mode != .compact
+        compactDragRegion.isHidden = mode != .compact
+        compactChromeTrackingView.isHidden = mode != .compact
+        compactChromeTrackingView.resetPointerState()
+        layoutCompactDragRegion()
 
-        syncWindowVisibility()
+        if mode == .compact {
+            compactChromeVisible = false
+            revealCompactChrome()
+            scheduleCompactChromeHide()
+        } else {
+            chromeHideGeneration += 1
+            setCompactChromeVisible(true)
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.layoutCompactDragRegion()
+        }
+    }
+
+    private func applyBackgroundAppearance(for mode: DashboardWindowMode) {
+        guard let window else { return }
+
+        let allowsPerPixelTransparency = mode == .compact
+        window.isOpaque = !allowsPerPixelTransparency
+        window.backgroundColor = allowsPerPixelTransparency ? .clear : .windowBackgroundColor
+        webView.setValue(!allowsPerPixelTransparency, forKey: "drawsBackground")
+        // Opacity belongs to the web background only. Keeping the NSWindow at
+        // full alpha prevents widgets and traffic lights fading with the tray.
+        window.alphaValue = 1
+        // Even a very light compact tray remains a bounded interactive window.
+        window.ignoresMouseEvents = false
     }
 
     private func syncWindowVisibility(activateApp: Bool = false) {
         guard let window else { return }
 
         guard dashboardVisible else {
-            window.ignoresMouseEvents = true
-            setBackdropsVisible(false)
-            // The window lingers ~350ms for the exit animation. While it does,
-            // it must not keep eating keystrokes into the invisible web view
-            // (e.g. Cmd+V would hit the app's global paste handler and silently
-            // spawn a widget). Yield activation back to the app underneath —
-            // guarded on the dashboard being the key window so changing a
-            // setting from the Settings window doesn't deactivate the app.
+            widgetPanelCoordinator.hideAll()
             if window.isKeyWindow {
                 NSApp.deactivate()
             }
@@ -275,20 +399,333 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
 
         hideGeneration += 1
-        setBackdropsVisible(true)
-        if !window.isVisible {
+        if windowMode == .compact {
+            window.orderOut(nil)
+            widgetPanelCoordinator.enterCompact()
+        } else {
+            widgetPanelCoordinator.enterCanvas()
             window.makeKeyAndOrderFront(nil)
         }
-        window.orderFrontRegardless()
-        updateMousePassthrough()
-
         if activateApp {
             NSApp.activate(ignoringOtherApps: true)
         }
     }
 
-    // Keep the window on screen briefly while the web layer plays its exit
-    // animation; mouse events are already disabled so the overlay is inert.
+    private func reconcileWidgetPanels(_ inventory: WidgetPanelInventoryPayload) {
+        let descriptors = inventory.widgets.compactMap(Self.widgetPanelDescriptor(from:))
+        widgetPanelCoordinator.reconcile(snapshot: WidgetPanelSnapshot(
+            hostInstanceID: inventory.hostInstanceID,
+            revision: inventory.revision,
+            widgets: descriptors
+        ))
+        if dashboardVisible && windowMode == .compact {
+            widgetPanelCoordinator.showAll()
+        } else {
+            widgetPanelCoordinator.hideAll()
+        }
+    }
+
+    private func setCompactWidgetOptions(_ options: [CompactWidgetOption]) {
+        guard options != compactWidgetOptions else { return }
+        compactWidgetOptions = options
+        widgetPanelCoordinator.setWidgetCreationOptions(options)
+        onCompactWidgetOptionsChanged?(options)
+    }
+
+    private static func widgetPanelDescriptor(from payload: [String: Any]) -> WidgetPanelDescriptor? {
+        guard (payload["schemaVersion"] as? NSNumber)?.intValue == 1,
+              let id = payload["widgetId"] as? String,
+              !id.isEmpty,
+              let title = payload["title"] as? String,
+              let preferred = payload["preferredSize"] as? [String: Any],
+              let preferredWidth = (preferred["width"] as? NSNumber)?.doubleValue,
+              let preferredHeight = (preferred["height"] as? NSNumber)?.doubleValue,
+              let minimum = payload["minimumSize"] as? [String: Any],
+              let minimumWidth = (minimum["width"] as? NSNumber)?.doubleValue,
+              let minimumHeight = (minimum["height"] as? NSNumber)?.doubleValue,
+              let maximumValue = payload["maximumSize"],
+              let isResizable = payload["isResizable"] as? Bool,
+              let maintainsAspectRatio = payload["maintainsAspectRatio"] as? Bool
+        else { return nil }
+
+        let maximumContentSize: WidgetPanelDescriptor.Size?
+        if maximumValue is NSNull {
+            maximumContentSize = nil
+        } else if let maximum = maximumValue as? [String: Any],
+                  let maximumWidth = (maximum["width"] as? NSNumber)?.doubleValue,
+                  let maximumHeight = (maximum["height"] as? NSNumber)?.doubleValue {
+            maximumContentSize = .init(width: CGFloat(maximumWidth), height: CGFloat(maximumHeight))
+        } else {
+            return nil
+        }
+
+        let aspectRatio = maintainsAspectRatio && preferredHeight > 0
+            ? CGFloat(preferredWidth / preferredHeight)
+            : nil
+
+        return WidgetPanelDescriptor(
+            id: id,
+            title: title,
+            preferredContentSize: .init(width: CGFloat(preferredWidth), height: CGFloat(preferredHeight)),
+            minimumContentSize: .init(width: CGFloat(minimumWidth), height: CGFloat(minimumHeight)),
+            maximumContentSize: maximumContentSize,
+            isResizable: isResizable,
+            aspectRatio: aspectRatio,
+            snapshotPayload: payload
+        )
+    }
+
+    private func applyPanelStateChange(_ change: WidgetPanelStateChange) {
+        webView.callAsyncJavaScript(
+            """
+            (() => {
+              const host = window.classroomPanelHost;
+              if (!host?.applyStateChange) return false;
+              return host.applyStateChange(change);
+            })()
+            """,
+            arguments: ["change": change.payload],
+            in: nil,
+            in: .page
+        ) { result in
+            if case let .failure(error) = result {
+                DashboardLog.web.error("Unable to apply widget panel state: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func createCompactWidget(_ widgetType: Int) {
+        webView.callAsyncJavaScript(
+            """
+            (() => {
+              const host = window.classroomPanelHost;
+              if (!host?.addWidget) return false;
+              return host.addWidget(widgetType);
+            })()
+            """,
+            arguments: ["widgetType": widgetType],
+            in: nil,
+            in: .page
+        ) { result in
+            if case let .failure(error) = result {
+                DashboardLog.web.error("Unable to add compact widget: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func removeCompactWidget(_ widgetID: String) {
+        webView.callAsyncJavaScript(
+            """
+            (() => {
+              const host = window.classroomPanelHost;
+              if (!host?.removeWidget) return false;
+              return host.removeWidget(widgetID);
+            })()
+            """,
+            arguments: ["widgetID": widgetID],
+            in: nil,
+            in: .page
+        ) { result in
+            if case let .failure(error) = result {
+                DashboardLog.web.error("Unable to remove compact widget: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func layoutCompactDragRegion() {
+        guard let contentView = window?.contentView else { return }
+
+        // The web view intentionally extends through compact mode's title bar.
+        // Reserve the traffic lights on the left and the two compact icon
+        // controls on the right. The rest of the native navigation bar is a
+        // grab area.
+        let height: CGFloat = 30
+        let navigationBarFrame = NSRect(
+            x: 0,
+            y: max(0, contentView.bounds.maxY - height),
+            width: contentView.bounds.width,
+            height: height
+        )
+        compactNavigationBar.frame = navigationBarFrame
+        centreTrafficLights(in: navigationBarFrame, contentView: contentView)
+
+        let trafficLightsRightEdge = trafficLights
+            .map { $0.convert($0.bounds, to: contentView).maxX }
+            .max() ?? 70
+        let leftInset = trafficLightsRightEdge + 12
+        let rightInset: CGFloat = 64
+        compactDragRegion.frame = NSRect(
+            x: leftInset,
+            y: navigationBarFrame.minY,
+            width: max(0, contentView.bounds.width - leftInset - rightInset),
+            height: height
+        )
+        compactChromeTrackingView.frame = NSRect(
+            x: 0,
+            y: max(0, contentView.bounds.maxY - 52),
+            width: contentView.bounds.width,
+            height: 52
+        )
+    }
+
+    private func centreTrafficLights(in navigationBarFrame: NSRect, contentView: NSView) {
+        guard windowMode == .compact else { return }
+        let targetCentreY = navigationBarFrame.midY
+
+        for button in trafficLights {
+            guard let buttonSuperview = button.superview else { continue }
+            let targetInSuperview = buttonSuperview.convert(
+                NSPoint(x: button.frame.midX, y: targetCentreY),
+                from: contentView
+            )
+            button.setFrameOrigin(NSPoint(
+                x: button.frame.origin.x,
+                y: targetInSuperview.y - button.frame.height / 2
+            ))
+        }
+    }
+
+    private var trafficLights: [NSButton] {
+        guard let window else { return [] }
+        return [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
+            .compactMap { window.standardWindowButton($0) }
+    }
+
+    private func revealCompactChrome() {
+        guard windowMode == .compact else { return }
+        chromeHideGeneration += 1
+        setCompactChromeVisible(true)
+    }
+
+    private func scheduleCompactChromeHide() {
+        guard windowMode == .compact else { return }
+        chromeHideGeneration += 1
+        compactChromeTrackingView.updatePointerStateFromCurrentLocation()
+        guard !compactChromeTrackingView.isPointerInside else { return }
+        let generation = chromeHideGeneration
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            guard let self,
+                  self.chromeHideGeneration == generation,
+                  self.windowMode == .compact,
+                  !self.compactChromeTrackingView.isPointerInside
+            else { return }
+            self.setCompactChromeVisible(false)
+        }
+    }
+
+    private func setCompactChromeVisible(_ visible: Bool) {
+        if windowMode == .canvas {
+            compactChromeVisible = true
+            compactNavigationBar.isHidden = true
+            compactDragRegion.isHidden = true
+            setTrafficLightsVisible(true)
+            setWebWindowChromeVisible(true)
+            return
+        }
+
+        let effectiveVisibility = visible || NSWorkspace.shared.isVoiceOverEnabled
+        guard compactChromeVisible != effectiveVisibility else { return }
+        compactChromeVisible = effectiveVisibility
+        setCompactNavigationBarVisible(effectiveVisibility)
+        setTrafficLightsVisible(effectiveVisibility)
+        setWebWindowChromeVisible(effectiveVisibility)
+    }
+
+    private func setCompactNavigationBarVisible(_ visible: Bool) {
+        compactNavigationBar.isHidden = false
+        compactDragRegion.isHidden = false
+
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        if reduceMotion {
+            compactNavigationBar.alphaValue = visible ? 1 : 0
+        } else {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.16
+                compactNavigationBar.animator().alphaValue = visible ? 1 : 0
+            }
+        }
+
+        guard !visible else { return }
+        let generation = chromeHideGeneration
+        Task { @MainActor [weak self] in
+            if !reduceMotion {
+                try? await Task.sleep(nanoseconds: 170_000_000)
+            }
+            guard let self,
+                  self.chromeHideGeneration == generation,
+                  !self.compactChromeVisible,
+                  self.windowMode == .compact
+            else { return }
+            self.compactNavigationBar.isHidden = true
+            self.compactDragRegion.isHidden = true
+        }
+    }
+
+    private func setTrafficLightsVisible(_ visible: Bool) {
+        let buttons = trafficLights
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+
+        for button in buttons {
+            button.isHidden = false
+            if reduceMotion {
+                button.alphaValue = visible ? 1 : 0
+            } else {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.16
+                    button.animator().alphaValue = visible ? 1 : 0
+                }
+            }
+        }
+
+        guard !visible else { return }
+        let generation = chromeHideGeneration
+        Task { @MainActor [weak self] in
+            if !reduceMotion {
+                try? await Task.sleep(nanoseconds: 170_000_000)
+            }
+            guard let self,
+                  self.chromeHideGeneration == generation,
+                  !self.compactChromeVisible,
+                  self.windowMode == .compact
+            else { return }
+            self.trafficLights.forEach { $0.isHidden = true }
+        }
+    }
+
+    private func setWebWindowChromeVisible(_ visible: Bool) {
+        chromeVisibilityPushGeneration += 1
+        pushWebWindowChromeVisible(visible, generation: chromeVisibilityPushGeneration, retriesRemaining: 3)
+    }
+
+    private func pushWebWindowChromeVisible(_ visible: Bool, generation: Int, retriesRemaining: Int) {
+        guard generation == chromeVisibilityPushGeneration else { return }
+        let expression = """
+        (() => {
+          if (window.classroomDashboard?.setWindowChromeVisible) {
+            window.classroomDashboard.setWindowChromeVisible(\(visible ? "true" : "false"));
+            return true;
+          }
+          return false;
+        })()
+        """
+        webView.evaluateJavaScript(expression) { [weak self] result, _ in
+            guard let self else { return }
+            guard self.chromeVisibilityPushGeneration == generation,
+                  result as? Bool != true,
+                  retriesRemaining > 0
+            else { return }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                self.pushWebWindowChromeVisible(
+                    visible,
+                    generation: generation,
+                    retriesRemaining: retriesRemaining - 1
+                )
+            }
+        }
+    }
+
     private func scheduleOrderOut(_ window: NSWindow) {
         guard window.isVisible else {
             window.orderOut(nil)
@@ -297,133 +734,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
         hideGeneration += 1
         let generation = hideGeneration
-
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 350_000_000)
+            try? await Task.sleep(nanoseconds: 200_000_000)
             guard let self, self.hideGeneration == generation, !self.dashboardVisible else { return }
             self.window?.orderOut(nil)
-        }
-    }
-
-    private func installMouseMonitors() {
-        localMouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [
-            .mouseMoved,
-            .leftMouseDragged,
-            .rightMouseDragged,
-            .otherMouseDragged,
-            .leftMouseDown,
-            .rightMouseDown,
-            .otherMouseDown
-        ]) { [weak self] event in
-            self?.updateMousePassthrough()
-            return event
-        }
-
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [
-            .mouseMoved,
-            .leftMouseDragged,
-            .rightMouseDragged,
-            .otherMouseDragged,
-            .leftMouseDown,
-            .rightMouseDown,
-            .otherMouseDown
-        ]) { [weak self] _ in
-            self?.updateMousePassthrough()
-        }
-    }
-
-    private func updateMousePassthrough() {
-        guard let window else { return }
-
-        guard dashboardVisible else {
-            window.ignoresMouseEvents = true
-            return
-        }
-
-        guard UserDefaults.standard.bool(forKey: DashboardSettingKeys.clickThroughEmptyAreas) else {
-            window.ignoresMouseEvents = false
-            return
-        }
-
-        let screenPoint = NSEvent.mouseLocation
-        guard window.frame.contains(screenPoint) else {
-            window.ignoresMouseEvents = true
-            return
-        }
-
-        let pointInWindow = window.convertPoint(fromScreen: screenPoint)
-        let webPoint = CGPoint(x: pointInWindow.x, y: webView.bounds.height - pointInWindow.y)
-        window.ignoresMouseEvents = !interactiveRegions.contains { $0.contains(webPoint) }
-    }
-
-    private func updateGlassBackdrops() {
-        while glassBackdropViews.count < glassRegions.count {
-            let view = NSVisualEffectView()
-            view.blendingMode = .behindWindow
-            view.material = .popover
-            view.state = .active
-            backdropContainer.addSubview(view)
-            glassBackdropViews.append(view)
-        }
-
-        while glassBackdropViews.count > glassRegions.count {
-            glassBackdropViews.removeLast().removeFromSuperview()
-        }
-
-        // Web rects are top-left origin; AppKit views are bottom-left.
-        let containerHeight = backdropContainer.bounds.height
-        for (view, region) in zip(glassBackdropViews, glassRegions) {
-            view.frame = CGRect(
-                x: region.rect.minX,
-                y: containerHeight - region.rect.minY - region.rect.height,
-                width: region.rect.width,
-                height: region.rect.height
-            )
-            // maskImage (not layer.cornerRadius) is what clips the
-            // behind-window blur region, per NSVisualEffectView docs. Clamp the
-            // radius so a small region can't produce a distorted mask.
-            let clampedRadius = min(region.radius, region.rect.width / 2, region.rect.height / 2).rounded()
-            view.maskImage = maskImage(cornerRadius: clampedRadius)
-        }
-    }
-
-    private var maskImageCache: [CGFloat: NSImage] = [:]
-
-    private func maskImage(cornerRadius radius: CGFloat) -> NSImage? {
-        guard radius > 0 else { return nil }
-
-        if let cached = maskImageCache[radius] {
-            return cached
-        }
-
-        let edge = radius * 2 + 1
-        let image = NSImage(size: NSSize(width: edge, height: edge), flipped: false) { rect in
-            NSColor.black.setFill()
-            NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
-            return true
-        }
-        image.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
-        image.resizingMode = .stretch
-        maskImageCache[radius] = image
-        return image
-    }
-
-    // Fading the backdrops (slow in, fast out) hides that they sit at the
-    // widgets' final positions while the web layer plays its entrance and
-    // exit animations.
-    private func setBackdropsVisible(_ visible: Bool) {
-        let target: CGFloat = visible ? 1 : 0
-        guard backdropContainer.alphaValue != target else { return }
-
-        if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            backdropContainer.alphaValue = target
-            return
-        }
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = visible ? 0.45 : 0.18
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            backdropContainer.animator().alphaValue = target
         }
     }
 
@@ -434,7 +748,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         components.path = "/"
         components.queryItems = [
             URLQueryItem(name: "dashboard", value: "1"),
-            URLQueryItem(name: "visible", value: dashboardVisible ? "1" : "0")
+            URLQueryItem(name: "visible", value: dashboardVisible ? "1" : "0"),
+            URLQueryItem(name: "mode", value: windowMode.rawValue),
+            URLQueryItem(name: "backgroundOpacity", value: String(compactBackgroundOpacity))
         ]
 
         guard let url = components.url else { return }
@@ -442,10 +758,6 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func setWebDashboardVisible(_ visible: Bool) {
-        // Each push starts a new generation; any in-flight retry chain from an
-        // earlier (now superseded) push is abandoned. Without this, two rapid
-        // toggles during page load race independent retry timers and a stale
-        // value can land last, leaving the web layer disagreeing with native.
         visibilityPushGeneration += 1
         pushWebDashboardVisible(visible, generation: visibilityPushGeneration, retriesRemaining: 3)
     }
@@ -464,12 +776,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         """
         webView.evaluateJavaScript(expression) { [weak self] result, _ in
             guard let self else { return }
-            guard
-                self.visibilityPushGeneration == generation,
-                result as? Bool != true,
-                retriesRemaining > 0
-            else { return }
-
+            guard self.visibilityPushGeneration == generation, result as? Bool != true, retriesRemaining > 0 else { return }
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 self.pushWebDashboardVisible(visible, generation: generation, retriesRemaining: retriesRemaining - 1)
@@ -477,21 +784,127 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
-    @objc private func backdropContainerFrameDidChange() {
-        updateGlassBackdrops()
+    private func setWebWindowMode(_ mode: DashboardWindowMode) {
+        modePushGeneration += 1
+        pushWebWindowMode(mode, generation: modePushGeneration, retriesRemaining: 3)
     }
 
-    @objc private func screenParametersDidChange() {
-        guard dashboardVisible, let window else { return }
-        window.setFrame(Self.combinedVisibleFrame(), display: true)
-        updateGlassBackdrops()
+    private func pushWebWindowMode(_ mode: DashboardWindowMode, generation: Int, retriesRemaining: Int) {
+        guard generation == modePushGeneration else { return }
+        let expression = """
+        (() => {
+          if (window.classroomDashboard?.setWindowMode) {
+            window.classroomDashboard.setWindowMode('\(mode.rawValue)');
+            return true;
+          }
+          return false;
+        })()
+        """
+        webView.evaluateJavaScript(expression) { [weak self] result, _ in
+            guard let self else { return }
+            guard self.modePushGeneration == generation, result as? Bool != true, retriesRemaining > 0 else { return }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                self.pushWebWindowMode(mode, generation: generation, retriesRemaining: retriesRemaining - 1)
+            }
+        }
     }
 
-    private func openWidgetLauncher(retriesRemaining: Int = 5) {
-        guard pendingWidgetLauncherOpen, !widgetLauncherOpenAttemptInFlight else {
+    private var compactBackgroundOpacity: Double {
+        let storedValue = UserDefaults.standard.double(forKey: DashboardSettingKeys.compactBackgroundOpacity)
+        return min(max(storedValue, 0), 1)
+    }
+
+    private func setWebBackgroundOpacity(_ opacity: Double) {
+        backgroundOpacityPushGeneration += 1
+        pushWebBackgroundOpacity(opacity, generation: backgroundOpacityPushGeneration, retriesRemaining: 3)
+    }
+
+    private func pushWebBackgroundOpacity(
+        _ opacity: Double,
+        generation: Int,
+        retriesRemaining: Int
+    ) {
+        guard generation == backgroundOpacityPushGeneration else { return }
+        let expression = """
+        (() => {
+          if (window.classroomDashboard?.setBackgroundOpacity) {
+            window.classroomDashboard.setBackgroundOpacity(\(opacity));
+            return true;
+          }
+          return false;
+        })()
+        """
+        webView.evaluateJavaScript(expression) { [weak self] result, _ in
+            guard let self else { return }
+            guard self.backgroundOpacityPushGeneration == generation, result as? Bool != true, retriesRemaining > 0 else { return }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                self.pushWebBackgroundOpacity(opacity, generation: generation, retriesRemaining: retriesRemaining - 1)
+            }
+        }
+    }
+
+    private func persistFrame(for mode: DashboardWindowMode) {
+        guard let window, !window.styleMask.contains(.fullScreen) else { return }
+        UserDefaults.standard.set(NSStringFromRect(window.frame), forKey: Self.frameDefaultsKey(for: mode))
+    }
+
+    private func restoreFrame(for mode: DashboardWindowMode) {
+        guard let window else { return }
+        let defaultFrame = Self.defaultFrame(for: mode)
+        guard let encodedFrame = UserDefaults.standard.string(forKey: Self.frameDefaultsKey(for: mode)) else {
+            window.setFrame(defaultFrame, display: true)
             return
         }
 
+        let savedFrame = NSRectFromString(encodedFrame)
+        guard Self.frameIsUsable(savedFrame, for: mode) else {
+            window.setFrame(defaultFrame, display: true)
+            return
+        }
+        window.setFrame(savedFrame, display: true)
+    }
+
+    private static func frameDefaultsKey(for mode: DashboardWindowMode) -> String {
+        mode == .compact ? compactFrameDefaultsKey : canvasFrameDefaultsKey
+    }
+
+    private static func defaultFrame(for mode: DashboardWindowMode) -> NSRect {
+        let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let size: NSSize = mode == .compact ? NSSize(width: 760, height: 500) : NSSize(width: 1_180, height: 760)
+        let constrainedSize = NSSize(width: min(size.width, visibleFrame.width), height: min(size.height, visibleFrame.height))
+        return NSRect(
+            x: visibleFrame.midX - constrainedSize.width / 2,
+            y: visibleFrame.midY - constrainedSize.height / 2,
+            width: constrainedSize.width,
+            height: constrainedSize.height
+        )
+    }
+
+    private static func minimumContentSize(for mode: DashboardWindowMode) -> NSSize {
+        mode == .compact ? NSSize(width: 360, height: 120) : NSSize(width: 800, height: 500)
+    }
+
+    private static func styleMask(for mode: DashboardWindowMode) -> NSWindow.StyleMask {
+        var style: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+        if mode == .compact {
+            style.insert(.fullSizeContentView)
+        }
+        return style
+    }
+
+    private static func frameIsUsable(_ frame: NSRect, for mode: DashboardWindowMode) -> Bool {
+        let minimumSize = minimumContentSize(for: mode)
+        guard !frame.isNull,
+              !frame.isEmpty,
+              frame.width >= minimumSize.width,
+              frame.height >= minimumSize.height else { return false }
+        return NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
+    }
+
+    private func openWidgetLauncher(retriesRemaining: Int = 5) {
+        guard pendingWidgetLauncherOpen, !widgetLauncherOpenAttemptInFlight else { return }
         widgetLauncherOpenAttemptInFlight = true
         let expression = """
         (() => {
@@ -504,43 +917,84 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         """
         webView.evaluateJavaScript(expression) { [weak self] result, _ in
             guard let self else { return }
-
             self.widgetLauncherOpenAttemptInFlight = false
-
             if result as? Bool == true {
                 self.pendingWidgetLauncherOpen = false
                 return
             }
-
             guard retriesRemaining > 0 else {
                 self.pendingWidgetLauncherOpen = false
                 return
             }
-
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 self.openWidgetLauncher(retriesRemaining: retriesRemaining - 1)
             }
         }
     }
-
-    private static func combinedVisibleFrame() -> NSRect {
-        let union = NSScreen.screens.reduce(NSRect.null) { partial, screen in
-            partial.union(screen.visibleFrame)
-        }
-
-        // NSScreen.screens can be transiently empty during display
-        // reconfiguration; feeding NSRect.null (origin +inf) to a window frame
-        // is undefined, so fall back to the main screen.
-        guard !union.isNull, !union.isEmpty else {
-            return NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        }
-
-        return union
-    }
 }
 
 final class DashboardWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+}
+
+private final class CompactDragRegionView: NSView {
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .openHand)
+    }
+}
+
+private final class CompactChromeTrackingView: NSView {
+    var onPointerEntered: (() -> Void)?
+    var onPointerExited: (() -> Void)?
+    private(set) var isPointerInside = false
+    private var trackingAreaReference: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        if let trackingAreaReference {
+            removeTrackingArea(trackingAreaReference)
+        }
+
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        trackingAreaReference = trackingArea
+        super.updateTrackingAreas()
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isPointerInside = true
+        onPointerEntered?()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isPointerInside = false
+        onPointerExited?()
+    }
+
+    func resetPointerState() {
+        isPointerInside = false
+    }
+
+    func updatePointerStateFromCurrentLocation() {
+        guard let window, !isHidden else {
+            isPointerInside = false
+            return
+        }
+        let locationInView = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        isPointerInside = bounds.contains(locationInView)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
 }

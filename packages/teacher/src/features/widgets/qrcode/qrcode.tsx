@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import QRCode from 'qrcode';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
@@ -22,17 +22,17 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const qrContainerRef = useRef<HTMLDivElement>(null);
   const pendingTitleFallbackRef = useRef('');
 
-  // Generate QR code whenever URL changes
-  useEffect(() => {
-    if (url && canvasRef.current) {
-      // Calculate optimal size based on container
-      const container = canvasRef.current.parentElement;
-      const maxSize = Math.min(container?.clientWidth || 250, container?.clientHeight || 250) - 16; // 16px for padding
-      
-      QRCode.toCanvas(canvasRef.current, url, {
-        width: Math.max(maxSize, 200),
+  const renderQRCode = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (url && canvas) {
+      const container = qrContainerRef.current;
+      const availableSize = Math.min(container?.clientWidth || 250, container?.clientHeight || 250) - 16;
+
+      QRCode.toCanvas(canvas, url, {
+        width: Math.max(120, Math.floor(availableSize)),
         margin: 1,
         color: {
           dark: '#1f2937',  // warm-gray-800
@@ -41,14 +41,24 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
       }, (error) => {
         if (error) console.error('Error generating QR code:', error);
       });
-    } else if (canvasRef.current) {
-      // Clear canvas if no URL
-      const ctx = canvasRef.current.getContext('2d');
+    } else if (canvas) {
+      const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
   }, [url]);
+
+  // Regenerate at the available pixel size whenever the panel is resized.
+  useEffect(() => {
+    renderQRCode();
+    const container = qrContainerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(renderQRCode);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [renderQRCode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +152,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
             
             {/* QR Code */}
             <div 
+              ref={qrContainerRef}
               className="bg-white p-2 rounded-lg shadow-inner cursor-pointer flex-1 flex items-center justify-center"
               onDoubleClick={(_e) => {
                 pendingTitleFallbackRef.current = '';

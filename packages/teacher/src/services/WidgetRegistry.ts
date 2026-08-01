@@ -137,6 +137,11 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 150 },
       category: WidgetCategory.INTERACTIVE,
       description: 'Random selection with slot machine animation',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 350, height: 250 },
+        minimumSize: { width: 250, height: 180 }
+      },
       columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
@@ -157,6 +162,11 @@ export class WidgetRegistry {
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Countdown and stopwatch functionality',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 350, height: 415 },
+        minimumSize: { width: 250, height: 306 }
+      },
       columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
@@ -176,6 +186,11 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 200 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Task list with completion tracking',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 350, height: 400 },
+        minimumSize: { width: 240, height: 240 }
+      },
       columnSizing: 'fixed',
       columnHeight: 400,
       features: {
@@ -198,6 +213,11 @@ export class WidgetRegistry {
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Visual work mode indicators',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 325, height: 325 },
+        minimumSize: { width: 280, height: 280 }
+      },
       columnSizing: 'content',
       features: {
         isTransparent: true,
@@ -217,6 +237,11 @@ export class WidgetRegistry {
       minSize: { width: 350, height: 150 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Status indicator lights',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 360, height: 220 },
+        minimumSize: { width: 300, height: 180 }
+      },
       columnSizing: 'content',
       features: {
         hasSettings: true,
@@ -275,6 +300,11 @@ export class WidgetRegistry {
       minSize: { width: 200, height: 80 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Customizable text display',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 400, height: 240 },
+        minimumSize: { width: 260, height: 140 }
+      },
       columnSizing: 'content',
       features: {
         hasSettings: true,
@@ -311,6 +341,11 @@ export class WidgetRegistry {
       minSize: { width: 250, height: 300 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'QR code generator',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 350, height: 400 },
+        minimumSize: { width: 280, height: 340 }
+      },
       columnSizing: 'aspect-ratio',
       features: {
         hasSettings: true,
@@ -331,6 +366,11 @@ export class WidgetRegistry {
       minSize: { width: 80, height: 200 },
       category: WidgetCategory.FUN,
       description: 'Sound effect player',
+      compactPanel: {
+        supported: true,
+        preferredSize: { width: 180, height: 405 },
+        minimumSize: { width: 160, height: 240 }
+      },
       columnSizing: 'content',
       features: {
         hasAudioPlayback: true,

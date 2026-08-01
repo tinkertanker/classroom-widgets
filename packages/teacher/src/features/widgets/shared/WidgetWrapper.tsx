@@ -7,11 +7,10 @@ import { FaTrash, FaXmark } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '@shared/hooks/useWidget';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
-import { Position, Size, WidgetType } from '@shared/types';
+import { Position, Size } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
-import LiquidGlassOverlay from '../../desktop/LiquidGlassOverlay';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -146,8 +145,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
 
   if (!widget) return null;
   if (!config) return null;
-  const shouldUseDashboardGlass = isDashboardMode && dashboardVisible && !isTransparent && widget.type !== WidgetType.TIMER;
-
   return (
     <div 
       className="relative group"
@@ -206,11 +203,9 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
       >
         <div
           className="widget-surface w-full h-full relative"
-          data-dashboard-glass={shouldUseDashboardGlass ? 'true' : 'false'}
           onClick={handleWidgetClick}
         >
           {children}
-          <LiquidGlassOverlay active={shouldUseDashboardGlass} />
           {isDashboardMode ? (
             <div
               className={`dashboard-widget-chrome no-drag absolute top-2 right-2 flex items-center gap-1 transition-all duration-200 ${

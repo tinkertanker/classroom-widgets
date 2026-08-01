@@ -18,6 +18,7 @@ import TrafficLightPage from './pages/widgets/TrafficLightPage';
 import TextBannerPage from './pages/widgets/TextBannerPage';
 import QrCodePage from './pages/widgets/QrCodePage';
 import SoundEffectsPage from './pages/widgets/SoundEffectsPage';
+import CompactWidgetApp from './features/desktop/CompactWidgetApp';
 
 // Load Umami analytics conditionally (only if env vars are set)
 const umamiScriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL;
@@ -37,11 +38,12 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
+const isCompactWidgetPanel = new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
 
 root.render(
   <React.StrictMode>
     <HelmetProvider>
-      <BrowserRouter>
+      {isCompactWidgetPanel ? <CompactWidgetApp /> : <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/about" element={<About />} />
@@ -59,7 +61,7 @@ root.render(
           <Route path="/widgets/qr-code" element={<QrCodePage />} />
           <Route path="/widgets/sound-effects" element={<SoundEffectsPage />} />
         </Routes>
-      </BrowserRouter>
+      </BrowserRouter>}
     </HelmetProvider>
   </React.StrictMode>
 );

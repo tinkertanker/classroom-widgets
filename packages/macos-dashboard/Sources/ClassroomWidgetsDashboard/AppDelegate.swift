@@ -48,6 +48,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onVisibilityChanged = { [weak self] _ in
             self?.updateStatusMenu()
         }
+        controller.onCompactWidgetOptionsChanged = { [weak self] _ in
+            self?.updateStatusMenu()
+        }
         self.controller = controller
         setupStatusItem()
         registerHotKeys()
@@ -164,6 +167,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             modifiers: shortcutModifiers(for: DashboardSettingKeys.launcherShortcutModifiers)
         )
         menu.addItem(launcherItem)
+
+        let addWidgetItem = NSMenuItem(title: "Add Floating Widget", action: nil, keyEquivalent: "")
+        let addWidgetMenu = NSMenu(title: "Add Floating Widget")
+        for option in controller?.compactWidgetOptions ?? [] {
+            let item = NSMenuItem(title: option.title, action: #selector(addCompactWidget(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = option.widgetType
+            addWidgetMenu.addItem(item)
+        }
+        if addWidgetMenu.items.isEmpty {
+            let item = NSMenuItem(title: "No compact widgets available", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            addWidgetMenu.addItem(item)
+        }
+        addWidgetItem.submenu = addWidgetMenu
+        menu.addItem(addWidgetItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -303,14 +322,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller?.reloadDashboard()
     }
 
+    @objc private func addCompactWidget(_ sender: NSMenuItem) {
+        controller?.addCompactWidget(sender.tag)
+        updateStatusMenu()
+    }
+
     @objc private func closeFrontWindow() {
         guard let keyWindow = NSApp.keyWindow else {
             NSSound.beep()
             return
         }
 
-        // The borderless dashboard window has no close button, so Cmd+W hides
-        // the dashboard instead of beeping.
+        // The dashboard is a retained utility window: closing it hides the
+        // window while preserving the active classroom state for reopening.
         if keyWindow is DashboardWindow {
             if controller?.isDashboardVisible == true {
                 controller?.toggleDashboard()

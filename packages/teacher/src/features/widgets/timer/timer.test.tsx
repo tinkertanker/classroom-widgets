@@ -96,6 +96,13 @@ describe('Timer Widget', () => {
     expect(screen.getByTestId('timer-face')).toHaveAttribute('fill', warmGray[800]);
   });
 
+  test('uses layered strokes instead of SVG filters for the progress glow', () => {
+    const { container } = renderWithModal(<Timer />);
+
+    expect(container.querySelector('filter')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('circle[stroke="url(#rainbowGradient)"]')).toHaveLength(2);
+  });
+
   test('keeps manual time edits after finishing segment editing', () => {
     renderWithModal(<Timer />);
 

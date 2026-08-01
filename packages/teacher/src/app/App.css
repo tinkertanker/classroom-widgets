@@ -103,166 +103,317 @@
 html.desktop-dashboard-mode,
 html.desktop-dashboard-mode body,
 html.desktop-dashboard-mode #root {
-  background: transparent !important;
+  background: #f7f5f2;
+}
+
+html.desktop-dashboard-compact,
+html.desktop-dashboard-compact body,
+html.desktop-dashboard-compact #root,
+html.desktop-dashboard-compact .desktop-dashboard-root {
+  background: transparent;
+}
+
+html.dark.desktop-dashboard-mode,
+html.dark.desktop-dashboard-mode body,
+html.dark.desktop-dashboard-mode #root {
+  background: #292725;
+}
+
+html.dark.desktop-dashboard-compact,
+html.dark.desktop-dashboard-compact body,
+html.dark.desktop-dashboard-compact #root,
+html.dark.desktop-dashboard-compact .desktop-dashboard-root {
+  background: transparent;
 }
 
 html.desktop-dashboard-mode body {
   overflow: hidden;
 }
 
-.desktop-dashboard-root {
-  background: transparent !important;
-}
-
-.desktop-dashboard-root [data-dashboard-chrome="true"] {
-  display: none;
-}
-
-html.desktop-dashboard-mode .board-scroll-container {
+html.compact-widget-panel,
+html.compact-widget-panel body,
+html.compact-widget-panel #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
   overflow: hidden;
-  background: transparent !important;
+  background: transparent;
 }
 
-html.desktop-dashboard-mode .board {
-  background: transparent !important;
+.compact-widget-panel-root {
+  width: 100%;
+  height: 100%;
+  background: transparent;
 }
 
-html.desktop-dashboard-mode .board > div:first-child,
-html.desktop-dashboard-mode .column-board-container > .fixed {
-  display: none;
+.compact-widget-panel-loading {
+  width: 100%;
+  height: 100%;
+  background: transparent;
 }
 
-html.desktop-dashboard-mode .board-scale-wrapper {
-  transform-style: preserve-3d;
-  perspective: 1200px;
+.desktop-dashboard-root {
+  background: #f7f5f2;
+  transition: opacity 160ms ease;
 }
 
-html.desktop-dashboard-mode .widget-wrapper {
-  filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.22));
-  transition: opacity 260ms ease;
+.dark .desktop-dashboard-root {
+  background: #292725;
 }
 
-html.desktop-dashboard-mode .widget-wrapper > .widget-surface {
-  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Scoped to the visible state so the entrance replays on every show and the
-   animation fill stops overriding the hidden-state transform below. */
-html.desktop-dashboard-visible .widget-wrapper > .widget-surface {
-  animation: desktop-widget-depth-in 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-html.desktop-dashboard-hidden .widget-wrapper,
-html.desktop-dashboard-hidden .toolbar-container,
-html.desktop-dashboard-hidden [role="dialog"] {
+html.desktop-dashboard-hidden .desktop-dashboard-root {
   opacity: 0;
-  pointer-events: none !important;
-}
-
-html.desktop-dashboard-hidden .widget-wrapper > .widget-surface,
-html.desktop-dashboard-hidden [role="dialog"] {
-  transform: translateY(28px) scale(0.92) rotateX(10deg);
-}
-
-html.desktop-dashboard-visible .widget-wrapper,
-html.desktop-dashboard-visible .toolbar-container,
-html.desktop-dashboard-visible [role="dialog"] {
-  opacity: 1;
-}
-
-html.desktop-dashboard-mode .toolbar-container {
-  transition: opacity 180ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-html.desktop-dashboard-mode body > .fixed.inset-0 {
-  background: transparent !important;
   pointer-events: none;
 }
 
-html.desktop-dashboard-mode body > .fixed.inset-0 > [role="dialog"] {
+/* Compact mode is one bounded, floating native window. The space outside the
+   window belongs to other apps, so no web-driven mouse passthrough is needed. */
+.desktop-dashboard-root-compact [data-dashboard-chrome="true"] {
+  display: none;
+}
+
+html.desktop-dashboard-compact .column-board-content {
+  columns: 1 !important;
+  width: min(100%, 360px);
+  margin-inline: auto;
+  padding: 4rem 0.75rem 0.75rem;
+}
+
+html.desktop-dashboard-compact.desktop-dashboard-widget-row .column-board-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+html.desktop-dashboard-compact.desktop-dashboard-widget-row .column-board-content {
+  display: flex;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+html.desktop-dashboard-compact.desktop-dashboard-widget-row .column-widget-item {
+  width: min(336px, calc(100vw - 24px));
+  flex: 0 0 min(336px, calc(100vw - 24px));
+  margin-bottom: 0 !important;
+}
+
+html.desktop-dashboard-compact .column-widget-item {
+  margin-bottom: 0.75rem !important;
+}
+
+html.desktop-dashboard-compact .column-board-container {
+  scrollbar-color: rgba(49, 92, 140, 0.32) transparent;
+}
+
+html.desktop-dashboard-compact .toolbar-container {
+  display: none;
+}
+
+html.desktop-dashboard-compact .column-board-background {
+  opacity: var(--desktop-dashboard-background-opacity, 1);
+  transition: opacity 160ms ease;
+}
+
+.desktop-window-controls {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 44px;
+  padding: 6px 7px 6px 12px;
+  border: 1px solid rgba(82, 78, 72, 0.16);
+  border-radius: 13px;
+  background: rgba(253, 252, 249, 0.96);
+  box-shadow: 0 10px 28px rgba(57, 52, 46, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: translateX(-50%);
+  visibility: visible;
+  transition: opacity 160ms ease, transform 160ms ease, visibility 0s linear;
+  user-select: none;
+}
+
+.dark .desktop-window-controls {
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(49, 46, 43, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html.desktop-dashboard-compact .desktop-window-controls {
+  top: 0;
+  right: 0;
+  left: 0;
+  width: 100%;
+  min-height: 30px;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 3px 6px 3px 84px;
+  border: 0;
+  border-radius: 0 0 10px 10px;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  pointer-events: none;
+}
+
+.dark.desktop-dashboard-compact .desktop-window-controls {
+  background: transparent;
+  box-shadow: none;
+}
+
+html.desktop-dashboard-compact .desktop-window-controls button {
+  width: 24px;
+  min-height: 24px;
+  padding: 0;
   pointer-events: auto;
 }
 
-html.desktop-dashboard-mode.modal-open .toolbar-container {
+html.desktop-dashboard-compact .desktop-window-mode-button {
+  color: #315c8c;
+  background: rgba(49, 92, 140, 0.12);
+  box-shadow: none;
+}
+
+html.desktop-dashboard-compact .desktop-window-mode-button:hover {
+  color: white;
+  background: #315c8c;
+  box-shadow: none;
+}
+
+html.desktop-dashboard-compact.desktop-dashboard-chrome-hidden .desktop-window-controls {
   opacity: 0;
-  transform: translateY(18px) scale(0.96);
   pointer-events: none;
-}
-
-html.desktop-dashboard-mode [role="dialog"] {
-  background: rgba(255, 255, 255, 0.72) !important;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(24px) saturate(1.35);
-  -webkit-backdrop-filter: blur(24px) saturate(1.35);
-}
-
-html.dark.desktop-dashboard-mode [role="dialog"] {
-  background: rgba(38, 36, 32, 0.74) !important;
-  border-color: rgba(255, 255, 255, 0.16);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-}
-
-.desktop-liquid-glass-overlay {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  pointer-events: none;
-  mix-blend-mode: screen;
-  opacity: 0.9;
-}
-
-html.desktop-dashboard-mode .widget-wrapper > .widget-surface[data-dashboard-glass="true"] {
-  overflow: hidden;
-  border-radius: 14px;
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-}
-
-/* The native app draws an NSVisualEffectView behind each glass surface, so
-   thin out the standard card backgrounds to let the desktop blur through.
-   The dark rule is more specific, so it wins when both classes are present. */
-html.desktop-dashboard-mode
-  .widget-surface[data-dashboard-glass='true']
-  :is(.bg-soft-white, .bg-soft-white\/90, .bg-soft-white\/95) {
-  background-color: rgba(253, 252, 251, 0.6) !important;
-}
-
-html.dark.desktop-dashboard-mode
-  .widget-surface[data-dashboard-glass='true']
-  :is(.dark\:bg-warm-gray-800, .dark\:bg-warm-gray-800\/90) {
-  background-color: rgba(61, 56, 53, 0.55) !important;
-}
-
-@keyframes desktop-widget-depth-in {
-  0% {
-    opacity: 0;
-    transform: translateY(36px) scale(0.88) rotateX(12deg);
-  }
-  70% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1.015) rotateX(0deg);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1) rotateX(0deg);
-  }
+  transform: translateY(-100%);
+  visibility: hidden;
+  transition-delay: 0s, 0s, 160ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.desktop-dashboard-mode .widget-wrapper,
-  html.desktop-dashboard-mode .widget-wrapper > .widget-surface,
-  html.desktop-dashboard-visible .widget-wrapper > .widget-surface,
-  html.desktop-dashboard-mode .toolbar-container {
-    animation: none;
+  .desktop-window-controls {
     transition: none;
   }
+}
 
-  html.desktop-dashboard-hidden .widget-wrapper > .widget-surface,
-  html.desktop-dashboard-hidden [role="dialog"] {
-    transform: none;
+html.desktop-dashboard-canvas .desktop-window-controls {
+  top: 14px;
+  width: auto;
+  min-width: 246px;
+}
+
+.desktop-window-identity {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: #30333a;
+}
+
+.dark .desktop-window-identity {
+  color: #f5f3ef;
+}
+
+.desktop-window-identity > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.desktop-window-identity strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-window-identity small {
+  margin-top: 1px;
+  color: #74767b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.dark .desktop-window-identity small {
+  color: #aaa6a1;
+}
+
+.desktop-window-status {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #2e7b5b;
+  box-shadow: 0 0 0 3px rgba(46, 123, 91, 0.13);
+}
+
+.desktop-window-mode-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 9px;
+  color: white;
+  background: #315c8c;
+  box-shadow: 0 2px 5px rgba(49, 92, 140, 0.22);
+  font-size: 11px;
+  font-weight: 700;
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.desktop-window-layout-button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 9px;
+  color: #52565d;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.desktop-window-layout-button:hover {
+  background: rgba(49, 92, 140, 0.1);
+}
+
+.dark .desktop-window-layout-button {
+  color: #e5e1dc;
+}
+
+.desktop-window-layout-button:focus-visible {
+  outline: 3px solid rgba(49, 92, 140, 0.28);
+  outline-offset: 2px;
+}
+
+.desktop-window-mode-button:hover {
+  background: #23476e;
+  box-shadow: 0 4px 9px rgba(49, 92, 140, 0.24);
+}
+
+.desktop-window-mode-button:active {
+  transform: scale(0.98);
+}
+
+.desktop-window-mode-button:focus-visible {
+  outline: 3px solid rgba(49, 92, 140, 0.28);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-dashboard-root,
+  .desktop-window-mode-button {
+    transition: none;
   }
 }
 

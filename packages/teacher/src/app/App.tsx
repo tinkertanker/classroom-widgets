@@ -24,6 +24,8 @@ import { WidgetType, WidgetCategory } from '@shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { APP_VERSION } from '../version';
 import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboardMode';
+import DesktopWindowControls from '../features/desktop/DesktopWindowControls';
+import CompactPanelHost from '../features/desktop/CompactPanelHost';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
@@ -52,9 +54,9 @@ function App() {
   const [isNarrowScreen, setIsNarrowScreen] = useState(
     typeof window !== 'undefined' ? window.innerWidth < NARROW_SCREEN_WIDTH : false
   );
-  const previousIsNarrowScreenRef = useRef(false);
-  // Use ref to stash layout before narrow mode (avoids effect re-registration on state changes)
-  const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
+  const previousUsesColumnLayoutRef = useRef(false);
+  // Use a ref to stash the layout before narrow mode.
+  const layoutBeforeCompactRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
   const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
@@ -62,7 +64,15 @@ function App() {
   const [screenTooSmall, setScreenTooSmall] = useState(
     typeof window !== 'undefined' ? window.innerWidth < MIN_SCREEN_WIDTH : false
   );
-  const { isDashboardMode, isDashboardVisible, dashboardTheme, setDashboardVisible } = useDesktopDashboardMode();
+  const {
+    isDashboardMode,
+    isDashboardVisible,
+    dashboardTheme,
+    windowMode,
+    compactLayout,
+    setCompactLayout,
+    requestWindowMode
+  } = useDesktopDashboardMode();
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
@@ -103,28 +113,29 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const wasNarrow = previousIsNarrowScreenRef.current;
+    const usesColumnLayout = isNarrowScreen;
+    const previouslyUsedColumnLayout = previousUsesColumnLayoutRef.current;
 
-    if (isNarrowScreen && !wasNarrow) {
-      // Entering narrow: stash current layout and force column
-      layoutBeforeNarrowRef.current = useWorkspaceStore.getState().layoutFormat;
+    if (usesColumnLayout && !previouslyUsedColumnLayout) {
+      // Narrow browser windows use the readable multi-widget column.
+      layoutBeforeCompactRef.current = useWorkspaceStore.getState().layoutFormat;
       setLayoutFormat('column');
-    } else if (!isNarrowScreen && wasNarrow && layoutBeforeNarrowRef.current) {
-      // Leaving narrow: restore original layout
-      setLayoutFormat(layoutBeforeNarrowRef.current);
-      layoutBeforeNarrowRef.current = null;
+    } else if (!usesColumnLayout && previouslyUsedColumnLayout && layoutBeforeCompactRef.current) {
+      // A wider browser restores the teacher's previous workspace arrangement.
+      setLayoutFormat(layoutBeforeCompactRef.current);
+      layoutBeforeCompactRef.current = null;
     }
 
-    previousIsNarrowScreenRef.current = isNarrowScreen;
+    previousUsesColumnLayoutRef.current = usesColumnLayout;
   }, [isNarrowScreen, setLayoutFormat]);
 
   // Handler to toggle layout in narrow mode
-  // Also update layoutBeforeNarrowRef so the user's choice is preserved when exiting narrow mode
+  // Also update the stashed layout so the user's choice survives narrow mode.
   const handleToggleLayoutNarrow = useCallback(() => {
     const currentLayout = useWorkspaceStore.getState().layoutFormat;
     const newFormat = currentLayout === 'canvas' ? 'column' : 'canvas';
     setLayoutFormat(newFormat);
-    layoutBeforeNarrowRef.current = newFormat;
+    layoutBeforeCompactRef.current = newFormat;
   }, [setLayoutFormat]);
 
 
@@ -170,24 +181,6 @@ function App() {
       if (stickerMode && (e.key.toLowerCase() === 's' || e.key === 'Escape')) {
         e.preventDefault();
         updateStickerMode(false);
-        return;
-      }
-
-      // In the macOS desktop overlay, Escape dismisses the dashboard like
-      // Mission Control/Launchpad - but only when nothing else claims it:
-      // open modals and menus handle Escape themselves, the voice overlay is
-      // open, sticker mode returned above, or text is being edited.
-      if (
-        isDashboardMode &&
-        isDashboardVisible &&
-        e.key === 'Escape' &&
-        !e.defaultPrevented &&
-        !isVoiceControlActive &&
-        !(e.target instanceof HTMLElement && e.target.isContentEditable) &&
-        !document.querySelector('[role="dialog"], [role="menu"]')
-      ) {
-        e.preventDefault();
-        setDashboardVisible(false);
         return;
       }
 
@@ -239,7 +232,7 @@ function App() {
         clearTimeout(voiceTimeout);
       }
     };
-  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode, isDashboardMode, isDashboardVisible, setDashboardVisible, isVoiceControlActive]);
+  }, [stickerMode, lastCommandPress, voiceTimeout, voiceControlEnabled, updateStickerMode]);
 
   // Global paste handler for creating widgets from clipboard content
   useEffect(() => {
@@ -566,9 +559,21 @@ function App() {
               <HudProximityProvider>
                 <div
                   className={`h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative ${
-                    isDashboardMode ? 'desktop-dashboard-root' : ''
+                    isDashboardMode ? `desktop-dashboard-root desktop-dashboard-root-${windowMode}` : ''
                   }`}
                 >
+
+          {isDashboardMode && (
+            <>
+              <CompactPanelHost />
+              <DesktopWindowControls
+                mode={windowMode}
+                onModeChange={requestWindowMode}
+                compactLayout={compactLayout}
+                onCompactLayoutChange={setCompactLayout}
+              />
+            </>
+          )}
           
           {/* Top Controls */}
           <div data-dashboard-chrome="true">
@@ -604,7 +609,7 @@ function App() {
           
           {/* Main Board */}
           <div className="h-full relative overflow-hidden">
-            {layoutFormat === 'column' ? (
+            {isDashboardMode && windowMode === 'compact' ? null : layoutFormat === 'column' ? (
               <ColumnBoard>
                 <ColumnWidgetList dashboardVisible={isDashboardVisible} />
               </ColumnBoard>

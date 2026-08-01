@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import * as React from 'react'
 // @ts-ignore
 import { 
@@ -14,13 +14,12 @@ import changeSoundFile from './change.wav';
 
 interface TaskCueProps {
     isActive?: boolean;
+    savedState?: { index: number };
+    onStateChange?: (state: { index: number }) => void;
 }
 
-function TaskCue({ isActive = false }: TaskCueProps) {
-    const [state, setState] = useState({
-        borderW: "2px",
-        index: 0,
-    });
+function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) {
+    const [selectedIndex, setSelectedIndex] = useState(savedState?.index ?? 0);
 
     const taskModes = [
         { icon: FaVolumeXmark, label: 'Silence', color: 'text-dusty-rose-500' },
@@ -44,19 +43,22 @@ function TaskCue({ isActive = false }: TaskCueProps) {
     }, [plaey]);
 
     const handleChangeImage = useCallback((index: number) => {
-        setState(prev => ({
-            ...prev,
-            index,
-        }));
-    }, []);
+        setSelectedIndex(index);
+        onStateChange?.({ index });
+    }, [onStateChange]);
 
     const handleNextState = useCallback(() => {
-        setState(prev => ({
-            ...prev,
-            index: (prev.index + 1) % taskModes.length,
-        }));
+        const index = (selectedIndex + 1) % taskModes.length;
+        setSelectedIndex(index);
+        onStateChange?.({ index });
         plaey();
-    }, [taskModes.length, plaey]);
+    }, [selectedIndex, taskModes.length, onStateChange, plaey]);
+
+    useEffect(() => {
+        if (savedState?.index !== undefined) {
+            setSelectedIndex(savedState.index);
+        }
+    }, [savedState?.index]);
 
     useEffect(() => {
         window.addEventListener("click", handleClick);
@@ -73,12 +75,12 @@ function TaskCue({ isActive = false }: TaskCueProps) {
                     onClick={handleNextState}
                     title="Click to cycle to next state"
                 >
-                    {React.createElement(taskModes[state.index].icon as any, {
-                        className: `w-2/3 h-2/3 ${taskModes[state.index].color}`,
+                    {React.createElement(taskModes[selectedIndex].icon as any, {
+                        className: `w-2/3 h-2/3 ${taskModes[selectedIndex].color}`,
                         style: { maxWidth: '200px', maxHeight: '200px' }
                     })}
-                    <h2 className={`text-2xl font-bold ${taskModes[state.index].color}`}>
-                        {taskModes[state.index].label}
+                    <h2 className={`text-2xl font-bold ${taskModes[selectedIndex].color}`}>
+                        {taskModes[selectedIndex].label}
                     </h2>
                 </div>
             </div>
@@ -92,7 +94,7 @@ function TaskCue({ isActive = false }: TaskCueProps) {
                                     key={i}
                                     onClick={() => handleChangeImage(i)}
                                     className={`p-2 rounded-lg transition-all duration-200 ${
-                                        state.index === i 
+                                        selectedIndex === i
                                             ? 'bg-warm-gray-200 dark:bg-warm-gray-700 shadow-inner' 
                                             : 'bg-warm-gray-100 dark:bg-warm-gray-800 hover:bg-warm-gray-200 dark:hover:bg-warm-gray-700'
                                     }`}

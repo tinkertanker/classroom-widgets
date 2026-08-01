@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAnimationFrame } from '@shared/hooks/useAnimationFrame';
 import { CREATURES, CreatureId } from './creatures';
 
@@ -9,19 +9,55 @@ interface CreatureAnimationProps {
   onCreatureClick?: () => void;
 }
 
+export const isCreatureOnColoredArc = (angle: number, progress: number): boolean => {
+  if (progress === 0) {
+    return false;
+  }
+
+  if (progress >= 0.9999) {
+    return true;
+  }
+
+  let creatureAngleInArcCoords = (angle - 90) % 360;
+  if (creatureAngleInArcCoords < 0) {
+    creatureAngleInArcCoords += 360;
+  }
+
+  const arcStartAngle = 270;
+  let angleFromStart = creatureAngleInArcCoords - arcStartAngle;
+  if (angleFromStart < 0) {
+    angleFromStart += 360;
+  }
+
+  return angleFromStart <= progress * 360;
+};
+
 export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
   ({ isRunning, progress, creature, onCreatureClick }) => {
-    const [pulseAngle, setPulseAngle] = useState(0);
     const angleRef = useRef(0);
+    const runnerRef = useRef<SVGGElement>(null);
+    const progressRef = useRef(progress);
+    const artOnColoredArcRef = useRef(isCreatureOnColoredArc(0, progress));
+    const [isOnColoredArc, setIsOnColoredArc] = useState(artOnColoredArcRef.current);
 
     const definition = CREATURES[creature];
+    progressRef.current = progress;
+
+    const updateArtIfNeeded = useCallback((angle: number, nextProgress: number) => {
+      const nextArtOnColoredArc = isCreatureOnColoredArc(angle, nextProgress);
+      if (nextArtOnColoredArc !== artOnColoredArcRef.current) {
+        artOnColoredArcRef.current = nextArtOnColoredArc;
+        setIsOnColoredArc(nextArtOnColoredArc);
+      }
+    }, []);
 
     useAnimationFrame(
       (deltaTime) => {
         // Accumulate per frame so switching to a creature with a different
         // speedFactor mid-run doesn't make the runner jump.
         angleRef.current -= (deltaTime / 1000) * 120 * definition.speedFactor;
-        setPulseAngle(angleRef.current);
+        runnerRef.current?.setAttribute('transform', `rotate(${angleRef.current} 50 50)`);
+        updateArtIfNeeded(angleRef.current, progressRef.current);
       },
       { isActive: isRunning }
     );
@@ -29,39 +65,19 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
     useEffect(() => {
       if (!isRunning) {
         angleRef.current = 0;
-        setPulseAngle(0);
+        runnerRef.current?.setAttribute('transform', 'rotate(0 50 50)');
+        updateArtIfNeeded(0, progressRef.current);
       }
-    }, [isRunning]);
+    }, [isRunning, updateArtIfNeeded]);
 
-    const isOnColoredArc = useMemo(() => {
-      let creatureAngleInArcCoords = (pulseAngle - 90) % 360;
-      if (creatureAngleInArcCoords < 0) {
-        creatureAngleInArcCoords += 360;
-      }
-
-      const arcStartAngle = 270;
-      const arcExtent = progress * 360;
-
-      if (progress === 0) {
-        return false;
-      }
-
-      if (progress >= 0.9999) {
-        return true;
-      }
-
-      let angleFromStart = creatureAngleInArcCoords - arcStartAngle;
-      if (angleFromStart < 0) {
-        angleFromStart += 360;
-      }
-
-      return angleFromStart <= arcExtent;
-    }, [progress, pulseAngle]);
+    useEffect(() => {
+      updateArtIfNeeded(angleRef.current, progress);
+    }, [progress, updateArtIfNeeded]);
 
     const StateArt = isOnColoredArc ? definition.Calm : definition.Shocked;
 
     return (
-      <g transform={`rotate(${pulseAngle} 50 50)`}>
+      <g ref={runnerRef} transform="rotate(0 50 50)">
         {/* Anchor sits 5 units inside the ring stroke so the runner rides the track. */}
         <g
           transform="translate(50, 13) scale(0.9, -0.9)"

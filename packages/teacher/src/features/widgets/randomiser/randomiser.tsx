@@ -40,7 +40,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   } = useChoiceManager({
     initialInput: savedState?.input || "",
     initialChoices: savedState?.choices || [],
-    initialRemovedChoices: [],
+    initialRemovedChoices: savedState?.removedChoices ?? [],
     onStateChange
   });
 

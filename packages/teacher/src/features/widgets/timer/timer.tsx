@@ -25,10 +25,12 @@ type SoundMode = 'short' | 'long';
 interface TimerProps {
   savedState?: any;
   onStateChange?: (state: any) => void;
+  renderTheme?: 'light' | 'dark';
 }
 
-const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
-  const { isDark } = useTheme();
+const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme }) => {
+  const workspaceTheme = useTheme();
+  const isDark = renderTheme ? renderTheme === 'dark' : workspaceTheme.isDark;
   const [soundMode, setSoundMode] = useState<SoundMode>(() =>
     savedState?.soundMode === 'long' ? 'long' : 'short'
   );
@@ -283,63 +285,6 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
                   <stop offset="100%" stopColor="#ff00ff" />
                 </linearGradient>
 
-                <filter id="rainbowGlow" x="-200%" y="-200%" width="500%" height="500%">
-                  <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-                  <feMerge>
-                    <feMergeNode in="coloredBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-
-                <filter id="enhancedRainbowGlow" x="-200%" y="-200%" width="500%" height="500%">
-                  <feGaussianBlur stdDeviation="2.5" result="bigBlur" />
-                  <feGaussianBlur stdDeviation="1.5" result="mediumBlur" />
-                  <feColorMatrix in="bigBlur" type="saturate" values="1.5" result="saturatedBigBlur" />
-                  <feMerge>
-                    <feMergeNode in="saturatedBigBlur" />
-                    <feMergeNode in="mediumBlur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-
-                <filter id="pulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
-                  <feGaussianBlur stdDeviation="2.5" result="blur1">
-                    <animate attributeName="stdDeviation" values="2.5;4;2.5" dur="2s" repeatCount="indefinite" />
-                  </feGaussianBlur>
-                  <feGaussianBlur stdDeviation="1.5" result="blur2">
-                    <animate attributeName="stdDeviation" values="1.5;2.5;1.5" dur="2s" begin="0.5s" repeatCount="indefinite" />
-                  </feGaussianBlur>
-                  <feColorMatrix in="blur1" type="saturate" values="1.5" result="saturatedBlur" />
-                  <feMerge>
-                    <feMergeNode in="saturatedBlur" />
-                    <feMergeNode in="blur2" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-
-                <filter id="lightModeGlow" x="-200%" y="-200%" width="500%" height="500%">
-                  <feColorMatrix type="saturate" values="0.6" result="desaturatedSource" />
-                  <feGaussianBlur in="desaturatedSource" stdDeviation="2" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="desaturatedSource" />
-                  </feMerge>
-                </filter>
-
-                <filter id="lightModePulsingGlow" x="-200%" y="-200%" width="500%" height="500%">
-                  <feColorMatrix type="saturate" values="0.6" result="desaturatedSource" />
-                  <feGaussianBlur in="desaturatedSource" stdDeviation="2" result="blur">
-                    <animate attributeName="stdDeviation" values="2;3.5;2" dur="2s" repeatCount="indefinite" />
-                  </feGaussianBlur>
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="desaturatedSource" />
-                  </feMerge>
-                </filter>
-
-                <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feDropShadow dx="0" dy="0" stdDeviation="3" floodOpacity="0.3" />
-                </filter>
               </defs>
 
               <circle
@@ -365,16 +310,25 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange }) => {
                 cy="50"
                 r="42"
                 stroke="url(#rainbowGradient)"
+                strokeWidth={isRunning ? 8 : 7}
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 42}
+                strokeDashoffset={(2 * Math.PI * 42) * (1 - progress)}
+                opacity={isRunning ? (isDark ? 0.34 : 0.24) : (isDark ? 0.25 : 0.18)}
+                transform="rotate(-90 50 50)"
+              />
+
+              <circle
+                cx="50"
+                cy="50"
+                r="42"
+                stroke="url(#rainbowGradient)"
                 strokeWidth="4"
                 fill="none"
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 42}
                 strokeDashoffset={(2 * Math.PI * 42) * (1 - progress)}
-                filter={
-                  isRunning
-                    ? isDark ? "url(#pulsingGlow) url(#dropShadow)" : "url(#lightModePulsingGlow) url(#dropShadow)"
-                    : isDark ? "url(#enhancedRainbowGlow) url(#dropShadow)" : "url(#lightModeGlow) url(#dropShadow)"
-                }
                 transform="rotate(-90 50 50)"
               />
 

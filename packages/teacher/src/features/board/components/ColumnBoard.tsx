@@ -22,7 +22,7 @@ const ColumnBoard: React.FC<ColumnBoardProps> = ({ children }) => {
       }}
     >
       {/* Background Pattern - fixed behind scrolling content */}
-      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+      <div className="column-board-background fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <Background type={background as any} />
       </div>
 
