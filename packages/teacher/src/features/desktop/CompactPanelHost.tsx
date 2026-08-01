@@ -142,7 +142,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light' }: CompactPanelHostProps) =
       applyStateChange: (change: CompactPanelStateChange) => {
         if (change.schemaVersion !== 1) return false;
         const widgetExists = useWorkspaceStore.getState().widgets.some((widget) => widget.id === change.widgetId);
-        if (!widgetExists) return false;
+        if (!widgetExists) return change.flush === true;
         const previous = widgetRevisionsRef.current.get(change.widgetId);
         if (!change.flush && previous?.stateRevision !== change.baseRevision) return false;
         const stateSignature = JSON.stringify(change.state);

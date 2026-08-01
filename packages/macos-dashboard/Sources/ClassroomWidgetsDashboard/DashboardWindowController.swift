@@ -314,6 +314,52 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
+    func prepareForTermination() async -> Bool {
+        guard !isChangingWindowMode else { return false }
+        guard windowMode == .compact else { return true }
+
+        isChangingWindowMode = true
+        guard let pendingChanges = await resultWithTimeout(nanoseconds: 2_000_000_000) { completion in
+            widgetPanelCoordinator.prepareToEnterCanvas(completion: completion)
+        } else {
+            abortCompactTransition()
+            return false
+        }
+        for retriesRemaining in stride(from: 20, through: 0, by: -1) {
+            if await resultWithTimeout(operation: { completion in
+                applyFinalPanelStateChanges(pendingChanges, completion: completion)
+            }) == true {
+                widgetPanelCoordinator.enterCanvas()
+                return true
+            }
+            if retriesRemaining > 0 {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+            }
+        }
+
+        abortCompactTransition()
+        return false
+    }
+
+    private func resultWithTimeout<Value>(
+        nanoseconds: UInt64 = 1_000_000_000,
+        operation: (@escaping @MainActor (Value) -> Void) -> Void
+    ) async -> Value? {
+        await withCheckedContinuation { continuation in
+            var completed = false
+            let complete: @MainActor (Value?) -> Void = { value in
+                guard !completed else { return }
+                completed = true
+                continuation.resume(returning: value)
+            }
+            operation { complete($0) }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: nanoseconds)
+                complete(nil)
+            }
+        }
+    }
+
     func applySettings() {
         // Legacy overlay settings deliberately no longer influence input
         // routing.  A bounded window naturally leaves every other app alone.
@@ -571,13 +617,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         guard let window else { return }
 
         guard dashboardVisible else {
-            widgetPanelCoordinator.hideAll()
-            if window.isKeyWindow {
+            let panelWasKey = widgetPanelCoordinator.hideAll()
+            if window.isKeyWindow || panelWasKey {
                 NSApp.deactivate()
             }
             scheduleOrderOut(window)
             return
         }
+
+        guard !isChangingWindowMode else { return }
 
         hideGeneration += 1
         if windowMode == .compact {

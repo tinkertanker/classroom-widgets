@@ -315,6 +315,21 @@ describe('Timer Widget', () => {
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
   });
 
+  test('restores a finished timer without replaying its end sound', () => {
+    renderWithModal(<Timer savedState={{ timer: {
+      endTime: null,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: false,
+      isPaused: false,
+      pausedTimeRemaining: 0,
+      timerFinished: true
+    } }} />);
+
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(global.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  });
+
   test('mute stops an end sound that is already playing', () => {
     renderWithModal(<Timer />);
 

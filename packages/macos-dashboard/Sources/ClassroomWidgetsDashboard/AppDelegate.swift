@@ -5,6 +5,8 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: DashboardWindowController?
+    private var terminationPending = false
+    private var terminationApproved = false
     private var hotKeys: [DashboardHotKey] = []
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
@@ -67,6 +69,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         hotKeys.removeAll()
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if terminationApproved {
+            return .terminateNow
+        }
+        guard !terminationPending, let controller else {
+            return controller == nil ? .terminateNow : .terminateLater
+        }
+
+        terminationPending = true
+        Task { @MainActor [weak self, weak sender] in
+            let ready = await controller.prepareForTermination()
+            guard let self, let sender else { return }
+            self.terminationPending = false
+            self.terminationApproved = ready
+            sender.reply(toApplicationShouldTerminate: ready)
+        }
+        return .terminateLater
     }
 
     // Accessory apps have no visible menu bar, but NSApp.mainMenu still routes

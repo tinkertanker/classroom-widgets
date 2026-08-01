@@ -175,8 +175,11 @@ final class WidgetPanelCoordinator: NSObject {
         }
     }
 
-    func hideAll() {
+    @discardableResult
+    func hideAll() -> Bool {
+        let hadKeyPanel = panelControllers.values.contains { $0.window?.isKeyWindow == true }
         panelControllers.values.forEach { $0.hide() }
+        return hadKeyPanel
     }
 
     /// Canvas owns the only live widget representation. Destroying the hidden
@@ -199,7 +202,10 @@ final class WidgetPanelCoordinator: NSObject {
         var remaining = controllers.count
         for controller in controllers {
             controller.hide()
-            controller.takePendingState { change in
+            var completed = false
+            let finish: @MainActor (WidgetPanelStateChange?) -> Void = { change in
+                guard !completed else { return }
+                completed = true
                 if let change {
                     pendingChanges.append(change)
                 }
@@ -207,6 +213,11 @@ final class WidgetPanelCoordinator: NSObject {
                 if remaining == 0 {
                     completion(pendingChanges)
                 }
+            }
+            controller.takePendingState(completion: finish)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                finish(nil)
             }
         }
     }
@@ -302,8 +313,8 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onWidgetCreationRequested = { [weak self] widgetType in
             self?.onWidgetCreationRequested?(widgetType)
         }
-        controller.onLayoutRequested = { [weak self] layout in
-            self?.arrange(layout)
+        controller.onLayoutRequested = { [weak self, weak controller] layout in
+            self?.arrange(layout, on: controller?.window?.screen)
         }
         controller.onFrameChanged = { [weak self] widgetID, frame in
             self?.persist(frame: frame, for: widgetID)
@@ -446,7 +457,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.isOpaque = false
-        panel.backgroundColor = Self.backgroundColour(opacity: backgroundOpacity)
+        panel.backgroundColor = .clear
         panel.titlebarAppearsTransparent = true
         panel.hidesOnDeactivate = false
         panel.acceptsMouseMovedEvents = true
@@ -524,7 +535,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
         self.backgroundOpacity = min(max(backgroundOpacity, 0), 1)
-        window?.backgroundColor = Self.backgroundColour(opacity: self.backgroundOpacity)
+        window?.backgroundColor = .clear
         window?.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
         setWebBackgroundOpacity()
     }
@@ -911,10 +922,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     @objc private func requestCanvas() {
         onCanvasRequested?(widgetID)
-    }
-
-    private static func backgroundColour(opacity: Double) -> NSColor {
-        NSColor.windowBackgroundColor.withAlphaComponent(CGFloat(min(max(opacity, 0), 1)))
     }
 
     private static func collectionBehavior(joinsAllSpaces: Bool) -> NSWindow.CollectionBehavior {

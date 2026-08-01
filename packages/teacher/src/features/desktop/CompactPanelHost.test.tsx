@@ -213,6 +213,20 @@ describe('CompactPanelHost', () => {
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
   });
 
+  it('only accepts a state change for a concurrently removed widget when it is a final flush', () => {
+    render(<CompactPanelHost />);
+    const change = {
+      schemaVersion: 1 as const,
+      widgetId: 'removed-widget',
+      baseRevision: 1,
+      state: { timer: { time: 0 } }
+    };
+
+    expect(window.classroomPanelHost?.applyStateChange(change)).toBe(false);
+    expect(window.classroomPanelHost?.applyStateChange({ ...change, flush: true })).toBe(true);
+    expect(useWorkspaceStore.getState().widgetStates.has('removed-widget')).toBe(false);
+  });
+
   it('reserves state revisions synchronously when applying panel changes', async () => {
     render(<CompactPanelHost />);
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
