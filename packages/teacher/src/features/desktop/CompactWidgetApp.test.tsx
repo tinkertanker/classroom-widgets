@@ -75,6 +75,47 @@ describe('CompactWidgetApp', () => {
     vi.clearAllMocks();
   });
 
+  it('requests a non-destructive dashboard hide with Escape outside active interactions', () => {
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(() => null));
+    render(<CompactWidgetApp />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(panelPostMessage).toHaveBeenCalledWith({
+      type: 'dashboard-hide-requested',
+      schemaVersion: 1,
+      widgetId: 'timer-1'
+    });
+  });
+
+  it('leaves Escape to editable controls and dialogs', () => {
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(() => null));
+    render(<CompactWidgetApp />);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    fireEvent.keyDown(input, { key: 'Escape' });
+
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.appendChild(dialog);
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(panelPostMessage).not.toHaveBeenCalledWith(expect.objectContaining({
+      type: 'dashboard-hide-requested'
+    }));
+    input.remove();
+    dialog.remove();
+  });
+
+  it('initializes the panel surface opacity from the native URL', () => {
+    window.history.replaceState({}, '', '/?widgetId=timer-1&backgroundOpacity=0.35');
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(() => null));
+
+    render(<CompactWidgetApp />);
+
+    expect(document.documentElement.style.getPropertyValue('--compact-widget-background-opacity')).toBe('0.35');
+  });
+
   it('treats a missing native state as undefined for widget defaults', async () => {
     const StateProbe = ({ savedState }: ProbeWidgetProps) => (
       <div data-testid="saved-state">{savedState === undefined ? 'default-state' : 'provided-state'}</div>

@@ -400,6 +400,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
       ref={widgetRef}
       className={cn(
         widgetContainer,
+        'widget-container-custom-surface',
         currentColors.bg,
         'relative overflow-hidden transition-colors duration-300 flex flex-col group/banner'
       )}

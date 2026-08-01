@@ -146,6 +146,18 @@ html.compact-widget-panel #root {
   background: transparent;
 }
 
+html.compact-widget-panel .widget-container-surface:not(.widget-container-custom-surface) {
+  background-color: rgb(253 252 251 / calc(0.9 * var(--compact-widget-background-opacity, 1)));
+}
+
+html.dark.compact-widget-panel .widget-container-surface:not(.widget-container-custom-surface) {
+  background-color: rgb(61 56 53 / calc(0.9 * var(--compact-widget-background-opacity, 1)));
+}
+
+html.compact-widget-panel .widget-container-surface.widget-container-custom-surface {
+  --tw-bg-opacity: var(--compact-widget-background-opacity, 1);
+}
+
 .compact-widget-panel-loading {
   width: 100%;
   height: 100%;

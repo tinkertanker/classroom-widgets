@@ -90,6 +90,7 @@ final class WidgetPanelCoordinator: NSObject {
     var onPanelStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onAllPanelsHidden: (@MainActor () -> Void)?
+    var onDashboardHideRequested: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onWidgetRemovalRequested: (@MainActor (String) -> Void)?
@@ -289,6 +290,9 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onRandomiserListChange = { [weak self] change in
             self?.onRandomiserListChange?(change)
         }
+        controller.onDashboardHideRequested = { [weak self] in
+            self?.onDashboardHideRequested?()
+        }
         controller.onRemovalRequested = { [weak self] widgetID in
             self?.onWidgetRemovalRequested?(widgetID)
         }
@@ -387,6 +391,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
+    var onDashboardHideRequested: (@MainActor () -> Void)?
     var onRemovalRequested: (@MainActor (String) -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
@@ -406,6 +411,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var isProgrammaticallyChangingFrame = false
     private var isClosingPermanently = false
     private var widgetCreationOptions: [CompactWidgetOption] = []
+    private var backgroundOpacity: Double
 
     var widgetID: String { descriptor.id }
     var isResizable: Bool { descriptor.isResizable }
@@ -421,6 +427,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         keepOnAllSpaces: Bool
     ) {
         self.descriptor = descriptor
+        self.backgroundOpacity = min(max(backgroundOpacity, 0), 1)
         let webContext = webViewFactory.makeWebView(widgetID: descriptor.id)
         webView = webContext.webView
         messageHandler = webContext.messageHandler
@@ -472,6 +479,9 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         messageHandler.onRandomiserListChange = { [weak self] change in
             self?.onRandomiserListChange?(change)
         }
+        messageHandler.onDashboardHideRequested = { [weak self] in
+            self?.onDashboardHideRequested?()
+        }
         messageHandler.onCanvasRequested = { [weak self] widgetID in
             self?.onCanvasRequested?(widgetID)
         }
@@ -513,8 +523,10 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
-        window?.backgroundColor = Self.backgroundColour(opacity: backgroundOpacity)
+        self.backgroundOpacity = min(max(backgroundOpacity, 0), 1)
+        window?.backgroundColor = Self.backgroundColour(opacity: self.backgroundOpacity)
         window?.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
+        setWebBackgroundOpacity()
     }
 
     func setWidgetCreationOptions(_ options: [CompactWidgetOption]) {
@@ -650,6 +662,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        setWebBackgroundOpacity()
         guard let snapshot = currentSnapshot else { return }
         push(snapshot: snapshot)
     }
@@ -695,6 +708,12 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     private var currentSnapshot: [String: Any]?
 
+    private func setWebBackgroundOpacity() {
+        webView.evaluateJavaScript(
+            "document.documentElement.style.setProperty('--compact-widget-background-opacity', '\(backgroundOpacity)')"
+        )
+    }
+
     private func loadWidget() {
         var components = URLComponents()
         components.scheme = dashboardURLScheme
@@ -702,7 +721,8 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         components.path = "/"
         components.queryItems = [
             URLQueryItem(name: "surface", value: "widget-panel"),
-            URLQueryItem(name: "widgetId", value: widgetID)
+            URLQueryItem(name: "widgetId", value: widgetID),
+            URLQueryItem(name: "backgroundOpacity", value: String(backgroundOpacity))
         ]
         guard let url = components.url else { return }
         webView.load(URLRequest(url: url))
@@ -951,6 +971,7 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
+    var onDashboardHideRequested: (@MainActor () -> Void)?
     var onCanvasRequested: (@MainActor (String) -> Void)?
 
     private let widgetID: String
@@ -991,6 +1012,8 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
                   !id.isEmpty
             else { return }
             onRandomiserListChange?(WidgetPanelRandomiserListChange(payload: body))
+        case "dashboard-hide-requested":
+            onDashboardHideRequested?()
         case "canvas-requested":
             onCanvasRequested?(widgetID)
         default:

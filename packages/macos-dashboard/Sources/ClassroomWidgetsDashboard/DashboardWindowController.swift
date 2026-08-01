@@ -38,6 +38,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private var isChangingWindowMode = false
     private var hasReceivedWidgetInventory = false
     private var compactWidgetCreationPending = false
+    private var pendingDashboardRecoveryChanges: [WidgetPanelStateChange]?
 
     var isDashboardVisible: Bool { dashboardVisible }
     var onVisibilityChanged: (@MainActor (Bool) -> Void)?
@@ -151,6 +152,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         widgetPanelCoordinator.onWidgetRemovalRequested = { [weak self] widgetID in
             self?.removeCompactWidget(widgetID)
         }
+        widgetPanelCoordinator.onDashboardHideRequested = { [weak self] in
+            self?.setPresentationVisible(false, activateApp: false)
+        }
         widgetPanelCoordinator.onAllPanelsHidden = { [weak self] in
             guard let self, self.dashboardVisible, self.windowMode == .compact else { return }
             self.setWindowMode(.canvas)
@@ -218,7 +222,17 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Web content process terminated; reloading dashboard")
-        loadDashboard()
+        guard windowMode == .compact, !isChangingWindowMode else {
+            loadDashboard()
+            return
+        }
+        isChangingWindowMode = true
+        widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges in
+            guard let self else { return }
+            self.pendingDashboardRecoveryChanges = pendingChanges
+            self.widgetPanelCoordinator.enterCanvas()
+            self.loadDashboard()
+        }
     }
 
     func windowDidMove(_ notification: Notification) {
@@ -416,6 +430,25 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
+    private func finishDashboardRecovery(
+        _ pendingChanges: [WidgetPanelStateChange],
+        retriesRemaining: Int = 20
+    ) {
+        applyFinalPanelStateChanges(pendingChanges) { [weak self] applied in
+            guard let self else { return }
+            guard applied || retriesRemaining == 0 else {
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    guard let self, self.isChangingWindowMode, self.windowMode == .compact else { return }
+                    self.finishDashboardRecovery(pendingChanges, retriesRemaining: retriesRemaining - 1)
+                }
+                return
+            }
+            self.isChangingWindowMode = false
+            self.syncWindowVisibility()
+        }
+    }
+
     private func applyFinalPanelStateChanges(
         _ changes: [WidgetPanelStateChange],
         completion: @escaping @MainActor (Bool) -> Void
@@ -530,6 +563,12 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             revision: inventory.revision,
             widgets: descriptors
         ))
+        if let pendingChanges = pendingDashboardRecoveryChanges {
+            pendingDashboardRecoveryChanges = nil
+            let widgetIDs = Set(descriptors.map(\.id))
+            finishDashboardRecovery(pendingChanges.filter { widgetIDs.contains($0.widgetID) })
+            return
+        }
         if !isChangingWindowMode {
             syncWindowVisibility()
         }

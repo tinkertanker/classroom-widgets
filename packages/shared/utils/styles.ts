@@ -114,6 +114,7 @@ export const buttons = {
 // Widget container styles (main content area) - no shadow
 // Standard widget container (current standard - all widgets should use this)
 export const widgetContainer = cn(
+  "widget-container-surface",
   "bg-soft-white/90 dark:bg-warm-gray-800/90",
   "rounded-lg",
   borders.primary,
@@ -136,6 +137,7 @@ export const widgetContainerLegacy = cn(
 
 // Standard widget border pattern (explicit export for clarity)
 export const widgetBorderStandard = cn(
+  "widget-container-surface",
   "bg-soft-white/90 dark:bg-warm-gray-800/90",
   "rounded-lg",
   borders.primary,

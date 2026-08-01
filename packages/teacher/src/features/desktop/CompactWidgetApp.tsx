@@ -17,6 +17,10 @@ declare global {
 
 const CompactWidgetApp = () => {
   const requestedWidgetId = new URLSearchParams(window.location.search).get('widgetId');
+  const requestedBackgroundOpacity = Math.min(Math.max(
+    Number(new URLSearchParams(window.location.search).get('backgroundOpacity') ?? 1),
+    0
+  ), 1);
   const [snapshot, setSnapshot] = useState<CompactWidgetSnapshot | null>(null);
   const snapshotRef = useRef<CompactWidgetSnapshot | null>(null);
   const lastReportedStateRef = useRef<string | undefined>(undefined);
@@ -41,6 +45,10 @@ const CompactWidgetApp = () => {
 
   useEffect(() => {
     document.documentElement.classList.add('compact-widget-panel');
+    document.documentElement.style.setProperty(
+      '--compact-widget-background-opacity',
+      String(Number.isFinite(requestedBackgroundOpacity) ? requestedBackgroundOpacity : 1)
+    );
     window.classroomWidgetPanel = {
       receiveSnapshot: (nextSnapshot) => {
         if (nextSnapshot.schemaVersion !== 1 || nextSnapshot.widgetId !== requestedWidgetId) return;
@@ -127,10 +135,35 @@ const CompactWidgetApp = () => {
 
     return () => {
       document.documentElement.classList.remove('compact-widget-panel', 'dark');
+      document.documentElement.style.removeProperty('--compact-widget-background-opacity');
       randomiserListListenersRef.current.clear();
       delete window.classroomWidgetPanel;
     };
   }, [reportState, requestedWidgetId]);
+
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (
+        event.key !== 'Escape' ||
+        event.defaultPrevented ||
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement ||
+        (event.target instanceof HTMLElement && event.target.isContentEditable) ||
+        document.querySelector('[role="dialog"], [role="menu"]')
+      ) {
+        return;
+      }
+      event.preventDefault();
+      window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+        type: 'dashboard-hide-requested',
+        schemaVersion: 1,
+        widgetId: requestedWidgetId
+      });
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [requestedWidgetId]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', snapshot?.theme === 'dark');
