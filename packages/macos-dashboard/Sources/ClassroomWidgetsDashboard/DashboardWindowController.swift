@@ -45,7 +45,8 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private(set) var compactWidgetOptions: [CompactWidgetOption] = []
 
     init() {
-        dashboardVisible = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch)
+        let initiallyVisible = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch)
+        dashboardVisible = initiallyVisible
         windowMode = .compact
 
         let configuration = WKWebViewConfiguration()
@@ -59,7 +60,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             forMainFrameOnly: false
         ))
         scriptMessageHandler = DashboardScriptMessageHandler()
-        widgetPanelCoordinator = WidgetPanelCoordinator()
+        widgetPanelCoordinator = WidgetPanelCoordinator(compactPresentationActive: initiallyVisible)
 
         webView = WKWebView(frame: .zero, configuration: configuration)
         // This is intentionally an opaque, bounded AppKit window.  The
@@ -283,7 +284,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         DashboardLog.web.info("Reloading bundled dashboard")
         pendingWidgetLauncherOpen = false
         widgetLauncherOpenAttemptInFlight = false
-        loadDashboard()
+        guard !isChangingWindowMode else { return }
+        guard windowMode == .compact else {
+            loadDashboard()
+            return
+        }
+        isChangingWindowMode = true
+        widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges in
+            self?.finishDashboardReload(pendingChanges)
+        }
     }
 
     func applySettings() {
@@ -382,6 +391,23 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             try? await Task.sleep(nanoseconds: 150_000_000)
             guard let self, self.isChangingWindowMode, self.windowMode == .compact else { return }
             self.finishCanvasTransition(pendingChanges)
+        }
+    }
+
+    private func finishDashboardReload(_ pendingChanges: [WidgetPanelStateChange]) {
+        applyFinalPanelStateChanges(pendingChanges) { [weak self] applied in
+            guard let self else { return }
+            guard applied else {
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    guard let self, self.isChangingWindowMode, self.windowMode == .compact else { return }
+                    self.finishDashboardReload(pendingChanges)
+                }
+                return
+            }
+            self.widgetPanelCoordinator.enterCanvas()
+            self.isChangingWindowMode = false
+            self.loadDashboard()
         }
     }
 
@@ -499,7 +525,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             revision: inventory.revision,
             widgets: descriptors
         ))
-        syncWindowVisibility()
+        if !isChangingWindowMode {
+            syncWindowVisibility()
+        }
     }
 
     private func setCompactWidgetOptions(_ options: [CompactWidgetOption]) {

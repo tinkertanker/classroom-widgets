@@ -103,6 +103,11 @@ final class WidgetPanelCoordinator: NSObject {
     private var panelBackgroundOpacity = 1.0
     private var panelsJoinAllSpaces = true
 
+    init(compactPresentationActive: Bool = true) {
+        self.compactPresentationActive = compactPresentationActive
+        super.init()
+    }
+
     func setWidgetCreationOptions(_ options: [CompactWidgetOption]) {
         widgetCreationOptions = options
         panelControllers.values.forEach { $0.setWidgetCreationOptions(options) }
