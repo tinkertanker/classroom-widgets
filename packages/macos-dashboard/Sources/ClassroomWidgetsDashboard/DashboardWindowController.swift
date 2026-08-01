@@ -43,6 +43,8 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private var requiredCompactInventoryRevision = 0
     private var lastInventoryHostInstanceID: String?
     private var lastInventoryRevision = -1
+    private var lastInventoryWidgetIDs: Set<String> = []
+    private var widgetIDsBeforePendingCreation: Set<String>?
     private var pendingHostWriteCount = 0
     private var pendingHostWriteFailed = false
     private var hostWriteGeneration = 0
@@ -722,6 +724,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         let isCurrentHost = inventory.hostInstanceID == lastInventoryHostInstanceID
         lastInventoryHostInstanceID = inventory.hostInstanceID
         lastInventoryRevision = inventory.revision
+        let inventoryWidgetIDs = Set(descriptors.map(\.id))
+        lastInventoryWidgetIDs = inventoryWidgetIDs
+        if !isCurrentHost {
+            requiredCompactInventoryRevision = 0
+        }
         if awaitingCompactInventory {
             guard inventory.windowMode == .compact,
                   !isCurrentHost || inventory.revision >= requiredCompactInventoryRevision
@@ -729,7 +736,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             awaitingCompactInventory = false
             widgetPanelCoordinator.activateCompactInventory()
         }
-        compactWidgetCreationPending = false
+        if compactWidgetCreationPending,
+           !inventoryWidgetIDs.subtracting(widgetIDsBeforePendingCreation ?? []).isEmpty {
+            compactWidgetCreationPending = false
+            widgetIDsBeforePendingCreation = nil
+        }
         if let pendingChanges = pendingDashboardRecoveryChanges {
             pendingDashboardRecoveryChanges = nil
             let widgetIDs = Set(descriptors.map(\.id))
@@ -849,6 +860,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
     private func createCompactWidget(_ widgetType: Int) {
         compactWidgetCreationPending = true
+        widgetIDsBeforePendingCreation = lastInventoryWidgetIDs
         webView.callAsyncJavaScript(
             """
             return (() => {
@@ -863,10 +875,12 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         ) { [weak self] result in
             if case let .success(value) = result, value as? Bool != true {
                 self?.compactWidgetCreationPending = false
+                self?.widgetIDsBeforePendingCreation = nil
                 self?.syncWindowVisibility()
             }
             if case let .failure(error) = result {
                 self?.compactWidgetCreationPending = false
+                self?.widgetIDsBeforePendingCreation = nil
                 self?.syncWindowVisibility()
                 DashboardLog.web.error("Unable to add compact widget: \(error.localizedDescription, privacy: .public)")
             }
