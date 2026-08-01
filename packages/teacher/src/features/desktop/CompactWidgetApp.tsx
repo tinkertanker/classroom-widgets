@@ -22,10 +22,12 @@ const CompactWidgetApp = () => {
   const lastReportedStateRef = useRef<string | undefined>(undefined);
   const inFlightStateRef = useRef<string | null>(null);
   const queuedStateRef = useRef<string | null>(null);
+  const closingRef = useRef(false);
+  const randomiserListListenersRef = useRef(new Set<(lists: CompactWidgetSnapshot['savedRandomiserLists']) => void>());
 
   const reportState = useCallback((serializedState: string, baseRevision: number) => {
     const currentSnapshot = snapshotRef.current;
-    if (!currentSnapshot) return;
+    if (!currentSnapshot || closingRef.current) return;
     inFlightStateRef.current = serializedState;
     lastReportedStateRef.current = serializedState;
     window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
@@ -43,6 +45,7 @@ const CompactWidgetApp = () => {
       receiveSnapshot: (nextSnapshot) => {
         if (nextSnapshot.schemaVersion !== 1 || nextSnapshot.widgetId !== requestedWidgetId) return;
         if (nextSnapshot.revision <= (snapshotRef.current?.revision ?? -1)) return;
+        randomiserListListenersRef.current.forEach((listener) => listener(nextSnapshot.savedRandomiserLists));
         const currentSnapshot = snapshotRef.current;
         const stateRevisionAdvanced = nextSnapshot.stateRevision > (currentSnapshot?.stateRevision ?? -1);
         if (!stateRevisionAdvanced && inFlightStateRef.current !== null) {
@@ -74,6 +77,11 @@ const CompactWidgetApp = () => {
         }
       },
       getRandomiserLists: () => snapshotRef.current?.savedRandomiserLists ?? [],
+      subscribeRandomiserLists: (listener) => {
+        randomiserListListenersRef.current.add(listener);
+        listener(snapshotRef.current?.savedRandomiserLists ?? []);
+        return () => randomiserListListenersRef.current.delete(listener);
+      },
       saveRandomiserList: (name, choices) => {
         const currentSnapshot = snapshotRef.current;
         if (!currentSnapshot) return;
@@ -94,6 +102,21 @@ const CompactWidgetApp = () => {
           widgetId: currentSnapshot.widgetId,
           id
         });
+      },
+      takePendingState: () => {
+        const currentSnapshot = snapshotRef.current;
+        const pendingState = queuedStateRef.current ?? inFlightStateRef.current;
+        closingRef.current = true;
+        queuedStateRef.current = null;
+        inFlightStateRef.current = null;
+        if (!currentSnapshot || pendingState === null) return null;
+        return {
+          schemaVersion: 1,
+          widgetId: currentSnapshot.widgetId,
+          baseRevision: currentSnapshot.stateRevision,
+          state: JSON.parse(pendingState) as JsonValue,
+          flush: true
+        };
       }
     };
     window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
@@ -104,6 +127,7 @@ const CompactWidgetApp = () => {
 
     return () => {
       document.documentElement.classList.remove('compact-widget-panel', 'dark');
+      randomiserListListenersRef.current.clear();
       delete window.classroomWidgetPanel;
     };
   }, [reportState, requestedWidgetId]);

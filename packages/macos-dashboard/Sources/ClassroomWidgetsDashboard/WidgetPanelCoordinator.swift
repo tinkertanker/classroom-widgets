@@ -134,11 +134,7 @@ final class WidgetPanelCoordinator: NSObject {
             return
         }
         lastSnapshot = snapshot
-        guard compactPresentationActive else {
-            panelControllers.values.forEach { $0.closePermanently() }
-            panelControllers.removeAll()
-            return
-        }
+        guard compactPresentationActive else { return }
 
         let descriptorsByID = Dictionary(snapshot.widgets.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
         let removedIDs = Set(panelControllers.keys).subtracting(descriptorsByID.keys)
@@ -182,6 +178,30 @@ final class WidgetPanelCoordinator: NSObject {
         compactPresentationActive = false
         panelControllers.values.forEach { $0.closePermanently() }
         panelControllers.removeAll()
+    }
+
+    func prepareToEnterCanvas(completion: @escaping @MainActor ([WidgetPanelStateChange]) -> Void) {
+        compactPresentationActive = false
+        let controllers = Array(panelControllers.values)
+        guard !controllers.isEmpty else {
+            completion([])
+            return
+        }
+
+        var pendingChanges: [WidgetPanelStateChange] = []
+        var remaining = controllers.count
+        for controller in controllers {
+            controller.hide()
+            controller.takePendingState { change in
+                if let change {
+                    pendingChanges.append(change)
+                }
+                remaining -= 1
+                if remaining == 0 {
+                    completion(pendingChanges)
+                }
+            }
+        }
     }
 
     @discardableResult
@@ -257,7 +277,8 @@ final class WidgetPanelCoordinator: NSObject {
             self?.onPanelReady?(ready)
         }
         controller.onStateChange = { [weak self] stateChange in
-            self?.onPanelStateChange?(stateChange)
+            guard let self, self.compactPresentationActive else { return }
+            self.onPanelStateChange?(stateChange)
         }
         controller.onRandomiserListChange = { [weak self] change in
             self?.onRandomiserListChange?(change)
@@ -513,9 +534,34 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func closePermanently() {
+        guard !isClosingPermanently else { return }
         isClosingPermanently = true
         webView.stopLoading()
         window?.close()
+    }
+
+    func takePendingState(completion: @escaping @MainActor (WidgetPanelStateChange?) -> Void) {
+        webView.callAsyncJavaScript(
+            "window.classroomWidgetPanel?.takePendingState?.() ?? null",
+            arguments: [:],
+            in: nil,
+            in: .page
+        ) { result in
+            guard case let .success(value) = result,
+                  let payload = value as? [String: Any],
+                  (payload["schemaVersion"] as? NSNumber)?.intValue == 1,
+                  let widgetID = payload["widgetId"] as? String,
+                  widgetID == self.widgetID,
+                  payload["baseRevision"] is NSNumber,
+                  payload["state"] != nil
+            else {
+                completion(nil)
+                return
+            }
+            var finalPayload = payload
+            finalPayload["flush"] = true
+            completion(WidgetPanelStateChange(widgetID: widgetID, payload: finalPayload))
+        }
     }
 
     func setFrame(_ frame: NSRect, animate: Bool) {
@@ -928,7 +974,9 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
             onReady?(WidgetPanelReady(widgetID: widgetID, revision: revision))
         case "panel-state-change":
             guard revision != nil, body["state"] != nil else { return }
-            onStateChange?(WidgetPanelStateChange(widgetID: widgetID, payload: body))
+            var payload = body
+            payload.removeValue(forKey: "flush")
+            onStateChange?(WidgetPanelStateChange(widgetID: widgetID, payload: payload))
         case "randomiser-list-save":
             guard (body["schemaVersion"] as? NSNumber)?.intValue == 1,
                   let name = body["name"] as? String,

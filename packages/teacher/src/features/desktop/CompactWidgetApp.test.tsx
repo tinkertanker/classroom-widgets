@@ -209,6 +209,34 @@ describe('CompactWidgetApp', () => {
     ]);
   });
 
+  it('flushes the latest queued edit before native destroys the panel', async () => {
+    const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
+      <>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 1 })}>First</button>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 2 })}>Second</button>
+      </>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(EditingProbe));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1)));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'First' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+    let pendingState: ReturnType<NonNullable<typeof window.classroomWidgetPanel>['takePendingState']>;
+    act(() => {
+      pendingState = window.classroomWidgetPanel?.takePendingState() ?? null;
+    });
+
+    expect(pendingState!).toEqual(expect.objectContaining({
+      baseRevision: 1,
+      state: { elapsed: 2 },
+      flush: true
+    }));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })]
+    ]);
+  });
+
   it('does not treat a metadata-only snapshot as a state acknowledgement', async () => {
     const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
       <>

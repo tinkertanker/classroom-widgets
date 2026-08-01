@@ -318,8 +318,20 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             return
         }
 
-        guard window != nil else { return }
+        guard window != nil, !isChangingWindowMode else { return }
+        if windowMode == .compact, mode == .canvas {
+            isChangingWindowMode = true
+            widgetPanelCoordinator.prepareToEnterCanvas { [weak self] pendingChanges in
+                self?.finishCanvasTransition(pendingChanges)
+            }
+            return
+        }
+
         isChangingWindowMode = true
+        completeWindowModeChange(mode)
+    }
+
+    private func completeWindowModeChange(_ mode: DashboardWindowMode) {
         persistFrame(for: windowMode)
         windowMode = mode
         configureWindow(for: mode)
@@ -335,6 +347,62 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
         if dashboardVisible {
             syncWindowVisibility(activateApp: true)
+        }
+    }
+
+    private func finishCanvasTransition(_ pendingChanges: [WidgetPanelStateChange]) {
+        applyFinalPanelStateChanges(pendingChanges) { [weak self] applied in
+            guard let self else { return }
+            guard applied else {
+                self.retryCanvasTransition(pendingChanges)
+                return
+            }
+            self.setWebWindowMode(.canvas) { [weak self] activated in
+                guard let self else { return }
+                guard activated else {
+                    self.retryCanvasTransition(pendingChanges)
+                    return
+                }
+                self.persistFrame(for: self.windowMode)
+                self.windowMode = .canvas
+                self.configureWindow(for: .canvas)
+                self.restoreFrame(for: .canvas)
+                self.isChangingWindowMode = false
+                self.setWebBackgroundOpacity(self.compactBackgroundOpacity)
+                self.widgetPanelCoordinator.enterCanvas()
+                if self.dashboardVisible {
+                    self.syncWindowVisibility(activateApp: true)
+                }
+            }
+        }
+    }
+
+    private func retryCanvasTransition(_ pendingChanges: [WidgetPanelStateChange]) {
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            guard let self, self.isChangingWindowMode, self.windowMode == .compact else { return }
+            self.finishCanvasTransition(pendingChanges)
+        }
+    }
+
+    private func applyFinalPanelStateChanges(
+        _ changes: [WidgetPanelStateChange],
+        completion: @escaping @MainActor (Bool) -> Void
+    ) {
+        guard !changes.isEmpty else {
+            completion(true)
+            return
+        }
+        var remaining = changes.count
+        var allApplied = true
+        for change in changes {
+            applyPanelStateChange(change) { applied in
+                allApplied = allApplied && applied
+                remaining -= 1
+                if remaining == 0 {
+                    completion(allApplied)
+                }
+            }
         }
     }
 
@@ -484,7 +552,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         )
     }
 
-    private func applyPanelStateChange(_ change: WidgetPanelStateChange) {
+    private func applyPanelStateChange(_ change: WidgetPanelStateChange, completion: (@MainActor (Bool) -> Void)? = nil) {
         webView.callAsyncJavaScript(
             """
             (() => {
@@ -500,6 +568,11 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             if case let .failure(error) = result {
                 DashboardLog.web.error("Unable to apply widget panel state: \(error.localizedDescription, privacy: .public)")
             }
+            guard case let .success(value) = result else {
+                completion?(false)
+                return
+            }
+            completion?(value as? Bool == true)
         }
     }
 
@@ -819,28 +892,51 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
-    private func setWebWindowMode(_ mode: DashboardWindowMode) {
+    private func setWebWindowMode(_ mode: DashboardWindowMode, completion: (@MainActor (Bool) -> Void)? = nil) {
         modePushGeneration += 1
-        pushWebWindowMode(mode, generation: modePushGeneration, retriesRemaining: 3)
+        pushWebWindowMode(mode, generation: modePushGeneration, retriesRemaining: 3, completion: completion)
     }
 
-    private func pushWebWindowMode(_ mode: DashboardWindowMode, generation: Int, retriesRemaining: Int) {
-        guard generation == modePushGeneration else { return }
+    private func pushWebWindowMode(
+        _ mode: DashboardWindowMode,
+        generation: Int,
+        retriesRemaining: Int,
+        completion: (@MainActor (Bool) -> Void)? = nil
+    ) {
+        guard generation == modePushGeneration else {
+            completion?(false)
+            return
+        }
         let expression = """
         (() => {
-          if (window.classroomDashboard?.setWindowMode) {
-            window.classroomDashboard.setWindowMode('\(mode.rawValue)');
-            return true;
-          }
-          return false;
+          const dashboard = window.classroomDashboard;
+          if (!dashboard?.setWindowMode || !dashboard?.getWindowMode) return false;
+          dashboard.setWindowMode('\(mode.rawValue)');
+          return dashboard.getWindowMode() === '\(mode.rawValue)';
         })()
         """
         webView.evaluateJavaScript(expression) { [weak self] result, _ in
             guard let self else { return }
-            guard self.modePushGeneration == generation, result as? Bool != true, retriesRemaining > 0 else { return }
+            guard self.modePushGeneration == generation else {
+                completion?(false)
+                return
+            }
+            if result as? Bool == true {
+                completion?(true)
+                return
+            }
+            guard retriesRemaining > 0 else {
+                completion?(false)
+                return
+            }
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 150_000_000)
-                self.pushWebWindowMode(mode, generation: generation, retriesRemaining: retriesRemaining - 1)
+                self.pushWebWindowMode(
+                    mode,
+                    generation: generation,
+                    retriesRemaining: retriesRemaining - 1,
+                    completion: completion
+                )
             }
         }
     }

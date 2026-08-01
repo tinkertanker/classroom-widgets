@@ -46,6 +46,7 @@ export interface CompactPanelStateChange {
   widgetId: string;
   baseRevision: number;
   state: JsonValue;
+  flush?: true;
 }
 
 export type CompactRandomiserListChange = {
@@ -71,6 +72,8 @@ export interface CompactPanelHostBridge {
 export interface CompactWidgetPanelBridge {
   receiveSnapshot: (snapshot: CompactWidgetSnapshot) => void;
   getRandomiserLists: () => SavedRandomiserList[];
+  subscribeRandomiserLists: (listener: (lists: SavedRandomiserList[]) => void) => () => void;
   saveRandomiserList: (name: string, choices: string[]) => void;
   deleteRandomiserList: (id: string) => void;
+  takePendingState: () => CompactPanelStateChange | null;
 }

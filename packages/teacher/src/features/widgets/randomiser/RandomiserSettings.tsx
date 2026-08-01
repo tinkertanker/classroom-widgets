@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { WidgetTextarea } from '@shared/components/WidgetInput';
 import { normaliseChoiceList, stringifyChoiceList } from './utils/choiceList';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
@@ -33,8 +33,12 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
     deleteRandomiserList: deleteWorkspaceRandomiserList,
   } = useWorkspaceStore();
   const panelBridge = window.classroomWidgetPanel;
+  const [panelRandomiserLists, setPanelRandomiserLists] = useState(
+    () => panelBridge?.getRandomiserLists() ?? []
+  );
+  useEffect(() => panelBridge?.subscribeRandomiserLists(setPanelRandomiserLists), [panelBridge]);
   const saveRandomiserList = panelBridge?.saveRandomiserList ?? saveRandomiserListToWorkspace;
-  const getRandomiserLists = panelBridge?.getRandomiserLists ?? getWorkspaceRandomiserLists;
+  const getRandomiserLists = panelBridge ? () => panelRandomiserLists : getWorkspaceRandomiserLists;
   const deleteRandomiserList = panelBridge?.deleteRandomiserList ?? deleteWorkspaceRandomiserList;
 
   const updateInputAndNotify = (nextInput: string) => {

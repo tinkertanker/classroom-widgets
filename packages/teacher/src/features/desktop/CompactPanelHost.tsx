@@ -143,7 +143,15 @@ const CompactPanelHost = ({ dashboardTheme = 'light' }: CompactPanelHostProps) =
         if (change.schemaVersion !== 1) return false;
         const widgetExists = useWorkspaceStore.getState().widgets.some((widget) => widget.id === change.widgetId);
         if (!widgetExists) return false;
-        if (widgetRevisionsRef.current.get(change.widgetId)?.stateRevision !== change.baseRevision) return false;
+        const previous = widgetRevisionsRef.current.get(change.widgetId);
+        if (!change.flush && previous?.stateRevision !== change.baseRevision) return false;
+        const stateSignature = JSON.stringify(change.state);
+        widgetRevisionsRef.current.set(change.widgetId, {
+          revision: previous?.revision ?? change.baseRevision,
+          signature: previous?.signature ?? '',
+          stateRevision: Math.max(previous?.stateRevision ?? 0, change.baseRevision) + 1,
+          stateSignature
+        });
         useWorkspaceStore.getState().updateWidgetState(change.widgetId, change.state);
         return true;
       },

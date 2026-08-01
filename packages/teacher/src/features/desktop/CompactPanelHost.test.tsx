@@ -196,6 +196,48 @@ describe('CompactPanelHost', () => {
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 10 } });
   });
 
+  it('accepts a final queued state flush while the panel is closing', async () => {
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      expect(window.classroomPanelHost?.applyStateChange({
+        schemaVersion: 1,
+        widgetId: 'timer-1',
+        baseRevision: 0,
+        state: { timer: { time: 25 } },
+        flush: true
+      })).toBe(true);
+    });
+
+    expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
+  });
+
+  it('reserves state revisions synchronously when applying panel changes', async () => {
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+    const firstChange = {
+      schemaVersion: 1 as const,
+      widgetId: 'timer-1',
+      baseRevision: 1,
+      state: { timer: { time: 20 } }
+    };
+
+    expect(window.classroomPanelHost?.applyStateChange(firstChange)).toBe(true);
+    expect(window.classroomPanelHost?.applyStateChange({
+      ...firstChange,
+      state: { timer: { time: 21 } }
+    })).toBe(false);
+    expect(window.classroomPanelHost?.applyStateChange({
+      ...firstChange,
+      baseRevision: 0,
+      state: { timer: { time: 25 } },
+      flush: true
+    })).toBe(true);
+    expect(window.classroomPanelHost?.applyStateChange(firstChange)).toBe(false);
+    expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
+  });
+
   it('applies Randomiser collection changes to the authoritative workspace store', () => {
     useWorkspaceStore.setState({
       widgets: [{
