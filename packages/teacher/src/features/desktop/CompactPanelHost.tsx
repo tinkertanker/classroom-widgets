@@ -34,9 +34,10 @@ const createHostInstanceId = (): string => {
 
 interface CompactPanelHostProps {
   dashboardTheme?: 'light' | 'dark';
+  windowMode?: 'compact' | 'canvas';
 }
 
-const CompactPanelHost = ({ dashboardTheme = 'light' }: CompactPanelHostProps) => {
+const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: CompactPanelHostProps) => {
   const revisionRef = useRef(0);
   const widgetRevisionsRef = useRef(new Map<string, {
     revision: number;
@@ -130,12 +131,13 @@ const CompactPanelHost = ({ dashboardTheme = 'light' }: CompactPanelHostProps) =
       schemaVersion: 1,
       hostInstanceId: hostInstanceIdRef.current,
       inventoryRevision: revision,
+      windowMode,
       widgets: publishedSnapshots,
       compactWidgetOptions
     };
 
     window.webkit?.messageHandlers?.classroomDashboard?.postMessage(inventory);
-  }, [compactWidgetOptions, snapshots]);
+  }, [compactWidgetOptions, snapshots, windowMode]);
 
   useEffect(() => {
     window.classroomPanelHost = {

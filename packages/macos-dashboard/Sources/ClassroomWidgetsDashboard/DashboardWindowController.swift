@@ -39,6 +39,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private var hasReceivedWidgetInventory = false
     private var compactWidgetCreationPending = false
     private var pendingDashboardRecoveryChanges: [WidgetPanelStateChange]?
+    private var awaitingCompactInventory = false
+    private var requiredCompactInventoryRevision = 0
+    private var lastInventoryHostInstanceID: String?
+    private var lastInventoryRevision = -1
     private var pendingHostWriteCount = 0
     private var pendingHostWriteFailed = false
     private var hostWriteGeneration = 0
@@ -438,7 +442,9 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         setWebWindowMode(mode)
         setWebBackgroundOpacity(compactBackgroundOpacity)
         if mode == .compact {
-            widgetPanelCoordinator.enterCompact()
+            awaitingCompactInventory = true
+            requiredCompactInventoryRevision = lastInventoryRevision + 1
+            widgetPanelCoordinator.prepareForCompactInventory()
         } else {
             widgetPanelCoordinator.enterCanvas()
         }
@@ -684,6 +690,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
         hideGeneration += 1
         if windowMode == .compact {
+            if awaitingCompactInventory {
+                window.makeKeyAndOrderFront(nil)
+                return
+            }
             if widgetPanelCoordinator.enterCompact() {
                 window.orderOut(nil)
             } else if !hasReceivedWidgetInventory || compactWidgetCreationPending {
@@ -702,13 +712,24 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
     private func reconcileWidgetPanels(_ inventory: WidgetPanelInventoryPayload) {
         hasReceivedWidgetInventory = true
-        compactWidgetCreationPending = false
         let descriptors = inventory.widgets.compactMap(Self.widgetPanelDescriptor(from:))
-        widgetPanelCoordinator.reconcile(snapshot: WidgetPanelSnapshot(
+        let accepted = widgetPanelCoordinator.reconcile(snapshot: WidgetPanelSnapshot(
             hostInstanceID: inventory.hostInstanceID,
             revision: inventory.revision,
             widgets: descriptors
         ))
+        guard accepted else { return }
+        let isCurrentHost = inventory.hostInstanceID == lastInventoryHostInstanceID
+        lastInventoryHostInstanceID = inventory.hostInstanceID
+        lastInventoryRevision = inventory.revision
+        if awaitingCompactInventory {
+            guard inventory.windowMode == .compact,
+                  !isCurrentHost || inventory.revision >= requiredCompactInventoryRevision
+            else { return }
+            awaitingCompactInventory = false
+            widgetPanelCoordinator.activateCompactInventory()
+        }
+        compactWidgetCreationPending = false
         if let pendingChanges = pendingDashboardRecoveryChanges {
             pendingDashboardRecoveryChanges = nil
             let widgetIDs = Set(descriptors.map(\.id))
@@ -823,10 +844,6 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
                 return
             }
             finish(value as? Bool == true)
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            finish(false)
         }
     }
 

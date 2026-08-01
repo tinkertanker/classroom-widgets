@@ -37,6 +37,7 @@ export interface CompactWidgetPanelInventory {
   schemaVersion: 1;
   hostInstanceId: string;
   inventoryRevision: number;
+  windowMode: 'compact' | 'canvas';
   widgets: CompactWidgetSnapshot[];
   compactWidgetOptions: CompactWidgetOption[];
 }

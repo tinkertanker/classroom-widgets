@@ -14,6 +14,7 @@ struct CompactWidgetOption: Equatable {
 struct WidgetPanelInventoryPayload {
     let hostInstanceID: String
     let revision: Int
+    let windowMode: DashboardWindowMode
     let widgets: [[String: Any]]
 }
 
@@ -56,11 +57,14 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
                   !rawHostInstanceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   let revision = (body["inventoryRevision"] as? NSNumber)?.intValue,
                   revision >= 0,
+                  let rawWindowMode = body["windowMode"] as? String,
+                  let windowMode = DashboardWindowMode(bridgeValue: rawWindowMode),
                   let widgets = body["widgets"] as? [[String: Any]]
             else { return }
             onWidgetPanelsChanged?(WidgetPanelInventoryPayload(
                 hostInstanceID: rawHostInstanceID.trimmingCharacters(in: .whitespacesAndNewlines),
                 revision: revision,
+                windowMode: windowMode,
                 widgets: widgets
             ))
             if let optionsPayload = body["compactWidgetOptions"] as? [[String: Any]] {

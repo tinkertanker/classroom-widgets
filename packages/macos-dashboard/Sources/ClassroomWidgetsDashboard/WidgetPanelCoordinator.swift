@@ -130,7 +130,8 @@ final class WidgetPanelCoordinator: NSObject {
     /// from the same host instance are ignored to prevent stale bridge retries
     /// from resurrecting or removing panels. A fresh web process has a new
     /// host instance ID, so its revision may safely restart at zero.
-    func reconcile(snapshot: WidgetPanelSnapshot) {
+    @discardableResult
+    func reconcile(snapshot: WidgetPanelSnapshot) -> Bool {
         if let lastSnapshot, snapshot.hostInstanceID != lastSnapshot.hostInstanceID {
             panelControllers.values.forEach { $0.closePermanently() }
             panelControllers.removeAll()
@@ -138,10 +139,10 @@ final class WidgetPanelCoordinator: NSObject {
         if let lastSnapshot,
            snapshot.hostInstanceID == lastSnapshot.hostInstanceID,
            snapshot.revision < lastSnapshot.revision {
-            return
+            return false
         }
         lastSnapshot = snapshot
-        guard compactPresentationActive else { return }
+        guard compactPresentationActive else { return true }
 
         let descriptorsByID = Dictionary(snapshot.widgets.map { ($0.id, $0) }, uniquingKeysWith: { _, latest in latest })
         let removedIDs = Set(panelControllers.keys).subtracting(descriptorsByID.keys)
@@ -167,6 +168,7 @@ final class WidgetPanelCoordinator: NSObject {
         if layout != .freeform {
             arrange(layout)
         }
+        return true
     }
 
     func showAll() {
@@ -233,6 +235,17 @@ final class WidgetPanelCoordinator: NSObject {
         guard !panelControllers.isEmpty else { return false }
         showAll()
         return true
+    }
+
+    func prepareForCompactInventory() {
+        compactPresentationActive = false
+    }
+
+    func activateCompactInventory() {
+        compactPresentationActive = true
+        if panelControllers.isEmpty, let lastSnapshot {
+            reconcile(snapshot: lastSnapshot)
+        }
     }
 
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
