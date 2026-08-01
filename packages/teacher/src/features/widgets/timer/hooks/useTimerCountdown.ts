@@ -7,6 +7,7 @@ export interface TimerPersistedState {
   isRunning: boolean;
   isPaused: boolean;
   pausedTimeRemaining: number;   // Seconds remaining when paused
+  timerFinished?: boolean;
 }
 
 interface UseTimerCountdownProps {
@@ -33,14 +34,17 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     if (rs.isRunning && rs.endTime) {
       const remaining = Math.max(0, Math.ceil((rs.endTime - Date.now()) / 1000));
       if (remaining > 0) {
-        return { time: remaining, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: true, isPaused: false, timerFinished: false };
+        return { time: remaining, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: true, isPaused: false, timerFinished: false, notifyTimeUp: false };
       } else {
         // Timer expired while unmounted
-        return { time: 0, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: false, timerFinished: true };
+        return { time: 0, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: false, timerFinished: true, notifyTimeUp: true };
       }
     }
     if (rs.isPaused) {
-      return { time: rs.pausedTimeRemaining, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: true, timerFinished: false };
+      return { time: rs.pausedTimeRemaining, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: true, timerFinished: false, notifyTimeUp: false };
+    }
+    if (rs.timerFinished) {
+      return { time: 0, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: false, timerFinished: true, notifyTimeUp: false };
     }
     return null;
   };
@@ -59,7 +63,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   const [scheduleVersion, setScheduleVersion] = useState(0);
   // Track the absolute end time for persistence
   const endTimeRef = useRef<number | null>(
-    restored?.isRunning && restored.time > 0 ? Date.now() + restored.time * 1000 : null
+    restored?.isRunning ? restoredState?.endTime ?? null : null
   );
 
   // Store callbacks in refs to avoid dependency issues
@@ -83,12 +87,15 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     return Math.max(0, pausedTimeRef.current - getElapsedSeconds());
   }, [getElapsedSeconds]);
 
-  // Fire onTimeUp if timer expired while unmounted
   useEffect(() => {
-    if (restored?.timerFinished) {
-      onTimeUpRef.current?.();
+    if (!restored?.notifyTimeUp) {
+      return;
     }
-    // Only on mount
+    const notification = setTimeout(() => {
+      onTimeUpRef.current?.();
+    }, 0);
+    return () => clearTimeout(notification);
+    // The restored snapshot is intentionally read only on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -244,7 +251,8 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     isRunning,
     isPaused,
     pausedTimeRemaining: pausedTimeRef.current,
-  }), [initialTime, isRunning, isPaused]);
+    timerFinished,
+  }), [initialTime, isRunning, isPaused, timerFinished]);
 
   return {
     time,

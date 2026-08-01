@@ -28,6 +28,7 @@ const MAX_COLUMN_HEIGHT = 1200;
 interface TextBannerProps {
   savedState?: Partial<TextBannerState> & { text: string };
   onStateChange?: (state: TextBannerState) => void;
+  isCompactPanel?: boolean;
 }
 
 const colorCombinations = [
@@ -117,8 +118,9 @@ const renderFormattedText = (value: string) => {
   ));
 };
 
-const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) => {
-  const isColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
+const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCompactPanel = false }) => {
+  const workspaceIsColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
+  const isColumnLayout = workspaceIsColumnLayout && !isCompactPanel;
 
   const initialState: TextBannerState = {
     text: PLACEHOLDER_TEXT,
@@ -398,6 +400,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange }) =>
       ref={widgetRef}
       className={cn(
         widgetContainer,
+        'widget-container-custom-surface',
         currentColors.bg,
         'relative overflow-hidden transition-colors duration-300 flex flex-col group/banner'
       )}

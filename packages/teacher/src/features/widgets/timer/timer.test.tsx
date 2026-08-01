@@ -96,6 +96,13 @@ describe('Timer Widget', () => {
     expect(screen.getByTestId('timer-face')).toHaveAttribute('fill', warmGray[800]);
   });
 
+  test('uses layered strokes instead of SVG filters for the progress glow', () => {
+    const { container } = renderWithModal(<Timer />);
+
+    expect(container.querySelector('filter')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('circle[stroke="url(#rainbowGradient)"]')).toHaveLength(2);
+  });
+
   test('keeps manual time edits after finishing segment editing', () => {
     renderWithModal(<Timer />);
 
@@ -294,6 +301,24 @@ describe('Timer Widget', () => {
     expect(onStateChange).not.toHaveBeenCalled();
   });
 
+  test('preserves a restored running timer deadline', () => {
+    const onStateChange = vi.fn();
+    const endTime = Date.now() + 60_000;
+
+    renderWithModal(<Timer savedState={{ timer: {
+      endTime,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: true,
+      isPaused: false,
+      pausedTimeRemaining: 0
+    } }} onStateChange={onStateChange} />);
+
+    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      timer: expect.objectContaining({ endTime })
+    }));
+  });
+
   test('hides quick-add controls after the timer finishes and still plays audio', () => {
     renderWithModal(<Timer />);
 
@@ -306,6 +331,46 @@ describe('Timer Widget', () => {
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /show add time options/i })).not.toBeInTheDocument();
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
+  });
+
+  test('restores a finished timer without replaying its end sound', () => {
+    const onStateChange = vi.fn();
+
+    renderWithModal(<Timer savedState={{ timer: {
+      endTime: null,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: false,
+      isPaused: false,
+      pausedTimeRemaining: 0,
+      timerFinished: true
+    } }} onStateChange={onStateChange} />);
+
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(global.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      timer: expect.objectContaining({ timerFinished: true })
+    }));
+  });
+
+  test('notifies once when a running timer expired while unmounted in StrictMode', () => {
+    renderWithModal(<React.StrictMode><Timer savedState={{ timer: {
+      endTime: Date.now() - 1000,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: true,
+      isPaused: false,
+      pausedTimeRemaining: 0
+    } }} /></React.StrictMode>);
+
+    expect(global.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+
+    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
   });
 
   test('mute stops an end sound that is already playing', () => {

@@ -73,6 +73,12 @@ export interface WidgetConfig {
   columnSizing?: ColumnSizing;
   /** Override height for 'fixed' column sizing (defaults to defaultSize.height). */
   columnHeight?: number;
+  /** Configuration for widgets that can run in an isolated native compact panel. */
+  compactPanel?: {
+    supported: boolean;
+    preferredSize?: Size;
+    minimumSize?: Size;
+  };
 }
 
 // Widget Features

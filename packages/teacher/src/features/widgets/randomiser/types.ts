@@ -9,6 +9,7 @@ export interface RandomiserState {
 export interface RandomiserSavedState {
   input: string;
   choices: string[];
+  removedChoices?: string[];
 }
 
 export interface RandomiserProps {

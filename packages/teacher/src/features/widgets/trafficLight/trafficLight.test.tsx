@@ -62,4 +62,15 @@ describe('TrafficLight', () => {
     expect(screen.getByText(/discuss/i)).toBeInTheDocument();
     expect(playMock).toHaveBeenCalledTimes(1);
   });
+
+  test('restores and publishes the selected light', async () => {
+    const onStateChange = vi.fn();
+    render(<TrafficLight savedState={{ activeLight: '#ffa500' }} onStateChange={onStateChange} />);
+
+    expect(screen.getByRole('button', { name: /set traffic light to orange/i })).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: /set traffic light to green/i }));
+
+    expect(onStateChange).toHaveBeenCalledWith({ activeLight: '#008000' });
+  });
 });

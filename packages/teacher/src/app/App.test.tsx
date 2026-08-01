@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
@@ -75,7 +75,7 @@ vi.mock('../features/voiceControl/components/VoiceInterface', () => ({
 }));
 
 vi.mock('../services/WidgetRegistry', () => ({
-  widgetRegistry: { get: vi.fn() }
+  widgetRegistry: { get: vi.fn(), getAll: vi.fn(() => []) }
 }));
 
 const setWindowWidth = (width: number) => {
@@ -96,6 +96,7 @@ class MockFileReader {
 
 describe('App narrow layout', () => {
   beforeEach(() => {
+    window.history.replaceState({}, '', '/');
     setWindowWidth(500);
     localStorage.clear();
     useWorkspaceStore.setState({
@@ -119,6 +120,31 @@ describe('App narrow layout', () => {
       expect(screen.getByTestId('column-board')).toBeInTheDocument();
     });
   });
+
+  it('keeps compact mode as a panel host without changing the saved canvas layout', async () => {
+    window.history.replaceState({}, '', '/?dashboard=1&mode=compact');
+    setWindowWidth(500);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useWorkspaceStore.getState().layoutFormat).toBe('canvas');
+      expect(screen.queryByTestId('column-widget-list')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('widget-list')).not.toBeInTheDocument();
+    });
+  });
+
+  it('dismisses a visible dashboard with Escape', async () => {
+    window.history.replaceState({}, '', '/?dashboard=1&visible=1&mode=canvas');
+    setWindowWidth(1200);
+    render(<App />);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(document.documentElement).toHaveClass('desktop-dashboard-hidden');
+    });
+  });
 });
 
 describe('App image paste sizing', () => {
@@ -126,6 +152,7 @@ describe('App image paste sizing', () => {
   const originalImage = globalThis.Image;
 
   beforeEach(() => {
+    window.history.replaceState({}, '', '/');
     setWindowWidth(1200);
     localStorage.clear();
     useWorkspaceStore.setState({
