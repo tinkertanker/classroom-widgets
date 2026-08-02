@@ -53,13 +53,24 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             }
             return
         }
-        workshopAccessState = await api.hasDeviceCredential() ? .ready : .registrationRequired
+        let hasCredential = await api.hasDeviceCredential()
+        workshopAccessState = hasCredential ? .ready : .registrationRequired
+        showsWorkshopAccess = !hasCredential
     }
     func requestWorkshopAccess() { showsWorkshopAccess = true }
     func dismissWorkshopAccess() { showsWorkshopAccess = false }
     func registerWorkshopAccess(_ code: String) async throws { try await api.registerDevice(accessCode: code); workshopAccessState = .ready; showsWorkshopAccess = false }
     func present(_ error: Error, during operation: StudioOperation) -> StudioErrorPresentation {
-        StudioErrorPresentation(title: "Studio could not complete this action", message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription, requestsWorkshopAccess: false)
+        if let apiError = error as? StudioAPIError, apiError.requiresRegistration {
+            workshopAccessState = .registrationRequired
+            showsWorkshopAccess = true
+            return StudioErrorPresentation(
+                title: "Studio access needed",
+                message: "Enter your workshop code to continue.",
+                requestsWorkshopAccess: true
+            )
+        }
+        return StudioErrorPresentation(title: "Studio could not complete this action", message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription, requestsWorkshopAccess: false)
     }
     func resetGuidedMake() { guidedMakeDraft = .init(); guidedMakeQuestionIndex = 0; guidedMakeResponse = ""; guidedMakeShowsSummary = false }
     func createApprovedBrief(_ brief: GuidedBriefDraft) async throws -> ArtifactProject {
@@ -111,7 +122,13 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     func unpublish(projectID: String) async throws { var current = try project(projectID); if let slug = current.artifact.publication?.slug { try await api.revoke(slug: slug) }; current.artifact.publication = nil; upsert(current) }
     func extendPublication(projectID: String) async throws { var current = try project(projectID); guard let slug = current.artifact.publication?.slug else { return }; current.artifact.publication = try await api.extend(slug: slug, days: 90); upsert(current) }
     func deleteProject(projectID: String) async throws {
-        try await api.deleteArtifact(id: projectID)
+        do {
+            try await api.deleteArtifact(id: projectID)
+        } catch let error as StudioAPIError where error.isArtifactNotFound {
+            // The server may have expired the recovery copy already. The local
+            // project must still remain deletable.
+        }
+        projects.first(where: { $0.id == projectID })?.localAssets.forEach(LocalWidgetAssetStorage.remove)
         projects.removeAll { $0.id == projectID }
         let name = projectID.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? projectID
         try? FileManager.default.removeItem(at: cacheDirectory.appending(path: "\(name).json"))
@@ -121,11 +138,21 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         defer { isRestoringFromStudio = false }
         let artifacts = try await api.listArtifacts()
         var count = 0
+        var failures = 0
         for artifact in artifacts {
-            let fetched = try await api.getArtifact(id: artifact.id)
-            let remote = try await cacheAssets(in: fetched)
-            upsert(remote)
-            count += 1
+            do {
+                let fetched = try await api.getArtifact(id: artifact.id)
+                let remote = try await cacheAssets(in: fetched)
+                upsert(remote)
+                count += 1
+            } catch {
+                failures += 1
+            }
+        }
+        if failures > 0 {
+            recoveryNotice = count > 0
+                ? "Studio restored \(count) widget(s), but could not restore \(failures). Try again later."
+                : "Studio could not restore your widgets. Try again later."
         }
         return count
     }

@@ -50,6 +50,67 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertEqual(store.projects.first?.source.html, revised.source.html)
     }
 
+    @MainActor
+    func testMissingCredentialAndRegistrationErrorRequestWorkshopAccess() async {
+        let project = makeProject(revisionID: "r1", html: "<html></html>")
+        let api = ArtifactAPIStub(generated: project, revised: project, hasCredential: false)
+        let store = StudioStore(api: api, storageDirectory: temporaryDirectory(), bundle: Bundle(for: Self.self))
+
+        await store.refreshWorkshopAccess()
+
+        XCTAssertEqual(store.workshopAccessState, .registrationRequired)
+        XCTAssertTrue(store.showsWorkshopAccess)
+
+        store.dismissWorkshopAccess()
+        let presentation = store.present(
+            StudioAPIError.server(401, "DEVICE_REGISTRATION_REQUIRED", "Registration required"),
+            during: .generation
+        )
+        XCTAssertTrue(presentation.requestsWorkshopAccess)
+        XCTAssertTrue(store.showsWorkshopAccess)
+    }
+
+    @MainActor
+    func testRestoreContinuesAfterOneArtifactFails() async throws {
+        let failed = makeProject(artifactID: "failed", revisionID: "r1", html: "<html>Failed</html>")
+        let restored = makeProject(artifactID: "restored", revisionID: "r2", html: "<html>Restored</html>")
+        let api = ArtifactAPIStub(
+            generated: restored,
+            revised: restored,
+            listedArtifacts: [failed.artifact, restored.artifact],
+            artifactErrors: [failed.id: .server(404, "SOURCE_NOT_FOUND", "Missing source")]
+        )
+        let store = StudioStore(api: api, storageDirectory: temporaryDirectory(), bundle: Bundle(for: Self.self))
+
+        let count = try await store.restoreFromStudio()
+
+        XCTAssertEqual(count, 1)
+        XCTAssertEqual(store.projects.map(\.id), [restored.id])
+        XCTAssertNotNil(store.recoveryNotice)
+    }
+
+    @MainActor
+    func testDeleteRemovesLocalProjectWhenServerCopyHasExpired() async throws {
+        let directory = temporaryDirectory()
+        let project = makeProject(revisionID: "r1", html: "<html></html>")
+        let api = ArtifactAPIStub(
+            generated: project,
+            revised: project,
+            deleteError: .server(404, "ARTIFACT_NOT_FOUND", "Missing artifact")
+        )
+        let store = StudioStore(api: api, storageDirectory: directory, bundle: Bundle(for: Self.self))
+        var brief = GuidedBriefDraft()
+        brief.learningObjective = "Forces"
+        brief.studentAction = "Choose"
+        _ = try await store.createApprovedBrief(brief)
+
+        try await store.deleteProject(projectID: project.id)
+
+        XCTAssertTrue(store.projects.isEmpty)
+        let restored = StudioStore(api: api, storageDirectory: directory, bundle: Bundle(for: Self.self))
+        XCTAssertTrue(restored.projects.isEmpty)
+    }
+
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appending(path: "StudioStoreTests-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -64,25 +125,43 @@ private actor ArtifactAPIStub: StudioAPI {
 
     let generated: ArtifactProject
     let revised: ArtifactProject
+    let hasCredential: Bool
+    let listedArtifacts: [Artifact]
+    let artifactErrors: [String: StudioAPIError]
+    let deleteError: StudioAPIError?
     private(set) var lastGenerationRequest: GuidedGenerationRequest?
     private(set) var lastRevisionRequest: RevisionRequest?
 
-    init(generated: ArtifactProject, revised: ArtifactProject) {
+    init(
+        generated: ArtifactProject,
+        revised: ArtifactProject,
+        hasCredential: Bool = true,
+        listedArtifacts: [Artifact]? = nil,
+        artifactErrors: [String: StudioAPIError] = [:],
+        deleteError: StudioAPIError? = nil
+    ) {
         self.generated = generated
         self.revised = revised
+        self.hasCredential = hasCredential
+        self.listedArtifacts = listedArtifacts ?? [generated.artifact]
+        self.artifactErrors = artifactErrors
+        self.deleteError = deleteError
     }
 
-    func hasDeviceCredential() async -> Bool { true }
+    func hasDeviceCredential() async -> Bool { hasCredential }
     func registerDevice(accessCode: String) async throws {}
     func generate(request: GuidedGenerationRequest) async throws -> ArtifactProject {
         lastGenerationRequest = request
         return generated
     }
-    func listArtifacts() async throws -> [Artifact] { [generated.artifact] }
+    func listArtifacts() async throws -> [Artifact] { listedArtifacts }
     func searchExamples(brief: String) async throws -> [ExampleSearchDescriptor] { [] }
-    func getArtifact(id: String) async throws -> ArtifactProject { generated }
+    func getArtifact(id: String) async throws -> ArtifactProject {
+        if let error = artifactErrors[id] { throw error }
+        return generated
+    }
     func updateArtifact(_ artifact: Artifact) async throws -> Artifact { artifact }
-    func deleteArtifact(id: String) async throws {}
+    func deleteArtifact(id: String) async throws { if let deleteError { throw deleteError } }
     func revise(id: String, instruction: String, expectedHeadRevisionId: String) async throws -> ArtifactProject {
         lastRevisionRequest = RevisionRequest(
             instruction: instruction,
@@ -132,11 +211,11 @@ private actor ArtifactAPIStub: StudioAPI {
 }
 
 private func makeProject(
+    artifactID: String = "artifact-1",
     revisionID: String,
     parentRevisionID: String? = nil,
     html: String
 ) -> ArtifactProject {
-    let artifactID = "artifact-1"
     let timestamp = "2026-08-02T00:00:00Z"
     let revision = ArtifactRevision(
         id: revisionID,
