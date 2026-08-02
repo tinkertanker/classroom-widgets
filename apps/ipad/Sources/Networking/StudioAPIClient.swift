@@ -242,8 +242,12 @@ struct StudioAPIClient: StudioAPI, Sendable {
     private struct ProjectEnvelope: Decodable { let artifact: Artifact; let headRevision: ArtifactRevision; let html: String? }
 
     private func hydrate(_ envelope: ProjectEnvelope) async throws -> ArtifactProject {
-        let source = envelope.html.map { ArtifactSource(revision: envelope.headRevision, html: $0) }
-            ?? (try await self.source(revision: envelope.headRevision))
+        let source: ArtifactSource
+        if let html = envelope.html {
+            source = ArtifactSource(revision: envelope.headRevision, html: html)
+        } else {
+            source = try await self.source(revision: envelope.headRevision)
+        }
         let history = try await revisions(id: envelope.artifact.id)
         return ArtifactProject(artifact: envelope.artifact, source: source, revisions: history)
     }

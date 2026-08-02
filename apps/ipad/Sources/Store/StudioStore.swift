@@ -178,7 +178,7 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         let pattern = #"assets/([A-Za-z0-9][A-Za-z0-9._-]*)"#
         let expression = try NSRegularExpression(pattern: pattern)
         let range = NSRange(project.source.html.startIndex..., in: project.source.html)
-        let assetIDs = Set(expression.matches(in: project.source.html, range: range).compactMap { match in
+        let assetIDs = Set<String>(expression.matches(in: project.source.html, range: range).compactMap { match in
             guard let range = Range(match.range(at: 1), in: project.source.html) else { return nil }
             return String(project.source.html[range])
         })
