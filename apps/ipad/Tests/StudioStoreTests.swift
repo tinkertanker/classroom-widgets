@@ -72,6 +72,31 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testFallbackExampleCopyUsesGenerationWithoutServerRevision() async throws {
+        let fallback = makeProject(
+            artifactID: "example-fallback",
+            revisionID: "example-fallback-seed",
+            html: "<html>Fallback</html>"
+        )
+        let copy = makeProject(revisionID: "copy-revision", html: "<html>Copy</html>")
+        let api = ArtifactAPIStub(generated: copy, revised: copy)
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
+
+        try await store.remix(fallback)
+
+        let generation = await api.lastGenerationRequest
+        let remix = await api.lastRemixRequest
+        XCTAssertEqual(generation?.creationBrief, fallback.artifact.creationBrief)
+        XCTAssertNil(generation?.preferredExampleRevisionId)
+        XCTAssertNil(remix)
+        XCTAssertEqual(store.selectedProjectID, copy.id)
+    }
+
+    @MainActor
     func testMissingCredentialAndRegistrationErrorReopenWorkshopAccess() async {
         let project = makeProject(revisionID: "r1", html: "<html></html>")
         let api = ArtifactAPIStub(

@@ -102,10 +102,27 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         let project = try await api.generate(request: request); upsert(project); open(project); return project
     }
     func remix(_ example: ArtifactProject) async throws {
-        let project = try await api.remix(
-            id: example.artifact.id,
-            revisionId: example.source.revision.id
-        )
+        let project: ArtifactProject
+        if example.artifact.id == "example-fallback" {
+            let artifact = example.artifact
+            project = try await api.generate(request: GuidedGenerationRequest(
+                creationBrief: artifact.creationBrief,
+                brief: .init(
+                    learnerContext: artifact.level ?? artifact.subject ?? "General learners",
+                    learningObjective: artifact.learningObjective ?? artifact.title,
+                    studentAction: artifact.summary,
+                    sourceContent: nil,
+                    feedback: "Provide clear feedback",
+                    classroomFit: "Use in a short classroom activity"
+                ),
+                preferredExampleRevisionId: nil
+            ))
+        } else {
+            project = try await api.remix(
+                id: example.artifact.id,
+                revisionId: example.source.revision.id
+            )
+        }
         upsert(project)
         open(project)
     }
