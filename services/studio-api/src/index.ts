@@ -77,7 +77,11 @@ export function injectPublicHtml(source: string, slug: string): string {
     /<head(\s[^>]*)?>/i,
     (head) => `${head}<base href="/${slug}/">`,
   );
-  const bodyClosings = [...withBase.matchAll(/<\/body\s*>/gi)];
+  const structure = withBase.replace(
+    /<!--[\s\S]*?-->|<(script|style|textarea|title)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
+    (content) => " ".repeat(content.length),
+  );
+  const bodyClosings = [...structure.matchAll(/<\/body\s*>/gi)];
   const bodyClosing = bodyClosings.at(-1);
   if (bodyClosing?.index === undefined || withBase === source)
     throw new Error("Stored widget source is not a complete HTML document.");

@@ -9,6 +9,11 @@ describe('deterministic moderation', () => {
       ]));
   });
 
+  it('does not treat numeric JavaScript constants as phone numbers', () => {
+    expect(inspectHtml('<script>const millisecondsPerDay = 86400000;</script>'))
+      .toEqual([]);
+  });
+
   it('blocks direct weapon-building instructions before model moderation', () => {
     expect(inspectText('How to make a bomb: combine these materials and follow these steps.'))
       .toEqual(expect.arrayContaining([

@@ -144,6 +144,17 @@ describe("Studio API registration and public HTML", () => {
     );
   });
 
+  it("ignores body-closing text in trailing comments", () => {
+    const source =
+      "<!doctype html><html><head></head><body><main>Widget</main></body><!-- </body> --></html>";
+    const served = injectPublicHtml(source, "ABCDEFGHIJKLMNOPQRST");
+
+    expect(served.indexOf("data-studio-report")).toBeLessThan(
+      served.indexOf("</body>"),
+    );
+    expect(served).toContain("<!-- </body> -->");
+  });
+
   it("imports reviewed seeds into retrieval and uses a selected seed as generation context", async () => {
     const seed = {
       seedId: "fraction-equivalence-diagnostic",
