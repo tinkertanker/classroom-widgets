@@ -1,5 +1,6 @@
 import type {
   ArtifactRecord,
+  ArtifactStorageReferences,
   ContentReportInput,
   CreateArtifactInput,
   CuratedSeedInput,
@@ -8,7 +9,7 @@ import type {
   RevisionRecord,
   StudioRepository,
 } from "./repository";
-import { CURATED_SEED_OWNER } from "./repository";
+import { CURATED_SEED_OWNER, retrievalDescriptor } from "./repository";
 export class MemoryStudioRepository implements StudioRepository {
   readonly artifacts = new Map<string, ArtifactRecord>();
   readonly revisions = new Map<string, RevisionRecord>();
@@ -92,15 +93,39 @@ export class MemoryStudioRepository implements StudioRepository {
     Object.assign(a, metadata);
     a.updatedAt = n;
     const retrieval = this.retrieval.get(id);
-    if (retrieval) retrieval.title = metadata.title;
+    if (retrieval) {
+      retrieval.title = metadata.title;
+      retrieval.descriptor = retrievalDescriptor(
+        metadata,
+        this.revisions.get(retrieval.revisionId)?.designCard ?? null,
+      );
+    }
     return structuredClone(a);
+  }
+  async getArtifactStorageReferences(
+    id: string,
+    o: string,
+  ): Promise<ArtifactStorageReferences | null> {
+    const artifact = this.artifacts.get(id);
+    if (!artifact || artifact.ownerHash !== o) return null;
+    const revisions = [...this.revisions.values()].filter(
+      (revision) => revision.artifactId === id,
+    );
+    return {
+      screenshotKeys: revisions.flatMap((revision) =>
+        revision.screenshotKey ? [revision.screenshotKey] : [],
+      ),
+    };
   }
   async deleteArtifact(id: string, o: string) {
     const a = this.artifacts.get(id);
     if (!a || a.ownerHash !== o) return false;
     this.artifacts.delete(id);
     for (const [k, r] of this.revisions)
-      if (r.artifactId === id) this.revisions.delete(k);
+      if (r.artifactId === id) {
+        this.revisions.delete(k);
+        this.revisionAssets.delete(k);
+      }
     for (const [k, p] of this.publications)
       if (p.artifactId === id) this.publications.delete(k);
     this.retrieval.delete(id);
@@ -117,8 +142,16 @@ export class MemoryStudioRepository implements StudioRepository {
           ),
       )
       .slice(0, l);
-    for (const x of a) await this.deleteArtifact(x.id, x.ownerHash);
-    return a.length;
+    const deleted: ArtifactStorageReferences[] = [];
+    for (const x of a) {
+      const references = await this.getArtifactStorageReferences(
+        x.id,
+        x.ownerHash,
+      );
+      if (references && (await this.deleteArtifact(x.id, x.ownerHash)))
+        deleted.push(references);
+    }
+    return deleted;
   }
   async getRevision(id: string) {
     const r = this.revisions.get(id);
@@ -213,7 +246,7 @@ export class MemoryStudioRepository implements StudioRepository {
     r: RevisionRecord,
     expiresAt: string,
     now: string,
-    html: string,
+    descriptor: string,
   ) {
     const current = this.artifacts.get(a.id);
     if (!current || current.headRevisionId !== r.id) return null;
@@ -243,8 +276,8 @@ export class MemoryStudioRepository implements StudioRepository {
       artifactId: a.id,
       revisionId: r.id,
       title: a.title,
-      descriptor: r.designCard ?? a.creationBrief,
-      html,
+      descriptor,
+      html: "",
       curated: false,
     });
     return structuredClone(p);

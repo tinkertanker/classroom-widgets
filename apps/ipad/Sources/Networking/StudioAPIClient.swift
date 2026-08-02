@@ -365,7 +365,17 @@ enum StudioAPIError: LocalizedError, Equatable {
         case .invalidURL, .invalidResponse, .transport, .decoding, .server: "Studio could not complete this request. Check your connection and try again."
         }
     }
-    var requiresRegistration: Bool { if case .server(401, let code, _) = self { return code == "DEVICE_REGISTRATION_REQUIRED" || code == "DEVICE_TOKEN_REQUIRED" }; return false }
+    var requiresRegistration: Bool {
+        if case .registrationRequired = self { return true }
+        if case .server(401, let code, _) = self {
+            return code == "DEVICE_REGISTRATION_REQUIRED" || code == "DEVICE_TOKEN_REQUIRED"
+        }
+        return false
+    }
+    var isArtifactNotFound: Bool {
+        if case .server(404, let code, _) = self { return code == "ARTIFACT_NOT_FOUND" }
+        return false
+    }
     var requiresRefresh: Bool {
         if requiresRegistration { return true }
         if case .server(422, let code, _) = self { return code == "PUBLICATION_EXPIRY_LIMIT_REACHED" }

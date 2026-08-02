@@ -133,6 +133,28 @@ describe("Studio API registration and public HTML", () => {
     expect(source).not.toContain("<base");
   });
 
+  it("injects the report control at the closing body rather than script text", () => {
+    const source =
+      '<!doctype html><html><head></head><body><script>const closing = "</body>";</script></body></html>';
+    const served = injectPublicHtml(source, "ABCDEFGHIJKLMNOPQRST");
+
+    expect(served).toContain('const closing = "</body>";');
+    expect(served.indexOf("data-studio-report")).toBeGreaterThan(
+      served.indexOf("</script>"),
+    );
+  });
+
+  it("ignores body-closing text in trailing comments", () => {
+    const source =
+      "<!doctype html><html><head></head><body><main>Widget</main></body><!-- </body> --></html>";
+    const served = injectPublicHtml(source, "ABCDEFGHIJKLMNOPQRST");
+
+    expect(served.indexOf("data-studio-report")).toBeLessThan(
+      served.indexOf("</body>"),
+    );
+    expect(served).toContain("<!-- </body> -->");
+  });
+
   it("imports reviewed seeds into retrieval and uses a selected seed as generation context", async () => {
     const seed = {
       seedId: "fraction-equivalence-diagnostic",
@@ -268,6 +290,42 @@ describe("Studio API registration and public HTML", () => {
     };
     expect(remixed.artifact.remixedFromRevisionId).toBe(first.headRevision.id);
     expect(remixed.headRevision.parentRevisionId).toBeNull();
+  });
+
+  it("removes deleted screenshots without racing shared content-addressed sources", async () => {
+    const generated = await app.fetch(
+      authenticated("/v1/artifacts/generate", "POST", creationBrief),
+    );
+    const first = (await generated.json()) as {
+      artifact: { id: string };
+      headRevision: RevisionRecord;
+    };
+    const remixedResponse = await app.fetch(
+      authenticated(`/v1/revisions/${first.headRevision.id}/remix`, "POST", {}),
+    );
+    const remixed = (await remixedResponse.json()) as {
+      artifact: { id: string };
+    };
+    const screenshotKey = await sources.putScreenshot(
+      first.headRevision.id,
+      new Uint8Array([0xff, 0xd8, 0xff, 0xd9]),
+    );
+    await repository.setScreenshot(
+      first.headRevision.id,
+      repository.artifacts.get(first.artifact.id)!.ownerHash,
+      screenshotKey,
+    );
+
+    expect(
+      (await app.fetch(authenticated(`/v1/artifacts/${first.artifact.id}`, "DELETE"))).status,
+    ).toBe(204);
+    expect(sources.screens.size).toBe(0);
+    expect(sources.sources.size).toBe(1);
+
+    expect(
+      (await app.fetch(authenticated(`/v1/artifacts/${remixed.artifact.id}`, "DELETE"))).status,
+    ).toBe(204);
+    expect(sources.sources.size).toBe(1);
   });
 
   it("round-trips rich metadata, screenshots, and publication envelopes", async () => {

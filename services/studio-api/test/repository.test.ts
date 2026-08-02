@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MemoryStudioRepository } from "../src/storage/memoryRepository";
 import {
   CURATED_SEED_OWNER,
+  retrievalDescriptor,
   type ArtifactRecord,
   type RevisionRecord,
 } from "../src/storage/repository";
@@ -44,6 +45,17 @@ function records(id = "artifact-1", ownerHash = "owner-a") {
 }
 
 describe("MemoryStudioRepository artifact model", () => {
+  it("keeps private creation briefs out of retrieval descriptors", () => {
+    const { artifact } = records();
+    artifact.creationBrief = "Private source notes about a named student";
+
+    const descriptor = retrievalDescriptor(artifact, '{"layout":"cards"}');
+
+    expect(descriptor).toContain("Compare fractions");
+    expect(descriptor).toContain("cards");
+    expect(descriptor).not.toContain(artifact.creationBrief);
+  });
+
   it("enforces quota boundaries and class-code capacity", async () => {
     const repository = new MemoryStudioRepository();
     expect(
@@ -233,7 +245,7 @@ describe("MemoryStudioRepository artifact model", () => {
     });
     expect(
       await repository.deleteExpiredArtifacts("2026-01-01T00:00:00Z", now),
-    ).toBe(0);
+    ).toEqual([]);
     expect(await repository.isRevisionRetrievable(seed.revision.id, now)).toBe(
       true,
     );
@@ -271,13 +283,20 @@ describe("MemoryStudioRepository artifact model", () => {
     await repository.updateArtifactMetadata(
       teacher.artifact.id,
       teacher.artifact.ownerHash,
-      { ...teacher.artifact, title: "Decimal Quokka" },
+      {
+        ...teacher.artifact,
+        title: "Decimal Quokka",
+        summary: "Place-value regrouping practice",
+      },
       now,
     );
     expect(await repository.searchRetrieval('"Quokka"', 10, now)).toHaveLength(
       1,
     );
     expect(await repository.searchRetrieval('"Polygon"', 10, now)).toEqual([]);
+    expect(
+      await repository.searchRetrieval('"regrouping"', 10, now),
+    ).toHaveLength(1);
 
     await repository.revokePublication("teacher-slug", "owner-a", now);
     expect(

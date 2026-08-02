@@ -1,6 +1,6 @@
 import vm from 'node:vm';
 
-export const MAX_HTML_BYTES = 200 * 1024;
+export const MAX_HTML_BYTES = 200_000;
 
 const REQUIRED_MANIFEST_FIELDS = [
   'id',
@@ -92,7 +92,7 @@ export function validateSeedManifest(manifest, options = {}) {
     });
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(typeof seed.id === 'string' ? seed.id : '')) issues.push({ code: 'seed-id', message: `${label} has an unstable ID.` });
     if (!/^[a-z0-9-]+\.html$/.test(typeof seed.filename === 'string' ? seed.filename : '')) issues.push({ code: 'filename', message: `${label} has an invalid HTML filename.` });
-    if (!Array.isArray(seed.tags) || seed.tags.length < 3 || !seed.tags.every((tag) => typeof tag === 'string' && tag.trim())) issues.push({ code: 'tags', message: `${label} needs at least three non-empty string tags.` });
+    if (!Array.isArray(seed.tags) || seed.tags.length < 3 || seed.tags.length > 20 || !seed.tags.every((tag) => typeof tag === 'string' && tag.trim() && tag.length <= 50)) issues.push({ code: 'tags', message: `${label} needs 3–20 non-empty string tags of at most 50 characters.` });
     if (!seed.designCard || typeof seed.designCard !== 'object' || Array.isArray(seed.designCard)) issues.push({ code: 'design-card', message: `${label} needs an object designCard.` });
     for (const [value, set, name] of [[seed.id, ids, 'ID'], [seed.filename, filenames, 'filename'], [seed.title, titles, 'title']]) {
       if (set.has(value)) issues.push({ code: 'duplicate', message: `${label} duplicates ${name} ${value}.` });

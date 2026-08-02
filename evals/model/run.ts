@@ -1,10 +1,20 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { OpenAiCompatibleProvider } from "../../services/studio-api/src/ai/openAiCompatibleProvider";
+import type {
+  DesignCard,
+  Exemplar,
+  TeacherBrief,
+} from "../../services/studio-api/src/ai/provider";
+import {
+  InvalidModelOutputError,
+  validateHtmlOutput,
+} from "../../services/studio-api/src/generation";
 import { assessArtifact } from "./artifact-eval.mjs";
 
 interface EvalCase {
   id: string;
-  brief: Record<string, unknown>;
+  brief: TeacherBrief;
   locale: string;
   expectedInteractions: string[];
   contentTerms: string[];
@@ -17,6 +27,17 @@ interface Manifest {
   cases: EvalCase[];
 }
 
+interface SeedManifest {
+  seeds: Array<{
+    id: string;
+    filename: string;
+    subject: string;
+    level: string;
+    descriptor: string;
+    designCard: DesignCard;
+  }>;
+}
+
 const repoRoot = resolve(process.env.INIT_CWD ?? process.cwd());
 const model = process.env.EVAL_MODEL ?? "deepseek-v4-flash";
 const baseUrl = (
@@ -27,69 +48,88 @@ if (!apiKey)
   throw new Error(
     "Set DEEPSEEK_API_KEY or AI_API_KEY to run the live artifact eval.",
   );
+const provider = new OpenAiCompatibleProvider({ baseUrl, apiKey, model });
 
-async function complete(
-  messages: Array<{ role: string; content: string }>,
-): Promise<string> {
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      response_format: { type: "json_object" },
-      messages,
-    }),
-  });
-  const body = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-    error?: { message?: string };
-  };
-  const content = body.choices?.[0]?.message?.content;
-  if (!response.ok || !content)
-    throw new Error(
-      body.error?.message ?? `Provider returned HTTP ${response.status}.`,
-    );
-  return content;
+function serialise(candidate: unknown): string {
+  return typeof candidate === "string" ? candidate : JSON.stringify(candidate);
 }
 
-async function evaluate(entry: EvalCase) {
-  const system =
-    'Create one compact classroom widget as a complete, readable, self-contained HTML document with inline CSS and JavaScript. Use no packages, external assets, or network requests. Make controls touch-friendly and normally fit one screen. Return only JSON: {"html":"...","designCard":{"layout":"...","accent":"...","interaction":"..."}}.';
+function normalise(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+async function loadExemplars(): Promise<Exemplar[]> {
+  const directory = resolve(repoRoot, "examples/studio-html");
+  const manifest = JSON.parse(
+    await readFile(resolve(directory, "manifest.json"), "utf8"),
+  ) as SeedManifest;
+  return Promise.all(
+    manifest.seeds.map(async (seed) => ({
+      revisionId: `${seed.id}-seed`,
+      html: await readFile(resolve(directory, seed.filename), "utf8"),
+      designCard: seed.designCard,
+      descriptor: seed.descriptor,
+    })),
+  );
+}
+
+async function evaluate(entry: EvalCase, seeds: Exemplar[], manifest: SeedManifest) {
   const request = {
     locale: entry.locale,
     expectedInteractions: entry.expectedInteractions,
     contentTerms: entry.contentTerms,
   };
+  const subject = normalise(entry.brief.subject);
+  const level = normalise(entry.brief.level);
+  const exemplars = manifest.seeds
+    .map((seed, index) => ({ seed, exemplar: seeds[index]! }))
+    .filter(({ seed }) => normalise(seed.subject) === subject)
+    .sort(
+      (a, b) =>
+        Number(normalise(b.seed.level) === level) -
+        Number(normalise(a.seed.level) === level),
+    )
+    .slice(0, 2)
+    .map(({ exemplar }) => exemplar);
   const started = performance.now();
-  const messages = [
-    { role: "system", content: system },
-    { role: "user", content: JSON.stringify(entry.brief) },
-  ];
-  let output = await complete(messages);
-  let assessment = assessArtifact(output, request);
-  const firstPassValid = assessment.valid;
-  let repairAttempts = 0;
-  while (!assessment.valid && repairAttempts < 1) {
-    repairAttempts += 1;
-    messages.push({ role: "assistant", content: output });
-    messages.push({
-      role: "user",
-      content: `Repair the artifact and return the same JSON shape. Findings: ${assessment.issues.map((issue: { code: string; message: string }) => `${issue.code}: ${issue.message}`).join("; ")}`,
-    });
-    output = await complete(messages);
-    assessment = assessArtifact(output, request);
+  let output = await provider.generate(entry.brief, exemplars);
+  let productionIssues: string[] = [];
+  let productionValid = false;
+  try {
+    output = validateHtmlOutput(output);
+    productionValid = true;
+  } catch (error) {
+    if (!(error instanceof InvalidModelOutputError)) throw error;
+    productionIssues = error.issues;
   }
+  const firstAssessment = assessArtifact(serialise(output), request);
+  const firstPassValid = productionValid && firstAssessment.valid;
+  let repairAttempts = 0;
+  if (!productionValid) {
+    repairAttempts += 1;
+    output = await provider.repair(output, productionIssues);
+    try {
+      output = validateHtmlOutput(output);
+      productionValid = true;
+      productionIssues = [];
+    } catch (error) {
+      if (!(error instanceof InvalidModelOutputError)) throw error;
+      productionIssues = error.issues;
+    }
+  }
+  const assessment = assessArtifact(serialise(output), request);
   return {
     id: entry.id,
     firstPassValid,
-    finalValid: assessment.valid,
+    finalValid: productionValid && assessment.valid,
     repairAttempts,
     latencyMs: Math.round(performance.now() - started),
+    exemplarRevisionIds: exemplars.map((exemplar) => exemplar.revisionId),
     heuristicChecks: assessment.checks,
-    issues: assessment.issues,
+    issues: [
+      ...productionIssues.map((message) => ({ code: "production", message })),
+      ...assessment.issues,
+    ],
   };
 }
 
@@ -100,10 +140,17 @@ async function main() {
       "utf8",
     ),
   ) as Manifest;
+  const seedManifest = JSON.parse(
+    await readFile(
+      resolve(repoRoot, "examples/studio-html/manifest.json"),
+      "utf8",
+    ),
+  ) as SeedManifest;
+  const exemplars = await loadExemplars();
   const results = [];
   for (const entry of manifest.cases) {
     process.stdout.write(`Evaluating ${entry.id}… `);
-    const result = await evaluate(entry);
+    const result = await evaluate(entry, exemplars, seedManifest);
     console.log(result.finalValid ? "valid" : "failed");
     results.push(result);
   }

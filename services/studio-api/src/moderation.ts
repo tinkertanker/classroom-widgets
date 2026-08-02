@@ -29,11 +29,21 @@ export function inspectTeacherBrief(brief: TeacherBrief): ModerationFinding[] {
 }
 
 export function inspectHtml(html: string): ModerationFinding[] {
+  const scriptStrings = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]
+    .flatMap((script) =>
+      [...(script[1] ?? "").matchAll(/(["'`])((?:\\[\s\S]|(?!\1)[^\\])*)\1/g)].map(
+        (literal) =>
+          literal[1] === "`"
+            ? (literal[2] ?? "").replace(/\$\{[\s\S]*?\}/g, " ")
+            : (literal[2] ?? ""),
+      ),
+    )
+    .join("\n");
   return inspectText(
-    html
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    `${html
       .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " "),
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<[^>]+>/g, " ")}\n${scriptStrings}`,
   );
 }
 

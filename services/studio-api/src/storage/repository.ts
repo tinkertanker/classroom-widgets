@@ -26,6 +26,26 @@ export type ArtifactMetadata = Pick<
   | "tags"
   | "creationBrief"
 >;
+
+export function retrievalDescriptor(
+  artifact: ArtifactMetadata,
+  designCard: string | null,
+): string {
+  return [
+    artifact.summary,
+    artifact.subject ? `Subject: ${artifact.subject}` : null,
+    artifact.level ? `Level: ${artifact.level}` : null,
+    artifact.locale ? `Locale: ${artifact.locale}` : null,
+    artifact.learningObjective
+      ? `Learning objective: ${artifact.learningObjective}`
+      : null,
+    artifact.tags.length ? `Tags: ${artifact.tags.join(", ")}` : null,
+    designCard,
+  ]
+    .filter((value): value is string => !!value)
+    .join("\n");
+}
+
 export interface RevisionRecord {
   id: string;
   artifactId: string;
@@ -81,6 +101,9 @@ export interface CreateArtifactInput {
 export interface CuratedSeedInput extends CreateArtifactInput {
   descriptor: string;
 }
+export interface ArtifactStorageReferences {
+  screenshotKeys: string[];
+}
 
 export const CURATED_SEED_OWNER = "studio-curated-seed";
 
@@ -104,12 +127,16 @@ export interface StudioRepository {
     metadata: ArtifactMetadata,
     now: string,
   ): Promise<ArtifactRecord | null>;
+  getArtifactStorageReferences(
+    id: string,
+    owner: string,
+  ): Promise<ArtifactStorageReferences | null>;
   deleteArtifact(id: string, owner: string): Promise<boolean>;
   deleteExpiredArtifacts(
     before: string,
     now: string,
     limit?: number,
-  ): Promise<number>;
+  ): Promise<ArtifactStorageReferences[]>;
   getRevision(id: string): Promise<RevisionRecord | null>;
   listRevisions(artifactId: string, owner: string): Promise<RevisionRecord[]>;
   createRevision(
@@ -142,7 +169,7 @@ export interface StudioRepository {
     revision: RevisionRecord,
     expiresAt: string,
     now: string,
-    html: string,
+    descriptor: string,
   ): Promise<PublicationRecord | null>;
   getActivePublicationForArtifact(
     id: string,

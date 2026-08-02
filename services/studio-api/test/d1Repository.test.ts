@@ -236,10 +236,58 @@ describe("D1StudioRepository conditional revision writes", () => {
     await repository.isRevisionRetrievable(revision.id, revision.createdAt);
     await repository.searchRetrieval('"Quokka"', 10, revision.createdAt);
 
-    expect(sql[1]).toContain("UPDATE retrieval_entries SET updated_at");
+    expect(sql[1]).toContain("UPDATE retrieval_entries SET descriptor=");
+    expect(sql[1]).toContain("design_card_json");
     expect(sql[3]).toContain("p.expires_at>?2");
     expect(sql[4]).toContain("p.expires_at>?3");
     expect(sql[3]).toContain("r.curated=1");
     expect(sql[4]).toContain("r.curated=1");
+  });
+
+  it("returns screenshot cleanup only for artifacts deleted after the expiry recheck", async () => {
+    const sql: string[] = [];
+    const database = {
+      prepare(text: string) {
+        sql.push(text);
+        const statement = {
+          bind: () => statement,
+          all: () =>
+            Promise.resolve({
+              results: text.startsWith("WITH candidates")
+                ? [
+                    {
+                      id: "expired",
+                      owner_hash: "owner-a",
+                      screenshot_key: "screens/expired.jpg",
+                    },
+                    {
+                      id: "changed",
+                      owner_hash: "owner-b",
+                      screenshot_key: "screens/changed.jpg",
+                    },
+                  ]
+                : [],
+            }),
+        };
+        return statement;
+      },
+      batch(statements: unknown[]) {
+        expect(statements).toHaveLength(2);
+        return Promise.resolve([
+          { meta: { changes: 1 } },
+          { meta: { changes: 0 } },
+        ]);
+      },
+    } as unknown as D1Database;
+
+    await expect(
+      new D1StudioRepository(database).deleteExpiredArtifacts(
+        "2026-01-01T00:00:00Z",
+        "2026-08-02T00:00:00Z",
+      ),
+    ).resolves.toEqual([{ screenshotKeys: ["screens/expired.jpg"] }]);
+    expect(sql[0]).toContain(`owner_hash<>?4`);
+    expect(sql[1]).toContain("updated_at<?3");
+    expect(sql[1]).toContain("p.expires_at>?4");
   });
 });

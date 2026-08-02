@@ -1,5 +1,6 @@
 import type {
   ArtifactRecord,
+  ArtifactStorageReferences,
   ContentReportInput,
   CreateArtifactInput,
   CuratedSeedInput,
@@ -9,7 +10,7 @@ import type {
   RevisionRecord,
   StudioRepository,
 } from "./repository";
-import { CURATED_SEED_OWNER } from "./repository";
+import { CURATED_SEED_OWNER, retrievalDescriptor } from "./repository";
 type Row = Record<string, string | number | null>;
 const art = (r: Row): ArtifactRecord => ({
   id: r.id as string,
@@ -217,6 +218,7 @@ ON CONFLICT(artifact_id) DO UPDATE SET revision_id=?2,descriptor=?3,curated=1,up
     m: import("./repository").ArtifactMetadata,
     n: string,
   ) {
+    const descriptor = retrievalDescriptor(m, null);
     await this.db.batch([
       this.p(
         "UPDATE artifacts SET title=?1,summary=?2,subject=?3,level=?4,locale=?5,learning_objective=?6,tags_json=?7,creation_brief=?8,updated_at=?9 WHERE id=?10 AND owner_hash=?11",
@@ -232,16 +234,33 @@ ON CONFLICT(artifact_id) DO UPDATE SET revision_id=?2,descriptor=?3,curated=1,up
         id,
         o,
       ),
-      // Touching the projection fires retrieval_au, which refreshes the FTS
-      // title copied from the artifact without changing retrieval eligibility.
       this.p(
-        "UPDATE retrieval_entries SET updated_at=?1 WHERE artifact_id=?2 AND EXISTS(SELECT 1 FROM artifacts WHERE id=?2 AND owner_hash=?3)",
+        "UPDATE retrieval_entries SET descriptor=?1||coalesce((SELECT char(10)||design_card_json FROM revisions WHERE id=retrieval_entries.revision_id),''),updated_at=?2 WHERE artifact_id=?3 AND EXISTS(SELECT 1 FROM artifacts WHERE id=?3 AND owner_hash=?4)",
+        descriptor,
         n,
         id,
         o,
       ),
     ]);
     return this.getArtifact(id, o);
+  }
+  async getArtifactStorageReferences(
+    id: string,
+    o: string,
+  ): Promise<ArtifactStorageReferences | null> {
+    const rows = (
+      await this.p(
+        "SELECT r.screenshot_key FROM revisions r JOIN artifacts a ON a.id=r.artifact_id WHERE a.id=?1 AND a.owner_hash=?2",
+        id,
+        o,
+      ).all<Row>()
+    ).results;
+    if (!rows.length) return null;
+    return {
+      screenshotKeys: rows.flatMap((row) =>
+        row.screenshot_key ? [row.screenshot_key as string] : [],
+      ),
+    };
   }
   async deleteArtifact(id: string, o: string) {
     const r = await this.p(
@@ -252,14 +271,52 @@ ON CONFLICT(artifact_id) DO UPDATE SET revision_id=?2,descriptor=?3,curated=1,up
     return r.results.length === 1;
   }
   async deleteExpiredArtifacts(b: string, n: string, l = 100) {
-    const r = await this.p(
-      "DELETE FROM artifacts WHERE id IN(SELECT a.id FROM artifacts a WHERE updated_at<?1 AND owner_hash<>?4 AND NOT EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=a.id AND revoked_at IS NULL AND expires_at>?2) LIMIT ?3)",
-      b,
-      n,
-      l,
-      CURATED_SEED_OWNER,
-    ).run();
-    return r.meta.changes ?? 0;
+    const rows = (
+      await this.p(
+        `WITH candidates AS (
+  SELECT a.id,a.owner_hash FROM artifacts a
+  WHERE updated_at<?1 AND owner_hash<>?4
+    AND NOT EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=a.id AND revoked_at IS NULL AND expires_at>?2)
+  LIMIT ?3
+)
+SELECT c.id,c.owner_hash,r.screenshot_key
+FROM candidates c JOIN revisions r ON r.artifact_id=c.id`,
+        b,
+        n,
+        l,
+        CURATED_SEED_OWNER,
+      ).all<Row>()
+    ).results;
+    const candidates = new Map<
+      string,
+      { ownerHash: string; references: ArtifactStorageReferences }
+    >();
+    for (const row of rows) {
+      const id = row.id as string;
+      const candidate = candidates.get(id) ?? {
+        ownerHash: row.owner_hash as string,
+        references: { screenshotKeys: [] },
+      };
+      if (row.screenshot_key)
+        candidate.references.screenshotKeys.push(row.screenshot_key as string);
+      candidates.set(id, candidate);
+    }
+    if (!candidates.size) return [];
+    const entries = [...candidates.entries()];
+    const results = await this.db.batch(
+      entries.map(([id, candidate]) =>
+        this.p(
+          "DELETE FROM artifacts WHERE id=?1 AND owner_hash=?2 AND updated_at<?3 AND NOT EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=artifacts.id AND p.revoked_at IS NULL AND p.expires_at>?4)",
+          id,
+          candidate.ownerHash,
+          b,
+          n,
+        ),
+      ),
+    );
+    return entries.flatMap(([, candidate], index) =>
+      (results[index]?.meta.changes ?? 0) === 1 ? [candidate.references] : [],
+    );
   }
   async getRevision(id: string) {
     const r = await this.p(
@@ -377,7 +434,7 @@ WHERE a.id=?2 AND a.owner_hash=?14 AND a.head_revision_id=?3`,
     r: RevisionRecord,
     e: string,
     n: string,
-    _html: string,
+    descriptor: string,
   ) {
     const publicationWrite = this.p(
       `INSERT INTO publications(slug,artifact_id,revision_id,owner_hash,title,source_hash,created_at,expires_at)
@@ -407,7 +464,7 @@ ON CONFLICT(artifact_id) DO UPDATE SET
   revision_id=?2,descriptor=?3,updated_at=?4`,
       a.id,
       r.id,
-      r.designCard ?? a.creationBrief,
+      descriptor,
       n,
       a.ownerHash,
     );

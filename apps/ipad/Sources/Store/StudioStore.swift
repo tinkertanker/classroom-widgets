@@ -22,20 +22,32 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     var guidedMakeDraft = GuidedBriefDraft(); var guidedMakeQuestionIndex = 0; var guidedMakeResponse = ""; var guidedMakeShowsSummary = false
     var isCreatingGuidedDraft = false
     private let api: any StudioAPI
-    private let cacheDirectory: URL
+    private let projectDirectory: URL
     private let isUITesting: Bool
     private var uploadedSnapshotRevisionIDs: Set<String> = []
 
     init(api: any StudioAPI = StudioAPIClient.live(), storageDirectory: URL? = nil, bundle: Bundle = .main) {
         self.api = api
         isUITesting = ProcessInfo.processInfo.arguments.contains("--ui-testing-reset")
-        let root = storageDirectory ?? (try? FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)) ?? FileManager.default.temporaryDirectory
-        cacheDirectory = root.appending(path: "ArtifactProjects", directoryHint: .isDirectory)
-        if isUITesting {
-            try? FileManager.default.removeItem(at: cacheDirectory)
+        if let storageDirectory {
+            projectDirectory = storageDirectory.appending(path: "ArtifactProjects", directoryHint: .isDirectory)
+        } else {
+            let applicationSupport = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)) ?? FileManager.default.temporaryDirectory
+            projectDirectory = applicationSupport
+                .appending(path: "Classroom Widgets Studio", directoryHint: .isDirectory)
+                .appending(path: "ArtifactProjects", directoryHint: .isDirectory)
+            if let caches = try? FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+                Self.copyLegacyProjects(
+                    from: caches.appending(path: "ArtifactProjects", directoryHint: .isDirectory),
+                    to: projectDirectory
+                )
+            }
         }
-        try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
-        projects = Self.loadCachedProjects(from: cacheDirectory)
+        if isUITesting {
+            try? FileManager.default.removeItem(at: projectDirectory)
+        }
+        try? FileManager.default.createDirectory(at: projectDirectory, withIntermediateDirectories: true)
+        projects = Self.loadCachedProjects(from: projectDirectory)
         examples = Self.loadExamples(bundle: bundle)
     }
     var selectedProject: ArtifactProject? { projects.first { $0.id == selectedProjectID } ?? examples.first { $0.id == selectedProjectID } }
@@ -53,13 +65,24 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             }
             return
         }
-        workshopAccessState = await api.hasDeviceCredential() ? .ready : .registrationRequired
+        let hasCredential = await api.hasDeviceCredential()
+        workshopAccessState = hasCredential ? .ready : .registrationRequired
+        if !hasCredential { showsWorkshopAccess = true }
     }
     func requestWorkshopAccess() { showsWorkshopAccess = true }
     func dismissWorkshopAccess() { showsWorkshopAccess = false }
     func registerWorkshopAccess(_ code: String) async throws { try await api.registerDevice(accessCode: code); workshopAccessState = .ready; showsWorkshopAccess = false }
     func present(_ error: Error, during operation: StudioOperation) -> StudioErrorPresentation {
-        StudioErrorPresentation(title: "Studio could not complete this action", message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription, requestsWorkshopAccess: false)
+        if let apiError = error as? StudioAPIError, apiError.requiresRegistration {
+            workshopAccessState = .registrationRequired
+            showsWorkshopAccess = true
+            return StudioErrorPresentation(
+                title: "Studio access needed",
+                message: "Enter your workshop code to continue.",
+                requestsWorkshopAccess: true
+            )
+        }
+        return StudioErrorPresentation(title: "Studio could not complete this action", message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription, requestsWorkshopAccess: false)
     }
     func resetGuidedMake() { guidedMakeDraft = .init(); guidedMakeQuestionIndex = 0; guidedMakeResponse = ""; guidedMakeShowsSummary = false }
     func createApprovedBrief(_ brief: GuidedBriefDraft) async throws -> ArtifactProject {
@@ -79,14 +102,27 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         let project = try await api.generate(request: request); upsert(project); open(project); return project
     }
     func remix(_ example: ArtifactProject) async throws {
-        let artifact = example.artifact
-        let request = GuidedGenerationRequest(creationBrief: artifact.creationBrief, brief: .init(
-            learnerContext: artifact.level ?? artifact.subject ?? "General learners",
-            learningObjective: artifact.learningObjective ?? artifact.title,
-            studentAction: artifact.summary, sourceContent: nil,
-            feedback: "Provide clear feedback", classroomFit: "Use in a short classroom activity"
-        ), preferredExampleRevisionId: example.source.revision.id)
-        let project = try await api.generate(request: request)
+        let project: ArtifactProject
+        if example.artifact.id == "example-fallback" {
+            let artifact = example.artifact
+            project = try await api.generate(request: GuidedGenerationRequest(
+                creationBrief: artifact.creationBrief,
+                brief: .init(
+                    learnerContext: artifact.level ?? artifact.subject ?? "General learners",
+                    learningObjective: artifact.learningObjective ?? artifact.title,
+                    studentAction: artifact.summary,
+                    sourceContent: nil,
+                    feedback: "Provide clear feedback",
+                    classroomFit: "Use in a short classroom activity"
+                ),
+                preferredExampleRevisionId: nil
+            ))
+        } else {
+            project = try await api.remix(
+                id: example.artifact.id,
+                revisionId: example.source.revision.id
+            )
+        }
         upsert(project)
         open(project)
     }
@@ -111,21 +147,48 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     func unpublish(projectID: String) async throws { var current = try project(projectID); if let slug = current.artifact.publication?.slug { try await api.revoke(slug: slug) }; current.artifact.publication = nil; upsert(current) }
     func extendPublication(projectID: String) async throws { var current = try project(projectID); guard let slug = current.artifact.publication?.slug else { return }; current.artifact.publication = try await api.extend(slug: slug, days: 90); upsert(current) }
     func deleteProject(projectID: String) async throws {
-        try await api.deleteArtifact(id: projectID)
+        let current = try project(projectID)
+        do {
+            try await api.deleteArtifact(id: projectID)
+        } catch let error as StudioAPIError
+            where error.isArtifactNotFound
+                && Self.hasNoPotentiallyLivePublication(current.artifact.publication) {
+            // The server may have expired the recovery copy already. The local
+            // project must still remain deletable.
+        }
         projects.removeAll { $0.id == projectID }
         let name = projectID.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? projectID
-        try? FileManager.default.removeItem(at: cacheDirectory.appending(path: "\(name).json"))
+        try? FileManager.default.removeItem(at: projectDirectory.appending(path: "\(name).json"))
+    }
+    private static func hasNoPotentiallyLivePublication(_ publication: ArtifactPublication?) -> Bool {
+        guard let publication else { return true }
+        if publication.revokedAt != nil { return true }
+        guard let expirationDate = publication.expirationDate else { return false }
+        return expirationDate <= .now
     }
     func restoreFromStudio() async throws -> Int {
         isRestoringFromStudio = true
         defer { isRestoringFromStudio = false }
         let artifacts = try await api.listArtifacts()
         var count = 0
+        var failures = 0
         for artifact in artifacts {
-            let fetched = try await api.getArtifact(id: artifact.id)
-            let remote = try await cacheAssets(in: fetched)
-            upsert(remote)
-            count += 1
+            do {
+                let fetched = try await api.getArtifact(id: artifact.id)
+                let remote = try await cacheAssets(in: fetched)
+                upsert(remote)
+                count += 1
+            } catch let error as StudioAPIError where error.requiresRegistration {
+                _ = present(error, during: .restore)
+                throw error
+            } catch {
+                failures += 1
+            }
+        }
+        if failures > 0 {
+            recoveryNotice = count > 0
+                ? "Studio restored \(count) widget(s), but could not restore \(failures). Try again later."
+                : "Studio could not restore your widgets. Try again later."
         }
         return count
     }
@@ -175,13 +238,7 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     private func cacheAssets(in project: ArtifactProject) async throws -> ArtifactProject {
         var project = project
         let existingIDs = Set(project.localAssets.map(\.id))
-        let pattern = #"assets/([A-Za-z0-9][A-Za-z0-9._-]*)"#
-        let expression = try NSRegularExpression(pattern: pattern)
-        let range = NSRange(project.source.html.startIndex..., in: project.source.html)
-        let assetIDs = Set<String>(expression.matches(in: project.source.html, range: range).compactMap { match in
-            guard let range = Range(match.range(at: 1), in: project.source.html) else { return nil }
-            return String(project.source.html[range])
-        })
+        let assetIDs = Self.referencedAssetIDs(in: project.source.html)
         for assetID in assetIDs where !existingIDs.contains(assetID) {
             let downloaded = try await api.downloadAsset(id: assetID)
             project.localAssets.append(try LocalWidgetAssetStorage.store(downloaded, id: assetID))
@@ -200,7 +257,7 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     }
     private func persist(_ project: ArtifactProject) {
         let name = project.id.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? UUID().uuidString
-        do { try JSONEncoder().encode(project).write(to: cacheDirectory.appending(path: "\(name).json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
+        do { try JSONEncoder().encode(project).write(to: projectDirectory.appending(path: "\(name).json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication]) }
         catch { recoveryNotice = "Studio could not save this widget for offline use." }
     }
     private static func loadCachedProjects(from directory: URL) -> [ArtifactProject] {
@@ -209,6 +266,42 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             guard url.pathExtension == "json", let data = try? Data(contentsOf: url) else { return nil }
             return try? JSONDecoder().decode(ArtifactProject.self, from: data)
         }
+    }
+    static func referencedAssetIDs(in html: String) -> Set<String> {
+        let patterns = [
+            #"\b(?:src|href|action)\s*=\s*(?:"\s*assets/([A-Za-z0-9_-]+)\s*"|'\s*assets/([A-Za-z0-9_-]+)\s*'|assets/([A-Za-z0-9_-]+))"#,
+            #"\burl\(\s*(?:"\s*assets/([A-Za-z0-9_-]+)\s*"|'\s*assets/([A-Za-z0-9_-]+)\s*'|assets/([A-Za-z0-9_-]+))\s*\)"#
+        ]
+        var result: Set<String> = []
+        for pattern in patterns {
+            guard let expression = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
+            let range = NSRange(html.startIndex..., in: html)
+            for match in expression.matches(in: html, range: range) {
+                for capture in 1..<match.numberOfRanges {
+                    guard match.range(at: capture).location != NSNotFound,
+                          let range = Range(match.range(at: capture), in: html)
+                    else { continue }
+                    result.insert(String(html[range]))
+                }
+            }
+        }
+        return result
+    }
+    static func copyLegacyProjects(from source: URL, to destination: URL) {
+        let marker = destination.appending(path: ".legacy-cache-migrated", directoryHint: .notDirectory)
+        guard !FileManager.default.fileExists(atPath: marker.path),
+              FileManager.default.fileExists(atPath: source.path),
+              let files = try? FileManager.default.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
+        else { return }
+        try? FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        var completed = true
+        for file in files where file.pathExtension == "json" {
+            let target = destination.appending(path: file.lastPathComponent, directoryHint: .notDirectory)
+            guard !FileManager.default.fileExists(atPath: target.path) else { continue }
+            do { try FileManager.default.copyItem(at: file, to: target) }
+            catch { completed = false }
+        }
+        if completed { try? Data().write(to: marker, options: .atomic) }
     }
     private static func loadExamples(bundle: Bundle) -> [ArtifactProject] {
         guard let url = bundle.url(forResource: "manifest", withExtension: "json", subdirectory: "Examples"), let data = try? Data(contentsOf: url), let records = try? JSONDecoder().decode([ExampleArtifact].self, from: data) else { return [fallback] }

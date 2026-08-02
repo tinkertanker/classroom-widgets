@@ -30,7 +30,7 @@ import {
 } from "./http";
 import { inspectTeacherBrief, inspectText } from "./moderation";
 import { PROMPT_VERSION } from "./ai/prompts";
-import type { SourceStore } from "./sourceStore";
+import { cleanupArtifactStorage, type SourceStore } from "./sourceStore";
 import type {
   ArtifactRecord,
   ContentReportReason,
@@ -38,7 +38,10 @@ import type {
   RevisionRecord,
   StudioRepository,
 } from "./storage/repository";
-import { CURATED_SEED_OWNER } from "./storage/repository";
+import {
+  CURATED_SEED_OWNER,
+  retrievalDescriptor,
+} from "./storage/repository";
 interface Deps {
   repository: StudioRepository;
   provider: ModelProvider;
@@ -666,10 +669,17 @@ export function createStudioApp(d: Deps) {
         throw new HttpError(404, "ARTIFACT_NOT_FOUND", "Artifact unavailable.");
       if (s.length === 3 && r.method === "GET")
         return json(await projectResponse(a, o, u.origin));
-      if (s.length === 3 && r.method === "DELETE")
-        return (await d.repository.deleteArtifact(a.id, o))
-          ? new Response(null, { status: 204 })
-          : apiError(404, "ARTIFACT_NOT_FOUND", "Unavailable");
+      if (s.length === 3 && r.method === "DELETE") {
+        const references = await d.repository.getArtifactStorageReferences(
+          a.id,
+          o,
+        );
+        if (!(await d.repository.deleteArtifact(a.id, o)))
+          return apiError(404, "ARTIFACT_NOT_FOUND", "Unavailable");
+        if (references)
+          await cleanupArtifactStorage(d.sources, references);
+        return new Response(null, { status: 204 });
+      }
       if (s.length === 3 && r.method === "PATCH") {
         const b = obj(await readJson(r, 10000));
         if (typeof b.title === "string" && b.headRevisionId === undefined)
@@ -852,7 +862,7 @@ export function createStudioApp(d: Deps) {
           rv,
           days(now(), d.config.publicationTtlDays),
           now().toISOString(),
-          html,
+          retrievalDescriptor(a, rv.designCard),
         );
         if (!p)
           throw new HttpError(
