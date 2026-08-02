@@ -351,10 +351,7 @@ export class CloudflareAssetStore implements AssetStore {
           WHERE id = ?1 AND owner_hash = ?2
             AND NOT EXISTS (
               SELECT 1 FROM revision_assets ra
-              JOIN revisions r ON r.id = ra.revision_id
-              JOIN artifacts d ON d.id = r.artifact_id
-               WHERE d.owner_hash = ?2
-                 AND ra.asset_id = ?1
+               WHERE ra.asset_id = ?1
             )
             AND NOT EXISTS (
               SELECT 1 FROM publications p
@@ -379,10 +376,7 @@ export class CloudflareAssetStore implements AssetStore {
           WHERE a.created_at < ?1
             AND NOT EXISTS (
               SELECT 1 FROM revision_assets ra
-              JOIN revisions r ON r.id = ra.revision_id
-              JOIN artifacts d ON d.id = r.artifact_id
-               WHERE d.owner_hash = a.owner_hash
-                 AND ra.asset_id = a.id
+               WHERE ra.asset_id = a.id
             )
             AND NOT EXISTS (
               SELECT 1 FROM publications p
@@ -405,10 +399,7 @@ export class CloudflareAssetStore implements AssetStore {
             WHERE id = ?1 AND owner_hash = ?2
               AND NOT EXISTS (
                 SELECT 1 FROM revision_assets ra
-                JOIN revisions r ON r.id = ra.revision_id
-                JOIN artifacts d ON d.id = r.artifact_id
-                 WHERE d.owner_hash = ?2
-                   AND ra.asset_id = ?1
+                 WHERE ra.asset_id = ?1
               )
               AND NOT EXISTS (
                 SELECT 1 FROM publications p

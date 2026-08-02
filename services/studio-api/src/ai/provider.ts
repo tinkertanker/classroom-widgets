@@ -7,6 +7,9 @@ export interface TeacherBrief {
   feedback?: string;
   durationMinutes?: number;
   accessibilityNeeds?: string;
+  learnerContext?: string;
+  sourceContent?: string;
+  classroomFit?: string;
 }
 export interface DesignCard {
   title?: string;

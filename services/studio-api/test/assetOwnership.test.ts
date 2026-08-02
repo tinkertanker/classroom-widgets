@@ -48,7 +48,8 @@ describe('asset reference ownership', () => {
     );
 
     await expect(store.deleteOwned(ASSET_ROW.id, ASSET_ROW.owner_hash)).resolves.toBe('deleted');
-    expect(statements[1]).toContain('d.owner_hash = ?2');
+    expect(statements[1]).toContain('SELECT 1 FROM revision_assets ra');
+    expect(statements[1]).not.toContain('d.owner_hash = ?2');
     expect(statements[1]).toContain('p.owner_hash = ?2');
     expect(bucketDelete).toHaveBeenCalledWith(ASSET_ROW.object_key);
   });
@@ -64,9 +65,10 @@ describe('asset reference ownership', () => {
       '2026-02-01T00:00:00.000Z',
       '2026-03-01T00:00:00.000Z',
     )).resolves.toBe(1);
-    expect(statements[0]).toContain('d.owner_hash = a.owner_hash');
+    expect(statements[0]).toContain('SELECT 1 FROM revision_assets ra');
+    expect(statements[0]).not.toContain('d.owner_hash = a.owner_hash');
     expect(statements[0]).toContain('p.owner_hash = a.owner_hash');
-    expect(statements[1]).toContain('d.owner_hash = ?2');
+    expect(statements[1]).not.toContain('d.owner_hash = ?2');
     expect(statements[1]).toContain('p.owner_hash = ?2');
   });
 

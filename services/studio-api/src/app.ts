@@ -67,27 +67,59 @@ function str(v: unknown, n: string, max: number) {
     throw new HttpError(422, "INVALID_INPUT", `${n} is required or too long.`);
   return v.trim();
 }
+function optionalStr(v: unknown, n: string, max: number): string | undefined {
+  if (v === undefined || v === null || v === "") return undefined;
+  return str(v, n, max);
+}
 function days(d: Date, n: number) {
   return new Date(d.getTime() + n * 86400000).toISOString();
 }
 function retrievalQuery(value: string): string | null {
-  const terms = value.normalize("NFKC").match(/[\p{L}\p{N}]+/gu)?.slice(0, 12);
+  const terms = value
+    .normalize("NFKC")
+    .match(/[\p{L}\p{N}]+/gu)
+    ?.slice(0, 12);
   return terms?.length
     ? terms.map((term) => `"${term.replaceAll('"', '""')}"`).join(" ")
     : null;
 }
-function brief(b: Record<string, unknown>): TeacherBrief {
+interface GuidedGeneration {
+  creationBrief: string;
+  brief: TeacherBrief;
+  preferredExampleRevisionId: string | null;
+}
+function brief(b: Record<string, unknown>): GuidedGeneration {
+  const guided = obj(b.brief);
+  const learnerContext = str(guided.learnerContext, "Learner context", 300);
   return {
-    level: str(b.level, "Level", 100),
-    subject: str(b.subject, "Subject", 100),
-    learningObjective: str(b.learningObjective, "Learning objective", 600),
-    studentAction: str(b.studentAction, "Student action", 600),
-    ...(typeof b.content === "string"
-      ? { content: b.content.slice(0, 4000) }
-      : {}),
-    ...(Number.isInteger(b.durationMinutes)
-      ? { durationMinutes: b.durationMinutes as number }
-      : {}),
+    creationBrief: str(b.creationBrief, "Creation brief", 6000),
+    preferredExampleRevisionId:
+      b.preferredExampleRevisionId == null
+        ? null
+        : str(b.preferredExampleRevisionId, "Preferred example revision", 100),
+    brief: {
+      level: learnerContext,
+      subject: "General",
+      learnerContext,
+      learningObjective: str(
+        guided.learningObjective,
+        "Learning objective",
+        600,
+      ),
+      studentAction: str(guided.studentAction, "Student action", 600),
+      ...(optionalStr(guided.sourceContent, "Source content", 4000)
+        ? {
+            content: optionalStr(guided.sourceContent, "Source content", 4000),
+            sourceContent: optionalStr(
+              guided.sourceContent,
+              "Source content",
+              4000,
+            ),
+          }
+        : {}),
+      feedback: str(guided.feedback, "Feedback", 1000),
+      classroomFit: str(guided.classroomFit, "Classroom fit", 1000),
+    },
   };
 }
 async function digest(html: string) {
@@ -100,17 +132,42 @@ function artifactResponse(artifact: ArtifactRecord) {
   return {
     id: artifact.id,
     title: artifact.title,
-    creationBrief: JSON.parse(artifact.creationBrief) as TeacherBrief,
+    summary: artifact.summary,
+    subject: artifact.subject,
+    level: artifact.level,
+    locale: artifact.locale,
+    learningObjective: artifact.learningObjective,
+    tags: artifact.tags,
+    creationBrief: artifact.creationBrief,
     headRevisionId: artifact.headRevisionId,
     remixedFromRevisionId: artifact.remixedFromRevisionId,
     createdAt: artifact.createdAt,
     updatedAt: artifact.updatedAt,
   };
 }
-function revisionResponse(revision: RevisionRecord) {
+function revisionResponse(revision: RevisionRecord, origin: string) {
   return {
-    ...revision,
-    designCard: design(revision) ?? null,
+    id: revision.id,
+    artifactId: revision.artifactId,
+    parentRevisionId: revision.parentRevisionId,
+    sourceHash: revision.sourceHash,
+    byteLength: revision.sourceBytes,
+    kind: (
+      {
+        generation: "generate",
+        revision: "revise",
+        remix: "remix",
+        import: "seed",
+      } as const
+    )[revision.kind],
+    instruction: revision.instruction,
+    designCard: revision.designCard,
+    // Screenshots are private; the iPad must not receive a URL that AsyncImage
+    // cannot authenticate. Upload success remains part of the wire contract.
+    screenshotUrl: null,
+    model: revision.modelVersion,
+    promptVersion: revision.promptVersion,
+    createdAt: revision.createdAt,
   };
 }
 function publication(p: PublicationRecord, origin: string) {
@@ -197,7 +254,7 @@ export function createStudioApp(d: Deps) {
         "Network safety limit reached.",
       );
   }
-  async function assets(html: string, o: string) {
+  async function assets(html: string, o: string, allowReferenced = false) {
     const ids = referencedAssetIds(html);
     if (ids.length && !d.assets)
       throw new HttpError(
@@ -207,7 +264,12 @@ export function createStudioApp(d: Deps) {
       );
     for (const x of ids) {
       const a = await d.assets!.get(x);
-      if (!a || a.record.ownerHash !== o)
+      if (
+        !a ||
+        (a.record.ownerHash !== o &&
+          !allowReferenced &&
+          !(await d.repository.ownerReferencesAsset(o, x)))
+      )
         throw new HttpError(
           422,
           "INVALID_ARTIFACT_ASSET",
@@ -215,6 +277,25 @@ export function createStudioApp(d: Deps) {
         );
     }
     return ids;
+  }
+  async function projectResponse(
+    a: ArtifactRecord,
+    o: string,
+    origin: string,
+    rv?: RevisionRecord,
+  ) {
+    const head = rv ?? (await d.repository.getRevision(a.headRevisionId));
+    const html = head ? await d.sources.getSource(head.sourceHash) : null;
+    const p = await d.repository.getActivePublicationForArtifact(a.id, o);
+    return {
+      artifact: {
+        ...artifactResponse(a),
+        publication: p ? publication(p, d.config.publicPlayerOrigin) : null,
+        publicationStale: !!p && p.revisionId !== a.headRevisionId,
+      },
+      headRevision: head ? revisionResponse(head, origin) : null,
+      html,
+    };
   }
   async function persist(html: string) {
     const h = await digest(html);
@@ -291,8 +372,12 @@ export function createStudioApp(d: Deps) {
       );
     if (r.method === "POST" && u.pathname === "/v1/artifacts/generate") {
       const o = await owner(r),
-        b = brief(obj(await readJson(r, 16000)));
-      if (inspectTeacherBrief(b).length)
+        request = brief(obj(await readJson(r, 16000))),
+        b = request.brief;
+      if (
+        inspectTeacherBrief(b).length ||
+        inspectText(request.creationBrief).length
+      )
         throw new HttpError(
           422,
           "UNSAFE_CONTENT",
@@ -300,10 +385,21 @@ export function createStudioApp(d: Deps) {
         );
       await reserveArtifactCreation(r, o);
       await quota(r, o, "generation");
-      const query = retrievalQuery(`${b.subject} ${b.learningObjective}`);
-      const found = query
-        ? await d.repository.searchRetrieval(query, 2)
-        : [];
+      const query = retrievalQuery(
+        `${b.learnerContext ?? `${b.level} ${b.subject}`} ${b.learningObjective}`,
+      );
+      const preferred = request.preferredExampleRevisionId
+        ? await d.repository.getRevision(request.preferredExampleRevisionId)
+        : null;
+      const preferredAllowed =
+        preferred &&
+        ((await d.repository.getArtifact(preferred.artifactId, o)) ||
+          (await d.repository.isRevisionRetrievable(preferred.id)));
+      const found = preferredAllowed
+        ? [{ revisionId: preferred.id, descriptor: "Teacher-selected example" }]
+        : query
+          ? await d.repository.searchRetrieval(query, 2)
+          : [];
       const ex = [];
       for (const e of found) {
         const rv = await d.repository.getRevision(e.revisionId),
@@ -341,7 +437,14 @@ export function createStudioApp(d: Deps) {
         id: aid,
         ownerHash: o,
         title: out.designCard?.title ?? b.learningObjective,
-        creationBrief: JSON.stringify(b),
+        summary: out.designCard?.description ?? b.studentAction,
+        subject: null,
+        level: b.learnerContext ?? b.level,
+        locale: "en-SG",
+        learningObjective: b.learningObjective,
+        tags: out.designCard?.tags ?? [],
+        creationBrief: request.creationBrief,
+        generationBrief: JSON.stringify(b),
         headRevisionId: rid,
         remixedFromRevisionId: null,
         createdAt: timestamp,
@@ -354,9 +457,7 @@ export function createStudioApp(d: Deps) {
       });
       return json(
         {
-          artifact: artifactResponse(a),
-          revision: revisionResponse(rv),
-          provider: d.provider.name,
+          ...(await projectResponse(a, o, u.origin, rv)),
         },
         { status: 201 },
       );
@@ -368,19 +469,27 @@ export function createStudioApp(d: Deps) {
         artifacts: await Promise.all(
           artifacts.map(async (artifact) => ({
             ...artifactResponse(artifact),
-            publication: await d.repository.getActivePublicationForArtifact(
-              artifact.id,
-              ownerHash,
-            ).then((value) =>
-              value ? publication(value, d.config.publicPlayerOrigin) : null,
-            ),
+            publication: await d.repository
+              .getActivePublicationForArtifact(artifact.id, ownerHash)
+              .then((value) =>
+                value ? publication(value, d.config.publicPlayerOrigin) : null,
+              ),
+            publicationStale: await d.repository
+              .getActivePublicationForArtifact(artifact.id, ownerHash)
+              .then(
+                (value) =>
+                  !!value && value.revisionId !== artifact.headRevisionId,
+              ),
           })),
         ),
       });
     }
     if (r.method === "GET" && u.pathname === "/v1/examples/search") {
       const q = retrievalQuery(str(u.searchParams.get("q"), "Query", 200));
-      const requestedLimit = Number.parseInt(u.searchParams.get("limit") ?? "", 10);
+      const requestedLimit = Number.parseInt(
+        u.searchParams.get("limit") ?? "",
+        10,
+      );
       const limit = Number.isInteger(requestedLimit)
         ? Math.min(20, Math.max(1, requestedLimit))
         : 10;
@@ -407,7 +516,11 @@ export function createStudioApp(d: Deps) {
       }
       if (s.length === 3) {
         const a = await d.assets.get(s[2]!);
-        if (!a || a.record.ownerHash !== o)
+        if (
+          !a ||
+          (a.record.ownerHash !== o &&
+            !(await d.repository.ownerReferencesAsset(o, s[2]!)))
+        )
           return apiError(404, "ASSET_NOT_FOUND", "Image unavailable.");
         if (r.method === "GET") return image(a);
         if (r.method === "DELETE") {
@@ -428,33 +541,43 @@ export function createStudioApp(d: Deps) {
       if (!a)
         throw new HttpError(404, "ARTIFACT_NOT_FOUND", "Artifact unavailable.");
       if (s.length === 3 && r.method === "GET")
-        return json({
-          artifact: artifactResponse(a),
-          headRevision: await d.repository
-            .getRevision(a.headRevisionId)
-            .then((value) => (value ? revisionResponse(value) : null)),
-          publication: await d.repository
-            .getActivePublicationForArtifact(a.id, o)
-            .then((value) =>
-              value ? publication(value, d.config.publicPlayerOrigin) : null,
-            ),
-        });
+        return json(await projectResponse(a, o, u.origin));
       if (s.length === 3 && r.method === "DELETE")
         return (await d.repository.deleteArtifact(a.id, o))
           ? new Response(null, { status: 204 })
           : apiError(404, "ARTIFACT_NOT_FOUND", "Unavailable");
       if (s.length === 3 && r.method === "PATCH") {
-        const b = obj(await readJson(r, 2000));
-        if (typeof b.title === "string")
+        const b = obj(await readJson(r, 10000));
+        if (typeof b.title === "string" && b.headRevisionId === undefined)
           return json({
             artifact: await d.repository
-              .renameArtifact(
+              .updateArtifactMetadata(
                 a.id,
                 o,
-                str(b.title, "Title", 200),
+                {
+                  title: str(b.title, "Title", 200),
+                  summary: str(b.summary, "Summary", 1000),
+                  subject: optionalStr(b.subject, "Subject", 100) ?? null,
+                  level: optionalStr(b.level, "Level", 100) ?? null,
+                  locale: optionalStr(b.locale, "Locale", 30) ?? null,
+                  learningObjective:
+                    optionalStr(
+                      b.learningObjective,
+                      "Learning objective",
+                      600,
+                    ) ?? null,
+                  tags: Array.isArray(b.tags)
+                    ? b.tags.map((x) => str(x, "Tag", 60)).slice(0, 20)
+                    : [],
+                  creationBrief: str(b.creationBrief, "Creation brief", 6000),
+                },
                 now().toISOString(),
               )
-              .then((value) => (value ? artifactResponse(value) : null)),
+              .then(async (value) =>
+                value
+                  ? (await projectResponse(value, o, u.origin)).artifact
+                  : null,
+              ),
           });
         const head = str(b.headRevisionId, "headRevisionId", 100),
           expected = str(
@@ -476,16 +599,16 @@ export function createStudioApp(d: Deps) {
             "HEAD_REVISION_CONFLICT",
             "Artifact head changed.",
           );
-        return json({
-          artifact: await d.repository
+        return json(
+          await d.repository
             .getArtifact(a.id, o)
-            .then((value) => (value ? artifactResponse(value) : null)),
-        });
+            .then((value) => projectResponse(value!, o, u.origin)),
+        );
       }
       if (s[3] === "revisions" && s.length === 4 && r.method === "GET")
         return json({
           revisions: (await d.repository.listRevisions(a.id, o)).map(
-            revisionResponse,
+            (revision) => revisionResponse(revision, u.origin),
           ),
         });
       if (s[3] === "revisions" && s.length === 4 && r.method === "POST") {
@@ -522,7 +645,7 @@ export function createStudioApp(d: Deps) {
             html,
             design(current),
             instruction,
-            JSON.parse(a.creationBrief) as TeacherBrief,
+            JSON.parse(a.generationBrief) as TeacherBrief,
           ),
           rid = id(),
           hash = await persist(out.html),
@@ -555,7 +678,14 @@ export function createStudioApp(d: Deps) {
             "HEAD_REVISION_CONFLICT",
             "Artifact head changed.",
           );
-        return json({ revision: revisionResponse(rv) }, { status: 201 });
+        return json(
+          await projectResponse(
+            (await d.repository.getArtifact(a.id, o))!,
+            o,
+            u.origin,
+          ),
+          { status: 201 },
+        );
       }
       if (s[3] === "publish" && r.method === "POST") {
         const b = obj(await readJson(r, 1000)),
@@ -615,12 +745,17 @@ export function createStudioApp(d: Deps) {
     if (s[0] === "v1" && s[1] === "revisions" && s[2] && ID.test(s[2])) {
       const o = await owner(r),
         rv = await d.repository.getRevision(s[2]),
-        ownedArtifact = rv && (await d.repository.getArtifact(rv.artifactId, o));
+        ownedArtifact =
+          rv && (await d.repository.getArtifact(rv.artifactId, o));
       if (!rv)
         throw new HttpError(404, "REVISION_NOT_FOUND", "Revision unavailable.");
       if (s[3] === "source" && r.method === "GET") {
         if (!ownedArtifact)
-          throw new HttpError(404, "REVISION_NOT_FOUND", "Revision unavailable.");
+          throw new HttpError(
+            404,
+            "REVISION_NOT_FOUND",
+            "Revision unavailable.",
+          );
         const h = await d.sources.getSource(rv.sourceHash);
         return h
           ? sourceResponse(h)
@@ -628,7 +763,11 @@ export function createStudioApp(d: Deps) {
       }
       if (s[3] === "screenshot" && r.method === "POST") {
         if (!ownedArtifact)
-          throw new HttpError(404, "REVISION_NOT_FOUND", "Revision unavailable.");
+          throw new HttpError(
+            404,
+            "REVISION_NOT_FOUND",
+            "Revision unavailable.",
+          );
         if (
           (r.headers.get("content-type") ?? "").split(";")[0] !== "image/jpeg"
         )
@@ -657,7 +796,11 @@ export function createStudioApp(d: Deps) {
             ? await d.repository.getArtifactPublic(rv.artifactId)
             : null);
         if (!sourceArtifact)
-          throw new HttpError(404, "REVISION_NOT_FOUND", "Revision unavailable.");
+          throw new HttpError(
+            404,
+            "REVISION_NOT_FOUND",
+            "Revision unavailable.",
+          );
         const b = obj(await readJson(r, 2000)),
           title =
             typeof b.title === "string"
@@ -685,7 +828,14 @@ export function createStudioApp(d: Deps) {
             id: aid,
             ownerHash: o,
             title,
+            summary: sourceArtifact.summary,
+            subject: sourceArtifact.subject,
+            level: sourceArtifact.level,
+            locale: sourceArtifact.locale,
+            learningObjective: sourceArtifact.learningObjective,
+            tags: sourceArtifact.tags,
             creationBrief: sourceArtifact.creationBrief,
+            generationBrief: sourceArtifact.generationBrief,
             headRevisionId: rid,
             remixedFromRevisionId: rv.id,
             createdAt: timestamp,
@@ -694,12 +844,11 @@ export function createStudioApp(d: Deps) {
         await d.repository.createArtifact({
           artifact,
           revision: copy,
-          assetIds: await assets(html, o),
+          assetIds: await assets(html, o, !ownedArtifact),
         });
         return json(
           {
-            artifact: artifactResponse(artifact),
-            revision: revisionResponse(copy),
+            ...(await projectResponse(artifact, o, u.origin, copy)),
           },
           { status: 201 },
         );
@@ -764,7 +913,9 @@ export function createStudioApp(d: Deps) {
         const b = obj(await readJson(r, 1000));
         if (
           b.days !== undefined &&
-          (!Number.isInteger(b.days) || (b.days as number) < 1 || (b.days as number) > 365)
+          (!Number.isInteger(b.days) ||
+            (b.days as number) < 1 ||
+            (b.days as number) > 365)
         )
           throw new HttpError(
             422,

@@ -13,7 +13,14 @@ const art = (r: Row): ArtifactRecord => ({
   id: r.id as string,
   ownerHash: r.owner_hash as string,
   title: r.title as string,
+  summary: r.summary as string,
+  subject: r.subject as string | null,
+  level: r.level as string | null,
+  locale: r.locale as string | null,
+  learningObjective: r.learning_objective as string | null,
+  tags: JSON.parse((r.tags_json as string) || "[]") as string[],
   creationBrief: r.creation_brief as string,
+  generationBrief: r.generation_brief_json as string,
   headRevisionId: r.head_revision_id as string,
   remixedFromRevisionId: r.remixed_from_revision_id as string | null,
   createdAt: r.created_at as string,
@@ -85,7 +92,7 @@ export class D1StudioRepository implements StudioRepository {
       r = i.revision;
     await this.db.batch([
       this.p(
-        "INSERT INTO artifacts VALUES(?1,?2,?3,?4,?5,?6,?7,?8)",
+        "INSERT INTO artifacts(id,owner_hash,title,creation_brief,head_revision_id,remixed_from_revision_id,created_at,updated_at,summary,subject,level,locale,learning_objective,tags_json,generation_brief_json) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
         a.id,
         a.ownerHash,
         a.title,
@@ -94,6 +101,13 @@ export class D1StudioRepository implements StudioRepository {
         a.remixedFromRevisionId,
         a.createdAt,
         a.updatedAt,
+        a.summary,
+        a.subject,
+        a.level,
+        a.locale,
+        a.learningObjective,
+        JSON.stringify(a.tags),
+        a.generationBrief,
       ),
       this.revInsert(r),
       ...i.assetIds.map((x) =>
@@ -142,10 +156,22 @@ export class D1StudioRepository implements StudioRepository {
       ).all<Row>()
     ).results.map(art);
   }
-  async renameArtifact(id: string, o: string, t: string, n: string) {
+  async updateArtifactMetadata(
+    id: string,
+    o: string,
+    m: import("./repository").ArtifactMetadata,
+    n: string,
+  ) {
     await this.p(
-      "UPDATE artifacts SET title=?1,updated_at=?2 WHERE id=?3 AND owner_hash=?4",
-      t,
+      "UPDATE artifacts SET title=?1,summary=?2,subject=?3,level=?4,locale=?5,learning_objective=?6,tags_json=?7,creation_brief=?8,updated_at=?9 WHERE id=?10 AND owner_hash=?11",
+      m.title,
+      m.summary,
+      m.subject,
+      m.level,
+      m.locale,
+      m.learningObjective,
+      JSON.stringify(m.tags),
+      m.creationBrief,
       n,
       id,
       o,
@@ -344,6 +370,13 @@ ON CONFLICT(artifact_id) DO UPDATE SET
     return !!(await this.p(
       "SELECT 1 ok FROM publications p JOIN revision_assets ra ON ra.revision_id=p.revision_id WHERE p.slug=?1 AND ra.asset_id=?2",
       s,
+      id,
+    ).first());
+  }
+  async ownerReferencesAsset(o: string, id: string) {
+    return !!(await this.p(
+      "SELECT 1 FROM revision_assets ra JOIN revisions r ON r.id=ra.revision_id JOIN artifacts a ON a.id=r.artifact_id WHERE a.owner_hash=?1 AND ra.asset_id=?2 LIMIT 1",
+      o,
       id,
     ).first());
   }

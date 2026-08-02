@@ -71,12 +71,24 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             open(project)
             return project
         }
-        let project = try await api.generate(brief: text, preferredExampleRevisionId: nil); upsert(project); open(project); return project
+        let request = GuidedGenerationRequest(creationBrief: text, brief: .init(
+            learnerContext: brief.learnerContext, learningObjective: brief.learningObjective,
+            studentAction: brief.studentAction, sourceContent: brief.sourceContent.isEmpty ? nil : brief.sourceContent,
+            feedback: brief.feedback, classroomFit: brief.classroomFit
+        ), preferredExampleRevisionId: nil)
+        let project = try await api.generate(request: request); upsert(project); open(project); return project
     }
     func remix(_ example: ArtifactProject) async throws {
         // Bundled examples are offline files and are not asserted to exist on the server.
         // Seed generation is the contract-backed way to ask for a similar artifact.
-        let project = try await api.generate(brief: example.artifact.creationBrief, preferredExampleRevisionId: example.source.revision.id)
+        let artifact = example.artifact
+        let request = GuidedGenerationRequest(creationBrief: artifact.creationBrief, brief: .init(
+            learnerContext: artifact.level ?? artifact.subject ?? "General learners",
+            learningObjective: artifact.learningObjective ?? artifact.title,
+            studentAction: artifact.summary, sourceContent: nil,
+            feedback: "Provide clear feedback", classroomFit: "Use in a short classroom activity"
+        ), preferredExampleRevisionId: nil)
+        let project = try await api.generate(request: request)
         upsert(project)
         open(project)
     }
@@ -240,5 +252,5 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             revisions: [revision]
         )
     }
-    private static func example(_ record: ExampleArtifact, html: String) -> ArtifactProject { let now = "2026-08-02T00:00:00Z"; let revision = ArtifactRevision(id: "\(record.id)-seed", artifactId: record.id, parentRevisionId: nil, sourceHash: "bundled", byteLength: html.utf8.count, kind: .seed, instruction: nil, designCard: nil, screenshotUrl: nil, model: "bundled", promptVersion: "seed", createdAt: now); let artifact = Artifact(id: record.id, title: record.title, summary: record.summary, subject: record.subject, level: record.level, locale: record.locale, learningObjective: record.learningObjective, tags: record.tags, creationBrief: "Bundled example", headRevisionId: revision.id, createdAt: now, updatedAt: now, headRevision: revision, html: html); return ArtifactProject(artifact: artifact, source: .init(revision: revision, html: html), revisions: [revision], isExample: true) }
+    private static func example(_ record: ExampleArtifact, html: String) -> ArtifactProject { let now = "2026-08-02T00:00:00Z"; let revision = ArtifactRevision(id: "\(record.id)-seed", artifactId: record.id, parentRevisionId: nil, sourceHash: "bundled", byteLength: html.utf8.count, kind: .seed, instruction: nil, designCard: nil, screenshotUrl: nil, model: "bundled", promptVersion: "seed", createdAt: now); let creationBrief = "\(record.learningObjective ?? record.title)\n\nStudents should \(record.summary)"; let artifact = Artifact(id: record.id, title: record.title, summary: record.summary, subject: record.subject, level: record.level, locale: record.locale, learningObjective: record.learningObjective, tags: record.tags, creationBrief: creationBrief, headRevisionId: revision.id, createdAt: now, updatedAt: now, headRevision: revision, html: html); return ArtifactProject(artifact: artifact, source: .init(revision: revision, html: html), revisions: [revision], isExample: true) }
 }

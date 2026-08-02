@@ -58,10 +58,15 @@ export class MemoryStudioRepository implements StudioRepository {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((a) => structuredClone(a));
   }
-  async renameArtifact(id: string, o: string, t: string, n: string) {
+  async updateArtifactMetadata(
+    id: string,
+    o: string,
+    metadata: import("./repository").ArtifactMetadata,
+    n: string,
+  ) {
     const a = this.artifacts.get(id);
     if (!a || a.ownerHash !== o) return null;
-    a.title = t;
+    Object.assign(a, metadata);
     a.updatedAt = n;
     return structuredClone(a);
   }
@@ -140,7 +145,9 @@ export class MemoryStudioRepository implements StudioRepository {
     return true;
   }
   async isRevisionRetrievable(id: string) {
-    return [...this.retrieval.values()].some((entry) => entry.revisionId === id);
+    return [...this.retrieval.values()].some(
+      (entry) => entry.revisionId === id,
+    );
   }
   async searchRetrieval(q: string, l: number) {
     const terms = q
@@ -211,6 +218,16 @@ export class MemoryStudioRepository implements StudioRepository {
   async publicationReferencesAsset(s: string, id: string) {
     const p = this.publications.get(s);
     return !!p && !!this.revisionAssets.get(p.revisionId)?.has(id);
+  }
+  async ownerReferencesAsset(o: string, id: string) {
+    return [...this.revisionAssets].some(([revisionId, assets]) => {
+      const revision = this.revisions.get(revisionId);
+      return (
+        assets.has(id) &&
+        !!revision &&
+        this.artifacts.get(revision.artifactId)?.ownerHash === o
+      );
+    });
   }
   async extendPublication(
     s: string,

@@ -83,6 +83,15 @@ struct ExampleArtifact: Codable, Equatable, Identifiable, Sendable {
     var htmlFile: String
 }
 
+struct ExampleSearchDescriptor: Codable, Equatable, Identifiable, Sendable {
+    var artifactId: String
+    var revisionId: String
+    var title: String
+    var descriptor: String
+    var curated: Bool
+    var id: String { revisionId }
+}
+
 extension ISO8601DateFormatter {
     static var fractional: ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()

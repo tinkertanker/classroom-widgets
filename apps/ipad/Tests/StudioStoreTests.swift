@@ -17,6 +17,10 @@ final class StudioStoreTests: XCTestCase {
 
         XCTAssertEqual(result.artifact.headRevisionId, "r1")
         XCTAssertEqual(store.projects.first?.source.html, generated.source.html)
+        let request = await api.lastGenerationRequest
+        XCTAssertEqual(request?.brief.learningObjective, "Explain balanced forces")
+        XCTAssertEqual(request?.brief.studentAction, "Choose and explain")
+        XCTAssertNil(request?.preferredExampleRevisionId)
 
         let restored = StudioStore(api: api, storageDirectory: directory, bundle: Bundle(for: Self.self))
         XCTAssertEqual(restored.projects.first?.source.html, generated.source.html)
@@ -60,6 +64,7 @@ private actor ArtifactAPIStub: StudioAPI {
 
     let generated: ArtifactProject
     let revised: ArtifactProject
+    private(set) var lastGenerationRequest: GuidedGenerationRequest?
     private(set) var lastRevisionRequest: RevisionRequest?
 
     init(generated: ArtifactProject, revised: ArtifactProject) {
@@ -69,9 +74,12 @@ private actor ArtifactAPIStub: StudioAPI {
 
     func hasDeviceCredential() async -> Bool { true }
     func registerDevice(accessCode: String) async throws {}
-    func generate(brief: String, preferredExampleRevisionId: String?) async throws -> ArtifactProject { generated }
+    func generate(request: GuidedGenerationRequest) async throws -> ArtifactProject {
+        lastGenerationRequest = request
+        return generated
+    }
     func listArtifacts() async throws -> [Artifact] { [generated.artifact] }
-    func searchExamples(brief: String) async throws -> [Artifact] { [] }
+    func searchExamples(brief: String) async throws -> [ExampleSearchDescriptor] { [] }
     func getArtifact(id: String) async throws -> ArtifactProject { generated }
     func updateArtifact(_ artifact: Artifact) async throws -> Artifact { artifact }
     func deleteArtifact(id: String) async throws {}
@@ -83,7 +91,7 @@ private actor ArtifactAPIStub: StudioAPI {
         return revised
     }
     func revisions(id: String) async throws -> [ArtifactRevision] { generated.revisions }
-    func source(revisionId: String) async throws -> ArtifactSource { generated.source }
+    func source(revision: ArtifactRevision) async throws -> ArtifactSource { generated.source }
     func setHead(id: String, revisionId: String, expectedHeadRevisionId: String) async throws -> ArtifactProject { revised }
     func remix(id: String, revisionId: String?) async throws -> ArtifactProject { revised }
     func downloadAsset(id: String) async throws -> DownloadedWidgetAsset {

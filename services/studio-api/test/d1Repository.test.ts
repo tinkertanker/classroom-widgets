@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { D1StudioRepository } from "../src/storage/d1Repository";
-import type {
-  ArtifactRecord,
-  RevisionRecord,
-} from "../src/storage/repository";
+import type { ArtifactRecord, RevisionRecord } from "../src/storage/repository";
 
 const revision: RevisionRecord = {
   id: "r2",
@@ -24,7 +21,14 @@ const artifact: ArtifactRecord = {
   id: "a1",
   ownerHash: "owner-a",
   title: "Fractions",
+  summary: "Compare fractions",
+  subject: "Mathematics",
+  level: "Primary 5",
+  locale: "en-SG",
+  learningObjective: "Compare fractions",
+  tags: ["fractions"],
   creationBrief: "{}",
+  generationBrief: "{}",
   headRevisionId: revision.id,
   remixedFromRevisionId: null,
   createdAt: revision.createdAt,
@@ -148,7 +152,9 @@ describe("D1StudioRepository conditional revision writes", () => {
       "<!doctype html><html></html>",
     );
 
-    expect(sql[0]).toContain("ON CONFLICT(artifact_id) WHERE revoked_at IS NULL");
+    expect(sql[0]).toContain(
+      "ON CONFLICT(artifact_id) WHERE revoked_at IS NULL",
+    );
     expect(sql[0]).toContain("head_revision_id=?3");
     expect(sql[0]).toContain("publications.owner_hash=?4");
     expect(sql[1]).toContain("revision_id=?2 AND revoked_at IS NULL");

@@ -4,15 +4,15 @@ import Security
 protocol StudioAPI: Sendable {
     func hasDeviceCredential() async -> Bool
     func registerDevice(accessCode: String) async throws
-    func generate(brief: String, preferredExampleRevisionId: String?) async throws -> ArtifactProject
+    func generate(request: GuidedGenerationRequest) async throws -> ArtifactProject
     func listArtifacts() async throws -> [Artifact]
-    func searchExamples(brief: String) async throws -> [Artifact]
+    func searchExamples(brief: String) async throws -> [ExampleSearchDescriptor]
     func getArtifact(id: String) async throws -> ArtifactProject
     func updateArtifact(_ artifact: Artifact) async throws -> Artifact
     func deleteArtifact(id: String) async throws
     func revise(id: String, instruction: String, expectedHeadRevisionId: String) async throws -> ArtifactProject
     func revisions(id: String) async throws -> [ArtifactRevision]
-    func source(revisionId: String) async throws -> ArtifactSource
+    func source(revision: ArtifactRevision) async throws -> ArtifactSource
     func setHead(id: String, revisionId: String, expectedHeadRevisionId: String) async throws -> ArtifactProject
     func remix(id: String, revisionId: String?) async throws -> ArtifactProject
     func downloadAsset(id: String) async throws -> DownloadedWidgetAsset
@@ -113,66 +113,80 @@ struct StudioAPIClient: StudioAPI, Sendable {
         try await tokenStore.storeToken(registration.token)
     }
 
-    func generate(brief: String, preferredExampleRevisionId: String?) async throws -> ArtifactProject {
-        struct Body: Encodable { let brief: String; let preferredExampleRevisionId: String? }
-        let artifact: Artifact = try await send("/v1/artifacts/generate", method: "POST", body: Body(brief: brief, preferredExampleRevisionId: preferredExampleRevisionId))
-        return try await hydrate(artifact)
+    func generate(request: GuidedGenerationRequest) async throws -> ArtifactProject {
+        let envelope: ProjectEnvelope = try await send("/v1/artifacts/generate", method: "POST", body: request)
+        return try await hydrate(envelope)
     }
 
-    func listArtifacts() async throws -> [Artifact] { try await sendWithoutBody("/v1/artifacts", method: "GET") }
+    func listArtifacts() async throws -> [Artifact] {
+        struct Envelope: Decodable { let artifacts: [Artifact] }
+        let envelope: Envelope = try await sendWithoutBody("/v1/artifacts", method: "GET")
+        return envelope.artifacts
+    }
 
-    func searchExamples(brief: String) async throws -> [Artifact] {
-        struct Body: Encodable { let brief: String }
-        return try await send(
-            "/v1/examples/search",
-            method: "POST",
-            body: Body(brief: brief)
-        )
+    func searchExamples(brief: String) async throws -> [ExampleSearchDescriptor] {
+        struct Envelope: Decodable { let examples: [ExampleSearchDescriptor] }
+        var components = URLComponents(); components.path = "/v1/examples/search"
+        components.queryItems = [.init(name: "q", value: brief)]
+        let envelope: Envelope = try await sendWithoutBody(components.string!, method: "GET")
+        return envelope.examples
     }
 
     func getArtifact(id: String) async throws -> ArtifactProject {
-        let artifact: Artifact = try await sendWithoutBody("/v1/artifacts/\(path(id))", method: "GET")
-        return try await hydrate(artifact)
+        let envelope: ProjectEnvelope = try await sendWithoutBody("/v1/artifacts/\(path(id))", method: "GET")
+        return try await hydrate(envelope)
     }
 
     func updateArtifact(_ artifact: Artifact) async throws -> Artifact {
         struct Body: Encodable {
             let title, summary: String
             let subject, level, locale, learningObjective: String?
-            let tags: [String]
+            let tags: [String]; let creationBrief: String
         }
-        return try await send("/v1/artifacts/\(path(artifact.id))", method: "PATCH", body: Body(
+        let envelope: ArtifactEnvelope = try await send("/v1/artifacts/\(path(artifact.id))", method: "PATCH", body: Body(
             title: artifact.title, summary: artifact.summary, subject: artifact.subject, level: artifact.level,
-            locale: artifact.locale, learningObjective: artifact.learningObjective, tags: artifact.tags
+            locale: artifact.locale, learningObjective: artifact.learningObjective, tags: artifact.tags,
+            creationBrief: artifact.creationBrief
         ))
+        return envelope.artifact
     }
 
     func deleteArtifact(id: String) async throws { try await sendEmpty("/v1/artifacts/\(path(id))", method: "DELETE") }
 
     func revise(id: String, instruction: String, expectedHeadRevisionId: String) async throws -> ArtifactProject {
         struct Body: Encodable { let instruction, expectedHeadRevisionId: String }
-        let artifact: Artifact = try await send("/v1/artifacts/\(path(id))/revisions", method: "POST", body: Body(instruction: instruction, expectedHeadRevisionId: expectedHeadRevisionId))
-        return try await hydrate(artifact)
+        let envelope: ProjectEnvelope = try await send("/v1/artifacts/\(path(id))/revisions", method: "POST", body: Body(instruction: instruction, expectedHeadRevisionId: expectedHeadRevisionId))
+        return try await hydrate(envelope)
     }
 
     func revisions(id: String) async throws -> [ArtifactRevision] {
-        try await sendWithoutBody("/v1/artifacts/\(path(id))/revisions", method: "GET")
+        let envelope: RevisionsEnvelope = try await sendWithoutBody("/v1/artifacts/\(path(id))/revisions", method: "GET")
+        return envelope.revisions
     }
 
-    func source(revisionId: String) async throws -> ArtifactSource {
-        try await sendWithoutBody("/v1/revisions/\(path(revisionId))/source", method: "GET")
+    func source(revision: ArtifactRevision) async throws -> ArtifactSource {
+        let (data, _) = try await perform("/v1/revisions/\(path(revision.id))/source", method: "GET", body: nil, contentType: nil)
+        guard let html = String(data: data, encoding: .utf8) else { throw StudioAPIError.invalidResponse }
+        return ArtifactSource(revision: revision, html: html)
     }
 
     func setHead(id: String, revisionId: String, expectedHeadRevisionId: String) async throws -> ArtifactProject {
-        struct Body: Encodable { let revisionId, expectedHeadRevisionId: String }
-        let artifact: Artifact = try await send("/v1/artifacts/\(path(id))/head", method: "POST", body: Body(revisionId: revisionId, expectedHeadRevisionId: expectedHeadRevisionId))
-        return try await hydrate(artifact)
+        struct Body: Encodable { let headRevisionId, expectedHeadRevisionId: String }
+        let envelope: ProjectEnvelope = try await send("/v1/artifacts/\(path(id))", method: "PATCH", body: Body(headRevisionId: revisionId, expectedHeadRevisionId: expectedHeadRevisionId))
+        return try await hydrate(envelope)
     }
 
     func remix(id: String, revisionId: String?) async throws -> ArtifactProject {
-        struct Body: Encodable { let revisionId: String? }
-        let artifact: Artifact = try await send("/v1/artifacts/\(path(id))/remix", method: "POST", body: Body(revisionId: revisionId))
-        return try await hydrate(artifact)
+        let selected: String
+        if let revisionId {
+            selected = revisionId
+        } else {
+            let source: ProjectEnvelope = try await sendWithoutBody("/v1/artifacts/\(path(id))", method: "GET")
+            selected = source.headRevision.id
+        }
+        struct Body: Encodable { let title: String? }
+        let envelope: ProjectEnvelope = try await send("/v1/revisions/\(path(selected))/remix", method: "POST", body: Body(title: nil))
+        return try await hydrate(envelope)
     }
 
     func downloadAsset(id: String) async throws -> DownloadedWidgetAsset {
@@ -198,15 +212,17 @@ struct StudioAPIClient: StudioAPI, Sendable {
     }
 
     func publish(id: String, revisionId: String?) async throws -> ArtifactPublication {
-        struct Body: Encodable { let revisionId: String? }
-        return try await send("/v1/artifacts/\(path(id))/publish", method: "POST", body: Body(revisionId: revisionId))
+        struct Body: Encodable { let expectedHeadRevisionId: String }
+        let envelope: PublicationEnvelope = try await send("/v1/artifacts/\(path(id))/publish", method: "POST", body: Body(expectedHeadRevisionId: revisionId ?? ""))
+        return envelope.publication
     }
 
     func revoke(slug: String) async throws { try await sendEmpty("/v1/publications/\(path(slug))", method: "DELETE") }
 
     func extend(slug: String, days: Int) async throws -> ArtifactPublication {
         struct Body: Encodable { let days: Int }
-        return try await send("/v1/publications/\(path(slug))", method: "PATCH", body: Body(days: days))
+        let envelope: PublicationEnvelope = try await send("/v1/publications/\(path(slug))", method: "PATCH", body: Body(days: days))
+        return envelope.publication
     }
 
     func uploadImage(_ image: PreparedWidgetImage, alternativeText: String?, decorative: Bool) async throws -> UploadedWidgetImage {
@@ -220,15 +236,16 @@ struct StudioAPIClient: StudioAPI, Sendable {
         return try decode(data)
     }
 
-    private func hydrate(_ artifact: Artifact) async throws -> ArtifactProject {
-        let source: ArtifactSource
-        if let revision = artifact.headRevision, let html = artifact.html {
-            source = ArtifactSource(revision: revision, html: html)
-        } else {
-            source = try await self.source(revisionId: artifact.headRevisionId)
-        }
-        let history = try await revisions(id: artifact.id)
-        return ArtifactProject(artifact: artifact, source: source, revisions: history)
+    private struct ArtifactEnvelope: Decodable { let artifact: Artifact }
+    private struct RevisionsEnvelope: Decodable { let revisions: [ArtifactRevision] }
+    private struct PublicationEnvelope: Decodable { let publication: ArtifactPublication }
+    private struct ProjectEnvelope: Decodable { let artifact: Artifact; let headRevision: ArtifactRevision; let html: String? }
+
+    private func hydrate(_ envelope: ProjectEnvelope) async throws -> ArtifactProject {
+        let source = envelope.html.map { ArtifactSource(revision: envelope.headRevision, html: $0) }
+            ?? (try await self.source(revision: envelope.headRevision))
+        let history = try await revisions(id: envelope.artifact.id)
+        return ArtifactProject(artifact: envelope.artifact, source: source, revisions: history)
     }
 
     private func send<Response: Decodable, Body: Encodable>(_ route: String, method: String, body: Body) async throws -> Response {

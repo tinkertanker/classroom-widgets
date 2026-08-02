@@ -104,8 +104,7 @@ async function servePublic(
     const asset = await new CloudflareAssetStore(env.DB, env.MEDIA).get(
       parts[2],
     );
-    if (!asset || asset.record.ownerHash !== publication.ownerHash)
-      return new Response("Image not found.", { status: 404 });
+    if (!asset) return new Response("Image not found.", { status: 404 });
     const headers = new Headers();
     asset.object.writeHttpMetadata(headers);
     headers.set("etag", asset.object.httpEtag);

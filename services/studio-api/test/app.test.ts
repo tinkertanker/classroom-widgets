@@ -34,10 +34,8 @@ describe("Studio API registration and public HTML", () => {
   beforeEach(async () => {
     repository = new MemoryStudioRepository();
     sources = new MemorySourceStore();
-    token = (await issueDeviceToken(
-      secret,
-      new Date("2026-08-02T00:00:00Z"),
-    )).token;
+    token = (await issueDeviceToken(secret, new Date("2026-08-02T00:00:00Z")))
+      .token;
     app = createStudioApp({
       repository,
       provider: new FixtureModelProvider(),
@@ -61,10 +59,14 @@ describe("Studio API registration and public HTML", () => {
   }
 
   const creationBrief = {
-    level: "Primary 5",
-    subject: "Mathematics",
-    learningObjective: "Compare fractions with unlike denominators",
-    studentAction: "Choose the larger fraction and check the feedback",
+    creationBrief: "Create a Primary 5 fractions comparison activity.",
+    brief: {
+      learnerContext: "Primary 5 Mathematics",
+      learningObjective: "Compare fractions with unlike denominators",
+      studentAction: "Choose the larger fraction and check the feedback",
+      feedback: "Explain each answer",
+      classroomFit: "Five minutes independently",
+    },
   };
 
   function register(accessCode: string) {
@@ -137,47 +139,158 @@ describe("Studio API registration and public HTML", () => {
     expect(generated.status).toBe(201);
     const first = (await generated.json()) as {
       artifact: { id: string; headRevisionId: string };
-      revision: RevisionRecord;
+      headRevision: RevisionRecord;
     };
-    expect(await sources.getSource(first.revision.sourceHash)).toContain(
+    expect(await sources.getSource(first.headRevision.sourceHash)).toContain(
       "<!doctype html>",
     );
 
     const revised = await app.fetch(
-      authenticated(
-        `/v1/artifacts/${first.artifact.id}/revisions`,
-        "POST",
-        {
-          instruction: "Use a number line",
-          expectedHeadRevisionId: first.revision.id,
-        },
-      ),
+      authenticated(`/v1/artifacts/${first.artifact.id}/revisions`, "POST", {
+        instruction: "Use a number line",
+        expectedHeadRevisionId: first.headRevision.id,
+      }),
     );
     expect(revised.status).toBe(201);
-    const second = (await revised.json()) as { revision: RevisionRecord };
-    expect(second.revision.parentRevisionId).toBe(first.revision.id);
-    expect((await repository.getRevision(first.revision.id))?.sourceHash).toBe(
-      first.revision.sourceHash,
-    );
+    const second = (await revised.json()) as { headRevision: RevisionRecord };
+    expect(second.headRevision.parentRevisionId).toBe(first.headRevision.id);
+    expect(
+      (await repository.getRevision(first.headRevision.id))?.sourceHash,
+    ).toBe(first.headRevision.sourceHash);
 
     const moved = await app.fetch(
       authenticated(`/v1/artifacts/${first.artifact.id}`, "PATCH", {
-        headRevisionId: first.revision.id,
-        expectedHeadRevisionId: second.revision.id,
+        headRevisionId: first.headRevision.id,
+        expectedHeadRevisionId: second.headRevision.id,
       }),
     );
     expect(moved.status).toBe(200);
 
     const remix = await app.fetch(
-      authenticated(`/v1/revisions/${first.revision.id}/remix`, "POST", {}),
+      authenticated(`/v1/revisions/${first.headRevision.id}/remix`, "POST", {}),
     );
     expect(remix.status).toBe(201);
     const remixed = (await remix.json()) as {
       artifact: { remixedFromRevisionId: string };
-      revision: RevisionRecord;
+      headRevision: RevisionRecord;
     };
-    expect(remixed.artifact.remixedFromRevisionId).toBe(first.revision.id);
-    expect(remixed.revision.parentRevisionId).toBeNull();
+    expect(remixed.artifact.remixedFromRevisionId).toBe(first.headRevision.id);
+    expect(remixed.headRevision.parentRevisionId).toBeNull();
+  });
+
+  it("round-trips rich metadata, screenshots, and publication envelopes", async () => {
+    const generated = await app.fetch(
+      authenticated("/v1/artifacts/generate", "POST", creationBrief),
+    );
+    const first = (await generated.json()) as {
+      artifact: {
+        id: string;
+        summary: string;
+        creationBrief: string;
+        publication: null;
+        publicationStale: boolean;
+      };
+      headRevision: { id: string };
+    };
+    expect(first.artifact).toMatchObject({
+      summary: expect.any(String),
+      creationBrief: creationBrief.creationBrief,
+      publication: null,
+      publicationStale: false,
+    });
+
+    const metadata = await app.fetch(
+      authenticated(`/v1/artifacts/${first.artifact.id}`, "PATCH", {
+        title: "Fraction comparison",
+        summary: "A concise fraction diagnostic",
+        subject: "Mathematics",
+        level: "Primary 5",
+        locale: "en-SG",
+        learningObjective: "Compare unlike fractions",
+        tags: ["fractions", "diagnostic"],
+        creationBrief: "Updated teacher-facing brief",
+      }),
+    );
+    expect(metadata.status).toBe(200);
+    await expect(metadata.json()).resolves.toMatchObject({
+      artifact: {
+        title: "Fraction comparison",
+        summary: "A concise fraction diagnostic",
+        subject: "Mathematics",
+        level: "Primary 5",
+        locale: "en-SG",
+        learningObjective: "Compare unlike fractions",
+        tags: ["fractions", "diagnostic"],
+        creationBrief: "Updated teacher-facing brief",
+        publication: null,
+        publicationStale: false,
+      },
+    });
+
+    const jpeg = Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]);
+    const screenshot = await app.fetch(
+      new Request(
+        `https://api.test/v1/revisions/${first.headRevision.id}/screenshot`,
+        {
+          method: "POST",
+          headers: {
+            "x-device-token": token,
+            "content-type": "image/jpeg",
+            origin: "https://studio.test",
+          },
+          body: jpeg,
+        },
+      ),
+    );
+    expect(screenshot.status).toBe(201);
+    const history = await app.fetch(
+      authenticated(`/v1/artifacts/${first.artifact.id}/revisions`),
+    );
+    await expect(history.json()).resolves.toMatchObject({
+      revisions: [
+        {
+          id: first.headRevision.id,
+          screenshotUrl: null,
+        },
+      ],
+    });
+
+    const published = await app.fetch(
+      authenticated(`/v1/artifacts/${first.artifact.id}/publish`, "POST", {
+        expectedHeadRevisionId: first.headRevision.id,
+      }),
+    );
+    expect(published.status).toBe(201);
+    const firstPublication = (await published.json()) as {
+      publication: { slug: string; revisionId: string };
+    };
+    expect(firstPublication.publication.revisionId).toBe(first.headRevision.id);
+
+    const revised = await app.fetch(
+      authenticated(`/v1/artifacts/${first.artifact.id}/revisions`, "POST", {
+        instruction: "Use a number line",
+        expectedHeadRevisionId: first.headRevision.id,
+      }),
+    );
+    const second = (await revised.json()) as {
+      artifact: { publicationStale: boolean };
+      headRevision: { id: string };
+    };
+    expect(second.artifact.publicationStale).toBe(true);
+    const republished = await app.fetch(
+      authenticated(`/v1/artifacts/${first.artifact.id}/publish`, "POST", {
+        expectedHeadRevisionId: second.headRevision.id,
+      }),
+    );
+    const secondPublication = (await republished.json()) as {
+      publication: { slug: string; revisionId: string };
+    };
+    expect(secondPublication.publication.slug).toBe(
+      firstPublication.publication.slug,
+    );
+    expect(secondPublication.publication.revisionId).toBe(
+      second.headRevision.id,
+    );
   });
 
   it("persists no artifact when generation and its single repair are invalid", async () => {
@@ -220,16 +333,16 @@ describe("Studio API registration and public HTML", () => {
     );
     const first = (await generated.json()) as {
       artifact: { id: string };
-      revision: RevisionRecord;
+      headRevision: RevisionRecord;
     };
     const ownerHash = repository.artifacts.get(first.artifact.id)!.ownerHash;
-    const storedFirst = (await repository.getRevision(first.revision.id))!;
+    const storedFirst = (await repository.getRevision(first.headRevision.id))!;
     const originalRevise = provider.revise.bind(provider);
     provider.revise = async (...args) => {
       const competing: RevisionRecord = {
         ...storedFirst,
         id: "competing-revision",
-        parentRevisionId: first.revision.id,
+        parentRevisionId: first.headRevision.id,
         sourceHash: "competing-hash",
         kind: "revision",
         createdAt: "2026-08-02T00:00:01Z",
@@ -237,21 +350,17 @@ describe("Studio API registration and public HTML", () => {
       await repository.createRevision(
         competing,
         ownerHash,
-        first.revision.id,
+        first.headRevision.id,
         [],
       );
       return originalRevise(...args);
     };
 
     const response = await app.fetch(
-      authenticated(
-        `/v1/artifacts/${first.artifact.id}/revisions`,
-        "POST",
-        {
-          instruction: "Use a number line",
-          expectedHeadRevisionId: first.revision.id,
-        },
-      ),
+      authenticated(`/v1/artifacts/${first.artifact.id}/revisions`, "POST", {
+        instruction: "Use a number line",
+        expectedHeadRevisionId: first.headRevision.id,
+      }),
     );
     expect(response.status).toBe(409);
     expect(repository.revisions.size).toBe(2);
@@ -276,10 +385,10 @@ describe("Studio API registration and public HTML", () => {
     const generated = await app.fetch(
       authenticated("/v1/artifacts/generate", "POST", creationBrief),
     );
-    const first = (await generated.json()) as { revision: RevisionRecord };
+    const first = (await generated.json()) as { headRevision: RevisionRecord };
 
     const remix = await app.fetch(
-      authenticated(`/v1/revisions/${first.revision.id}/remix`, "POST", {}),
+      authenticated(`/v1/revisions/${first.headRevision.id}/remix`, "POST", {}),
     );
     expect(remix.status).toBe(429);
   });
@@ -287,11 +396,9 @@ describe("Studio API registration and public HTML", () => {
   it("rejects invalid publication extension durations before repository writes", async () => {
     for (const days of [-1, 0, 1.5, 366, "30"]) {
       const response = await app.fetch(
-        authenticated(
-          "/v1/publications/ABCDEFGHIJKLMNOPQRST",
-          "PATCH",
-          { days },
-        ),
+        authenticated("/v1/publications/ABCDEFGHIJKLMNOPQRST", "PATCH", {
+          days,
+        }),
       );
       expect(response.status).toBe(422);
     }

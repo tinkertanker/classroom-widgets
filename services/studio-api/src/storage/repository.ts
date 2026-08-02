@@ -2,12 +2,30 @@ export interface ArtifactRecord {
   id: string;
   ownerHash: string;
   title: string;
+  summary: string;
+  subject: string | null;
+  level: string | null;
+  locale: string | null;
+  learningObjective: string | null;
+  tags: string[];
   creationBrief: string;
+  generationBrief: string;
   headRevisionId: string;
   remixedFromRevisionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
+export type ArtifactMetadata = Pick<
+  ArtifactRecord,
+  | "title"
+  | "summary"
+  | "subject"
+  | "level"
+  | "locale"
+  | "learningObjective"
+  | "tags"
+  | "creationBrief"
+>;
 export interface RevisionRecord {
   id: string;
   artifactId: string;
@@ -74,10 +92,10 @@ export interface StudioRepository {
   getArtifact(id: string, owner: string): Promise<ArtifactRecord | null>;
   getArtifactPublic(id: string): Promise<ArtifactRecord | null>;
   listArtifacts(owner: string): Promise<ArtifactRecord[]>;
-  renameArtifact(
+  updateArtifactMetadata(
     id: string,
     owner: string,
-    title: string,
+    metadata: ArtifactMetadata,
     now: string,
   ): Promise<ArtifactRecord | null>;
   deleteArtifact(id: string, owner: string): Promise<boolean>;
@@ -122,6 +140,7 @@ export interface StudioRepository {
   ): Promise<PublicationRecord | null>;
   getPublication(slug: string): Promise<PublicationRecord | null>;
   publicationReferencesAsset(slug: string, assetId: string): Promise<boolean>;
+  ownerReferencesAsset(owner: string, assetId: string): Promise<boolean>;
   extendPublication(
     slug: string,
     owner: string,
