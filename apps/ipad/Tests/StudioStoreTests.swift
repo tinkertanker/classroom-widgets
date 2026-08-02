@@ -221,7 +221,7 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testDeleteKeepsLocalProjectWhenMissingRemoteMayStillBePublished() async {
+    func testDeleteKeepsLocalProjectWhenMissingRemoteMayStillBePublished() async throws {
         var project = makeProject(revisionID: "r1", html: "<html></html>")
         project.artifact.publication = ArtifactPublication(
             slug: "active-link",
@@ -292,6 +292,7 @@ final class StudioStoreTests: XCTestCase {
         XCTAssertEqual(store.projects.map(\.id), [project.id])
     }
 
+    @MainActor
     func testAssetExtractionMatchesManagedHtmlReferencesOnly() {
         let html = """
         <img src="assets/image-one">
@@ -306,6 +307,7 @@ final class StudioStoreTests: XCTestCase {
         )
     }
 
+    @MainActor
     func testLegacyCacheMigrationCopiesOnlyProjectFilesWithoutOverwriting() throws {
         let root = temporaryDirectory()
         let source = root.appending(path: "legacy", directoryHint: .isDirectory)
