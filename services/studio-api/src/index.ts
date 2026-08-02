@@ -74,7 +74,10 @@ export function injectPublicHtml(source: string, slug: string): string {
     /<head(\s[^>]*)?>/i,
     (head) => `${head}<base href="/${slug}/">`,
   );
-  const injected = withBase.replace(/<\/body\s*>/i, `${report}</body>`);
+  const injected = withBase.replace(
+    /<\/body\s*>(?![\s\S]*<\/body\s*>)/i,
+    `${report}</body>`,
+  );
   if (injected === withBase || withBase === source)
     throw new Error("Stored widget source is not a complete HTML document.");
   return injected;

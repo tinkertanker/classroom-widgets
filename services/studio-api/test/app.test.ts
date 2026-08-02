@@ -125,11 +125,15 @@ describe("Studio API registration and public HTML", () => {
 
   it("injects one scoped base and one report control without changing the source", () => {
     const source =
-      '<!doctype html><html><head></head><body><img src="assets/image-1"></body></html>';
+      '<!doctype html><html><head></head><body><script>const closingTag = "</body>";</script><img src="assets/image-1"></body></html>';
     const served = injectPublicHtml(source, "ABCDEFGHIJKLMNOPQRST");
     expect(served.match(/<base /g)).toHaveLength(1);
     expect(served.match(/data-studio-report/g)).toHaveLength(1);
     expect(served).toContain('<base href="/ABCDEFGHIJKLMNOPQRST/">');
+    expect(served).toContain('<script>const closingTag = "</body>";</script>');
+    expect(served.indexOf("data-studio-report")).toBeGreaterThan(
+      served.indexOf('<img src="assets/image-1">'),
+    );
     expect(source).not.toContain("<base");
   });
 
