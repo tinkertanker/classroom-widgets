@@ -4,16 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "npm run build -w @classroom-widgets/widget-player",
     "dev": "wrangler dev",
-    "prebuild": "npm run build -w @classroom-widgets/widget-player",
     "build": "wrangler deploy --dry-run --outdir dist",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply DB --local"
-  },
-  "dependencies": {
-    "@classroom-widgets/widget-spec": "*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260718.1",

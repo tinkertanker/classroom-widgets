@@ -1,71 +1,49 @@
-import type { WidgetSpec } from '@classroom-widgets/widget-spec';
-
-export interface DraftRecord {
+export interface ArtifactRecord {
   id: string;
   ownerHash: string;
   title: string;
-  schemaVersion: string;
-  spec: WidgetSpec;
-  version: number;
+  creationBrief: string;
+  headRevisionId: string;
+  remixedFromRevisionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
-
+export interface RevisionRecord {
+  id: string;
+  artifactId: string;
+  parentRevisionId: string | null;
+  sourceHash: string;
+  sourceBytes: number;
+  kind: "generation" | "revision" | "remix" | "import";
+  instruction: string | null;
+  designCard: string | null;
+  exemplars: string[];
+  modelVersion: string;
+  promptVersion: string;
+  screenshotKey: string | null;
+  createdAt: string;
+}
 export interface PublicationRecord {
   slug: string;
-  draftId: string;
+  artifactId: string;
+  revisionId: string;
   ownerHash: string;
   title: string;
-  schemaVersion: string;
-  spec: WidgetSpec;
+  sourceHash: string;
   createdAt: string;
   expiresAt: string;
   revokedAt: string | null;
 }
-
-export interface SaveDraftInput {
-  id: string;
-  ownerHash: string;
+export interface RetrievalEntry {
+  artifactId: string;
+  revisionId: string;
   title: string;
-  schemaVersion: string;
-  spec: WidgetSpec;
-  now: string;
+  descriptor: string;
+  html: string;
+  curated: boolean;
 }
-
-export interface UpdateDraftInput {
-  id: string;
-  ownerHash: string;
-  title: string;
-  schemaVersion: string;
-  spec: WidgetSpec;
-  expectedVersion: number;
-  instruction: string;
-  now: string;
-}
-
-export interface PublishInput {
-  slug: string;
-  draft: DraftRecord;
-  expiresAt: string;
-  now: string;
-}
-
-export type PublishResult =
-  | { status: 'published'; publication: PublicationRecord }
-  | { status: 'version-conflict' };
-
-export type ExtendPublicationResult =
-  | { status: 'extended'; publication: PublicationRecord }
-  | { status: 'not-found' }
-  | { status: 'expiry-limit' };
-
 export type ContentReportReason =
-  | 'inappropriate'
-  | 'personal-data'
-  | 'copyright'
-  | 'accessibility'
-  | 'other';
-
+  "inappropriate" | "personal-data" | "copyright" | "accessibility" | "other";
 export interface ContentReportInput {
   id: string;
   publicationSlug: string;
@@ -73,32 +51,85 @@ export interface ContentReportInput {
   now: string;
   maximumPerPublication: number;
 }
+export type ExtendPublicationResult =
+  | { status: "extended"; publication: PublicationRecord }
+  | { status: "not-found" }
+  | { status: "expiry-limit" };
+export interface CreateArtifactInput {
+  artifact: ArtifactRecord;
+  revision: RevisionRecord;
+  assetIds: string[];
+}
 
 export interface StudioRepository {
-  consumeGeneration(ownerHash: string, usageDate: string, limit: number): Promise<boolean>;
-  countDrafts(ownerHash: string): Promise<number>;
-  purgeUsage(beforeDate: string): Promise<void>;
-  consumeClassCode(codeHash: string, now: string): Promise<boolean>;
-  createDraft(input: SaveDraftInput): Promise<DraftRecord>;
-  getDraft(id: string, ownerHash: string): Promise<DraftRecord | null>;
-  listDrafts(ownerHash: string): Promise<DraftRecord[]>;
-  deleteDraft(id: string, ownerHash: string): Promise<boolean>;
-  deleteExpiredDrafts(before: string, now: string, limit?: number): Promise<number>;
-  updateDraft(input: UpdateDraftInput): Promise<DraftRecord | null>;
-  publish(input: PublishInput): Promise<PublishResult>;
-  getActivePublicationForDraft(
-    draftId: string,
-    ownerHash: string,
+  consumeGeneration(
+    subject: string,
+    date: string,
+    limit: number,
+  ): Promise<boolean>;
+  purgeUsage(before: string): Promise<void>;
+  consumeClassCode(hash: string, now: string): Promise<boolean>;
+  countArtifacts(owner: string): Promise<number>;
+  createArtifact(input: CreateArtifactInput): Promise<void>;
+  getArtifact(id: string, owner: string): Promise<ArtifactRecord | null>;
+  getArtifactPublic(id: string): Promise<ArtifactRecord | null>;
+  listArtifacts(owner: string): Promise<ArtifactRecord[]>;
+  renameArtifact(
+    id: string,
+    owner: string,
+    title: string,
+    now: string,
+  ): Promise<ArtifactRecord | null>;
+  deleteArtifact(id: string, owner: string): Promise<boolean>;
+  deleteExpiredArtifacts(
+    before: string,
+    now: string,
+    limit?: number,
+  ): Promise<number>;
+  getRevision(id: string): Promise<RevisionRecord | null>;
+  listRevisions(artifactId: string, owner: string): Promise<RevisionRecord[]>;
+  createRevision(
+    revision: RevisionRecord,
+    owner: string,
+    expectedHead: string,
+    assetIds: string[],
+  ): Promise<boolean>;
+  moveHead(
+    artifactId: string,
+    owner: string,
+    revisionId: string,
+    expectedHead: string,
+    now: string,
+  ): Promise<boolean>;
+  setScreenshot(
+    revisionId: string,
+    owner: string,
+    key: string,
+  ): Promise<boolean>;
+  isRevisionRetrievable(revisionId: string): Promise<boolean>;
+  searchRetrieval(query: string, limit: number): Promise<RetrievalEntry[]>;
+  publish(
+    slug: string,
+    artifact: ArtifactRecord,
+    revision: RevisionRecord,
+    expiresAt: string,
+    now: string,
+    html: string,
+  ): Promise<PublicationRecord | null>;
+  getActivePublicationForArtifact(
+    id: string,
+    owner: string,
   ): Promise<PublicationRecord | null>;
   getPublication(slug: string): Promise<PublicationRecord | null>;
+  publicationReferencesAsset(slug: string, assetId: string): Promise<boolean>;
   extendPublication(
     slug: string,
-    ownerHash: string,
+    owner: string,
     now: string,
     days: number,
-    maximumExpiresAt: string,
+    max: string,
   ): Promise<ExtendPublicationResult>;
-  revokePublication(slug: string, ownerHash: string, now: string): Promise<boolean>;
+  revokePublication(slug: string, owner: string, now: string): Promise<boolean>;
   createContentReport(input: ContentReportInput): Promise<boolean>;
   deleteContentReports(before: string): Promise<number>;
 }

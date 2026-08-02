@@ -1,238 +1,210 @@
-import { describe, expect, it } from 'vitest';
-import type { WidgetSpec } from '@classroom-widgets/widget-spec';
-import { MemoryStudioRepository } from '../src/storage/memoryRepository';
+import { describe, expect, it } from "vitest";
+import { MemoryStudioRepository } from "../src/storage/memoryRepository";
+import type { ArtifactRecord, RevisionRecord } from "../src/storage/repository";
 
-const fixture = {
-  schemaVersion: '1.0',
-  id: 'fixture',
-  metadata: { title: 'Forces retrieval' },
-  screens: [],
-} as unknown as WidgetSpec;
+const now = "2026-08-02T00:00:00.000Z";
+function records(id = "artifact-1", ownerHash = "owner-a") {
+  const revision: RevisionRecord = {
+    id: `${id}-r1`,
+    artifactId: id,
+    parentRevisionId: null,
+    sourceHash: "hash-1",
+    sourceBytes: 100,
+    kind: "generation",
+    instruction: null,
+    designCard: null,
+    exemplars: [],
+    modelVersion: "fixture",
+    promptVersion: "v1",
+    screenshotKey: null,
+    createdAt: now,
+  };
+  const artifact: ArtifactRecord = {
+    id,
+    ownerHash,
+    title: "Fractions",
+    creationBrief: "{}",
+    headRevisionId: revision.id,
+    remixedFromRevisionId: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  return { artifact, revision };
+}
 
-describe('MemoryStudioRepository', () => {
-  it('enforces the daily generation limit without an off-by-one', async () => {
+describe("MemoryStudioRepository artifact model", () => {
+  it("enforces quota boundaries and class-code capacity", async () => {
     const repository = new MemoryStudioRepository();
-    expect(await repository.consumeGeneration('owner', '2026-07-18', 2)).toBe(true);
-    expect(await repository.consumeGeneration('owner', '2026-07-18', 2)).toBe(true);
-    expect(await repository.consumeGeneration('owner', '2026-07-18', 2)).toBe(false);
-    expect(await repository.consumeGeneration('owner', '2026-07-19', 2)).toBe(true);
-  });
-
-  it('consumes a class code exactly up to its fixed activation limit', async () => {
-    const repository = new MemoryStudioRepository();
-    repository.classCodes.set('class-code-hash', {
-      maximumUses: 2,
+    expect(
+      await repository.consumeGeneration(
+        "network-generation:x",
+        "2026-08-02",
+        2,
+      ),
+    ).toBe(true);
+    expect(
+      await repository.consumeGeneration(
+        "network-generation:x",
+        "2026-08-02",
+        2,
+      ),
+    ).toBe(true);
+    expect(
+      await repository.consumeGeneration(
+        "network-generation:x",
+        "2026-08-02",
+        2,
+      ),
+    ).toBe(false);
+    repository.classCodes.set("code", {
+      maximumUses: 1,
       uses: 0,
-      expiresAt: '2026-07-19T00:00:00.000Z',
+      expiresAt: "2026-08-03T00:00:00Z",
     });
+    expect(await repository.consumeClassCode("code", now)).toBe(true);
+    expect(await repository.consumeClassCode("code", now)).toBe(false);
+  });
 
+  it("keeps artifacts private and revisions in an immutable same-artifact chain", async () => {
+    const repository = new MemoryStudioRepository();
+    const { artifact, revision } = records();
+    await repository.createArtifact({
+      artifact,
+      revision,
+      assetIds: ["asset-1"],
+    });
+    expect(await repository.getArtifact(artifact.id, "owner-b")).toBeNull();
+    expect(await repository.listRevisions(artifact.id, "owner-b")).toEqual([]);
+
+    const next = {
+      ...revision,
+      id: "revision-2",
+      parentRevisionId: revision.id,
+      sourceHash: "hash-2",
+    };
     expect(
-      await repository.consumeClassCode('class-code-hash', '2026-07-18T00:00:00.000Z'),
+      await repository.createRevision(next, "owner-a", revision.id, [
+        "asset-2",
+      ]),
     ).toBe(true);
     expect(
-      await repository.consumeClassCode('class-code-hash', '2026-07-18T00:00:01.000Z'),
-    ).toBe(true);
+      (await repository.getArtifact(artifact.id, "owner-a"))?.headRevisionId,
+    ).toBe(next.id);
+    expect((await repository.getRevision(revision.id))?.sourceHash).toBe(
+      "hash-1",
+    );
+
+    const other = records("artifact-2");
+    await repository.createArtifact({ ...other, assetIds: [] });
+    const crossArtifact = {
+      ...next,
+      id: "bad",
+      artifactId: other.artifact.id,
+      parentRevisionId: next.id,
+    };
     expect(
-      await repository.consumeClassCode('class-code-hash', '2026-07-18T00:00:02.000Z'),
-    ).toBe(false);
-    expect(repository.classCodes.get('class-code-hash')?.uses).toBe(2);
-  });
-
-  it('keeps drafts private to their device owner', async () => {
-    const repository = new MemoryStudioRepository();
-    await repository.createDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Forces retrieval',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2026-07-18T00:00:00.000Z',
-    });
-
-    expect(await repository.getDraft('draft-1', 'owner-a')).not.toBeNull();
-    expect(await repository.getDraft('draft-1', 'owner-b')).toBeNull();
-    expect((await repository.listDrafts('owner-a')).map((draft) => draft.id)).toEqual(['draft-1']);
-    expect(await repository.listDrafts('owner-b')).toEqual([]);
-  });
-
-  it('rejects a stale patch instead of overwriting a newer version', async () => {
-    const repository = new MemoryStudioRepository();
-    await repository.createDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Forces retrieval',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2026-07-18T00:00:00.000Z',
-    });
-
-    const first = await repository.updateDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Balanced forces retrieval',
-      schemaVersion: '1.0',
-      spec: fixture,
-      expectedVersion: 1,
-      instruction: 'Focus on balanced forces.',
-      now: '2026-07-18T00:01:00.000Z',
-    });
-    expect(first?.version).toBe(2);
-
-    const stale = await repository.updateDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Stale title',
-      schemaVersion: '1.0',
-      spec: fixture,
-      expectedVersion: 1,
-      instruction: 'Overwrite it.',
-      now: '2026-07-18T00:02:00.000Z',
-    });
-    expect(stale).toBeNull();
-  });
-
-  it('publishes only the exact draft version supplied by moderation', async () => {
-    const repository = new MemoryStudioRepository();
-    const moderated = await repository.createDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Forces retrieval',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2026-07-18T00:00:00.000Z',
-    });
-    await repository.updateDraft({
-      id: moderated.id,
-      ownerHash: moderated.ownerHash,
-      title: moderated.title,
-      schemaVersion: moderated.schemaVersion,
-      spec: fixture,
-      expectedVersion: moderated.version,
-      instruction: 'Concurrent revision',
-      now: '2026-07-18T00:01:00.000Z',
-    });
-
-    await expect(repository.publish({
-      slug: 'publication-slug',
-      draft: moderated,
-      expiresAt: '2026-10-16T00:00:00.000Z',
-      now: '2026-07-18T00:02:00.000Z',
-    })).resolves.toEqual({ status: 'version-conflict' });
-    expect(repository.publications.size).toBe(0);
-  });
-
-  it('adds concurrent publication extensions cumulatively without losing an update', async () => {
-    const repository = new MemoryStudioRepository();
-    const draft = await repository.createDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Forces retrieval',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2026-07-18T00:00:00.000Z',
-    });
-    await repository.publish({
-      slug: 'publication-slug',
-      draft,
-      expiresAt: '2026-10-16T00:00:00.000Z',
-      now: '2026-07-18T00:00:00.000Z',
-    });
-
-    const [first, second] = await Promise.all([
-      repository.extendPublication(
-        'publication-slug',
-        'owner-a',
-        '2026-07-18T00:00:00.000Z',
-        10,
-        '2027-07-19T00:00:00.000Z',
-      ),
-      repository.extendPublication(
-        'publication-slug',
-        'owner-a',
-        '2026-07-18T00:00:00.000Z',
-        20,
-        '2027-07-19T00:00:00.000Z',
-      ),
-    ]);
-
-    expect(first.status).toBe('extended');
-    expect(second.status).toBe('extended');
-    expect((await repository.getPublication('publication-slug'))?.expiresAt)
-      .toBe('2026-11-15T00:00:00.000Z');
-  });
-
-  it('revokes only for the owning device and makes owner retries idempotent', async () => {
-    const repository = new MemoryStudioRepository();
-    const draft = await repository.createDraft({
-      id: 'draft-1',
-      ownerHash: 'owner-a',
-      title: 'Forces retrieval',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2026-07-18T00:00:00.000Z',
-    });
-    await repository.publish({
-      slug: 'publication-slug',
-      draft,
-      expiresAt: '2026-10-16T00:00:00.000Z',
-      now: '2026-07-18T00:00:00.000Z',
-    });
-
-    expect(
-      await repository.revokePublication(
-        'publication-slug',
-        'owner-b',
-        '2026-07-18T00:01:00.000Z',
-      ),
+      await repository.createRevision(crossArtifact, "owner-a", next.id, []),
     ).toBe(false);
     expect(
-      await repository.revokePublication(
-        'publication-slug',
-        'owner-a',
-        '2026-07-18T00:01:00.000Z',
+      await repository.moveHead(
+        artifact.id,
+        "owner-a",
+        other.revision.id,
+        next.id,
+        now,
       ),
+    ).toBe(false);
+  });
+
+  it("publishes the exact head, reuses its slug, checks live assets, and supports lifecycle controls", async () => {
+    const repository = new MemoryStudioRepository();
+    const { artifact, revision } = records();
+    await repository.createArtifact({
+      artifact,
+      revision,
+      assetIds: ["asset-1"],
+    });
+    const first = await repository.publish(
+      "first-slug",
+      artifact,
+      revision,
+      "2026-09-01T00:00:00Z",
+      now,
+      "<html/>",
+    );
+    expect(first?.revisionId).toBe(revision.id);
+    expect(await repository.isRevisionRetrievable(revision.id)).toBe(true);
+    expect(
+      await repository.publicationReferencesAsset("first-slug", "asset-1"),
     ).toBe(true);
     expect(
-      await repository.revokePublication(
-        'publication-slug',
-        'owner-a',
-        '2026-07-18T00:02:00.000Z',
+      await repository.publicationReferencesAsset("first-slug", "asset-2"),
+    ).toBe(false);
+
+    const next = {
+      ...revision,
+      id: "revision-2",
+      parentRevisionId: revision.id,
+      sourceHash: "hash-2",
+    };
+    await repository.createRevision(next, "owner-a", revision.id, []);
+    const current = await repository.getArtifact(artifact.id, "owner-a");
+    expect(
+      (
+        await repository.publish(
+          "unused-slug",
+          current!,
+          next,
+          "2026-10-01T00:00:00Z",
+          now,
+          "<html/>",
+        )
+      )?.slug,
+    ).toBe("first-slug");
+    expect(await repository.isRevisionRetrievable(revision.id)).toBe(false);
+    expect(await repository.isRevisionRetrievable(next.id)).toBe(true);
+    expect(
+      await repository.publish(
+        "stale",
+        artifact,
+        revision,
+        "2026-10-01T00:00:00Z",
+        now,
+        "<html/>",
       ),
+    ).toBeNull();
+    expect(
+      (
+        await repository.extendPublication(
+          "first-slug",
+          "owner-a",
+          now,
+          1,
+          "2027-01-01T00:00:00Z",
+        )
+      ).status,
+    ).toBe("extended");
+    expect(
+      await repository.revokePublication("first-slug", "owner-b", now),
+    ).toBe(false);
+    expect(
+      await repository.revokePublication("first-slug", "owner-a", now),
     ).toBe(true);
   });
 
-  it('expires stale drafts but preserves one with a live publication', async () => {
+  it("preserves remix lineage on the artifact while its first revision has no parent", async () => {
     const repository = new MemoryStudioRepository();
-    const stale = await repository.createDraft({
-      id: 'stale-draft',
-      ownerHash: 'owner-a',
-      title: 'Old widget',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2025-01-01T00:00:00.000Z',
-    });
-    const live = await repository.createDraft({
-      id: 'live-draft',
-      ownerHash: 'owner-a',
-      title: 'Published widget',
-      schemaVersion: '1.0',
-      spec: fixture,
-      now: '2025-01-01T00:00:00.000Z',
-    });
-    await repository.publish({
-      slug: 'live-publication',
-      draft: live,
-      expiresAt: '2026-08-01T00:00:00.000Z',
-      now: '2026-01-01T00:00:00.000Z',
-    });
-
+    const original = records();
+    await repository.createArtifact({ ...original, assetIds: [] });
+    const remix = records("remix");
+    remix.artifact.remixedFromRevisionId = original.revision.id;
+    remix.revision.kind = "remix";
+    await repository.createArtifact({ ...remix, assetIds: [] });
     expect(
-      await repository.deleteExpiredDrafts(
-        '2026-01-01T00:00:00.000Z',
-        '2026-07-18T00:00:00.000Z',
-      ),
-    ).toBe(1);
-    expect(await repository.getDraft(stale.id, stale.ownerHash)).toBeNull();
-    expect(await repository.getDraft(live.id, live.ownerHash)).not.toBeNull();
+      (await repository.getArtifact("remix", "owner-a"))?.remixedFromRevisionId,
+    ).toBe(original.revision.id);
+    expect(
+      (await repository.getRevision(remix.revision.id))?.parentRevisionId,
+    ).toBeNull();
   });
 });

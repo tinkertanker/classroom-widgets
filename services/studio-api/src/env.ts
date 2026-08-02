@@ -1,7 +1,6 @@
 export interface StudioEnv {
   DB: D1Database;
   MEDIA: R2Bucket;
-  PLAYER_ASSETS: Fetcher;
   AI: Ai;
   IMAGES: ImagesBinding;
   AI_PROVIDER: string;

@@ -1,221 +1,253 @@
 import type {
-  DraftRecord,
+  ArtifactRecord,
   ContentReportInput,
+  CreateArtifactInput,
   PublicationRecord,
-  PublishInput,
-  PublishResult,
-  SaveDraftInput,
+  RetrievalEntry,
+  RevisionRecord,
   StudioRepository,
-  UpdateDraftInput,
-} from './repository';
-
-/** Test/local implementation. Production uses D1StudioRepository. */
+} from "./repository";
 export class MemoryStudioRepository implements StudioRepository {
-  readonly drafts = new Map<string, DraftRecord>();
+  readonly artifacts = new Map<string, ArtifactRecord>();
+  readonly revisions = new Map<string, RevisionRecord>();
   readonly publications = new Map<string, PublicationRecord>();
-  private readonly generationUsage = new Map<string, number>();
+  readonly retrieval = new Map<string, RetrievalEntry>();
   readonly contentReports: ContentReportInput[] = [];
-  readonly classCodes = new Map<string, { maximumUses: number; uses: number; expiresAt: string }>();
-
-  async consumeGeneration(ownerHash: string, usageDate: string, limit: number): Promise<boolean> {
-    const key = `${ownerHash}:${usageDate}`;
-    const current = this.generationUsage.get(key) ?? 0;
-    if (current >= limit) return false;
-    this.generationUsage.set(key, current + 1);
+  readonly classCodes = new Map<
+    string,
+    { maximumUses: number; uses: number; expiresAt: string }
+  >();
+  private usage = new Map<string, number>();
+  private revisionAssets = new Map<string, Set<string>>();
+  async consumeGeneration(s: string, d: string, l: number) {
+    const k = `${s}:${d}`,
+      n = this.usage.get(k) ?? 0;
+    if (n >= l) return false;
+    this.usage.set(k, n + 1);
     return true;
   }
-
-  async countDrafts(ownerHash: string): Promise<number> {
-    return [...this.drafts.values()].filter((draft) => draft.ownerHash === ownerHash).length;
+  async purgeUsage(b: string) {
+    for (const k of this.usage.keys())
+      if (k.slice(-10) < b) this.usage.delete(k);
   }
-
-  async purgeUsage(beforeDate: string): Promise<void> {
-    for (const key of this.generationUsage.keys()) {
-      const usageDate = key.slice(key.lastIndexOf(':') + 1);
-      if (usageDate < beforeDate) this.generationUsage.delete(key);
-    }
-  }
-
-  async consumeClassCode(codeHash: string, now: string): Promise<boolean> {
-    const code = this.classCodes.get(codeHash);
-    if (!code || code.expiresAt <= now || code.uses >= code.maximumUses) return false;
-    code.uses += 1;
+  async consumeClassCode(h: string, n: string) {
+    const c = this.classCodes.get(h);
+    if (!c || c.expiresAt <= n || c.uses >= c.maximumUses) return false;
+    c.uses++;
     return true;
   }
-
-  async createDraft(input: SaveDraftInput): Promise<DraftRecord> {
-    const draft: DraftRecord = {
-      ...input,
-      version: 1,
-      createdAt: input.now,
-      updatedAt: input.now,
-    };
-    this.drafts.set(draft.id, structuredClone(draft));
-    return structuredClone(draft);
+  async countArtifacts(o: string) {
+    return [...this.artifacts.values()].filter((a) => a.ownerHash === o).length;
   }
-
-  async getDraft(id: string, ownerHash: string): Promise<DraftRecord | null> {
-    const draft = this.drafts.get(id);
-    return draft?.ownerHash === ownerHash ? structuredClone(draft) : null;
+  async createArtifact(i: CreateArtifactInput) {
+    this.artifacts.set(i.artifact.id, structuredClone(i.artifact));
+    this.revisions.set(i.revision.id, structuredClone(i.revision));
+    this.revisionAssets.set(i.revision.id, new Set(i.assetIds));
   }
-
-  async listDrafts(ownerHash: string): Promise<DraftRecord[]> {
-    return [...this.drafts.values()]
-      .filter((draft) => draft.ownerHash === ownerHash)
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-      .map((draft) => structuredClone(draft));
+  async getArtifact(id: string, o: string) {
+    const a = this.artifacts.get(id);
+    return a?.ownerHash === o ? structuredClone(a) : null;
   }
-
-  async deleteDraft(id: string, ownerHash: string): Promise<boolean> {
-    const draft = this.drafts.get(id);
-    if (!draft || draft.ownerHash !== ownerHash) return false;
-    for (const [slug, publication] of this.publications) {
-      if (publication.draftId === id && publication.ownerHash === ownerHash) {
-        this.publications.delete(slug);
-      }
-    }
-    return this.drafts.delete(id);
+  async getArtifactPublic(id: string) {
+    const a = this.artifacts.get(id);
+    return a ? structuredClone(a) : null;
   }
-
-  async deleteExpiredDrafts(before: string, now: string, limit = 100): Promise<number> {
-    const candidates = [...this.drafts.values()]
-      .filter((draft) => {
-        if (draft.updatedAt >= before) return false;
-        return ![...this.publications.values()].some(
-          (publication) =>
-            publication.draftId === draft.id &&
-            publication.revokedAt === null &&
-            publication.expiresAt > now,
-        );
-      })
-      .slice(0, limit);
-    let deleted = 0;
-    for (const draft of candidates) {
-      if (await this.deleteDraft(draft.id, draft.ownerHash)) deleted += 1;
-    }
-    return deleted;
+  async listArtifacts(o: string) {
+    return [...this.artifacts.values()]
+      .filter((a) => a.ownerHash === o)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .map((a) => structuredClone(a));
   }
-
-  async updateDraft(input: UpdateDraftInput): Promise<DraftRecord | null> {
-    const draft = this.drafts.get(input.id);
-    if (
-      !draft ||
-      draft.ownerHash !== input.ownerHash ||
-      draft.version !== input.expectedVersion
-    ) {
-      return null;
-    }
-
-    const updated: DraftRecord = {
-      ...draft,
-      title: input.title,
-      schemaVersion: input.schemaVersion,
-      spec: structuredClone(input.spec),
-      version: draft.version + 1,
-      updatedAt: input.now,
-    };
-    this.drafts.set(updated.id, updated);
-    return structuredClone(updated);
+  async renameArtifact(id: string, o: string, t: string, n: string) {
+    const a = this.artifacts.get(id);
+    if (!a || a.ownerHash !== o) return null;
+    a.title = t;
+    a.updatedAt = n;
+    return structuredClone(a);
   }
-
-  async publish(input: PublishInput): Promise<PublishResult> {
-    const currentDraft = this.drafts.get(input.draft.id);
-    if (
-      !currentDraft ||
-      currentDraft.ownerHash !== input.draft.ownerHash ||
-      currentDraft.version !== input.draft.version
-    ) {
-      return { status: 'version-conflict' };
-    }
-    const existing = [...this.publications.values()].find(
-      (candidate) =>
-        candidate.draftId === input.draft.id &&
-        candidate.ownerHash === input.draft.ownerHash &&
-        candidate.revokedAt === null,
-    );
-    if (existing) {
-      const updated: PublicationRecord = {
-        ...existing,
-        title: input.draft.title,
-        schemaVersion: input.draft.schemaVersion,
-        spec: structuredClone(input.draft.spec),
-        expiresAt: input.expiresAt,
-      };
-      this.publications.set(updated.slug, updated);
-      return { status: 'published', publication: structuredClone(updated) };
-    }
-    if (this.publications.has(input.slug)) throw new Error('Publication slug already exists.');
-    const publication: PublicationRecord = {
-      slug: input.slug,
-      draftId: input.draft.id,
-      ownerHash: input.draft.ownerHash,
-      title: input.draft.title,
-      schemaVersion: input.draft.schemaVersion,
-      spec: structuredClone(input.draft.spec),
-      createdAt: input.now,
-      expiresAt: input.expiresAt,
-      revokedAt: null,
-    };
-    this.publications.set(publication.slug, publication);
-    return { status: 'published', publication: structuredClone(publication) };
+  async deleteArtifact(id: string, o: string) {
+    const a = this.artifacts.get(id);
+    if (!a || a.ownerHash !== o) return false;
+    this.artifacts.delete(id);
+    for (const [k, r] of this.revisions)
+      if (r.artifactId === id) this.revisions.delete(k);
+    for (const [k, p] of this.publications)
+      if (p.artifactId === id) this.publications.delete(k);
+    return true;
   }
-
-  async getActivePublicationForDraft(
-    draftId: string,
-    ownerHash: string,
-  ): Promise<PublicationRecord | null> {
-    const publication = [...this.publications.values()].find(
-      (candidate) =>
-        candidate.draftId === draftId &&
-        candidate.ownerHash === ownerHash &&
-        candidate.revokedAt === null,
-    );
-    return publication ? structuredClone(publication) : null;
+  async deleteExpiredArtifacts(b: string, n: string, l = 100) {
+    const a = [...this.artifacts.values()]
+      .filter(
+        (a) =>
+          a.updatedAt < b &&
+          ![...this.publications.values()].some(
+            (p) => p.artifactId === a.id && !p.revokedAt && p.expiresAt > n,
+          ),
+      )
+      .slice(0, l);
+    for (const x of a) await this.deleteArtifact(x.id, x.ownerHash);
+    return a.length;
   }
-
-  async getPublication(slug: string): Promise<PublicationRecord | null> {
-    const publication = this.publications.get(slug);
-    return publication ? structuredClone(publication) : null;
+  async getRevision(id: string) {
+    const r = this.revisions.get(id);
+    return r ? structuredClone(r) : null;
   }
-
-  async extendPublication(
-    slug: string,
-    ownerHash: string,
-    now: string,
-    days: number,
-    maximumExpiresAt: string,
+  async listRevisions(id: string, o: string) {
+    if (!(await this.getArtifact(id, o))) return [];
+    return [...this.revisions.values()]
+      .filter((r) => r.artifactId === id)
+      .map((r) => structuredClone(r));
+  }
+  async createRevision(
+    r: RevisionRecord,
+    o: string,
+    e: string,
+    assets: string[],
   ) {
-    const publication = this.publications.get(slug);
-    if (!publication || publication.ownerHash !== ownerHash || publication.revokedAt) {
-      return { status: 'not-found' } as const;
+    const a = this.artifacts.get(r.artifactId);
+    if (
+      !a ||
+      a.ownerHash !== o ||
+      a.headRevisionId !== e ||
+      r.parentRevisionId !== e
+    )
+      return false;
+    this.revisions.set(r.id, structuredClone(r));
+    this.revisionAssets.set(r.id, new Set(assets));
+    a.headRevisionId = r.id;
+    a.updatedAt = r.createdAt;
+    return true;
+  }
+  async moveHead(id: string, o: string, r: string, e: string, n: string) {
+    const a = this.artifacts.get(id),
+      v = this.revisions.get(r);
+    if (
+      !a ||
+      a.ownerHash !== o ||
+      a.headRevisionId !== e ||
+      v?.artifactId !== id
+    )
+      return false;
+    a.headRevisionId = r;
+    a.updatedAt = n;
+    return true;
+  }
+  async setScreenshot(id: string, o: string, k: string) {
+    const r = this.revisions.get(id),
+      a = r && this.artifacts.get(r.artifactId);
+    if (!r || a?.ownerHash !== o) return false;
+    r.screenshotKey = k;
+    return true;
+  }
+  async isRevisionRetrievable(id: string) {
+    return [...this.retrieval.values()].some((entry) => entry.revisionId === id);
+  }
+  async searchRetrieval(q: string, l: number) {
+    const terms = q
+      .replaceAll('"', "")
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+    return [...this.retrieval.values()]
+      .filter((e) => {
+        const document = `${e.title} ${e.descriptor}`.toLowerCase();
+        return terms.every((term) => document.includes(term));
+      })
+      .slice(0, l)
+      .map((e) => structuredClone(e));
+  }
+  async publish(
+    slug: string,
+    a: ArtifactRecord,
+    r: RevisionRecord,
+    expiresAt: string,
+    now: string,
+    html: string,
+  ) {
+    const current = this.artifacts.get(a.id);
+    if (!current || current.headRevisionId !== r.id) return null;
+    let p = [...this.publications.values()].find(
+      (p) => p.artifactId === a.id && !p.revokedAt,
+    );
+    if (p) {
+      p.revisionId = r.id;
+      p.sourceHash = r.sourceHash;
+      p.title = a.title;
+      p.expiresAt = expiresAt;
+    } else {
+      p = {
+        slug,
+        artifactId: a.id,
+        revisionId: r.id,
+        ownerHash: a.ownerHash,
+        title: a.title,
+        sourceHash: r.sourceHash,
+        createdAt: now,
+        expiresAt,
+        revokedAt: null,
+      };
+      this.publications.set(slug, p);
     }
-    const base = Math.max(Date.parse(now), Date.parse(publication.expiresAt));
-    const expiresAt = new Date(base + days * 86_400_000).toISOString();
-    if (expiresAt > maximumExpiresAt) return { status: 'expiry-limit' } as const;
-    publication.expiresAt = expiresAt;
-    return { status: 'extended', publication: structuredClone(publication) } as const;
+    this.retrieval.set(a.id, {
+      artifactId: a.id,
+      revisionId: r.id,
+      title: a.title,
+      descriptor: r.designCard ?? a.creationBrief,
+      html,
+      curated: false,
+    });
+    return structuredClone(p);
   }
-
-  async revokePublication(slug: string, ownerHash: string, now: string): Promise<boolean> {
-    const publication = this.publications.get(slug);
-    if (!publication || publication.ownerHash !== ownerHash) return false;
-    publication.revokedAt ??= now;
+  async getActivePublicationForArtifact(id: string, o: string) {
+    const p = [...this.publications.values()].find(
+      (p) => p.artifactId === id && p.ownerHash === o && !p.revokedAt,
+    );
+    return p ? structuredClone(p) : null;
+  }
+  async getPublication(s: string) {
+    const p = this.publications.get(s);
+    return p ? structuredClone(p) : null;
+  }
+  async publicationReferencesAsset(s: string, id: string) {
+    const p = this.publications.get(s);
+    return !!p && !!this.revisionAssets.get(p.revisionId)?.has(id);
+  }
+  async extendPublication(
+    s: string,
+    o: string,
+    n: string,
+    d: number,
+    m: string,
+  ) {
+    const p = this.publications.get(s);
+    if (!p || p.ownerHash !== o || p.revokedAt)
+      return { status: "not-found" } as const;
+    const x = new Date(
+      Math.max(Date.parse(n), Date.parse(p.expiresAt)) + d * 86400000,
+    ).toISOString();
+    if (x > m) return { status: "expiry-limit" } as const;
+    p.expiresAt = x;
+    return { status: "extended", publication: structuredClone(p) } as const;
+  }
+  async revokePublication(s: string, o: string, n: string) {
+    const p = this.publications.get(s);
+    if (!p || p.ownerHash !== o) return false;
+    p.revokedAt ??= n;
     return true;
   }
-
-  async createContentReport(input: ContentReportInput): Promise<boolean> {
-    const count = this.contentReports.filter(
-      (report) => report.publicationSlug === input.publicationSlug,
-    ).length;
-    if (count >= input.maximumPerPublication) return false;
-    this.contentReports.push(structuredClone(input));
+  async createContentReport(i: ContentReportInput) {
+    if (
+      this.contentReports.filter((r) => r.publicationSlug === i.publicationSlug)
+        .length >= i.maximumPerPublication
+    )
+      return false;
+    this.contentReports.push(structuredClone(i));
     return true;
   }
-
-  async deleteContentReports(before: string): Promise<number> {
-    const retained = this.contentReports.filter((report) => report.now >= before);
-    const deleted = this.contentReports.length - retained.length;
-    this.contentReports.splice(0, this.contentReports.length, ...retained);
-    return deleted;
+  async deleteContentReports(b: string) {
+    const n = this.contentReports.length;
+    const keep = this.contentReports.filter((r) => r.now >= b);
+    this.contentReports.splice(0, n, ...keep);
+    return n - keep.length;
   }
 }
