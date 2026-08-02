@@ -1,11 +1,11 @@
-import type { StudioEnv } from '../env';
-import { FixtureModelProvider } from './fixtureProvider';
-import { OpenAiCompatibleProvider } from './openAiCompatibleProvider';
-import type { ModelProvider } from './provider';
-import { ModelProviderError } from './provider';
+import type { StudioEnv } from "../env";
+import { FixtureModelProvider } from "./fixtureProvider";
+import { OpenAiCompatibleProvider } from "./openAiCompatibleProvider";
+import type { ModelProvider } from "./provider";
+import { ModelProviderError } from "./provider";
 
 class UnavailableModelProvider implements ModelProvider {
-  readonly name = 'unavailable';
+  readonly name = "unavailable";
 
   constructor(private readonly reason: string) {}
 
@@ -13,7 +13,7 @@ class UnavailableModelProvider implements ModelProvider {
     return Promise.reject(new ModelProviderError(this.reason, true));
   }
 
-  patch(): Promise<never> {
+  revise(): Promise<never> {
     return Promise.reject(new ModelProviderError(this.reason, true));
   }
 
@@ -27,11 +27,13 @@ class UnavailableModelProvider implements ModelProvider {
 }
 
 export function createModelProvider(env: StudioEnv): ModelProvider {
-  if (env.AI_PROVIDER === 'fixture') return new FixtureModelProvider();
+  if (env.AI_PROVIDER === "fixture") return new FixtureModelProvider();
 
-  if (env.AI_PROVIDER === 'openai-compatible') {
+  if (env.AI_PROVIDER === "openai-compatible") {
     if (!env.AI_API_KEY) {
-      return new UnavailableModelProvider('The configured model provider has no API key.');
+      return new UnavailableModelProvider(
+        "The configured model provider has no API key.",
+      );
     }
     return new OpenAiCompatibleProvider({
       baseUrl: env.AI_BASE_URL,
@@ -40,5 +42,7 @@ export function createModelProvider(env: StudioEnv): ModelProvider {
     });
   }
 
-  return new UnavailableModelProvider(`Unsupported AI provider: ${env.AI_PROVIDER}`);
+  return new UnavailableModelProvider(
+    `Unsupported AI provider: ${env.AI_PROVIDER}`,
+  );
 }

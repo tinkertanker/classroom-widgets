@@ -350,16 +350,16 @@ export class CloudflareAssetStore implements AssetStore {
         `DELETE FROM assets
           WHERE id = ?1 AND owner_hash = ?2
             AND NOT EXISTS (
-              SELECT 1 FROM drafts d
-               WHERE d.owner_hash = ?2
-                 AND instr(d.spec_json, '"' || ?1 || '"') > 0
+              SELECT 1 FROM revision_assets ra
+               WHERE ra.asset_id = ?1
             )
             AND NOT EXISTS (
               SELECT 1 FROM publications p
-               WHERE p.owner_hash = ?2
+              JOIN revision_assets ra ON ra.revision_id = p.revision_id
+               WHERE ra.asset_id = ?1
+                 AND p.owner_hash = ?2
                  AND p.revoked_at IS NULL
                  AND p.expires_at > ?3
-                 AND instr(p.spec_json, '"' || ?1 || '"') > 0
             )`,
       )
       .bind(id, ownerHash, now)
@@ -375,16 +375,16 @@ export class CloudflareAssetStore implements AssetStore {
         `SELECT a.* FROM assets a
           WHERE a.created_at < ?1
             AND NOT EXISTS (
-              SELECT 1 FROM drafts d
-               WHERE d.owner_hash = a.owner_hash
-                 AND instr(d.spec_json, '"' || a.id || '"') > 0
+              SELECT 1 FROM revision_assets ra
+               WHERE ra.asset_id = a.id
             )
             AND NOT EXISTS (
               SELECT 1 FROM publications p
-               WHERE p.owner_hash = a.owner_hash
+              JOIN revision_assets ra ON ra.revision_id = p.revision_id
+               WHERE ra.asset_id = a.id
+                 AND p.owner_hash = a.owner_hash
                  AND p.revoked_at IS NULL
                  AND p.expires_at > ?2
-                 AND instr(p.spec_json, '"' || a.id || '"') > 0
             )
           ORDER BY a.created_at ASC
           LIMIT ?3`,
@@ -398,16 +398,16 @@ export class CloudflareAssetStore implements AssetStore {
           `DELETE FROM assets
             WHERE id = ?1 AND owner_hash = ?2
               AND NOT EXISTS (
-                SELECT 1 FROM drafts d
-                 WHERE d.owner_hash = ?2
-                   AND instr(d.spec_json, '"' || ?1 || '"') > 0
+                SELECT 1 FROM revision_assets ra
+                 WHERE ra.asset_id = ?1
               )
               AND NOT EXISTS (
                 SELECT 1 FROM publications p
-                 WHERE p.owner_hash = ?2
+                JOIN revision_assets ra ON ra.revision_id = p.revision_id
+                 WHERE ra.asset_id = ?1
+                   AND p.owner_hash = ?2
                    AND p.revoked_at IS NULL
                    AND p.expires_at > ?3
-                   AND instr(p.spec_json, '"' || ?1 || '"') > 0
               )`,
         )
         .bind(row.id, row.owner_hash, now)

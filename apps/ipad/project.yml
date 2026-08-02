@@ -21,13 +21,7 @@ targets:
     platform: iOS
     sources:
       - path: Sources
-      - path: Resources/Fixtures
-        type: folder
-        buildPhase: resources
-      - path: Resources/PreviewFallback
-        type: folder
-        buildPhase: resources
-      - path: Resources/widget-player
+      - path: Resources/Examples
         type: folder
         buildPhase: resources
       - path: Resources/PrivacyInfo.xcprivacy

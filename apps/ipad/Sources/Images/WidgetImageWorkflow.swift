@@ -24,18 +24,6 @@ struct WidgetImageAssetRecord: Codable, Equatable, Sendable {
     let byteLength: Int
     let sha256: String
 
-    var jsonValue: JSONValue {
-        .object([
-            "id": .string(id),
-            "kind": .string(kind),
-            "mediaType": .string(mediaType),
-            "width": .integer(width),
-            "height": .integer(height),
-            "byteLength": .integer(byteLength),
-            "sha256": .string(sha256)
-        ])
-    }
-
     func validated(_ download: DownloadedWidgetAsset) throws -> DownloadedWidgetAsset {
         let digest = SHA256.hash(data: download.data).map { String(format: "%02x", $0) }.joined()
         guard kind == "image",

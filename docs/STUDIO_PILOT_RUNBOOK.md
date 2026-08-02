@@ -93,7 +93,7 @@ by the scheduled cleanup.
 
 The signed device credential is stored in Keychain and is eligible for an
 encrypted-device-backup restore. With that credential, Studio can list the
-owner's remote drafts and publications and re-download a selected draft. If the
+owner's remote artifacts and publications and re-download a selected project. If the
 credential is unavailable, do not issue a replacement credential that assumes
 ownership: ask the operator to identify the exact link, then revoke it directly
 after validating the slug.
@@ -106,7 +106,7 @@ one is current.
 
 - To stop new AI generation while keeping student links available, remove or
   rotate `AI_API_KEY`; generation and model moderation will fail closed
-  while the static player and stored publications remain readable.
+  while stored HTML publications remain readable.
 - To remove one unsafe widget, revoke only its validated slug as above.
 - To roll back a bad Worker deployment, inspect the recent deployment list with
   `npx wrangler deployments list --profile tinkertanker`, then use Wrangler's

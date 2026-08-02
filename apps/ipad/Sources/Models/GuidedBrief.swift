@@ -29,6 +29,21 @@ struct GuidedBriefDraft: Equatable, Sendable {
     }
 }
 
+struct GuidedGenerationBrief: Codable, Equatable, Sendable {
+    let learnerContext: String
+    let learningObjective: String
+    let studentAction: String
+    let sourceContent: String?
+    let feedback: String
+    let classroomFit: String
+}
+
+struct GuidedGenerationRequest: Codable, Equatable, Sendable {
+    let creationBrief: String
+    let brief: GuidedGenerationBrief
+    let preferredExampleRevisionId: String?
+}
+
 struct BriefQuestion: Identifiable, Sendable {
     let id: Int
     let prompt: String

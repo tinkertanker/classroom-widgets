@@ -1,168 +1,141 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import {
-  validateWidgetSpec,
-  type ValidationIssue,
-  type WidgetSpec,
-} from '../../packages/widget-spec/src/index.js';
-import { OpenAiCompatibleProvider } from '../../services/studio-api/src/ai/openAiCompatibleProvider.js';
-import type { TeacherBrief } from '../../services/studio-api/src/ai/provider.js';
-import { patchWidgetSpec } from '../../services/studio-api/src/generation.js';
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { assessArtifact } from "./artifact-eval.mjs";
 
 interface EvalCase {
   id: string;
-  family: string;
-  expectedKinds: string[];
-  brief: TeacherBrief;
+  brief: Record<string, unknown>;
+  locale: string;
+  expectedInteractions: string[];
+  contentTerms: string[];
 }
 
 interface Manifest {
   minimumFirstPassRate: number;
   minimumFinalPassRate: number;
-  minimumFamilyFidelityRate: number;
+  minimumHeuristicFidelityRate: number;
   cases: EvalCase[];
 }
 
-interface CaseResult {
-  id: string;
-  family: string;
-  firstPassValid: boolean;
-  finalValid: boolean;
-  familyFidelity: boolean;
-  repairAttempts: number;
-  latencyMs: number;
-  issues: ValidationIssue[];
-  spec?: WidgetSpec;
+const repoRoot = resolve(process.env.INIT_CWD ?? process.cwd());
+const model = process.env.EVAL_MODEL ?? "deepseek-v4-flash";
+const baseUrl = (
+  process.env.EVAL_BASE_URL ?? "https://api.deepseek.com"
+).replace(/\/$/, "");
+const apiKey = process.env.DEEPSEEK_API_KEY ?? process.env.AI_API_KEY;
+if (!apiKey)
+  throw new Error(
+    "Set DEEPSEEK_API_KEY or AI_API_KEY to run the live artifact eval.",
+  );
+
+async function complete(
+  messages: Array<{ role: string; content: string }>,
+): Promise<string> {
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      response_format: { type: "json_object" },
+      messages,
+    }),
+  });
+  const body = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    error?: { message?: string };
+  };
+  const content = body.choices?.[0]?.message?.content;
+  if (!response.ok || !content)
+    throw new Error(
+      body.error?.message ?? `Provider returned HTTP ${response.status}.`,
+    );
+  return content;
 }
 
-const repoRoot = resolve(process.env.INIT_CWD ?? process.cwd());
-const model = process.env.EVAL_MODEL ?? 'deepseek-v4-flash';
-const apiKey = process.env.DEEPSEEK_API_KEY ?? process.env.AI_API_KEY;
-if (!apiKey) throw new Error('Set DEEPSEEK_API_KEY or AI_API_KEY to run the live model eval.');
-
-const provider = new OpenAiCompatibleProvider({
-  baseUrl: process.env.EVAL_BASE_URL ?? 'https://api.deepseek.com',
-  apiKey,
-  model,
-});
-
-async function evaluate(entry: EvalCase): Promise<CaseResult> {
+async function evaluate(entry: EvalCase) {
+  const system =
+    'Create one compact classroom widget as a complete, readable, self-contained HTML document with inline CSS and JavaScript. Use no packages, external assets, or network requests. Make controls touch-friendly and normally fit one screen. Return only JSON: {"html":"...","designCard":{"layout":"...","accent":"...","interaction":"..."}}.';
+  const request = {
+    locale: entry.locale,
+    expectedInteractions: entry.expectedInteractions,
+    contentTerms: entry.contentTerms,
+  };
   const started = performance.now();
-  let candidate = await provider.generate(entry.brief);
-  let validation = validateWidgetSpec(candidate);
-  const firstPassValid = validation.valid;
+  const messages = [
+    { role: "system", content: system },
+    { role: "user", content: JSON.stringify(entry.brief) },
+  ];
+  let output = await complete(messages);
+  let assessment = assessArtifact(output, request);
+  const firstPassValid = assessment.valid;
   let repairAttempts = 0;
-  while (!validation.valid && repairAttempts < 2) {
+  while (!assessment.valid && repairAttempts < 1) {
     repairAttempts += 1;
-    candidate = await provider.repair(candidate, validation.errors);
-    validation = validateWidgetSpec(candidate);
+    messages.push({ role: "assistant", content: output });
+    messages.push({
+      role: "user",
+      content: `Repair the artifact and return the same JSON shape. Findings: ${assessment.issues.map((issue: { code: string; message: string }) => `${issue.code}: ${issue.message}`).join("; ")}`,
+    });
+    output = await complete(messages);
+    assessment = assessArtifact(output, request);
   }
-  if (!validation.valid) {
-    return {
-      id: entry.id,
-      family: entry.family,
-      firstPassValid,
-      finalValid: false,
-      familyFidelity: false,
-      repairAttempts,
-      latencyMs: Math.round(performance.now() - started),
-      issues: validation.errors,
-    };
-  }
-
-  const kinds = new Set(validation.value.screens.flatMap((screen) => screen.components.map((item) => item.kind)));
-  const familyFidelity = entry.expectedKinds.every((kind) => kinds.has(kind));
   return {
     id: entry.id,
-    family: entry.family,
     firstPassValid,
-    finalValid: true,
-    familyFidelity,
+    finalValid: assessment.valid,
     repairAttempts,
     latencyMs: Math.round(performance.now() - started),
-    issues: [],
-    spec: validation.value,
+    heuristicChecks: assessment.checks,
+    issues: assessment.issues,
   };
-}
-
-async function mapConcurrent<T, R>(items: T[], concurrency: number, work: (item: T) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const index = next;
-      next += 1;
-      const item = items[index];
-      if (item !== undefined) results[index] = await work(item);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
-  return results;
 }
 
 async function main() {
   const manifest = JSON.parse(
-    await readFile(resolve(repoRoot, 'evals/model/requests.json'), 'utf8'),
+    await readFile(
+      resolve(repoRoot, "evals/model/artifact-requests.json"),
+      "utf8",
+    ),
   ) as Manifest;
-  const results = await mapConcurrent(manifest.cases, 3, async (entry) => {
+  const results = [];
+  for (const entry of manifest.cases) {
     process.stdout.write(`Evaluating ${entry.id}… `);
     const result = await evaluate(entry);
-    console.log(result.finalValid ? 'valid' : 'failed');
-    return result;
-  });
-
-  const seenFamilies = new Set<string>();
-  const patchCandidates = results.filter((result) => {
-    if (!result.spec || seenFamilies.has(result.family)) return false;
-    seenFamilies.add(result.family);
-    return true;
-  });
-  let patchPasses = 0;
-  for (const result of patchCandidates) {
-    try {
-      await patchWidgetSpec(
-        provider,
-        result.spec!,
-        'Make the student instructions more concise while preserving every activity and answer.',
-      );
-      patchPasses += 1;
-    } catch {
-      // Counted below; the detailed generation result remains available.
-    }
+    console.log(result.finalValid ? "valid" : "failed");
+    results.push(result);
   }
-
-  const firstPassRate = results.filter((result) => result.firstPassValid).length / results.length;
-  const finalPassRate = results.filter((result) => result.finalValid).length / results.length;
-  const familyFidelityRate = results.filter((result) => result.familyFidelity).length / results.length;
-  const patchReliabilityRate = patchCandidates.length === 0 ? 0 : patchPasses / patchCandidates.length;
+  const checks = results.flatMap((result) => result.heuristicChecks);
   const summary = {
     ranAt: new Date().toISOString(),
-    provider: provider.name,
+    model,
     cases: results.length,
-    firstPassRate,
-    finalPassRate,
-    familyFidelityRate,
-    patchReliabilityRate,
-    medianLatencyMs: results.map((result) => result.latencyMs).sort((a, b) => a - b)[Math.floor(results.length / 2)],
-    results: results.map(({ spec: _spec, ...result }) => result),
+    firstPassRate:
+      results.filter((result) => result.firstPassValid).length / results.length,
+    finalPassRate:
+      results.filter((result) => result.finalValid).length / results.length,
+    heuristicFidelityRate:
+      checks.filter((check: { passed: boolean }) => check.passed).length /
+      checks.length,
+    medianLatencyMs: results
+      .map((result) => result.latencyMs)
+      .sort((a, b) => a - b)[Math.floor(results.length / 2)],
+    results,
   };
-
-  await mkdir(resolve(repoRoot, 'evals/model/results'), { recursive: true });
+  await mkdir(resolve(repoRoot, "evals/model/results"), { recursive: true });
   await writeFile(
-    resolve(repoRoot, 'evals/model/results/latest.json'),
+    resolve(repoRoot, "evals/model/results/latest.json"),
     `${JSON.stringify(summary, null, 2)}\n`,
-    'utf8',
   );
   console.log(JSON.stringify(summary, null, 2));
-
   if (
-    firstPassRate < manifest.minimumFirstPassRate ||
-    finalPassRate < manifest.minimumFinalPassRate ||
-    familyFidelityRate < manifest.minimumFamilyFidelityRate ||
-    patchReliabilityRate < 1
-  ) {
+    summary.firstPassRate < manifest.minimumFirstPassRate ||
+    summary.finalPassRate < manifest.minimumFinalPassRate ||
+    summary.heuristicFidelityRate < manifest.minimumHeuristicFidelityRate
+  )
     process.exitCode = 1;
-  }
 }
 
 void main().catch((error: unknown) => {

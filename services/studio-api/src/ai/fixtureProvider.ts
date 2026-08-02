@@ -1,89 +1,48 @@
-import type { WidgetSpec } from '@classroom-widgets/widget-spec';
-import type { ModelProvider, ModerationDecision, TeacherBrief } from './provider';
-
-function fixtureSpec(brief: TeacherBrief): WidgetSpec {
-  const subject = brief.subject.toLowerCase();
-  const allowedSubjects = [
-    'science',
-    'mathematics',
-    'english',
-    'humanities',
-    'languages',
-    'other',
-  ] as const;
-  const canonicalSubject = allowedSubjects.find((value) => subject.includes(value)) ?? 'other';
-
-  return {
-    schemaVersion: '1.0',
-    id: 'balanced-forces-check',
-    metadata: {
-      title: 'Balanced forces check',
-      summary: 'Decide what happens when forces are balanced.',
-      subject: canonicalSubject,
-      level: brief.level.toLowerCase().includes('primary') ? 'upper-primary' : 'secondary',
-      learningObjective: brief.learningObjective,
-      estimatedMinutes: brief.durationMinutes ?? 5,
-      tags: ['retrieval', 'forces'],
-    },
-    theme: { accent: 'sage', colourScheme: 'system', density: 'comfortable' },
-    assets: [],
-    variables: [],
-    screens: [
-      {
-        id: 'main',
-        components: [
-          {
-            id: 'instructions',
-            kind: 'text',
-            role: 'instruction',
-            text: 'Choose the best answer, then check your thinking.',
-          },
-          {
-            id: 'forces-question',
-            kind: 'choiceQuestion',
-            prompt: 'Two equal forces act on a stationary object in opposite directions. What happens?',
-            selectionMode: 'single',
-            options: [
-              { id: 'stays-still', content: { kind: 'text', text: 'It remains stationary.' } },
-              { id: 'moves-left', content: { kind: 'text', text: 'It accelerates to the left.' } },
-              { id: 'moves-right', content: { kind: 'text', text: 'It accelerates to the right.' } },
-            ],
-            correctOptionIds: ['stays-still'],
-            shuffleOptions: false,
-            feedback: {
-              correct: 'Exactly. The resultant force is zero.',
-              incorrect: 'Look again at the size and direction of both forces.',
-              explanation: 'Equal forces in opposite directions balance, so a stationary object remains stationary.',
-            },
-          },
-        ],
-      },
-    ],
-  };
+import type {
+  DesignCard,
+  Exemplar,
+  ModelProvider,
+  ModerationDecision,
+  TeacherBrief,
+} from "./provider";
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[character]!,
+  );
 }
 
+function page(title: string, detail: string) {
+  const safeTitle = escapeHtml(title);
+  return `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${safeTitle}</title><style>body{font-family:system-ui;max-width:48rem;margin:3rem auto;padding:1rem}button{padding:.7rem}</style></head><body><main><h1>${safeTitle}</h1><p>${escapeHtml(detail)}</p><button onclick="this.textContent='Well done'">Check</button></main></body></html>`;
+}
 export class FixtureModelProvider implements ModelProvider {
-  readonly name = 'fixture';
-
-  async generate(brief: TeacherBrief): Promise<unknown> {
-    return fixtureSpec(brief);
-  }
-
-  async patch(current: WidgetSpec, instruction: string): Promise<unknown> {
+  readonly name = "fixture";
+  async generate(b: TeacherBrief, _e: Exemplar[]) {
     return {
-      ...current,
-      metadata: {
-        ...current.metadata,
-        summary: `${current.metadata.summary} Revision: ${instruction.slice(0, 120)}`,
-      },
-    } satisfies WidgetSpec;
+      html: page(b.learningObjective, b.studentAction),
+      designCard: { title: b.learningObjective, description: b.subject },
+    };
   }
-
-  async repair(candidate: unknown): Promise<unknown> {
+  async revise(
+    _h: string,
+    c: DesignCard | undefined,
+    i: string,
+    _b: TeacherBrief,
+  ) {
+    return { html: page(c?.title ?? "Classroom widget", i), designCard: c };
+  }
+  async repair(candidate: unknown) {
     return candidate;
   }
-
   async moderate(): Promise<ModerationDecision> {
-    return { safe: true, categories: [], reason: 'Fixture content is safe.' };
+    return { safe: true, categories: [] };
   }
 }
