@@ -50,6 +50,8 @@ test('validates manifest uniqueness and required metadata', () => {
   const issues = validateSeedManifest({ schemaVersion: '1.0', seeds: [seed, { ...seed }] });
   assert.equal(issues.filter((issue) => issue.code === 'duplicate').length, 3);
   assert.equal(validateSeedManifest({ schemaVersion: '1.0', seeds: [seed] }, { expectedCount: 14 })[0].code, 'seed-count');
+  assert.equal(validateSeedManifest({ schemaVersion: '1.0', seeds: [{ ...seed, tags: Array(21).fill('tag') }] })[0].code, 'tags');
+  assert.equal(validateSeedManifest({ schemaVersion: '1.0', seeds: [{ ...seed, tags: ['a', 'b', 'x'.repeat(51)] }] })[0].code, 'tags');
 });
 
 test('builds a backend-neutral API record', () => {

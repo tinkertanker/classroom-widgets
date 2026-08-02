@@ -57,7 +57,10 @@ struct WidgetPreviewWebView: UIViewRepresentable {
         context.coordinator.presentableError = $presentableError
         context.coordinator.onSnapshot = onSnapshot
         context.coordinator.handler.assets = localAssets
-        context.coordinator.load(source)
+        let coordinator = context.coordinator
+        Task { @MainActor in
+            coordinator.load(source)
+        }
     }
 
     @MainActor

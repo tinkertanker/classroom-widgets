@@ -5,7 +5,7 @@ import { readConfig, type StudioEnv } from "./env";
 import { CloudflareImageSafetyInspector } from "./imageSafety";
 import { CloudflareImageNormalizer } from "./imageNormalizer";
 import { D1StudioRepository } from "./storage/d1Repository";
-import { R2SourceStore } from "./sourceStore";
+import { cleanupArtifactStorage, R2SourceStore } from "./sourceStore";
 import { PUBLIC_REPORT_MARKER } from "./generation";
 
 export default {
@@ -46,11 +46,14 @@ export default {
     const draftBefore = new Date(
       now.getTime() - 180 * 86_400_000,
     ).toISOString();
-    await repository.deleteExpiredArtifacts(
+    const sourceStore = new R2SourceStore(env.MEDIA);
+    const expired = await repository.deleteExpiredArtifacts(
       draftBefore,
       now.toISOString(),
       100,
     );
+    for (const references of expired)
+      await cleanupArtifactStorage(sourceStore, references);
     const before = new Date(now.getTime() - 7 * 86_400_000).toISOString();
     const assetStore = new CloudflareAssetStore(env.DB, env.MEDIA);
     await assetStore.cleanupOrphans(before, now.toISOString(), 100);
@@ -74,10 +77,11 @@ export function injectPublicHtml(source: string, slug: string): string {
     /<head(\s[^>]*)?>/i,
     (head) => `${head}<base href="/${slug}/">`,
   );
-  const injected = withBase.replace(/<\/body\s*>/i, `${report}</body>`);
-  if (injected === withBase || withBase === source)
+  const bodyClosings = [...withBase.matchAll(/<\/body\s*>/gi)];
+  const bodyClosing = bodyClosings.at(-1);
+  if (bodyClosing?.index === undefined || withBase === source)
     throw new Error("Stored widget source is not a complete HTML document.");
-  return injected;
+  return `${withBase.slice(0, bodyClosing.index)}${report}${bodyClosing[0]}${withBase.slice(bodyClosing.index + bodyClosing[0].length)}`;
 }
 
 async function servePublic(

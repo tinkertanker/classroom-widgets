@@ -31,8 +31,8 @@ export function inspectTeacherBrief(brief: TeacherBrief): ModerationFinding[] {
 export function inspectHtml(html: string): ModerationFinding[] {
   return inspectText(
     html
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
       .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<\/?script\b[^>]*>/gi, " ")
       .replace(/<[^>]+>/g, " "),
   );
 }

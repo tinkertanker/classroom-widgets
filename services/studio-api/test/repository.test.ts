@@ -233,7 +233,7 @@ describe("MemoryStudioRepository artifact model", () => {
     });
     expect(
       await repository.deleteExpiredArtifacts("2026-01-01T00:00:00Z", now),
-    ).toBe(0);
+    ).toEqual([]);
     expect(await repository.isRevisionRetrievable(seed.revision.id, now)).toBe(
       true,
     );
@@ -271,13 +271,20 @@ describe("MemoryStudioRepository artifact model", () => {
     await repository.updateArtifactMetadata(
       teacher.artifact.id,
       teacher.artifact.ownerHash,
-      { ...teacher.artifact, title: "Decimal Quokka" },
+      {
+        ...teacher.artifact,
+        title: "Decimal Quokka",
+        summary: "Place-value regrouping practice",
+      },
       now,
     );
     expect(await repository.searchRetrieval('"Quokka"', 10, now)).toHaveLength(
       1,
     );
     expect(await repository.searchRetrieval('"Polygon"', 10, now)).toEqual([]);
+    expect(
+      await repository.searchRetrieval('"regrouping"', 10, now),
+    ).toHaveLength(1);
 
     await repository.revokePublication("teacher-slug", "owner-a", now);
     expect(

@@ -366,11 +366,16 @@ enum StudioAPIError: LocalizedError, Equatable {
         }
     }
     var requiresRegistration: Bool {
-        if self == .registrationRequired { return true }
-        if case .server(401, let code, _) = self { return code == "DEVICE_REGISTRATION_REQUIRED" || code == "DEVICE_TOKEN_REQUIRED" }
+        if case .registrationRequired = self { return true }
+        if case .server(401, let code, _) = self {
+            return code == "DEVICE_REGISTRATION_REQUIRED" || code == "DEVICE_TOKEN_REQUIRED"
+        }
         return false
     }
-    var isArtifactNotFound: Bool { if case .server(404, let code, _) = self { return code == "ARTIFACT_NOT_FOUND" }; return false }
+    var isArtifactNotFound: Bool {
+        if case .server(404, let code, _) = self { return code == "ARTIFACT_NOT_FOUND" }
+        return false
+    }
     var requiresRefresh: Bool {
         if requiresRegistration { return true }
         if case .server(422, let code, _) = self { return code == "PUBLICATION_EXPIRY_LIMIT_REACHED" }

@@ -51,36 +51,88 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testMissingCredentialAndRegistrationErrorRequestWorkshopAccess() async {
+    func testExampleCopyUsesExactRemixWithoutGeneration() async throws {
+        let example = makeProject(revisionID: "seed-revision", html: "<html>Seed</html>")
+        let copy = makeProject(revisionID: "copy-revision", html: "<html>Seed</html>")
+        let api = ArtifactAPIStub(generated: example, revised: copy)
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
+
+        try await store.remix(example)
+
+        let remix = await api.lastRemixRequest
+        let generation = await api.lastGenerationRequest
+        XCTAssertEqual(remix?.artifactID, example.artifact.id)
+        XCTAssertEqual(remix?.revisionID, example.source.revision.id)
+        XCTAssertNil(generation)
+        XCTAssertEqual(store.selectedProjectID, copy.id)
+    }
+
+    @MainActor
+    func testMissingCredentialAndRegistrationErrorReopenWorkshopAccess() async {
         let project = makeProject(revisionID: "r1", html: "<html></html>")
-        let api = ArtifactAPIStub(generated: project, revised: project, hasCredential: false)
-        let store = StudioStore(api: api, storageDirectory: temporaryDirectory(), bundle: Bundle(for: Self.self))
+        let api = ArtifactAPIStub(
+            generated: project,
+            revised: project,
+            hasCredential: false
+        )
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
 
         await store.refreshWorkshopAccess()
-
         XCTAssertEqual(store.workshopAccessState, .registrationRequired)
         XCTAssertTrue(store.showsWorkshopAccess)
 
         store.dismissWorkshopAccess()
         let presentation = store.present(
-            StudioAPIError.server(401, "DEVICE_REGISTRATION_REQUIRED", "Registration required"),
+            StudioAPIError.server(401, "DEVICE_REGISTRATION_REQUIRED", "Register again"),
             during: .generation
         )
+
         XCTAssertTrue(presentation.requestsWorkshopAccess)
+        XCTAssertEqual(store.workshopAccessState, .registrationRequired)
+        XCTAssertTrue(store.showsWorkshopAccess)
+
+        store.dismissWorkshopAccess()
+        let localPresentation = store.present(
+            StudioAPIError.registrationRequired,
+            during: .generation
+        )
+        XCTAssertTrue(localPresentation.requestsWorkshopAccess)
         XCTAssertTrue(store.showsWorkshopAccess)
     }
 
     @MainActor
     func testRestoreContinuesAfterOneArtifactFails() async throws {
-        let failed = makeProject(artifactID: "failed", revisionID: "r1", html: "<html>Failed</html>")
-        let restored = makeProject(artifactID: "restored", revisionID: "r2", html: "<html>Restored</html>")
+        let failed = makeProject(
+            artifactID: "failed",
+            revisionID: "r1",
+            html: "<html>Failed</html>"
+        )
+        let restored = makeProject(
+            artifactID: "restored",
+            revisionID: "r2",
+            html: "<html>Restored</html>"
+        )
         let api = ArtifactAPIStub(
             generated: restored,
             revised: restored,
             listedArtifacts: [failed.artifact, restored.artifact],
-            artifactErrors: [failed.id: .server(404, "SOURCE_NOT_FOUND", "Missing source")]
+            artifactErrors: [
+                failed.id: .server(404, "SOURCE_NOT_FOUND", "Missing source")
+            ]
         )
-        let store = StudioStore(api: api, storageDirectory: temporaryDirectory(), bundle: Bundle(for: Self.self))
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
 
         let count = try await store.restoreFromStudio()
 
@@ -98,7 +150,11 @@ final class StudioStoreTests: XCTestCase {
             revised: project,
             deleteError: .server(404, "ARTIFACT_NOT_FOUND", "Missing artifact")
         )
-        let store = StudioStore(api: api, storageDirectory: directory, bundle: Bundle(for: Self.self))
+        let store = StudioStore(
+            api: api,
+            storageDirectory: directory,
+            bundle: Bundle(for: Self.self)
+        )
         var brief = GuidedBriefDraft()
         brief.learningObjective = "Forces"
         brief.studentAction = "Choose"
@@ -107,10 +163,59 @@ final class StudioStoreTests: XCTestCase {
         try await store.deleteProject(projectID: project.id)
 
         XCTAssertTrue(store.projects.isEmpty)
-        let restored = StudioStore(api: api, storageDirectory: directory, bundle: Bundle(for: Self.self))
+        let restored = StudioStore(
+            api: api,
+            storageDirectory: directory,
+            bundle: Bundle(for: Self.self)
+        )
         XCTAssertTrue(restored.projects.isEmpty)
     }
 
+    func testAssetExtractionMatchesManagedHtmlReferencesOnly() {
+        let html = """
+        <img src="assets/image-one">
+        <a href=' assets/image-two '>Image</a>
+        <style>.card { background: url(assets/image-three) }</style>
+        <script>const example = "assets/not-a-reference";</script>
+        """
+
+        XCTAssertEqual(
+            StudioStore.referencedAssetIDs(in: html),
+            ["image-one", "image-two", "image-three"]
+        )
+    }
+
+    func testLegacyCacheMigrationCopiesOnlyProjectFilesWithoutOverwriting() throws {
+        let root = temporaryDirectory()
+        let source = root.appending(path: "legacy", directoryHint: .isDirectory)
+        let destination = root.appending(path: "support", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        try Data("legacy".utf8).write(to: source.appending(path: "project.json"))
+        try Data("ignore".utf8).write(to: source.appending(path: "notes.txt"))
+        try Data("current".utf8).write(to: destination.appending(path: "current.json"))
+
+        StudioStore.copyLegacyProjects(from: source, to: destination)
+
+        XCTAssertEqual(
+            try String(contentsOf: destination.appending(path: "project.json"), encoding: .utf8),
+            "legacy"
+        )
+        XCTAssertEqual(
+            try String(contentsOf: destination.appending(path: "current.json"), encoding: .utf8),
+            "current"
+        )
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: destination.appending(path: "notes.txt").path)
+        )
+
+        try FileManager.default.removeItem(at: destination.appending(path: "project.json"))
+        StudioStore.copyLegacyProjects(from: source, to: destination)
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: destination.appending(path: "project.json").path),
+            "A one-time migration must not resurrect a project deleted from Application Support."
+        )
+    }
     private func temporaryDirectory() -> URL {
         FileManager.default.temporaryDirectory
             .appending(path: "StudioStoreTests-\(UUID().uuidString)", directoryHint: .isDirectory)
@@ -122,6 +227,10 @@ private actor ArtifactAPIStub: StudioAPI {
         let instruction: String
         let expectedHeadRevisionID: String
     }
+    struct RemixRequest: Sendable {
+        let artifactID: String
+        let revisionID: String?
+    }
 
     let generated: ArtifactProject
     let revised: ArtifactProject
@@ -131,6 +240,7 @@ private actor ArtifactAPIStub: StudioAPI {
     let deleteError: StudioAPIError?
     private(set) var lastGenerationRequest: GuidedGenerationRequest?
     private(set) var lastRevisionRequest: RevisionRequest?
+    private(set) var lastRemixRequest: RemixRequest?
 
     init(
         generated: ArtifactProject,
@@ -161,7 +271,9 @@ private actor ArtifactAPIStub: StudioAPI {
         return generated
     }
     func updateArtifact(_ artifact: Artifact) async throws -> Artifact { artifact }
-    func deleteArtifact(id: String) async throws { if let deleteError { throw deleteError } }
+    func deleteArtifact(id: String) async throws {
+        if let deleteError { throw deleteError }
+    }
     func revise(id: String, instruction: String, expectedHeadRevisionId: String) async throws -> ArtifactProject {
         lastRevisionRequest = RevisionRequest(
             instruction: instruction,
@@ -172,7 +284,10 @@ private actor ArtifactAPIStub: StudioAPI {
     func revisions(id: String) async throws -> [ArtifactRevision] { generated.revisions }
     func source(revision: ArtifactRevision) async throws -> ArtifactSource { generated.source }
     func setHead(id: String, revisionId: String, expectedHeadRevisionId: String) async throws -> ArtifactProject { revised }
-    func remix(id: String, revisionId: String?) async throws -> ArtifactProject { revised }
+    func remix(id: String, revisionId: String?) async throws -> ArtifactProject {
+        lastRemixRequest = RemixRequest(artifactID: id, revisionID: revisionId)
+        return revised
+    }
     func downloadAsset(id: String) async throws -> DownloadedWidgetAsset {
         DownloadedWidgetAsset(data: Data([1, 2, 3]), mediaType: "image/jpeg")
     }

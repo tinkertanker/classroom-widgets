@@ -1,10 +1,10 @@
 # Live HTML artifact evaluation
 
-This harness evaluates an OpenAI-compatible provider against classroom briefs
-for the Studio HTML rewrite. The canonical output shape is `{html,
-designCard?}`. `artifact-eval.mjs` parses plain or fenced JSON, applies the same
-checks used by the seed corpus, and heuristically checks requested interaction,
-locale and content markers.
+This harness runs the Studio API's production provider, prompts, output checks
+and one-repair path against classroom briefs. Each request includes up to two
+reviewed, subject-matched HTML exemplars. `artifact-eval.mjs` adds the seed
+corpus render checks and heuristically checks requested interaction, locale and
+content markers.
 
 Run the focused helper tests without provider credentials:
 

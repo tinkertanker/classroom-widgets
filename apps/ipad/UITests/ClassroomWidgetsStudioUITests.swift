@@ -5,14 +5,14 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
     func testLaunchesIntoExploreWithoutABlankCanvas() {
         let app = launchApp()
         XCTAssertTrue(app.staticTexts["Start with an example"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Balanced Forces Check"].exists)
+        XCTAssertTrue(app.staticTexts["Catchment Under Pressure — Runoff Lab"].exists)
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == 'Try as student'")).firstMatch.exists)
     }
 
     @MainActor
     func testExploreOffersBundledHTMLSeedForRemixing() {
         let app = launchApp()
-        XCTAssertTrue(app.staticTexts["Balanced Forces Check"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Catchment Under Pressure — Runoff Lab"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["Make a copy"].exists)
     }
 
@@ -24,7 +24,7 @@ final class ClassroomWidgetsStudioUITests: XCTestCase {
         XCTAssertTrue(preview.waitForExistence(timeout: 8))
         preview.tap()
 
-        let playerHeading = app.staticTexts["Are the forces balanced?"]
+        let playerHeading = app.staticTexts["Catchment Under Pressure"]
         XCTAssertTrue(
             playerHeading.waitForExistence(timeout: 25),
             "The bundled HTML artifact should render, not a blank web view."
