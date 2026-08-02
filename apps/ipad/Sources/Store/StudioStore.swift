@@ -67,7 +67,7 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         }
         let hasCredential = await api.hasDeviceCredential()
         workshopAccessState = hasCredential ? .ready : .registrationRequired
-        showsWorkshopAccess = !hasCredential
+        if !hasCredential { showsWorkshopAccess = true }
     }
     func requestWorkshopAccess() { showsWorkshopAccess = true }
     func dismissWorkshopAccess() { showsWorkshopAccess = false }
@@ -130,15 +130,24 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     func unpublish(projectID: String) async throws { var current = try project(projectID); if let slug = current.artifact.publication?.slug { try await api.revoke(slug: slug) }; current.artifact.publication = nil; upsert(current) }
     func extendPublication(projectID: String) async throws { var current = try project(projectID); guard let slug = current.artifact.publication?.slug else { return }; current.artifact.publication = try await api.extend(slug: slug, days: 90); upsert(current) }
     func deleteProject(projectID: String) async throws {
+        let current = try project(projectID)
         do {
             try await api.deleteArtifact(id: projectID)
-        } catch let error as StudioAPIError where error.isArtifactNotFound {
+        } catch let error as StudioAPIError
+            where error.isArtifactNotFound
+                && Self.hasNoPotentiallyLivePublication(current.artifact.publication) {
             // The server may have expired the recovery copy already. The local
             // project must still remain deletable.
         }
         projects.removeAll { $0.id == projectID }
         let name = projectID.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? projectID
         try? FileManager.default.removeItem(at: projectDirectory.appending(path: "\(name).json"))
+    }
+    private static func hasNoPotentiallyLivePublication(_ publication: ArtifactPublication?) -> Bool {
+        guard let publication else { return true }
+        if publication.revokedAt != nil { return true }
+        guard let expirationDate = publication.expirationDate else { return false }
+        return expirationDate <= .now
     }
     func restoreFromStudio() async throws -> Int {
         isRestoringFromStudio = true
@@ -152,6 +161,9 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
                 let remote = try await cacheAssets(in: fetched)
                 upsert(remote)
                 count += 1
+            } catch let error as StudioAPIError where error.requiresRegistration {
+                _ = present(error, during: .restore)
+                throw error
             } catch {
                 failures += 1
             }

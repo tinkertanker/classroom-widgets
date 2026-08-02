@@ -109,6 +109,22 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testSuccessfulCredentialRefreshDoesNotCloseManuallyOpenedAccess() async {
+        let project = makeProject(revisionID: "r1", html: "<html></html>")
+        let store = StudioStore(
+            api: ArtifactAPIStub(generated: project, revised: project),
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
+        store.requestWorkshopAccess()
+
+        await store.refreshWorkshopAccess()
+
+        XCTAssertEqual(store.workshopAccessState, .ready)
+        XCTAssertTrue(store.showsWorkshopAccess)
+    }
+
+    @MainActor
     func testRestoreContinuesAfterOneArtifactFails() async throws {
         let failed = makeProject(
             artifactID: "failed",
@@ -142,9 +158,42 @@ final class StudioStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testRestorePropagatesRegistrationFailures() async {
+        let project = makeProject(revisionID: "r1", html: "<html></html>")
+        let api = ArtifactAPIStub(
+            generated: project,
+            revised: project,
+            artifactErrors: [project.id: .registrationRequired]
+        )
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
+
+        do {
+            _ = try await store.restoreFromStudio()
+            XCTFail("Expected registration to be requested")
+        } catch let error as StudioAPIError {
+            XCTAssertTrue(error.requiresRegistration)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        XCTAssertEqual(store.workshopAccessState, .registrationRequired)
+        XCTAssertTrue(store.showsWorkshopAccess)
+    }
+
+    @MainActor
     func testDeleteRemovesLocalProjectWhenServerCopyHasExpired() async throws {
         let directory = temporaryDirectory()
-        let project = makeProject(revisionID: "r1", html: "<html></html>")
+        var project = makeProject(revisionID: "r1", html: "<html></html>")
+        project.artifact.publication = ArtifactPublication(
+            slug: "expired-link",
+            url: URL(string: "https://example.test/expired-link")!,
+            title: "Forces",
+            createdAt: "1999-08-02T00:00:00Z",
+            expiresAt: "2000-08-02T00:00:00Z"
+        )
         let api = ArtifactAPIStub(
             generated: project,
             revised: project,
@@ -169,6 +218,78 @@ final class StudioStoreTests: XCTestCase {
             bundle: Bundle(for: Self.self)
         )
         XCTAssertTrue(restored.projects.isEmpty)
+    }
+
+    @MainActor
+    func testDeleteKeepsLocalProjectWhenMissingRemoteMayStillBePublished() async {
+        var project = makeProject(revisionID: "r1", html: "<html></html>")
+        project.artifact.publication = ArtifactPublication(
+            slug: "active-link",
+            url: URL(string: "https://example.test/active-link")!,
+            title: "Forces",
+            createdAt: "2026-08-02T00:00:00Z",
+            expiresAt: "2099-11-02T00:00:00Z"
+        )
+        let api = ArtifactAPIStub(
+            generated: project,
+            revised: project,
+            deleteError: .server(404, "ARTIFACT_NOT_FOUND", "Missing artifact")
+        )
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
+        var brief = GuidedBriefDraft()
+        brief.learningObjective = "Forces"
+        brief.studentAction = "Choose"
+        _ = try await store.createApprovedBrief(brief)
+
+        do {
+            try await store.deleteProject(projectID: project.id)
+            XCTFail("Expected deletion to preserve the active publication record")
+        } catch let error as StudioAPIError {
+            XCTAssertTrue(error.isArtifactNotFound)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        XCTAssertEqual(store.projects.map(\.id), [project.id])
+    }
+
+    @MainActor
+    func testDeleteKeepsLocalProjectWhenPublicationExpiryIsMalformed() async throws {
+        var project = makeProject(revisionID: "r1", html: "<html></html>")
+        project.artifact.publication = ArtifactPublication(
+            slug: "unknown-expiry-link",
+            url: URL(string: "https://example.test/unknown-expiry-link")!,
+            title: "Forces",
+            createdAt: "2026-08-02T00:00:00Z",
+            expiresAt: "not-a-date"
+        )
+        let api = ArtifactAPIStub(
+            generated: project,
+            revised: project,
+            deleteError: .server(404, "ARTIFACT_NOT_FOUND", "Missing artifact")
+        )
+        let store = StudioStore(
+            api: api,
+            storageDirectory: temporaryDirectory(),
+            bundle: Bundle(for: Self.self)
+        )
+        var brief = GuidedBriefDraft()
+        brief.learningObjective = "Forces"
+        brief.studentAction = "Choose"
+        _ = try await store.createApprovedBrief(brief)
+
+        do {
+            try await store.deleteProject(projectID: project.id)
+            XCTFail("Expected deletion to preserve the publication record")
+        } catch let error as StudioAPIError {
+            XCTAssertTrue(error.isArtifactNotFound)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+        XCTAssertEqual(store.projects.map(\.id), [project.id])
     }
 
     func testAssetExtractionMatchesManagedHtmlReferencesOnly() {
