@@ -1,22 +1,34 @@
-# Live model evaluation
+# Live HTML artifact evaluation
 
-This harness evaluates a configured provider against 13 representative,
-non-personal teacher briefs spanning the V1 subjects, levels and interaction
-families. It records first-pass schema validity, bounded repair success, family
-fidelity, targeted-patch reliability and latency without retaining full model
-outputs.
+This harness evaluates an OpenAI-compatible provider against classroom briefs
+for the Studio HTML rewrite. The canonical output shape is `{html,
+designCard?}`. `artifact-eval.mjs` parses plain or fenced JSON, applies the same
+checks used by the seed corpus, and heuristically checks requested interaction,
+locale and content markers.
 
-Run it with:
+Run the focused helper tests without provider credentials:
 
 ```sh
-DEEPSEEK_API_KEY=... npm run eval:model
+node --test evals/model/artifact-eval.test.mjs
 ```
 
-The command defaults to `deepseek-v4-flash`. Override `EVAL_MODEL` and
-`EVAL_BASE_URL` to compare another OpenAI-compatible provider. A production
-model is accepted only when every case validates after at most two repairs, at
-least 80% validate on the first pass, at least 80% contain the requested family
-primitives, and all sampled targeted edits preserve the working structure.
+Run the live generation corpus with:
 
-Run `npm run eval:model-moderation` as a separate publication-gate probe. It
-must classify every age-appropriate and deliberately unsafe fixture correctly.
+```sh
+DEEPSEEK_API_KEY=... npx tsx evals/model/run.ts
+```
+
+Set `EVAL_MODEL` and `EVAL_BASE_URL` for another OpenAI-compatible provider.
+Each candidate gets at most two finding-led repairs. Results deliberately omit
+the full generated HTML.
+
+Run the separate publication-gate probes with:
+
+```sh
+DEEPSEEK_API_KEY=... npx tsx evals/model/moderation.ts
+```
+
+The probes contain safe, age-appropriate artifact briefs and deliberately
+unsafe requests. They assess the provider's decision without asking it to emit
+unsafe HTML. The older `requests.json` remains temporarily for downstream DSL
+evaluation consumers; `artifact-requests.json` is the rewrite corpus.

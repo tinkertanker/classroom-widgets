@@ -1,0 +1,47 @@
+{
+  "minimumFirstPassRate": 0.8,
+  "minimumFinalPassRate": 1,
+  "minimumHeuristicFidelityRate": 0.9,
+  "cases": [
+    {
+      "id": "p5-fractions",
+      "brief": {"level":"Upper primary","subject":"Mathematics","learningObjective":"Recognise equivalent fractions using visual and numerical representations.","studentAction":"Choose equivalent fractions and read immediate explanatory feedback.","durationMinutes":6},
+      "locale": "en-SG", "expectedInteractions": ["choice", "reset"], "contentTerms": ["fraction", "equivalent"]
+    },
+    {
+      "id": "s2-sources",
+      "brief": {"level":"Secondary","subject":"Humanities","learningObjective":"Evaluate historical source reliability using provenance and purpose.","studentAction":"Judge a source and identify useful corroborating evidence.","durationMinutes":10},
+      "locale": "en-SG", "expectedInteractions": ["choice", "short-answer"], "contentTerms": ["purpose", "corroboration"]
+    },
+    {
+      "id": "p4-malay-match",
+      "brief": {"level":"Upper primary","subject":"Languages","learningObjective":"Match common Malay classroom words to English meanings.","studentAction":"Match and sort the words buku, meja, kerusi and menulis.","durationMinutes":6},
+      "locale": "ms-SG", "expectedInteractions": ["matching", "reset"], "contentTerms": ["buku", "meja", "kerusi", "menulis"]
+    },
+    {
+      "id": "s3-linear-functions",
+      "brief": {"level":"Secondary","subject":"Mathematics","learningObjective":"Relate gradient and intercept in y = mx + c to a straight-line graph.","studentAction":"Adjust m and c and observe the graph.","durationMinutes":10},
+      "locale": "en-SG", "expectedInteractions": ["range", "graph", "reset"], "contentTerms": ["gradient", "intercept"]
+    },
+    {
+      "id": "p5-paragraph-sequence",
+      "brief": {"level":"Upper primary","subject":"English","learningObjective":"Arrange sentences into a coherent explanatory paragraph.","studentAction":"Order topic, supporting and concluding sentences and check feedback.","durationMinutes":7},
+      "locale": "en-SG", "expectedInteractions": ["sequence", "reset"], "contentTerms": ["topic", "concluding"]
+    },
+    {
+      "id": "p6-perimeter",
+      "brief": {"level":"Upper primary","subject":"Mathematics","learningObjective":"Explore rectangle dimensions while perimeter remains fixed.","studentAction":"Change a dimension, inspect a graph and explain the relationship.","durationMinutes":9},
+      "locale": "en-SG", "expectedInteractions": ["range", "graph", "reset"], "contentTerms": ["perimeter", "width", "length"]
+    },
+    {
+      "id": "p5-mangroves",
+      "brief": {"level":"Upper primary","subject":"Humanities","learningObjective":"Relate mangrove adaptations to tidal and muddy shore conditions.","studentAction":"Tap an asset-free shore diagram to reveal adaptations.","durationMinutes":8},
+      "locale": "en-SG", "expectedInteractions": ["hotspots", "reset"], "contentTerms": ["tide", "roots", "mud"]
+    },
+    {
+      "id": "classroom-routines",
+      "brief": {"level":"Mixed","subject":"Other","learningObjective":"Follow a timed routine and communicate readiness.","studentAction":"Start and pause a timer, check tasks and reset.","durationMinutes":5},
+      "locale": "en-SG", "expectedInteractions": ["timer", "pause", "choice", "reset"], "contentTerms": ["ready"]
+    }
+  ]
+}
