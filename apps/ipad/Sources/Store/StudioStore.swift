@@ -128,7 +128,6 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             // The server may have expired the recovery copy already. The local
             // project must still remain deletable.
         }
-        projects.first(where: { $0.id == projectID })?.localAssets.forEach(LocalWidgetAssetStorage.remove)
         projects.removeAll { $0.id == projectID }
         let name = projectID.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? projectID
         try? FileManager.default.removeItem(at: cacheDirectory.appending(path: "\(name).json"))
