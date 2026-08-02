@@ -79,15 +79,13 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         let project = try await api.generate(request: request); upsert(project); open(project); return project
     }
     func remix(_ example: ArtifactProject) async throws {
-        // Bundled examples are offline files and are not asserted to exist on the server.
-        // Seed generation is the contract-backed way to ask for a similar artifact.
         let artifact = example.artifact
         let request = GuidedGenerationRequest(creationBrief: artifact.creationBrief, brief: .init(
             learnerContext: artifact.level ?? artifact.subject ?? "General learners",
             learningObjective: artifact.learningObjective ?? artifact.title,
             studentAction: artifact.summary, sourceContent: nil,
             feedback: "Provide clear feedback", classroomFit: "Use in a short classroom activity"
-        ), preferredExampleRevisionId: nil)
+        ), preferredExampleRevisionId: example.source.revision.id)
         let project = try await api.generate(request: request)
         upsert(project)
         open(project)

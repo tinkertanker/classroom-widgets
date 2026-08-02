@@ -1,182 +1,185 @@
 # Classroom Widgets Studio V1
 
-Classroom Widgets Studio is an iPad app for creating one focused, interactive
-classroom widget and publishing it as one student-facing link. It complements
-the existing Classroom Widgets web dashboard; it does not replace or reproduce
-the dashboard.
+Classroom Widgets Studio is an iPad app for making a small, self-contained
+classroom activity and publishing it as one student-facing web link. It is an
+addition to the existing Classroom Widgets teacher and student apps, not a
+replacement for the real-time dashboard.
 
 The August 2026 pilot targets 10–20 Singapore upper-primary and secondary
-teachers. The first release must be safe enough for real classroom use and must
-run on an A16 iPad without depending on Apple Intelligence.
+teachers. The app performs generation on the Studio service, so it does not
+depend on Apple Intelligence.
 
 ## Product promise
 
 > Make the small interactive tool your next lesson needs, then share one link.
 
-Teachers should never have to begin from an empty prompt. They can explore a
-finished example, remix one, or answer a few short questions about their
-learning intention and the action students should take.
+A widget should normally fit one browser viewport and serve one focused
+learning purpose. A short linear story may use two or three screens, but Studio
+is not intended to generate full webpages, dashboards, lessons, menus or
+multi-activity labs.
 
-Each Studio project contains exactly one widget. Each publication exposes
-exactly one responsive widget without authoring controls, accounts, adverts or
-analytics.
+Teachers do not need to start from an empty prompt. They can run and remix a
+curated example or answer a short guided interview. Generation uses relevant
+published and curated examples as inspiration, and revision always starts from
+the current HTML rather than recreating the widget from scratch.
 
-## Experience direction
-
-### Visual thesis
-
-A calm, tactile teaching workbench: warm paper-like surfaces, strong editorial
-type, one sage action colour and large previews that make the lesson artefact—not
-the surrounding interface—the visual focus.
-
-Studio should feel considered and native, not like a dashboard made of cards.
-Use open layouts, quiet dividers and generous spacing. A card is appropriate
-only when the object itself is selectable, such as an example or saved widget.
-
-### Content plan
-
-- **Explore:** one featured, immediately runnable teaching widget followed by a
-  concise subject/level-filtered library.
-- **Make:** one question at a time, followed by a plain-language brief that the
-  teacher approves before generation.
-- **Editor:** the student preview is dominant; Prompt, Arrange and Inspect add
-  context without competing with it.
-- **My Widgets:** recency, publication state and the next useful action are
-  visible at a glance.
-- **Publish:** test, check, publish, then show the URL and QR code as the single
-  successful outcome.
-
-### Interaction thesis
-
-- Moving from one guided answer to the next uses a short directional transition
-  so the interview feels finite and purposeful.
-- Generating or patching keeps the existing preview visible and marks only the
-  changed region; a revision must not visually replace a working widget with a
-  blank loading state.
-- Switching between authoring and “Test as student” uses a restrained matched
-  transition into a full-screen, chrome-free preview.
-
-Motion must respect Reduce Motion and never delay a teacher who is preparing a
-lesson.
-
-## V1 journey
+## V1 experience
 
 1. Open **Explore**, **Make** or **My Widgets**.
-2. Use/remix an example, or answer short guided questions.
-3. Approve the generated classroom brief.
-4. Generate a constrained `WidgetSpec`.
-5. Preview it using the same player students will receive.
-6. Refine it with a prompt or direct property edit; undo remains available.
-7. Test it as a student and resolve blocking validation/accessibility findings.
-8. Publish an unlisted URL, then copy it, display a QR code or use the iPad share
+2. Run/remix an example, or answer the guided questions and approve the brief.
+3. Generate the widget and interact with it directly in the iPad preview.
+4. Ask Studio for a change. The working preview remains visible while the new
+   revision loads.
+5. Restore any earlier revision if the change is not useful.
+6. Edit project details such as title, summary, subject, level and tags without
+   making a model request.
+7. Test the widget full-screen.
+8. Publish an unlisted URL, then copy it, show its QR code or use the iPad share
    sheet.
 9. Extend or revoke the publication from the originating device.
 
-## Product boundaries
+Explore contains the reviewed HTML seed catalogue bundled with the app. My
+Widgets stores local project files and synchronises the server-owned revision
+history. The editor is preview-first: there is no raw syntax tree or structural
+layout editor.
 
-The existing teacher web app, student app and Express/Socket.io server remain
-first-class products. Studio is additive and independently deployable. The
-unfinished macOS wrapper is outside the Studio roadmap.
+## Artifact contract
 
-Published V1 widgets:
+The canonical artifact is one complete HTML document with inline CSS and
+JavaScript. The model may use browser APIs available in Safari, but generated
+artifacts cannot load packages, contact external services, include credentials,
+collect student identity or submit student work. Teacher images use relative
+`assets/<assetId>` references and are resolved by the iPad preview and public
+publication routes.
 
-- require no student account;
-- collect no student identity, submissions or analytics;
-- use no student-facing AI;
-- keep transient interaction state in the browser only;
-- cannot execute generated JavaScript or import packages;
-- cannot contact arbitrary external services;
-- contain no advertising or behavioural tracking.
+The service applies deterministic checks before saving a generated revision:
 
-The service may store the teacher-authored specification, processed assets,
-ownership metadata, versions, expiry and moderation state. Provider keys never
-ship in the iPad app. Public product copy and repository history must not refer
-to confidential third-party involvement in the project.
+- complete HTML document with `doctype`, `head` and `body`;
+- at most 200 KB (the generation prompt targets substantially less);
+- no external scripts, styles, packages, frames or arbitrary resource URLs;
+- no network APIs;
+- only existing images owned by the teacher's device;
+- deterministic text moderation;
+- one bounded model repair when generated output fails the checks.
+
+The generation prompt asks for a compact, touch-first widget, one coherent
+interaction system and simple readable JavaScript. The model returns the full
+HTML document plus an optional design card. The card and project metadata help
+future revision, retrieval and remixing; failure to parse the optional card does
+not discard otherwise valid HTML.
+
+Generated JavaScript runs only in the widget's front end. It has no Studio
+credentials, cookies or server-side execution path. Student interaction state
+is transient browser state.
 
 ## System boundary
 
 ```text
-SwiftUI authoring app
+SwiftUI iPad app
         |
-        | HTTPS: briefs, generate, patch, assets, publish
+        | HTTPS: generate, revise, history, images, publish
         v
-Studio API -----> configurable model providers
+Studio API --------> configured text-generation provider
         |
-        +-------> publication metadata and processed assets
-
-WidgetSpec JSON -----> deterministic validation
+        +----------> D1 metadata, revisions and retrieval index
         |
-        +-------> bundled player in iPad WKWebView
+        +----------> R2 immutable HTML sources, images and snapshots
         |
-        +-------> public player at one unlisted URL
+        +----------> public unlisted HTML URL
+                              |
+                              v
+                       Student Safari
 ```
 
-`WidgetSpec` is the canonical, versioned contract. It is represented by JSON
-Schema and generated/derived TypeScript and Swift models. Only declared
-components, properties, actions, variables and safe expressions are renderable.
-Unknown properties fail validation rather than being guessed.
+The iPad app loads artifact HTML directly into a non-persistent `WKWebView`.
+The public URL serves the same immutable source revision directly, with a fixed
+report control added by the service. No separate player or proprietary widget
+language sits between the artifact and the browser.
 
-The iPad app owns navigation, local projects and versions, guided authoring,
-Photos/Files/Camera integration, sharing, accessibility and secure device
-ownership credentials. `WKWebView` is used only for the controlled activity
-player so author preview and public output have rendering parity.
+The Studio API remains separate from the Express/Socket.IO classroom server.
+It owns model routing, validation and bounded repair, device credentials,
+quotas, images, immutable revision history, publication, expiry, reports and
+revocation.
 
-The Studio API is separate from the real-time Classroom Widgets server even
-though both live in this monorepo. It owns model routing, bounded repair,
-validation, rate limits, assets, publication and revocation.
+## Storage and revision model
+
+- An **artifact** owns editable metadata and points to one head revision.
+- A **revision** is immutable and references content-addressed HTML in R2.
+- Revising creates a child revision and atomically moves the head when the
+  caller still has the expected prior head.
+- Restoring history moves the head pointer; it does not copy or mutate source.
+- A **publication** snapshots one revision and keeps its slug when republished.
+- A **remix** creates a new artifact and records its source revision.
+- Revision-to-image references are stored explicitly for deletion and public
+  delivery checks.
+
+Every successful private revision remains in the teacher's history. Global
+retrieval contains the reviewed seed corpus and at most one published revision
+per teacher artifact. Failed generations and unpublished intermediate
+revisions are not globally indexed. Retrieval is a rebuildable projection over
+titles, descriptions, subjects, levels, interaction patterns and tags; the HTML
+sources remain authoritative.
+
+The reviewed corpus is deployed through the authenticated seed import route.
+Configure the Worker secret with `wrangler secret put
+STUDIO_SEED_IMPORT_TOKEN`, then import the validated local corpus with:
+
+```bash
+STUDIO_SEED_IMPORT_TOKEN=... npm run studio:seeds:import -- \
+  --endpoint https://<studio-origin>/v1/seeds
+```
+
+The import is idempotent for stable `<seed-id>-seed` revisions, writes each HTML
+source to R2 before updating D1 and marks the retrieval row as curated. The
+scheduled artifact cleanup excludes curated seeds.
 
 ## Supported content
 
-Ready-made/remixable widgets:
+The HTML artifact model supports focused quizzes, matching/sorting/sequencing,
+interactive diagrams, classroom utilities, graph explorers, small
+simulations, writing tools and other browser-based interactions. These are
+authoring and retrieval descriptions, not schema labels that grant special
+capabilities.
 
-- timer;
-- randomiser and spinner;
-- task list;
-- traffic light.
+Larger activities should be split by learning purpose. For example, a
+qualitative-analysis catalogue becomes separate one-unknown practice widgets;
+a simulation should centre on one model with its controls, readouts and graph
+rather than several unrelated activities.
 
-Generated families:
+V1 supports teacher images through Photos, Files and Camera. Inputs remain
+size-limited, normalised, safety-checked and stripped of metadata by the
+existing image pipeline before they can be referenced by generated HTML.
 
-- quizzes and retrieval practice;
-- matching, sorting and sequencing;
-- interactive diagrams and hotspots;
-- graph explorers and simple simulations.
+## Explicit non-goals
 
-V1 supports up to three teacher images per widget. Inputs are size-limited,
-resized, compressed and stripped of metadata before publication. Each meaningful
-image requires alternative text; decorative images are explicitly marked.
+V1 does not provide:
 
-## First end-to-end slice
-
-The first shippable slice is intentionally narrow but uses the final
-architecture:
-
-```text
-Three-question guided brief
-        -> validated quiz WidgetSpec
-        -> shared player in iPad preview
-        -> one targeted revision with undo
-        -> publish to an unlisted URL
-        -> complete locally in Safari
-        -> revoke and receive a friendly unavailable page
-```
-
-This slice is not the definition of V1 completion. It proves the contract and
-deployment path before the other required widget families and production gates
-are added.
+- student accounts, identity, submissions, persistence or analytics;
+- student-facing model calls;
+- server-side execution of generated code;
+- arbitrary packages, external requests, advertising or tracking;
+- a generic scene, drawing, physics, particle, action or state-machine DSL;
+- raw AST or state-machine authoring;
+- automatic conversion of the previous WidgetSpec experiments;
+- full laboratory catalogues inside one artifact.
 
 ## Verification gates
 
-- Existing web workspaces continue to build and their tests remain green.
-- Schema fixtures include valid and deliberately invalid examples.
-- Invalid, unsupported or unsafe specifications cannot preview or publish.
-- Patch tests prove unrelated working content is preserved.
-- Player fixtures cover keyboard, VoiceOver semantics, contrast, Dynamic Type
-  where applicable, reduced motion and student-phone layouts.
-- Ownership, high-entropy slugs, expiry, extension, rate limiting and revocation
-  have automated coverage.
-- At least three representative widgets, including a simulation, complete the
-  physical-iPad-to-public-Safari flow before pilot release.
-- The app builds and runs on the installed A16 iPad simulator and archives for a
-  generic iOS device.
-- A TestFlight/App Store-ready archive, privacy/data-flow documentation,
-  deployment instructions and pilot recovery procedure exist before release.
+- The Studio API tests cover generation failure with no persisted revision,
+  immutable revisions, optimistic head conflicts, remix lineage, publication
+  snapshotting, stable republish slugs, expiry, revocation, quotas, reports,
+  image ownership and explicit image liveness.
+- All curated seeds pass the shared artifact checks and initialise in jsdom.
+- Bundled iPad examples are byte-for-byte copies of the canonical corpus.
+- Model evaluation measures first-pass validity, one-repair success and whether
+  requested interactions/content appear in the artifact.
+- Live verification covers generate, revise, restore, image use, publish,
+  anonymous Safari delivery, report, extension, revocation and deletion.
+- Before pilot release, the physical iPad flow must complete generation,
+  revision while preserving the old preview, history restore, image use,
+  publication in Safari and revocation.
+- Existing web workspaces continue to build and test independently.
+
+This release is a clean pre-launch cutover. Legacy schema drafts and
+publications are reset by migration; no conversion or dual renderer is
+maintained.

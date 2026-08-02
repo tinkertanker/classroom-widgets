@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { D1StudioRepository } from "../src/storage/d1Repository";
-import type { ArtifactRecord, RevisionRecord } from "../src/storage/repository";
+import {
+  CURATED_SEED_OWNER,
+  type ArtifactRecord,
+  type RevisionRecord,
+} from "../src/storage/repository";
 
 const revision: RevisionRecord = {
   id: "r2",
@@ -158,5 +162,84 @@ describe("D1StudioRepository conditional revision writes", () => {
     expect(sql[0]).toContain("head_revision_id=?3");
     expect(sql[0]).toContain("publications.owner_hash=?4");
     expect(sql[1]).toContain("revision_id=?2 AND revoked_at IS NULL");
+  });
+
+  it("upserts curated seed metadata, revision, and retrieval atomically", async () => {
+    const sql: string[] = [];
+    const database = {
+      prepare(text: string) {
+        sql.push(text);
+        const statement = { bind: () => statement };
+        return statement;
+      },
+      batch(statements: unknown[]) {
+        expect(statements).toHaveLength(3);
+        return Promise.resolve(
+          statements.map(() => ({ meta: { changes: 1 } })),
+        );
+      },
+    } as unknown as D1Database;
+    const seedArtifact = {
+      ...artifact,
+      id: "fraction-seed",
+      ownerHash: CURATED_SEED_OWNER,
+      headRevisionId: "fraction-seed-seed",
+    };
+    const seedRevision = {
+      ...revision,
+      id: "fraction-seed-seed",
+      artifactId: seedArtifact.id,
+      parentRevisionId: null,
+      kind: "import" as const,
+    };
+
+    await new D1StudioRepository(database).upsertCuratedSeed({
+      artifact: seedArtifact,
+      revision: seedRevision,
+      assetIds: [],
+      descriptor: "fractions diagnostic",
+    });
+
+    expect(sql[0]).toContain("ON CONFLICT(id) DO UPDATE");
+    expect(sql[0]).toContain("WHERE artifacts.owner_hash=?2");
+    expect(sql[1]).toContain("revisions.kind='import'");
+    expect(sql[2]).toContain("curated=1");
+  });
+
+  it("refreshes retrieval titles and excludes expired teacher publications", async () => {
+    const sql: string[] = [];
+    const database = {
+      prepare(text: string) {
+        sql.push(text);
+        const statement = {
+          bind: () => statement,
+          first: () => Promise.resolve(null),
+          all: () => Promise.resolve({ results: [] }),
+        };
+        return statement;
+      },
+      batch(statements: unknown[]) {
+        expect(statements).toHaveLength(2);
+        return Promise.resolve(
+          statements.map(() => ({ meta: { changes: 1 } })),
+        );
+      },
+    } as unknown as D1Database;
+    const repository = new D1StudioRepository(database);
+
+    await repository.updateArtifactMetadata(
+      artifact.id,
+      artifact.ownerHash,
+      { ...artifact, title: "Decimal Quokka" },
+      revision.createdAt,
+    );
+    await repository.isRevisionRetrievable(revision.id, revision.createdAt);
+    await repository.searchRetrieval('"Quokka"', 10, revision.createdAt);
+
+    expect(sql[1]).toContain("UPDATE retrieval_entries SET updated_at");
+    expect(sql[3]).toContain("p.expires_at>?2");
+    expect(sql[4]).toContain("p.expires_at>?3");
+    expect(sql[3]).toContain("r.curated=1");
+    expect(sql[4]).toContain("r.curated=1");
   });
 });

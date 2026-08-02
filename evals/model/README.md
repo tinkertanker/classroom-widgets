@@ -19,7 +19,7 @@ DEEPSEEK_API_KEY=... npx tsx evals/model/run.ts
 ```
 
 Set `EVAL_MODEL` and `EVAL_BASE_URL` for another OpenAI-compatible provider.
-Each candidate gets at most two finding-led repairs. Results deliberately omit
+Each candidate gets at most one finding-led repair. Results deliberately omit
 the full generated HTML.
 
 Run the separate publication-gate probes with:
@@ -30,5 +30,4 @@ DEEPSEEK_API_KEY=... npx tsx evals/model/moderation.ts
 
 The probes contain safe, age-appropriate artifact briefs and deliberately
 unsafe requests. They assess the provider's decision without asking it to emit
-unsafe HTML. The older `requests.json` remains temporarily for downstream DSL
-evaluation consumers; `artifact-requests.json` is the rewrite corpus.
+unsafe HTML. `artifact-requests.json` is the generation corpus.

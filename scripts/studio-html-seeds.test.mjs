@@ -14,6 +14,11 @@ const validHtml = '<!doctype html><html lang="en-SG"><head><meta name="viewport"
 
 test('validates a complete self-contained artifact', () => {
   assert.deepEqual(validateHtmlArtifact(validHtml).issues, []);
+  assert.deepEqual(
+    validateHtmlArtifact(validHtml.replace('</body>', '<img src="assets/image-1" alt="Diagram"></body>')).issues,
+    [],
+    'managed teacher images are valid relative resources',
+  );
 });
 
 test('rejects external dependencies, network calls, and invalid JavaScript', () => {

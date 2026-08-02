@@ -1,1 +1,213 @@
-[{"id":"example-forces","title":"Balanced Forces Check","summary":"Students compare force diagrams and explain whether forces are balanced.","subject":"science","level":"secondary","locale":"en-SG","learningObjective":"Explain balanced forces","tags":["forces","diagnostic"],"htmlFile":"forces.html"}]
+[
+  {
+    "id": "catchment-under-pressure",
+    "title": "Catchment Under Pressure — Runoff Lab",
+    "summary": "Predict and model how rainfall, hard surfaces and drainage combine to produce surface-water accumulation.",
+    "subject": "humanities",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Explain how rainfall intensity, impermeable cover and drainage capacity affect surface-water accumulation.",
+    "tags": [
+      "geography",
+      "urban-flooding",
+      "simulation"
+    ],
+    "htmlFile": "catchment-under-pressure.html"
+  },
+  {
+    "id": "classroom-routines-toolkit",
+    "title": "Classroom Routines Toolkit — Ready to Learn",
+    "summary": "A timer, no-repeat discussion randomiser, readiness checklist and confidence signal.",
+    "subject": "other",
+    "level": "other",
+    "locale": "en-SG",
+    "learningObjective": "Follow a short classroom routine and communicate readiness for the next step.",
+    "tags": [
+      "routines",
+      "timer",
+      "randomiser",
+      "traffic-light"
+    ],
+    "htmlFile": "classroom-routines-toolkit.html"
+  },
+  {
+    "id": "cool-box-fair-test-lab",
+    "title": "Cool Box Fair-Test Lab — Variable Planner",
+    "summary": "Classify variables, diagnose confounds and sequence a repaired insulation test.",
+    "subject": "science",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Identify independent, dependent and controlled variables and improve a method to test one factor fairly.",
+    "tags": [
+      "science-inquiry",
+      "variables",
+      "fair-test"
+    ],
+    "htmlFile": "cool-box-fair-test-lab.html"
+  },
+  {
+    "id": "fixed-perimeter-rectangle-explorer",
+    "title": "Rectangles with the Same Perimeter — Dimension Explorer",
+    "summary": "Change an even perimeter and inspect whole-number width-length pairs on a live graph.",
+    "subject": "mathematics",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Generate rectangles with the same perimeter and reason about width and length.",
+    "tags": [
+      "perimeter",
+      "rectangles",
+      "graphs"
+    ],
+    "htmlFile": "fixed-perimeter-rectangle-explorer.html"
+  },
+  {
+    "id": "fraction-equivalence-diagnostic",
+    "title": "Fraction Equivalence Detective — Three Clues",
+    "summary": "Compare, explain and represent equivalent fractions through three diagnostic prompts.",
+    "subject": "mathematics",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Recognise equivalent fractions and explain why the same operation on both parts preserves value.",
+    "tags": [
+      "fractions",
+      "equivalence",
+      "diagnostic"
+    ],
+    "htmlFile": "fraction-equivalence-diagnostic.html"
+  },
+  {
+    "id": "linear-function-explorer",
+    "title": "Linear Function Explorer — Gradient and Intercept",
+    "summary": "Vary gradient and intercept and connect y = mx + c to a responsive line graph.",
+    "subject": "mathematics",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Explain how gradient and vertical intercept affect a straight-line graph.",
+    "tags": [
+      "algebra",
+      "linear-functions",
+      "graphs"
+    ],
+    "htmlFile": "linear-function-explorer.html"
+  },
+  {
+    "id": "malay-classroom-vocabulary-match",
+    "title": "Padankan Perkataan di Bilik Darjah — Latihan Kosa Kata",
+    "summary": "Aktiviti dwibahasa untuk memadankan kosa kata kelas dan mengasingkan perbuatan daripada benda.",
+    "subject": "languages",
+    "level": "upper-primary",
+    "locale": "ms-SG",
+    "learningObjective": "Padankan kata nama dan kata kerja Melayu dengan maksud bahasa Inggeris serta bezakan perbuatan dan benda.",
+    "tags": [
+      "bahasa-melayu",
+      "kosa-kata",
+      "padanan"
+    ],
+    "htmlFile": "malay-classroom-vocabulary-match.html"
+  },
+  {
+    "id": "mangrove-zonation-hotspots",
+    "title": "Explore a Mangrove Shore — Tidal Transect",
+    "summary": "Explore changing shore conditions and adaptations in an asset-free mangrove cross-section.",
+    "subject": "humanities",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Describe shore zonation and relate mangrove adaptations to tidal and muddy conditions.",
+    "tags": [
+      "geography",
+      "mangroves",
+      "adaptation"
+    ],
+    "htmlFile": "mangrove-zonation-hotspots.html"
+  },
+  {
+    "id": "market-street-field-notes",
+    "title": "Market Street Field Notes — Evidence First",
+    "summary": "Separate observations from interpretations and build a responsible evidence-led conclusion.",
+    "subject": "humanities",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Distinguish observation from interpretation and identify evidence needed to support a geographical claim.",
+    "tags": [
+      "geography",
+      "fieldwork",
+      "evidence"
+    ],
+    "htmlFile": "market-street-field-notes.html"
+  },
+  {
+    "id": "paragraph-structure-sequencer",
+    "title": "Build a Clear Explanation — Rain Paragraph",
+    "summary": "Classify sentence roles and sequence a coherent explanation of rain formation.",
+    "subject": "english",
+    "level": "upper-primary",
+    "locale": "en-SG",
+    "learningObjective": "Organise an explanation using a topic sentence, ordered details and concluding link.",
+    "tags": [
+      "writing",
+      "paragraphs",
+      "cohesion"
+    ],
+    "htmlFile": "paragraph-structure-sequencer.html"
+  },
+  {
+    "id": "persuasive-language-lab",
+    "title": "Persuasive Language Lab — Reader Effects",
+    "summary": "Identify inclusive language, concrete evidence and a rhetorical question and connect each to effect.",
+    "subject": "english",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Explain how evidence, rhetorical questions and inclusive language shape a reader's response.",
+    "tags": [
+      "persuasion",
+      "rhetoric",
+      "audience"
+    ],
+    "htmlFile": "persuasive-language-lab.html"
+  },
+  {
+    "id": "plant-cell-hotspots",
+    "title": "Inside a Plant Cell — Organelle Map",
+    "summary": "Reveal the structure-function roles of five cell parts on an asset-free CSS cell diagram.",
+    "subject": "science",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Identify major plant-cell structures and explain how each contributes to cell function.",
+    "tags": [
+      "biology",
+      "cells",
+      "organelles"
+    ],
+    "htmlFile": "plant-cell-hotspots.html"
+  },
+  {
+    "id": "singapore-self-government-timeline",
+    "title": "Road to Self-Government — Singapore Timeline",
+    "summary": "Sequence major post-war constitutional developments and match each to historical significance.",
+    "subject": "humanities",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Sequence Singapore's path to internal self-government and connect events to significance.",
+    "tags": [
+      "history",
+      "singapore",
+      "self-government"
+    ],
+    "htmlFile": "singapore-self-government-timeline.html"
+  },
+  {
+    "id": "source-reliability-check",
+    "title": "Can We Trust This Source? — Corroboration Check",
+    "summary": "Evaluate a campaign claim through provenance, purpose and independent corroboration.",
+    "subject": "humanities",
+    "level": "secondary",
+    "locale": "en-SG",
+    "learningObjective": "Evaluate source usefulness and reliability using producer, purpose and corroborating evidence.",
+    "tags": [
+      "history",
+      "sources",
+      "corroboration"
+    ],
+    "htmlFile": "source-reliability-check.html"
+  }
+]

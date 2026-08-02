@@ -2,11 +2,13 @@ import type {
   ArtifactRecord,
   ContentReportInput,
   CreateArtifactInput,
+  CuratedSeedInput,
   PublicationRecord,
   RetrievalEntry,
   RevisionRecord,
   StudioRepository,
 } from "./repository";
+import { CURATED_SEED_OWNER } from "./repository";
 export class MemoryStudioRepository implements StudioRepository {
   readonly artifacts = new Map<string, ArtifactRecord>();
   readonly revisions = new Map<string, RevisionRecord>();
@@ -44,6 +46,27 @@ export class MemoryStudioRepository implements StudioRepository {
     this.revisions.set(i.revision.id, structuredClone(i.revision));
     this.revisionAssets.set(i.revision.id, new Set(i.assetIds));
   }
+  async upsertCuratedSeed(i: CuratedSeedInput) {
+    if (i.artifact.ownerHash !== CURATED_SEED_OWNER || i.assetIds.length)
+      throw new Error("Invalid curated seed");
+    const existing = this.artifacts.get(i.artifact.id);
+    if (existing && existing.ownerHash !== CURATED_SEED_OWNER)
+      throw new Error("Curated seed conflicts with an existing artifact");
+    this.artifacts.set(i.artifact.id, {
+      ...structuredClone(i.artifact),
+      createdAt: existing?.createdAt ?? i.artifact.createdAt,
+    });
+    this.revisions.set(i.revision.id, structuredClone(i.revision));
+    this.revisionAssets.set(i.revision.id, new Set());
+    this.retrieval.set(i.artifact.id, {
+      artifactId: i.artifact.id,
+      revisionId: i.revision.id,
+      title: i.artifact.title,
+      descriptor: i.descriptor,
+      html: "",
+      curated: true,
+    });
+  }
   async getArtifact(id: string, o: string) {
     const a = this.artifacts.get(id);
     return a?.ownerHash === o ? structuredClone(a) : null;
@@ -68,6 +91,8 @@ export class MemoryStudioRepository implements StudioRepository {
     if (!a || a.ownerHash !== o) return null;
     Object.assign(a, metadata);
     a.updatedAt = n;
+    const retrieval = this.retrieval.get(id);
+    if (retrieval) retrieval.title = metadata.title;
     return structuredClone(a);
   }
   async deleteArtifact(id: string, o: string) {
@@ -78,12 +103,14 @@ export class MemoryStudioRepository implements StudioRepository {
       if (r.artifactId === id) this.revisions.delete(k);
     for (const [k, p] of this.publications)
       if (p.artifactId === id) this.publications.delete(k);
+    this.retrieval.delete(id);
     return true;
   }
   async deleteExpiredArtifacts(b: string, n: string, l = 100) {
     const a = [...this.artifacts.values()]
       .filter(
         (a) =>
+          a.ownerHash !== CURATED_SEED_OWNER &&
           a.updatedAt < b &&
           ![...this.publications.values()].some(
             (p) => p.artifactId === a.id && !p.revokedAt && p.expiresAt > n,
@@ -144,22 +171,39 @@ export class MemoryStudioRepository implements StudioRepository {
     r.screenshotKey = k;
     return true;
   }
-  async isRevisionRetrievable(id: string) {
-    return [...this.retrieval.values()].some(
-      (entry) => entry.revisionId === id,
+  private retrievalEntryIsLive(entry: RetrievalEntry, now: string) {
+    return (
+      entry.curated ||
+      [...this.publications.values()].some(
+        (publication) =>
+          publication.artifactId === entry.artifactId &&
+          publication.revisionId === entry.revisionId &&
+          !publication.revokedAt &&
+          Date.parse(publication.expiresAt) > Date.parse(now),
+      )
     );
   }
-  async searchRetrieval(q: string, l: number) {
+  async isRevisionRetrievable(id: string, now: string) {
+    return [...this.retrieval.values()].some(
+      (entry) =>
+        entry.revisionId === id && this.retrievalEntryIsLive(entry, now),
+    );
+  }
+  async searchRetrieval(q: string, l: number, now: string) {
     const terms = q
       .replaceAll('"', "")
       .toLowerCase()
-      .split(/\s+/)
+      .split(/\s+or\s+/)
       .filter(Boolean);
     return [...this.retrieval.values()]
       .filter((e) => {
         const document = `${e.title} ${e.descriptor}`.toLowerCase();
-        return terms.every((term) => document.includes(term));
+        return (
+          this.retrievalEntryIsLive(e, now) &&
+          terms.some((term) => document.includes(term))
+        );
       })
+      .sort((a, b) => Number(b.curated) - Number(a.curated))
       .slice(0, l)
       .map((e) => structuredClone(e));
   }
@@ -250,6 +294,13 @@ export class MemoryStudioRepository implements StudioRepository {
     const p = this.publications.get(s);
     if (!p || p.ownerHash !== o) return false;
     p.revokedAt ??= n;
+    if (
+      ![...this.publications.values()].some(
+        (candidate) =>
+          candidate.artifactId === p.artifactId && !candidate.revokedAt,
+      )
+    )
+      this.retrieval.delete(p.artifactId);
     return true;
   }
   async createContentReport(i: ContentReportInput) {

@@ -46,13 +46,13 @@ export function validateHtmlArtifact(html, options = {}) {
 
   for (const match of html.matchAll(/\b(?:src|srcset|href|xlink:href|action|formaction|poster)\s*=\s*(?:(["'])(.*?)\1|([^\s>]+))/gi)) {
     const value = (match[2] ?? match[3] ?? '').trim();
-    if (value && !value.startsWith('#') && !value.startsWith('data:')) {
+    if (value && !value.startsWith('#') && !value.startsWith('data:') && !/^assets\/[A-Za-z0-9_-]+$/.test(value)) {
       add('external-resource', `External resource reference is not allowed: ${value}.`);
     }
   }
   for (const match of html.matchAll(/\burl\(\s*(?:(["'])(.*?)\1|([^\s)]+))\s*\)/gi)) {
     const value = (match[2] ?? match[3] ?? '').trim();
-    if (value && !value.startsWith('#') && !value.startsWith('data:')) {
+    if (value && !value.startsWith('#') && !value.startsWith('data:') && !/^assets\/[A-Za-z0-9_-]+$/.test(value)) {
       add('external-resource', `External CSS resource is not allowed: ${value}.`);
     }
   }

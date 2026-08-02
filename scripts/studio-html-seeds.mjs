@@ -76,14 +76,15 @@ async function importSeeds() {
   const endpoint = option('--endpoint') ?? process.env.STUDIO_HTML_IMPORT_ENDPOINT;
   if (!endpoint) throw new Error('Provide --endpoint URL or STUDIO_HTML_IMPORT_ENDPOINT.');
   const { records } = await loadValidatedSeeds();
-  const token = process.env.STUDIO_HTML_IMPORT_TOKEN;
+  const token = process.env.STUDIO_SEED_IMPORT_TOKEN ?? process.env.STUDIO_HTML_IMPORT_TOKEN;
+  if (!token) throw new Error('Set STUDIO_SEED_IMPORT_TOKEN before importing reviewed seeds.');
   for (const record of records) {
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(record),
     });

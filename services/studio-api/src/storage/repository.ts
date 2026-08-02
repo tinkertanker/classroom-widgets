@@ -78,6 +78,11 @@ export interface CreateArtifactInput {
   revision: RevisionRecord;
   assetIds: string[];
 }
+export interface CuratedSeedInput extends CreateArtifactInput {
+  descriptor: string;
+}
+
+export const CURATED_SEED_OWNER = "studio-curated-seed";
 
 export interface StudioRepository {
   consumeGeneration(
@@ -89,6 +94,7 @@ export interface StudioRepository {
   consumeClassCode(hash: string, now: string): Promise<boolean>;
   countArtifacts(owner: string): Promise<number>;
   createArtifact(input: CreateArtifactInput): Promise<void>;
+  upsertCuratedSeed(input: CuratedSeedInput): Promise<void>;
   getArtifact(id: string, owner: string): Promise<ArtifactRecord | null>;
   getArtifactPublic(id: string): Promise<ArtifactRecord | null>;
   listArtifacts(owner: string): Promise<ArtifactRecord[]>;
@@ -124,8 +130,12 @@ export interface StudioRepository {
     owner: string,
     key: string,
   ): Promise<boolean>;
-  isRevisionRetrievable(revisionId: string): Promise<boolean>;
-  searchRetrieval(query: string, limit: number): Promise<RetrievalEntry[]>;
+  isRevisionRetrievable(revisionId: string, now: string): Promise<boolean>;
+  searchRetrieval(
+    query: string,
+    limit: number,
+    now: string,
+  ): Promise<RetrievalEntry[]>;
   publish(
     slug: string,
     artifact: ArtifactRecord,

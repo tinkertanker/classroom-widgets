@@ -19,6 +19,8 @@ Classroom Widgets is a real-time classroom management system that enables teache
 - **Teacher Application**: A React-based interface for creating and managing classroom activities
 - **Student Application**: A responsive web app for students to participate in activities.
 - **Backend Server**: An Express.js server handling real-time communication via Socket.io.
+- **Studio**: A separate SwiftUI iPad app and Cloudflare Worker for generating,
+  revising and publishing self-contained HTML classroom activities.
 
 ### Available Widgets
 
@@ -110,6 +112,9 @@ classroom-widgets/
 │   │   ├── src/sockets/      # Socket.IO event handlers
 │   │   └── package.json      # Backend workspace scripts
 │   └── shared/               # Shared types, hooks, constants, and utilities
+├── apps/ipad/                # Classroom Widgets Studio iPad app
+├── services/studio-api/      # Studio generation and publication Worker
+├── examples/studio-html/     # Reviewed Studio example artifacts
 ├── docs/                     # Project documentation
 ├── package.json              # Root workspace scripts
 └── package-lock.json         # Locked dependency graph for all workspaces
@@ -201,9 +206,17 @@ npm run server
 
 # Run tests for the Teacher App
 npm test
+
+# Verify the Studio API, HTML corpus, model fixtures and iPad resources
+npm run verify:studio
+
+# Refresh Studio examples and generate the Xcode project (requires xcodegen)
+npm run ipad:prepare
 ```
 
 See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development details.
+The Studio product and architecture contract is documented in
+[Studio V1](./docs/STUDIO_V1.md).
 
 ### Development with Claude Code
 

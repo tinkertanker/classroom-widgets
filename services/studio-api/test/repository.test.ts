@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStudioRepository } from "../src/storage/memoryRepository";
-import type { ArtifactRecord, RevisionRecord } from "../src/storage/repository";
+import {
+  CURATED_SEED_OWNER,
+  type ArtifactRecord,
+  type RevisionRecord,
+} from "../src/storage/repository";
 
 const now = "2026-08-02T00:00:00.000Z";
 function records(id = "artifact-1", ownerHash = "owner-a") {
@@ -140,7 +144,7 @@ describe("MemoryStudioRepository artifact model", () => {
       "<html/>",
     );
     expect(first?.revisionId).toBe(revision.id);
-    expect(await repository.isRevisionRetrievable(revision.id)).toBe(true);
+    expect(await repository.isRevisionRetrievable(revision.id, now)).toBe(true);
     expect(
       await repository.publicationReferencesAsset("first-slug", "asset-1"),
     ).toBe(true);
@@ -168,8 +172,10 @@ describe("MemoryStudioRepository artifact model", () => {
         )
       )?.slug,
     ).toBe("first-slug");
-    expect(await repository.isRevisionRetrievable(revision.id)).toBe(false);
-    expect(await repository.isRevisionRetrievable(next.id)).toBe(true);
+    expect(await repository.isRevisionRetrievable(revision.id, now)).toBe(
+      false,
+    );
+    expect(await repository.isRevisionRetrievable(next.id, now)).toBe(true);
     expect(
       await repository.publish(
         "stale",
@@ -213,5 +219,72 @@ describe("MemoryStudioRepository artifact model", () => {
     expect(
       (await repository.getRevision(remix.revision.id))?.parentRevisionId,
     ).toBeNull();
+  });
+
+  it("retains curated seeds during cleanup and removes revoked teacher artifacts from retrieval", async () => {
+    const repository = new MemoryStudioRepository();
+    const seed = records("fraction-seed", CURATED_SEED_OWNER);
+    seed.revision.kind = "import";
+    seed.artifact.updatedAt = "2025-01-01T00:00:00Z";
+    await repository.upsertCuratedSeed({
+      ...seed,
+      assetIds: [],
+      descriptor: "fractions mathematics upper primary",
+    });
+    expect(
+      await repository.deleteExpiredArtifacts("2026-01-01T00:00:00Z", now),
+    ).toBe(0);
+    expect(await repository.isRevisionRetrievable(seed.revision.id, now)).toBe(
+      true,
+    );
+
+    const teacher = records("teacher-artifact");
+    teacher.artifact.title = "Teacher Polygon";
+    await repository.createArtifact({ ...teacher, assetIds: [] });
+    await repository.publish(
+      "teacher-slug",
+      teacher.artifact,
+      teacher.revision,
+      "2026-09-01T00:00:00Z",
+      now,
+      "<html></html>",
+    );
+    expect(
+      await repository.isRevisionRetrievable(teacher.revision.id, now),
+    ).toBe(true);
+    expect(
+      await repository.isRevisionRetrievable(
+        teacher.revision.id,
+        "2026-09-01T00:00:00Z",
+      ),
+    ).toBe(false);
+    expect(
+      await repository.searchRetrieval('"Polygon"', 10, "2026-09-01T00:00:00Z"),
+    ).toEqual([]);
+    expect(
+      await repository.isRevisionRetrievable(
+        seed.revision.id,
+        "2030-01-01T00:00:00Z",
+      ),
+    ).toBe(true);
+
+    await repository.updateArtifactMetadata(
+      teacher.artifact.id,
+      teacher.artifact.ownerHash,
+      { ...teacher.artifact, title: "Decimal Quokka" },
+      now,
+    );
+    expect(await repository.searchRetrieval('"Quokka"', 10, now)).toHaveLength(
+      1,
+    );
+    expect(await repository.searchRetrieval('"Polygon"', 10, now)).toEqual([]);
+
+    await repository.revokePublication("teacher-slug", "owner-a", now);
+    expect(
+      await repository.isRevisionRetrievable(teacher.revision.id, now),
+    ).toBe(false);
+    expect(await repository.isRevisionRetrievable(seed.revision.id, now)).toBe(
+      true,
+    );
   });
 });

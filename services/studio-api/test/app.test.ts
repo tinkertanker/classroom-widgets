@@ -24,6 +24,7 @@ const config = {
   dailyNetworkRegistrationLimit: 100,
   publicationTtlDays: 90,
   deviceTokenSigningSecret: secret,
+  seedImportToken: "test-seed-import-token",
 };
 
 describe("Studio API registration and public HTML", () => {
@@ -130,6 +131,97 @@ describe("Studio API registration and public HTML", () => {
     expect(served.match(/data-studio-report/g)).toHaveLength(1);
     expect(served).toContain('<base href="/ABCDEFGHIJKLMNOPQRST/">');
     expect(source).not.toContain("<base");
+  });
+
+  it("imports reviewed seeds into retrieval and uses a selected seed as generation context", async () => {
+    const seed = {
+      seedId: "fraction-equivalence-diagnostic",
+      title: "Fraction Equivalence Detective",
+      summary: "Compare equivalent fractions and check each answer.",
+      artifact: {
+        html: '<!doctype html><html lang="en-SG"><head><meta charset="utf-8"><title>Fraction Equivalence Detective</title></head><body><button type="button">Check</button></body></html>',
+        designCard: { layout: "single diagnostic" },
+      },
+      metadata: {
+        subject: "mathematics",
+        level: "upper-primary",
+        locale: "en-SG",
+        learningObjective: "Recognise equivalent fractions.",
+        tags: ["fractions", "equivalence", "diagnostic"],
+        interactionPattern: "choice-diagnostic",
+        descriptor: "A fraction diagnostic with immediate feedback.",
+      },
+    };
+    const unauthorized = await app.fetch(
+      new Request("https://api.test/v1/seeds", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(seed),
+      }),
+    );
+    expect(unauthorized.status).toBe(401);
+
+    const imported = await app.fetch(
+      new Request("https://api.test/v1/seeds", {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-seed-import-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(seed),
+      }),
+    );
+    expect(imported.status).toBe(201);
+    await expect(imported.json()).resolves.toMatchObject({
+      artifactId: seed.seedId,
+      revisionId: `${seed.seedId}-seed`,
+    });
+    expect(repository.retrieval.get(seed.seedId)?.curated).toBe(true);
+    expect(
+      await sources.getSource(
+        (await repository.getRevision(`${seed.seedId}-seed`))!.sourceHash,
+      ),
+    ).toBe(seed.artifact.html);
+
+    const provider = new FixtureModelProvider();
+    const generate = provider.generate.bind(provider);
+    let receivedExemplars: string[] = [];
+    provider.generate = async (brief, exemplars) => {
+      receivedExemplars = exemplars.map((exemplar) => exemplar.revisionId);
+      return generate(brief, exemplars);
+    };
+    app = createStudioApp({
+      repository,
+      provider,
+      config,
+      sources,
+      now: () => new Date("2026-08-02T00:00:00Z"),
+    });
+    const generated = await app.fetch(
+      authenticated("/v1/artifacts/generate", "POST", {
+        ...creationBrief,
+        preferredExampleRevisionId: `${seed.seedId}-seed`,
+      }),
+    );
+    expect(generated.status).toBe(201);
+    expect(receivedExemplars).toEqual([`${seed.seedId}-seed`]);
+
+    const anonymousSearch = await app.fetch(
+      new Request("https://api.test/v1/examples/search?q=fractions"),
+    );
+    expect(anonymousSearch.status).toBe(401);
+    const searched = await app.fetch(
+      authenticated("/v1/examples/search?q=fractions"),
+    );
+    await expect(searched.json()).resolves.toMatchObject({
+      examples: [
+        {
+          artifactId: seed.seedId,
+          revisionId: `${seed.seedId}-seed`,
+          curated: true,
+        },
+      ],
+    });
   });
 
   it("creates immutable revisions, moves the head, and records remix lineage", async () => {
@@ -291,6 +383,81 @@ describe("Studio API registration and public HTML", () => {
     expect(secondPublication.publication.revisionId).toBe(
       second.headRevision.id,
     );
+  });
+
+  it("stops expired publications from authorising search, preferred context, or remix", async () => {
+    const generated = await app.fetch(
+      authenticated("/v1/artifacts/generate", "POST", creationBrief),
+    );
+    const first = (await generated.json()) as {
+      artifact: { id: string };
+      headRevision: RevisionRecord;
+    };
+    expect(
+      (
+        await app.fetch(
+          authenticated(`/v1/artifacts/${first.artifact.id}/publish`, "POST", {
+            expectedHeadRevisionId: first.headRevision.id,
+          }),
+        )
+      ).status,
+    ).toBe(201);
+
+    const otherToken = (
+      await issueDeviceToken(secret, new Date("2026-08-02T00:00:00Z"))
+    ).token;
+    const asOtherDevice = (path: string, method = "GET", body?: unknown) =>
+      new Request(`https://api.test${path}`, {
+        method,
+        headers: {
+          "x-device-token": otherToken,
+          "cf-connecting-ip": "198.51.100.8",
+          origin: "https://studio.test",
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    const provider = new FixtureModelProvider();
+    let receivedExemplars: string[] = [];
+    const generate = provider.generate.bind(provider);
+    provider.generate = async (brief, exemplars) => {
+      receivedExemplars = exemplars.map((exemplar) => exemplar.revisionId);
+      return generate(brief, exemplars);
+    };
+    app = createStudioApp({
+      repository,
+      provider,
+      config,
+      sources,
+      now: () => new Date("2026-12-01T00:00:00Z"),
+    });
+
+    const searched = await app.fetch(
+      asOtherDevice("/v1/examples/search?q=fractions"),
+    );
+    await expect(searched.json()).resolves.toEqual({ examples: [] });
+    expect(
+      (
+        await app.fetch(
+          asOtherDevice(
+            `/v1/revisions/${first.headRevision.id}/remix`,
+            "POST",
+            {},
+          ),
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await app.fetch(
+          asOtherDevice("/v1/artifacts/generate", "POST", {
+            ...creationBrief,
+            preferredExampleRevisionId: first.headRevision.id,
+          }),
+        )
+      ).status,
+    ).toBe(201);
+    expect(receivedExemplars).toEqual([]);
   });
 
   it("persists no artifact when generation and its single repair are invalid", async () => {

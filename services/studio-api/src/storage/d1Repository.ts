@@ -2,12 +2,14 @@ import type {
   ArtifactRecord,
   ContentReportInput,
   CreateArtifactInput,
+  CuratedSeedInput,
   ExtendPublicationResult,
   PublicationRecord,
   RetrievalEntry,
   RevisionRecord,
   StudioRepository,
 } from "./repository";
+import { CURATED_SEED_OWNER } from "./repository";
 type Row = Record<string, string | number | null>;
 const art = (r: Row): ArtifactRecord => ({
   id: r.id as string,
@@ -115,6 +117,59 @@ export class D1StudioRepository implements StudioRepository {
       ),
     ]);
   }
+  async upsertCuratedSeed(i: CuratedSeedInput) {
+    if (i.artifact.ownerHash !== CURATED_SEED_OWNER || i.assetIds.length)
+      throw new Error("Invalid curated seed");
+    const a = i.artifact,
+      r = i.revision;
+    const result = await this.db.batch([
+      this.p(
+        `INSERT INTO artifacts(id,owner_hash,title,creation_brief,head_revision_id,remixed_from_revision_id,created_at,updated_at,summary,subject,level,locale,learning_objective,tags_json,generation_brief_json)
+VALUES(?1,?2,?3,?4,?5,NULL,?6,?6,?7,?8,?9,?10,?11,?12,?13)
+ON CONFLICT(id) DO UPDATE SET title=?3,creation_brief=?4,head_revision_id=?5,updated_at=?6,summary=?7,subject=?8,level=?9,locale=?10,learning_objective=?11,tags_json=?12,generation_brief_json=?13
+WHERE artifacts.owner_hash=?2`,
+        a.id,
+        a.ownerHash,
+        a.title,
+        a.creationBrief,
+        a.headRevisionId,
+        a.updatedAt,
+        a.summary,
+        a.subject,
+        a.level,
+        a.locale,
+        a.learningObjective,
+        JSON.stringify(a.tags),
+        a.generationBrief,
+      ),
+      this.p(
+        `INSERT INTO revisions(id,artifact_id,parent_revision_id,source_hash,source_bytes,kind,instruction,design_card_json,exemplars_json,model_version,prompt_version,screenshot_key,created_at)
+SELECT ?1,?2,NULL,?3,?4,'import',NULL,?5,'[]',?6,?7,NULL,?8 FROM artifacts WHERE id=?2 AND owner_hash=?9
+ON CONFLICT(id) DO UPDATE SET source_hash=?3,source_bytes=?4,design_card_json=?5,model_version=?6,prompt_version=?7,created_at=?8
+WHERE revisions.artifact_id=?2 AND revisions.kind='import'`,
+        r.id,
+        r.artifactId,
+        r.sourceHash,
+        r.sourceBytes,
+        r.designCard,
+        r.modelVersion,
+        r.promptVersion,
+        r.createdAt,
+        CURATED_SEED_OWNER,
+      ),
+      this.p(
+        `INSERT INTO retrieval_entries(artifact_id,revision_id,descriptor,curated,updated_at)
+SELECT ?1,?2,?3,1,?4 FROM revisions WHERE id=?2 AND artifact_id=?1
+ON CONFLICT(artifact_id) DO UPDATE SET revision_id=?2,descriptor=?3,curated=1,updated_at=?4`,
+        a.id,
+        r.id,
+        i.descriptor,
+        a.updatedAt,
+      ),
+    ]);
+    if (result.some((entry) => (entry.meta.changes ?? 0) < 1))
+      throw new Error("Curated seed conflicts with an existing artifact");
+  }
   private revInsert(r: RevisionRecord) {
     return this.p(
       "INSERT INTO revisions VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
@@ -162,20 +217,30 @@ export class D1StudioRepository implements StudioRepository {
     m: import("./repository").ArtifactMetadata,
     n: string,
   ) {
-    await this.p(
-      "UPDATE artifacts SET title=?1,summary=?2,subject=?3,level=?4,locale=?5,learning_objective=?6,tags_json=?7,creation_brief=?8,updated_at=?9 WHERE id=?10 AND owner_hash=?11",
-      m.title,
-      m.summary,
-      m.subject,
-      m.level,
-      m.locale,
-      m.learningObjective,
-      JSON.stringify(m.tags),
-      m.creationBrief,
-      n,
-      id,
-      o,
-    ).run();
+    await this.db.batch([
+      this.p(
+        "UPDATE artifacts SET title=?1,summary=?2,subject=?3,level=?4,locale=?5,learning_objective=?6,tags_json=?7,creation_brief=?8,updated_at=?9 WHERE id=?10 AND owner_hash=?11",
+        m.title,
+        m.summary,
+        m.subject,
+        m.level,
+        m.locale,
+        m.learningObjective,
+        JSON.stringify(m.tags),
+        m.creationBrief,
+        n,
+        id,
+        o,
+      ),
+      // Touching the projection fires retrieval_au, which refreshes the FTS
+      // title copied from the artifact without changing retrieval eligibility.
+      this.p(
+        "UPDATE retrieval_entries SET updated_at=?1 WHERE artifact_id=?2 AND EXISTS(SELECT 1 FROM artifacts WHERE id=?2 AND owner_hash=?3)",
+        n,
+        id,
+        o,
+      ),
+    ]);
     return this.getArtifact(id, o);
   }
   async deleteArtifact(id: string, o: string) {
@@ -188,10 +253,11 @@ export class D1StudioRepository implements StudioRepository {
   }
   async deleteExpiredArtifacts(b: string, n: string, l = 100) {
     const r = await this.p(
-      "DELETE FROM artifacts WHERE id IN(SELECT a.id FROM artifacts a WHERE updated_at<?1 AND NOT EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=a.id AND revoked_at IS NULL AND expires_at>?2) LIMIT ?3)",
+      "DELETE FROM artifacts WHERE id IN(SELECT a.id FROM artifacts a WHERE updated_at<?1 AND owner_hash<>?4 AND NOT EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=a.id AND revoked_at IS NULL AND expires_at>?2) LIMIT ?3)",
       b,
       n,
       l,
+      CURATED_SEED_OWNER,
     ).run();
     return r.meta.changes ?? 0;
   }
@@ -282,17 +348,19 @@ WHERE a.id=?2 AND a.owner_hash=?14 AND a.head_revision_id=?3`,
     ).run();
     return (x.meta.changes ?? 0) === 1;
   }
-  async isRevisionRetrievable(id: string) {
+  async isRevisionRetrievable(id: string, now: string) {
     return !!(await this.p(
-      "SELECT 1 FROM retrieval_entries WHERE revision_id=?1",
+      "SELECT 1 FROM retrieval_entries r WHERE r.revision_id=?1 AND (r.curated=1 OR EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=r.artifact_id AND p.revision_id=r.revision_id AND p.revoked_at IS NULL AND p.expires_at>?2))",
       id,
+      now,
     ).first());
   }
-  async searchRetrieval(q: string, l: number) {
+  async searchRetrieval(q: string, l: number, now: string) {
     const rows = await this.p(
-      "SELECT r.*,a.title FROM retrieval_fts f JOIN retrieval_entries r ON r.artifact_id=f.artifact_id JOIN artifacts a ON a.id=r.artifact_id WHERE retrieval_fts MATCH ?1 LIMIT ?2",
+      "SELECT r.*,a.title FROM retrieval_fts f JOIN retrieval_entries r ON r.artifact_id=f.artifact_id JOIN artifacts a ON a.id=r.artifact_id WHERE retrieval_fts MATCH ?1 AND (r.curated=1 OR EXISTS(SELECT 1 FROM publications p WHERE p.artifact_id=r.artifact_id AND p.revision_id=r.revision_id AND p.revoked_at IS NULL AND p.expires_at>?3)) ORDER BY r.curated DESC,bm25(retrieval_fts) LIMIT ?2",
       q,
       l,
+      now,
     ).all<Row>();
     return rows.results.map((x) => ({
       artifactId: x.artifact_id as string,
@@ -403,13 +471,20 @@ ON CONFLICT(artifact_id) DO UPDATE SET
       : { status: "expiry-limit" };
   }
   async revokePublication(s: string, o: string, n: string) {
-    const r = await this.p(
-      "UPDATE publications SET revoked_at=coalesce(revoked_at,?1) WHERE slug=?2 AND owner_hash=?3",
-      n,
-      s,
-      o,
-    ).run();
-    return (r.meta.changes ?? 0) === 1;
+    const r = await this.db.batch([
+      this.p(
+        "UPDATE publications SET revoked_at=coalesce(revoked_at,?1) WHERE slug=?2 AND owner_hash=?3",
+        n,
+        s,
+        o,
+      ),
+      this.p(
+        "DELETE FROM retrieval_entries WHERE curated=0 AND artifact_id=(SELECT artifact_id FROM publications WHERE slug=?1 AND owner_hash=?2) AND NOT EXISTS(SELECT 1 FROM publications active WHERE active.artifact_id=retrieval_entries.artifact_id AND active.revoked_at IS NULL)",
+        s,
+        o,
+      ),
+    ]);
+    return (r[0]?.meta.changes ?? 0) === 1;
   }
   async createContentReport(i: ContentReportInput) {
     const r = await this.p(
