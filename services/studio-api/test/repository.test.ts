@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MemoryStudioRepository } from "../src/storage/memoryRepository";
 import {
   CURATED_SEED_OWNER,
+  retrievalDescriptor,
   type ArtifactRecord,
   type RevisionRecord,
 } from "../src/storage/repository";
@@ -44,6 +45,17 @@ function records(id = "artifact-1", ownerHash = "owner-a") {
 }
 
 describe("MemoryStudioRepository artifact model", () => {
+  it("keeps private creation briefs out of retrieval descriptors", () => {
+    const { artifact } = records();
+    artifact.creationBrief = "Private source notes about a named student";
+
+    const descriptor = retrievalDescriptor(artifact, '{"layout":"cards"}');
+
+    expect(descriptor).toContain("Compare fractions");
+    expect(descriptor).toContain("cards");
+    expect(descriptor).not.toContain(artifact.creationBrief);
+  });
+
   it("enforces quota boundaries and class-code capacity", async () => {
     const repository = new MemoryStudioRepository();
     expect(

@@ -40,7 +40,6 @@ export function retrievalDescriptor(
       ? `Learning objective: ${artifact.learningObjective}`
       : null,
     artifact.tags.length ? `Tags: ${artifact.tags.join(", ")}` : null,
-    artifact.creationBrief,
     designCard,
   ]
     .filter((value): value is string => !!value)

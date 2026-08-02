@@ -58,7 +58,7 @@ struct WidgetPreviewWebView: UIViewRepresentable {
         context.coordinator.onSnapshot = onSnapshot
         context.coordinator.handler.assets = localAssets
         let coordinator = context.coordinator
-        Task { @MainActor in
+        DispatchQueue.main.async {
             coordinator.load(source)
         }
     }
