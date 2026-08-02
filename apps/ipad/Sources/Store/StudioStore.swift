@@ -29,7 +29,7 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     init(api: any StudioAPI = StudioAPIClient.live(), storageDirectory: URL? = nil, bundle: Bundle = .main) {
         self.api = api
         isUITesting = ProcessInfo.processInfo.arguments.contains("--ui-testing-reset")
-        let root = storageDirectory ?? (try? FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)) ?? FileManager.default.temporaryDirectory
+        let root = storageDirectory ?? (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)) ?? FileManager.default.temporaryDirectory
         cacheDirectory = root.appending(path: "ArtifactProjects", directoryHint: .isDirectory)
         if isUITesting {
             try? FileManager.default.removeItem(at: cacheDirectory)
@@ -53,13 +53,20 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
             }
             return
         }
-        workshopAccessState = await api.hasDeviceCredential() ? .ready : .registrationRequired
+        let hasCredential = await api.hasDeviceCredential()
+        workshopAccessState = hasCredential ? .ready : .registrationRequired
+        showsWorkshopAccess = !hasCredential
     }
     func requestWorkshopAccess() { showsWorkshopAccess = true }
     func dismissWorkshopAccess() { showsWorkshopAccess = false }
     func registerWorkshopAccess(_ code: String) async throws { try await api.registerDevice(accessCode: code); workshopAccessState = .ready; showsWorkshopAccess = false }
     func present(_ error: Error, during operation: StudioOperation) -> StudioErrorPresentation {
-        StudioErrorPresentation(title: "Studio could not complete this action", message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription, requestsWorkshopAccess: false)
+        let requestsWorkshopAccess = (error as? StudioAPIError)?.requiresRegistration == true
+        if requestsWorkshopAccess {
+            workshopAccessState = .registrationRequired
+            showsWorkshopAccess = true
+        }
+        return StudioErrorPresentation(title: "Studio could not complete this action", message: (error as? LocalizedError)?.errorDescription ?? error.localizedDescription, requestsWorkshopAccess: requestsWorkshopAccess)
     }
     func resetGuidedMake() { guidedMakeDraft = .init(); guidedMakeQuestionIndex = 0; guidedMakeResponse = ""; guidedMakeShowsSummary = false }
     func createApprovedBrief(_ brief: GuidedBriefDraft) async throws -> ArtifactProject {
@@ -79,14 +86,7 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         let project = try await api.generate(request: request); upsert(project); open(project); return project
     }
     func remix(_ example: ArtifactProject) async throws {
-        let artifact = example.artifact
-        let request = GuidedGenerationRequest(creationBrief: artifact.creationBrief, brief: .init(
-            learnerContext: artifact.level ?? artifact.subject ?? "General learners",
-            learningObjective: artifact.learningObjective ?? artifact.title,
-            studentAction: artifact.summary, sourceContent: nil,
-            feedback: "Provide clear feedback", classroomFit: "Use in a short classroom activity"
-        ), preferredExampleRevisionId: example.source.revision.id)
-        let project = try await api.generate(request: request)
+        let project = try await api.remix(id: example.id, revisionId: example.source.revision.id)
         upsert(project)
         open(project)
     }
@@ -111,7 +111,13 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
     func unpublish(projectID: String) async throws { var current = try project(projectID); if let slug = current.artifact.publication?.slug { try await api.revoke(slug: slug) }; current.artifact.publication = nil; upsert(current) }
     func extendPublication(projectID: String) async throws { var current = try project(projectID); guard let slug = current.artifact.publication?.slug else { return }; current.artifact.publication = try await api.extend(slug: slug, days: 90); upsert(current) }
     func deleteProject(projectID: String) async throws {
-        try await api.deleteArtifact(id: projectID)
+        do {
+            try await api.deleteArtifact(id: projectID)
+        } catch StudioAPIError.server(404, "ARTIFACT_NOT_FOUND", _) {
+            // The server may have expired an old project; its local copy should
+            // still be removable.
+        }
+        projects.first(where: { $0.id == projectID })?.localAssets.forEach(LocalWidgetAssetStorage.remove)
         projects.removeAll { $0.id == projectID }
         let name = projectID.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? projectID
         try? FileManager.default.removeItem(at: cacheDirectory.appending(path: "\(name).json"))
@@ -121,11 +127,19 @@ struct StudioErrorPresentation { let title, message: String; let requestsWorksho
         defer { isRestoringFromStudio = false }
         let artifacts = try await api.listArtifacts()
         var count = 0
+        var failures = 0
         for artifact in artifacts {
-            let fetched = try await api.getArtifact(id: artifact.id)
-            let remote = try await cacheAssets(in: fetched)
-            upsert(remote)
-            count += 1
+            do {
+                let fetched = try await api.getArtifact(id: artifact.id)
+                let remote = try await cacheAssets(in: fetched)
+                upsert(remote)
+                count += 1
+            } catch {
+                failures += 1
+            }
+        }
+        if failures > 0 {
+            recoveryNotice = "Studio restored \(count) widgets. \(failures) could not be restored."
         }
         return count
     }
