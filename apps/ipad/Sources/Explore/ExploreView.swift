@@ -1,4 +1,0 @@
-import SwiftUI
-struct ExploreView: View { let store: StudioStore; @State private var preview: ArtifactProject?; @State private var error: String?
-    var body: some View { ScrollView { VStack(alignment: .leading, spacing: 24) { PageHeader(title: "Start with an example", subtitle: "Try a bundled HTML activity, then remix it for your class.", sticker: .greetings); LazyVGrid(columns: [GridItem(.adaptive(minimum: 280))], spacing: 18) { ForEach(store.examples) { project in WidgetProjectCard(project: project, primaryTitle: "Try as student", onPrimary: { preview = project }, secondaryTitle: "Make a copy", onSecondary: { Task { do { try await store.remix(project) } catch { self.error = error.localizedDescription } } }) } } }.padding(32) }.fullScreenCover(item: $preview) { StudentPreviewView(project: $0) }.alert("Could not make a copy", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("OK") {} } message: { Text(error ?? "") } }
-}
