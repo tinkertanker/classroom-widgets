@@ -1,0 +1,8 @@
+packages:
+  - packages/shared
+  - packages/teacher
+  - packages/student
+  - packages/server
+allowBuilds:
+  '@scarf/scarf': false
+  esbuild: true
