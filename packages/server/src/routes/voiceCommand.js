@@ -3,7 +3,6 @@
 
 const express = require('express');
 const router = express.Router();
-const { VOICE_WIDGET_TARGET_MAP } = require('../shared/constants/voiceCommandDefinitions');
 
 const VOICE_COMMAND_DEBUG = process.env.VOICE_COMMAND_DEBUG === 'true';
 
