@@ -7,6 +7,8 @@
  * This file is auto-generated to ensure consistency between frontend and backend
  */
 
+import { WidgetType } from '../types';
+
 export interface WidgetDefinition {
   displayName: string;
   targetName: string;
@@ -423,33 +425,33 @@ export const VOICE_WIDGET_DEFINITIONS: Record<string, WidgetDefinition> = {
  * Widget target name to WidgetType mapping
  * Use this for executeLaunchWidget
  */
-export const VOICE_WIDGET_TARGET_MAP: Record<string, string> = {
-  'timer': 'TIMER',
-  'randomiser': 'RANDOMISER',
-  'randomizer': 'RANDOMISER',
-  'list': 'LIST',
-  'poll': 'POLL',
-  'questions': 'QUESTIONS',
-  'rtfeedback': 'RT_FEEDBACK',
-  'feedback': 'RT_FEEDBACK',
-  'linkshare': 'LINK_SHARE',
-  'textbanner': 'TEXT_BANNER',
-  'banner': 'TEXT_BANNER',
-  'soundeffects': 'SOUND_EFFECTS',
-  'sound': 'SOUND_EFFECTS',
-  'taskcue': 'TASK_CUE',
-  'trafficlight': 'TRAFFIC_LIGHT',
-  'imagedisplay': 'IMAGE_DISPLAY',
-  'qrcode': 'QRCODE',
-  'qr': 'QRCODE',
-  'sticker': 'STAMP',
-  'visualiser': 'VISUALISER',
-  'volumemonitor': 'SOUND_MONITOR',
-  'linkshortener': 'LINK_SHORTENER',
-  'tictactoe': 'TIC_TAC_TOE',
-  'game': 'TIC_TAC_TOE',
-  'wordle': 'WORDLE',
-  'snake': 'SNAKE',
+export const VOICE_WIDGET_TARGET_MAP: Record<string, WidgetType> = {
+  'timer': WidgetType.TIMER,
+  'randomiser': WidgetType.RANDOMISER,
+  'randomizer': WidgetType.RANDOMISER,
+  'list': WidgetType.LIST,
+  'poll': WidgetType.POLL,
+  'questions': WidgetType.QUESTIONS,
+  'rtfeedback': WidgetType.RT_FEEDBACK,
+  'feedback': WidgetType.RT_FEEDBACK,
+  'linkshare': WidgetType.LINK_SHARE,
+  'textbanner': WidgetType.TEXT_BANNER,
+  'banner': WidgetType.TEXT_BANNER,
+  'soundeffects': WidgetType.SOUND_EFFECTS,
+  'sound': WidgetType.SOUND_EFFECTS,
+  'taskcue': WidgetType.TASK_CUE,
+  'trafficlight': WidgetType.TRAFFIC_LIGHT,
+  'imagedisplay': WidgetType.IMAGE_DISPLAY,
+  'qrcode': WidgetType.QRCODE,
+  'qr': WidgetType.QRCODE,
+  'sticker': WidgetType.STAMP,
+  'visualiser': WidgetType.VISUALISER,
+  'volumemonitor': WidgetType.SOUND_MONITOR,
+  'linkshortener': WidgetType.LINK_SHORTENER,
+  'tictactoe': WidgetType.TIC_TAC_TOE,
+  'game': WidgetType.TIC_TAC_TOE,
+  'wordle': WidgetType.WORDLE,
+  'snake': WidgetType.SNAKE,
 };
 
 /**

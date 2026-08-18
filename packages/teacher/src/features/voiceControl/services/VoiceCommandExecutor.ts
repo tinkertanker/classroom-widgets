@@ -774,23 +774,15 @@ export class VoiceCommandExecutor {
     const widgetName = command.target.toLowerCase();
 
     // Use auto-generated map from shared definitions
-    // This ensures frontend and backend stay in sync
-    const widgetTypeString = VOICE_WIDGET_TARGET_MAP[widgetName];
+    // This ensures frontend and backend stay in sync. The map already holds
+    // resolved WidgetType values, so check against undefined rather than
+    // falsiness - WidgetType.RANDOMISER is 0.
+    const widgetType: WidgetType | undefined = VOICE_WIDGET_TARGET_MAP[widgetName];
 
-    if (!widgetTypeString) {
+    if (widgetType === undefined) {
       return {
         success: false,
         error: `Unknown widget type: ${widgetName}`
-      };
-    }
-
-    // Map the string to WidgetType enum
-    const widgetType = WidgetType[widgetTypeString as keyof typeof WidgetType];
-
-    if (!widgetType) {
-      return {
-        success: false,
-        error: `Widget type not found in enum: ${widgetTypeString}`
       };
     }
 

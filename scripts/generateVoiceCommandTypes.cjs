@@ -33,6 +33,8 @@ function generateTypeScriptFile() {
  * This file is auto-generated to ensure consistency between frontend and backend
  */
 
+import { WidgetType } from '../types';
+
 export interface WidgetDefinition {
   displayName: string;
   targetName: string;
@@ -63,17 +65,17 @@ export const VOICE_WIDGET_DEFINITIONS: Record<string, WidgetDefinition> = ${JSON
  * Widget target name to WidgetType mapping
  * Use this for executeLaunchWidget
  */
-export const VOICE_WIDGET_TARGET_MAP: Record<string, string> = {
+export const VOICE_WIDGET_TARGET_MAP: Record<string, WidgetType> = {
 `;
 
   // Add target mappings
   for (const [key, widget] of Object.entries(widgets)) {
-    content += `  '${widget.targetName.toLowerCase()}': '${widget.widgetType}',\n`;
+    content += `  '${widget.targetName.toLowerCase()}': WidgetType.${widget.widgetType},\n`;
 
     // Add aliases
     if (widget.aliases) {
       for (const alias of widget.aliases) {
-        content += `  '${alias.toLowerCase()}': '${widget.widgetType}',\n`;
+        content += `  '${alias.toLowerCase()}': WidgetType.${widget.widgetType},\n`;
       }
     }
   }
