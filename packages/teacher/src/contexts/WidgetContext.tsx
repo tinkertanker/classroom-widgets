@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useMemo, ReactNode } from 'react';
 
 interface WidgetContextType {
   widgetId?: string;
@@ -23,12 +23,4 @@ export const WidgetProvider: React.FC<{
       {children}
     </WidgetContext.Provider>
   );
-};
-
-export const useWidget = () => {
-  const context = useContext(WidgetContext);
-  if (!context) {
-    throw new Error('useWidget must be used within a WidgetProvider');
-  }
-  return context;
 };
