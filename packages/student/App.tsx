@@ -28,6 +28,41 @@ interface JoinedRoom {
   isActive: boolean; // Track active state for header styling
 }
 
+/**
+ * Real identity of a joined activity: one card per widget instance within a session.
+ * Deliberately excludes `id`, which carries a Date.now() suffix and so never matches
+ * across two events for the same room.
+ */
+const roomIdentity = (room: { code: string; type: RoomType; widgetId?: string }): string =>
+  `${room.code}:${room.type}:${room.widgetId ?? ''}`;
+
+/**
+ * Idempotent insert-or-update for the joined room list, keyed by roomIdentity.
+ * A room we have not seen goes to the front (newest first); a room we already have keeps
+ * its card id, position and joinedAt while taking the server's latest data. Every write
+ * path goes through here, so the repeat session:joined / session:roomCreated events that
+ * arrive on each reconnect refresh the existing cards instead of duplicating them.
+ */
+const upsertJoinedRoom = (rooms: JoinedRoom[], incoming: JoinedRoom): JoinedRoom[] => {
+  const key = roomIdentity(incoming);
+  const existingIndex = rooms.findIndex(room => roomIdentity(room) === key);
+
+  if (existingIndex === -1) {
+    return [incoming, ...rooms];
+  }
+
+  const updated = [...rooms];
+  updated[existingIndex] = {
+    ...rooms[existingIndex],
+    studentName: incoming.studentName,
+    studentId: incoming.studentId,
+    socket: incoming.socket,
+    initialData: incoming.initialData,
+    isActive: incoming.isActive
+  };
+  return updated;
+};
+
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
   const [currentSessionCode, setCurrentSessionCode] = useState<string>(''); // Track current session
@@ -90,15 +125,13 @@ const App: React.FC = () => {
     sessionCode: currentSessionCode,
     isConnected,
     onSessionRestored: (activeRooms) => {
-      // Clear existing rooms first
-      setJoinedRooms([]);
-      
-      // Recreate rooms from recovery data
-      activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
+      // Rebuild the list from the server's view of the session. Rooms we already show are
+      // updated in place (same identity -> same card id and position, so no duplicate and
+      // no remount) and rooms the server no longer reports are dropped.
+      const restoredRooms: JoinedRoom[] = activeRooms.map((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
         const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
-        const roomId = `${currentSessionCode}-${computedRoomId}-${Date.now()}`;
-        const newRoom: JoinedRoom = {
-          id: roomId,
+        return {
+          id: `${currentSessionCode}-${computedRoomId}-${Date.now()}`,
           code: currentSessionCode,
           type: roomData.roomType,
           studentName: studentName,
@@ -109,7 +142,12 @@ const App: React.FC = () => {
           widgetId: roomData.widgetId,
           isActive: roomData.room?.isActive || false
         };
-        setJoinedRooms(prev => [...prev, newRoom]);
+      });
+
+      setJoinedRooms(prev => {
+        const restoredKeys = new Set(restoredRooms.map(roomIdentity));
+        const merged = restoredRooms.reduce((rooms, room) => upsertJoinedRoom(rooms, room), prev);
+        return merged.filter(room => restoredKeys.has(roomIdentity(room)));
       });
     },
     onSessionLost: () => {
@@ -279,10 +317,12 @@ const App: React.FC = () => {
             
             console.log('[Student App] Created room with isActive:', newRoom.isActive, 'from roomData.room:', roomData.room);
             
-            // Add to beginning of array (newest first)
-            setJoinedRooms(prev => [newRoom, ...prev]);
+            // Insert (newest first) or refresh - a reconnect replays this event for every
+            // room we already joined, so this must never append blindly
+            setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
             
-            // Animate room entry
+            // Animate room entry. If the room was already in the list it kept its old id,
+            // so this freshly-generated roomId matches nothing and no card re-animates.
             animateRoomEnter(roomId);
           });
         } else {
@@ -314,13 +354,7 @@ const App: React.FC = () => {
         };
         
         // Add room if not already exists
-        setJoinedRooms(prev => {
-          // Check if this specific widget instance already exists
-          if (prev.some(r => r.code === code && r.type === data.roomType && r.widgetId === data.widgetId)) {
-            return prev;
-          }
-          return [newRoom, ...prev];
-        });
+        setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
         
         animateRoomEnter(roomId);
       });

@@ -35,6 +35,21 @@ export function useSessionRecovery({
   }, [sessionCode]);
 
   useEffect(() => {
+    if (!socket) return;
+
+    const handleDisconnect = () => {
+      hasDisconnected.current = true;
+      // Don't clear lastSessionCode here - we need it for recovery
+    };
+
+    socket.on('disconnect', handleDisconnect);
+
+    return () => {
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [socket]);
+
+  useEffect(() => {
     if (!socket || !isConnected) return;
 
     const handleConnect = async () => {
@@ -42,6 +57,10 @@ export function useSessionRecovery({
       // Only attempt recovery if we've disconnected before (not on initial connect)
       if (lastSessionCode.current && !attemptingRecovery.current && hasDisconnected.current) {
         attemptingRecovery.current = true;
+        // Consume the disconnect: this effect re-runs on every render (its callback deps
+        // are fresh closures), so leaving the flag set would restart recovery after each
+        // completed attempt. A later disconnect re-arms it.
+        hasDisconnected.current = false;
         setIsRecovering(true);
         
         try {
@@ -102,11 +121,6 @@ export function useSessionRecovery({
           }
         }
       }
-    };
-
-    const handleDisconnect = () => {
-      hasDisconnected.current = true;
-      // Don't clear lastSessionCode here - we need it for recovery
     };
 
     // Check immediately if already connected
