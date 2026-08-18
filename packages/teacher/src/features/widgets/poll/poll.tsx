@@ -27,6 +27,10 @@ interface PollResults {
   participantCount: number;
 }
 
+function isPollStartable(pollData: PollData): boolean {
+  return !!pollData.question.trim() && pollData.options.filter(o => o.trim()).length >= 2;
+}
+
 function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [pollData, setPollData] = useState<PollData>(() => {
@@ -143,7 +147,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
       return;
     }
 
-    if (!pollData.question || pollData.options.filter(o => o).length < 2) {
+    if (!isPollStartable(pollData)) {
       debug('[Poll] Cannot toggle - invalid question or options');
       return;
     }
@@ -366,7 +370,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
         clearLabel="Reset votes"
         activeLabel="Pause poll"
         inactiveLabel="Start poll"
-        disabled={!session.isConnected || !pollData.question || pollData.options.every(opt => !opt)}
+        disabled={!session.isConnected || !isPollStartable(pollData)}
         clearVariant="reset"
       />
     </div>
