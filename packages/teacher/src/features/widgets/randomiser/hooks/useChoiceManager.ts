@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { normaliseChoiceList, stringifyChoiceList } from '../utils/choiceList';
+import { normaliseChoiceList, stringifyChoiceList, getActiveChoices as getActiveChoicesFromList } from '../utils/choiceList';
 
 interface UseChoiceManagerOptions {
   initialInput?: string;
@@ -32,7 +32,7 @@ export function useChoiceManager({
 
   // Get active choices (excluding removed ones)
   const getActiveChoices = useCallback(() => {
-    return choices.filter(choice => !removedChoices.includes(choice));
+    return getActiveChoicesFromList(choices, removedChoices);
   }, [choices, removedChoices]);
 
   // Remove a choice
@@ -46,7 +46,7 @@ export function useChoiceManager({
       return {
         choices: newChoices,
         removedChoices: newRemovedChoices,
-        activeChoices: newChoices.filter(c => !newRemovedChoices.includes(c))
+        activeChoices: getActiveChoicesFromList(newChoices, newRemovedChoices)
       };
     }
     return null;
