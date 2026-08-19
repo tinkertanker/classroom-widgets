@@ -41,6 +41,46 @@ class Session {
   }
 
   /**
+   * Set the host socket, clearing any pending disconnect state
+   */
+  setHost(socketId) {
+    this.hostSocketId = socketId;
+    this.hostDisconnectedAt = null;
+  }
+
+  /**
+   * Mark the host as disconnected
+   */
+  markHostDisconnected() {
+    this.hostDisconnectedAt = Date.now();
+  }
+
+  /**
+   * Clear the host's disconnected state
+   */
+  clearHostDisconnected() {
+    this.hostDisconnectedAt = null;
+  }
+
+  /**
+   * Build the internal room key from a room type and optional widget ID
+   */
+  _roomKey(roomType, widgetId) {
+    return widgetId ? `${roomType}:${widgetId}` : roomType;
+  }
+
+  /**
+   * Parse an internal room key back into its room type and widget ID.
+   * Splits on the first ':' only - widget IDs may themselves contain ':'
+   */
+  _parseRoomKey(key) {
+    const separatorIndex = key.indexOf(':');
+    const roomType = separatorIndex === -1 ? key : key.slice(0, separatorIndex);
+    const widgetId = separatorIndex === -1 ? undefined : key.slice(separatorIndex + 1);
+    return { roomType, widgetId };
+  }
+
+  /**
    * Add a participant to the session
    */
   addParticipant(socketId, name, studentId) {
@@ -82,7 +122,7 @@ class Session {
    */
   createRoom(roomType, widgetId) {
     // Create room identifier
-    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    const roomId = this._roomKey(roomType, widgetId);
     
     // Check if room already exists
     if (this.activeRooms.has(roomId)) {
@@ -123,7 +163,7 @@ class Session {
    * Get a room by type and optional widget ID
    */
   getRoom(roomType, widgetId) {
-    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    const roomId = this._roomKey(roomType, widgetId);
     return this.activeRooms.get(roomId);
   }
 
@@ -131,7 +171,7 @@ class Session {
    * Close a room
    */
   closeRoom(roomType, widgetId) {
-    const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
+    const roomId = this._roomKey(roomType, widgetId);
     const deleted = this.activeRooms.delete(roomId);
     if (deleted) {
       this.updateActivity();
