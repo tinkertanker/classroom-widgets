@@ -12,19 +12,16 @@ import {
 } from './CustomStickerIcons';
 
 interface StickerProps {
-  stickerType?: string; // Optional now, can be read from savedState
   savedState?: {
     colorIndex: number;
     stickerType?: string;
-    stampType?: string; // For backward compatibility
     rotation?: number;
   };
   onStateChange?: (state: any) => void;
 }
 
-const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedState, onStateChange }) => {
-  // Get stickerType from props or savedState, with fallback to 'star'
-  const stickerType = propStickerType || savedState?.stickerType || savedState?.stampType || 'star';
+const Sticker: React.FC<StickerProps> = ({ savedState, onStateChange }) => {
+  const stickerType = savedState?.stickerType ?? 'star';
   // Initialize with random color if no saved state
   const getRandomColorIndex = () => Math.floor(Math.random() * 6);
   const [colorIndex, setColorIndex] = useState(savedState?.colorIndex ?? getRandomColorIndex());
@@ -41,17 +38,6 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
     }
     return steps[Math.floor(Math.random() * steps.length)];
   };
-
-  // Ensure stickerType is saved in state on mount
-  React.useEffect(() => {
-    if (onStateChange && (!savedState || (savedState.stickerType !== stickerType && savedState.stampType !== stickerType))) {
-      onStateChange({
-        colorIndex: colorIndex,
-        stickerType: stickerType,
-        rotation: rotation
-      });
-    }
-  }, [stickerType]);
 
   // Define more vibrant color schemes for cycling
   const colorSchemes = [
