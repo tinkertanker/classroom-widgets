@@ -83,7 +83,8 @@ describe('Randomiser', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
 
     expect(showModal).toHaveBeenCalledWith(expect.objectContaining({
-      className: expect.stringContaining('max-h-[calc(100vh-1rem)] overflow-auto')
+      className: expect.stringContaining('max-h-[calc(100vh-1rem)] overflow-auto'),
+      noPadding: true
     }));
   });
 

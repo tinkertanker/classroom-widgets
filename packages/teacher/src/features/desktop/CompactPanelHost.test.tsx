@@ -101,6 +101,34 @@ describe('CompactPanelHost', () => {
     });
   });
 
+  it('publishes Randomiser panels as freely resizable', async () => {
+    useWorkspaceStore.setState({
+      widgets: [{
+        id: 'randomiser-1',
+        type: WidgetType.RANDOMISER,
+        position: { x: 0, y: 0 },
+        size: { width: 350, height: 250 },
+        zIndex: 0
+      }],
+      widgetStates: new Map()
+    });
+
+    render(<CompactPanelHost />);
+
+    await waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
+        widgets: [expect.objectContaining({
+          widgetId: 'randomiser-1',
+          preferredSize: { width: 350, height: 250 },
+          minimumSize: { width: 250, height: 180 },
+          maximumSize: null,
+          isResizable: true,
+          maintainsAspectRatio: false
+        })]
+      }));
+    });
+  });
+
   it('publishes an empty inventory with a newer revision from the same host', async () => {
     render(<CompactPanelHost />);
 
