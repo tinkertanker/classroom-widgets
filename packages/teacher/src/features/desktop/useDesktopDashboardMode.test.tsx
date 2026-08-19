@@ -1,5 +1,6 @@
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
 import { useDesktopDashboardMode } from './useDesktopDashboardMode';
 
 describe('useDesktopDashboardMode', () => {
@@ -91,5 +92,43 @@ describe('useDesktopDashboardMode', () => {
     expect(result.current.windowMode).toBe('compact');
     expect(document.documentElement).toHaveClass('desktop-dashboard-chrome-hidden');
     expect(window.classroomDashboard?.isWindowChromeVisible()).toBe(false);
+  });
+});
+
+describe('parseBackgroundOpacityFromSearch', () => {
+  it('defaults to fully opaque when the param is missing', () => {
+    expect(parseBackgroundOpacityFromSearch('')).toBe(1);
+  });
+
+  it('parses an explicit 0', () => {
+    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=0')).toBe(0);
+  });
+
+  it('parses an explicit 1', () => {
+    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=1')).toBe(1);
+  });
+
+  it('clamps values above 1', () => {
+    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=2.5')).toBe(1);
+  });
+
+  it('clamps values below 0', () => {
+    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=-0.5')).toBe(0);
+  });
+
+  it('defaults to fully opaque for a non-numeric value', () => {
+    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=not-a-number')).toBe(1);
+  });
+
+  it('falls back to the legacy translucent appearance param', () => {
+    expect(parseBackgroundOpacityFromSearch('?appearance=translucent')).toBe(0.58);
+  });
+
+  it('falls back to the legacy transparent appearance param', () => {
+    expect(parseBackgroundOpacityFromSearch('?appearance=transparent')).toBe(0);
+  });
+
+  it('prefers an explicit backgroundOpacity over a legacy appearance param', () => {
+    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=0.4&appearance=transparent')).toBe(0.4);
   });
 });

@@ -1,10 +1,11 @@
-import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CompactWidgetPanelBridge,
   CompactWidgetSnapshot,
   JsonValue
 } from '@shared/types/compactPanel';
 import ErrorBoundary from '@shared/components/ErrorBoundary';
+import { parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { ModalProvider } from '../../contexts/ModalContext';
 import { ConfettiProvider } from '../../contexts/ConfettiContext';
@@ -17,10 +18,10 @@ declare global {
 
 const CompactWidgetApp = () => {
   const requestedWidgetId = new URLSearchParams(window.location.search).get('widgetId');
-  const requestedBackgroundOpacity = Math.min(Math.max(
-    Number(new URLSearchParams(window.location.search).get('backgroundOpacity') ?? 1),
-    0
-  ), 1);
+  const requestedBackgroundOpacity = useMemo(
+    () => parseBackgroundOpacityFromSearch(window.location.search),
+    []
+  );
   const [snapshot, setSnapshot] = useState<CompactWidgetSnapshot | null>(null);
   const snapshotRef = useRef<CompactWidgetSnapshot | null>(null);
   const lastReportedStateRef = useRef<string | undefined>(undefined);
@@ -47,7 +48,7 @@ const CompactWidgetApp = () => {
     document.documentElement.classList.add('compact-widget-panel');
     document.documentElement.style.setProperty(
       '--compact-widget-background-opacity',
-      String(Number.isFinite(requestedBackgroundOpacity) ? requestedBackgroundOpacity : 1)
+      String(requestedBackgroundOpacity)
     );
     window.classroomWidgetPanel = {
       receiveSnapshot: (nextSnapshot) => {

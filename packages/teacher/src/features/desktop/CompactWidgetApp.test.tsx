@@ -4,12 +4,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CompactWidgetSnapshot } from '@shared/types/compactPanel';
 import { WidgetType } from '@shared/types';
 import type { WidgetConfig } from '@shared/types';
+import { parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
 import CompactWidgetApp from './CompactWidgetApp';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 
 vi.mock('../../services/WidgetRegistry', () => ({
   widgetRegistry: { get: vi.fn() }
 }));
+
+vi.mock('@shared/utils/dashboardMode', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@shared/utils/dashboardMode')>();
+  return {
+    ...actual,
+    parseBackgroundOpacityFromSearch: vi.fn(actual.parseBackgroundOpacityFromSearch)
+  };
+});
 
 vi.mock('../../contexts/ModalContext', () => ({
   ModalProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
@@ -114,6 +123,34 @@ describe('CompactWidgetApp', () => {
     render(<CompactWidgetApp />);
 
     expect(document.documentElement.style.getPropertyValue('--compact-widget-background-opacity')).toBe('0.35');
+  });
+
+  it('falls back to the legacy appearance param for the panel surface opacity', () => {
+    window.history.replaceState({}, '', '/?widgetId=timer-1&appearance=translucent');
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(() => null));
+
+    render(<CompactWidgetApp />);
+
+    expect(document.documentElement.style.getPropertyValue('--compact-widget-background-opacity')).toBe('0.58');
+  });
+
+  it('parses the background opacity from the URL only once across re-renders', async () => {
+    window.history.replaceState({}, '', '/?widgetId=timer-1&backgroundOpacity=0.35');
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(() => null));
+    const parseSpy = vi.mocked(parseBackgroundOpacityFromSearch);
+    parseSpy.mockClear();
+
+    render(<CompactWidgetApp />);
+    expect(parseSpy).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot(null));
+    });
+    act(() => {
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot(null, 2, 2));
+    });
+
+    expect(parseSpy).toHaveBeenCalledTimes(1);
   });
 
   it('treats a missing native state as undefined for widget defaults', async () => {
