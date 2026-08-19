@@ -78,6 +78,129 @@ describe('Timer Widget', () => {
     expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
   });
 
+  test('auto-hides compact panel controls when the pointer moves away', () => {
+    renderWithModal(<Timer isCompactPanel />);
+
+    const controlsRegion = screen.getByTestId('timer-bottom-controls-region');
+    const controls = screen.getByTestId('timer-bottom-controls');
+
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+
+    fireEvent.mouseEnter(controlsRegion);
+    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
+
+    const startButton = screen.getByRole('button', { name: /start/i });
+    fireEvent.pointerDown(startButton);
+    act(() => startButton.focus());
+    fireEvent.mouseLeave(controlsRegion);
+    act(() => {
+      vi.advanceTimersByTime(1799);
+    });
+    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+  });
+
+  test('reveals compact panel controls for keyboard focus', () => {
+    renderWithModal(<Timer isCompactPanel />);
+
+    const controls = screen.getByTestId('timer-bottom-controls');
+    const startButton = screen.getByRole('button', { name: /start/i });
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+
+    fireEvent.keyDown(document, { key: 'Tab' });
+    act(() => startButton.focus());
+    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
+
+    fireEvent.mouseLeave(screen.getByTestId('timer-bottom-controls-region'));
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
+
+    act(() => startButton.blur());
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+  });
+
+  test('re-arms compact auto-hide when keyboard activation replaces the focused control', () => {
+    renderWithModal(<Timer isCompactPanel />);
+
+    const controls = screen.getByTestId('timer-bottom-controls');
+    const startButton = screen.getByRole('button', { name: /start/i });
+    fireEvent.keyDown(document, { key: 'Tab' });
+    act(() => startButton.focus());
+
+    act(() => fireEvent.click(startButton));
+    expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+  });
+
+  test('re-arms compact auto-hide when expiry replaces the keyboard-focused Pause control', () => {
+    renderWithModal(<Timer isCompactPanel />);
+
+    const controls = screen.getByTestId('timer-bottom-controls');
+    act(() => fireEvent.click(screen.getByRole('button', { name: /start/i })));
+    const pauseButton = screen.getByRole('button', { name: /pause/i });
+    fireEvent.keyDown(document, { key: 'Tab' });
+    act(() => pauseButton.focus());
+    fireEvent.mouseLeave(screen.getByTestId('timer-bottom-controls-region'));
+
+    act(() => {
+      vi.advanceTimersByTime(11000);
+    });
+    expect(screen.getByRole('button', { name: /restart/i })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+  });
+
+  test('keeps compact panel controls visible while an options tray is open', () => {
+    renderWithModal(<Timer isCompactPanel />);
+
+    const controlsRegion = screen.getByTestId('timer-bottom-controls-region');
+    const controls = screen.getByTestId('timer-bottom-controls');
+    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
+    fireEvent.mouseLeave(controlsRegion);
+
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
+
+    fireEvent.click(screen.getByRole('button', { name: /add 1 minute/i }));
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+  });
+
+  test('keeps timer controls visible outside the compact Mac panel', () => {
+    renderWithModal(<Timer />);
+
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+
+    expect(screen.getByTestId('timer-bottom-controls')).not.toHaveClass('pointer-events-none', 'opacity-0');
+  });
+
   test('keeps the outer timer shell transparent in dark mode while filling the circle solid dark', () => {
     useWorkspaceStore.setState({ theme: 'dark' });
 

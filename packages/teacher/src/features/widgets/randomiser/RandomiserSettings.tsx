@@ -95,14 +95,14 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   };
 
   return (
-    <div className="w-[700px] max-w-full">
-      <div className="px-6 py-4">
+    <div className="mx-auto w-full max-w-[700px]">
+      <div className="p-3 sm:px-6 sm:py-4">
         <div className="flex flex-col space-y-4">
-          <div className="flex flex-row items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-base font-semibold text-warm-gray-800 dark:text-warm-gray-200">Randomiser Lists</h3>
-            <div className="flex space-x-2">
+            <div className="flex flex-wrap gap-2">
               <button
-                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center whitespace-nowrap"
                 onClick={() => setShowSavedDialog(true)}
               >
                 <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
               </button>
               <div className="relative">
                 <button
-                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center"
+                  className="px-3 py-1.5 bg-terracotta-500 hover:bg-terracotta-600 dark:bg-terracotta-600 dark:hover:bg-terracotta-700 text-white text-sm rounded transition-colors duration-200 inline-flex items-center whitespace-nowrap"
                   onClick={() => setMenuOpen(!menuOpen)}
                 >
                   Suggestions
@@ -156,7 +156,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                 )}
               </div>
               <button
-                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200"
+                className="px-3 py-1.5 bg-dusty-rose-500 hover:bg-dusty-rose-600 dark:bg-dusty-rose-600 dark:hover:bg-dusty-rose-700 text-white text-sm rounded transition-colors duration-200 whitespace-nowrap"
                 onClick={() => {
                   updateInputAndNotify("");
                   updateRemovedInputAndNotify("");
@@ -167,7 +167,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
             </div>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
             <div className="flex-1">
               <label className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2 block">
                 Active Items
@@ -177,19 +177,19 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                 value={input}
                 id="textarea"
                 placeholder="Start typing a list to randomise..."
-                className="h-[300px] text-sm"
-                style={{ resize: 'none' }}
+                className="text-sm"
+                style={{ height: 'clamp(8rem, 30vh, 300px)', resize: 'none' }}
               />
             </div>
             
-            <div className="flex flex-col justify-center">
+            <div className="flex flex-col justify-center self-center">
               <button
                 onClick={handleRestoreAll}
                 disabled={!removedInput.trim()}
                 className="px-3 py-2 bg-sage-500 hover:bg-sage-600 dark:bg-sage-600 dark:hover:bg-sage-700 text-white rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Restore all removed items"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 rotate-90 sm:rotate-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                 </svg>
               </button>
@@ -203,8 +203,8 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
                 value={removedInput}
                 onChange={(e) => updateRemovedInputAndNotify(e.target.value)}
                 placeholder="Removed items will appear here..."
-                className="h-[300px] text-sm"
-                style={{ resize: 'none' }}
+                className="text-sm"
+                style={{ height: 'clamp(8rem, 30vh, 300px)', resize: 'none' }}
               />
             </div>
           </div>
@@ -213,7 +213,7 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
             Note: All leading and trailing spaces, empty rows, and duplicates in the list are automatically removed when generating.
           </p>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-warm-gray-200 dark:border-warm-gray-600">
+          <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-warm-gray-200 dark:border-warm-gray-600">
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors duration-200"

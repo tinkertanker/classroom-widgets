@@ -143,8 +143,8 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
       title={title}
       onClose={onClose}
       footer={footer}
-      maxHeight="500px"
-      className="w-[450px]"
+      maxHeight="min(500px, calc(100vh - 1rem))"
+      className="w-[450px] max-w-[calc(100vw-1rem)]"
     >
       {mode === 'save' ? (
         <div className="p-6">

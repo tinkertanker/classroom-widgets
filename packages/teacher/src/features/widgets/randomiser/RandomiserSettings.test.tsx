@@ -49,4 +49,24 @@ describe('RandomiserSettings', () => {
     act(() => notifyListsChanged([]));
     expect(screen.queryByText('Class names')).not.toBeInTheDocument();
   });
+
+  it('stacks settings controls and editors in narrow floating panels', () => {
+    render(
+      <RandomiserSettings
+        choices={['Ada']}
+        removedChoices={[]}
+        onUpdateChoices={vi.fn()}
+        onUpdateRemovedChoices={vi.fn()}
+      />
+    );
+
+    const toolbar = screen.getByRole('heading', { name: 'Randomiser Lists' }).parentElement;
+    const editors = screen.getByText('Active Items').parentElement?.parentElement;
+    const activeItems = screen.getByPlaceholderText('Start typing a list to randomise...');
+
+    expect(toolbar).toHaveClass('flex-col', 'sm:flex-row');
+    expect(editors).toHaveClass('flex-col', 'sm:flex-row');
+    expect(activeItems).toHaveStyle({ height: 'clamp(8rem, 30vh, 300px)' });
+    expect(screen.getByRole('button', { name: 'Saved Lists' }).parentElement).toHaveClass('flex-wrap');
+  });
 });

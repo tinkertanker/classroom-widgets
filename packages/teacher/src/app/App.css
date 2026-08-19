@@ -154,8 +154,10 @@ html.dark.compact-widget-panel .widget-container-surface:not(.widget-container-c
   background-color: rgb(61 56 53 / calc(0.9 * var(--compact-widget-background-opacity, 1)));
 }
 
+/* Custom surfaces are widget content (for example, a Text Banner's selected colour),
+   so the compact chrome-opacity setting must not erase them. */
 html.compact-widget-panel .widget-container-surface.widget-container-custom-surface {
-  --tw-bg-opacity: var(--compact-widget-background-opacity, 1);
+  --tw-bg-opacity: 1;
 }
 
 .compact-widget-panel-loading {
