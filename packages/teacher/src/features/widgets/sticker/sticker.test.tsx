@@ -55,6 +55,37 @@ describe('Sticker', () => {
     expect(screen.queryByTestId('icon-heart')).not.toBeInTheDocument();
   });
 
+  test('adopts a savedState changed externally after mount', () => {
+    const onStateChange = vi.fn();
+    const { rerender } = render(
+      <Sticker savedState={{ colorIndex: 0, stickerType: 'heart', rotation: 0 }} onStateChange={onStateChange} />
+    );
+
+    expect(screen.getByTestId('icon-heart')).toBeInTheDocument();
+
+    rerender(
+      <Sticker savedState={{ colorIndex: 3, stickerType: 'smile', rotation: 20 }} onStateChange={onStateChange} />
+    );
+
+    expect(screen.getByTestId('icon-smile')).toBeInTheDocument();
+    expect(screen.getByTestId('icon-smile').className).toContain('text-blue-500');
+    expect(stickerRoot()).toHaveStyle({ transform: 'rotate(20deg)' });
+    // Adopting the parent's value is not an edit, so it must not be echoed back.
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  test('keeps a re-rendered savedState from resetting the fallback colour', () => {
+    const savedState = { stickerType: 'star' };
+    const { rerender } = render(<Sticker savedState={savedState} />);
+
+    const initialColour = screen.getByTestId('icon-star').className;
+
+    // A parent that hands back an equal-but-rebuilt object must not re-roll it.
+    rerender(<Sticker savedState={{ ...savedState }} />);
+
+    expect(screen.getByTestId('icon-star').className).toBe(initialColour);
+  });
+
   test('restores the colour and rotation it saved across a remount', () => {
     const onStateChange = vi.fn();
     const { unmount } = render(
