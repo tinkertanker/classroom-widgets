@@ -1,6 +1,6 @@
 // New Widget Wrapper component using the centralized store
 
-import React, { useCallback, useRef, useEffect, useState, memo } from 'react';
+import React, { useCallback, useRef, useEffect, memo } from 'react';
 import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
 import { FaTrash, FaXmark } from 'react-icons/fa6';
@@ -12,6 +12,7 @@ import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useHoverDelay } from './useHoverDelay';
+import { useWidgetInteractionState } from './useWidgetInteractionState';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -28,23 +29,28 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   // Give the pointer a generous 2s to reach the trash button, which sits outside
   // the widget's own bounds on the canvas
   const { visible: showTrash, onMouseEnter, onMouseLeave } = useHoverDelay(2000);
-  const [isResizing, setIsResizing] = useState(false);
-  const dragMovedRef = useRef(false);
-  const postDragRef = useRef(false);
+  // One machine for the whole pointer gesture: drag, resize, and whether the
+  // click that follows a drag is a real click. `isBeingDragged` above stays the
+  // store's answer and is what the render path below keeps reading.
+  const {
+    isResizing,
+    dispatch: dispatchInteraction,
+    isClickSuppressed
+  } = useWidgetInteractionState();
   // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
   // This prevents re-renders when other widgets get focused
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   const config = widget ? widgetRegistry.get(widget.type) : undefined;
   
   const handleDragStart = useCallback(() => {
-    dragMovedRef.current = false;
+    dispatchInteraction({ type: 'dragStart' });
     startDrag();
     focus();
-  }, [startDrag, focus]);
+  }, [dispatchInteraction, startDrag, focus]);
 
   const handleDrag = useCallback(() => {
-    dragMovedRef.current = true;
-  }, []);
+    dispatchInteraction({ type: 'dragMove' });
+  }, [dispatchInteraction]);
 
   const handleDragStop = useCallback((e: any, d: any) => {
     // Read dropTarget directly from store to avoid subscribing to it
@@ -62,26 +68,25 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
       move(newPosition);
     }
     stopDrag();
-    if (dragMovedRef.current) {
-      postDragRef.current = true;
-      setTimeout(() => { postDragRef.current = false; }, 0);
-    }
-  }, [move, stopDrag, remove, widgetId]);
+    // Entering `postDrag` is what suppresses the click the browser fires next;
+    // the machine reopens clicks on its own a tick later.
+    dispatchInteraction({ type: 'dragStop' });
+  }, [move, stopDrag, remove, widgetId, dispatchInteraction]);
 
   const handleResizeStart = useCallback(() => {
-    setIsResizing(true);
+    dispatchInteraction({ type: 'resizeStart' });
     focus();
-  }, [focus]);
+  }, [dispatchInteraction, focus]);
 
   const handleResizeStop = useCallback((e: any, direction: any, ref: any, delta: any, position: Position) => {
-    setIsResizing(false);
+    dispatchInteraction({ type: 'resizeStop' });
     const newSize: Size = {
       width: ref.offsetWidth,
       height: ref.offsetHeight
     };
     resize(newSize);
     move(position);
-  }, [resize, move]);
+  }, [dispatchInteraction, resize, move]);
 
   // Handle zoom changes
   useEffect(() => {
@@ -97,13 +102,13 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
     if (!isResizing && !isBeingDragged) return;
 
     const handleGlobalMouseUp = () => {
-      if (isResizing) setIsResizing(false);
+      dispatchInteraction({ type: 'globalMouseUp' });
       if (isBeingDragged) stopDrag();
     };
 
     window.addEventListener('mouseup', handleGlobalMouseUp);
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-  }, [isResizing, isBeingDragged, stopDrag]);
+  }, [isResizing, isBeingDragged, stopDrag, dispatchInteraction]);
 
   const isTransparent = config?.features?.isTransparent || false;
   
@@ -131,10 +136,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   }, [remove, widgetId]);
 
   const handleWidgetClick = useCallback(() => {
-    if (postDragRef.current) return;
+    if (isClickSuppressed()) return;
     setFocusedWidget(widgetId);
     focus();
-  }, [widgetId, setFocusedWidget, focus]);
+  }, [widgetId, setFocusedWidget, focus, isClickSuppressed]);
 
   if (!widget) return null;
   if (!config) return null;
