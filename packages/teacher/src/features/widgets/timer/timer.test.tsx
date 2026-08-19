@@ -420,4 +420,352 @@ describe('Timer Widget', () => {
 
     expect(screen.queryByRole('button', { name: /set target time/i })).not.toBeInTheDocument();
   });
+
+  describe('state machine', () => {
+    // The countdown state lives in a discriminated union, so these walk every
+    // transition and every restore branch, checking that the end-of-timer sound
+    // fires exactly once per finish — never zero times, never twice.
+    const playSpy = () => global.HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>;
+
+    const runningPayload = (endTime: number) => ({
+      endTime,
+      initialTime: 10,
+      originalTime: 10,
+      isRunning: true,
+      isPaused: false,
+      pausedTimeRemaining: 0
+    });
+
+    test('walks idle to running to paused to running to finished, sounding the alarm once', () => {
+      renderWithModal(<Timer />);
+
+      expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+      expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      expect(getByExactText('7')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /pause/i }));
+
+      expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /pause/i })).not.toBeInTheDocument();
+      expect(getByExactText('00:00:07')).toBeInTheDocument();
+
+      // A paused timer must not consume its remaining seconds.
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(getByExactText('00:00:07')).toBeInTheDocument();
+      expect(playSpy()).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /resume/i }));
+
+      expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(7000);
+      });
+
+      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+
+      // A finished timer must not leave a tick scheduled that fires again later.
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+    });
+
+    test('restart from a running timer returns to idle and cancels the countdown', () => {
+      renderWithModal(<Timer />);
+
+      fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /restart/i }));
+
+      expect(getByExactText('00:00:10')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).not.toHaveBeenCalled();
+      expect(screen.queryByText("Time's Up!")).not.toBeInTheDocument();
+    });
+
+    test('restart from a paused timer returns to idle', () => {
+      renderWithModal(<Timer />);
+
+      fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /pause/i }));
+      fireEvent.click(screen.getByRole('button', { name: /restart/i }));
+
+      expect(getByExactText('00:00:10')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).not.toHaveBeenCalled();
+    });
+
+    test('restart from a finished timer returns to idle without re-sounding', () => {
+      renderWithModal(<Timer />);
+
+      fireEvent.click(screen.getByRole('button', { name: /start/i }));
+
+      act(() => {
+        vi.advanceTimersByTime(11000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: /restart/i }));
+
+      expect(getByExactText('00:00:10')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+    });
+
+    test('setting a target time from idle resets the countdown', () => {
+      renderWithModal(<Timer />);
+
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+      });
+
+      act(() => {
+        fireEvent.change(screen.getByRole('combobox', { name: /target hour/i }), { target: { value: '2' } });
+        fireEvent.change(screen.getByRole('combobox', { name: /target minute/i }), { target: { value: '5' } });
+        fireEvent.click(screen.getByRole('button', { name: 'PM' }));
+      });
+
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
+      });
+
+      expect(getByExactText('00:05:00')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).not.toHaveBeenCalled();
+    });
+
+    test('restores a running timer with time left and finishes it exactly once', () => {
+      const onStateChange = vi.fn();
+      const endTime = Date.now() + 5000;
+
+      renderWithModal(
+        <Timer savedState={{ timer: runningPayload(endTime) }} onStateChange={onStateChange} />
+      );
+
+      expect(getByExactText('5')).toBeInTheDocument();
+      expect(playSpy()).not.toHaveBeenCalled();
+      expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+        timer: expect.objectContaining({
+          endTime,
+          isRunning: true,
+          isPaused: false,
+          timerFinished: false
+        })
+      }));
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+    });
+
+    test('restores a running timer that expired while the tab was closed and sounds once', () => {
+      renderWithModal(<Timer savedState={{ timer: runningPayload(Date.now() - 3000) }} />);
+
+      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+      // The pending notification is deferred to a macrotask so it survives a
+      // StrictMode double-mount without firing twice.
+      expect(playSpy()).not.toHaveBeenCalled();
+
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+    });
+
+    test('restores a paused timer without resuming or sounding', () => {
+      const onStateChange = vi.fn();
+
+      renderWithModal(<Timer savedState={{
+        timer: {
+          endTime: null,
+          initialTime: 60,
+          originalTime: 60,
+          isRunning: false,
+          isPaused: true,
+          pausedTimeRemaining: 25
+        },
+        segmentValues: ['00', '00', '25']
+      }} onStateChange={onStateChange} />);
+
+      expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
+      expect(getByExactText('00:00:25')).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(getByExactText('00:00:25')).toBeInTheDocument();
+      expect(playSpy()).not.toHaveBeenCalled();
+      expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({
+        timer: expect.objectContaining({
+          endTime: null,
+          isRunning: false,
+          isPaused: true,
+          timerFinished: false,
+          pausedTimeRemaining: 25
+        })
+      }));
+    });
+
+    test('restores a finished timer silently and keeps it finished', () => {
+      renderWithModal(<Timer savedState={{ timer: {
+        endTime: null,
+        initialTime: 10,
+        originalTime: 10,
+        isRunning: false,
+        isPaused: false,
+        pausedTimeRemaining: 0,
+        timerFinished: true
+      } }} />);
+
+      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).not.toHaveBeenCalled();
+    });
+
+    test('restores an old payload that predates the timerFinished flag', () => {
+      // Payloads written before `timerFinished` existed omit the key entirely;
+      // a running one that has already expired still owes exactly one alarm.
+      const legacyPayload = {
+        endTime: Date.now() - 2000,
+        initialTime: 10,
+        originalTime: 10,
+        isRunning: true,
+        isPaused: false,
+        pausedTimeRemaining: 0
+      };
+
+      expect('timerFinished' in legacyPayload).toBe(false);
+
+      renderWithModal(<Timer savedState={{ timer: legacyPayload }} />);
+
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+
+      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+    });
+
+    test('restores a contradictory old payload into exactly one state', () => {
+      // Independent booleans allowed combinations the union cannot express;
+      // a stored running-and-paused payload has to land in one of them.
+      renderWithModal(<Timer savedState={{ timer: {
+        endTime: Date.now() + 5000,
+        initialTime: 10,
+        originalTime: 10,
+        isRunning: true,
+        isPaused: true,
+        pausedTimeRemaining: 25,
+        timerFinished: true
+      } }} />);
+
+      expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /resume/i })).not.toBeInTheDocument();
+      expect(screen.queryByText("Time's Up!")).not.toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).toHaveBeenCalledTimes(1);
+    });
+
+    test('restores a running payload with no deadline as idle rather than finished', () => {
+      renderWithModal(<Timer savedState={{ timer: {
+        endTime: null,
+        initialTime: 10,
+        originalTime: 10,
+        isRunning: true,
+        isPaused: false,
+        pausedTimeRemaining: 0
+      } }} />);
+
+      expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+      expect(screen.queryByText("Time's Up!")).not.toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(20000);
+      });
+
+      expect(playSpy()).not.toHaveBeenCalled();
+    });
+  });
 });
