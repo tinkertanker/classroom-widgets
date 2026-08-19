@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { isDesktopDashboardMode, parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
 
 export type DashboardWindowMode = 'compact' | 'canvas';
 export type CompactWidgetLayout = 'row' | 'column';
@@ -65,18 +65,7 @@ const clampOpacity = (opacity: number): number => Math.min(1, Math.max(0, opacit
 
 const getInitialBackgroundOpacity = (): number => {
   if (typeof window === 'undefined') return 1;
-  const params = new URLSearchParams(window.location.search);
-  const rawOpacity = params.get('backgroundOpacity');
-  if (rawOpacity !== null) {
-    const opacity = Number(rawOpacity);
-    if (Number.isFinite(opacity)) return clampOpacity(opacity);
-  }
-
-  // Compatibility with prototypes installed before the continuous slider.
-  const appearance = params.get('appearance');
-  if (appearance === 'translucent') return 0.58;
-  if (appearance === 'transparent') return 0;
-  return 1;
+  return parseBackgroundOpacityFromSearch(window.location.search);
 };
 
 export function useDesktopDashboardMode() {
