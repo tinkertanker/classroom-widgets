@@ -1,40 +1,26 @@
-import { brandColors } from './colors';
-
+// Teacher question-card colors, one family per option index.
+// Values are complete literal Tailwind class strings (same contract as
+// pollColors.ts) so Tailwind's content scanner can extract them.
 export const questionColors = [
   {
-    bg: brandColors.sage[100],
-    border: brandColors.sage[300],
-    text: brandColors.sage[700],
-    icon: 'text-sage-600',
-    iconHover: 'hover:bg-sage-100',
+    // Option A
+    bg: 'bg-sage-100 dark:bg-sage-900/30',
   },
   {
-    bg: brandColors.terracotta[100],
-    border: brandColors.terracotta[300],
-    text: brandColors.terracotta[700],
-    icon: 'text-terracotta-600',
-    iconHover: 'hover:bg-terracotta-100',
+    // Option B
+    bg: 'bg-terracotta-100 dark:bg-terracotta-900/30',
   },
   {
-    bg: brandColors.sky[100],
-    border: brandColors.sky[300],
-    text: brandColors.sky[700],
-    icon: 'text-sky-600',
-    iconHover: 'hover:bg-sky-100',
+    // Option C
+    bg: 'bg-sky-100 dark:bg-sky-900/30',
   },
   {
-    bg: brandColors.amber[100],
-    border: brandColors.amber[300],
-    text: brandColors.amber[700],
-    icon: 'text-amber-600',
-    iconHover: 'hover:bg-amber-100',
+    // Option D
+    bg: 'bg-amber-100 dark:bg-amber-900/30',
   },
   {
-    bg: brandColors.dustyRose[100],
-    border: brandColors.dustyRose[300],
-    text: brandColors.dustyRose[700],
-    icon: 'text-dusty-rose-600',
-    iconHover: 'hover:bg-dusty-rose-100',
+    // Option E
+    bg: 'bg-dusty-rose-100 dark:bg-dusty-rose-900/30',
   },
 ];
 

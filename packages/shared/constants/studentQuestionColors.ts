@@ -1,40 +1,46 @@
-import { brandColors } from './colors';
-
+// Student question-card colors, one family per option index.
+// Values are complete literal Tailwind class strings (same contract as
+// studentPollColors.ts) so Tailwind's content scanner can extract them.
 export const studentQuestionColors = [
   {
-    bg: brandColors.sage[50],
-    border: brandColors.sage[300],
-    text: brandColors.sage[700],
-    answeredBg: brandColors.sage[100],
-    answeredText: brandColors.sage[600]
+    // Option A
+    bg: 'bg-sage-50 dark:bg-sage-900/20',
+    border: 'border-sage-300 dark:border-sage-700',
+    text: 'text-sage-700 dark:text-sage-300',
+    answeredBg: 'bg-sage-100 dark:bg-sage-900/40',
+    answeredText: 'text-sage-600 dark:text-sage-400'
   },
   {
-    bg: brandColors.terracotta[50],
-    border: brandColors.terracotta[300],
-    text: brandColors.terracotta[700],
-    answeredBg: brandColors.terracotta[100],
-    answeredText: brandColors.terracotta[600]
+    // Option B
+    bg: 'bg-terracotta-50 dark:bg-terracotta-900/20',
+    border: 'border-terracotta-300 dark:border-terracotta-700',
+    text: 'text-terracotta-700 dark:text-terracotta-300',
+    answeredBg: 'bg-terracotta-100 dark:bg-terracotta-900/40',
+    answeredText: 'text-terracotta-600 dark:text-terracotta-400'
   },
   {
-    bg: brandColors.sky[50],
-    border: brandColors.sky[300],
-    text: brandColors.sky[700],
-    answeredBg: brandColors.sky[100],
-    answeredText: brandColors.sky[600]
+    // Option C
+    bg: 'bg-sky-50 dark:bg-sky-900/20',
+    border: 'border-sky-300 dark:border-sky-700',
+    text: 'text-sky-700 dark:text-sky-300',
+    answeredBg: 'bg-sky-100 dark:bg-sky-900/40',
+    answeredText: 'text-sky-600 dark:text-sky-400'
   },
   {
-    bg: brandColors.amber[50],
-    border: brandColors.amber[300],
-    text: brandColors.amber[700],
-    answeredBg: brandColors.amber[100],
-    answeredText: brandColors.amber[600]
+    // Option D
+    bg: 'bg-amber-50 dark:bg-amber-900/20',
+    border: 'border-amber-300 dark:border-amber-700',
+    text: 'text-amber-700 dark:text-amber-300',
+    answeredBg: 'bg-amber-100 dark:bg-amber-900/40',
+    answeredText: 'text-amber-600 dark:text-amber-400'
   },
   {
-    bg: brandColors.dustyRose[50],
-    border: brandColors.dustyRose[300],
-    text: brandColors.dustyRose[700],
-    answeredBg: brandColors.dustyRose[100],
-    answeredText: brandColors.dustyRose[600]
+    // Option E
+    bg: 'bg-dusty-rose-50 dark:bg-dusty-rose-900/20',
+    border: 'border-dusty-rose-300 dark:border-dusty-rose-700',
+    text: 'text-dusty-rose-700 dark:text-dusty-rose-300',
+    answeredBg: 'bg-dusty-rose-100 dark:bg-dusty-rose-900/40',
+    answeredText: 'text-dusty-rose-600 dark:text-dusty-rose-400'
   }
 ];
 
