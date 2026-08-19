@@ -4,6 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse, ERROR_CODES } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
+const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 
 /**
  * Handle questions related socket events
@@ -32,11 +33,12 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('questions', data.widgetId);
-    if (!room || !(room instanceof QuestionsRoom)) {
+    const guard = resolveRoom(session, 'questions', QuestionsRoom, data.widgetId);
+    if (!guard.ok) {
       socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
       return;
     }
+    const { room, roomId: questionsRoomId } = guard;
 
     // Check if questions are being accepted
     if (!room.isActive) {
@@ -83,7 +85,6 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     socket.emit(EVENTS.QUESTIONS.SUBMITTED, createSuccessResponse({ questionId: question.id }));
 
     // Notify all in the room
-    const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
     const questionData = {
       id: question.id,
       text: question.text,
@@ -102,7 +103,9 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
   // Host marks question as answered
   socket.on(EVENTS.QUESTIONS.MARK_ANSWERED, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'questions', QuestionsRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('questions:markAnswered', 'Unauthorized attempt');
       return;
     }
@@ -114,14 +117,13 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('questions', data.widgetId);
-    if (!room || !(room instanceof QuestionsRoom)) {
+    if (!guard.ok) {
       logger.warn('questions:markAnswered', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: questionsRoomId } = guard;
 
     if (room.markAnswered(data.questionId)) {
-      const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
       io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.QUESTION_ANSWERED, {
         questionId: data.questionId,
         widgetId: data.widgetId
@@ -134,7 +136,9 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
   // Host deletes a question
   socket.on(EVENTS.QUESTIONS.DELETE, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'questions', QuestionsRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('questions:delete', 'Unauthorized attempt');
       return;
     }
@@ -146,14 +150,13 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('questions', data.widgetId);
-    if (!room || !(room instanceof QuestionsRoom)) {
+    if (!guard.ok) {
       logger.warn('questions:delete', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: questionsRoomId } = guard;
 
     if (room.deleteQuestion(data.questionId)) {
-      const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
       io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.QUESTION_DELETED, {
         questionId: data.questionId,
         widgetId: data.widgetId
@@ -166,7 +169,9 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
   // Host clears all questions
   socket.on(EVENTS.QUESTIONS.CLEAR_ALL, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'questions', QuestionsRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('questions:clearAll', 'Unauthorized attempt');
       return;
     }
@@ -178,15 +183,14 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('questions', data.widgetId);
-    if (!room || !(room instanceof QuestionsRoom)) {
+    if (!guard.ok) {
       logger.warn('questions:clearAll', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: questionsRoomId } = guard;
 
     room.clearAllQuestions();
 
-    const questionsRoomId = data.widgetId ? `questions:${data.widgetId}` : 'questions';
     io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.ALL_CLEARED, {
       widgetId: data.widgetId
     });
@@ -213,15 +217,13 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
 
     const session = sessionManager.getSession(sessionCode);
 
-    if (session) {
-      const room = session.getRoom('questions', widgetId);
-      if (room && room instanceof QuestionsRoom) {
-        socket.emit(EVENTS.QUESTIONS.STATE_UPDATE, {
-          isActive: room.isActive,
-          questions: room.getQuestions(),
-          widgetId: widgetId
-        });
-      }
+    const { ok, room } = resolveRoom(session, 'questions', QuestionsRoom, widgetId);
+    if (ok) {
+      socket.emit(EVENTS.QUESTIONS.STATE_UPDATE, {
+        isActive: room.isActive,
+        questions: room.getQuestions(),
+        widgetId: widgetId
+      });
     }
   });
 

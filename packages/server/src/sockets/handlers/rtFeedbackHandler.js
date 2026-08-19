@@ -4,6 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse, ERROR_CODES } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
+const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 
 /**
  * Handle real-time feedback related socket events
@@ -32,11 +33,12 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       return;
     }
 
-    const room = session.getRoom('rtfeedback', data.widgetId);
-    if (!room || !(room instanceof RTFeedbackRoom)) {
+    const guard = resolveRoom(session, 'rtfeedback', RTFeedbackRoom, data.widgetId);
+    if (!guard.ok) {
       socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
       return;
     }
+    const { room, roomId: rtfeedbackRoomId } = guard;
 
     // Check if feedback is active
     if (!room.isActive) {
@@ -65,7 +67,6 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createSuccessResponse());
 
     // Emit updated aggregated feedback to all in the room
-    const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
     const updateData = {
       ...room.getAggregatedFeedback(),
       widgetId: data.widgetId
@@ -95,23 +96,23 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
 
     const session = sessionManager.getSession(sessionCode);
 
-    if (session) {
-      const room = session.getRoom('rtfeedback', widgetId);
-      if (room && room instanceof RTFeedbackRoom) {
-        const stateData = {
-          isActive: room.isActive,
-          widgetId: widgetId
-        };
+    const { ok, room } = resolveRoom(session, 'rtfeedback', RTFeedbackRoom, widgetId);
+    if (ok) {
+      const stateData = {
+        isActive: room.isActive,
+        widgetId: widgetId
+      };
 
-        socket.emit(EVENTS.RT_FEEDBACK.STATE_UPDATE, stateData);
-      }
+      socket.emit(EVENTS.RT_FEEDBACK.STATE_UPDATE, stateData);
     }
   });
 
   // Handle reset request (host only)
   socket.on(EVENTS.RT_FEEDBACK.RESET, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'rtfeedback', RTFeedbackRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('rtfeedback:reset', 'Unauthorized reset attempt');
       return;
     }
@@ -123,16 +124,15 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       return;
     }
 
-    const room = session.getRoom('rtfeedback', data.widgetId);
-    if (!room || !(room instanceof RTFeedbackRoom)) {
+    if (!guard.ok) {
       logger.warn('rtfeedback:reset', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: rtfeedbackRoomId } = guard;
 
     room.clearAllFeedback();
 
     // Emit updated state to all in the room
-    const rtfeedbackRoomId = data.widgetId ? `rtfeedback:${data.widgetId}` : 'rtfeedback';
     const updateData = {
       ...room.getAggregatedFeedback(),
       widgetId: data.widgetId

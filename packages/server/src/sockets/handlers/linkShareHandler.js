@@ -4,6 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse, ERROR_CODES } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
+const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 
 /**
  * Handle link share related socket events
@@ -32,11 +33,12 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('linkShare', data.widgetId);
-    if (!room || !(room instanceof LinkShareRoom)) {
+    const guard = resolveRoom(session, 'linkShare', LinkShareRoom, data.widgetId);
+    if (!guard.ok) {
       socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
       return;
     }
+    const { room, roomId: linkShareRoomId } = guard;
 
     const participant = session.participants.get(socket.id);
     if (!participant) {
@@ -111,7 +113,6 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     }
 
     // Notify all in the room
-    const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
     const submissionData = {
       ...submission,
       widgetId: data.widgetId
@@ -128,7 +129,9 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
   // Handle submission deletion (host only)
   socket.on(EVENTS.LINK_SHARE.DELETE, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'linkShare', LinkShareRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('linkShare:delete', 'Unauthorized delete attempt');
       return;
     }
@@ -140,14 +143,13 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('linkShare', data.widgetId);
-    if (!room || !(room instanceof LinkShareRoom)) {
+    if (!guard.ok) {
       logger.warn('linkShare:delete', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: linkShareRoomId } = guard;
 
     if (room.deleteSubmission(data.submissionId)) {
-      const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
       io.to(`${session.code}:${linkShareRoomId}`).emit(EVENTS.LINK_SHARE.SUBMISSION_DELETED, {
         submissionId: data.submissionId,
         widgetId: data.widgetId
@@ -176,22 +178,22 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
 
     const session = sessionManager.getSession(sessionCode);
 
-    if (session) {
-      const room = session.getRoom('linkShare', widgetId);
-      if (room && room instanceof LinkShareRoom) {
-        socket.emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
-          isActive: room.isActive,
-          acceptMode: room.acceptMode,
-          widgetId: widgetId
-        });
-      }
+    const { ok, room } = resolveRoom(session, 'linkShare', LinkShareRoom, widgetId);
+    if (ok) {
+      socket.emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
+        isActive: room.isActive,
+        acceptMode: room.acceptMode,
+        widgetId: widgetId
+      });
     }
   });
 
   // Handle accept mode change (host only)
   socket.on(EVENTS.LINK_SHARE.SET_ACCEPT_MODE, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'linkShare', LinkShareRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('linkShare:setAcceptMode', 'Unauthorized attempt');
       return;
     }
@@ -203,11 +205,11 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const room = session.getRoom('linkShare', data.widgetId);
-    if (!room || !(room instanceof LinkShareRoom)) {
+    if (!guard.ok) {
       logger.warn('linkShare:setAcceptMode', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: linkShareRoomId } = guard;
 
     // Validate accept mode
     if (data.acceptMode !== 'links' && data.acceptMode !== 'all') {
@@ -218,7 +220,6 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     room.setAcceptMode(data.acceptMode);
 
     // Notify all in the room about the mode change
-    const linkShareRoomId = data.widgetId ? `linkShare:${data.widgetId}` : 'linkShare';
     io.to(`${session.code}:${linkShareRoomId}`).emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
       isActive: room.isActive,
       acceptMode: room.acceptMode,
