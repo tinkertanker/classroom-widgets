@@ -111,8 +111,16 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     void loadImage(persistedImageKey)
       .then(url => {
         if (!isCurrentImageChange(changeId)) return;
-        setError(null);
-        setImageUrl(url);
+        if (url) {
+          setError(null);
+          setImageUrl(url);
+        } else {
+          // A missing IndexedDB blob is a load failure, not an empty widget.
+          // Clearing the error here left compact-panel / workspace switches
+          // showing a blank image with no explanation.
+          setImageUrl(null);
+          setError(STORAGE_LOAD_ERROR);
+        }
       })
       .catch(() => {
         if (isCurrentImageChange(changeId)) setError(STORAGE_LOAD_ERROR);

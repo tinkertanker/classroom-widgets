@@ -303,4 +303,17 @@ describe('App double-Cmd-press voice activation', () => {
 
     expect((window as any).getVoiceControlActive()).toBe(false);
   });
+
+  it('does not treat a held Cmd key-repeat as a double press', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+    });
+
+    pressCmd();
+    fireEvent.keyDown(document, { key: 'Meta', metaKey: true, repeat: true });
+
+    expect((window as any).getVoiceControlActive()).toBe(false);
+  });
 });

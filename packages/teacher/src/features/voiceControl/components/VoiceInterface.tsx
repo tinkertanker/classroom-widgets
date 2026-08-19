@@ -32,6 +32,9 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   const processedRequestIdsRef = useRef<Set<string>>(new Set());
   const isOpenRef = useRef<boolean>(isOpen);
   const timeoutIdsRef = useRef<number[]>([]);
+  // Bumped when a command is started, timed out, retried, or closed so a late
+  // settle from an earlier request cannot flip the UI or auto-close it.
+  const processingGenerationRef = useRef(0);
 
   const {
     isListening,
@@ -68,23 +71,29 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   }, [isOpen, clearScheduledActions]);
 
   // Define handlers before useEffects
+  const invalidateInFlightCommand = useCallback(() => {
+    processingGenerationRef.current += 1;
+    isProcessingRef.current = false;
+  }, []);
+
   const handleClose = useCallback(() => {
     clearScheduledActions();
+    invalidateInFlightCommand();
     stopRecording();
     resetState();
     setParsedCommand(null);
     setProcessedTranscript(null);
-    isProcessingRef.current = false;
     processedRequestIdsRef.current.clear();
     setVoiceState('idle');
     onClose();
-  }, [clearScheduledActions, stopRecording, resetState, onClose]);
+  }, [clearScheduledActions, invalidateInFlightCommand, stopRecording, resetState, onClose]);
 
   const handleRetry = useCallback(() => {
+    clearScheduledActions();
+    invalidateInFlightCommand();
     resetState();
     setParsedCommand(null);
     setProcessedTranscript(null);
-    isProcessingRef.current = false;
     // Retrying re-records from scratch, so a repeat of the same phrase is a new
     // request. Without this the dedup guard swallows it and the UI sticks on
     // 'processing' forever.
@@ -95,7 +104,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       startRecording();
       setVoiceState('listening');
     }, 300);
-  }, [resetState, startRecording, scheduleAction]);
+  }, [clearScheduledActions, invalidateInFlightCommand, resetState, startRecording, scheduleAction]);
 
   // Auto-start recording when interface opens
   useEffect(() => {
@@ -176,12 +185,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
 
     processedRequestIdsRef.current.add(transcript);
+    const requestId = ++processingGenerationRef.current;
     isProcessingRef.current = true;
     setVoiceState('processing');
     playFeedback('processing');
 
     onTranscriptComplete(transcript)
       .then((response) => {
+        if (requestId !== processingGenerationRef.current) return;
         setParsedCommand(response);
         setProcessedTranscript(transcript);
         const isError = response.feedback.type === 'error' || response.feedback.type === 'not_understood' || !response.success;
@@ -201,18 +212,22 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             window.speechSynthesis.speak(utterance);
           }
 
-          // Auto-close after 3 seconds
-          setTimeout(() => {
+          // Auto-close after 3 seconds. Use scheduleAction so close/retry
+          // cancels it instead of firing handleClose on a later session.
+          scheduleAction(() => {
             handleClose();
           }, 3000);
         }
       })
       .catch((err) => {
+        if (requestId !== processingGenerationRef.current) return;
         debug.error('Command processing failed:', err);
         setVoiceState('error');
       })
       .finally(() => {
-        isProcessingRef.current = false;
+        if (requestId === processingGenerationRef.current) {
+          isProcessingRef.current = false;
+        }
       });
   }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose, playFeedback, scheduleAction, startRecording]);
 
@@ -225,6 +240,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
     const timeoutId = window.setTimeout(() => {
       debug('⏱️ Voice command processing timed out - forcing error state');
+      processingGenerationRef.current += 1;
       isProcessingRef.current = false;
       setVoiceState('error');
     }, PROCESSING_TIMEOUT_MS);
