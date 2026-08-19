@@ -8,8 +8,33 @@ interface ActiveRoom {
   roomType: string;
   widgetId: string;
   isActive: boolean;
+  participantCount: number;
   roomData?: any;
 }
+
+/**
+ * Single representation of the socket + session-recovery lifecycle.
+ *
+ * - `disconnected`     no socket connection
+ * - `connected`        connected, no recovery attempted yet in this connection
+ * - `recovering`       a recovery attempt is in flight
+ * - `recovered`        the session is established (recovered, or freshly created)
+ * - `recovery-failed`  recovery ran and gave up
+ */
+export type ConnectionPhase =
+  | 'disconnected'
+  | 'connected'
+  | 'recovering'
+  | 'recovered'
+  | 'recovery-failed';
+
+/**
+ * Recovery has run to completion (either outcome). Until this is true, the
+ * absence of recovery data for a widget means "recovery has not answered yet",
+ * not "this widget has no room".
+ */
+export const isRecoverySettled = (phase: ConnectionPhase): boolean =>
+  phase === 'recovered' || phase === 'recovery-failed';
 
 interface SessionContextValue {
   // Session state
@@ -19,17 +44,16 @@ interface SessionContextValue {
 
   // Connection state
   socket: any;
+  connectionPhase: ConnectionPhase;
+  // Derived from connectionPhase - kept for consumers that only care about one axis
   isConnected: boolean;
-  isConnecting: boolean;
   isRecovering: boolean;
-  hasAttemptedRecovery: boolean;
   serverUrl: string;
   studentAppUrl: string | null;  // URL where students should connect
-  
+
   // Room management
   activeRooms: Map<string, ActiveRoom>;
-  participantCounts: Map<string, number>;
-  
+
   // Session methods
   createSession: () => Promise<string | null>;
   recoverSession: (code: string) => Promise<boolean>;
@@ -61,14 +85,12 @@ export const useSession = () => {
         sessionCreatedAt: null,
         isHost: false,
         socket: null,
+        connectionPhase: 'disconnected',
         isConnected: false,
-        isConnecting: false,
         isRecovering: false,
-        hasAttemptedRecovery: false,
         serverUrl: '',
         studentAppUrl: null,
         activeRooms: new Map(),
-        participantCounts: new Map(),
         createSession: async () => null,
         recoverSession: async () => false,
         closeSession: () => {},
@@ -101,22 +123,29 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const [sessionCode, setSessionCode] = useState<string | null>(storeSessionCode);
   const [sessionCreatedAt, setSessionCreatedAt] = useState<number | null>(storeSessionCreatedAt);
   const [studentAppUrl, setStudentAppUrl] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isRecovering, setIsRecovering] = useState(false);
+  const [connectionPhase, setConnectionPhaseState] = useState<ConnectionPhase>('disconnected');
   const [activeRooms, setActiveRooms] = useState<Map<string, ActiveRoom>>(new Map());
   const [recoveryData, setRecoveryData] = useState<Map<string, ActiveRoom>>(new Map());
-  const [participantCounts, setParticipantCounts] = useState<Map<string, number>>(new Map());
   const [error, setError] = useState<string | null>(null);
-    
+
+  // Derived connection state - never stored separately, so the two can never disagree
+  const isConnected = connectionPhase !== 'disconnected';
+  const isRecovering = connectionPhase === 'recovering';
+
   // Refs
-  const hasAttemptedRecovery = useRef(false);
+  // Mirror of connectionPhase for the socket callbacks and the recovery routine:
+  // they run outside the render cycle and would otherwise read a stale phase
+  // (handleConnect in particular has to reset the phase and immediately act on it).
+  const connectionPhaseRef = useRef<ConnectionPhase>('disconnected');
+  const setConnectionPhase = useCallback((phase: ConnectionPhase) => {
+    connectionPhaseRef.current = phase;
+    setConnectionPhaseState(phase);
+  }, []);
   const isCreatingSession = useRef(false);
   const sessionCodeRef = useRef(sessionCode);
-  const isInitialRecoveryComplete = useRef(false);
   const recoveryPromiseRef = useRef<Promise<void> | null>(null);
   const recoveryResolveRef = useRef<(() => void) | null>(null);
-  
+
   // Constants
   const TWO_HOURS = 2 * 60 * 60 * 1000;
   const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
@@ -135,43 +164,40 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     if (!socket) return;
     
     const handleConnect = () => {
-      setIsConnected(true);
-      setIsConnecting(false);
-      
+      // 'connected' also means "no recovery attempted yet", which is what lets
+      // recovery run again after a reconnect
+      setConnectionPhase('connected');
+
       // Attempt recovery if we have a session
-      // Reset the recovery flag on reconnect to allow re-recovery
       if (sessionCode && sessionCreatedAt) {
-        hasAttemptedRecovery.current = false;
         attemptSessionRecovery();
       }
     };
-    
+
     const handleDisconnect = () => {
-      setIsConnected(false);
-      // Reset recovery state on disconnect
-      setIsRecovering(false);
+      setConnectionPhase('disconnected');
     };
-    
-    const handleConnecting = () => {
-      setIsConnecting(true);
-    };
-    
+
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-    socket.on('connecting', handleConnecting);
-    
-    // Set initial state
-    setIsConnected(socket.connected);
-    
-    // Trigger initial recovery if connected
-    if (socket.connected && sessionCode && !hasAttemptedRecovery.current) {
+
+    // Sync with the socket's current state. This effect re-runs whenever the
+    // session code changes, so only move to 'connected' from 'disconnected' -
+    // otherwise a completed recovery would be reset back to "not attempted".
+    if (!socket.connected) {
+      setConnectionPhase('disconnected');
+    } else if (connectionPhaseRef.current === 'disconnected') {
+      setConnectionPhase('connected');
+    }
+
+    // Trigger initial recovery if connected and not attempted yet
+    if (socket.connected && sessionCode && connectionPhaseRef.current === 'connected') {
       attemptSessionRecovery();
     }
-    
+
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      socket.off('connecting', handleConnecting);
     };
   }, [socket, sessionCode, sessionCreatedAt]);
   
@@ -187,26 +213,24 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           roomType: data.roomType,
           widgetId: data.widgetId,
           isActive: data.roomData?.isActive || false,
+          participantCount: data.roomData?.participantCount || 0,
           roomData: data.roomData
         });
         console.log('[UnifiedSession] Updated activeRooms:', Array.from(next.keys()));
         return next;
       });
     };
-    
+
     const handleRoomClosed = (data: { roomType: string; widgetId: string }) => {
+      // The participant count lives on the room entry, so removing the room
+      // cannot leave a stale count behind
       setActiveRooms(prev => {
         const next = new Map(prev);
         next.delete(data.widgetId);
         return next;
       });
-      setParticipantCounts(prev => {
-        const next = new Map(prev);
-        next.delete(data.widgetId);
-        return next;
-      });
     };
-    
+
     const handleWidgetStateChanged = (data: { roomType: string; widgetId: string; isActive: boolean }) => {
       setActiveRooms(prev => {
         const next = new Map(prev);
@@ -219,15 +243,19 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     };
     
     const handleParticipantUpdate = (data: { count: number; roomType: string; widgetId?: string }) => {
-      if (data.widgetId) {
-        setParticipantCounts(prev => {
-          const next = new Map(prev);
-          next.set(data.widgetId!, data.count);
-          return next;
-        });
-      }
+      if (!data.widgetId) return;
+      // Patch the existing room only. Session-level participant updates arrive
+      // without a widgetId and are ignored; a room-scoped update for a widget we
+      // have no room for would only create an entry nothing can ever clean up.
+      setActiveRooms(prev => {
+        const room = prev.get(data.widgetId!);
+        if (!room) return prev;
+        const next = new Map(prev);
+        next.set(data.widgetId!, { ...room, participantCount: data.count });
+        return next;
+      });
     };
-    
+
     const handleSessionClosed = () => {
       debug('[UnifiedSession] Session closed by host');
       clearSession();
@@ -275,13 +303,32 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setStoreSessionCode(null);
     setActiveRooms(new Map());
     setRecoveryData(new Map());
-    setParticipantCounts(new Map());
-    hasAttemptedRecovery.current = false;
   }, [setStoreSessionCode]);
+
+  // Record a room we know exists from a createRoom acknowledgement.
+  // The server only broadcasts session:roomCreated for genuinely new rooms, so
+  // rejoining an existing room would otherwise leave no activeRooms entry for
+  // participant counts to land on.
+  const rememberRoom = useCallback((roomType: string, widgetId: string, roomData: any) => {
+    setActiveRooms(prev => {
+      const existing = prev.get(widgetId);
+      const next = new Map(prev);
+      next.set(widgetId, {
+        roomType,
+        widgetId,
+        isActive: roomData?.isActive ?? existing?.isActive ?? false,
+        participantCount: roomData?.participantCount ?? existing?.participantCount ?? 0,
+        roomData: roomData ?? existing?.roomData
+      });
+      return next;
+    });
+  }, []);
 
   // Session recovery with retry and exponential backoff
   const attemptSessionRecovery = useCallback(async () => {
-    if (!sessionCode || !sessionCreatedAt || !socket?.connected || isRecovering || hasAttemptedRecovery.current) {
+    // 'connected' is the only phase from which a recovery attempt is due:
+    // anything else is either offline, already in flight, or already settled
+    if (!sessionCode || !sessionCreatedAt || !socket?.connected || connectionPhaseRef.current !== 'connected') {
       return;
     }
 
@@ -299,16 +346,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       });
     }
 
-    hasAttemptedRecovery.current = true;
-    setIsRecovering(true);
+    setConnectionPhase('recovering');
     debug('[UnifiedSession] Attempting session recovery for:', sessionCode);
 
     // Helper to complete recovery (success or failure)
     const completeRecovery = (success: boolean) => {
       if (signal.aborted) return;
-      setIsRecovering(false);
-      if (success) {
-        isInitialRecoveryComplete.current = true;
+      // Only settle the phase if this attempt is still the current one - a
+      // disconnect mid-recovery has already moved us to 'disconnected'
+      if (connectionPhaseRef.current === 'recovering') {
+        setConnectionPhase(success ? 'recovered' : 'recovery-failed');
       }
       if (recoveryResolveRef.current) {
         recoveryResolveRef.current();
@@ -400,6 +447,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   roomType: roomInfo.roomType,
                   widgetId: roomInfo.widgetId,
                   isActive: roomInfo.room?.isActive || false,
+                  participantCount: roomInfo.room?.participantCount || 0,
                   roomData: roomInfo.room
                 };
                 roomsMap.set(roomInfo.widgetId, room);
@@ -452,7 +500,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       clearSession();
       completeRecovery(false);
     }
-  }, [sessionCode, sessionCreatedAt, socket, isRecovering, clearSession]);
+  }, [sessionCode, sessionCreatedAt, socket, setConnectionPhase, clearSession]);
 
   // Clean up orphaned rooms - called after recovery or when widgets are deleted
   // Uses the new session:cleanupRooms event for more efficient server-side cleanup
@@ -508,14 +556,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // This handles the case where widgets were deleted while offline
   useEffect(() => {
     console.log('[UnifiedSession] Cleanup useEffect triggered:', {
-      isInitialRecoveryComplete: isInitialRecoveryComplete.current,
-      isRecovering,
+      connectionPhase,
       socketConnected: socket?.connected,
       sessionCode
     });
 
-    // Only run after initial recovery is complete
-    if (!isInitialRecoveryComplete.current || isRecovering) {
+    // Only run once the session is established (recovered or freshly created)
+    if (connectionPhase !== 'recovered') {
       console.log('[UnifiedSession] Cleanup skipped: not ready');
       return;
     }
@@ -536,7 +583,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       console.log('[UnifiedSession] Cleanup timer cancelled');
       clearTimeout(cleanupTimer);
     };
-  }, [isRecovering, socket?.connected, sessionCode, cleanupOrphanedRooms]);
+  }, [connectionPhase, socket?.connected, sessionCode, cleanupOrphanedRooms]);
 
   // Create session
   const createSession = useCallback(async (): Promise<string | null> => {
@@ -568,7 +615,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             setSessionCreatedAt(Date.now());
             setStoreSessionCode(response.code);
             sessionCodeRef.current = response.code; // Update ref immediately
-            isInitialRecoveryComplete.current = true; // No recovery needed for new session
+            // A brand new session needs no recovery, so it is already settled
+            if (connectionPhaseRef.current !== 'disconnected') {
+              setConnectionPhase('recovered');
+            }
             setRecoveryData(new Map()); // Clear any old recovery data
             // Store the student app URL from server response
             if (response.studentAppUrl) {
@@ -588,20 +638,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setError('Failed to create session');
       return null;
     }
-  }, [socket, sessionCode, sessionCreatedAt, setStoreSessionCode]);
-  
+  }, [socket, sessionCode, sessionCreatedAt, setStoreSessionCode, setConnectionPhase]);
+
   // Recover session (explicit)
   const recoverSession = useCallback(async (code: string): Promise<boolean> => {
     if (!socket?.connected) return false;
-    
+
     setSessionCode(code);
     setSessionCreatedAt(Date.now());
     setStoreSessionCode(code);
-    hasAttemptedRecovery.current = false;
-    
+    // Back to "connected, not attempted" so recovery may run for the new code
+    setConnectionPhase('connected');
+
     await attemptSessionRecovery();
     return true;
-  }, [socket, setStoreSessionCode, attemptSessionRecovery]);
+  }, [socket, setStoreSessionCode, setConnectionPhase, attemptSessionRecovery]);
   
   // Close session
   const closeSession = useCallback(() => {
@@ -641,6 +692,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         console.log('[UnifiedSession] createRoom callback received:', response);
         if (response.success) {
           console.log('[UnifiedSession] Room created successfully');
+          rememberRoom(roomType, widgetId, response.roomData);
           resolve(true);
         } else {
           debug.error('[UnifiedSession] Failed to create room:', response.error);
@@ -662,6 +714,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
                   widgetId
                 }, (retryResponse: any) => {
                   if (retryResponse.success) {
+                    rememberRoom(roomType, widgetId, retryResponse.roomData);
                     resolve(true);
                   } else {
                     debug.error('[UnifiedSession] Failed to create room even with new session:', retryResponse.error);
@@ -682,7 +735,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
         }
       });
     });
-  }, [socket, isRecovering, createSession]);
+  }, [socket, isRecovering, createSession, rememberRoom]);
   
   // Close room
   const closeRoom = useCallback((roomType: string, widgetId: string) => {
@@ -724,17 +777,15 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     // Connection state
     socket,
+    connectionPhase,
     isConnected,
-    isConnecting,
     isRecovering,
-    hasAttemptedRecovery: hasAttemptedRecovery.current || isInitialRecoveryComplete.current,
     serverUrl,
     studentAppUrl,
 
     // Room management
     activeRooms,
-    participantCounts,
-    
+
     // Session methods
     createSession,
     recoverSession,

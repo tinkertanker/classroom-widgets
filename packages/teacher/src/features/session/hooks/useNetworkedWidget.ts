@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useSession } from '../../../contexts/SessionContext';
+import { useSession, isRecoverySettled } from '../../../contexts/SessionContext';
 import { debug } from '@shared/utils/debug';
 
 export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout' | 'activity';
@@ -53,11 +53,11 @@ export function useNetworkedWidget({
     const roomData = session.getWidgetRecoveryData(widgetId);
     if (roomData) {
       setHasRoom(true);
-    } else if (session.hasAttemptedRecovery && !session.isRecovering) {
+    } else if (isRecoverySettled(session.connectionPhase)) {
       // Recovery has completed and there's no room for this widget
       setHasRoom(false);
     }
-  }, [widgetId, session.getWidgetRecoveryData, session.hasAttemptedRecovery, session.isRecovering]);
+  }, [widgetId, session.getWidgetRecoveryData, session.connectionPhase]);
   
   // Watch for session being cleared
   useEffect(() => {
@@ -200,7 +200,7 @@ export function useNetworkedWidget({
   const recoveryData = widgetId ? session.getWidgetRecoveryData(widgetId) : null;
   
   // Get participant count for this widget
-  const participantCount = widgetId ? (session.participantCounts.get(widgetId) || 0) : 0;
+  const participantCount = widgetId ? (session.activeRooms.get(widgetId)?.participantCount ?? 0) : 0;
   
   return {
     hasRoom,
