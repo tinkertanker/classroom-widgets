@@ -169,6 +169,20 @@ function App() {
         return;
       }
 
+      // A Cmd/Ctrl chord is not a lone modifier press. Drop any pending
+      // double-Cmd window so Cmd+K then another Cmd cannot also start voice.
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key !== 'Meta' &&
+        e.key !== 'Control' &&
+        e.key !== 'OS'
+      ) {
+        if (commandPressRef.current) {
+          clearTimeout(commandPressRef.current.timeoutId);
+          commandPressRef.current = null;
+        }
+      }
+
       // Open widget launcher with Cmd/Ctrl + K (handle this first to avoid triggering voice control)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();

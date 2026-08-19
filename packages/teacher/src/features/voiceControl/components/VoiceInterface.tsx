@@ -69,6 +69,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     }
   }, []);
 
+  const invalidateInFlightCommand = useCallback(() => {
+    processingGenerationRef.current += 1;
+    isProcessingRef.current = false;
+    cancelSpeech();
+  }, [cancelSpeech]);
+
   // Keep the open flag current during render so a then() that runs after the
   // parent flips isOpen (and before the isOpen effect) still sees the close.
   isOpenRef.current = isOpen;
@@ -85,13 +91,6 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       cancelSpeech();
     }
   }, [isOpen, clearScheduledActions, cancelSpeech]);
-
-  // Define handlers before useEffects
-  const invalidateInFlightCommand = useCallback(() => {
-    processingGenerationRef.current += 1;
-    isProcessingRef.current = false;
-    cancelSpeech();
-  }, [cancelSpeech]);
 
   const handleClose = useCallback(() => {
     clearScheduledActions();
@@ -147,14 +146,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     // Cleanup on unmount
     return () => {
       debug('🧹 Voice interface unmounting - releasing microphone resources');
-      processingGenerationRef.current += 1;
-      isProcessingRef.current = false;
+      invalidateInFlightCommand();
       clearScheduledActions();
-      cancelSpeech();
       stopRecording();
       resetState();
     };
-  }, [isOpen, clearScheduledActions, cancelSpeech, stopRecording, resetState]);
+  }, [isOpen, clearScheduledActions, invalidateInFlightCommand, stopRecording, resetState]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -260,13 +257,12 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
     const timeoutId = window.setTimeout(() => {
       debug('⏱️ Voice command processing timed out - forcing error state');
-      processingGenerationRef.current += 1;
-      isProcessingRef.current = false;
+      invalidateInFlightCommand();
       setVoiceState('error');
     }, PROCESSING_TIMEOUT_MS);
 
     return () => window.clearTimeout(timeoutId);
-  }, [isOpen, voiceState]);
+  }, [invalidateInFlightCommand, isOpen, voiceState]);
 
   // State transitions
   useEffect(() => {

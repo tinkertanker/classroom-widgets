@@ -316,4 +316,24 @@ describe('App double-Cmd-press voice activation', () => {
 
     expect((window as any).getVoiceControlActive()).toBe(false);
   });
+
+  it('does not treat Cmd after Cmd+K as a double press', async () => {
+    const openLauncher = vi.fn();
+    window.openClassroomWidgetLauncher = openLauncher;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+    });
+
+    pressCmd();
+    fireEvent.keyDown(document, { key: 'k', metaKey: true });
+    pressCmd();
+
+    expect(openLauncher).toHaveBeenCalled();
+    expect((window as any).getVoiceControlActive()).toBe(false);
+
+    delete window.openClassroomWidgetLauncher;
+  });
 });
