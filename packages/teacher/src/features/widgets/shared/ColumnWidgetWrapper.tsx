@@ -1,9 +1,10 @@
-import React, { useCallback, useState, useRef, useEffect, memo } from 'react';
+import React, { useCallback, memo } from 'react';
 import { FaTrash, FaXmark } from 'react-icons/fa6';
 import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { useHoverDelay } from './useHoverDelay';
 
 interface ColumnWidgetWrapperProps {
   widgetId: string;
@@ -16,20 +17,12 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
   const isFocused = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
-  const [showDelete, setShowDelete] = useState(false);
-  const hideDeleteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Shorter than the canvas wrapper's delay: in a column the pointer has a much
+  // shorter trip to the delete button
+  const { visible: showDelete, onMouseEnter, onMouseLeave } = useHoverDelay(1000);
 
   // Detect touch devices (no hover capability) - always show delete button on touch
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hideDeleteTimeoutRef.current) {
-        clearTimeout(hideDeleteTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleWidgetClick = useCallback(() => {
     setFocusedWidget(widgetId);
@@ -46,26 +39,6 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
     // Remove the widget
     remove();
   }, [remove, isFocused, setFocusedWidget]);
-
-  const handleMouseEnter = useCallback(() => {
-    setShowDelete(true);
-    // Clear any pending timeout
-    if (hideDeleteTimeoutRef.current) {
-      clearTimeout(hideDeleteTimeoutRef.current);
-      hideDeleteTimeoutRef.current = null;
-    }
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    // Clear any existing timeout before creating a new one
-    if (hideDeleteTimeoutRef.current) {
-      clearTimeout(hideDeleteTimeoutRef.current);
-    }
-    // Delay hiding the delete button
-    hideDeleteTimeoutRef.current = setTimeout(() => {
-      setShowDelete(false);
-    }, 1000);
-  }, []);
 
   if (!widget) return null;
 
@@ -98,8 +71,8 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
     <div
       className="column-widget-item relative break-inside-avoid mb-12"
       onClick={handleWidgetClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={style}
     >
       <div className="widget-wrapper w-full h-full relative">
