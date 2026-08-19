@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { secondsToTimeSegments } from '../clockTime';
 
 interface UseTimeSegmentEditorProps {
   initialValues?: string[];
@@ -76,15 +77,9 @@ export function useTimeSegmentEditor({
 
   // Update values when time changes externally (e.g., during countdown)
   const updateFromTime = useCallback((totalSeconds: number) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    const { hours, minutes, seconds, hoursText, minutesText, secondsText } = secondsToTimeSegments(totalSeconds);
 
-    const newValues = [
-      hours.toString().padStart(2, '0'),
-      minutes.toString().padStart(2, '0'),
-      seconds.toString().padStart(2, '0')
-    ];
+    const newValues = [hoursText, minutesText, secondsText];
 
     if (newValues.every((value, index) => value === values[index])) {
       return;

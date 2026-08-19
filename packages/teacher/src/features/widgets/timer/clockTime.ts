@@ -59,3 +59,31 @@ export const getSecondsUntilClockTime = (
 export const formatClockSelection = (selection: ClockTimeSelection): string => {
   return `${selection.hour}:${selection.minute.toString().padStart(2, '0')} ${selection.period}`;
 };
+
+export interface TimeSegments {
+  hours: number;
+  minutes: number;
+  seconds: number;
+  hoursText: string;
+  minutesText: string;
+  secondsText: string;
+}
+
+/**
+ * Breaks a non-negative total-seconds count into hours/minutes/seconds, in
+ * both numeric and zero-padded two-character string form.
+ */
+export const secondsToTimeSegments = (totalSeconds: number): TimeSegments => {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return {
+    hours,
+    minutes,
+    seconds,
+    hoursText: hours.toString().padStart(2, '0'),
+    minutesText: minutes.toString().padStart(2, '0'),
+    secondsText: seconds.toString().padStart(2, '0')
+  };
+};

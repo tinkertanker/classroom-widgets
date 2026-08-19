@@ -15,6 +15,7 @@ import { TimeDisplay } from './components/TimeDisplay';
 import {
   getDefaultTargetSelection,
   getSecondsUntilClockTime,
+  secondsToTimeSegments,
   type ClockTimeSelection
 } from './clockTime';
 import timerEndSound2 from "./timer-end-2.wav";
@@ -176,15 +177,9 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
 
   const handleSetTargetTime = useCallback(() => {
     const totalSeconds = getSecondsUntilClockTime(targetTime);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    const { hours, minutes, seconds, hoursText, minutesText, secondsText } = secondsToTimeSegments(totalSeconds);
 
-    const newValues = [
-      hours.toString().padStart(2, '0'),
-      minutes.toString().padStart(2, '0'),
-      seconds.toString().padStart(2, '0')
-    ];
+    const newValues = [hoursText, minutesText, secondsText];
 
     segmentEditor.setValues(newValues);
     segmentEditor.setTimeValues([hours, minutes, seconds]);
