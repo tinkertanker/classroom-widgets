@@ -10,6 +10,38 @@ export interface TimerPersistedState {
   timerFinished?: boolean;
 }
 
+/**
+ * The countdown is always in exactly one of these four states. Modelling it as
+ * a union instead of three independent booleans keeps the four nonsensical
+ * combinations (running *and* paused, finished *and* running, ...) out of the
+ * type. `endTime` only exists on the running variant because it is only
+ * meaningful there.
+ */
+export type TimerStatus =
+  | { kind: 'idle' }
+  | { kind: 'running'; endTime: number }
+  | { kind: 'paused' }
+  | { kind: 'finished' };
+
+interface RestoredSnapshot {
+  status: TimerStatus;
+  time: number;
+  initialTime: number;
+  originalTime: number;
+  /**
+   * True only for the one restore branch that inherits an *unfired* end-of-timer
+   * callback: the timer ran past its deadline while this widget was unmounted.
+   * A payload persisted as already-finished had its callback fired in the
+   * previous session, so it restores silently. Deliberately kept outside
+   * TimerStatus and read once on mount — if "already notified" lived in the
+   * union, `tick` would have to write it back after firing, which is exactly
+   * how a double-fire gets in. As written the two notify sources are mutually
+   * exclusive: this effect only fires from the restore path, and `tick` only
+   * fires from the running state.
+   */
+  notifyTimeUp: boolean;
+}
+
 interface UseTimerCountdownProps {
   onTimeUp?: () => void;
   onTick?: (time: number) => void;
@@ -26,25 +58,35 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   const restoredRef = useRef(restoredState);
   const hasRestoredRef = useRef(false);
 
-  const getInitialState = () => {
+  /**
+   * Maps a persisted payload onto a single TimerStatus. The persisted wire
+   * format is still the historical boolean triple, so this has to cope with
+   * payloads written by an older tab: `timerFinished` may be absent entirely,
+   * and a payload may claim several states at once. The branch order decides
+   * which claim wins, and a payload matching nothing falls through to idle.
+   */
+  const getInitialState = (): RestoredSnapshot | null => {
     const rs = restoredRef.current;
     if (!rs || hasRestoredRef.current) return null;
     hasRestoredRef.current = true;
 
+    const base = { initialTime: rs.initialTime, originalTime: rs.originalTime };
+
+    // A running payload without a usable deadline tells us nothing about when
+    // it would have expired, so it falls through to the later branches.
     if (rs.isRunning && rs.endTime) {
       const remaining = Math.max(0, Math.ceil((rs.endTime - Date.now()) / 1000));
       if (remaining > 0) {
-        return { time: remaining, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: true, isPaused: false, timerFinished: false, notifyTimeUp: false };
-      } else {
-        // Timer expired while unmounted
-        return { time: 0, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: false, timerFinished: true, notifyTimeUp: true };
+        return { ...base, time: remaining, status: { kind: 'running', endTime: rs.endTime }, notifyTimeUp: false };
       }
+      // Timer expired while unmounted, so nobody has sounded the alarm yet.
+      return { ...base, time: 0, status: { kind: 'finished' }, notifyTimeUp: true };
     }
     if (rs.isPaused) {
-      return { time: rs.pausedTimeRemaining, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: true, timerFinished: false, notifyTimeUp: false };
+      return { ...base, time: rs.pausedTimeRemaining, status: { kind: 'paused' }, notifyTimeUp: false };
     }
     if (rs.timerFinished) {
-      return { time: 0, initialTime: rs.initialTime, originalTime: rs.originalTime, isRunning: false, isPaused: false, timerFinished: true, notifyTimeUp: false };
+      return { ...base, time: 0, status: { kind: 'finished' }, notifyTimeUp: false };
     }
     return null;
   };
@@ -53,18 +95,15 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
   const [initialTime, setInitialTime] = useState(restored?.initialTime ?? 10);
   const [time, setTime] = useState(restored?.time ?? 10);
-  const [isRunning, setIsRunning] = useState(restored?.isRunning ?? false);
-  const [isPaused, setIsPaused] = useState(restored?.isPaused ?? false);
-  const [timerFinished, setTimerFinished] = useState(restored?.timerFinished ?? false);
+  const [status, setStatus] = useState<TimerStatus>(restored?.status ?? { kind: 'idle' });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<number | null>(restored?.isRunning ? Date.now() : null);
+  const startTimeRef = useRef<number | null>(restored?.status.kind === 'running' ? Date.now() : null);
   const pausedTimeRef = useRef<number>(restored?.time ?? 0);
   const originalTimeRef = useRef<number>(restored?.originalTime ?? 10);
-  const [scheduleVersion, setScheduleVersion] = useState(0);
-  // Track the absolute end time for persistence
-  const endTimeRef = useRef<number | null>(
-    restored?.isRunning ? restoredState?.endTime ?? null : null
-  );
+
+  const isRunning = status.kind === 'running';
+  const isPaused = status.kind === 'paused';
+  const timerFinished = status.kind === 'finished';
 
   // Store callbacks in refs to avoid dependency issues
   const onTimeUpRef = useRef(onTimeUp);
@@ -106,12 +145,10 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     }
   }, []);
 
-  const tick = useCallback(() => {
-    const endTime = endTimeRef.current;
-    if (endTime === null) {
-      return;
-    }
-
+  // The deadline is passed in rather than read from state: every change to it
+  // produces a new running status, which restarts the schedule below, so a
+  // self-scheduled tick can never carry a stale deadline.
+  const tick = useCallback((endTime: number) => {
     const now = Date.now();
     const newTime = Math.max(0, Math.ceil((endTime - now) / 1000));
 
@@ -119,9 +156,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
     if (newTime <= 0) {
       clearScheduledTick();
-      setIsRunning(false);
-      setTimerFinished(true);
-      endTimeRef.current = null;
+      setStatus({ kind: 'finished' });
       onTimeUpRef.current?.();
       onTickRef.current?.(0);
       return;
@@ -130,30 +165,28 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     onTickRef.current?.(newTime);
 
     const msUntilNextSecond = Math.max(16, endTime - now - (newTime - 1) * 1000);
-    timeoutRef.current = setTimeout(tick, msUntilNextSecond);
+    timeoutRef.current = setTimeout(() => tick(endTime), msUntilNextSecond);
   }, [clearScheduledTick]);
 
   // Handle countdown tick only when the visible second changes.
   useEffect(() => {
     clearScheduledTick();
 
-    if (isRunning && endTimeRef.current !== null) {
-      tick();
+    if (status.kind === 'running') {
+      tick(status.endTime);
     }
 
     return clearScheduledTick;
-  }, [clearScheduledTick, isRunning, scheduleVersion, tick]);
+  }, [clearScheduledTick, status, tick]);
 
   const startTimer = useCallback((totalSeconds: number, updateOriginal: boolean = true) => {
+    const now = Date.now();
+
     setInitialTime(totalSeconds);
     setTime(totalSeconds);
-    setIsRunning(true);
-    setIsPaused(false);
-    setTimerFinished(false);
-    startTimeRef.current = Date.now();
+    setStatus({ kind: 'running', endTime: now + totalSeconds * 1000 });
+    startTimeRef.current = now;
     pausedTimeRef.current = totalSeconds;
-    endTimeRef.current = Date.now() + totalSeconds * 1000;
-    setScheduleVersion((version) => version + 1);
     // Only update the original time on the very first start, not on resume with edits
     if (updateOriginal) {
       originalTimeRef.current = totalSeconds;
@@ -162,23 +195,20 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
   const pauseTimer = useCallback(() => {
     clearScheduledTick();
-    setIsRunning(false);
-    setIsPaused(true);
+    setStatus({ kind: 'paused' });
     // Store the current time when pausing
     pausedTimeRef.current = time;
     startTimeRef.current = null;
-    endTimeRef.current = null;
   }, [clearScheduledTick, time]);
 
   const resumeTimer = useCallback(() => {
     if (time > 0) {
-      setIsRunning(true);
-      setIsPaused(false);
+      const now = Date.now();
+
+      setStatus({ kind: 'running', endTime: now + time * 1000 });
       // Reset the start time when resuming
-      startTimeRef.current = Date.now();
+      startTimeRef.current = now;
       pausedTimeRef.current = time;
-      endTimeRef.current = Date.now() + time * 1000;
-      setScheduleVersion((version) => version + 1);
     }
   }, [time]);
 
@@ -187,44 +217,37 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     const timeToRestore = originalTimeRef.current;
     setTime(timeToRestore);
     setInitialTime(timeToRestore);
-    setIsRunning(false);
-    setIsPaused(false);
-    setTimerFinished(false);
+    setStatus({ kind: 'idle' });
     startTimeRef.current = null;
     pausedTimeRef.current = timeToRestore;
-    endTimeRef.current = null;
   }, []);
 
   const resetTimer = useCallback((newInitialTime: number) => {
     clearScheduledTick();
     setInitialTime(newInitialTime);
     setTime(newInitialTime);
-    setIsRunning(false);
-    setIsPaused(false);
-    setTimerFinished(false);
+    setStatus({ kind: 'idle' });
     startTimeRef.current = null;
     pausedTimeRef.current = newInitialTime;
     originalTimeRef.current = newInitialTime;
-    endTimeRef.current = null;
   }, [clearScheduledTick]);
 
   const adjustTime = useCallback((deltaSeconds: number) => {
     const safeDelta = Math.max(0, Math.floor(deltaSeconds));
 
-    if (safeDelta === 0 || timerFinished) {
+    if (safeDelta === 0 || status.kind === 'finished') {
       return;
     }
 
-    if (isRunning && startTimeRef.current !== null) {
+    if (status.kind === 'running' && startTimeRef.current !== null) {
       const nextTime = getRunningRemainingTime() + safeDelta;
 
       pausedTimeRef.current += safeDelta;
       originalTimeRef.current += safeDelta;
-      endTimeRef.current = Date.now() + nextTime * 1000;
 
+      setStatus({ kind: 'running', endTime: Date.now() + nextTime * 1000 });
       setTime(nextTime);
       setInitialTime(prev => prev + safeDelta);
-      setScheduleVersion((version) => version + 1);
       onTickRef.current?.(nextTime);
       return;
     }
@@ -233,31 +256,33 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
     pausedTimeRef.current = nextTime;
     originalTimeRef.current += safeDelta;
-    endTimeRef.current = null;
 
     setTime(nextTime);
     setInitialTime(prev => prev + safeDelta);
     onTickRef.current?.(nextTime);
-  }, [getRunningRemainingTime, isRunning, time, timerFinished]);
+  }, [getRunningRemainingTime, status, time]);
 
   // Calculate progress percentage
   const progress = initialTime > 0 ? time / initialTime : 0;
 
-  // Get persistable state snapshot
+  // Get persistable state snapshot. The wire format stays the historical
+  // boolean triple so tabs running either version of this code can read each
+  // other's saved state.
   const getPersistedState = useCallback((): TimerPersistedState => ({
-    endTime: endTimeRef.current,
+    endTime: status.kind === 'running' ? status.endTime : null,
     initialTime,
     originalTime: originalTimeRef.current,
-    isRunning,
-    isPaused,
+    isRunning: status.kind === 'running',
+    isPaused: status.kind === 'paused',
     pausedTimeRemaining: pausedTimeRef.current,
-    timerFinished,
-  }), [initialTime, isRunning, isPaused, timerFinished]);
+    timerFinished: status.kind === 'finished',
+  }), [initialTime, status]);
 
   return {
     time,
     initialTime,
     originalTime: originalTimeRef.current,
+    status,
     isRunning,
     isPaused,
     timerFinished,
