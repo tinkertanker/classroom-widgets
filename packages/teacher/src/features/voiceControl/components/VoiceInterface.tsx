@@ -7,6 +7,11 @@ import { debug } from '@shared/utils/debug';
 import { cn, buttons, text, borders, borderRadius } from '@shared/utils/styles';
 import '../styles/voiceAnimations.css';
 
+// Upper bound on how long the UI may sit in 'processing'. VoiceCommandService
+// aborts its request after 15s, so this only fires when that request never
+// settles or when the transcript never reached onTranscriptComplete at all.
+const PROCESSING_TIMEOUT_MS = 20000;
+
 interface VoiceInterfaceProps {
   isOpen: boolean;
   onClose: () => void;
@@ -79,6 +84,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     resetState();
     setParsedCommand(null);
     setProcessedTranscript(null);
+    isProcessingRef.current = false;
+    // Retrying re-records from scratch, so a repeat of the same phrase is a new
+    // request. Without this the dedup guard swallows it and the UI sticks on
+    // 'processing' forever.
+    processedRequestIdsRef.current.clear();
     setVoiceState('activating');
     scheduleAction(() => {
       if (!isOpenRef.current) return;
@@ -205,6 +215,22 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         isProcessingRef.current = false;
       });
   }, [transcript, isGathering, isListening, isOpen, voiceState, confidence, onTranscriptComplete, handleClose, playFeedback, scheduleAction, startRecording]);
+
+  // Guaranteed exit from 'processing': the state-transitions effect below
+  // refuses to move out of 'processing', so anything that fails to reach a
+  // terminal state would otherwise leave the modal spinning with no way out
+  // except closing it.
+  useEffect(() => {
+    if (!isOpen || voiceState !== 'processing') return;
+
+    const timeoutId = window.setTimeout(() => {
+      debug('⏱️ Voice command processing timed out - forcing error state');
+      isProcessingRef.current = false;
+      setVoiceState('error');
+    }, PROCESSING_TIMEOUT_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isOpen, voiceState]);
 
   // State transitions
   useEffect(() => {
