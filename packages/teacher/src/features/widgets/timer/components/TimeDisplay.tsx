@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn, text } from '@shared/utils/styles';
+import { secondsToTimeSegments } from '../clockTime';
 
 interface TimeDisplayProps {
   time: number;
@@ -8,15 +9,9 @@ interface TimeDisplayProps {
 }
 
 const getDisplayValues = (time: number) => {
-  const hours = Math.floor(time / 3600);
-  const minutes = Math.floor((time % 3600) / 60);
-  const seconds = time % 60;
+  const { hoursText, minutesText, secondsText } = secondsToTimeSegments(time);
 
-  return [
-    hours.toString().padStart(2, '0'),
-    minutes.toString().padStart(2, '0'),
-    seconds.toString().padStart(2, '0')
-  ];
+  return [hoursText, minutesText, secondsText];
 };
 
 export const TimeDisplay: React.FC<TimeDisplayProps> = ({ time, isEditing, onPause }) => {
