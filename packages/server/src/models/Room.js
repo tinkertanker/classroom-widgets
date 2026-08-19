@@ -74,6 +74,45 @@ class Room {
   }
 
   /**
+   * Generate a unique id for a list entry (question, submission, handout item, ...)
+   */
+  _generateId() {
+    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  }
+
+  /**
+   * Push an entry onto a capacity-checked list and mark activity.
+   * @param {Array} list - The list to append to
+   * @param {Object} entry - The fully-built entry to add
+   * @param {number} [maxLimit] - Optional cap; when reached, the add is rejected
+   * @returns {Object|null} The added entry, or null if the list is at capacity
+   */
+  _addToList(list, entry, maxLimit) {
+    if (typeof maxLimit === 'number' && list.length >= maxLimit) {
+      return null;
+    }
+    list.push(entry);
+    this.updateActivity();
+    return entry;
+  }
+
+  /**
+   * Remove an entry with the given id from a list and mark activity.
+   * @param {Array} list - The list to remove from
+   * @param {string} id - The id of the entry to remove
+   * @returns {boolean} Whether an entry was found and removed
+   */
+  _removeFromList(list, id) {
+    const index = list.findIndex(entry => entry.id === id);
+    if (index === -1) {
+      return false;
+    }
+    list.splice(index, 1);
+    this.updateActivity();
+    return true;
+  }
+
+  /**
    * Convert room to JSON representation
    */
   toJSON() {
