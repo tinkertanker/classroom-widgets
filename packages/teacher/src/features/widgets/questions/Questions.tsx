@@ -220,7 +220,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
             <div className="space-y-2">
               {sortedQuestions.map((question) => {
                 const colorIndex = getStableColourIndex(question.id);
-                const bgColor = getQuestionColor(colorIndex);
+                const questionColor = getQuestionColor(colorIndex);
 
                 return (
                   <div
@@ -228,7 +228,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
                     className={`rounded-lg p-3 shadow-sm border transition-all duration-200 ${
                       question.answered
                         ? 'bg-warm-gray-100 dark:bg-warm-gray-700 border-warm-gray-200 dark:border-warm-gray-600 opacity-60'
-                        : `${bgColor} border-warm-gray-200 dark:border-warm-gray-600`
+                        : `${questionColor.bg} border-warm-gray-200 dark:border-warm-gray-600`
                     }`}
                   >
                     <div className="flex justify-between items-start gap-2">
