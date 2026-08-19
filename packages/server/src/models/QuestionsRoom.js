@@ -20,20 +20,15 @@ class QuestionsRoom extends Room {
    * @returns {Object|null} The created question, or null if the room is full
    */
   addQuestion(studentId, text, studentName) {
-    if (this.questions.length >= LIMITS.MAX_QUESTIONS_PER_ROOM) {
-      return null;
-    }
     const question = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: this._generateId(),
       studentId,
       studentName: studentName || 'Anonymous',
       text,
       timestamp: Date.now(),
       answered: false
     };
-    this.questions.push(question);
-    this.updateActivity();
-    return question;
+    return this._addToList(this.questions, question, LIMITS.MAX_QUESTIONS_PER_ROOM);
   }
 
   /**
@@ -53,13 +48,7 @@ class QuestionsRoom extends Room {
    * Delete a question
    */
   deleteQuestion(questionId) {
-    const index = this.questions.findIndex(q => q.id === questionId);
-    if (index > -1) {
-      this.questions.splice(index, 1);
-      this.updateActivity();
-      return true;
-    }
-    return false;
+    return this._removeFromList(this.questions, questionId);
   }
 
   /**

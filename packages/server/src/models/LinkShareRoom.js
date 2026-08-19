@@ -31,11 +31,8 @@ class LinkShareRoom extends Room {
    * @returns {Object|null} The created submission, or null if the room is full
    */
   addSubmission(studentName, content, isLink = true) {
-    if (this.submissions.length >= LIMITS.MAX_SUBMISSIONS_PER_ROOM) {
-      return null;
-    }
     const submission = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: this._generateId(),
       studentName,
       content,
       isLink,
@@ -43,22 +40,14 @@ class LinkShareRoom extends Room {
       link: isLink ? content : null,
       timestamp: Date.now()
     };
-    this.submissions.push(submission);
-    this.updateActivity();
-    return submission;
+    return this._addToList(this.submissions, submission, LIMITS.MAX_SUBMISSIONS_PER_ROOM);
   }
 
   /**
    * Delete a submission by ID
    */
   deleteSubmission(submissionId) {
-    const index = this.submissions.findIndex(s => s.id === submissionId);
-    if (index > -1) {
-      this.submissions.splice(index, 1);
-      this.updateActivity();
-      return true;
-    }
-    return false;
+    return this._removeFromList(this.submissions, submissionId);
   }
 
   /**

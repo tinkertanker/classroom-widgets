@@ -22,14 +22,12 @@ class HandoutRoom extends Room {
    */
   addItem(content, isLink) {
     const item = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: this._generateId(),
       content,
       isLink,
       timestamp: Date.now()
     };
-    this.items.push(item);
-    this.updateActivity();
-    return item;
+    return this._addToList(this.items, item);
   }
 
   /**
@@ -38,13 +36,7 @@ class HandoutRoom extends Room {
    * @returns {boolean} Whether the item was found and deleted
    */
   deleteItem(itemId) {
-    const index = this.items.findIndex(i => i.id === itemId);
-    if (index !== -1) {
-      this.items.splice(index, 1);
-      this.updateActivity();
-      return true;
-    }
-    return false;
+    return this._removeFromList(this.items, itemId);
   }
 
   /**
