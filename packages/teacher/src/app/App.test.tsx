@@ -51,11 +51,8 @@ vi.mock('../features/board/components/ColumnBoard', () => ({
 }));
 
 vi.mock('../features/board/components/WidgetList', () => ({
-  default: () => <div data-testid="widget-list" />
-}));
-
-vi.mock('../features/board/components/ColumnWidgetList', () => ({
-  default: () => <div data-testid="column-widget-list" />
+  CanvasWidgetList: () => <div data-testid="widget-list" />,
+  ColumnWidgetList: () => <div data-testid="column-widget-list" />
 }));
 
 vi.mock('../features/hud/components', () => ({
