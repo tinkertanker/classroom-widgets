@@ -12,7 +12,7 @@ import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useHoverDelay } from './useHoverDelay';
-import { useWidgetInteractionState } from './useWidgetInteractionState';
+import { classifyDrop, useWidgetInteractionState } from './useWidgetInteractionState';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -56,7 +56,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
     // Read dropTarget directly from store to avoid subscribing to it
     // This prevents re-renders when dropTarget changes during drag
     const currentDropTarget = useWorkspaceStore.getState().dragState.dropTarget;
-    if (currentDropTarget === 'trash') {
+    if (classifyDrop(currentDropTarget) === 'trash') {
       debug('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
       // Play trash sound
       (window as any).playTrashSound?.();

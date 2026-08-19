@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
+  classifyDrop,
   initialWidgetInteractionState,
   isClickSuppressedState,
   isResizingState,
@@ -151,6 +152,36 @@ describe('widgetInteractionReducer', () => {
     for (const state of ALL_STATES) {
       expect(isResizingState(state)).toBe(state.status === 'resizing');
     }
+  });
+});
+
+describe('classifyDrop', () => {
+  it('treats the trash zone as a delete', () => {
+    expect(classifyDrop('trash')).toBe('trash');
+  });
+
+  it('treats no drop target as an ordinary reposition', () => {
+    expect(classifyDrop(null)).toBe('reposition');
+  });
+
+  it('treats any other drop target as an ordinary reposition', () => {
+    // Only the trash zone deletes; anything else the board reports must leave
+    // the widget alive and simply move it.
+    expect(classifyDrop('board')).toBe('reposition');
+    expect(classifyDrop('')).toBe('reposition');
+  });
+
+  it('carries the whole difference between a trash drop and a reposition', () => {
+    // Dragging over the trash is a discriminant on the drag-stop edge, not a
+    // state: tracking it live would mean polling the drop target on every
+    // pointer move. So the machine's own transition is identical either way,
+    // and this classifier is the only thing that tells the two drops apart.
+    const afterTrashDrop = run({ type: 'dragStart' }, { type: 'dragMove' }, { type: 'dragStop' });
+    const afterOrdinaryDrop = run({ type: 'dragStart' }, { type: 'dragMove' }, { type: 'dragStop' });
+
+    expect(afterTrashDrop).toEqual(POST_DRAG);
+    expect(afterOrdinaryDrop).toEqual(POST_DRAG);
+    expect(classifyDrop('trash')).not.toBe(classifyDrop(null));
   });
 });
 

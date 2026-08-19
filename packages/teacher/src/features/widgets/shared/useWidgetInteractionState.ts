@@ -123,6 +123,20 @@ export function widgetInteractionReducer(
   }
 }
 
+/**
+ * What a drag ended in. Dragging over the trash zone is a discriminant on the
+ * drag-stop edge rather than a state of its own: the drop target is owned
+ * elsewhere and is read once, untracked, when the drag ends. Making it a
+ * resident state would mean polling it on every pointer move, which is both a
+ * render cost the wrapper works hard to avoid and a change to how the
+ * drop-target value is consumed.
+ */
+export type DropOutcome = 'trash' | 'reposition';
+
+export function classifyDrop(dropTarget: string | null): DropOutcome {
+  return dropTarget === 'trash' ? 'trash' : 'reposition';
+}
+
 /** The one bit of the machine the wrapper's rendered output depends on. */
 export function isResizingState(state: WidgetInteractionState): boolean {
   return state.status === 'resizing';
