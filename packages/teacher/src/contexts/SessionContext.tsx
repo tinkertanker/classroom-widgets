@@ -516,6 +516,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       WidgetType.LINK_SHARE,
       WidgetType.HANDOUT,
       WidgetType.FILL_BLANK,
+      WidgetType.CODE_FILL_BLANK,
       WidgetType.SORTING,
       WidgetType.SEQUENCING,
       WidgetType.MATCHING

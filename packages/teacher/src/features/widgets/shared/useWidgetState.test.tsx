@@ -144,6 +144,51 @@ describe('useWidgetState savedState resync', () => {
     expect(result.current.state.board[4]).toBe('X');
   });
 
+  it('does not clobber a second local write when the parent echoes the first persist', () => {
+    const { result, rerender } = renderWidget(makeState());
+
+    const firstWrite = withMove(0, 'X');
+    const secondWrite = makeState({
+      board: ['X', 'O', null, null, null, null, null, null, null],
+      currentPlayer: 'X'
+    });
+
+    act(() => {
+      result.current.setState(firstWrite);
+    });
+    act(() => {
+      result.current.setState(secondWrite);
+    });
+    expect(result.current.state).toEqual(secondWrite);
+
+    // The first persist lands after the second local write. Adopting it would
+    // roll the widget back from A2 to A1.
+    rerender({ savedState: firstWrite });
+
+    expect(result.current.state).toEqual(secondWrite);
+    expect(result.current.state.board[1]).toBe('O');
+  });
+
+  it('still adopts a genuine external change after two local writes', () => {
+    const { result, rerender } = renderWidget(makeState());
+
+    act(() => {
+      result.current.setState(withMove(0, 'X'));
+    });
+    act(() => {
+      result.current.setState(withMove(4, 'O'));
+    });
+
+    const external = makeState({
+      board: ['X', 'O', null, null, null, null, null, null, null],
+      currentPlayer: 'X',
+      score: { X: 1, O: 2 }
+    });
+    rerender({ savedState: external });
+
+    expect(result.current.state).toEqual(external);
+  });
+
   it('keeps an in-flight local update when the lagging savedState is also rebuilt', () => {
     const { result, rerender } = renderWidget(makeState());
 

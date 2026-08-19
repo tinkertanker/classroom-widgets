@@ -18,6 +18,7 @@ const recorder = vi.hoisted(() => {
 
   let snapshot = emptyState;
   let isRecording = false;
+  let preserveProcessingOnReset = false;
   const subscribers = new Set<() => void>();
 
   const publish = (next: typeof emptyState) => {
@@ -35,6 +36,7 @@ const recorder = vi.hoisted(() => {
     getSnapshot: () => snapshot,
     reset: () => {
       isRecording = false;
+      preserveProcessingOnReset = false;
       publish(emptyState);
     },
     // Mirrors useVoiceRecording.startRecording: begins gathering input.
@@ -49,10 +51,17 @@ const recorder = vi.hoisted(() => {
       isRecording = false;
       publish({ ...snapshot, isListening: false, isGathering: false, isProcessing: true });
     },
+    // After the 20s watchdog the real recorder can still have isProcessing
+    // true; retry's resetState may not clear it before 'activating' commits.
+    preserveProcessingOnReset: (value: boolean) => {
+      preserveProcessingOnReset = value;
+    },
     // Mirrors useVoiceRecording.resetState.
     resetState: () => {
       isRecording = false;
-      publish(emptyState);
+      publish(preserveProcessingOnReset
+        ? { ...emptyState, isProcessing: true }
+        : emptyState);
     },
     // Mirrors recognition.onend with a captured transcript.
     finishWithTranscript: (transcript: string, confidence = 0.9) => {
@@ -130,6 +139,7 @@ describe('VoiceInterface', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -317,5 +327,97 @@ describe('VoiceInterface', () => {
     expect(onTranscriptComplete).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('Processing command...')).not.toBeInTheDocument();
     expect(screen.getByText('Created a poll')).toBeInTheDocument();
+  });
+
+  it('does not auto-close from a command that settles after the parent closes without handleClose', async () => {
+    let resolveCommand: (value: VoiceCommandResponse) => void = () => {};
+    const onTranscriptComplete = vi.fn().mockReturnValue(
+      new Promise<VoiceCommandResponse>((resolve) => {
+        resolveCommand = resolve;
+      })
+    );
+    const onClose = vi.fn();
+    const speakUtterance = vi.fn();
+    const cancelSpeech = vi.fn();
+    vi.stubGlobal('speechSynthesis', { speak: speakUtterance, cancel: cancelSpeech });
+
+    const { rerender } = render(
+      <VoiceInterface isOpen onClose={onClose} onTranscriptComplete={onTranscriptComplete} />
+    );
+
+    await armMicrophone();
+    await speak();
+    expect(screen.getByText('Processing command...')).toBeInTheDocument();
+
+    rerender(
+      <VoiceInterface isOpen={false} onClose={onClose} onTranscriptComplete={onTranscriptComplete} />
+    );
+
+    await act(async () => {
+      resolveCommand(buildResponse({
+        feedback: { message: 'Created a poll', type: 'success', shouldSpeak: true }
+      }));
+    });
+    await flush();
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(speakUtterance).not.toHaveBeenCalled();
+
+    rerender(
+      <VoiceInterface isOpen onClose={onClose} onTranscriptComplete={onTranscriptComplete} />
+    );
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('re-arms listening for a low-quality transcript instead of sticking on processing', async () => {
+    const onTranscriptComplete = vi.fn().mockResolvedValue(buildResponse());
+
+    render(
+      <VoiceInterface isOpen onClose={vi.fn()} onTranscriptComplete={onTranscriptComplete} />
+    );
+
+    await armMicrophone();
+    await speak('hi');
+
+    expect(onTranscriptComplete).not.toHaveBeenCalled();
+    expect(screen.queryByText('Processing command...')).not.toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(screen.getByText('Listening...')).toBeInTheDocument();
+  });
+
+  it('does not snap back to processing when retrying after a timeout while the recorder is still processing', async () => {
+    const onTranscriptComplete = vi.fn().mockReturnValue(new Promise<VoiceCommandResponse>(() => {}));
+
+    render(
+      <VoiceInterface isOpen onClose={vi.fn()} onTranscriptComplete={onTranscriptComplete} />
+    );
+
+    await armMicrophone();
+    await speak();
+    await act(async () => {
+      vi.advanceTimersByTime(PROCESSING_TIMEOUT_MS);
+    });
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+
+    recorder.preserveProcessingOnReset(true);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Try Again/i }));
+    });
+
+    expect(screen.queryByText('Processing command...')).not.toBeInTheDocument();
+    expect(screen.getByText('Activating microphone...')).toBeInTheDocument();
+
+    await armMicrophone();
+    expect(screen.getByText('Listening...')).toBeInTheDocument();
   });
 });
