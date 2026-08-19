@@ -58,20 +58,10 @@ export function ActivityProvider({
 
   const placeItem = useCallback((itemId: string, targetId: string) => {
     setPlacements(prev => {
-      // Check if target accepts single or multiple items
-      const target = activity?.targets.find(t => t.id === targetId);
-      const isSingleAccept = true; // For now, default to single
-
-      let newPlacements = prev.filter(p => p.itemId !== itemId);
-
-      if (isSingleAccept) {
-        // Remove any existing item in this target
-        newPlacements = newPlacements.filter(p => p.targetId !== targetId);
-      }
-
+      const newPlacements = prev.filter(p => p.itemId !== itemId && p.targetId !== targetId);
       return [...newPlacements, { itemId, targetId }];
     });
-  }, [activity]);
+  }, []);
 
   const removeItem = useCallback((itemId: string) => {
     setPlacements(prev => prev.filter(p => p.itemId !== itemId));

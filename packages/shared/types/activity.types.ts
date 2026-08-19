@@ -62,7 +62,6 @@ export interface DropZoneBlock extends UIBlock {
     targetId: string;
     label?: string;
     placeholder?: string;
-    accepts?: 'single' | 'multiple';
     showFeedback?: boolean;
     inline?: boolean;
   };
