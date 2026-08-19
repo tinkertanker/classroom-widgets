@@ -8,7 +8,7 @@ interface DropZoneBlockProps {
 }
 
 export function DropZoneBlock({ block }: DropZoneBlockProps) {
-  const { targetId, label, placeholder = 'Drop here', accepts = 'single', showFeedback = true, inline = false } = block.props;
+  const { targetId, label, placeholder = 'Drop here', showFeedback = true, inline = false } = block.props;
   const { filled, item, feedback, correctAnswer } = useActivityTarget(targetId);
   const { isActive, results, activity, removeItem } = useActivity();
 
