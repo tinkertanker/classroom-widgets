@@ -203,7 +203,8 @@ function App() {
       if (voiceControlEnabled &&
           (e.metaKey || e.ctrlKey) &&
           (e.key === 'Meta' || e.key === 'Control' || e.key === 'OS') &&
-          !e.altKey && !e.shiftKey) {
+          !e.altKey && !e.shiftKey &&
+          !e.repeat) {
         const now = Date.now();
 
         if (commandPressRef.current && (now - commandPressRef.current.pressedAt) < 500) {
@@ -237,6 +238,7 @@ function App() {
       document.removeEventListener('keydown', handleKeyDown);
       if (commandPressRef.current) {
         clearTimeout(commandPressRef.current.timeoutId);
+        commandPressRef.current = null;
       }
     };
   }, [

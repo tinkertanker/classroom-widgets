@@ -212,6 +212,77 @@ describe('VoiceInterface', () => {
     expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
+  it('ignores a command that settles after the processing timeout', async () => {
+    let resolveCommand: (value: VoiceCommandResponse) => void = () => {};
+    const onTranscriptComplete = vi.fn().mockReturnValue(
+      new Promise<VoiceCommandResponse>((resolve) => {
+        resolveCommand = resolve;
+      })
+    );
+    const onClose = vi.fn();
+
+    render(
+      <VoiceInterface isOpen onClose={onClose} onTranscriptComplete={onTranscriptComplete} />
+    );
+
+    await armMicrophone();
+    await speak();
+    expect(screen.getByText('Processing command...')).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(PROCESSING_TIMEOUT_MS);
+    });
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+
+    await act(async () => {
+      resolveCommand(buildResponse());
+    });
+    await flush();
+
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+    expect(screen.queryByText('Created a poll')).not.toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-close from a command that finishes after the user has retried', async () => {
+    let resolveFirst: (value: VoiceCommandResponse) => void = () => {};
+    const onTranscriptComplete = vi.fn()
+      .mockImplementationOnce(() => new Promise<VoiceCommandResponse>((resolve) => {
+        resolveFirst = resolve;
+      }))
+      .mockReturnValue(new Promise<VoiceCommandResponse>(() => {}));
+    const onClose = vi.fn();
+
+    render(
+      <VoiceInterface isOpen onClose={onClose} onTranscriptComplete={onTranscriptComplete} />
+    );
+
+    await armMicrophone();
+    await speak();
+
+    await act(async () => {
+      vi.advanceTimersByTime(PROCESSING_TIMEOUT_MS);
+    });
+    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /Try Again/i }));
+    });
+    await armMicrophone();
+    await speak('trigger the randomiser');
+
+    await act(async () => {
+      resolveFirst(buildResponse());
+    });
+    await flush();
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText('Processing command...')).toBeInTheDocument();
+  });
+
   it('starts clean after close and reopen, so a repeated phrase is processed again', async () => {
     const onTranscriptComplete = vi
       .fn<(transcript: string) => Promise<VoiceCommandResponse>>()

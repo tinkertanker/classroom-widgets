@@ -250,6 +250,23 @@ describe('ImageDisplay', () => {
     expect(screen.getByText('Add an image')).toBeInTheDocument();
   });
 
+  test('shows an error when an external key cannot be loaded from storage', async () => {
+    vi.mocked(loadImage).mockImplementation(async (key: string) => (
+      key === 'first-key' ? `data:image/png;base64,${key}` : null
+    ));
+
+    const { rerender } = render(
+      <ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'first-key' }} />
+    );
+
+    expect(await screen.findByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,first-key');
+
+    rerender(<ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'missing-key' }} />);
+
+    expect(await screen.findByText('Unable to load image. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByAltText('Display')).not.toBeInTheDocument();
+  });
+
   test('aborts active file reader and ignores file load callbacks after unmount', () => {
     const { container, unmount } = render(<ImageDisplay widgetId="widget-1" onStateChange={vi.fn()} />);
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
