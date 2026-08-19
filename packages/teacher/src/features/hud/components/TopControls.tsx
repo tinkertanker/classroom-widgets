@@ -11,7 +11,11 @@ import { hudContainer, hudProximity, zIndex } from '@shared/utils/styles';
 import { HudButton, HudButtonGroup, HudGroupButton } from '../../../components/ui';
 import Clock from './Clock';
 
-const TopControls: React.FC = () => {
+interface TopControlsProps {
+  onSwitchToCompact?: () => void;
+}
+
+const TopControls: React.FC<TopControlsProps> = ({ onSwitchToCompact }) => {
   const { scale, setScale } = useWorkspace();
   const { connected } = useServerConnection();
   const { sessionCode } = useSession();
@@ -166,6 +170,15 @@ const TopControls: React.FC = () => {
               title="Zoom in"
             />
           </HudButtonGroup>
+        )}
+
+        {onSwitchToCompact && (
+          <HudButton
+            onClick={onSwitchToCompact}
+            icon={FaCompress}
+            title="Switch to compact overlay"
+            aria-label="Switch to compact overlay"
+          />
         )}
 
         {/* Fullscreen Button (hidden on narrow single-column screens) */}

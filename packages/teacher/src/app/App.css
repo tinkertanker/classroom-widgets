@@ -313,58 +313,6 @@ html.desktop-dashboard-compact.desktop-dashboard-chrome-hidden .desktop-window-c
   }
 }
 
-html.desktop-dashboard-canvas .desktop-window-controls {
-  top: 14px;
-  width: auto;
-  min-width: 246px;
-}
-
-.desktop-window-identity {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-  color: #30333a;
-}
-
-.dark .desktop-window-identity {
-  color: #f5f3ef;
-}
-
-.desktop-window-identity > span:last-child {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-}
-
-.desktop-window-identity strong {
-  overflow: hidden;
-  font-size: 12px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.desktop-window-identity small {
-  margin-top: 1px;
-  color: #74767b;
-  font-size: 9px;
-  font-weight: 600;
-}
-
-.dark .desktop-window-identity small {
-  color: #aaa6a1;
-}
-
-.desktop-window-status {
-  width: 8px;
-  height: 8px;
-  flex: 0 0 8px;
-  border-radius: 50%;
-  background: #2e7b5b;
-  box-shadow: 0 0 0 3px rgba(46, 123, 91, 0.13);
-}
-
 .desktop-window-mode-button {
   display: inline-flex;
   min-height: 32px;

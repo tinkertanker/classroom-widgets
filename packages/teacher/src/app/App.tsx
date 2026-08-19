@@ -581,18 +581,23 @@ function App() {
           {isDashboardMode && (
             <>
               <CompactPanelHost dashboardTheme={dashboardTheme} windowMode={windowMode} />
-              <DesktopWindowControls
-                mode={windowMode}
-                onModeChange={requestWindowMode}
-                compactLayout={compactLayout}
-                onCompactLayoutChange={setCompactLayout}
-              />
+              {windowMode === 'compact' && (
+                <DesktopWindowControls
+                  onOpenCanvas={() => requestWindowMode('canvas')}
+                  compactLayout={compactLayout}
+                  onCompactLayoutChange={setCompactLayout}
+                />
+              )}
             </>
           )}
           
           {/* Top Controls */}
           <div data-dashboard-chrome="true">
-            <TopControls />
+            <TopControls
+              onSwitchToCompact={isDashboardMode && windowMode === 'canvas'
+                ? () => requestWindowMode('compact')
+                : undefined}
+            />
           </div>
           
           {/* Sticker Mode Banner */}

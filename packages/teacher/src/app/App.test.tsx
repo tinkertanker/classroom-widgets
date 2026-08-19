@@ -60,7 +60,13 @@ vi.mock('../features/hud/components', () => ({
 }));
 
 vi.mock('../features/hud/components/TopControls', () => ({
-  default: () => <div data-testid="top-controls" />
+  default: ({ onSwitchToCompact }: { onSwitchToCompact?: () => void }) => (
+    <div data-testid="top-controls">
+      {onSwitchToCompact && (
+        <button type="button" onClick={onSwitchToCompact}>Switch to compact overlay</button>
+      )}
+    </div>
+  )
 }));
 
 vi.mock('../features/hud/components/NarrowModeExitButton', () => ({
@@ -106,6 +112,7 @@ describe('App narrow layout', () => {
 
   afterEach(() => {
     cleanup();
+    delete window.webkit;
     vi.clearAllMocks();
   });
 
@@ -128,6 +135,22 @@ describe('App narrow layout', () => {
       expect(useWorkspaceStore.getState().layoutFormat).toBe('canvas');
       expect(screen.queryByTestId('column-widget-list')).not.toBeInTheDocument();
       expect(screen.queryByTestId('widget-list')).not.toBeInTheDocument();
+    });
+  });
+
+  it('puts the canvas-to-compact action in the top controls without the canvas indicator', () => {
+    const postMessage = vi.fn();
+    window.history.replaceState({}, '', '/?dashboard=1&mode=canvas');
+    window.webkit = { messageHandlers: { classroomDashboard: { postMessage } } };
+    setWindowWidth(1200);
+
+    render(<App />);
+
+    expect(screen.queryByText('Classroom Widgets')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to compact overlay' }));
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'window-mode-requested',
+      mode: 'compact'
     });
   });
 
