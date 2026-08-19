@@ -212,3 +212,72 @@ describe('App image paste sizing', () => {
     });
   });
 });
+
+describe('App double-Cmd-press voice activation', () => {
+  const pressCmd = () => fireEvent.keyDown(document, { key: 'Meta', metaKey: true });
+  const countKeydownCalls = (spy: ReturnType<typeof vi.spyOn>) =>
+    spy.mock.calls.filter(([type]) => type === 'keydown').length;
+
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/');
+    setWindowWidth(1200);
+    localStorage.clear();
+    useWorkspaceStore.setState({
+      layoutFormat: 'canvas',
+      widgets: [],
+      widgetStates: new Map(),
+      focusedWidgetId: null,
+      bottomBar: { ...useWorkspaceStore.getState().bottomBar, voiceControlEnabled: true }
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('registers the keydown listener once and does not re-register it on a single Cmd press', async () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(countKeydownCalls(addSpy)).toBe(1);
+    });
+
+    pressCmd();
+
+    expect(countKeydownCalls(addSpy)).toBe(1);
+    expect(countKeydownCalls(removeSpy)).toBe(0);
+  });
+
+  it('activates voice control on a double Cmd press within the 500ms window', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+    });
+
+    pressCmd();
+    pressCmd();
+
+    expect((window as any).getVoiceControlActive()).toBe(true);
+  });
+
+  it('does not activate voice control when the second Cmd press is outside the 500ms window', async () => {
+    render(<App />);
+
+    await waitFor(() => {
+      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+    });
+
+    vi.useFakeTimers();
+    pressCmd();
+    vi.advanceTimersByTime(600);
+    pressCmd();
+
+    expect((window as any).getVoiceControlActive()).toBe(false);
+  });
+});

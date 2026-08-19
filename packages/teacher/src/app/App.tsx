@@ -76,8 +76,7 @@ function App() {
 
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
-  const [lastCommandPress, setLastCommandPress] = useState<number | null>(null);
-  const [voiceTimeout, setVoiceTimeout] = useState<NodeJS.Timeout | null>(null);
+  const commandPressRef = useRef<{ pressedAt: number; timeoutId: ReturnType<typeof setTimeout> } | null>(null);
   
   // Note: Session code management is now handled by the networked widgets themselves
   // via the useNetworkedWidget hook. They will set/clear the session code as needed.
@@ -207,33 +206,27 @@ function App() {
           !e.altKey && !e.shiftKey) {
         const now = Date.now();
 
-        if (lastCommandPress && (now - lastCommandPress) < 500) {
+        if (commandPressRef.current && (now - commandPressRef.current.pressedAt) < 500) {
           // Double press detected - activate voice control
           e.preventDefault();
           setIsVoiceControlActive(true);
-          setLastCommandPress(null);
 
           // Clear any existing timeout
-          if (voiceTimeout) {
-            clearTimeout(voiceTimeout);
-            setVoiceTimeout(null);
-          }
+          clearTimeout(commandPressRef.current.timeoutId);
+          commandPressRef.current = null;
         } else {
-          // First press - set up timeout to detect double press
-          setLastCommandPress(now);
-
           // Clear previous timeout if exists
-          if (voiceTimeout) {
-            clearTimeout(voiceTimeout);
+          if (commandPressRef.current) {
+            clearTimeout(commandPressRef.current.timeoutId);
           }
 
           // Set new timeout
-          const timeout = setTimeout(() => {
-            setLastCommandPress(null);
-            setVoiceTimeout(null);
+          const timeoutId = setTimeout(() => {
+            commandPressRef.current = null;
           }, 500);
 
-          setVoiceTimeout(timeout);
+          // First press - set up timeout to detect double press
+          commandPressRef.current = { pressedAt: now, timeoutId };
         }
         return;
       }
@@ -242,20 +235,18 @@ function App() {
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      if (voiceTimeout) {
-        clearTimeout(voiceTimeout);
+      if (commandPressRef.current) {
+        clearTimeout(commandPressRef.current.timeoutId);
       }
     };
   }, [
     isDashboardMode,
     isDashboardVisible,
     isVoiceControlActive,
-    lastCommandPress,
     setDashboardVisible,
     stickerMode,
     updateStickerMode,
-    voiceControlEnabled,
-    voiceTimeout
+    voiceControlEnabled
   ]);
 
   // Global paste handler for creating widgets from clipboard content
