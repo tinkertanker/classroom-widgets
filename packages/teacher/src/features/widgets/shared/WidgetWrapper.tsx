@@ -11,6 +11,7 @@ import { Position, Size } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useHoverDelay } from './useHoverDelay';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -24,9 +25,10 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   const { scale } = useWorkspace();
   const isDashboardMode = isDesktopDashboardMode();
   const rndRef = useRef<any>(null);
-  const [showTrash, setShowTrash] = useState(false);
+  // Give the pointer a generous 2s to reach the trash button, which sits outside
+  // the widget's own bounds on the canvas
+  const { visible: showTrash, onMouseEnter, onMouseLeave } = useHoverDelay(2000);
   const [isResizing, setIsResizing] = useState(false);
-  const hideTrashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragMovedRef = useRef(false);
   const postDragRef = useRef(false);
   // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
@@ -88,15 +90,6 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
       rndRef.current.updatePosition({ x: widget.position.x, y: widget.position.y });
     }
   }, [scale, widget?.position]);
-  
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hideTrashTimeoutRef.current) {
-        clearTimeout(hideTrashTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Global mouseUp safety listener to clear stuck drag/resize states
   // Only attach listener when actually dragging/resizing (not for every widget)
@@ -148,20 +141,8 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   return (
     <div 
       className="relative group"
-      onMouseEnter={() => {
-        setShowTrash(true);
-        // Clear any pending timeout
-        if (hideTrashTimeoutRef.current) {
-          clearTimeout(hideTrashTimeoutRef.current);
-          hideTrashTimeoutRef.current = null;
-        }
-      }}
-      onMouseLeave={() => {
-        // Delay hiding the trash button
-        hideTrashTimeoutRef.current = setTimeout(() => {
-          setShowTrash(false);
-        }, 2000);
-      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <Rnd
         ref={rndRef}
