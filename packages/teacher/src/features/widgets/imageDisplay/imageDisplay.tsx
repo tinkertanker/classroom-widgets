@@ -52,21 +52,32 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
 
   const isCurrentImageChange = (changeId: number) => imageChangeIdRef.current === changeId;
 
+  const applyLoadedImage = (changeId: number, url: string | null) => {
+    if (!isCurrentImageChange(changeId)) return;
+    if (url) {
+      setError(null);
+      setImageUrl(url);
+    } else {
+      // A missing IndexedDB blob is a load failure, not an empty widget.
+      setImageUrl(null);
+      setError(STORAGE_LOAD_ERROR);
+    }
+  };
+
+  const applyImageLoadError = (changeId: number) => {
+    if (!isCurrentImageChange(changeId)) return;
+    setImageUrl(null);
+    setError(STORAGE_LOAD_ERROR);
+  };
+
   // Load image from IndexedDB on mount
   useEffect(() => {
     const changeId = imageChangeIdRef.current;
     const key = savedState?.imageKey;
     if (key) {
       void loadImage(key)
-        .then(url => {
-          if (url && isCurrentImageChange(changeId)) {
-            setError(null);
-            setImageUrl(url);
-          }
-        })
-        .catch(() => {
-          if (isCurrentImageChange(changeId)) setError(STORAGE_LOAD_ERROR);
-        });
+        .then(url => applyLoadedImage(changeId, url))
+        .catch(() => applyImageLoadError(changeId));
     } else if (savedState?.imageUrl) {
       // Migrate legacy base64 imageUrl to IndexedDB
       const newKey = widgetId ? `image-${widgetId}` : `image-${Date.now()}`;
@@ -109,22 +120,8 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     }
 
     void loadImage(persistedImageKey)
-      .then(url => {
-        if (!isCurrentImageChange(changeId)) return;
-        if (url) {
-          setError(null);
-          setImageUrl(url);
-        } else {
-          // A missing IndexedDB blob is a load failure, not an empty widget.
-          // Clearing the error here left compact-panel / workspace switches
-          // showing a blank image with no explanation.
-          setImageUrl(null);
-          setError(STORAGE_LOAD_ERROR);
-        }
-      })
-      .catch(() => {
-        if (isCurrentImageChange(changeId)) setError(STORAGE_LOAD_ERROR);
-      });
+      .then(url => applyLoadedImage(changeId, url))
+      .catch(() => applyImageLoadError(changeId));
   }, [persistedImageKey]);
 
   // Update image and notify parent

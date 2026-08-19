@@ -44,6 +44,10 @@ export function useWidgetState<T>({
   // The last savedState the resync effect looked at, so a parent that rebuilds
   // the prop on every render reads as unchanged rather than as a new value.
   const seenSavedRef = useRef<T | undefined>(savedState);
+  // Local writes the parent has not yet echoed, oldest first. A persist that
+  // lands out of order (A1 while local is already A2) is an echo of an earlier
+  // write, not an external change, and must not clobber A2.
+  const inFlightRef = useRef<T[]>([]);
 
   const setState = useCallback((nextState: React.SetStateAction<T>, notifyParent = true) => {
     setStateInternal((prevState) => {
@@ -52,6 +56,7 @@ export function useWidgetState<T>({
         : nextState;
       if (notifyParent) {
         agreedRef.current = resolvedState;
+        inFlightRef.current = [...inFlightRef.current, resolvedState];
         onStateChange?.(resolvedState);
       }
       return resolvedState;
@@ -69,8 +74,18 @@ export function useWidgetState<T>({
     // The parent's value did not actually change, only its reference.
     if (deepEqual(savedState, seenSavedRef.current)) return;
     seenSavedRef.current = savedState;
-    // The parent is echoing the update we just handed it.
-    if (deepEqual(savedState, agreedRef.current)) return;
+    // The parent is echoing the latest update we handed it.
+    if (deepEqual(savedState, agreedRef.current)) {
+      inFlightRef.current = [];
+      return;
+    }
+    const echoedIndex = inFlightRef.current.findIndex(pending => deepEqual(pending, savedState));
+    if (echoedIndex !== -1) {
+      // Stale echo of an earlier in-flight write. Keep the newer local value.
+      inFlightRef.current = inFlightRef.current.slice(echoedIndex + 1);
+      return;
+    }
+    inFlightRef.current = [];
     agreedRef.current = savedState;
     setState(savedState, false);
   }, [savedState, setState]);

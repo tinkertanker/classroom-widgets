@@ -267,6 +267,33 @@ describe('ImageDisplay', () => {
     expect(screen.queryByAltText('Display')).not.toBeInTheDocument();
   });
 
+  test('clears the previous image when an external key load throws', async () => {
+    vi.mocked(loadImage).mockImplementation(async (key: string) => {
+      if (key === 'first-key') return `data:image/png;base64,${key}`;
+      throw new Error('idb unavailable');
+    });
+
+    const { rerender } = render(
+      <ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'first-key' }} />
+    );
+
+    expect(await screen.findByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,first-key');
+
+    rerender(<ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'broken-key' }} />);
+
+    expect(await screen.findByText('Unable to load image. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByAltText('Display')).not.toBeInTheDocument();
+  });
+
+  test('shows an error when the initial saved image is missing from storage', async () => {
+    vi.mocked(loadImage).mockResolvedValueOnce(null);
+
+    render(<ImageDisplay savedState={{ imageKey: 'stored-image' }} />);
+
+    expect(await screen.findByText('Unable to load image. Please try again.')).toBeInTheDocument();
+    expect(screen.queryByAltText('Display')).not.toBeInTheDocument();
+  });
+
   test('aborts active file reader and ignores file load callbacks after unmount', () => {
     const { container, unmount } = render(<ImageDisplay widgetId="widget-1" onStateChange={vi.fn()} />);
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;

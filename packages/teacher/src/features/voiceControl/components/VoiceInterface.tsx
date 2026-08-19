@@ -63,18 +63,35 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     timeoutIdsRef.current.push(timeoutId);
   }, []);
 
+  const cancelSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
+
+  // Keep the open flag current during render so a then() that runs after the
+  // parent flips isOpen (and before the isOpen effect) still sees the close.
+  isOpenRef.current = isOpen;
+  const wasOpenRef = useRef(isOpen);
+  if (wasOpenRef.current && !isOpen) {
+    processingGenerationRef.current += 1;
+    isProcessingRef.current = false;
+  }
+  wasOpenRef.current = isOpen;
+
   useEffect(() => {
-    isOpenRef.current = isOpen;
     if (!isOpen) {
       clearScheduledActions();
+      cancelSpeech();
     }
-  }, [isOpen, clearScheduledActions]);
+  }, [isOpen, clearScheduledActions, cancelSpeech]);
 
   // Define handlers before useEffects
   const invalidateInFlightCommand = useCallback(() => {
     processingGenerationRef.current += 1;
     isProcessingRef.current = false;
-  }, []);
+    cancelSpeech();
+  }, [cancelSpeech]);
 
   const handleClose = useCallback(() => {
     clearScheduledActions();
@@ -130,11 +147,14 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     // Cleanup on unmount
     return () => {
       debug('🧹 Voice interface unmounting - releasing microphone resources');
+      processingGenerationRef.current += 1;
+      isProcessingRef.current = false;
       clearScheduledActions();
+      cancelSpeech();
       stopRecording();
       resetState();
     };
-  }, [isOpen, clearScheduledActions, stopRecording, resetState]);
+  }, [isOpen, clearScheduledActions, cancelSpeech, stopRecording, resetState]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -192,7 +212,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
 
     onTranscriptComplete(transcript)
       .then((response) => {
-        if (requestId !== processingGenerationRef.current) return;
+        if (requestId !== processingGenerationRef.current || !isOpenRef.current) return;
         setParsedCommand(response);
         setProcessedTranscript(transcript);
         const isError = response.feedback.type === 'error' || response.feedback.type === 'not_understood' || !response.success;
@@ -220,7 +240,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         }
       })
       .catch((err) => {
-        if (requestId !== processingGenerationRef.current) return;
+        if (requestId !== processingGenerationRef.current || !isOpenRef.current) return;
         debug.error('Command processing failed:', err);
         setVoiceState('error');
       })
@@ -260,7 +280,11 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
       setVoiceState('listening');
       // Play feedback sound when we start listening
       playFeedback('listening');
-    } else if (isProcessing) {
+    } else if (isProcessing && voiceState !== 'activating') {
+      // Recorder isProcessing stays true after a finished utterance (and after
+      // the 20s watchdog, which does not reset the recorder). Activating is
+      // retry / low-quality re-arm; snapping back to processing here would
+      // hide listening UI until the watchdog fired again.
       setVoiceState('processing');
     }
   }, [isListening, isProcessing, isGathering, voiceState, error, playFeedback]);
