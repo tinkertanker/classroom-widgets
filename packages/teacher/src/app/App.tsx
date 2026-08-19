@@ -14,8 +14,7 @@ import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
 import TopControls from '../features/hud/components/TopControls';
 import NarrowModeExitButton from '../features/hud/components/NarrowModeExitButton';
-import WidgetList from '../features/board/components/WidgetList';
-import ColumnWidgetList from '../features/board/components/ColumnWidgetList';
+import { CanvasWidgetList, ColumnWidgetList } from '../features/board/components/WidgetList';
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '@shared/components/SmallScreenWarning';
 import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
@@ -640,7 +639,7 @@ function App() {
               </ColumnBoard>
             ) : (
               <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
-                <WidgetList dashboardVisible={isDashboardVisible} />
+                <CanvasWidgetList dashboardVisible={isDashboardVisible} />
               </Board>
             )}
           </div>
