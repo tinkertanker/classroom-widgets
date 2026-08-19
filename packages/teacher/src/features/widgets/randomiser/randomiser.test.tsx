@@ -2,9 +2,10 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Randomiser from './randomiser';
-import { useChoiceManager } from './hooks';
+import { useChoiceManager, useSlotMachineAnimation } from './hooks';
 
 const showModal = vi.hoisted(() => vi.fn());
+const captureControlBarProps = vi.hoisted(() => vi.fn<(props: { onRandomise: () => void }) => void>());
 
 vi.mock('./hooks', () => ({
   useChoiceManager: vi.fn(() => ({
@@ -46,7 +47,12 @@ vi.mock('../../../contexts/ModalContext', () => ({
 vi.mock('../../../contexts/ConfettiContext', () => ({
   useConfetti: () => ({ triggerConfetti: vi.fn() })
 }));
-vi.mock('../shared/components', () => ({ RandomiserControlBar: () => null }));
+vi.mock('../shared/components', () => ({
+  RandomiserControlBar: (props: { onRandomise: () => void }) => {
+    captureControlBarProps(props);
+    return null;
+  }
+}));
 
 describe('Randomiser', () => {
   afterEach(() => {
@@ -79,5 +85,28 @@ describe('Randomiser', () => {
     expect(showModal).toHaveBeenCalledWith(expect.objectContaining({
       className: expect.stringContaining('max-h-[calc(100vh-1rem)] overflow-auto')
     }));
+  });
+
+  it('never passes a removed choice to the animation when randomising', () => {
+    const startAnimation = vi.fn((_choices: string[]) => null);
+    vi.mocked(useSlotMachineAnimation).mockReturnValueOnce({
+      ...vi.mocked(useSlotMachineAnimation)({ onAnimationComplete: vi.fn() }),
+      startAnimation
+    });
+    vi.mocked(useChoiceManager).mockReturnValueOnce({
+      ...vi.mocked(useChoiceManager)({}),
+      processChoices: vi.fn(() => ['Ada', 'Bea']),
+      removedChoices: ['Ada'],
+      getActiveChoices: vi.fn(() => ['Bea'])
+    });
+
+    render(<Randomiser />);
+
+    const lastCall = captureControlBarProps.mock.calls.at(-1);
+    const { onRandomise } = lastCall![0];
+    onRandomise();
+
+    expect(startAnimation).toHaveBeenCalledWith(['Bea']);
+    expect(startAnimation.mock.calls[0][0]).not.toContain('Ada');
   });
 });

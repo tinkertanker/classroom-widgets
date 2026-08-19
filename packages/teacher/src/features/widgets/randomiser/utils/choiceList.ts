@@ -13,3 +13,7 @@ export function normaliseChoiceList(rawInput: string): string[] {
 export function stringifyChoiceList(choices: string[]): string {
   return choices.join('\n');
 }
+
+export function getActiveChoices(choices: string[], removed: string[]): string[] {
+  return choices.filter((choice) => !removed.includes(choice));
+}

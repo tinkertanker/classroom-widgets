@@ -123,7 +123,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
 
     if (processedChoices.length !== 0) {
       // Filter out removed items
-      const activeChoices = processedChoices.filter(choice => !removedChoices.includes(choice));
+      const activeChoices = getActiveChoices();
 
       if (activeChoices.length === 0) {
         alert("All items have been removed! Please restore some items or add new ones.");
