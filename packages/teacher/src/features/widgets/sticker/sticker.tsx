@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import {
   CustomThumbsUp,
@@ -11,27 +12,43 @@ import {
   CustomCheck
 } from './CustomStickerIcons';
 
-interface StickerProps {
-  stickerType?: string; // Optional now, can be read from savedState
-  savedState?: {
-    colorIndex: number;
-    stickerType?: string;
-    stampType?: string; // For backward compatibility
-    rotation?: number;
-  };
-  onStateChange?: (state: any) => void;
+interface StickerState {
+  colorIndex: number;
+  stickerType: string;
+  rotation: number;
 }
 
-const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedState, onStateChange }) => {
-  // Get stickerType from props or savedState, with fallback to 'star'
-  const stickerType = propStickerType || savedState?.stickerType || savedState?.stampType || 'star';
-  // Initialize with random color if no saved state
-  const getRandomColorIndex = () => Math.floor(Math.random() * 6);
-  const [colorIndex, setColorIndex] = useState(savedState?.colorIndex ?? getRandomColorIndex());
-  const [rotation, setRotation] = useState(savedState?.rotation || 0);
-  
+interface StickerProps {
+  // A sticker is created with only its type recorded, so every field is optional.
+  savedState?: Partial<StickerState>;
+  onStateChange?: (state: StickerState) => void;
+}
+
+const getRandomColorIndex = () => Math.floor(Math.random() * 6);
+
+const Sticker: React.FC<StickerProps> = ({ savedState, onStateChange }) => {
+  // Pick the fallback colour once, so a sticker with no saved colour keeps the
+  // same one across re-renders until a click persists it.
+  const [fallbackColorIndex] = useState(getRandomColorIndex);
+
+  const normalisedSavedState: StickerState | undefined = savedState
+    ? {
+        colorIndex: savedState.colorIndex ?? fallbackColorIndex,
+        stickerType: savedState.stickerType ?? 'star',
+        rotation: savedState.rotation ?? 0
+      }
+    : undefined;
+
+  const { state, setState } = useWidgetState<StickerState>({
+    initialState: { colorIndex: fallbackColorIndex, stickerType: 'star', rotation: 0 },
+    savedState: normalisedSavedState,
+    onStateChange
+  });
+
+  const { colorIndex, stickerType, rotation } = state;
+
   // Subscribe to theme changes
-  const theme = useWorkspaceStore((state) => state.theme);
+  const theme = useWorkspaceStore((store) => store.theme);
 
   // Generate random rotation between -40 and 40 in steps of 5
   const getRandomRotation = () => {
@@ -41,17 +58,6 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
     }
     return steps[Math.floor(Math.random() * steps.length)];
   };
-
-  // Ensure stickerType is saved in state on mount
-  React.useEffect(() => {
-    if (onStateChange && (!savedState || (savedState.stickerType !== stickerType && savedState.stampType !== stickerType))) {
-      onStateChange({
-        colorIndex: colorIndex,
-        stickerType: stickerType,
-        rotation: rotation
-      });
-    }
-  }, [stickerType]);
 
   // Define more vibrant color schemes for cycling
   const colorSchemes = [
@@ -66,19 +72,11 @@ const Sticker: React.FC<StickerProps> = ({ stickerType: propStickerType, savedSt
   // Handle click to cycle colors and rotation
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent widget selection
-    const newColorIndex = (colorIndex + 1) % colorSchemes.length;
-    const newRotation = getRandomRotation();
-    
-    setColorIndex(newColorIndex);
-    setRotation(newRotation);
-    
-    if (onStateChange) {
-      onStateChange({ 
-        colorIndex: newColorIndex,
-        stickerType: stickerType,  // Preserve the sticker type
-        rotation: newRotation
-      });
-    }
+    setState({
+      colorIndex: (colorIndex + 1) % colorSchemes.length,
+      stickerType,  // Preserve the sticker type
+      rotation: getRandomRotation()
+    });
   };
 
   // Get the appropriate icon based on sticker type

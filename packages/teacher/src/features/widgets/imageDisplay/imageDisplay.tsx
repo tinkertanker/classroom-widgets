@@ -1,25 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { widgetContainer } from '@shared/utils/styles';
+import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { storeImage, loadImage, deleteImage } from '../../../services/imageStorage';
 
 const STORAGE_LOAD_ERROR = 'Unable to load image. Please try again.';
 const STORAGE_SAVE_ERROR = 'Unable to save image. Please try again.';
 const STORAGE_DELETE_ERROR = 'Unable to remove image. Please try again.';
 
+interface ImageDisplayState {
+  imageKey: string | null;
+}
+
 interface ImageDisplayProps {
   widgetId?: string;
   savedState?: { imageKey?: string | null; imageUrl?: string | null };
-  onStateChange?: (state: { imageKey: string | null }) => void;
+  onStateChange?: (state: ImageDisplayState) => void;
   isActive?: boolean; // Whether this widget is currently focused
 }
 
 const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onStateChange, isActive = false }) => {
+  // Only the persisted reference is widget state. The image itself is loaded
+  // asynchronously out of IndexedDB and stays local to this component.
+  const { state: persistedState, setState: setPersistedState } = useWidgetState<ImageDisplayState>({
+    initialState: { imageKey: null },
+    savedState: savedState ? { imageKey: savedState.imageKey ?? null } : undefined,
+    onStateChange
+  });
+  const persistedImageKey = persistedState.imageKey;
+
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageKeyRef = useRef<string | null>(savedState?.imageKey ?? null);
+  // Mirrors the persisted key synchronously, so an async store that finishes
+  // before the re-render still sees the key it just wrote, and so the reload
+  // effect below can tell our own update apart from an external one.
+  const imageKeyRef = useRef<string | null>(persistedState.imageKey);
   const imageChangeIdRef = useRef(0);
   const activeReaderRef = useRef<FileReader | null>(null);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -60,7 +77,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
           imageKeyRef.current = newKey;
           setError(null);
           setImageUrl(legacyImageUrl);
-          onStateChange?.({ imageKey: newKey });
+          setPersistedState({ imageKey: newKey });
         })
         .catch(() => {
           if (!isCurrentImageChange(changeId)) return;
@@ -76,6 +93,32 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
     activeReaderRef.current = null;
   }, []);
 
+  // Reload when the persisted key changes underneath us (a workspace switch or
+  // any other external edit to saved state). Our own writes update the ref
+  // first, so they fall out here rather than re-reading what is already shown.
+  useEffect(() => {
+    if (imageKeyRef.current === persistedImageKey) return;
+    imageKeyRef.current = persistedImageKey;
+    // An external key supersedes anything already in flight.
+    const changeId = beginImageChange();
+
+    if (!persistedImageKey) {
+      setError(null);
+      setImageUrl(null);
+      return;
+    }
+
+    void loadImage(persistedImageKey)
+      .then(url => {
+        if (!isCurrentImageChange(changeId)) return;
+        setError(null);
+        setImageUrl(url);
+      })
+      .catch(() => {
+        if (isCurrentImageChange(changeId)) setError(STORAGE_LOAD_ERROR);
+      });
+  }, [persistedImageKey]);
+
   // Update image and notify parent
   const updateImage = async (dataUrl: string | null, changeId = beginImageChange()) => {
     try {
@@ -90,7 +133,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
         imageKeyRef.current = key;
         setError(null);
         setImageUrl(dataUrl);
-        onStateChange?.({ imageKey: key });
+        setPersistedState({ imageKey: key });
         if (previousKey && previousKey !== key) {
           void deleteImage(previousKey).catch(() => undefined);
         }
@@ -102,7 +145,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({ widgetId, savedState, onSta
         }
         setError(null);
         setImageUrl(null);
-        onStateChange?.({ imageKey: null });
+        setPersistedState({ imageKey: null });
       }
     } catch {
       if (isCurrentImageChange(changeId)) {

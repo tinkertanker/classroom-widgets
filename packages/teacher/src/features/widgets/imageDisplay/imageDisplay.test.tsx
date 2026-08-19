@@ -1,5 +1,5 @@
 import React, { act } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import ImageDisplay from './imageDisplay';
 import { loadImage, storeImage, deleteImage } from '../../../services/imageStorage';
@@ -187,6 +187,67 @@ describe('ImageDisplay', () => {
 
     expect(await screen.findByText('Unable to save image. Please try again.')).toBeInTheDocument();
     expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  test('reloads the image when the persisted key changes externally', async () => {
+    const onStateChange = vi.fn();
+    vi.mocked(loadImage).mockImplementation(async (key: string) => `data:image/png;base64,${key}`);
+
+    const { rerender } = render(
+      <ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'first-key' }} onStateChange={onStateChange} />
+    );
+
+    expect(await screen.findByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,first-key');
+
+    rerender(
+      <ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'second-key' }} onStateChange={onStateChange} />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,second-key');
+    });
+    // Adopting an external key is not an edit, so it must not be echoed back.
+    expect(onStateChange).not.toHaveBeenCalled();
+  });
+
+  test('ignores a load that a newer persisted key superseded', async () => {
+    const pendingLoads = new Map<string, (url: string | null) => void>();
+    vi.mocked(loadImage).mockImplementation((key: string) => (
+      new Promise<string | null>(resolve => {
+        pendingLoads.set(key, resolve);
+      })
+    ));
+
+    const { rerender } = render(<ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'slow-key' }} />);
+
+    rerender(<ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'newer-key' }} />);
+
+    await act(async () => {
+      pendingLoads.get('newer-key')?.('data:image/png;base64,newer');
+    });
+
+    expect(screen.getByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,newer');
+
+    await act(async () => {
+      pendingLoads.get('slow-key')?.('data:image/png;base64,slow');
+    });
+
+    expect(screen.getByAltText('Display')).toHaveAttribute('src', 'data:image/png;base64,newer');
+  });
+
+  test('clears the image when the persisted key is externally removed', async () => {
+    vi.mocked(loadImage).mockImplementation(async (key: string) => `data:image/png;base64,${key}`);
+
+    const { rerender } = render(<ImageDisplay widgetId="widget-1" savedState={{ imageKey: 'first-key' }} />);
+
+    expect(await screen.findByAltText('Display')).toBeInTheDocument();
+
+    rerender(<ImageDisplay widgetId="widget-1" savedState={{ imageKey: null }} />);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText('Display')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('Add an image')).toBeInTheDocument();
   });
 
   test('aborts active file reader and ignores file load callbacks after unmount', () => {
