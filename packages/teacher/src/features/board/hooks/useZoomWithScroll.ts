@@ -33,7 +33,6 @@ export const useZoomWithScroll = (
   const currentScaleRef = useRef(scale);
   const initialDistance = useRef<number | null>(null);
   const initialScale = useRef(1);
-  const isScaling = useRef(false);
   const zoomCenter = useRef({ x: 0, y: 0 });
   const zoomOriginBoard = useRef<{ x: number; y: number } | null>(null);
   const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,7 +93,6 @@ export const useZoomWithScroll = (
         resetTimeout.current = null;
       }
       initialScale.current = currentScaleRef.current;
-      isScaling.current = true;
 
       const containerRect = container.getBoundingClientRect();
       zoomCenter.current = {
@@ -117,7 +115,7 @@ export const useZoomWithScroll = (
     };
 
     const handleTouchStart = (event: TouchEvent) => {
-      if (event.touches.length !== 2 || isScaling.current) return;
+      if (event.touches.length !== 2 || zoomOriginBoard.current !== null) return;
 
       initialDistance.current = getDistance(event.touches);
       const center = getTouchCenter(event.touches);
@@ -137,7 +135,6 @@ export const useZoomWithScroll = (
 
     const resetZoomGesture = () => {
       initialDistance.current = null;
-      isScaling.current = false;
       zoomOriginBoard.current = null;
 
       if (resetTimeout.current) {
@@ -159,14 +156,14 @@ export const useZoomWithScroll = (
     // Safari exposes trackpad pinch as dedicated gesture events. Keeping this
     // separate from wheel means ordinary trackpad scrolling stays native.
     const handleGestureStart = (event: Event) => {
-      if (!isWebKitGestureEvent(event) || isScaling.current) return;
+      if (!isWebKitGestureEvent(event) || zoomOriginBoard.current !== null) return;
 
       startZoomGesture(event.clientX, event.clientY);
       event.preventDefault();
     };
 
     const handleGestureChange = (event: Event) => {
-      if (!isWebKitGestureEvent(event) || !isScaling.current) return;
+      if (!isWebKitGestureEvent(event) || zoomOriginBoard.current === null) return;
 
       const nextScale = Math.max(
         minScale,
@@ -177,7 +174,7 @@ export const useZoomWithScroll = (
     };
 
     const handleGestureEnd = (event: Event) => {
-      if (!isScaling.current) return;
+      if (zoomOriginBoard.current === null) return;
 
       resetZoomGesture();
       event.preventDefault();
@@ -185,7 +182,7 @@ export const useZoomWithScroll = (
 
     const handleWheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return;
-      if (!isScaling.current) startZoomGesture(event.clientX, event.clientY);
+      if (zoomOriginBoard.current === null) startZoomGesture(event.clientX, event.clientY);
       const nextScale = Math.max(
         minScale,
         Math.min(maxScale, currentScaleRef.current * Math.exp(-event.deltaY * wheelSensitivity))
