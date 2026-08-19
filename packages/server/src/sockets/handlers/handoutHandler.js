@@ -2,6 +2,7 @@ const { EVENTS } = require('../../config/constants');
 const HandoutRoom = require('../../models/HandoutRoom');
 const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
+const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 
 /**
  * Handle handout related socket events
@@ -11,7 +12,9 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
   // Host adds item to handout
   socket.on(EVENTS.HANDOUT.ADD, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'handout', HandoutRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('handout:add', 'Unauthorized add attempt');
       return;
     }
@@ -23,11 +26,11 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
       return;
     }
 
-    const room = session.getRoom('handout', data.widgetId);
-    if (!room || !(room instanceof HandoutRoom)) {
+    if (!guard.ok) {
       logger.warn('handout:add', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: handoutRoomId } = guard;
 
     // Validate content
     if (!data.content || typeof data.content !== 'string') {
@@ -49,7 +52,6 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
     const item = room.addItem(normalizedContent, isLink);
 
     // Broadcast to all in the room
-    const handoutRoomId = data.widgetId ? `handout:${data.widgetId}` : 'handout';
     io.to(`${session.code}:${handoutRoomId}`).emit(EVENTS.HANDOUT.ITEM_ADDED, {
       ...item,
       widgetId: data.widgetId
@@ -61,7 +63,9 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
   // Host deletes item from handout
   socket.on(EVENTS.HANDOUT.DELETE, (data) => {
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'handout', HandoutRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('handout:delete', 'Unauthorized delete attempt');
       return;
     }
@@ -73,14 +77,13 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
       return;
     }
 
-    const room = session.getRoom('handout', data.widgetId);
-    if (!room || !(room instanceof HandoutRoom)) {
+    if (!guard.ok) {
       logger.warn('handout:delete', 'Room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId: handoutRoomId } = guard;
 
     if (room.deleteItem(data.itemId)) {
-      const handoutRoomId = data.widgetId ? `handout:${data.widgetId}` : 'handout';
       io.to(`${session.code}:${handoutRoomId}`).emit(EVENTS.HANDOUT.ITEM_DELETED, {
         itemId: data.itemId,
         widgetId: data.widgetId
@@ -109,15 +112,13 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
 
     const session = sessionManager.getSession(sessionCode);
 
-    if (session) {
-      const room = session.getRoom('handout', widgetId);
-      if (room && room instanceof HandoutRoom) {
-        socket.emit(EVENTS.HANDOUT.STATE_UPDATE, {
-          items: room.getItems(),
-          isActive: room.isActive,
-          widgetId: widgetId
-        });
-      }
+    const { ok, room } = resolveRoom(session, 'handout', HandoutRoom, widgetId);
+    if (ok) {
+      socket.emit(EVENTS.HANDOUT.STATE_UPDATE, {
+        items: room.getItems(),
+        isActive: room.isActive,
+        widgetId: widgetId
+      });
     }
   });
 

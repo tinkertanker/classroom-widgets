@@ -4,6 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse, ERROR_CODES } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
+const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 
 /**
  * Handle poll-related socket events
@@ -18,7 +19,9 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     });
 
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'poll', PollRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('poll:update', 'Ignoring poll:update - not from host');
       return;
     }
@@ -30,16 +33,15 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       return;
     }
 
-    const room = session.getRoom('poll', data.widgetId);
-    if (!room || !(room instanceof PollRoom)) {
+    if (!guard.ok) {
       logger.warn('poll:update', 'Poll room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId } = guard;
 
     // Use setPollData to ensure proper initialization
     room.setPollData(data.pollData);
 
-    const roomId = data.widgetId ? `poll:${data.widgetId}` : 'poll';
     const { votes, ...pollDataWithoutVotes } = room.pollData;
 
     const updateData = {
@@ -74,26 +76,24 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
 
     const session = sessionManager.getSession(sessionCode);
 
-    if (session) {
-      const room = session.getRoom('poll', widgetId);
-      if (room && room instanceof PollRoom) {
-        const { votes, ...pollDataWithoutVotes } = room.pollData;
+    const { ok, room } = resolveRoom(session, 'poll', PollRoom, widgetId);
+    if (ok) {
+      const { votes, ...pollDataWithoutVotes } = room.pollData;
 
-        const stateData = {
-          pollData: pollDataWithoutVotes,
-          results: room.getResults(),
-          widgetId: widgetId
-        };
+      const stateData = {
+        pollData: pollDataWithoutVotes,
+        results: room.getResults(),
+        widgetId: widgetId
+      };
 
-        socket.emit(EVENTS.POLL.STATE_UPDATE, stateData);
+      socket.emit(EVENTS.POLL.STATE_UPDATE, stateData);
 
-        // Also emit the widget's active state
-        socket.emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
-          roomType: 'poll',
-          widgetId: widgetId,
-          isActive: room.isActive
-        });
-      }
+      // Also emit the widget's active state
+      socket.emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
+        roomType: 'poll',
+        widgetId: widgetId,
+        isActive: room.isActive
+      });
     }
   });
 
@@ -123,8 +123,8 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       return;
     }
 
-    const room = session.getRoom('poll', widgetId);
-    if (!room || !(room instanceof PollRoom)) {
+    const guard = resolveRoom(session, 'poll', PollRoom, widgetId);
+    if (!guard.ok) {
       logger.warn('poll:vote', 'Poll room not found', { widgetId });
       socket.emit(EVENTS.POLL.VOTE_CONFIRMED, {
         ...createErrorResponse('ROOM_NOT_FOUND'),
@@ -132,6 +132,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       });
       return;
     }
+    const { room, roomId: pollRoomId } = guard;
 
     // Check if poll is active
     if (!room.isActive) {
@@ -171,7 +172,6 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       socket.emit(EVENTS.POLL.VOTE_CONFIRMED, createSuccessResponse({ widgetId }));
 
       // Emit updated results to all in the room
-      const pollRoomId = widgetId ? `poll:${widgetId}` : 'poll';
       const voteUpdateData = {
         votes: room.getVoteCounts(),
         totalVotes: room.getTotalVotes(),

@@ -4,6 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
+const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 
 
 // Socket payloads are client-controlled; normalize to an object so property
@@ -24,7 +25,9 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     });
 
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'activity', ActivityRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('activity:update', 'Ignoring activity:update - not from host');
       return;
     }
@@ -36,11 +39,11 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const room = session.getRoom('activity', data.widgetId);
-    if (!room || !(room instanceof ActivityRoom)) {
+    if (!guard.ok) {
       logger.warn('activity:update', 'Activity room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId } = guard;
 
     // Update activity
     if (data.activity) {
@@ -54,7 +57,6 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     }
 
     // Broadcast state update to all participants
-    const roomId = `activity:${data.widgetId}`;
     const stateData = {
       widgetId: data.widgetId,
       activity: room.activity,
@@ -79,7 +81,9 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     });
 
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'activity', ActivityRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('activity:reveal', 'Ignoring - not from host');
       return;
     }
@@ -90,16 +94,15 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const room = session.getRoom('activity', data.widgetId);
-    if (!room || !(room instanceof ActivityRoom)) {
+    if (!guard.ok) {
       logger.warn('activity:reveal', 'Activity room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId } = guard;
 
     room.revealAnswers(data.reveal);
 
     // Broadcast revealed answers to all participants
-    const roomId = `activity:${data.widgetId}`;
     if (data.reveal) {
       io.to(`${session.code}:${roomId}`).emit(EVENTS.ACTIVITY.REVEALED, {
         widgetId: data.widgetId,
@@ -119,7 +122,9 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     });
 
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
-    if (!session || session.hostSocketId !== socket.id) {
+
+    const guard = resolveHostRoom(session, socket, 'activity', ActivityRoom, data.widgetId);
+    if (isHostRejection(guard.error)) {
       logger.warn('activity:reset', 'Ignoring - not from host');
       return;
     }
@@ -130,16 +135,15 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const room = session.getRoom('activity', data.widgetId);
-    if (!room || !(room instanceof ActivityRoom)) {
+    if (!guard.ok) {
       logger.warn('activity:reset', 'Activity room not found', { widgetId: data.widgetId });
       return;
     }
+    const { room, roomId } = guard;
 
     room.reset();
 
     // Broadcast state update to all participants
-    const roomId = `activity:${data.widgetId}`;
     const stateData = {
       widgetId: data.widgetId,
       activity: room.activity,
@@ -171,22 +175,20 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
 
     const session = sessionManager.getSession(sessionCode);
 
-    if (session) {
-      const room = session.getRoom('activity', widgetId);
-      if (room && room instanceof ActivityRoom) {
-        const stateData = room.getStateForStudent(socket.id);
-        stateData.widgetId = widgetId;
-        stateData.responseCount = room.getResponseCount();
+    const { ok, room } = resolveRoom(session, 'activity', ActivityRoom, widgetId);
+    if (ok) {
+      const stateData = room.getStateForStudent(socket.id);
+      stateData.widgetId = widgetId;
+      stateData.responseCount = room.getResponseCount();
 
-        socket.emit(EVENTS.ACTIVITY.STATE_UPDATE, stateData);
+      socket.emit(EVENTS.ACTIVITY.STATE_UPDATE, stateData);
 
-        // Also emit the widget's active state
-        socket.emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
-          roomType: 'activity',
-          widgetId: widgetId,
-          isActive: room.isActive
-        });
-      }
+      // Also emit the widget's active state
+      socket.emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
+        roomType: 'activity',
+        widgetId: widgetId,
+        isActive: room.isActive
+      });
     }
   });
 
@@ -225,8 +227,8 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const room = session.getRoom('activity', widgetId);
-    if (!room || !(room instanceof ActivityRoom)) {
+    const guard = resolveRoom(session, 'activity', ActivityRoom, widgetId);
+    if (!guard.ok) {
       logger.warn('activity:submit', 'Activity room not found', { widgetId });
       if (callback) {
         callback({
@@ -236,6 +238,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       }
       return;
     }
+    const { room } = guard;
 
     // Check if activity is active
     if (!room.isActive) {
@@ -334,8 +337,8 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const room = session.getRoom('activity', widgetId);
-    if (!room || !(room instanceof ActivityRoom)) {
+    const guard = resolveRoom(session, 'activity', ActivityRoom, widgetId);
+    if (!guard.ok) {
       logger.warn('activity:retry', 'Activity room not found', { widgetId });
       if (callback) {
         callback({
@@ -345,6 +348,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       }
       return;
     }
+    const { room } = guard;
 
     // Check if retry is allowed
     if (!room.allowRetry) {
