@@ -18,9 +18,11 @@ import {
   createDefaultSavedCollections,
   V1_DEPRECATION_DATE,
   SavedCollections,
+  SavedItem,
   SavedRandomiserList,
   SavedQuestionBank,
-  SavedPollQuestion
+  SavedPollQuestion,
+  WorkspaceData
 } from '@shared/types/storage';
 import {
   migrateV1ToV2,
@@ -77,6 +79,42 @@ function getNextWorkspaceName(): string {
 
   const workspaceCount = Object.keys(v2Data.workspaces).length;
   return `Workspace ${workspaceCount + 1}`;
+}
+
+/**
+ * Build the state patch that loads a workspace's saved data into the store.
+ *
+ * Only per-workspace fields belong here. `theme`, `bottomBar` and `classEndTime`
+ * live in `globalSettings` and must survive a workspace switch unchanged, so
+ * they are deliberately absent.
+ */
+function applyWorkspaceSnapshot(
+  workspace: WorkspaceData,
+  workspaceId: string,
+  workspaceList: WorkspaceMetadata[]
+): Pick<
+  WorkspaceStore,
+  | 'currentWorkspaceId'
+  | 'workspaceList'
+  | 'widgets'
+  | 'background'
+  | 'scale'
+  | 'scrollPosition'
+  | 'layoutFormat'
+  | 'widgetStates'
+  | 'focusedWidgetId'
+> {
+  return {
+    currentWorkspaceId: workspaceId,
+    workspaceList,
+    widgets: workspace.widgets,
+    background: workspace.background,
+    scale: workspace.scale,
+    scrollPosition: workspace.scrollPosition,
+    layoutFormat: (workspace.layoutFormat || 'canvas') as LayoutFormat,
+    widgetStates: new Map(workspace.widgetStates),
+    focusedWidgetId: null
+  };
 }
 
 const defaultBottomBar = {
@@ -340,6 +378,107 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
 }
 
 // =============================================================================
+// Saved Collection Helpers
+// =============================================================================
+
+/** Which of the three saved-item dictionaries a CRUD call operates on */
+type CollectionKey = keyof SavedCollections;
+
+/** The item type stored in a given collection */
+type CollectionItem<K extends CollectionKey> = SavedCollections[K][string];
+
+/** Narrow view of the store's setter — these helpers only touch savedCollections */
+type SetSavedCollections = (partial: Pick<WorkspaceStore, 'savedCollections'>) => void;
+
+const MAX_SAVED_NAME_LENGTH = 100;
+
+/**
+ * Read a collection dictionary, creating it (and its parent) if storage predates
+ * the field. Older V2 payloads can be missing `savedCollections` entirely, or an
+ * individual dictionary that was added later.
+ */
+function ensureCollection<K extends CollectionKey>(
+  v2Data: StorageFormatV2,
+  key: K
+): SavedCollections[K] {
+  if (!v2Data.savedCollections) {
+    v2Data.savedCollections = createDefaultSavedCollections();
+  }
+  if (!v2Data.savedCollections[key]) {
+    v2Data.savedCollections[key] = {};
+  }
+  return v2Data.savedCollections[key];
+}
+
+/**
+ * Save a new item into one of the saved collections and mirror the result into
+ * store state. `createItem` receives the shared `SavedItem` fields (generated id,
+ * truncated name, timestamps) and adds the type-specific ones.
+ *
+ * @returns the generated id, or '' when there is no storage to write to
+ */
+function saveCollectionItem<K extends CollectionKey>(
+  setState: SetSavedCollections,
+  key: K,
+  idPrefix: string,
+  label: string,
+  name: string,
+  createItem: (base: SavedItem) => CollectionItem<K>
+): string {
+  const v2Data = loadStorageSynced();
+  if (!v2Data) {
+    console.warn(`[WorkspaceStore] Cannot save ${label}: no storage found`);
+    return '';
+  }
+
+  const collection = ensureCollection(v2Data, key);
+  const now = Date.now();
+  const id = `${idPrefix}-${now}-${Math.random().toString(36).substr(2, 9)}`;
+  const item = createItem({
+    id,
+    name: name.trim().slice(0, MAX_SAVED_NAME_LENGTH),
+    createdAt: now,
+    updatedAt: now
+  });
+
+  collection[id] = item;
+  saveStorage(v2Data);
+
+  setState({ savedCollections: { ...v2Data.savedCollections } });
+
+  return id;
+}
+
+/** All items in a collection, most recently updated first */
+function getCollectionItems<K extends CollectionKey>(
+  collections: SavedCollections,
+  key: K
+): Array<CollectionItem<K>> {
+  const collection = collections?.[key];
+  if (!collection) {
+    return [];
+  }
+  return Object.values(collection).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/** Remove an item from a collection; a missing collection or id is a no-op */
+function deleteCollectionItem(
+  setState: SetSavedCollections,
+  key: CollectionKey,
+  id: string
+): void {
+  const v2Data = loadStorageSynced();
+  if (!v2Data || !v2Data.savedCollections || !v2Data.savedCollections[key]) {
+    return;
+  }
+
+  delete v2Data.savedCollections[key][id];
+  saveStorage(v2Data);
+
+  setState({ savedCollections: { ...v2Data.savedCollections } });
+}
+
+// =============================================================================
 // Store Creation
 // =============================================================================
 
@@ -546,17 +685,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     const workspace = updatedStorage.workspaces[workspaceId];
     const { list } = getWorkspaceListFromStorage();
 
-    set({
-      currentWorkspaceId: workspaceId,
-      workspaceList: list,
-      widgets: workspace.widgets,
-      background: workspace.background,
-      scale: workspace.scale,
-      scrollPosition: workspace.scrollPosition,
-      layoutFormat: (workspace.layoutFormat || 'canvas') as LayoutFormat,
-      widgetStates: new Map(workspace.widgetStates),
-      focusedWidgetId: null
-    });
+    set(applyWorkspaceSnapshot(workspace, workspaceId, list));
   },
 
   createWorkspace: (name?: string) => {
@@ -577,17 +706,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     const workspace = finalStorage.workspaces[workspaceId];
     const { list } = getWorkspaceListFromStorage();
 
-    set({
-      currentWorkspaceId: workspaceId,
-      workspaceList: list,
-      widgets: workspace.widgets,
-      background: workspace.background,
-      scale: workspace.scale,
-      scrollPosition: workspace.scrollPosition,
-      layoutFormat: (workspace.layoutFormat || 'canvas') as LayoutFormat,
-      widgetStates: new Map(workspace.widgetStates),
-      focusedWidgetId: null
-    });
+    set(applyWorkspaceSnapshot(workspace, workspaceId, list));
 
     return workspaceId;
   },
@@ -613,17 +732,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
     // Only update state if we deleted the current workspace
     if (workspaceId === get().currentWorkspaceId) {
-      set({
-        currentWorkspaceId: updatedStorage.currentWorkspaceId,
-        workspaceList: list,
-        widgets: currentWorkspace.widgets,
-        background: currentWorkspace.background,
-        scale: currentWorkspace.scale,
-        scrollPosition: currentWorkspace.scrollPosition,
-        layoutFormat: (currentWorkspace.layoutFormat || 'canvas') as LayoutFormat,
-        widgetStates: new Map(currentWorkspace.widgetStates),
-        focusedWidgetId: null
-      });
+      set(applyWorkspaceSnapshot(
+        currentWorkspace,
+        updatedStorage.currentWorkspaceId,
+        list
+      ));
     } else {
       set({ workspaceList: list });
     }
@@ -653,164 +766,37 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   // Saved Collections Management
   // =============================================================================
 
-  saveRandomiserList: (name: string, choices: string[]): string => {
-    const v2Data = loadStorageSynced();
-    if (!v2Data) {
-      console.warn('[WorkspaceStore] Cannot save randomiser list: no storage found');
-      return '';
-    }
+  saveRandomiserList: (name: string, choices: string[]): string =>
+    saveCollectionItem(set, 'randomiserLists', 'randomiser', 'randomiser list', name,
+      (base): SavedRandomiserList => ({ ...base, type: 'randomiser', choices })),
 
-    // Ensure savedCollections exists
-    if (!v2Data.savedCollections) {
-      v2Data.savedCollections = createDefaultSavedCollections();
-    }
-
-    const id = `randomiser-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const now = Date.now();
-    const savedList: SavedRandomiserList = {
-      id,
-      name: name.trim().slice(0, 100),
-      type: 'randomiser',
-      choices,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    v2Data.savedCollections.randomiserLists[id] = savedList;
-    saveStorage(v2Data);
-
-    // Update state
-    set({ savedCollections: { ...v2Data.savedCollections } });
-
-    return id;
-  },
-
-  getRandomiserLists: (): SavedRandomiserList[] => {
-    const collections = get().savedCollections;
-    return Object.values(collections.randomiserLists).sort((a, b) => b.updatedAt - a.updatedAt);
-  },
+  getRandomiserLists: (): SavedRandomiserList[] =>
+    getCollectionItems(get().savedCollections, 'randomiserLists'),
 
   deleteRandomiserList: (id: string) => {
-    const v2Data = loadStorageSynced();
-    if (!v2Data || !v2Data.savedCollections) {
-      return;
-    }
-
-    delete v2Data.savedCollections.randomiserLists[id];
-    saveStorage(v2Data);
-
-    // Update state
-    set({ savedCollections: { ...v2Data.savedCollections } });
+    deleteCollectionItem(set, 'randomiserLists', id);
   },
 
-  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>): string => {
-    const v2Data = loadStorageSynced();
-    if (!v2Data) {
-      console.warn('[WorkspaceStore] Cannot save question bank: no storage found');
-      return '';
-    }
+  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>): string =>
+    saveCollectionItem(set, 'questionBanks', 'questions', 'question bank', name,
+      (base): SavedQuestionBank => ({ ...base, type: 'questions', questions })),
 
-    // Ensure savedCollections exists
-    if (!v2Data.savedCollections) {
-      v2Data.savedCollections = createDefaultSavedCollections();
-    }
-
-    const id = `questions-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const now = Date.now();
-    const savedBank: SavedQuestionBank = {
-      id,
-      name: name.trim().slice(0, 100),
-      type: 'questions',
-      questions,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    v2Data.savedCollections.questionBanks[id] = savedBank;
-    saveStorage(v2Data);
-
-    // Update state
-    set({ savedCollections: { ...v2Data.savedCollections } });
-
-    return id;
-  },
-
-  getQuestionBanks: (): SavedQuestionBank[] => {
-    const collections = get().savedCollections;
-    return Object.values(collections.questionBanks).sort((a, b) => b.updatedAt - a.updatedAt);
-  },
+  getQuestionBanks: (): SavedQuestionBank[] =>
+    getCollectionItems(get().savedCollections, 'questionBanks'),
 
   deleteQuestionBank: (id: string) => {
-    const v2Data = loadStorageSynced();
-    if (!v2Data || !v2Data.savedCollections) {
-      return;
-    }
-
-    delete v2Data.savedCollections.questionBanks[id];
-    saveStorage(v2Data);
-
-    // Update state
-    set({ savedCollections: { ...v2Data.savedCollections } });
+    deleteCollectionItem(set, 'questionBanks', id);
   },
 
-  savePollQuestion: (name: string, question: string, options: string[]): string => {
-    const v2Data = loadStorageSynced();
-    if (!v2Data) {
-      console.warn('[WorkspaceStore] Cannot save poll question: no storage found');
-      return '';
-    }
+  savePollQuestion: (name: string, question: string, options: string[]): string =>
+    saveCollectionItem(set, 'pollQuestions', 'poll', 'poll question', name,
+      (base): SavedPollQuestion => ({ ...base, type: 'poll', question, options })),
 
-    // Ensure savedCollections exists
-    if (!v2Data.savedCollections) {
-      v2Data.savedCollections = createDefaultSavedCollections();
-    }
-
-    // Ensure pollQuestions exists (for migration from older storage)
-    if (!v2Data.savedCollections.pollQuestions) {
-      v2Data.savedCollections.pollQuestions = {};
-    }
-
-    const id = `poll-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const now = Date.now();
-    const savedPoll: SavedPollQuestion = {
-      id,
-      name: name.trim().slice(0, 100),
-      type: 'poll',
-      question,
-      options,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    v2Data.savedCollections.pollQuestions[id] = savedPoll;
-    saveStorage(v2Data);
-
-    // Update state
-    set({ savedCollections: { ...v2Data.savedCollections } });
-
-    return id;
-  },
-
-  getPollQuestions: (): SavedPollQuestion[] => {
-    const collections = get().savedCollections;
-    // Handle migration case where pollQuestions might not exist
-    if (!collections.pollQuestions) {
-      return [];
-    }
-    return Object.values(collections.pollQuestions).sort((a, b) => b.updatedAt - a.updatedAt);
-  },
+  getPollQuestions: (): SavedPollQuestion[] =>
+    getCollectionItems(get().savedCollections, 'pollQuestions'),
 
   deletePollQuestion: (id: string) => {
-    const v2Data = loadStorageSynced();
-    if (!v2Data || !v2Data.savedCollections || !v2Data.savedCollections.pollQuestions) {
-      return;
-    }
-
-    delete v2Data.savedCollections.pollQuestions[id];
-    saveStorage(v2Data);
-
-    // Update state
-    set({ savedCollections: { ...v2Data.savedCollections } });
+    deleteCollectionItem(set, 'pollQuestions', id);
   }
     }),
     {
