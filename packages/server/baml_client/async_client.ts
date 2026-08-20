@@ -97,7 +97,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
 
         
         async ParseVoiceCommand(
-        transcript: string,
+        transcript: string,widgetTargets: string[],actionNames: string[],
         __baml_options__?: BamlCallOptions<never>
         ): Promise<types.VoiceCommand> {
           try {
@@ -111,7 +111,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
           // Check if onTick is provided - route through streaming if so
           if (options.onTick) {
           const stream = this.stream.ParseVoiceCommand(
-          transcript,
+          transcript,widgetTargets,actionNames,
           __baml_options__
           );
 
@@ -127,7 +127,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
             const raw = await this.runtime.callFunction(
             "ParseVoiceCommand",
             {
-            "transcript": transcript
+            "transcript": transcript,"widgetTargets": widgetTargets,"actionNames": actionNames
             },
             this.ctxManager.cloneContext(),
             options.tb?.__tb(),
@@ -159,7 +159,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
 
             
             ParseVoiceCommand(
-            transcript: string,
+            transcript: string,widgetTargets: string[],actionNames: string[],
             __baml_options__?: BamlCallOptions<never>
             ): BamlStream<partial_types.VoiceCommand, types.VoiceCommand>
               {
@@ -200,7 +200,7 @@ export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
                 const raw = this.runtime.streamFunction(
                 "ParseVoiceCommand",
                 {
-                "transcript": transcript
+                "transcript": transcript,"widgetTargets": widgetTargets,"actionNames": actionNames
                 },
                 undefined,
                 this.ctxManager.cloneContext(),

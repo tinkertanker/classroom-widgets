@@ -97,7 +97,7 @@ export class BamlSyncClient {
 
   
   ParseVoiceCommand(
-      transcript: string,
+      transcript: string,widgetTargets: string[],actionNames: string[],
       __baml_options__?: BamlCallOptions<never>
   ): types.VoiceCommand {
     try {
@@ -121,7 +121,7 @@ export class BamlSyncClient {
       const raw = this.runtime.callFunctionSync(
         "ParseVoiceCommand",
         {
-          "transcript": transcript
+          "transcript": transcript,"widgetTargets": widgetTargets,"actionNames": actionNames
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),

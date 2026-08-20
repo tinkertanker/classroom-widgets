@@ -168,26 +168,29 @@ private async executeLaunchWidget(command: any): Promise<ExecutionResult> {
 }
 ```
 
-### Backend: Ollama Service
+### Backend: BAML voice command service
+
+`packages/server/src/services/BAMLVoiceCommandService.js` derives the widget and
+action lists from these constants and passes them into the BAML
+`ParseVoiceCommand` function as arguments, so the LLM prompt can never drift from
+the shared definitions:
 
 ```javascript
-const { generateOllamaWidgetDocs } = require('../shared/constants/voiceCommandDefinitions');
+const {
+  VOICE_WIDGET_DEFINITIONS,
+  VOICE_ACTION_NAMES
+} = require('../shared/constants/voiceCommandDefinitions');
 
-async processVoiceCommand(transcript, context) {
-  // Auto-generate widget documentation for AI prompt
-  const widgetDocs = generateOllamaWidgetDocs();
+const WIDGET_TARGETS = Object.values(VOICE_WIDGET_DEFINITIONS).map((widget) => widget.targetName);
+const ACTION_NAMES = [...VOICE_ACTION_NAMES];
 
-  const systemPrompt = `You are a voice command processor...
-
-Available widgets and their commands:
-
-${widgetDocs}
-
-...`;
-
-  // Use prompt with Ollama
-}
+// ...
+const result = await this.client.ParseVoiceCommand(transcript, WIDGET_TARGETS, ACTION_NAMES);
 ```
+
+It deliberately sends names only rather than `generateOllamaWidgetDocs()`, whose
+full per-action descriptions are too long for the small local model. See
+[BAML_INTEGRATION.md](BAML_INTEGRATION.md).
 
 ## Adding a New Widget
 

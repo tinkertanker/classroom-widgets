@@ -38,7 +38,7 @@ export class HttpRequest {
 
   
   ParseVoiceCommand(
-      transcript: string,
+      transcript: string,widgetTargets: string[],actionNames: string[],
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -49,7 +49,7 @@ export class HttpRequest {
       return this.runtime.buildRequestSync(
         "ParseVoiceCommand",
         {
-          "transcript": transcript
+          "transcript": transcript,"widgetTargets": widgetTargets,"actionNames": actionNames
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -69,7 +69,7 @@ export class HttpStreamRequest {
 
   
   ParseVoiceCommand(
-      transcript: string,
+      transcript: string,widgetTargets: string[],actionNames: string[],
       __baml_options__?: BamlCallOptions<never>
   ): HTTPRequest {
     try {
@@ -80,7 +80,7 @@ export class HttpStreamRequest {
       return this.runtime.buildRequestSync(
         "ParseVoiceCommand",
         {
-          "transcript": transcript
+          "transcript": transcript,"widgetTargets": widgetTargets,"actionNames": actionNames
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

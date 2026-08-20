@@ -27,17 +27,20 @@ class FeedbackMessage {
 }
 
 // Main function for parsing voice commands
-function ParseVoiceCommand(transcript: string) -> VoiceCommand {
+// The widget/action catalog is NOT hardcoded here: it is passed in at call time by
+// BAMLVoiceCommandService.js, which derives it from the generated constants that come
+// from packages/shared/voiceCommandDefinitions.json (the single source of truth).
+// UNKNOWN is appended by this template because it is a sentinel, not a catalog entry.
+function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNames: string[]) -> VoiceCommand {
   client OllamaClient
 
   prompt #"
     You are a voice command parser for a classroom widget application.
     Parse the following voice command: "{{ transcript }}"
 
-    Available actions: CREATE_TIMER, RESET_TIMER, PAUSE_TIMER, CREATE_LIST, CREATE_POLL, START_POLL,
-    CREATE_RANDOMISER, RANDOMISE, CREATE_QUESTIONS, CREATE_TRAFFIC_LIGHT, CREATE_TEXT_BANNER, UNKNOWN
+    Available actions: {{ actionNames|join(", ") }}, UNKNOWN
 
-    Available widgets: timer, randomiser, list, poll, questions, trafficLight, textBanner, soundEffects
+    Available widgets: {{ widgetTargets|join(", ") }}
 
     CRITICAL: Return ONLY the raw JSON object. Do not wrap it in markdown code blocks. Do not include ```json or ```. Just return the pure JSON.
 

@@ -1,6 +1,20 @@
 // BAML-powered Voice Command Service
 // Uses BAML for type-safe LLM command parsing with Ollama
 
+const {
+  VOICE_WIDGET_DEFINITIONS,
+  VOICE_ACTION_NAMES
+} = require('../shared/constants/voiceCommandDefinitions');
+
+// The widget/action catalog handed to the LLM comes from the generated constants
+// (source of truth: packages/shared/voiceCommandDefinitions.json), not from a
+// hand-maintained copy inside the BAML prompt. Names only: the full per-action
+// docs from generateOllamaWidgetDocs() are far too long for a 0.5B model.
+// UNKNOWN is a sentinel appended by the BAML prompt template, so it is not part
+// of these lists.
+const WIDGET_TARGETS = Object.values(VOICE_WIDGET_DEFINITIONS).map((widget) => widget.targetName);
+const ACTION_NAMES = [...VOICE_ACTION_NAMES];
+
 // Note: BAML generates TypeScript files, so we need to use dynamic import
 // or install tsx/ts-node. For now, we'll lazy-load it.
 let bamlClient = null;
@@ -32,9 +46,31 @@ async function getBamlClient() {
  * - Automatic retries and fallbacks
  */
 class BAMLVoiceCommandService {
-  constructor() {
-    this.client = null;
+  /**
+   * @param {object} [options]
+   * @param {{ ParseVoiceCommand: Function }} [options.client] - Pre-built BAML client.
+   *   Injected by tests so they don't need tsx or a running Ollama; production
+   *   leaves it unset and the real client is lazy-loaded on first use.
+   */
+  constructor({ client = null } = {}) {
+    this.client = client;
     console.log('🎯 BAMLVoiceCommandService initialized');
+  }
+
+  /**
+   * The widget targets sent to the LLM, derived from the shared definitions.
+   * @returns {string[]}
+   */
+  getWidgetTargets() {
+    return WIDGET_TARGETS;
+  }
+
+  /**
+   * The action names sent to the LLM, derived from the shared definitions.
+   * @returns {string[]}
+   */
+  getActionNames() {
+    return ACTION_NAMES;
   }
 
   /**
@@ -53,8 +89,9 @@ class BAMLVoiceCommandService {
         this.client = await getBamlClient();
       }
 
-      // Call the BAML-generated ParseVoiceCommand function
-      const result = await this.client.ParseVoiceCommand(transcript);
+      // Call the BAML-generated ParseVoiceCommand function, passing the catalog
+      // in as arguments so the prompt can never drift from the shared definitions.
+      const result = await this.client.ParseVoiceCommand(transcript, WIDGET_TARGETS, ACTION_NAMES);
 
       const processingTime = Date.now() - startTime;
       console.log(`✅ BAML parsed in ${processingTime}ms:`, JSON.stringify(result, null, 2));
@@ -136,7 +173,7 @@ class BAMLVoiceCommandService {
       }
 
       // Try a simple test parse
-      const testResult = await this.client.ParseVoiceCommand('test');
+      await this.client.ParseVoiceCommand('test', WIDGET_TARGETS, ACTION_NAMES);
       return {
         status: 'healthy',
         service: 'BAML Voice Command Parser',

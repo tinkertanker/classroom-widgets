@@ -217,43 +217,47 @@ class FeedbackMessage {
 
 ### BAML Function
 
+The widget/action catalog is **not** hardcoded in the prompt. It is passed in as
+typed parameters at call time by `BAMLVoiceCommandService.js`, which derives it
+from the generated constants whose source of truth is
+`packages/shared/voiceCommandDefinitions.json`. That way the prompt cannot drift
+from the catalog the rest of the app uses.
+
 ```baml
-function ParseVoiceCommand(transcript: string) -> VoiceCommand {
-  client Ollama
+function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNames: string[]) -> VoiceCommand {
+  client OllamaClient
   prompt #"
     You are a voice command parser for a classroom widget application.
     Parse the following voice command: "{{ transcript }}"
 
-    Available widgets: TIMER, RANDOMISER, LIST, POLL, QUESTIONS, ...
+    Available actions: {{ actionNames|join(", ") }}, UNKNOWN
+
+    Available widgets: {{ widgetTargets|join(", ") }}
 
     Extract action, target, parameters, and confidence (0.8-0.95 for clear commands).
   "#
 }
 ```
 
+`UNKNOWN` is appended by the template because it is a sentinel the service checks
+for, not a catalog entry in the shared JSON.
+
 ## Adding New Commands
 
-### 1. Update BAML Schema
+### 1. Add the widget/action to the shared definitions
 
-Edit `baml_src/voice_commands.baml`:
+Edit `packages/shared/voiceCommandDefinitions.json` and run
+`npm run generate:voice-types` from the repo root. The new widget target and
+action name flow into the BAML prompt automatically, because the catalog is a
+runtime argument. **Do not** add widget or action names to the prompt text.
+
+Only if the command needs a new *parameter* do you touch
+`baml_src/voice_commands.baml`:
 
 ```baml
 class CommandParameters {
   // Add new parameter
   myNewParam string? @description("Description of new parameter")
-}
-```
-
-Update the prompt to include the new widget/action:
-
-```baml
-function ParseVoiceCommand(transcript: string) -> VoiceCommand {
-  prompt #"
-    ...
-    NEW_WIDGET:
-    - CREATE_NEW_WIDGET: Create a new widget (can specify myNewParam)
-    ...
-  "#
 }
 ```
 
