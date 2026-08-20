@@ -384,19 +384,9 @@ Use Zustand for global state:
 
 ```typescript
 // packages/teacher/src/store/workspaceStore.simple.ts
-export const useWorkspaceStore = create<WorkspaceState>()(
-  persist(
-    (set, get) => ({
-      widgets: [],
-      addWidget: (widget) => set(state => ({
-        widgets: [...state.widgets, widget]
-      })),
-    }),
-    { name: 'workspace-storage' }
-  )
-);
-
 // In components
+import { useWorkspaceStore } from '../store/workspaceStore.simple';
+
 const widgets = useWorkspaceStore(state => state.widgets);
 const addWidget = useWorkspaceStore(state => state.addWidget);
 ```

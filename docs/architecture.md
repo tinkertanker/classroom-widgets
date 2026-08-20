@@ -286,10 +286,12 @@ interface StorageFormatV2 {
 **Version History:**
 | Version | Status | Description |
 |---------|--------|-------------|
-| V1 | Deprecated (April 2026) | Single workspace, Zustand default format |
+| V1 | Removed (August 2026) | Single workspace, Zustand default format |
 | V2 | Current | Multi-workspace with named workspaces |
 
-**Migration:** V1 automatically migrates to V2 on first load. Backup saved to `workspace-storage-backup-{timestamp}`.
+V1 migration support was removed after its April 2026 deprecation window. The
+app now reads and writes only `classroom-widgets-storage-v2`; a stale
+`workspace-storage` key is ignored.
 
 ## Widget System
 

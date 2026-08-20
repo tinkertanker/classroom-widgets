@@ -13,12 +13,12 @@
         function testStorage() {
             const output = document.getElementById('output');
             
-            // Check if workspace-storage exists
-            const stored = localStorage.getItem('workspace-storage');
+            // Check the current V2 storage key
+            const stored = localStorage.getItem('classroom-widgets-storage-v2');
             if (stored) {
-                output.textContent = 'Found workspace-storage:\n' + JSON.stringify(JSON.parse(stored), null, 2);
+                output.textContent = 'Found classroom-widgets-storage-v2:\n' + JSON.stringify(JSON.parse(stored), null, 2);
             } else {
-                output.textContent = 'No workspace-storage found. Add some widgets in the app first.';
+                output.textContent = 'No V2 workspace storage found. Add some widgets in the app first.';
             }
             
             // Show all localStorage keys
@@ -27,8 +27,10 @@
         }
         
         function clearStorage() {
+            localStorage.removeItem('classroom-widgets-storage-v2');
+            // Also remove any stale pre-V2 key left by an old release.
             localStorage.removeItem('workspace-storage');
-            document.getElementById('output').textContent = 'Cleared workspace-storage';
+            document.getElementById('output').textContent = 'Cleared workspace storage';
         }
     </script>
 </body>
