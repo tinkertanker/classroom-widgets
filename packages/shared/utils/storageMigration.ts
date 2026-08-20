@@ -1,135 +1,32 @@
 /**
- * Storage Migration Utilities
+ * Storage Utilities
  *
- * Handles migration between storage format versions.
- * Ensures backward compatibility while transitioning to new formats.
+ * Load/save the V2 storage format and CRUD helpers for the workspaces
+ * within it. (Formerly also handled V1-to-V2 migration; that format's
+ * support was removed 2026-08 once no v1 population remained.)
  */
 
 import {
-  StorageFormatV1,
   StorageFormatV2,
-  WorkspaceData,
-  GlobalSettings,
-  isStorageV1,
   isStorageV2,
-  createDefaultStorageV2,
-  createDefaultGlobalSettings,
   createDefaultWorkspace,
-  createDefaultSavedCollections,
-  CURRENT_STORAGE_VERSION,
   STORAGE_KEY,
-  LEGACY_STORAGE_KEY,
-  V1_DEPRECATION_DATE,
   DEFAULT_WORKSPACE_NAME
 } from '../types/storage';
-import { BackgroundType, WidgetType } from '../types';
-
-// =============================================================================
-// Migration Functions
-// =============================================================================
-
-/**
- * Migrate from Version 1 (single workspace) to Version 2 (multi-workspace)
- */
-export function migrateV1ToV2(v1Data: StorageFormatV1): StorageFormatV2 {
-  const workspaceId = `workspace-${Date.now()}`;
-  const now = Date.now();
-
-  // Extract state from v1 format
-  const state = v1Data.state || {};
-
-  // Create workspace from v1 state
-  const workspace: WorkspaceData = {
-    id: workspaceId,
-    name: DEFAULT_WORKSPACE_NAME,
-    createdAt: now,
-    updatedAt: now,
-    widgets: Array.isArray(state.widgets) ? state.widgets : [],
-    background: state.background || BackgroundType.LOWPOLY,
-    scale: typeof state.scale === 'number' ? state.scale : 1,
-    scrollPosition: state.scrollPosition || { x: 0, y: 0 },
-    widgetStates: Array.isArray(state.widgetStates) ? state.widgetStates : []
-  };
-
-  // Extract global settings from v1 state
-  // Note: V1 format used 'toolbar', we migrate to 'bottomBar'
-  const defaultSettings = createDefaultGlobalSettings();
-  const v1BottomBar = (state as any).toolbar || (state as any).bottomBar || {};
-  const globalSettings: GlobalSettings = {
-    theme: state.theme || 'light',
-    bottomBar: {
-      ...defaultSettings.bottomBar,
-      ...v1BottomBar,
-      // Ensure arrays are valid
-      visibleWidgets: Array.isArray(v1BottomBar?.visibleWidgets)
-        ? v1BottomBar.visibleWidgets
-        : defaultSettings.bottomBar.visibleWidgets,
-      pinnedWidgets: Array.isArray(v1BottomBar?.pinnedWidgets)
-        ? v1BottomBar.pinnedWidgets
-        : defaultSettings.bottomBar.pinnedWidgets,
-      recentWidgets: Array.isArray(v1BottomBar?.recentWidgets)
-        ? v1BottomBar.recentWidgets
-        : defaultSettings.bottomBar.recentWidgets
-    }
-  };
-
-  return {
-    version: 2,
-    migratedFrom: 1,
-    migratedAt: now,
-    currentWorkspaceId: workspaceId,
-    workspaces: {
-      [workspaceId]: workspace
-    },
-    globalSettings,
-    session: {
-      code: state.sessionCode || null,
-      createdAt: state.sessionCreatedAt || null
-    },
-    savedCollections: createDefaultSavedCollections()
-  };
-}
 
 // =============================================================================
 // Storage Operations
 // =============================================================================
 
 /**
- * Load storage data, automatically migrating from old formats if needed.
- * Returns the current format (V2) or null if no data exists.
+ * Load storage data. Returns the current format (V2) or null if no data exists.
  */
 export function loadStorage(): StorageFormatV2 | null {
   try {
-    // First, try to load V2 format
     const v2Raw = localStorage.getItem(STORAGE_KEY);
     if (v2Raw) {
       const v2Data = JSON.parse(v2Raw);
       if (isStorageV2(v2Data)) {
-        return v2Data;
-      }
-    }
-
-    // Try to load and migrate V1 format (Zustand's format)
-    const v1Raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (v1Raw) {
-      const v1Data = JSON.parse(v1Raw);
-      if (isStorageV1(v1Data)) {
-        console.log('[Storage] Migrating from V1 to V2 format...');
-
-        // Migrate to V2
-        const v2Data = migrateV1ToV2(v1Data);
-
-        // Save migrated data
-        saveStorage(v2Data);
-
-        // Backup old format (for safety during transition)
-        localStorage.setItem(`${LEGACY_STORAGE_KEY}-backup`, v1Raw);
-
-        // Show deprecation warning in console
-        logDeprecationWarning();
-
-        console.log('[Storage] Migration complete. Data backed up to:', `${LEGACY_STORAGE_KEY}-backup`);
-
         return v2Data;
       }
     }
@@ -153,35 +50,6 @@ export function saveStorage(data: StorageFormatV2): boolean {
     console.error('[Storage] Error saving storage:', error);
     return false;
   }
-}
-
-// =============================================================================
-// Deprecation Handling
-// =============================================================================
-
-/**
- * Get deprecation warning message for V1 format
- */
-export function getDeprecationWarning(): string {
-  const now = new Date();
-  const daysUntilRemoval = Math.ceil(
-    (V1_DEPRECATION_DATE.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (daysUntilRemoval <= 0) {
-    return 'Warning: Your data is in a deprecated format. Please reload the app to migrate automatically.';
-  }
-
-  return `Notice: Your data format will be automatically upgraded. Old format support ends in ${daysUntilRemoval} days.`;
-}
-
-/**
- * Log deprecation warning to console
- */
-function logDeprecationWarning(): void {
-  const warning = getDeprecationWarning();
-  console.warn(`[Storage Deprecation] ${warning}`);
-  console.warn(`[Storage Deprecation] V1 format support will be removed after ${V1_DEPRECATION_DATE.toDateString()}`);
 }
 
 // =============================================================================

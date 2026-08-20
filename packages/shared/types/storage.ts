@@ -1,14 +1,11 @@
 /**
  * Storage Format Definitions
  *
- * This file defines the versioned storage formats for persisting workspace data.
+ * This file defines the storage format for persisting workspace data.
  *
  * VERSION HISTORY:
- * - Version 1: Single workspace format (deprecated, remove support after April 2026)
+ * - Version 1: Single workspace format (removed 2026-08; no v1 population remained)
  * - Version 2: Multi-workspace format with named workspaces
- *
- * MIGRATION: The app automatically migrates from v1 to v2 on load.
- * Old format data is preserved in a backup key for safety.
  */
 
 import { BackgroundType, WidgetType } from './index';
@@ -70,12 +67,6 @@ export interface SavedCollections {
 export const CURRENT_STORAGE_VERSION = 2;
 export const STORAGE_KEY = 'classroom-widgets-storage-v2';
 export const LEGACY_STORAGE_KEY = 'workspace-storage';  // Zustand's old key
-
-/**
- * Deprecation date for Version 1 format.
- * After this date, v1 migration support may be removed.
- */
-export const V1_DEPRECATION_DATE = new Date('2026-04-19');
 
 /**
  * Individual workspace data
@@ -157,31 +148,6 @@ export interface StorageFormatV2 {
 }
 
 // =============================================================================
-// LEGACY FORMAT (Version 1) - Single workspace (DEPRECATED)
-// =============================================================================
-
-/**
- * @deprecated This format is deprecated and will stop being supported after April 2026.
- * Use StorageFormatV2 instead.
- *
- * This is the format used by Zustand persist middleware.
- */
-export interface StorageFormatV1 {
-  state: {
-    widgets: StoredWidget[];
-    background: BackgroundType;
-    theme: 'light' | 'dark';
-    scale: number;
-    scrollPosition: { x: number; y: number };
-    bottomBar: StoredBottomBarConfig;
-    widgetStates: Array<[string, any]>;
-    sessionCode: string | null;
-    sessionCreatedAt: number | null;
-  };
-  version?: number;  // Zustand's internal version (usually 0)
-}
-
-// =============================================================================
 // Type Guards
 // =============================================================================
 
@@ -196,19 +162,6 @@ export function isStorageV2(data: unknown): data is StorageFormatV2 {
     (data as any).version === 2 &&
     'workspaces' in data &&
     'currentWorkspaceId' in data
-  );
-}
-
-/**
- * Check if storage data is Version 1 (legacy Zustand) format
- */
-export function isStorageV1(data: unknown): data is StorageFormatV1 {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'state' in data &&
-    typeof (data as any).state === 'object' &&
-    !('workspaces' in data)
   );
 }
 

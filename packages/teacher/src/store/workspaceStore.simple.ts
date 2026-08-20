@@ -11,12 +11,10 @@ import {
   STORAGE_KEY,
   LEGACY_STORAGE_KEY,
   CURRENT_STORAGE_VERSION,
-  isStorageV1,
   isStorageV2,
   createDefaultStorageV2,
   createDefaultWorkspace,
   createDefaultSavedCollections,
-  V1_DEPRECATION_DATE,
   SavedCollections,
   SavedItem,
   SavedRandomiserList,
@@ -25,7 +23,6 @@ import {
   WorkspaceData
 } from '@shared/types/storage';
 import {
-  migrateV1ToV2,
   loadStorage,
   saveStorage,
   addWorkspace as addWorkspaceToStorage,
@@ -188,13 +185,9 @@ if (typeof window !== 'undefined') {
 
 /**
  * Custom storage adapter that handles the multi-workspace V2 format.
- * Automatically migrates from V1 format if needed.
- *
- * Storage Format Versions:
- * - V1 (deprecated): Single workspace, Zustand default format
- * - V2 (current): Multi-workspace support with named workspaces
- *
- * @deprecated V1 format support will be removed after April 2026
+ * (Formerly also migrated from V1's single-workspace, Zustand-default
+ * format; that format's support was removed 2026-08 once no v1
+ * population remained.)
  */
 const workspaceStorage: StateStorage = {
   getItem: (name: string): string | null => {
@@ -226,30 +219,6 @@ const workspaceStorage: StateStorage = {
             lastPersistedZustandValue = zustandValue;
             return zustandValue;
           }
-        }
-      }
-
-      // Try to load and migrate V1 format (deprecated)
-      const v1Raw = localStorage.getItem(LEGACY_STORAGE_KEY);
-      if (v1Raw) {
-        const v1Data = JSON.parse(v1Raw);
-        if (isStorageV1(v1Data)) {
-          console.warn(
-            `[Storage] Migrating from deprecated V1 format. ` +
-            `V1 support will be removed after ${V1_DEPRECATION_DATE.toDateString()}.`
-          );
-
-          // Migrate to V2
-          const v2Data = migrateV1ToV2(v1Data);
-
-          // Save in new format
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(v2Data));
-
-          // Backup old format
-          localStorage.setItem(`${LEGACY_STORAGE_KEY}-backup-${Date.now()}`, v1Raw);
-
-          // Return in Zustand format (will be processed normally)
-          return v1Raw;
         }
       }
 
@@ -363,17 +332,10 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
 
       // Save V2 format
       localStorage.setItem(STORAGE_KEY, JSON.stringify(v2Data));
-
-      // Also save in legacy format for backward compatibility during transition
-      // This can be removed after V1 deprecation date
-      localStorage.setItem(LEGACY_STORAGE_KEY, value);
       lastPersistedZustandValue = value;
 
     } catch (error) {
       console.error('[Storage] Error writing storage:', error);
-      // Fallback: save directly to legacy key
-      localStorage.setItem(LEGACY_STORAGE_KEY, value);
-      lastPersistedZustandValue = value;
     }
 }
 
