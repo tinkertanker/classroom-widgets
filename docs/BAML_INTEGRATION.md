@@ -230,7 +230,7 @@ function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNa
     You are a voice command parser for a classroom widget application.
     Parse the following voice command: "{{ transcript }}"
 
-    Available actions: {{ actionNames|join(", ") }}, UNKNOWN
+    Available actions: {{ actionNames|join(", ") }}
 
     Available widgets: {{ widgetTargets|join(", ") }}
 
@@ -239,8 +239,10 @@ function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNa
 }
 ```
 
-`UNKNOWN` is appended by the template because it is a sentinel the service checks
-for, not a catalog entry in the shared JSON.
+The generated action list includes both widget-specific actions and the shared
+generic actions (`LAUNCH_WIDGET` and `UNKNOWN`). The server validates every BAML
+result against the shared action/target pairs before returning an executable
+command.
 
 ## Adding New Commands
 
@@ -295,7 +297,7 @@ client GPT4 {
   }
 }
 
-function ParseVoiceCommand(transcript: string) -> VoiceCommand {
+function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNames: string[]) -> VoiceCommand {
   client GPT4  // Changed from Ollama
   prompt #"..."#
 }

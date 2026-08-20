@@ -115,6 +115,8 @@ export const VOICE_WIDGET_TARGET_MAP: Record<string, string> = {
 export const VOICE_ACTION_NAMES = [
   'CREATE_TIMER',
   'CREATE_TASK_CUE',
+  'LAUNCH_WIDGET',
+  'UNKNOWN',
   // ... etc
 ];
 ```
@@ -191,6 +193,10 @@ const result = await this.client.ParseVoiceCommand(transcript, WIDGET_TARGETS, A
 It deliberately sends names only rather than `generateOllamaWidgetDocs()`, whose
 full per-action descriptions are too long for the small local model. See
 [BAML_INTEGRATION.md](BAML_INTEGRATION.md).
+
+The generated action list includes the JSON file's `genericActions` as well as
+the per-widget actions. After parsing, the service rejects unknown actions and
+action/target combinations that do not occur in these definitions.
 
 ## Adding a New Widget
 

@@ -10,10 +10,10 @@ const {
 // (source of truth: packages/shared/voiceCommandDefinitions.json), not from a
 // hand-maintained copy inside the BAML prompt. Names only: the full per-action
 // docs from generateOllamaWidgetDocs() are far too long for a 0.5B model.
-// UNKNOWN is a sentinel appended by the BAML prompt template, so it is not part
-// of these lists.
-const WIDGET_TARGETS = Object.values(VOICE_WIDGET_DEFINITIONS).map((widget) => widget.targetName);
-const ACTION_NAMES = [...VOICE_ACTION_NAMES];
+const WIDGET_TARGETS = Object.freeze(
+  Object.values(VOICE_WIDGET_DEFINITIONS).map((widget) => widget.targetName)
+);
+const ACTION_NAMES = Object.freeze([...VOICE_ACTION_NAMES]);
 
 // Note: BAML generates TypeScript files, so we need to use dynamic import
 // or install tsx/ts-node. For now, we'll lazy-load it.
@@ -62,7 +62,7 @@ class BAMLVoiceCommandService {
    * @returns {string[]}
    */
   getWidgetTargets() {
-    return WIDGET_TARGETS;
+    return [...WIDGET_TARGETS];
   }
 
   /**
@@ -70,7 +70,7 @@ class BAMLVoiceCommandService {
    * @returns {string[]}
    */
   getActionNames() {
-    return ACTION_NAMES;
+    return [...ACTION_NAMES];
   }
 
   /**
@@ -96,25 +96,40 @@ class BAMLVoiceCommandService {
       const processingTime = Date.now() - startTime;
       console.log(`✅ BAML parsed in ${processingTime}ms:`, JSON.stringify(result, null, 2));
 
-      // Check if the command is UNKNOWN or confidence is too low
-      const isUnknown = result.action === 'UNKNOWN' || result.confidence < 0.5;
+      // BAML validates the response shape, but action and target are strings in
+      // that schema. Reject hallucinated actions and mismatched action/target
+      // pairs before they reach the teacher app, which dispatches by action.
+      const matchesCatalog = result.action === 'LAUNCH_WIDGET'
+        ? WIDGET_TARGETS.includes(result.target)
+        : Object.values(VOICE_WIDGET_DEFINITIONS).some((widget) => (
+          widget.targetName === result.target
+          && widget.actions.some((action) => action.name === result.action)
+        ));
+      const isUnknown = result.action === 'UNKNOWN'
+        || result.confidence < 0.5
+        || !matchesCatalog;
 
       // Transform BAML result to match our API format
-      // Provide default feedback if LLM didn't include it
-      const feedback = result.feedback || {
-        message: isUnknown
-          ? `I didn't understand "${transcript}". Try saying something like "create a timer" or "launch the poll".`
-          : `${result.action.replace(/_/g, ' ').toLowerCase()} on ${result.target}`,
-        type: isUnknown ? 'not_understood' : 'success',
-        shouldSpeak: true
-      };
+      // Rejected commands always get neutral feedback. In particular, do not
+      // preserve a model-provided success message for a command we will not run.
+      const feedback = isUnknown
+        ? {
+            message: `I didn't understand "${transcript}". Try saying something like "create a timer" or "launch the poll".`,
+            type: 'not_understood',
+            shouldSpeak: true
+          }
+        : result.feedback || {
+            message: `${result.action.replace(/_/g, ' ').toLowerCase()} on ${result.target}`,
+            type: 'success',
+            shouldSpeak: true
+          };
 
       return {
         success: !isUnknown,
         command: {
-          action: result.action,
-          target: result.target,
-          parameters: result.parameters || {},
+          action: isUnknown ? 'UNKNOWN' : result.action,
+          target: isUnknown ? 'unknown' : result.target,
+          parameters: isUnknown ? {} : result.parameters || {},
           confidence: result.confidence
         },
         feedback: {
@@ -129,6 +144,7 @@ class BAMLVoiceCommandService {
 
       // Return a graceful fallback response
       return {
+        success: false,
         command: {
           action: 'UNKNOWN',
           target: 'unknown',

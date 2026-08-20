@@ -95,6 +95,9 @@ export const VOICE_ACTION_NAMES = [
       allActions.add(action.name);
     }
   }
+  for (const action of definitions.genericActions || []) {
+    allActions.add(action.name);
+  }
 
   for (const action of Array.from(allActions).sort()) {
     content += `  '${action}',\n`;
@@ -158,6 +161,9 @@ const VOICE_ACTION_NAMES = [
     for (const action of widget.actions) {
       allActions.add(action.name);
     }
+  }
+  for (const action of definitions.genericActions || []) {
+    allActions.add(action.name);
   }
 
   for (const action of Array.from(allActions).sort()) {

@@ -45,9 +45,10 @@ plus two string arrays, one of widget target names and one of action names, and
 replaced the two hardcoded catalog lines with template expressions that join
 each array with commas. The server service then derives those two arrays from
 the generated constants once at module load and passes them on every call. There
-is now exactly one place a widget name is written down, and the prompt reads it
-at runtime. The catalog physically cannot be stale, because there is no second
-copy to go stale.
+is now exactly one source file where a widget name is written down, and the
+prompt reads the generated catalog at runtime. A unit test compares the generated
+server catalog with that JSON source, so forgetting to regenerate it fails
+loudly instead of quietly sending the model a stale menu.
 
 One detail worth knowing before you try this: BAML has no way to import or
 include external data into a prompt file. There is no equivalent of reading a
@@ -60,7 +61,9 @@ client exposes a request builder alongside the normal call: instead of invoking
 the model, it renders and returns the HTTP request body the model *would* have
 received. That gave us the fully rendered prompt as a string, printed to the
 terminal, showing all thirty-three action names and all twenty widget targets in
-the right places, with no network call and no waiting on a model. Being able to
+the right places, with no network call and no waiting on a model. The current
+catalog also includes the two generic actions, `LAUNCH_WIDGET` and `UNKNOWN`, for
+thirty-five total. Being able to
 inspect a rendered prompt without spending a model call is the single most
 useful debugging affordance in this kind of framework, and it is worth reaching
 for first whenever a prompt is not behaving. The fallback plan, had the filter
@@ -69,7 +72,7 @@ not existed, was to pass two plain strings pre-joined with commas in JavaScript
 made that unnecessary.
 
 Two trade-offs came out of this. First, the prompt got much longer: a 0.5
-billion parameter model now reads twenty widget names and thirty-three action
+billion parameter model now reads twenty widget names and thirty-five action
 names rather than eight and twelve. Small models genuinely degrade as the choice
 space grows, so we ran the same fifteen transcripts through both catalogs, same
 template and same model, changing only the arrays passed in. On the eight
@@ -80,12 +83,12 @@ model, not the prompt length, is the limiting factor. That is the right shape of
 experiment to reach for here, because making the catalog an argument means you
 can A/B two catalogs without touching a single line of code.
 
-Second, we kept `UNKNOWN` written literally in the template rather than
-appending it to the array in JavaScript. It is a sentinel the service checks for
-when the model cannot parse a command, not a widget action, so it does not
-belong in the shared JSON. Putting it in the template means no caller can forget
-it. The alternative — appending it in the service — would work too but makes the
-guarantee depend on every call site remembering.
+Second, generic actions are easy to omit accidentally. The first version of the
+generator collected only actions nested under widgets, so `LAUNCH_WIDGET` never
+reached the prompt and `UNKNOWN` had to be appended by hand. Both already lived
+under `genericActions` in the shared JSON. The generator now includes that list,
+and the tests compare the runtime catalog directly with the JSON source rather
+than with another generated constant.
 
 The last piece was making this testable. The service lazy-loads the generated
 TypeScript client through a transpiler at runtime and then talks to a local

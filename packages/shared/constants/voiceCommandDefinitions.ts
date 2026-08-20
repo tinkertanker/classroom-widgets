@@ -478,6 +478,7 @@ export const VOICE_ACTION_NAMES = [
   'CREATE_VISUALISER',
   'CREATE_VOLUME_MONITOR',
   'CREATE_WORDLE',
+  'LAUNCH_WIDGET',
   'PAUSE_RT_FEEDBACK',
   'PAUSE_TIMER',
   'PLAY_SOUND',
@@ -491,6 +492,7 @@ export const VOICE_ACTION_NAMES = [
   'STOP_POLL',
   'STOP_QUESTIONS',
   'STOP_TIMER',
+  'UNKNOWN',
 ] as const;
 
 export type VoiceActionName = typeof VOICE_ACTION_NAMES[number];

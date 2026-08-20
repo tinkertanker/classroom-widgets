@@ -30,7 +30,6 @@ class FeedbackMessage {
 // The widget/action catalog is NOT hardcoded here: it is passed in at call time by
 // BAMLVoiceCommandService.js, which derives it from the generated constants that come
 // from packages/shared/voiceCommandDefinitions.json (the single source of truth).
-// UNKNOWN is appended by this template because it is a sentinel, not a catalog entry.
 function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNames: string[]) -> VoiceCommand {
   client OllamaClient
 
@@ -38,7 +37,7 @@ function ParseVoiceCommand(transcript: string, widgetTargets: string[], actionNa
     You are a voice command parser for a classroom widget application.
     Parse the following voice command: "{{ transcript }}"
 
-    Available actions: {{ actionNames|join(", ") }}, UNKNOWN
+    Available actions: {{ actionNames|join(", ") }}
 
     Available widgets: {{ widgetTargets|join(", ") }}
 

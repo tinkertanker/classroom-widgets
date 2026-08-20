@@ -1,12 +1,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const BAMLVoiceCommandService = require('./BAMLVoiceCommandService');
-const {
-  VOICE_WIDGET_DEFINITIONS,
-  VOICE_ACTION_NAMES
-} = require('../shared/constants/voiceCommandDefinitions');
+const sourceDefinitions = require('../../../shared/voiceCommandDefinitions.json');
 
-const EXPECTED_TARGETS = Object.values(VOICE_WIDGET_DEFINITIONS).map((widget) => widget.targetName);
+const EXPECTED_TARGETS = Object.values(sourceDefinitions.widgets).map((widget) => widget.targetName);
+const EXPECTED_ACTIONS = [
+  ...Object.values(sourceDefinitions.widgets).flatMap((widget) => (
+    widget.actions.map((action) => action.name)
+  )),
+  ...sourceDefinitions.genericActions.map((action) => action.name)
+].sort();
 
 /**
  * Build a service with a fake BAML client, so no tsx transpile or running Ollama
@@ -39,7 +42,7 @@ test('passes the shared widget/action catalog into ParseVoiceCommand', async () 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].transcript, 'start a wordle');
   assert.deepEqual(calls[0].widgetTargets, EXPECTED_TARGETS);
-  assert.deepEqual(calls[0].actionNames, VOICE_ACTION_NAMES);
+  assert.deepEqual(calls[0].actionNames, EXPECTED_ACTIONS);
 });
 
 test('the widget catalog covers every widget in the shared definitions', async () => {
@@ -48,8 +51,8 @@ test('the widget catalog covers every widget in the shared definitions', async (
   await service.processVoiceCommand('start a wordle');
 
   const targets = calls[0].widgetTargets;
-  assert.equal(targets.length, Object.keys(VOICE_WIDGET_DEFINITIONS).length);
-  for (const widget of Object.values(VOICE_WIDGET_DEFINITIONS)) {
+  assert.equal(targets.length, Object.keys(sourceDefinitions.widgets).length);
+  for (const widget of Object.values(sourceDefinitions.widgets)) {
     assert.ok(
       targets.includes(widget.targetName),
       `missing widget target "${widget.targetName}" in the catalog sent to the model`
@@ -67,24 +70,22 @@ test('the action catalog covers every action in the shared definitions', async (
   await service.processVoiceCommand('play a sound effect');
 
   const actions = calls[0].actionNames;
-  const expected = new Set();
-  for (const widget of Object.values(VOICE_WIDGET_DEFINITIONS)) {
-    for (const action of widget.actions) {
-      expected.add(action.name);
-    }
-  }
-  for (const name of expected) {
-    assert.ok(actions.includes(name), `missing action "${name}" in the catalog sent to the model`);
-  }
-  // UNKNOWN is a sentinel appended by the BAML prompt template, not a catalog entry.
-  assert.ok(!actions.includes('UNKNOWN'));
+  assert.deepEqual(actions, EXPECTED_ACTIONS);
+  assert.ok(actions.includes('LAUNCH_WIDGET'));
+  assert.ok(actions.includes('UNKNOWN'));
 });
 
-test('the catalog is derived, not a snapshot of the service module', () => {
+test('the catalog matches its JSON source and getters cannot mutate later requests', () => {
   const service = new BAMLVoiceCommandService({ client: { ParseVoiceCommand: async () => OK_RESULT } });
 
   assert.deepEqual(service.getWidgetTargets(), EXPECTED_TARGETS);
-  assert.deepEqual(service.getActionNames(), VOICE_ACTION_NAMES);
+  assert.deepEqual(service.getActionNames(), EXPECTED_ACTIONS);
+
+  service.getWidgetTargets().length = 0;
+  service.getActionNames().length = 0;
+
+  assert.deepEqual(service.getWidgetTargets(), EXPECTED_TARGETS);
+  assert.deepEqual(service.getActionNames(), EXPECTED_ACTIONS);
 });
 
 test('a recognised command is reported as a success with the model feedback', async () => {
@@ -113,23 +114,61 @@ test('an UNKNOWN action is not a success and gets a not_understood default feedb
 
   assert.equal(result.success, false);
   assert.equal(result.command.action, 'UNKNOWN');
+  assert.equal(result.command.target, 'unknown');
   assert.equal(result.feedback.type, 'not_understood');
   assert.match(result.feedback.message, /banana hammock/);
 });
 
-test('a low-confidence parse is not a success even with a known action', async () => {
+test('a low-confidence parse is normalized to UNKNOWN so the teacher cannot execute it', async () => {
   const { service } = makeService(() => ({
     action: 'CREATE_TIMER',
     target: 'timer',
     confidence: 0.3,
-    parameters: { duration: 300 }
+    parameters: { duration: 300 },
+    feedback: { message: 'Creating a timer', type: 'success', shouldSpeak: true }
   }));
 
   const result = await service.processVoiceCommand('maybe a timer');
 
   assert.equal(result.success, false);
+  assert.equal(result.command.action, 'UNKNOWN');
+  assert.equal(result.command.target, 'unknown');
+  assert.deepEqual(result.command.parameters, {});
   assert.equal(result.feedback.type, 'not_understood');
+  assert.doesNotMatch(result.feedback.message, /Creating a timer/);
   assert.equal(result.command.confidence, 0.3);
+});
+
+test('an action/target mismatch is normalized to UNKNOWN', async () => {
+  const { service } = makeService(() => ({
+    action: 'STOP_TIMER',
+    target: 'poll',
+    confidence: 0.95,
+    parameters: {},
+    feedback: { message: 'Stopping the poll', type: 'success', shouldSpeak: true }
+  }));
+
+  const result = await service.processVoiceCommand('stop the poll');
+
+  assert.equal(result.success, false);
+  assert.equal(result.command.action, 'UNKNOWN');
+  assert.equal(result.command.target, 'unknown');
+  assert.equal(result.feedback.type, 'not_understood');
+});
+
+test('LAUNCH_WIDGET accepts any canonical widget target from the shared catalog', async () => {
+  const { service } = makeService(() => ({
+    action: 'LAUNCH_WIDGET',
+    target: 'visualiser',
+    confidence: 0.9,
+    parameters: {}
+  }));
+
+  const result = await service.processVoiceCommand('launch the visualiser');
+
+  assert.equal(result.success, true);
+  assert.equal(result.command.action, 'LAUNCH_WIDGET');
+  assert.equal(result.command.target, 'visualiser');
 });
 
 test('a client failure falls back to an UNKNOWN command with alternatives', async () => {
@@ -139,7 +178,7 @@ test('a client failure falls back to an UNKNOWN command with alternatives', asyn
 
   const result = await service.processVoiceCommand('create a timer');
 
-  assert.equal(result.success, undefined);
+  assert.equal(result.success, false);
   assert.equal(result.command.action, 'UNKNOWN');
   assert.equal(result.command.target, 'unknown');
   assert.equal(result.feedback.type, 'error');
@@ -154,7 +193,7 @@ test('healthCheck reports healthy when the client parses, unhealthy when it thro
   const { service: healthy, calls } = makeService(() => OK_RESULT);
   assert.equal((await healthy.healthCheck()).status, 'healthy');
   assert.deepEqual(calls[0].widgetTargets, EXPECTED_TARGETS);
-  assert.deepEqual(calls[0].actionNames, VOICE_ACTION_NAMES);
+  assert.deepEqual(calls[0].actionNames, EXPECTED_ACTIONS);
 
   const { service: broken } = makeService(() => {
     throw new Error('connection refused');
