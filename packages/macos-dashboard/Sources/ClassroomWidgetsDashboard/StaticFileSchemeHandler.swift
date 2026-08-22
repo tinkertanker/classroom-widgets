@@ -62,25 +62,44 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         let root = webRoot
         ioQueue.async { [weak self] in
             guard let self else { return }
-            let index = root.appendingPathComponent("index.html")
-            _ = try? self.loadPayload(for: index.standardizedFileURL)
+            let index = root.appendingPathComponent("index.html").standardizedFileURL
+            guard let htmlPayload = try? self.loadPayload(for: index),
+                  let html = String(data: htmlPayload.data, encoding: .utf8) else {
+                return
+            }
 
-            let assets = root.appendingPathComponent("assets", isDirectory: true)
-            let fileManager = FileManager.default
-            guard let enumerator = fileManager.enumerator(
-                at: assets,
-                includingPropertiesForKeys: [.isRegularFileKey],
-                options: [.skipsHiddenFiles]
-            ) else { return }
-
-            for case let fileURL as URL in enumerator {
-                let ext = fileURL.pathExtension.lowercased()
-                guard ext == "js" || ext == "mjs" || ext == "css" else { continue }
-                let standardized = fileURL.standardizedFileURL
-                guard self.isInsideWebRoot(standardized) else { continue }
-                _ = try? self.loadPayload(for: standardized)
+            for path in Self.referencedEntryAssets(in: html) {
+                let relativePath = path.split(separator: "/").map(String.init).joined(separator: "/")
+                let fileURL = root.appendingPathComponent(relativePath).standardizedFileURL
+                guard self.isInsideWebRoot(fileURL) else { continue }
+                _ = try? self.loadPayload(for: fileURL)
             }
         }
+    }
+
+    private static let entryAssetReferenceRegex = try! NSRegularExpression(
+        pattern: #"(?:src|href)=["'](/[^"']+)["']"#
+    )
+
+    static func referencedEntryAssets(in html: String) -> [String] {
+        let nsHTML = html as NSString
+        let range = NSRange(location: 0, length: nsHTML.length)
+        let matches = entryAssetReferenceRegex.matches(in: html, options: [], range: range)
+        var seen = Set<String>()
+        var paths: [String] = []
+
+        for match in matches {
+            guard match.numberOfRanges > 1 else { continue }
+            let path = nsHTML.substring(with: match.range(at: 1))
+            if path.hasPrefix("//") { continue }
+            let ext = (path as NSString).pathExtension.lowercased()
+            guard ext == "js" || ext == "mjs" || ext == "css" else { continue }
+            if seen.insert(path).inserted {
+                paths.append(path)
+            }
+        }
+
+        return paths
     }
 
     private func fileURL(for requestURL: URL) -> URL? {
