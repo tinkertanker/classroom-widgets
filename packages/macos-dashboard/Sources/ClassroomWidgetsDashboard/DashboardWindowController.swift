@@ -537,13 +537,16 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
     private func abortCompactTransition() {
         pendingWidgetLauncherOpen = false
+        widgetLauncherOpenAttemptInFlight = false
         // Preparing a handoff marks each panel bridge as closing, so recreate
         // the compact surfaces rather than re-showing those inert web views.
         widgetPanelCoordinator.enterCanvas()
         isChangingWindowMode = false
         resetHostWriteTracking()
         // Launcher prepare and window-mode requests update the webview before
-        // this handoff finishes; restore the still-compact host mode there too.
+        // this handoff finishes; restore the still-compact host mode there too
+        // and drop any launchpad the bridge already opened or queued.
+        cancelWebWidgetLauncher()
         setWebWindowMode(windowMode)
         let hasCompactPanels = widgetPanelCoordinator.enterCompact()
         guard dashboardVisible else {
@@ -1371,6 +1374,20 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         return NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
     }
 
+    private func cancelWebWidgetLauncher() {
+        webView.evaluateJavaScript(
+            """
+            (() => {
+              if (window.cancelClassroomWidgetLauncher) {
+                window.cancelClassroomWidgetLauncher();
+                return true;
+              }
+              return false;
+            })()
+            """
+        )
+    }
+
     private func openWidgetLauncher(retriesRemaining: Int = 5) {
         guard pendingWidgetLauncherOpen, !widgetLauncherOpenAttemptInFlight else { return }
         widgetLauncherOpenAttemptInFlight = true
@@ -1388,6 +1405,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             self.widgetLauncherOpenAttemptInFlight = false
             if result as? Bool == true {
                 self.pendingWidgetLauncherOpen = false
+                if self.windowMode == .compact && !self.isChangingWindowMode {
+                    self.cancelWebWidgetLauncher()
+                    self.setWebWindowMode(.compact)
+                }
                 return
             }
             guard retriesRemaining > 0 else {

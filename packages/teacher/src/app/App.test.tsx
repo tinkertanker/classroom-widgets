@@ -6,7 +6,7 @@ import App from './App';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { WidgetType } from '@shared/types';
-import { resetWidgetLauncherForTests } from '../features/desktop/widgetLauncher';
+import { registerWidgetLauncherOpener, resetWidgetLauncherForTests } from '../features/desktop/widgetLauncher';
 
 vi.mock('./App.css', () => ({}));
 vi.mock('../sounds/trash-crumple.mp3', () => ({ default: 'trash-crumple.mp3' }));
@@ -116,6 +116,7 @@ describe('App narrow layout', () => {
     cleanup();
     resetWidgetLauncherForTests();
     delete window.openClassroomWidgetLauncher;
+    delete window.cancelClassroomWidgetLauncher;
     delete window.webkit;
     vi.clearAllMocks();
   });
@@ -160,6 +161,7 @@ describe('App narrow layout', () => {
 
     await waitFor(() => {
       expect(typeof window.openClassroomWidgetLauncher).toBe('function');
+      expect(typeof window.cancelClassroomWidgetLauncher).toBe('function');
       expect(typeof window.classroomDashboard?.setWindowMode).toBe('function');
     });
 
@@ -170,9 +172,14 @@ describe('App narrow layout', () => {
     expect(document.documentElement).toHaveClass('desktop-dashboard-canvas');
 
     act(() => {
+      window.cancelClassroomWidgetLauncher?.();
       window.classroomDashboard?.setWindowMode('compact');
     });
 
+    const open = vi.fn();
+    registerWidgetLauncherOpener(open);
+
+    expect(open).not.toHaveBeenCalled();
     expect(document.documentElement).toHaveClass('desktop-dashboard-compact');
     expect(document.documentElement).not.toHaveClass('desktop-dashboard-canvas');
   });
@@ -310,6 +317,7 @@ describe('App double-Cmd-press voice activation', () => {
     cleanup();
     resetWidgetLauncherForTests();
     delete window.openClassroomWidgetLauncher;
+    delete window.cancelClassroomWidgetLauncher;
     vi.useRealTimers();
     vi.clearAllMocks();
   });

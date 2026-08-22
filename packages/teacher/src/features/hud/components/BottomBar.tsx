@@ -130,8 +130,8 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
   }, [handleAddWidget, hideModal, showModal, stickerMode]);
 
   useEffect(
-    () => registerWidgetLauncherOpener(handleShowMoreWidgets),
-    [handleShowMoreWidgets]
+    () => registerWidgetLauncherOpener(handleShowMoreWidgets, hideModal),
+    [handleShowMoreWidgets, hideModal]
   );
 
   const handleShowStickers = () => {

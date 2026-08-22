@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   bindWindowWidgetLauncher,
+  cancelWidgetLauncher,
   openWidgetLauncher,
   registerWidgetLauncherOpener,
   resetWidgetLauncherForTests
@@ -10,6 +11,7 @@ describe('widgetLauncher', () => {
   afterEach(() => {
     resetWidgetLauncherForTests();
     delete window.openClassroomWidgetLauncher;
+    delete window.cancelClassroomWidgetLauncher;
   });
 
   it('opens immediately when an opener is already registered', () => {
@@ -54,5 +56,40 @@ describe('widgetLauncher', () => {
     expect(open).toHaveBeenCalledTimes(1);
     unbind();
     expect(window.openClassroomWidgetLauncher).toBeUndefined();
+    expect(window.cancelClassroomWidgetLauncher).toBeUndefined();
+  });
+
+  it('does not flush a cancelled pending open when the opener mounts later', () => {
+    const open = vi.fn();
+
+    openWidgetLauncher();
+    cancelWidgetLauncher();
+    registerWidgetLauncherOpener(open);
+
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('closes an already opened launchpad when cancelled', () => {
+    const open = vi.fn();
+    const close = vi.fn();
+    registerWidgetLauncherOpener(open, close);
+
+    openWidgetLauncher();
+    cancelWidgetLauncher();
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('binds a window cancel that drops a queued launchpad', () => {
+    const open = vi.fn();
+    const unbind = bindWindowWidgetLauncher();
+
+    window.openClassroomWidgetLauncher?.();
+    window.cancelClassroomWidgetLauncher?.();
+    registerWidgetLauncherOpener(open);
+
+    expect(open).not.toHaveBeenCalled();
+    unbind();
   });
 });
