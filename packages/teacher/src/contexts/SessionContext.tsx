@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSocket } from '../hooks/useSocket';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { debug } from '@shared/utils/debug';
@@ -770,7 +770,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     return recoveryData.get(widgetId) || null;
   }, [recoveryData]);
   
-  const value: SessionContextValue = {
+  const value = useMemo<SessionContextValue>(() => ({
     // Session state
     sessionCode,
     sessionCreatedAt,
@@ -802,7 +802,25 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     
     // Error state
     error
-  };
+  }), [
+    sessionCode,
+    sessionCreatedAt,
+    socket,
+    connectionPhase,
+    isConnected,
+    isRecovering,
+    serverUrl,
+    studentAppUrl,
+    activeRooms,
+    createSession,
+    recoverSession,
+    closeSession,
+    createRoom,
+    closeRoom,
+    updateRoomState,
+    getWidgetRecoveryData,
+    error
+  ]);
   
   return (
     <SessionContext.Provider value={value}>

@@ -104,6 +104,8 @@ final class WidgetPanelCoordinator: NSObject {
     private var widgetCreationOptions: [CompactWidgetOption] = []
     private var panelBackgroundOpacity = 1.0
     private var panelsJoinAllSpaces = true
+    private var lastLayoutSignature: String?
+    private let frameDefaultsWriter = DebouncedDefaultsWriter()
 
     init(compactPresentationActive: Bool = true) {
         self.compactPresentationActive = compactPresentationActive
@@ -166,7 +168,13 @@ final class WidgetPanelCoordinator: NSObject {
         }
 
         if layout != .freeform {
-            arrange(layout)
+            let layoutSignature = snapshot.widgets
+                .map { "\($0.id):\($0.preferredContentSize.width)x\($0.preferredContentSize.height)" }
+                .joined(separator: "|")
+            if layoutSignature != lastLayoutSignature {
+                lastLayoutSignature = layoutSignature
+                arrange(layout)
+            }
         }
         return true
     }
@@ -188,8 +196,13 @@ final class WidgetPanelCoordinator: NSObject {
     /// panel web views avoids duplicate timers, audio and state writers.
     func enterCanvas() {
         compactPresentationActive = false
+        lastLayoutSignature = nil
         panelControllers.values.forEach { $0.closePermanently() }
         panelControllers.removeAll()
+    }
+
+    func flushPersistedFrames() {
+        frameDefaultsWriter.flush()
     }
 
     func prepareToEnterCanvas(completion: @escaping @MainActor ([WidgetPanelStateChange], Bool) -> Void) {
@@ -366,7 +379,7 @@ final class WidgetPanelCoordinator: NSObject {
     }
 
     private func persist(frame: NSRect, for widgetID: String) {
-        UserDefaults.standard.set(NSStringFromRect(frame), forKey: frameDefaultsKey(for: widgetID))
+        frameDefaultsWriter.set(NSStringFromRect(frame), forKey: frameDefaultsKey(for: widgetID))
     }
 
     private func storedFrame(for widgetID: String) -> NSRect? {
@@ -530,17 +543,28 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     func apply(descriptor: WidgetPanelDescriptor) {
         guard descriptor.id == widgetID else { return }
+        let previous = self.descriptor
         self.descriptor = descriptor
-        window?.title = descriptor.title
-        window?.contentMinSize = descriptor.minimumContentSize.cgSize
-        window?.contentMaxSize = descriptor.maximumContentSize?.cgSize ?? NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
-        window?.contentAspectRatio = Self.contentAspectRatio(for: descriptor)
-        if let window {
-            let shouldBeResizable = descriptor.isResizable
-            if shouldBeResizable {
+        if previous.title != descriptor.title {
+            window?.title = descriptor.title
+        }
+        if previous.minimumContentSize.width != descriptor.minimumContentSize.width
+            || previous.minimumContentSize.height != descriptor.minimumContentSize.height {
+            window?.contentMinSize = descriptor.minimumContentSize.cgSize
+        }
+        let previousMax = previous.maximumContentSize
+        let nextMax = descriptor.maximumContentSize
+        if previousMax?.width != nextMax?.width || previousMax?.height != nextMax?.height {
+            window?.contentMaxSize = nextMax?.cgSize ?? NSSize(
+                width: CGFloat.greatestFiniteMagnitude,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+        }
+        if previous.aspectRatio != descriptor.aspectRatio {
+            window?.contentAspectRatio = Self.contentAspectRatio(for: descriptor)
+        }
+        if previous.isResizable != descriptor.isResizable, let window {
+            if descriptor.isResizable {
                 window.styleMask.insert(.resizable)
             } else {
                 window.styleMask.remove(.resizable)
@@ -549,10 +573,14 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
-        self.backgroundOpacity = min(max(backgroundOpacity, 0), 1)
+        let nextOpacity = min(max(backgroundOpacity, 0), 1)
+        let opacityChanged = self.backgroundOpacity != nextOpacity
+        self.backgroundOpacity = nextOpacity
         window?.backgroundColor = .clear
         window?.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
-        setWebBackgroundOpacity()
+        if opacityChanged {
+            setWebBackgroundOpacity()
+        }
     }
 
     func setWidgetCreationOptions(_ options: [CompactWidgetOption]) {
@@ -667,7 +695,18 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         )
     }
 
-    func push(snapshot: [String: Any]) {
+    func push(snapshot: [String: Any], force: Bool = false) {
+        let revision = (snapshot["revision"] as? NSNumber)?.intValue
+        let stateRevision = (snapshot["stateRevision"] as? NSNumber)?.intValue
+        if !force,
+           revision != nil,
+           revision == lastPushedRevision,
+           stateRevision == lastPushedStateRevision {
+            currentSnapshot = snapshot
+            return
+        }
+        lastPushedRevision = revision
+        lastPushedStateRevision = stateRevision
         currentSnapshot = snapshot
         webView.callAsyncJavaScript(
             """
@@ -724,7 +763,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebBackgroundOpacity()
         guard let snapshot = currentSnapshot else { return }
-        push(snapshot: snapshot)
+        push(snapshot: snapshot, force: true)
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
@@ -767,6 +806,9 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     private var currentSnapshot: [String: Any]?
+    private var lastPushedRevision: Int?
+    private var lastPushedStateRevision: Int?
+    private var lastTrackingRevealHeight: CGFloat = -1
 
     private func setWebBackgroundOpacity() {
         webView.evaluateJavaScript(
@@ -775,6 +817,8 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     private func loadWidget() {
+        lastPushedRevision = nil
+        lastPushedStateRevision = nil
         var components = URLComponents()
         components.scheme = dashboardURLScheme
         components.host = "app"
@@ -847,10 +891,14 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     private func updateChromeTrackingArea() {
         guard let frameView = chromeTrackingView else { return }
+        let revealHeight = min(frameView.bounds.height, max(44, frameView.bounds.height - (window?.contentLayoutRect.maxY ?? 0) + 12))
+        if chromeTrackingArea != nil, abs(revealHeight - lastTrackingRevealHeight) < 0.5 {
+            return
+        }
+        lastTrackingRevealHeight = revealHeight
         if let chromeTrackingArea {
             frameView.removeTrackingArea(chromeTrackingArea)
         }
-        let revealHeight = min(frameView.bounds.height, max(44, frameView.bounds.height - (window?.contentLayoutRect.maxY ?? 0) + 12))
         let area = NSTrackingArea(
             rect: NSRect(x: 0, y: frameView.bounds.maxY - revealHeight, width: frameView.bounds.width, height: revealHeight),
             options: [.mouseEnteredAndExited, .activeAlways],
@@ -999,12 +1047,12 @@ private final class NonInteractiveVisualEffectView: NSVisualEffectView {
 
 @MainActor
 private final class WidgetPanelWebViewFactory {
-    private let webRoot = WebRootResolver.resolve()
-
     func makeWebView(widgetID: String) -> (webView: WKWebView, messageHandler: WidgetPanelScriptMessageHandler) {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
-        configuration.setURLSchemeHandler(StaticFileSchemeHandler(webRoot: webRoot), forURLScheme: dashboardURLScheme)
+        configuration.processPool = DashboardWebKitShared.panelProcessPool
+        configuration.allowsAirPlayForMediaPlayback = false
+        configuration.setURLSchemeHandler(DashboardWebKitShared.schemeHandler, forURLScheme: dashboardURLScheme)
 
         let userContentController = WKUserContentController()
         userContentController.addUserScript(WKUserScript(
@@ -1017,6 +1065,7 @@ private final class WidgetPanelWebViewFactory {
         configuration.userContentController = userContentController
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        ClassroomWebViewTuning.apply(to: webView)
         webView.setValue(false, forKey: "drawsBackground")
         return (webView, messageHandler)
     }

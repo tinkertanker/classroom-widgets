@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import QRCode from 'qrcode';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
@@ -31,16 +30,20 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     if (url && canvas) {
       const container = qrContainerRef.current;
       const availableSize = Math.min(container?.clientWidth || 250, container?.clientHeight || 250) - 16;
+      const targetWidth = Math.max(120, Math.floor(availableSize));
 
-      QRCode.toCanvas(canvas, url, {
-        width: Math.max(120, Math.floor(availableSize)),
-        margin: 1,
-        color: {
-          dark: '#1f2937',  // warm-gray-800
-          light: '#ffffff'
-        }
-      }, (error) => {
-        if (error) console.error('Error generating QR code:', error);
+      void import('qrcode').then(({ default: QRCode }) => {
+        if (canvasRef.current !== canvas) return;
+        QRCode.toCanvas(canvas, url, {
+          width: targetWidth,
+          margin: 1,
+          color: {
+            dark: '#1f2937',  // warm-gray-800
+            light: '#ffffff'
+          }
+        }, (error) => {
+          if (error) console.error('Error generating QR code:', error);
+        });
       });
     } else if (canvas) {
       const ctx = canvas.getContext('2d');

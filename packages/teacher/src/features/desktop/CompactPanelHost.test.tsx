@@ -149,6 +149,29 @@ describe('CompactPanelHost', () => {
     });
   });
 
+  it('does not republish inventory when only a non-compact widget changes', async () => {
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useWorkspaceStore.setState({
+        widgets: [
+          ...useWorkspaceStore.getState().widgets,
+          { id: 'poll-1', type: WidgetType.POLL, position: { x: 0, y: 0 }, size: { width: 400, height: 400 }, zIndex: 1 }
+        ],
+        widgetStates: new Map([
+          ['timer-1', { timer: { time: 10 } }],
+          ['poll-1', { votes: [1] }]
+        ])
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(postMessage).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves an unchanged widget revision when another widget changes', async () => {
     useWorkspaceStore.setState({
       widgets: [

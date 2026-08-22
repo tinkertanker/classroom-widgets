@@ -3,8 +3,12 @@ import Foundation
 
 final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
     private let webRoot: URL
+    private let lock = NSLock()
+    private let ioQueue = DispatchQueue(label: "classroom-widgets.static-files", qos: .userInitiated)
     private var cache: [URL: (data: Data, mimeType: String)] = [:]
+    private var resolvedPaths: [String: URL] = [:]
     private var stoppedTasks = Set<ObjectIdentifier>()
+    private var didStartPrewarm = false
 
     init(webRoot: URL) {
         self.webRoot = webRoot.resolvingSymlinksInPath().standardizedFileURL
@@ -22,41 +26,82 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         }
 
         let taskID = ObjectIdentifier(urlSchemeTask)
-        stoppedTasks.remove(taskID)
+        markStarted(taskID)
 
-        do {
-            let payload = try payload(for: fileURL)
-            guard !isStopped(taskID) else { return }
+        if let cached = cachedPayload(for: fileURL) {
+            complete(task: urlSchemeTask, taskID: taskID, requestURL: requestURL, payload: cached)
+            return
+        }
 
-            let response = URLResponse(
-                url: requestURL,
-                mimeType: payload.mimeType,
-                expectedContentLength: payload.data.count,
-                textEncodingName: nil
-            )
-            urlSchemeTask.didReceive(response)
-            urlSchemeTask.didReceive(payload.data)
-            urlSchemeTask.didFinish()
-        } catch {
-            guard !isStopped(taskID) else { return }
-            urlSchemeTask.didFailWithError(error)
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                let payload = try self.loadPayload(for: fileURL)
+                self.complete(task: urlSchemeTask, taskID: taskID, requestURL: requestURL, payload: payload)
+            } catch {
+                self.fail(task: urlSchemeTask, taskID: taskID, error: error)
+            }
         }
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
-        let taskID = ObjectIdentifier(urlSchemeTask)
-        stoppedTasks.insert(taskID)
+        lock.lock()
+        stoppedTasks.insert(ObjectIdentifier(urlSchemeTask))
+        lock.unlock()
+    }
+
+    func prewarmCriticalAssets() {
+        lock.lock()
+        if didStartPrewarm {
+            lock.unlock()
+            return
+        }
+        didStartPrewarm = true
+        lock.unlock()
+
+        let root = webRoot
+        ioQueue.async { [weak self] in
+            guard let self else { return }
+            let index = root.appendingPathComponent("index.html")
+            _ = try? self.loadPayload(for: index.standardizedFileURL)
+
+            let assets = root.appendingPathComponent("assets", isDirectory: true)
+            let fileManager = FileManager.default
+            guard let enumerator = fileManager.enumerator(
+                at: assets,
+                includingPropertiesForKeys: [.isRegularFileKey],
+                options: [.skipsHiddenFiles]
+            ) else { return }
+
+            for case let fileURL as URL in enumerator {
+                let ext = fileURL.pathExtension.lowercased()
+                guard ext == "js" || ext == "mjs" || ext == "css" else { continue }
+                let standardized = fileURL.standardizedFileURL
+                guard self.isInsideWebRoot(standardized) else { continue }
+                _ = try? self.loadPayload(for: standardized)
+            }
+        }
     }
 
     private func fileURL(for requestURL: URL) -> URL? {
         let rawPath = requestURL.path == "/" ? "/index.html" : requestURL.path
         let relativePath = rawPath.split(separator: "/").map(String.init).joined(separator: "/")
-        let fileURL = webRoot.appendingPathComponent(relativePath).resolvingSymlinksInPath().standardizedFileURL
 
+        lock.lock()
+        if let cached = resolvedPaths[relativePath] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
+        let fileURL = webRoot.appendingPathComponent(relativePath).standardizedFileURL
         guard isInsideWebRoot(fileURL) else {
             return nil
         }
 
+        lock.lock()
+        resolvedPaths[relativePath] = fileURL
+        lock.unlock()
         return fileURL
     }
 
@@ -71,31 +116,95 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         return zip(rootComponents, fileComponents).allSatisfy(==)
     }
 
-    private func payload(for fileURL: URL) throws -> (data: Data, mimeType: String) {
-        if let cached = cache[fileURL] {
+    private func cachedPayload(for fileURL: URL) -> (data: Data, mimeType: String)? {
+        lock.lock()
+        let cached = cache[fileURL]
+        lock.unlock()
+        return cached
+    }
+
+    private func loadPayload(for fileURL: URL) throws -> (data: Data, mimeType: String) {
+        if let cached = cachedPayload(for: fileURL) {
             return cached
         }
 
         let payload = (
-            data: try Data(contentsOf: fileURL),
+            data: try Data(contentsOf: fileURL, options: .mappedIfSafe),
             mimeType: mimeType(for: fileURL.pathExtension)
         )
+
+        lock.lock()
         cache[fileURL] = payload
+        lock.unlock()
         return payload
     }
 
+    private func markStarted(_ taskID: ObjectIdentifier) {
+        lock.lock()
+        stoppedTasks.remove(taskID)
+        lock.unlock()
+    }
+
     private func isStopped(_ taskID: ObjectIdentifier) -> Bool {
-        stoppedTasks.remove(taskID) != nil
+        lock.lock()
+        let stopped = stoppedTasks.remove(taskID) != nil
+        lock.unlock()
+        return stopped
+    }
+
+    private func complete(
+        task: WKURLSchemeTask,
+        taskID: ObjectIdentifier,
+        requestURL: URL,
+        payload: (data: Data, mimeType: String)
+    ) {
+        guard !isStopped(taskID) else { return }
+
+        let response = HTTPURLResponse(
+            url: requestURL,
+            statusCode: 200,
+            httpVersion: "HTTP/1.1",
+            headerFields: [
+                "Content-Type": payload.mimeType,
+                "Content-Length": "\(payload.data.count)",
+                "Cache-Control": cacheControl(for: requestURL)
+            ]
+        ) ?? URLResponse(
+            url: requestURL,
+            mimeType: payload.mimeType,
+            expectedContentLength: payload.data.count,
+            textEncodingName: nil
+        )
+
+        task.didReceive(response)
+        task.didReceive(payload.data)
+        task.didFinish()
+    }
+
+    private func fail(task: WKURLSchemeTask, taskID: ObjectIdentifier, error: Error) {
+        guard !isStopped(taskID) else { return }
+        task.didFailWithError(error)
+    }
+
+    private func cacheControl(for requestURL: URL) -> String {
+        let name = requestURL.lastPathComponent
+        if name == "index.html" || requestURL.path == "/" {
+            return "no-cache"
+        }
+        if requestURL.path.contains("/assets/") {
+            return "public, max-age=31536000, immutable"
+        }
+        return "public, max-age=86400"
     }
 
     private func mimeType(for pathExtension: String) -> String {
         switch pathExtension.lowercased() {
         case "html":
-            return "text/html"
+            return "text/html; charset=utf-8"
         case "js", "mjs":
-            return "text/javascript"
+            return "text/javascript; charset=utf-8"
         case "css":
-            return "text/css"
+            return "text/css; charset=utf-8"
         case "svg":
             return "image/svg+xml"
         case "png":

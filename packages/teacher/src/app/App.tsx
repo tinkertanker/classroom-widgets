@@ -5,7 +5,7 @@ import './App.css';
 import { ModalProvider } from '../contexts/ModalContext';
 import { SocketProvider } from '../contexts/SocketProvider';
 import { SessionProvider } from '../contexts/SessionContext';
-import { useWorkspace, useServerConnection } from '@shared/hooks/useWorkspace';
+import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
@@ -17,7 +17,6 @@ import NarrowModeExitButton from '../features/hud/components/NarrowModeExitButto
 import { CanvasWidgetList, ColumnWidgetList } from '../features/board/components/WidgetList';
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '@shared/components/SmallScreenWarning';
-import VoiceInterface from '../features/voiceControl/components/VoiceInterface';
 import { HudProximityProvider } from '@shared/hooks/useHudProximity';
 import { WidgetType, WidgetCategory } from '@shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
@@ -28,24 +27,16 @@ import CompactPanelHost from '../features/desktop/CompactPanelHost';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
-// Audio import for trash sound
-import trashSound from '../sounds/trash-crumple.mp3';
-const trashAudio = new Audio(trashSound);
+const VoiceInterface = React.lazy(() => import('../features/voiceControl/components/VoiceInterface'));
 
 
 
 
 function App() {
   const { theme, scale } = useWorkspace();
-  const { url, setServerStatus } = useServerConnection();
-  const sessionCode = useWorkspaceStore((state) => state.sessionCode);
-  const setSessionCode = useWorkspaceStore((state) => state.setSessionCode);
-  // Removed: widgets subscription moved to WidgetList component
   const addWidget = useWorkspaceStore((state) => state.addWidget);
   const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
   const resizeWidget = useWorkspaceStore((state) => state.resizeWidget);
-  const scrollPosition = useWorkspaceStore((state) => state.scrollPosition);
-  // Removed: focusedWidgetId subscription - use getState() where needed
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
   const setLayoutFormat = useWorkspaceStore((state) => state.setLayoutFormat);
@@ -57,7 +48,6 @@ function App() {
   // Use a ref to stash the layout before narrow mode.
   const layoutBeforeNarrowRef = useRef<'canvas' | 'column' | null>(null);
   const stickerStateRef = useRef<{ mode: boolean; type: string | null }>({ mode: false, type: null });
-  const [isInitialized, setIsInitialized] = React.useState(false);
   const [stickerMode, setStickerMode] = useState(false);
   const [selectedStickerType, setSelectedStickerType] = useState<string | null>(null);
   const [screenTooSmall, setScreenTooSmall] = useState(
@@ -148,8 +138,14 @@ function App() {
 
   // Trash sound effect
   useEffect(() => {
+    let trashAudioPromise: Promise<HTMLAudioElement> | null = null;
     (window as any).playTrashSound = () => {
-      trashAudio.play().catch(err => console.error('Error playing trash sound:', err));
+      if (!trashAudioPromise) {
+        trashAudioPromise = import('../sounds/trash-crumple.mp3').then((module) => new Audio(module.default));
+      }
+      trashAudioPromise.then((audio) => {
+        audio.play().catch(err => console.error('Error playing trash sound:', err));
+      });
     };
     
     return () => {
@@ -587,7 +583,7 @@ function App() {
           <SessionProvider>
             <ConfettiProvider>
               <ModalProvider>
-              <HudProximityProvider>
+              <HudProximityProvider active={!isDashboardMode || (windowMode === 'canvas' && isDashboardVisible)}>
                 <div
                   className={`h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 overflow-hidden relative ${
                     isDashboardMode ? `desktop-dashboard-root desktop-dashboard-root-${windowMode}` : ''
@@ -608,6 +604,7 @@ function App() {
           )}
           
           {/* Top Controls */}
+          {(!isDashboardMode || (windowMode === 'canvas' && isDashboardVisible)) && (
           <div data-dashboard-chrome="true">
             <TopControls
               onSwitchToCompact={isDashboardMode && windowMode === 'canvas'
@@ -615,6 +612,7 @@ function App() {
                 : undefined}
             />
           </div>
+          )}
           
           {/* Sticker Mode Banner */}
           {stickerMode && (
@@ -657,6 +655,8 @@ function App() {
           </div>
           
           {/* Toolbar at bottom */}
+          {(!isDashboardMode || (windowMode === 'canvas' && isDashboardVisible)) && (
+          <>
           <div className="toolbar-container">
             <BottomBar onToggleLayout={handleToggleLayoutNarrow} />
           </div>
@@ -672,13 +672,19 @@ function App() {
             layoutFormat={layoutFormat}
             onToggleLayout={handleToggleLayoutNarrow}
           />
+          </>
+          )}
 
           {/* Voice Control Interface */}
-          <VoiceInterface
-            isOpen={isVoiceControlActive}
-            onClose={() => setIsVoiceControlActive(false)}
-            onTranscriptComplete={handleVoiceCommand}
-          />
+          {(voiceControlEnabled || isVoiceControlActive) && (
+            <React.Suspense fallback={null}>
+              <VoiceInterface
+                isOpen={isVoiceControlActive}
+                onClose={() => setIsVoiceControlActive(false)}
+                onTranscriptComplete={handleVoiceCommand}
+              />
+            </React.Suspense>
+          )}
               </div>
               </HudProximityProvider>
             </ModalProvider>

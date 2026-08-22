@@ -1,4 +1,5 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import '../../app/App.css';
 import type {
   CompactWidgetPanelBridge,
   CompactWidgetSnapshot,

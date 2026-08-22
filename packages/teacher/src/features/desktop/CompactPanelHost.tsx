@@ -21,6 +21,9 @@ declare global {
 
 const asJsonValue = (value: unknown): JsonValue | null => {
   if (value === undefined) return null;
+  if (typeof structuredClone === 'function') {
+    return structuredClone(value) as JsonValue;
+  }
   return JSON.parse(JSON.stringify(value)) as JsonValue;
 };
 
@@ -46,11 +49,12 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
     stateSignature: string;
   }>());
   const hostInstanceIdRef = useRef(createHostInstanceId());
+  const lastPostedFingerprintRef = useRef<string | null>(null);
   const workspace = useWorkspaceStore(useShallow((state) => ({
     currentWorkspaceId: state.currentWorkspaceId,
     widgets: state.widgets,
     widgetStates: state.widgetStates,
-    savedCollections: state.savedCollections
+    randomiserLists: state.savedCollections.randomiserLists
   })));
 
   const compactWidgetOptions = useMemo<CompactWidgetOption[]>(() => (
@@ -96,15 +100,14 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         state: asJsonValue(workspace.widgetStates.get(widget.id)),
         theme: dashboardTheme,
         savedRandomiserLists: widget.type === WidgetType.RANDOMISER
-          ? Object.values(workspace.savedCollections.randomiserLists).sort((a, b) => b.updatedAt - a.updatedAt)
+          ? Object.values(workspace.randomiserLists).sort((a, b) => b.updatedAt - a.updatedAt)
           : []
       } satisfies CompactWidgetSnapshot];
     });
   }, [dashboardTheme, workspace]);
 
   useEffect(() => {
-    const revision = revisionRef.current + 1;
-    revisionRef.current = revision;
+    const nextRevision = revisionRef.current + 1;
     const nextWidgetRevisions = new Map<string, {
       revision: number;
       signature: string;
@@ -112,19 +115,43 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
       stateSignature: string;
     }>();
     const publishedSnapshots = snapshots.map((snapshot) => {
-      const signature = JSON.stringify(snapshot);
+      const metadataSignature = JSON.stringify({
+        workspaceId: snapshot.workspaceId,
+        widgetType: snapshot.widgetType,
+        title: snapshot.title,
+        preferredSize: snapshot.preferredSize,
+        minimumSize: snapshot.minimumSize,
+        maximumSize: snapshot.maximumSize,
+        isResizable: snapshot.isResizable,
+        maintainsAspectRatio: snapshot.maintainsAspectRatio,
+        theme: snapshot.theme,
+        savedRandomiserLists: snapshot.savedRandomiserLists
+      });
       const stateSignature = JSON.stringify(snapshot.state);
       const previous = widgetRevisionsRef.current.get(snapshot.widgetId);
-      const widgetRevision = previous?.signature === signature ? previous.revision : revision;
-      const stateRevision = previous?.stateSignature === stateSignature ? previous.stateRevision : revision;
+      const widgetRevision = previous?.signature === metadataSignature ? previous.revision : nextRevision;
+      const stateRevision = previous?.stateSignature === stateSignature ? previous.stateRevision : nextRevision;
       nextWidgetRevisions.set(snapshot.widgetId, {
         revision: widgetRevision,
-        signature,
+        signature: metadataSignature,
         stateRevision,
         stateSignature
       });
       return { ...snapshot, revision: widgetRevision, stateRevision };
     });
+    const fingerprint = [
+      windowMode,
+      hostInstanceIdRef.current,
+      compactWidgetOptions.map((option) => `${option.widgetType}:${option.title}`).join(','),
+      publishedSnapshots.map((snapshot) => (
+        `${snapshot.widgetId}:${snapshot.revision}:${snapshot.stateRevision}`
+      )).join(',')
+    ].join('|');
+    if (fingerprint === lastPostedFingerprintRef.current) {
+      return;
+    }
+    lastPostedFingerprintRef.current = fingerprint;
+    revisionRef.current = nextRevision;
     widgetRevisionsRef.current = nextWidgetRevisions;
     const inventory: CompactWidgetPanelInventory = {
       type: 'widget-panels-changed',
@@ -148,6 +175,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         const previous = widgetRevisionsRef.current.get(change.widgetId);
         if (!change.flush && previous?.stateRevision !== change.baseRevision) return false;
         const stateSignature = JSON.stringify(change.state);
+        if (previous?.stateSignature === stateSignature) return true;
         widgetRevisionsRef.current.set(change.widgetId, {
           revision: previous?.revision ?? change.baseRevision,
           signature: previous?.signature ?? '',

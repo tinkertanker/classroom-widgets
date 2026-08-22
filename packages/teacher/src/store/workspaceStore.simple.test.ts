@@ -148,6 +148,16 @@ describe('workspace snapshot', () => {
     expect(store().layoutFormat).toBe('canvas');
   });
 
+  it('skips identical widget state updates', async () => {
+    await seedStorage();
+    const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
+    store().updateWidgetState(timerId, { seconds: 42 });
+    const firstStates = store().widgetStates;
+
+    store().updateWidgetState(timerId, { seconds: 42 });
+    expect(store().widgetStates).toBe(firstStates);
+  });
+
   it('round-trips per-workspace state through create, switch and delete', async () => {
     const { idA } = await seedStorage();
 

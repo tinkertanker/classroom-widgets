@@ -8,6 +8,8 @@ import { parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
 import CompactWidgetApp from './CompactWidgetApp';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 
+vi.mock('../../app/App.css', () => ({}));
+
 vi.mock('../../services/WidgetRegistry', () => ({
   widgetRegistry: { get: vi.fn() }
 }));

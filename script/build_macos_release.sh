@@ -189,6 +189,7 @@ mkdir -p "${APP_MACOS}" "${WEB_RESOURCES}"
 cp "${EXECUTABLE}" "${APP_MACOS}/${PRODUCT_NAME}"
 chmod +x "${APP_MACOS}/${PRODUCT_NAME}"
 cp -R "${ROOT_DIR}/packages/teacher/build/." "${WEB_RESOURCES}/"
+find "${WEB_RESOURCES}" -name '*.map' -delete
 if [ -f "${APP_ICON_PATH}" ]; then
   cp "${APP_ICON_PATH}" "${APP_RESOURCES}/AppIcon.icns"
 fi

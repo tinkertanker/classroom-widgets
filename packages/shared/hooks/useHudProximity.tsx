@@ -26,7 +26,7 @@ function distanceToRect(
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-export function useHudProximity() {
+export function useHudProximity(active = true) {
   const [isNear, setIsNear] = useState<ProximityState>({
     topLeft: true,
     topRight: true,
@@ -84,6 +84,10 @@ export function useHudProximity() {
   }, []);
 
   useEffect(() => {
+    if (!active) {
+      return;
+    }
+
     const handleMouseMove = (e: MouseEvent) => {
       // Throttle updates to ~60fps
       const now = performance.now();
@@ -122,7 +126,7 @@ export function useHudProximity() {
         cancelAnimationFrame(rafRef.current);
       }
     };
-  }, [updateProximity]);
+  }, [active, updateProximity]);
 
   // Function to register HUD elements
   const registerHudElement = useCallback((
@@ -156,8 +160,14 @@ interface HudProximityContextType {
 
 const HudProximityContext = createContext<HudProximityContextType | null>(null);
 
-export function HudProximityProvider({ children }: { children: ReactNode }) {
-  const { isNear, registerHudElement } = useHudProximity();
+export function HudProximityProvider({
+  children,
+  active = true
+}: {
+  children: ReactNode;
+  active?: boolean;
+}) {
+  const { isNear, registerHudElement } = useHudProximity(active);
 
   return (
     <HudProximityContext.Provider value={{ isNear, registerHudElement }}>

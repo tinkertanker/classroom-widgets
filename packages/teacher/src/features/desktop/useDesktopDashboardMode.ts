@@ -115,11 +115,6 @@ export function useDesktopDashboardMode() {
     );
     document.documentElement.style.setProperty('--desktop-dashboard-background-opacity', String(backgroundOpacity));
 
-    window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
-      type: 'visibility-changed',
-      visible: isDashboardVisible
-    });
-
     return () => {
       document.documentElement.classList.remove(
         'desktop-dashboard-mode',
@@ -134,6 +129,15 @@ export function useDesktopDashboardMode() {
       document.documentElement.style.removeProperty('--desktop-dashboard-background-opacity');
     };
   }, [backgroundOpacity, compactLayout, isDashboardMode, isDashboardVisible, windowChromeVisible, windowMode]);
+
+  useEffect(() => {
+    if (!isDashboardMode) return;
+
+    window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+      type: 'visibility-changed',
+      visible: isDashboardVisible
+    });
+  }, [isDashboardMode, isDashboardVisible]);
 
   useEffect(() => {
     if (!isDashboardMode) return;
