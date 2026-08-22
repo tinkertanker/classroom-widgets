@@ -158,6 +158,17 @@ describe('workspace snapshot', () => {
     expect(store().widgetStates).toBe(firstStates);
   });
 
+  it('writes widget state when only a Date field changes', async () => {
+    await seedStorage();
+    const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
+    store().updateWidgetState(timerId, { timestamp: new Date('2026-03-11T14:00:00.000Z') });
+
+    store().updateWidgetState(timerId, { timestamp: new Date('2026-03-11T15:00:00.000Z') });
+
+    const next = store().widgetStates.get(timerId) as { timestamp: Date };
+    expect(next.timestamp.getTime()).toBe(new Date('2026-03-11T15:00:00.000Z').getTime());
+  });
+
   it('round-trips per-workspace state through create, switch and delete', async () => {
     const { idA } = await seedStorage();
 

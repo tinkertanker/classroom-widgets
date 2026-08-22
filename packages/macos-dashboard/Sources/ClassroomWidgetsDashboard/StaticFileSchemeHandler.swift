@@ -158,6 +158,13 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         requestURL: URL,
         payload: (data: Data, mimeType: String)
     ) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.complete(task: task, taskID: taskID, requestURL: requestURL, payload: payload)
+            }
+            return
+        }
+
         guard !isStopped(taskID) else { return }
 
         let response = HTTPURLResponse(
@@ -182,6 +189,13 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
     }
 
     private func fail(task: WKURLSchemeTask, taskID: ObjectIdentifier, error: Error) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.fail(task: task, taskID: taskID, error: error)
+            }
+            return
+        }
+
         guard !isStopped(taskID) else { return }
         task.didFailWithError(error)
     }
