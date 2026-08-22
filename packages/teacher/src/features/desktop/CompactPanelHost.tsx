@@ -157,7 +157,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
       type: 'widget-panels-changed',
       schemaVersion: 1,
       hostInstanceId: hostInstanceIdRef.current,
-      inventoryRevision: revision,
+      inventoryRevision: nextRevision,
       windowMode,
       widgets: publishedSnapshots,
       compactWidgetOptions

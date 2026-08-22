@@ -186,7 +186,8 @@ describe('CompactPanelHost', () => {
     render(<CompactPanelHost />);
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
     const firstInventory = postMessage.mock.calls[0][0];
-    const timerRevision = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').revision;
+    const timerSnapshot = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1');
+    const qrSnapshot = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1');
 
     act(() => {
       useWorkspaceStore.setState({ widgetStates: new Map([
@@ -197,8 +198,12 @@ describe('CompactPanelHost', () => {
 
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(2));
     const secondInventory = postMessage.mock.calls[1][0];
-    expect(secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').revision).toBe(timerRevision);
-    expect(secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1').revision).toBeGreaterThan(timerRevision);
+    const secondTimer = secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1');
+    const secondQr = secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1');
+    expect(secondTimer.revision).toBe(timerSnapshot.revision);
+    expect(secondTimer.stateRevision).toBe(timerSnapshot.stateRevision);
+    expect(secondQr.revision).toBe(qrSnapshot.revision);
+    expect(secondQr.stateRevision).toBeGreaterThan(qrSnapshot.stateRevision);
   });
 
   it('starts a new host instance when the dashboard host reloads', async () => {
