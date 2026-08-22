@@ -5,6 +5,7 @@ import App from './App';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { WidgetType } from '@shared/types';
+import { resetWidgetLauncherForTests } from '../features/desktop/widgetLauncher';
 
 vi.mock('./App.css', () => ({}));
 vi.mock('../sounds/trash-crumple.mp3', () => ({ default: 'trash-crumple.mp3' }));
@@ -112,6 +113,8 @@ describe('App narrow layout', () => {
 
   afterEach(() => {
     cleanup();
+    resetWidgetLauncherForTests();
+    delete window.openClassroomWidgetLauncher;
     delete window.webkit;
     vi.clearAllMocks();
   });
@@ -122,6 +125,26 @@ describe('App narrow layout', () => {
     await waitFor(() => {
       expect(useWorkspaceStore.getState().layoutFormat).toBe('column');
       expect(screen.getByTestId('column-board')).toBeInTheDocument();
+    });
+  });
+
+  it('keeps the widget launcher bridge registered while compact mode hides the toolbar', async () => {
+    const postMessage = vi.fn();
+    window.history.replaceState({}, '', '/?dashboard=1&mode=compact');
+    window.webkit = { messageHandlers: { classroomDashboard: { postMessage } } };
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(typeof window.openClassroomWidgetLauncher).toBe('function');
+    });
+    expect(screen.queryByTestId('bottom-bar')).not.toBeInTheDocument();
+
+    window.openClassroomWidgetLauncher?.();
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'window-mode-requested',
+      mode: 'canvas'
     });
   });
 
@@ -256,6 +279,8 @@ describe('App double-Cmd-press voice activation', () => {
 
   afterEach(() => {
     cleanup();
+    resetWidgetLauncherForTests();
+    delete window.openClassroomWidgetLauncher;
     vi.useRealTimers();
     vi.clearAllMocks();
   });
@@ -318,14 +343,15 @@ describe('App double-Cmd-press voice activation', () => {
   });
 
   it('does not treat Cmd after Cmd+K as a double press', async () => {
-    const openLauncher = vi.fn();
-    window.openClassroomWidgetLauncher = openLauncher;
-
     render(<App />);
 
     await waitFor(() => {
+      expect(typeof window.openClassroomWidgetLauncher).toBe('function');
       expect(typeof (window as any).getVoiceControlActive).toBe('function');
     });
+
+    const openLauncher = vi.fn();
+    window.openClassroomWidgetLauncher = openLauncher;
 
     pressCmd();
     fireEvent.keyDown(document, { key: 'k', metaKey: true });
@@ -333,7 +359,5 @@ describe('App double-Cmd-press voice activation', () => {
 
     expect(openLauncher).toHaveBeenCalled();
     expect((window as any).getVoiceControlActive()).toBe(false);
-
-    delete window.openClassroomWidgetLauncher;
   });
 });

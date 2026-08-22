@@ -24,6 +24,7 @@ import { APP_VERSION } from '../version';
 import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboardMode';
 import DesktopWindowControls from '../features/desktop/DesktopWindowControls';
 import CompactPanelHost from '../features/desktop/CompactPanelHost';
+import { bindWindowWidgetLauncher } from '../features/desktop/widgetLauncher';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
@@ -67,6 +68,18 @@ function App() {
   // Voice control state
   const [isVoiceControlActive, setIsVoiceControlActive] = useState(false);
   const commandPressRef = useRef<{ pressedAt: number; timeoutId: ReturnType<typeof setTimeout> } | null>(null);
+  const prepareWidgetLauncherRef = useRef(() => {});
+  prepareWidgetLauncherRef.current = () => {
+    if (!isDashboardMode) {
+      return;
+    }
+    if (windowMode !== 'canvas') {
+      requestWindowMode('canvas');
+    }
+    if (!isDashboardVisible) {
+      setDashboardVisible(true);
+    }
+  };
   
   // Note: Session code management is now handled by the networked widgets themselves
   // via the useNetworkedWidget hook. They will set/clear the session code as needed.
@@ -153,6 +166,10 @@ function App() {
     };
   }, []);
   
+  useEffect(() => bindWindowWidgetLauncher(() => {
+    prepareWidgetLauncherRef.current();
+  }), []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
