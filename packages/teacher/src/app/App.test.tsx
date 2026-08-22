@@ -151,6 +151,32 @@ describe('App narrow layout', () => {
     });
   });
 
+  it('restores compact UI when native aborts after launcher prepare requests canvas', async () => {
+    const postMessage = vi.fn();
+    window.history.replaceState({}, '', '/?dashboard=1&mode=compact');
+    window.webkit = { messageHandlers: { classroomDashboard: { postMessage } } };
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(typeof window.openClassroomWidgetLauncher).toBe('function');
+      expect(typeof window.classroomDashboard?.setWindowMode).toBe('function');
+    });
+
+    act(() => {
+      window.openClassroomWidgetLauncher?.();
+    });
+
+    expect(document.documentElement).toHaveClass('desktop-dashboard-canvas');
+
+    act(() => {
+      window.classroomDashboard?.setWindowMode('compact');
+    });
+
+    expect(document.documentElement).toHaveClass('desktop-dashboard-compact');
+    expect(document.documentElement).not.toHaveClass('desktop-dashboard-canvas');
+  });
+
   it('keeps compact mode as a panel host without changing the saved canvas layout', async () => {
     window.history.replaceState({}, '', '/?dashboard=1&mode=compact');
     setWindowWidth(500);

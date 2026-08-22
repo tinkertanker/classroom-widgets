@@ -536,11 +536,15 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func abortCompactTransition() {
+        pendingWidgetLauncherOpen = false
         // Preparing a handoff marks each panel bridge as closing, so recreate
         // the compact surfaces rather than re-showing those inert web views.
         widgetPanelCoordinator.enterCanvas()
         isChangingWindowMode = false
         resetHostWriteTracking()
+        // Launcher prepare and window-mode requests update the webview before
+        // this handoff finishes; restore the still-compact host mode there too.
+        setWebWindowMode(windowMode)
         let hasCompactPanels = widgetPanelCoordinator.enterCompact()
         guard dashboardVisible else {
             widgetPanelCoordinator.hideAll()
