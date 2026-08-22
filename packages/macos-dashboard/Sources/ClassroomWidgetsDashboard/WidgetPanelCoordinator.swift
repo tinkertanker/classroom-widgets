@@ -508,7 +508,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
         messageHandler.onReady = { [weak self] ready in
             if let snapshot = self?.currentSnapshot {
-                self?.push(snapshot: snapshot)
+                self?.push(snapshot: snapshot, force: true)
             }
             self?.onReady?(ready)
         }

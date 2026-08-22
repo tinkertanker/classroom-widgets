@@ -54,10 +54,11 @@ const CompactWidgetApp = () => {
     window.classroomWidgetPanel = {
       receiveSnapshot: (nextSnapshot) => {
         if (nextSnapshot.schemaVersion !== 1 || nextSnapshot.widgetId !== requestedWidgetId) return;
-        if (nextSnapshot.revision <= (snapshotRef.current?.revision ?? -1)) return;
-        randomiserListListenersRef.current.forEach((listener) => listener(nextSnapshot.savedRandomiserLists));
         const currentSnapshot = snapshotRef.current;
+        const metadataAdvanced = nextSnapshot.revision > (currentSnapshot?.revision ?? -1);
         const stateRevisionAdvanced = nextSnapshot.stateRevision > (currentSnapshot?.stateRevision ?? -1);
+        if (!metadataAdvanced && !stateRevisionAdvanced) return;
+        randomiserListListenersRef.current.forEach((listener) => listener(nextSnapshot.savedRandomiserLists));
         if (!stateRevisionAdvanced && inFlightStateRef.current !== null) {
           const optimisticState = queuedStateRef.current ?? inFlightStateRef.current;
           const metadataSnapshot = {
