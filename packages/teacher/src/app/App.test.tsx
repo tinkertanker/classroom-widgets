@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
 import App from './App';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { widgetRegistry } from '../services/WidgetRegistry';
@@ -140,7 +141,9 @@ describe('App narrow layout', () => {
     });
     expect(screen.queryByTestId('bottom-bar')).not.toBeInTheDocument();
 
-    window.openClassroomWidgetLauncher?.();
+    act(() => {
+      window.openClassroomWidgetLauncher?.();
+    });
 
     expect(postMessage).toHaveBeenCalledWith({
       type: 'window-mode-requested',
