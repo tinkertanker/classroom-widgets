@@ -49,6 +49,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     private var pendingHostWriteFailed = false
     private var hostWriteGeneration = 0
     private var pendingHostWriteWaiters: [(@MainActor (Bool) -> Void)] = []
+    private let frameDefaultsWriter = DebouncedDefaultsWriter()
 
     var isDashboardVisible: Bool { dashboardVisible }
     var onVisibilityChanged: (@MainActor (Bool) -> Void)?
@@ -62,9 +63,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
 
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(
-            StaticFileSchemeHandler(webRoot: WebRootResolver.resolve()),
+            DashboardWebKitShared.schemeHandler,
             forURLScheme: dashboardURLScheme
         )
+        DashboardWebKitShared.schemeHandler.prewarmCriticalAssets()
         configuration.userContentController.addUserScript(WKUserScript(
             source: "window.__CLASSROOM_WIDGETS_MACOS__ = true;",
             injectionTime: .atDocumentStart,
@@ -74,6 +76,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         widgetPanelCoordinator = WidgetPanelCoordinator(compactPresentationActive: initiallyVisible)
 
         webView = WKWebView(frame: .zero, configuration: configuration)
+        ClassroomWebViewTuning.apply(to: webView)
         // This is intentionally an opaque, bounded AppKit window.  The
         // previous transparent, display-sized window made input routing depend
         // on asynchronous DOM hit regions.
@@ -185,10 +188,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        setWebDashboardVisible(dashboardVisible)
-        setWebWindowMode(windowMode)
-        setWebBackgroundOpacity(compactBackgroundOpacity)
-        setWebWindowChromeVisible(compactChromeVisible || windowMode == .canvas)
+        pushWebDashboardState()
 
         if pendingWidgetLauncherOpen && !widgetLauncherOpenAttemptInFlight {
             openWidgetLauncher()
@@ -333,7 +333,13 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
+    func flushPersistedState() {
+        persistFrame(for: windowMode, immediately: true)
+        widgetPanelCoordinator.flushPersistedFrames()
+    }
+
     func prepareForTermination() async -> Bool {
+        flushPersistedState()
         guard !isChangingWindowMode else { return false }
         guard windowMode == .compact else { return true }
 
@@ -436,7 +442,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func completeWindowModeChange(_ mode: DashboardWindowMode) {
-        persistFrame(for: windowMode)
+        persistFrame(for: windowMode, immediately: true)
         windowMode = mode
         configureWindow(for: mode)
         restoreFrame(for: mode)
@@ -480,7 +486,7 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
                     self.retryCanvasTransition(pendingChanges, retriesRemaining: retriesRemaining - 1)
                     return
                 }
-                self.persistFrame(for: self.windowMode)
+                self.persistFrame(for: self.windowMode, immediately: true)
                 self.windowMode = .canvas
                 self.configureWindow(for: .canvas)
                 self.restoreFrame(for: .canvas)
@@ -530,11 +536,18 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
     }
 
     private func abortCompactTransition() {
+        pendingWidgetLauncherOpen = false
+        widgetLauncherOpenAttemptInFlight = false
         // Preparing a handoff marks each panel bridge as closing, so recreate
         // the compact surfaces rather than re-showing those inert web views.
         widgetPanelCoordinator.enterCanvas()
         isChangingWindowMode = false
         resetHostWriteTracking()
+        // Launcher prepare and window-mode requests update the webview before
+        // this handoff finishes; restore the still-compact host mode there too
+        // and drop any launchpad the bridge already opened or queued.
+        cancelWebWidgetLauncher()
+        setWebWindowMode(windowMode)
         let hasCompactPanels = widgetPanelCoordinator.enterCompact()
         guard dashboardVisible else {
             widgetPanelCoordinator.hideAll()
@@ -927,7 +940,8 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         compactNavigationBar.frame = navigationBarFrame
         centreTrafficLights(in: navigationBarFrame, contentView: contentView)
 
-        let trafficLightsRightEdge = trafficLights
+        let buttons = trafficLights
+        let trafficLightsRightEdge = buttons
             .map { $0.convert($0.bounds, to: contentView).maxX }
             .max() ?? 70
         let leftInset = trafficLightsRightEdge + 12
@@ -1044,14 +1058,14 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         let buttons = trafficLights
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-        for button in buttons {
-            button.isHidden = false
-            if reduceMotion {
-                button.alphaValue = visible ? 1 : 0
-            } else {
-                NSAnimationContext.runAnimationGroup { context in
-                    context.duration = 0.16
-                    button.animator().alphaValue = visible ? 1 : 0
+        if reduceMotion {
+            buttons.forEach { $0.isHidden = false; $0.alphaValue = visible ? 1 : 0 }
+        } else {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.16
+                buttons.forEach {
+                    $0.isHidden = false
+                    $0.animator().alphaValue = visible ? 1 : 0
                 }
             }
         }
@@ -1246,9 +1260,65 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         }
     }
 
-    private func persistFrame(for mode: DashboardWindowMode) {
+    private func persistFrame(for mode: DashboardWindowMode, immediately: Bool = false) {
         guard let window, !window.styleMask.contains(.fullScreen) else { return }
-        UserDefaults.standard.set(NSStringFromRect(window.frame), forKey: Self.frameDefaultsKey(for: mode))
+        let encodedFrame = NSStringFromRect(window.frame)
+        let key = Self.frameDefaultsKey(for: mode)
+        if immediately {
+            frameDefaultsWriter.setImmediately(encodedFrame, forKey: key)
+        } else {
+            frameDefaultsWriter.set(encodedFrame, forKey: key)
+        }
+    }
+
+    private func pushWebDashboardState() {
+        visibilityPushGeneration += 1
+        modePushGeneration += 1
+        backgroundOpacityPushGeneration += 1
+        chromeVisibilityPushGeneration += 1
+        let generation = visibilityPushGeneration
+        let visible = dashboardVisible
+        let mode = windowMode.rawValue
+        let opacity = compactBackgroundOpacity
+        let chromeVisible = compactChromeVisible || windowMode == .canvas
+        webView.callAsyncJavaScript(
+            """
+            return (() => {
+              const dashboard = window.classroomDashboard;
+              if (!dashboard?.setVisible || !dashboard?.setWindowMode || !dashboard?.getWindowMode
+                  || !dashboard?.setBackgroundOpacity || !dashboard?.setWindowChromeVisible) {
+                return false;
+              }
+              dashboard.setVisible(visible);
+              dashboard.setWindowMode(mode);
+              if (dashboard.getWindowMode() !== mode) return false;
+              dashboard.setBackgroundOpacity(opacity);
+              dashboard.setWindowChromeVisible(chromeVisible);
+              return true;
+            })()
+            """,
+            arguments: [
+                "visible": visible,
+                "mode": mode,
+                "opacity": opacity,
+                "chromeVisible": chromeVisible
+            ],
+            in: nil,
+            in: .page
+        ) { [weak self] result in
+            guard let self else { return }
+            guard self.visibilityPushGeneration == generation else { return }
+            if case let .success(value) = result, value as? Bool == true {
+                return
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 150_000_000)
+                self.setWebDashboardVisible(visible)
+                self.setWebWindowMode(self.windowMode)
+                self.setWebBackgroundOpacity(opacity)
+                self.setWebWindowChromeVisible(chromeVisible)
+            }
+        }
     }
 
     private func restoreFrame(for mode: DashboardWindowMode) {
@@ -1304,6 +1374,20 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
         return NSScreen.screens.contains { $0.visibleFrame.intersects(frame) }
     }
 
+    private func cancelWebWidgetLauncher() {
+        webView.evaluateJavaScript(
+            """
+            (() => {
+              if (window.cancelClassroomWidgetLauncher) {
+                window.cancelClassroomWidgetLauncher();
+                return true;
+              }
+              return false;
+            })()
+            """
+        )
+    }
+
     private func openWidgetLauncher(retriesRemaining: Int = 5) {
         guard pendingWidgetLauncherOpen, !widgetLauncherOpenAttemptInFlight else { return }
         widgetLauncherOpenAttemptInFlight = true
@@ -1321,6 +1405,10 @@ final class DashboardWindowController: NSWindowController, WKNavigationDelegate,
             self.widgetLauncherOpenAttemptInFlight = false
             if result as? Bool == true {
                 self.pendingWidgetLauncherOpen = false
+                if self.windowMode == .compact && !self.isChangingWindowMode {
+                    self.cancelWebWidgetLauncher()
+                    self.setWebWindowMode(.compact)
+                }
                 return
             }
             guard retriesRemaining > 0 else {

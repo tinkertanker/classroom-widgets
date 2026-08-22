@@ -1,24 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { HelmetProvider } from 'react-helmet-async';
 import './index.css';
-import App from './app/App';
-import About from './pages/About';
-import WidgetsHub from './pages/WidgetsHub';
-import PollPage from './pages/widgets/PollPage';
-import QuestionsPage from './pages/widgets/QuestionsPage';
-import FeedbackPage from './pages/widgets/FeedbackPage';
-import HandoutPage from './pages/widgets/HandoutPage';
-import TimerPage from './pages/widgets/TimerPage';
-import RandomiserPage from './pages/widgets/RandomiserPage';
-import ListPage from './pages/widgets/ListPage';
-import TaskCuePage from './pages/widgets/TaskCuePage';
-import TrafficLightPage from './pages/widgets/TrafficLightPage';
-import TextBannerPage from './pages/widgets/TextBannerPage';
-import QrCodePage from './pages/widgets/QrCodePage';
-import SoundEffectsPage from './pages/widgets/SoundEffectsPage';
-import CompactWidgetApp from './features/desktop/CompactWidgetApp';
 
 const isCompactWidgetPanel = new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
 
@@ -41,28 +23,69 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
-root.render(
-  <React.StrictMode>
-    <HelmetProvider>
-      {isCompactWidgetPanel ? <CompactWidgetApp /> : <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/widgets" element={<WidgetsHub />} />
-          <Route path="/widgets/poll" element={<PollPage />} />
-          <Route path="/widgets/questions" element={<QuestionsPage />} />
-          <Route path="/widgets/feedback" element={<FeedbackPage />} />
-          <Route path="/widgets/handout" element={<HandoutPage />} />
-          <Route path="/widgets/timer" element={<TimerPage />} />
-          <Route path="/widgets/randomiser" element={<RandomiserPage />} />
-          <Route path="/widgets/list" element={<ListPage />} />
-          <Route path="/widgets/task-cue" element={<TaskCuePage />} />
-          <Route path="/widgets/traffic-light" element={<TrafficLightPage />} />
-          <Route path="/widgets/text-banner" element={<TextBannerPage />} />
-          <Route path="/widgets/qr-code" element={<QrCodePage />} />
-          <Route path="/widgets/sound-effects" element={<SoundEffectsPage />} />
-        </Routes>
-      </BrowserRouter>}
-    </HelmetProvider>
-  </React.StrictMode>
-);
+async function renderApp() {
+  if (isCompactWidgetPanel) {
+    const { default: CompactWidgetApp } = await import('./features/desktop/CompactWidgetApp');
+    root.render(
+      <React.StrictMode>
+        <CompactWidgetApp />
+      </React.StrictMode>
+    );
+    return;
+  }
+
+  const [
+    { default: App },
+    { HelmetProvider },
+    { BrowserRouter, Routes, Route },
+  ] = await Promise.all([
+    import('./app/App'),
+    import('react-helmet-async'),
+    import('react-router-dom'),
+  ]);
+
+  const About = React.lazy(() => import('./pages/About'));
+  const WidgetsHub = React.lazy(() => import('./pages/WidgetsHub'));
+  const PollPage = React.lazy(() => import('./pages/widgets/PollPage'));
+  const QuestionsPage = React.lazy(() => import('./pages/widgets/QuestionsPage'));
+  const FeedbackPage = React.lazy(() => import('./pages/widgets/FeedbackPage'));
+  const HandoutPage = React.lazy(() => import('./pages/widgets/HandoutPage'));
+  const TimerPage = React.lazy(() => import('./pages/widgets/TimerPage'));
+  const RandomiserPage = React.lazy(() => import('./pages/widgets/RandomiserPage'));
+  const ListPage = React.lazy(() => import('./pages/widgets/ListPage'));
+  const TaskCuePage = React.lazy(() => import('./pages/widgets/TaskCuePage'));
+  const TrafficLightPage = React.lazy(() => import('./pages/widgets/TrafficLightPage'));
+  const TextBannerPage = React.lazy(() => import('./pages/widgets/TextBannerPage'));
+  const QrCodePage = React.lazy(() => import('./pages/widgets/QrCodePage'));
+  const SoundEffectsPage = React.lazy(() => import('./pages/widgets/SoundEffectsPage'));
+
+  root.render(
+    <React.StrictMode>
+      <HelmetProvider>
+        <BrowserRouter>
+          <React.Suspense fallback={null}>
+            <Routes>
+              <Route path="/" element={<App />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/widgets" element={<WidgetsHub />} />
+              <Route path="/widgets/poll" element={<PollPage />} />
+              <Route path="/widgets/questions" element={<QuestionsPage />} />
+              <Route path="/widgets/feedback" element={<FeedbackPage />} />
+              <Route path="/widgets/handout" element={<HandoutPage />} />
+              <Route path="/widgets/timer" element={<TimerPage />} />
+              <Route path="/widgets/randomiser" element={<RandomiserPage />} />
+              <Route path="/widgets/list" element={<ListPage />} />
+              <Route path="/widgets/task-cue" element={<TaskCuePage />} />
+              <Route path="/widgets/traffic-light" element={<TrafficLightPage />} />
+              <Route path="/widgets/text-banner" element={<TextBannerPage />} />
+              <Route path="/widgets/qr-code" element={<QrCodePage />} />
+              <Route path="/widgets/sound-effects" element={<SoundEffectsPage />} />
+            </Routes>
+          </React.Suspense>
+        </BrowserRouter>
+      </HelmetProvider>
+    </React.StrictMode>
+  );
+}
+
+void renderApp();

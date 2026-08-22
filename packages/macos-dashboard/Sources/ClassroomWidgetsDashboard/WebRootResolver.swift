@@ -1,7 +1,13 @@
 import Foundation
 
 enum WebRootResolver {
+    private static let resolvedRoot = resolveOnce()
+
     static func resolve() -> URL {
+        resolvedRoot
+    }
+
+    private static func resolveOnce() -> URL {
         if let override = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_WEB_ROOT"], !override.isEmpty {
             return URL(fileURLWithPath: override, isDirectory: true)
         }

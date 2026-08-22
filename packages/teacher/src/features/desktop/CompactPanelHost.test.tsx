@@ -149,6 +149,29 @@ describe('CompactPanelHost', () => {
     });
   });
 
+  it('does not republish inventory when only a non-compact widget changes', async () => {
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useWorkspaceStore.setState({
+        widgets: [
+          ...useWorkspaceStore.getState().widgets,
+          { id: 'poll-1', type: WidgetType.POLL, position: { x: 0, y: 0 }, size: { width: 400, height: 400 }, zIndex: 1 }
+        ],
+        widgetStates: new Map([
+          ['timer-1', { timer: { time: 10 } }],
+          ['poll-1', { votes: [1] }]
+        ])
+      });
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(postMessage).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves an unchanged widget revision when another widget changes', async () => {
     useWorkspaceStore.setState({
       widgets: [
@@ -163,7 +186,8 @@ describe('CompactPanelHost', () => {
     render(<CompactPanelHost />);
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
     const firstInventory = postMessage.mock.calls[0][0];
-    const timerRevision = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').revision;
+    const timerSnapshot = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1');
+    const qrSnapshot = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1');
 
     act(() => {
       useWorkspaceStore.setState({ widgetStates: new Map([
@@ -174,8 +198,12 @@ describe('CompactPanelHost', () => {
 
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(2));
     const secondInventory = postMessage.mock.calls[1][0];
-    expect(secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').revision).toBe(timerRevision);
-    expect(secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1').revision).toBeGreaterThan(timerRevision);
+    const secondTimer = secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1');
+    const secondQr = secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1');
+    expect(secondTimer.revision).toBe(timerSnapshot.revision);
+    expect(secondTimer.stateRevision).toBe(timerSnapshot.stateRevision);
+    expect(secondQr.revision).toBe(qrSnapshot.revision);
+    expect(secondQr.stateRevision).toBeGreaterThan(qrSnapshot.stateRevision);
   });
 
   it('starts a new host instance when the dashboard host reloads', async () => {

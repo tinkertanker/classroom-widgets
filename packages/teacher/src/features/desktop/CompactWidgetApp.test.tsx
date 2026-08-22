@@ -8,6 +8,8 @@ import { parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
 import CompactWidgetApp from './CompactWidgetApp';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 
+vi.mock('../../app/App.css', () => ({}));
+
 vi.mock('../../services/WidgetRegistry', () => ({
   widgetRegistry: { get: vi.fn() }
 }));
@@ -212,6 +214,48 @@ describe('CompactWidgetApp', () => {
     expect(panelPostMessage.mock.calls.filter(
       ([message]) => (message as { type?: string }).type === 'panel-state-change'
     )).toHaveLength(stateChangeCount);
+  });
+
+  it('applies a host echo that keeps metadata revision and advances stateRevision', async () => {
+    const StateProbe = ({ savedState }: ProbeWidgetProps) => (
+      <div data-testid="saved-state">{JSON.stringify(savedState)}</div>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(StateProbe));
+    render(<CompactWidgetApp />);
+
+    act(() => {
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1, 1));
+    });
+    expect(await screen.findByTestId('saved-state')).toHaveTextContent('{"elapsed":0}');
+
+    act(() => {
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 10 }, 1, 2));
+    });
+    expect(await screen.findByTestId('saved-state')).toHaveTextContent('{"elapsed":10}');
+  });
+
+  it('clears an in-flight edit when the host acks with a stateRevision-only snapshot', async () => {
+    const EditingProbe = ({ onStateChange }: ProbeWidgetProps) => (
+      <>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 1 })}>First</button>
+        <button type="button" onClick={() => onStateChange?.({ elapsed: 2 })}>Second</button>
+      </>
+    );
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(EditingProbe));
+    render(<CompactWidgetApp />);
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 0 }, 1, 1)));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'First' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })]
+    ]);
+
+    act(() => window.classroomWidgetPanel?.receiveSnapshot(snapshot({ elapsed: 1 }, 1, 2)));
+    expect(panelPostMessage.mock.calls.filter(([message]) => message.type === 'panel-state-change')).toEqual([
+      [expect.objectContaining({ baseRevision: 1, state: { elapsed: 1 } })],
+      [expect.objectContaining({ baseRevision: 2, state: { elapsed: 2 } })]
+    ]);
   });
 
   it('ignores snapshots that arrive out of revision order', async () => {

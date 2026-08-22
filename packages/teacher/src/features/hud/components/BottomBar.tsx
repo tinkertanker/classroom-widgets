@@ -20,12 +20,7 @@ import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useHudProximityContext } from '@shared/hooks/useHudProximity';
 import { hudProximity } from '@shared/utils/styles';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
-
-declare global {
-  interface Window {
-    openClassroomWidgetLauncher?: () => void;
-  }
-}
+import { registerWidgetLauncherOpener } from '../../desktop/widgetLauncher';
 
 // Default recent widgets if none are set
 const defaultRecentWidgets = [
@@ -134,15 +129,10 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
     });
   }, [handleAddWidget, hideModal, showModal, stickerMode]);
 
-  useEffect(() => {
-    window.openClassroomWidgetLauncher = handleShowMoreWidgets;
-
-    return () => {
-      if (window.openClassroomWidgetLauncher === handleShowMoreWidgets) {
-        delete window.openClassroomWidgetLauncher;
-      }
-    };
-  }, [handleShowMoreWidgets]);
+  useEffect(
+    () => registerWidgetLauncherOpener(handleShowMoreWidgets, hideModal),
+    [handleShowMoreWidgets, hideModal]
+  );
 
   const handleShowStickers = () => {
     showModal({

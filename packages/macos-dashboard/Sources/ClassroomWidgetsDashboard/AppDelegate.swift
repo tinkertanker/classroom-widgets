@@ -3,7 +3,7 @@ import Carbon
 import SwiftUI
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: DashboardWindowController?
     private var terminationPending = false
     private var terminationApproved = false
@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launchAtLoginManager: launchAtLoginManager,
         onShortcutsChanged: { [weak self] in
             self?.registerHotKeys()
-            self?.updateStatusMenu()
         },
         onWindowBehaviorChanged: { [weak self] in
             self?.controller?.applySettings()
@@ -47,12 +46,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupMainMenu()
 
         let controller = DashboardWindowController()
-        controller.onVisibilityChanged = { [weak self] _ in
-            self?.updateStatusMenu()
-        }
-        controller.onCompactWidgetOptionsChanged = { [weak self] _ in
-            self?.updateStatusMenu()
-        }
         self.controller = controller
         setupStatusItem()
         registerHotKeys()
@@ -68,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        controller?.flushPersistedState()
         hotKeys.removeAll()
     }
 
@@ -145,8 +139,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let statusItem = NSStatusBar.system.statusItem(withLength: 26)
         statusItem.button?.image = DashboardMenuBarIcon.make(size: 21)
         statusItem.button?.imagePosition = .imageOnly
+        let menu = NSMenu()
+        menu.delegate = self
+        statusItem.menu = menu
         self.statusItem = statusItem
-        updateStatusMenu()
     }
 
     private func syncStatusItemVisibility() {
@@ -155,8 +151,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if shouldShow {
             if statusItem == nil {
                 setupStatusItem()
-            } else {
-                updateStatusMenu()
             }
             return
         }
@@ -167,8 +161,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem = nil
     }
 
-    private func updateStatusMenu() {
-        let menu = NSMenu()
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        rebuildStatusMenu(into: menu)
+    }
+
+    private func rebuildStatusMenu(into menu: NSMenu) {
+        menu.removeAllItems()
 
         let toggleTitle = controller?.isDashboardVisible == true ? "Hide Dashboard" : "Show Dashboard"
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleDashboard), keyEquivalent: "")
@@ -238,8 +236,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
-
-        statusItem?.menu = menu
     }
 
     private func applyShortcut(to item: NSMenuItem, keyCode: Int, modifiers: Int) {
@@ -265,7 +261,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             reservedShortcuts: []
         ) { [weak self] in
             self?.controller?.toggleDashboard()
-            self?.updateStatusMenu()
         }
 
         let launcherKeyCode = shortcutKeyCode(for: DashboardSettingKeys.launcherShortcutKeyCode, fallback: DashboardDefaults.launcherShortcutKeyCode)
@@ -277,7 +272,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             reservedShortcuts: [(toggleKeyCode, toggleModifiers)]
         ) { [weak self] in
             self?.controller?.showWidgetLauncher()
-            self?.updateStatusMenu()
         }
 
         let settingsKeyCode = shortcutKeyCode(for: DashboardSettingKeys.settingsShortcutKeyCode, fallback: DashboardDefaults.settingsShortcutKeyCode)
@@ -292,7 +286,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ]
         ) { [weak self] in
             self?.settingsWindowCoordinator.show()
-            self?.updateStatusMenu()
         }
     }
 
@@ -331,12 +324,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleDashboard() {
         controller?.toggleDashboard()
-        updateStatusMenu()
     }
 
     @objc private func showWidgetLauncher() {
         controller?.showWidgetLauncher()
-        updateStatusMenu()
     }
 
     @objc private func reloadDashboard() {
@@ -345,7 +336,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func addCompactWidget(_ sender: NSMenuItem) {
         controller?.addCompactWidget(sender.tag)
-        updateStatusMenu()
     }
 
     @objc private func closeFrontWindow() {
@@ -359,7 +349,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if keyWindow is DashboardWindow {
             if controller?.isDashboardVisible == true {
                 controller?.toggleDashboard()
-                updateStatusMenu()
             } else {
                 // Already hiding (window lingers briefly for the exit
                 // animation) — nothing to close.
@@ -394,7 +383,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             presentError(error, title: "Launch at Login Failed")
         }
-        updateStatusMenu()
     }
 
     @objc private func quitApp() {

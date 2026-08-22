@@ -1,7 +1,16 @@
 import AppKit
 
 enum DashboardMenuBarIcon {
+    private static let statusItemIcon = makeImage(size: 21)
+
     static func make(size: CGFloat = 18) -> NSImage {
+        if size == 21 {
+            return statusItemIcon
+        }
+        return makeImage(size: size)
+    }
+
+    private static func makeImage(size: CGFloat) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             NSColor.labelColor.setFill()
             let symbolScale = 0.8
