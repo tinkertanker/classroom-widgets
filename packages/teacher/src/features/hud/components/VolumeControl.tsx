@@ -8,6 +8,8 @@ interface VolumeControlProps {
   avoidSessionBanner?: boolean;
 }
 
+const HOVER_CLOSE_DELAY_MS = 500;
+
 const VolumeControl: React.FC<VolumeControlProps> = ({ avoidSessionBanner = false }) => {
   const volume = useAudioVolumeStore((state) => state.volume);
   const setVolume = useAudioVolumeStore((state) => state.setVolume);
@@ -15,6 +17,40 @@ const VolumeControl: React.FC<VolumeControlProps> = ({ avoidSessionBanner = fals
   const [isOpen, setIsOpen] = useState(false);
   const controlRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const suppressFocusOpenRef = useRef(false);
+  const isHoveredRef = useRef(false);
+  const isFocusWithinRef = useRef(false);
+  const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelPendingHoverClose = () => {
+    if (hoverCloseTimerRef.current) {
+      clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  };
+
+  const openOnHover = () => {
+    isHoveredRef.current = true;
+    cancelPendingHoverClose();
+    setIsOpen(true);
+  };
+
+  const closeAfterHover = () => {
+    isHoveredRef.current = false;
+    cancelPendingHoverClose();
+    if (isFocusWithinRef.current) return;
+
+    hoverCloseTimerRef.current = setTimeout(() => {
+      hoverCloseTimerRef.current = null;
+      setIsOpen(false);
+    }, HOVER_CLOSE_DELAY_MS);
+  };
+
+  useEffect(() => () => {
+    if (hoverCloseTimerRef.current) {
+      clearTimeout(hoverCloseTimerRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -29,7 +65,9 @@ const VolumeControl: React.FC<VolumeControlProps> = ({ avoidSessionBanner = fals
         event.preventDefault();
         event.stopPropagation();
         setIsOpen(false);
+        suppressFocusOpenRef.current = true;
         buttonRef.current?.focus();
+        suppressFocusOpenRef.current = false;
       }
     };
 
@@ -49,19 +87,39 @@ const VolumeControl: React.FC<VolumeControlProps> = ({ avoidSessionBanner = fals
   const volumePercent = Math.round(volume * 100);
 
   return (
-    <div ref={controlRef} className="relative pointer-events-auto shrink-0">
+    <div
+      ref={controlRef}
+      className="relative pointer-events-auto shrink-0"
+      onMouseEnter={openOnHover}
+      onMouseLeave={closeAfterHover}
+      onFocusCapture={() => {
+        isFocusWithinRef.current = true;
+        if (!suppressFocusOpenRef.current) {
+          cancelPendingHoverClose();
+          setIsOpen(true);
+        }
+      }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          isFocusWithinRef.current = false;
+          if (!isHoveredRef.current) {
+            setIsOpen(false);
+          }
+        }
+      }}
+    >
       <button
         ref={buttonRef}
         type="button"
         className={clsx(
           hudContainer.button,
-          'w-10 px-0 text-warm-gray-700 dark:text-warm-gray-200',
+          'w-10 px-0',
+          volume === 0
+            ? 'text-dusty-rose-600 dark:text-dusty-rose-400'
+            : 'text-warm-gray-700 dark:text-warm-gray-200',
           isOpen && 'ring-2 ring-sage-500 ring-offset-1 dark:ring-offset-warm-gray-900'
         )}
-        onClick={() => {
-          toggleMuted();
-          setIsOpen(true);
-        }}
+        onClick={toggleMuted}
         title={volume === 0 ? 'Unmute app sounds' : 'Mute app sounds'}
         aria-label={volume === 0 ? 'Unmute app sounds' : 'Mute app sounds'}
         aria-expanded={isOpen}
