@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useAudioVolumeStore } from '../../../../store/audioVolumeStore';
 
 interface UseTimerAudioProps {
   soundUrl: string;
@@ -11,11 +12,13 @@ interface UseTimerAudioProps {
  */
 export function useTimerAudio({ soundUrl, enabled = true }: UseTimerAudioProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const masterVolume = useAudioVolumeStore((state) => state.volume);
 
   useEffect(() => {
     if (enabled) {
       audioRef.current = new Audio(soundUrl);
       audioRef.current.preload = 'auto';
+      audioRef.current.volume = masterVolume;
     }
 
     return () => {
@@ -25,7 +28,13 @@ export function useTimerAudio({ soundUrl, enabled = true }: UseTimerAudioProps) 
         audioRef.current = null;
       }
     };
-  }, [soundUrl, enabled]);
+  }, [enabled, soundUrl]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = masterVolume;
+    }
+  }, [masterVolume]);
 
   const playSound = () => {
     if (audioRef.current && enabled) {

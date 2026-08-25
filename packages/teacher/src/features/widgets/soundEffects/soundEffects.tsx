@@ -14,6 +14,7 @@ import {
 } from 'react-icons/fa6';
 import { IconType } from 'react-icons';
 import { widgetContainer } from '@shared/utils/styles';
+import { useAudioVolumeStore } from '../../../store/audioVolumeStore';
 
 // Sound file imports
 import victorySoundFile from "./sounds/victory.mp3";
@@ -40,6 +41,7 @@ interface SoundEffectsProps {
 
 const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
   const audioElementsRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const masterVolume = useAudioVolumeStore((state) => state.volume);
 
   // Memoize sound effect definitions to prevent recreation on every render
   const soundButtons: SoundButton[] = useMemo(() => [
@@ -71,6 +73,12 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
     };
   }, []);
 
+  useEffect(() => {
+    audioElementsRef.current.forEach(audio => {
+      audio.volume = masterVolume;
+    });
+  }, [masterVolume]);
+
   const playSound = useCallback((soundName: string) => {
     let audio = audioElementsRef.current.get(soundName);
 
@@ -80,6 +88,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
       if (soundFile) {
         audio = new Audio(soundFile);
         audio.preload = 'auto';
+        audio.volume = masterVolume;
         audioElementsRef.current.set(soundName, audio);
       }
     }
@@ -100,7 +109,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
         button.classList.remove('scale-95');
       }, 100);
     }
-  }, [soundFilesByName]);
+  }, [masterVolume, soundFilesByName]);
 
   // Keyboard shortcuts (1-9 for first 9 sounds, 0 for 10th sound)
   useEffect(() => {

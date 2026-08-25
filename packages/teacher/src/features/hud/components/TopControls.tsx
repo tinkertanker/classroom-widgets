@@ -10,6 +10,7 @@ import { useHudProximityContext } from '@shared/hooks/useHudProximity';
 import { hudContainer, hudProximity, zIndex } from '@shared/utils/styles';
 import { HudButton, HudButtonGroup, HudGroupButton } from '../../../components/ui';
 import Clock from './Clock';
+import VolumeControl from './VolumeControl';
 
 interface TopControlsProps {
   onSwitchToCompact?: () => void;
@@ -129,23 +130,27 @@ const TopControls: React.FC<TopControlsProps> = ({ onSwitchToCompact }) => {
           hudProximity.wrapper(isNear.topRight)
         )}
       >
-        {/* Dynamic Island-style Session Status */}
-        {sessionCode ? (
-          <SessionBanner />
-        ) : (
-          /* Regular WiFi button when no session */
-          <button
-            className={clsx(hudContainer.button, 'px-3')}
-            title={connected ? 'Connected to server' : 'Disconnected from server'}
-          >
-            <div className={clsx(
-              'transition-colors duration-200',
-              connected ? 'text-sage-600' : 'text-warm-gray-400'
-            )}>
-              <FaWifi className="text-lg" />
-            </div>
-          </button>
-        )}
+        <div className="flex shrink-0 items-start gap-2">
+          <VolumeControl avoidSessionBanner={Boolean(sessionCode)} />
+
+          {/* Dynamic Island-style Session Status */}
+          {sessionCode ? (
+            <SessionBanner />
+          ) : (
+            /* Regular WiFi button when no session */
+            <button
+              className={clsx(hudContainer.button, 'px-3')}
+              title={connected ? 'Connected to server' : 'Disconnected from server'}
+            >
+              <div className={clsx(
+                'transition-colors duration-200',
+                connected ? 'text-sage-600' : 'text-warm-gray-400'
+              )}>
+                <FaWifi className="text-lg" />
+              </div>
+            </button>
+          )}
+        </div>
 
         {/* Zoom Controls (hidden in column layout) */}
         {layoutFormat !== 'column' && (

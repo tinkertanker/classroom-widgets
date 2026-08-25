@@ -1,5 +1,6 @@
 import { useRef, useCallback } from 'react';
 import voiceActivateSound from '../sounds/voice_widget_activate.wav';
+import { getMasterVolume } from '../../../store/audioVolumeStore';
 
 export type VoiceFeedbackType = 'listening' | 'processing' | 'done';
 
@@ -26,19 +27,19 @@ export const useVoiceFeedbackSound = () => {
       case 'listening':
         // Normal playback - indicates we're ready to listen
         audio.playbackRate = 1.0;
-        audio.volume = 0.4;
+        audio.volume = getMasterVolume(0.4);
         break;
 
       case 'processing':
         // Faster playback - indicates we're processing
         audio.playbackRate = 1.3;
-        audio.volume = 0.3;
+        audio.volume = getMasterVolume(0.3);
         break;
 
       case 'done':
         // Slower, quieter playback - indicates completion
         audio.playbackRate = 0.8;
-        audio.volume = 0.35;
+        audio.volume = getMasterVolume(0.35);
         break;
     }
 

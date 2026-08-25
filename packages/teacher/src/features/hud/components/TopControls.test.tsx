@@ -31,6 +31,15 @@ vi.mock('@shared/hooks/useHudProximity', () => ({
 }));
 
 describe('TopControls', () => {
+  it('keeps the volume control immediately before the connection control', () => {
+    render(<TopControls />);
+
+    const volumeButton = screen.getByRole('button', { name: 'Mute app sounds' });
+    const connectionButton = screen.getByTitle('Connected to server');
+
+    expect(volumeButton.parentElement?.nextElementSibling).toBe(connectionButton);
+  });
+
   it('shows the compact action in the hideable top controls when provided', () => {
     const onSwitchToCompact = vi.fn();
 

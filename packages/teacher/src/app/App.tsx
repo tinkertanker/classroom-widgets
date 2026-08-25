@@ -25,6 +25,7 @@ import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboard
 import DesktopWindowControls from '../features/desktop/DesktopWindowControls';
 import CompactPanelHost from '../features/desktop/CompactPanelHost';
 import { bindWindowWidgetLauncher } from '../features/desktop/widgetLauncher';
+import { getMasterVolume } from '../store/audioVolumeStore';
 
 import { ConfettiProvider } from '../contexts/ConfettiContext';
 
@@ -157,6 +158,7 @@ function App() {
         trashAudioPromise = import('../sounds/trash-crumple.mp3').then((module) => new Audio(module.default));
       }
       trashAudioPromise.then((audio) => {
+        audio.volume = getMasterVolume();
         audio.play().catch(err => console.error('Error playing trash sound:', err));
       });
     };

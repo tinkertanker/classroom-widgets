@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { useAudioVolumeStore } from '../../../../store/audioVolumeStore';
 
 interface UseAlertSoundOptions {
   soundFile: string;
@@ -11,20 +12,21 @@ interface UseAlertSoundOptions {
  */
 export function useAlertSound({ soundFile, volume = 0.3 }: UseAlertSoundOptions) {
   const soundRef = useRef<HTMLAudioElement | null>(null);
+  const masterVolume = useAudioVolumeStore((state) => state.volume);
 
   const playSound = useCallback(() => {
     if (!soundRef.current) {
       soundRef.current = new Audio(soundFile);
-      soundRef.current.volume = volume;
     }
+    soundRef.current.volume = volume * masterVolume;
     soundRef.current.play();
-  }, [soundFile, volume]);
+  }, [masterVolume, soundFile, volume]);
 
   const setVolume = useCallback((newVolume: number) => {
     if (soundRef.current) {
-      soundRef.current.volume = Math.max(0, Math.min(1, newVolume));
+      soundRef.current.volume = Math.max(0, Math.min(1, newVolume)) * masterVolume;
     }
-  }, []);
+  }, [masterVolume]);
 
   return {
     playSound,

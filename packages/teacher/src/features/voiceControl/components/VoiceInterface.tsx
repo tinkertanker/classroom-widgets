@@ -5,6 +5,7 @@ import { useVoiceFeedbackSound } from '../hooks/useVoiceFeedbackSound';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
 import { debug } from '@shared/utils/debug';
 import { cn, buttons, text, borders, borderRadius } from '@shared/utils/styles';
+import { getMasterVolume } from '../../../store/audioVolumeStore';
 import '../styles/voiceAnimations.css';
 
 // Upper bound on how long the UI may sit in 'processing'. VoiceCommandService
@@ -225,7 +226,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             const utterance = new SpeechSynthesisUtterance(response.feedback.message);
             utterance.rate = 1.1;
             utterance.pitch = 1.0;
-            utterance.volume = 0.8;
+            utterance.volume = getMasterVolume(0.8);
             window.speechSynthesis.speak(utterance);
           }
 

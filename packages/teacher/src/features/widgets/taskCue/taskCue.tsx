@@ -12,6 +12,7 @@ import {
   FaBroom            // Clean up
 } from 'react-icons/fa6';
 import changeSoundFile from './change.wav';
+import { getMasterVolume } from '../../../store/audioVolumeStore';
 
 interface TaskCueProps {
     isActive?: boolean;
@@ -33,7 +34,9 @@ function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) 
     ];
 
     const plaey = useCallback(() => {
-        new Audio(changeSoundFile).play();
+        const audio = new Audio(changeSoundFile);
+        audio.volume = getMasterVolume();
+        void audio.play();
     }, []);
 
     const handleClick = useCallback((e: MouseEvent) => {

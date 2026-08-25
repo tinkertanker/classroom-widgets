@@ -1,6 +1,7 @@
 // Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import actionClickSoundFile from '../../../sounds/action_click.mp3';
+import { getMasterVolume } from '../../../store/audioVolumeStore';
 
 interface TrafficLightProps {
   savedState?: { activeLight: string };
@@ -41,7 +42,9 @@ function TrafficLight({ savedState, onStateChange }: TrafficLightProps) {
 
 
   const handleLightClick = useCallback((color: string) => {
-    void new Audio(actionClickSoundFile).play().catch(() => undefined);
+    const audio = new Audio(actionClickSoundFile);
+    audio.volume = getMasterVolume();
+    void audio.play().catch(() => undefined);
     setActiveLight(color);
     onStateChange?.({ activeLight: color });
   }, [onStateChange]);

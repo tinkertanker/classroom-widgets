@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from 'react';
+import { useAudioVolumeStore } from '../../../../store/audioVolumeStore';
 
 interface UseRandomiserAudioOptions {
   soundFile: string;
@@ -10,11 +11,11 @@ interface UseRandomiserAudioOptions {
  */
 export function useRandomiserAudio({ soundFile, volume = 1 }: UseRandomiserAudioOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const masterVolume = useAudioVolumeStore((state) => state.volume);
 
   // Initialize audio element
   useEffect(() => {
     const audio = new Audio(soundFile);
-    audio.volume = volume;
     audioRef.current = audio;
 
     return () => {
@@ -23,7 +24,13 @@ export function useRandomiserAudio({ soundFile, volume = 1 }: UseRandomiserAudio
         audioRef.current = null;
       }
     };
-  }, [soundFile, volume]);
+  }, [soundFile]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume * masterVolume;
+    }
+  }, [masterVolume, volume]);
 
   // Play celebration sound
   const playCelebration = useCallback(() => {
