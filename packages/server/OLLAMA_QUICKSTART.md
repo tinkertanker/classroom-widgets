@@ -24,10 +24,10 @@ echo "OLLAMA_MODEL=phi4" >> .env
 echo "OLLAMA_HOST=http://localhost:11434" >> .env
 
 # 5. Install Node.js client
-npm install ollama
+pnpm --filter @classroom-widgets/server add ollama
 
 # 6. Restart server
-npm run dev:server
+pnpm dev:server
 ```
 
 ### With GPU
@@ -60,7 +60,7 @@ curl http://localhost:11434/api/tags
 
 ### Test from your app
 
-1. Start your server: `npm run dev:server`
+1. Start your server: `pnpm dev:server`
 2. Open voice control in the app
 3. Say: "start a timer for 5 minutes"
 4. Check server logs for "OllamaLLMService"

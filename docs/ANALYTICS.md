@@ -51,7 +51,7 @@ VITE_UMAMI_WEBSITE_ID=your-website-id-here
 
 ```bash
 # Restart to pick up env changes
-npm run dev
+pnpm dev
 ```
 
 ### 6. Verify Tracking

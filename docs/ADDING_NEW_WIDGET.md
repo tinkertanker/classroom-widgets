@@ -95,7 +95,7 @@ If you don't add it here, users can still access it through the "MORE" button.
 Start the development server and test your widget:
 
 ```bash
-npm start
+pnpm start
 ```
 
 Your widget should appear in the toolbar or in the "MORE" widgets modal.

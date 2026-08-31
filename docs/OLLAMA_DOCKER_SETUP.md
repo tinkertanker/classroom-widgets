@@ -90,13 +90,13 @@ OLLAMA_HOST=http://localhost:11434
 
 ```bash
 cd server
-npm install ollama
+pnpm --filter @classroom-widgets/server add ollama
 ```
 
 ### 6. Restart Server
 
 ```bash
-npm run dev:server
+pnpm dev:server
 ```
 
 ---

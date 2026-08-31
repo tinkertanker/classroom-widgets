@@ -90,7 +90,7 @@ classroom-widgets/
 BAML is already installed, but if you need to reinstall:
 
 ```bash
-npm install @boundaryml/baml
+pnpm --filter @classroom-widgets/server add @boundaryml/baml
 ```
 
 ### 2. Generate BAML Client
@@ -102,7 +102,7 @@ The BAML client is auto-generated from the schema:
 npx baml-cli generate
 
 # Or add to package.json scripts
-npm run generate:baml
+pnpm generate:baml
 ```
 
 This creates type-safe client code in `server/baml_client/`.
@@ -180,7 +180,7 @@ client OllamaClient {
 ### 5. Run the Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The server will automatically use BAML if `USE_BAML=true` is set.
@@ -249,7 +249,7 @@ command.
 ### 1. Add the widget/action to the shared definitions
 
 Edit `packages/shared/voiceCommandDefinitions.json` and run
-`npm run generate:voice-types` from the repo root. The new widget target and
+`pnpm generate:voice-types` from the repo root. The new widget target and
 action name flow into the BAML prompt automatically, because the catalog is a
 runtime argument. **Do not** add widget or action names to the prompt text.
 
