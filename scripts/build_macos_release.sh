@@ -176,7 +176,7 @@ trash_path "${DMG_PATH}"
 trash_path "${ZIP_PATH}"
 
 echo "Building teacher web assets"
-npm run build -w @classroom-widgets/teacher
+pnpm --filter @classroom-widgets/teacher build
 
 echo "Building macOS executable"
 swift build --package-path "${MACOS_DIR}" -c release

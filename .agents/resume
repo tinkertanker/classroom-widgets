@@ -7,7 +7,7 @@ if ! command -v node >/dev/null 2>&1 ||
   exit 1
 fi
 
-if [[ ! -f node_modules/.package-lock.json ]]; then
+if [[ ! -f node_modules/.modules.yaml ]]; then
   echo "Workspace dependencies are unavailable; rerun .agents/setup." >&2
   exit 1
 fi

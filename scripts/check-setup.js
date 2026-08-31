@@ -46,9 +46,9 @@ checks.forEach(check => {
 console.log('\n' + '='.repeat(50) + '\n');
 
 if (hasErrors) {
-  console.log('❌ Setup incomplete! Run: npm install\n');
+  console.log('❌ Setup incomplete! Run: pnpm install\n');
   process.exit(1);
 } else {
   console.log('✅ All required dependencies are installed!\n');
-  console.log('To start development, run: npm run dev:all\n');
+  console.log('To start development, run: pnpm dev:all\n');
 }
