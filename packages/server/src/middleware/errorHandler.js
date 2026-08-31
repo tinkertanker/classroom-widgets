@@ -83,7 +83,7 @@ const logError = (error, context = {}) => {
   if (process.env.NODE_ENV === 'production') {
     // Integration point for logging services (Sentry, LogRocket, etc.)
     // To integrate:
-    // 1. Install: npm install @sentry/node
+    // 1. Install: pnpm --filter @classroom-widgets/server add @sentry/node
     // 2. Initialize in server.js
     // 3. Uncomment below:
     // if (global.errorLogger) {
