@@ -83,6 +83,8 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
   <key>CFBundleExecutable</key>
   <string>$PRODUCT_NAME</string>
   <key>CFBundleIdentifier</key>
@@ -101,6 +103,8 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
   <string>1</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.education</string>
+  <key>LSHasLocalizedDisplayName</key>
+  <true/>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>LSUIElement</key>
@@ -112,6 +116,12 @@ cat > "$APP_CONTENTS/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+mkdir -p "$APP_RESOURCES/en.lproj"
+cat > "$APP_RESOURCES/en.lproj/InfoPlist.strings" <<STRINGS
+"CFBundleDisplayName" = "$APP_NAME";
+"CFBundleName" = "$APP_NAME";
+STRINGS
 
 detect_signing_identity
 if [ -n "$SIGNING_IDENTITY" ]; then

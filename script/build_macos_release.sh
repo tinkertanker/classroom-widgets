@@ -200,6 +200,8 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
   <key>CFBundleDisplayName</key>
   <string>${APP_NAME}</string>
   <key>CFBundleExecutable</key>
@@ -218,6 +220,8 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
   <string>${BUILD_NUMBER}</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.education</string>
+  <key>LSHasLocalizedDisplayName</key>
+  <true/>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>LSUIElement</key>
@@ -231,6 +235,12 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+mkdir -p "${APP_RESOURCES}/en.lproj"
+cat > "${APP_RESOURCES}/en.lproj/InfoPlist.strings" <<STRINGS
+"CFBundleDisplayName" = "${APP_NAME}";
+"CFBundleName" = "${APP_NAME}";
+STRINGS
 
 if [ "${USE_DISTRIBUTION_SIGNING}" = "true" ]; then
   echo "Signing app with ${SIGNING_IDENTITY}"
