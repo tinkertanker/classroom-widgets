@@ -3,19 +3,20 @@
 import PackageDescription
 
 let package = Package(
-    name: "ClassroomWidgetsDashboard",
+    name: "ClassroomWidgets",
     platforms: [
         .macOS(.v13)
     ],
     products: [
         .executable(
-            name: "ClassroomWidgetsDashboard",
-            targets: ["ClassroomWidgetsDashboard"]
+            name: "ClassroomWidgets",
+            targets: ["ClassroomWidgets"]
         )
     ],
     targets: [
         .executableTarget(
-            name: "ClassroomWidgetsDashboard",
+            name: "ClassroomWidgets",
+            path: "Sources/ClassroomWidgetsDashboard",
             resources: [
                 .process("Resources")
             ]

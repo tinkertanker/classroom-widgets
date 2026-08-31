@@ -89,9 +89,6 @@ final class WidgetPanelCoordinator: NSObject {
     var onPanelReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onPanelStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
-    var onAllPanelsHidden: (@MainActor () -> Void)?
-    var onDashboardHideRequested: (@MainActor () -> Void)?
-    var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onWidgetRemovalRequested: (@MainActor (String) -> Void)?
 
@@ -179,22 +176,14 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
-    func showAll() {
+    private func showAll() {
         for controller in orderedControllers {
             controller.show()
         }
     }
 
-    @discardableResult
-    func hideAll() -> Bool {
-        let hadKeyPanel = panelControllers.values.contains { $0.window?.isKeyWindow == true }
-        panelControllers.values.forEach { $0.hide() }
-        return hadKeyPanel
-    }
-
-    /// Canvas owns the only live widget representation. Destroying the hidden
-    /// panel web views avoids duplicate timers, audio and state writers.
-    func enterCanvas() {
+    /// Destroys panel web views while their state host reloads or the app exits.
+    func deactivate() {
         compactPresentationActive = false
         lastLayoutSignature = nil
         panelControllers.values.forEach { $0.closePermanently() }
@@ -205,7 +194,7 @@ final class WidgetPanelCoordinator: NSObject {
         frameDefaultsWriter.flush()
     }
 
-    func prepareToEnterCanvas(completion: @escaping @MainActor ([WidgetPanelStateChange], Bool) -> Void) {
+    func prepareForDeactivation(completion: @escaping @MainActor ([WidgetPanelStateChange], Bool) -> Void) {
         compactPresentationActive = false
         let controllers = Array(panelControllers.values)
         guard !controllers.isEmpty else {
@@ -240,7 +229,7 @@ final class WidgetPanelCoordinator: NSObject {
     }
 
     @discardableResult
-    func enterCompact() -> Bool {
+    func activate() -> Bool {
         compactPresentationActive = true
         if panelControllers.isEmpty, let lastSnapshot {
             reconcile(snapshot: lastSnapshot)
@@ -248,17 +237,6 @@ final class WidgetPanelCoordinator: NSObject {
         guard !panelControllers.isEmpty else { return false }
         showAll()
         return true
-    }
-
-    func prepareForCompactInventory() {
-        compactPresentationActive = false
-    }
-
-    func activateCompactInventory() {
-        compactPresentationActive = true
-        if panelControllers.isEmpty, let lastSnapshot {
-            reconcile(snapshot: lastSnapshot)
-        }
     }
 
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
@@ -329,14 +307,8 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onRandomiserListChange = { [weak self] change in
             self?.onRandomiserListChange?(change)
         }
-        controller.onDashboardHideRequested = { [weak self] in
-            self?.onDashboardHideRequested?()
-        }
         controller.onRemovalRequested = { [weak self] widgetID in
             self?.onWidgetRemovalRequested?(widgetID)
-        }
-        controller.onCanvasRequested = { [weak self] widgetID in
-            self?.onCanvasRequested?(widgetID)
         }
         controller.onWidgetCreationRequested = { [weak self] widgetType in
             self?.onWidgetCreationRequested?(widgetType)
@@ -430,9 +402,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
-    var onDashboardHideRequested: (@MainActor () -> Void)?
     var onRemovalRequested: (@MainActor (String) -> Void)?
-    var onCanvasRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
     var onFrameChanged: (@MainActor (String, NSRect) -> Void)?
@@ -517,12 +487,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         }
         messageHandler.onRandomiserListChange = { [weak self] change in
             self?.onRandomiserListChange?(change)
-        }
-        messageHandler.onDashboardHideRequested = { [weak self] in
-            self?.onDashboardHideRequested?()
-        }
-        messageHandler.onCanvasRequested = { [weak self] widgetID in
-            self?.onCanvasRequested?(widgetID)
         }
 
         addCompactAccessories(to: panel)
@@ -853,11 +817,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         arrangeButton.imagePosition = .imageOnly
         arrangeButton.toolTip = "Arrange widgets"
 
-        let canvasButton = NSButton(title: "Canvas", target: self, action: #selector(requestCanvas))
-        canvasButton.bezelStyle = .texturedRounded
-        canvasButton.controlSize = .small
-
-        let controls = NSStackView(views: [addButton, arrangeButton, canvasButton])
+        let controls = NSStackView(views: [addButton, arrangeButton])
         controls.orientation = .horizontal
         controls.alignment = .centerY
         controls.spacing = 6
@@ -1017,10 +977,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         onLayoutRequested?(layout)
     }
 
-    @objc private func requestCanvas() {
-        onCanvasRequested?(widgetID)
-    }
-
     private static func collectionBehavior(joinsAllSpaces: Bool) -> NSWindow.CollectionBehavior {
         var behavior: NSWindow.CollectionBehavior = [.fullScreenAuxiliary]
         if joinsAllSpaces {
@@ -1076,9 +1032,7 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
     var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
-    var onDashboardHideRequested: (@MainActor () -> Void)?
     var onWritesCheckpoint: (@MainActor () -> Void)?
-    var onCanvasRequested: (@MainActor (String) -> Void)?
 
     private let widgetID: String
 
@@ -1118,12 +1072,8 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
                   !id.isEmpty
             else { return }
             onRandomiserListChange?(WidgetPanelRandomiserListChange(payload: body))
-        case "dashboard-hide-requested":
-            onDashboardHideRequested?()
         case "panel-writes-checkpoint":
             onWritesCheckpoint?()
-        case "canvas-requested":
-            onCanvasRequested?(widgetID)
         default:
             return
         }

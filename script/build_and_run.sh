@@ -12,8 +12,9 @@ if [ -f "$RELEASE_ENV_FILE" ]; then
   set +a
 fi
 
-APP_NAME="Classroom Widgets Dashboard"
-PRODUCT_NAME="ClassroomWidgetsDashboard"
+APP_NAME="Classroom Widgets"
+PRODUCT_NAME="ClassroomWidgets"
+LEGACY_PRODUCT_NAME="ClassroomWidgetsDashboard"
 BUNDLE_ID="com.classroomwidgets.dashboard"
 APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
@@ -22,7 +23,7 @@ APP_RESOURCES="$APP_CONTENTS/Resources"
 MACOS_DIR="$ROOT_DIR/packages/macos-dashboard"
 INSTALL_APP_BUNDLE="/Applications/$APP_NAME.app"
 ENTITLEMENTS_PATH="$ROOT_DIR/script/macos-distribution-entitlements.plist"
-APP_ICON_PATH="$MACOS_DIR/Sources/$PRODUCT_NAME/Resources/AppIcon.icns"
+APP_ICON_PATH="$MACOS_DIR/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 MODE="${1:-run}"
 
@@ -35,6 +36,7 @@ case "$MODE" in
 esac
 
 pkill -x "$PRODUCT_NAME" 2>/dev/null || true
+pkill -x "$LEGACY_PRODUCT_NAME" 2>/dev/null || true
 
 trash_path() {
   local path="$1"

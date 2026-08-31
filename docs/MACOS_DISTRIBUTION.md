@@ -1,6 +1,6 @@
 # macOS distribution
 
-The macOS dashboard app is built locally from the teacher production build and the SwiftPM package in `packages/macos-dashboard`.
+Classroom Widgets for macOS is a menu-bar app for opening floating classroom widgets. It is built locally from the teacher production build and the SwiftPM package in `packages/macos-dashboard`.
 
 ## Local run
 
@@ -8,8 +8,10 @@ The macOS dashboard app is built locally from the teacher production build and t
 npm run macos:run -- --verify
 ```
 
-This writes `dist/Classroom Widgets Dashboard.app`, opens it, and verifies that `ClassroomWidgetsDashboard` is running.
-The app is installed and launched from `/Applications/Classroom Widgets Dashboard.app` after each successful local run build so macOS camera permission remains tied to the canonical app location.
+This writes `dist/Classroom Widgets.app`, opens it, and verifies that `ClassroomWidgets` is running.
+The app is installed and launched from `/Applications/Classroom Widgets.app` after each successful local run build so macOS camera permission remains tied to the canonical app location.
+
+The bundle identifier remains `com.classroomwidgets.dashboard`, so existing preferences and macOS permissions continue to belong to the same app identity. The scripts do not delete the previous `/Applications/Classroom Widgets Dashboard.app`; remove that old copy manually after confirming the renamed app works to avoid having two copies installed.
 
 ## Local DMG
 
@@ -20,11 +22,11 @@ npm run macos:dmg
 This creates an ad hoc signed local DMG at:
 
 ```text
-dist/ClassroomWidgetsDashboard-v<version>-macos.dmg
+dist/ClassroomWidgets-v<version>-macos.dmg
 ```
 
 Use this only for local packaging checks. It is not suitable for public download.
-The built app is also installed to `/Applications/Classroom Widgets Dashboard.app`.
+The built app is also installed to `/Applications/Classroom Widgets.app`.
 
 ## Developer ID DMG
 
@@ -51,16 +53,16 @@ npm run macos:dmg -- --distribution --notarise
 ```
 
 The distribution signature uses hardened runtime and `script/macos-distribution-entitlements.plist`, which includes camera access for the Visualiser widget.
-Successful release builds also install the signed app to `/Applications/Classroom Widgets Dashboard.app` before packaging the DMG.
+Successful release builds also install the signed app to `/Applications/Classroom Widgets.app` before packaging the DMG.
 
 ## Validation
 
 Useful checks:
 
 ```bash
-codesign -dvvv --entitlements :- "dist/Classroom Widgets Dashboard.app"
-codesign --verify --deep --strict --verbose=2 "dist/Classroom Widgets Dashboard.app"
-codesign --verify --strict --verbose=2 "dist/ClassroomWidgetsDashboard-v<version>-macos.dmg"
-xcrun stapler validate "dist/ClassroomWidgetsDashboard-v<version>-macos.dmg"
-spctl -a -vv -t open --context context:primary-signature "dist/ClassroomWidgetsDashboard-v<version>-macos.dmg"
+codesign -dvvv --entitlements :- "dist/Classroom Widgets.app"
+codesign --verify --deep --strict --verbose=2 "dist/Classroom Widgets.app"
+codesign --verify --strict --verbose=2 "dist/ClassroomWidgets-v<version>-macos.dmg"
+xcrun stapler validate "dist/ClassroomWidgets-v<version>-macos.dmg"
+spctl -a -vv -t open --context context:primary-signature "dist/ClassroomWidgets-v<version>-macos.dmg"
 ```

@@ -12,8 +12,8 @@ if [ -f "${RELEASE_ENV_FILE}" ]; then
   set +a
 fi
 
-APP_NAME="Classroom Widgets Dashboard"
-PRODUCT_NAME="ClassroomWidgetsDashboard"
+APP_NAME="Classroom Widgets"
+PRODUCT_NAME="ClassroomWidgets"
 BUNDLE_ID="com.classroomwidgets.dashboard"
 MACOS_DIR="${ROOT_DIR}/packages/macos-dashboard"
 APP_BUNDLE="${ROOT_DIR}/dist/${APP_NAME}.app"
@@ -24,7 +24,7 @@ APP_RESOURCES="${APP_CONTENTS}/Resources"
 WEB_RESOURCES="${APP_RESOURCES}/Web"
 STAGING_DIR="${ROOT_DIR}/dist/macos-dmg-staging"
 ENTITLEMENTS_PATH="${ROOT_DIR}/script/macos-distribution-entitlements.plist"
-APP_ICON_PATH="${MACOS_DIR}/Sources/${PRODUCT_NAME}/Resources/AppIcon.icns"
+APP_ICON_PATH="${MACOS_DIR}/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
 VERSION="$(node -p "require('./package.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 DMG_PATH="${DMG_PATH:-}"

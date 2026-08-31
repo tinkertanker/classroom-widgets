@@ -4,7 +4,7 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private var controller: DashboardWindowController?
+    private var controller: WidgetHostController?
     private var terminationPending = false
     private var terminationApproved = false
     private var hotKeys: [DashboardHotKey] = []
@@ -12,30 +12,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let launchAtLoginManager = LaunchAtLoginManager()
     private lazy var settingsContext = DashboardSettingsContext(
         launchAtLoginManager: launchAtLoginManager,
-        onShortcutsChanged: { [weak self] in
-            self?.registerHotKeys()
-        },
-        onWindowBehaviorChanged: { [weak self] in
-            self?.controller?.applySettings()
-        },
-        onMenuBarIconChanged: { [weak self] in
-            self?.syncStatusItemVisibility()
-        },
-        onShowDashboard: { [weak self] in
-            self?.controller?.showDashboard()
-        },
-        onShowWidgetLauncher: { [weak self] in
-            self?.controller?.showWidgetLauncher()
-        },
-        onReloadDashboard: { [weak self] in
-            self?.controller?.reloadDashboard()
-        }
+        onShortcutChanged: { [weak self] in self?.registerSettingsHotKey() },
+        onWidgetSettingsChanged: { [weak self] in self?.controller?.applySettings() }
     )
     private lazy var settingsWindowCoordinator = SettingsWindowCoordinator { [weak self] in
-        guard let self else {
-            return NSView()
-        }
-
+        guard let self else { return NSView() }
         return NSHostingView(rootView: DashboardSettingsView(context: self.settingsContext))
     }
 
@@ -45,19 +26,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         setupMainMenu()
 
-        let controller = DashboardWindowController()
-        self.controller = controller
+        controller = WidgetHostController()
         setupStatusItem()
-        registerHotKeys()
-        DashboardLog.app.info("Classroom Widgets Dashboard launched")
-
-        if UserDefaults.standard.bool(forKey: DashboardSettingKeys.showDashboardAtLaunch) {
-            controller.showDashboard()
-        }
-
-        if !UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon) {
-            showSettings()
-        }
+        registerSettingsHotKey()
+        DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -66,9 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if terminationApproved {
-            return .terminateNow
-        }
+        if terminationApproved { return .terminateNow }
         guard !terminationPending, let controller else {
             return controller == nil ? .terminateNow : .terminateLater
         }
@@ -77,19 +47,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Task { @MainActor [weak self, weak sender] in
             let ready = await controller.prepareForTermination()
             guard let self, let sender else { return }
-            self.terminationPending = false
-            self.terminationApproved = ready
+            terminationPending = false
+            terminationApproved = ready
             sender.reply(toApplicationShouldTerminate: ready)
         }
         return .terminateLater
     }
 
-    // Accessory apps have no visible menu bar, but NSApp.mainMenu still routes
-    // key equivalents. Without it, Cmd+C/V/X/Z/A never reach the web view's
-    // text fields and Cmd+W cannot close the Settings window.
+    // Accessory apps have no visible menu bar, but a main menu is still needed
+    // to route standard editing and window key equivalents.
     private func setupMainMenu() {
         let mainMenu = NSMenu()
-
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu()
         let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
@@ -100,9 +68,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsItem.target = self
         appMenu.addItem(settingsItem)
         appMenu.addItem(.separator())
-        // No app-level "Hide" (Cmd+H): for a menu-bar accessory app with the
-        // status icon optionally hidden, hiding every window can strand the
-        // user with no way back. Cmd+W hides the dashboard instead.
         appMenu.addItem(NSMenuItem(title: "Quit Classroom Widgets", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
@@ -121,21 +86,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let windowMenuItem = NSMenuItem()
         let windowMenu = NSMenu(title: "Window")
-        let closeItem = NSMenuItem(title: "Close Window", action: #selector(closeFrontWindow), keyEquivalent: "w")
-        closeItem.target = self
-        windowMenu.addItem(closeItem)
+        windowMenu.addItem(NSMenuItem(title: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
         windowMenuItem.submenu = windowMenu
         mainMenu.addItem(windowMenuItem)
-
         NSApp.mainMenu = mainMenu
     }
 
     private func setupStatusItem() {
-        guard UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon) else {
-            statusItem = nil
-            return
-        }
-
         let statusItem = NSStatusBar.system.statusItem(withLength: 26)
         statusItem.button?.image = DashboardMenuBarIcon.make(size: 21)
         statusItem.button?.imagePosition = .imageOnly
@@ -145,175 +102,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.statusItem = statusItem
     }
 
-    private func syncStatusItemVisibility() {
-        let shouldShow = UserDefaults.standard.bool(forKey: DashboardSettingKeys.showMenuBarIcon)
-
-        if shouldShow {
-            if statusItem == nil {
-                setupStatusItem()
-            }
-            return
-        }
-
-        if let statusItem {
-            NSStatusBar.system.removeStatusItem(statusItem)
-        }
-        statusItem = nil
-    }
-
     func menuNeedsUpdate(_ menu: NSMenu) {
-        rebuildStatusMenu(into: menu)
-    }
-
-    private func rebuildStatusMenu(into menu: NSMenu) {
         menu.removeAllItems()
 
-        let toggleTitle = controller?.isDashboardVisible == true ? "Hide Dashboard" : "Show Dashboard"
-        let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleDashboard), keyEquivalent: "")
-        toggleItem.target = self
-        applyShortcut(
-            to: toggleItem,
-            keyCode: shortcutKeyCode(for: DashboardSettingKeys.toggleShortcutKeyCode, fallback: DashboardDefaults.toggleShortcutKeyCode),
-            modifiers: shortcutModifiers(for: DashboardSettingKeys.toggleShortcutModifiers)
-        )
-        menu.addItem(toggleItem)
-
-        let launcherItem = NSMenuItem(title: "Open Widget Launcher", action: #selector(showWidgetLauncher), keyEquivalent: "")
-        launcherItem.target = self
-        applyShortcut(
-            to: launcherItem,
-            keyCode: shortcutKeyCode(for: DashboardSettingKeys.launcherShortcutKeyCode, fallback: DashboardDefaults.launcherShortcutKeyCode),
-            modifiers: shortcutModifiers(for: DashboardSettingKeys.launcherShortcutModifiers)
-        )
-        menu.addItem(launcherItem)
-
-        let addWidgetItem = NSMenuItem(title: "Add Floating Widget", action: nil, keyEquivalent: "")
-        let addWidgetMenu = NSMenu(title: "Add Floating Widget")
-        for option in controller?.compactWidgetOptions ?? [] {
-            let item = NSMenuItem(title: option.title, action: #selector(addCompactWidget(_:)), keyEquivalent: "")
+        let newWidgetItem = NSMenuItem(title: "New Floating Widget", action: nil, keyEquivalent: "")
+        let newWidgetMenu = NSMenu(title: "New Floating Widget")
+        for option in controller?.widgetOptions ?? [] {
+            let item = NSMenuItem(title: option.title, action: #selector(addWidget(_:)), keyEquivalent: "")
             item.target = self
             item.tag = option.widgetType
-            addWidgetMenu.addItem(item)
+            newWidgetMenu.addItem(item)
         }
-        if addWidgetMenu.items.isEmpty {
-            let item = NSMenuItem(title: "No compact widgets available", action: nil, keyEquivalent: "")
+        if newWidgetMenu.items.isEmpty {
+            let item = NSMenuItem(title: "No widgets available", action: nil, keyEquivalent: "")
             item.isEnabled = false
-            addWidgetMenu.addItem(item)
+            newWidgetMenu.addItem(item)
         }
-        addWidgetItem.submenu = addWidgetMenu
-        menu.addItem(addWidgetItem)
+        newWidgetItem.submenu = newWidgetMenu
+        menu.addItem(newWidgetItem)
 
-        menu.addItem(NSMenuItem.separator())
-
-        // No key equivalent: Cmd+R is far too generic for a global-ish menu
-        // item, and the web process now auto-reloads on crash, so this is just
-        // a manual recovery valve.
-        let reloadItem = NSMenuItem(title: "Reload Dashboard", action: #selector(reloadDashboard), keyEquivalent: "")
+        let reloadItem = NSMenuItem(title: "Reload Widgets", action: #selector(reloadWidgets), keyEquivalent: "")
         reloadItem.target = self
         menu.addItem(reloadItem)
 
-        let launchAtLoginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
-        launchAtLoginItem.target = self
-        launchAtLoginItem.state = launchAtLoginManager.isEnabled ? .on : .off
-        launchAtLoginItem.isEnabled = launchAtLoginManager.canConfigure
-        menu.addItem(launchAtLoginItem)
+        let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launchItem.target = self
+        launchItem.state = launchAtLoginManager.isEnabled ? .on : .off
+        launchItem.isEnabled = launchAtLoginManager.canConfigure
+        menu.addItem(launchItem)
 
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: "")
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "")
         settingsItem.target = self
-        applyShortcut(
-            to: settingsItem,
-            keyCode: shortcutKeyCode(for: DashboardSettingKeys.settingsShortcutKeyCode, fallback: DashboardDefaults.settingsShortcutKeyCode),
-            modifiers: shortcutModifiers(for: DashboardSettingKeys.settingsShortcutModifiers)
-        )
+        applySettingsShortcut(to: settingsItem)
         menu.addItem(settingsItem)
 
         let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
-
-        menu.addItem(NSMenuItem.separator())
-
+        menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
     }
 
-    private func applyShortcut(to item: NSMenuItem, keyCode: Int, modifiers: Int) {
-        guard let keyEquivalent = DashboardShortcutFormatter.keyEquivalent(for: keyCode) else {
-            item.keyEquivalent = ""
-            item.keyEquivalentModifierMask = []
-            return
-        }
-
-        item.keyEquivalent = keyEquivalent
-        item.keyEquivalentModifierMask = DashboardShortcutFormatter.modifierFlags(from: modifiers)
+    private func applySettingsShortcut(to item: NSMenuItem) {
+        let keyCode = shortcutKeyCode()
+        guard let equivalent = DashboardShortcutFormatter.keyEquivalent(for: keyCode) else { return }
+        item.keyEquivalent = equivalent
+        item.keyEquivalentModifierMask = DashboardShortcutFormatter.modifierFlags(from: shortcutModifiers())
     }
 
-    private func registerHotKeys() {
+    private func registerSettingsHotKey() {
         hotKeys.removeAll()
-
-        let toggleKeyCode = shortcutKeyCode(for: DashboardSettingKeys.toggleShortcutKeyCode, fallback: DashboardDefaults.toggleShortcutKeyCode)
-        let toggleModifiers = shortcutModifiers(for: DashboardSettingKeys.toggleShortcutModifiers)
-        registerGlobalShortcut(
-            id: 1,
-            keyCode: toggleKeyCode,
-            rawModifiers: toggleModifiers,
-            reservedShortcuts: []
-        ) { [weak self] in
-            self?.controller?.toggleDashboard()
-        }
-
-        let launcherKeyCode = shortcutKeyCode(for: DashboardSettingKeys.launcherShortcutKeyCode, fallback: DashboardDefaults.launcherShortcutKeyCode)
-        let launcherModifiers = shortcutModifiers(for: DashboardSettingKeys.launcherShortcutModifiers)
-        registerGlobalShortcut(
-            id: 2,
-            keyCode: launcherKeyCode,
-            rawModifiers: launcherModifiers,
-            reservedShortcuts: [(toggleKeyCode, toggleModifiers)]
-        ) { [weak self] in
-            self?.controller?.showWidgetLauncher()
-        }
-
-        let settingsKeyCode = shortcutKeyCode(for: DashboardSettingKeys.settingsShortcutKeyCode, fallback: DashboardDefaults.settingsShortcutKeyCode)
-        let settingsModifiers = shortcutModifiers(for: DashboardSettingKeys.settingsShortcutModifiers)
-        registerGlobalShortcut(
-            id: 3,
-            keyCode: settingsKeyCode,
-            rawModifiers: settingsModifiers,
-            reservedShortcuts: [
-                (toggleKeyCode, toggleModifiers),
-                (launcherKeyCode, launcherModifiers)
-            ]
-        ) { [weak self] in
-            self?.settingsWindowCoordinator.show()
-        }
-    }
-
-    private func registerGlobalShortcut(
-        id: UInt32,
-        keyCode: Int,
-        rawModifiers: Int,
-        reservedShortcuts: [(keyCode: Int, modifiers: Int)],
-        handler: @escaping () -> Void
-    ) {
-        guard keyCode != -1 else { return }
-
-        let conflictsWithReservedShortcut = reservedShortcuts.contains { reservedShortcut in
-            reservedShortcut.keyCode == keyCode && reservedShortcut.modifiers == rawModifiers
-        }
-        guard !conflictsWithReservedShortcut else { return }
-
-        if let modifiers = carbonModifiers(from: rawModifiers) {
-            registerHotKey(id: id, keyCode: keyCode, modifiers: modifiers, handler: handler)
-        }
-    }
-
-    private func registerHotKey(id: UInt32, keyCode: Int, modifiers: UInt32, handler: @escaping () -> Void) {
+        let keyCode = shortcutKeyCode()
+        guard keyCode != -1, let modifiers = carbonModifiers(from: shortcutModifiers()) else { return }
         do {
-            let hotKey = try DashboardHotKey(id: id, keyCode: UInt32(keyCode), modifiers: modifiers, handler: handler)
-            hotKeys.append(hotKey)
+            hotKeys.append(try DashboardHotKey(id: 1, keyCode: UInt32(keyCode), modifiers: modifiers) { [weak self] in
+                self?.showSettings()
+            })
         } catch {
-            NSLog("Unable to register dashboard hotkey \(id): \(error)")
+            NSLog("Unable to register Classroom Widgets Settings shortcut: \(error)")
         }
     }
 
@@ -322,114 +170,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
-    @objc private func toggleDashboard() {
-        controller?.toggleDashboard()
-    }
-
-    @objc private func showWidgetLauncher() {
-        controller?.showWidgetLauncher()
-    }
-
-    @objc private func reloadDashboard() {
-        controller?.reloadDashboard()
-    }
-
-    @objc private func addCompactWidget(_ sender: NSMenuItem) {
-        controller?.addCompactWidget(sender.tag)
-    }
-
-    @objc private func closeFrontWindow() {
-        guard let keyWindow = NSApp.keyWindow else {
-            NSSound.beep()
-            return
-        }
-
-        // The dashboard is a retained utility window: closing it hides the
-        // window while preserving the active classroom state for reopening.
-        if keyWindow is DashboardWindow {
-            if controller?.isDashboardVisible == true {
-                controller?.toggleDashboard()
-            } else {
-                // Already hiding (window lingers briefly for the exit
-                // animation) — nothing to close.
-                NSSound.beep()
-            }
-            return
-        }
-
-        keyWindow.performClose(nil)
-    }
-
-    @objc private func showSettings() {
-        settingsWindowCoordinator.show()
-    }
+    @objc private func addWidget(_ sender: NSMenuItem) { controller?.addWidget(sender.tag) }
+    @objc private func reloadWidgets() { controller?.reloadWidgets() }
+    @objc private func showSettings() { settingsWindowCoordinator.show() }
 
     @objc private func showAbout() {
         let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage()
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "Classroom Widgets",
             .applicationIcon: appIcon,
-            .credits: NSAttributedString(string: "A polished macOS companion for the Classroom Widgets teacher dashboard.")
+            .credits: NSAttributedString(string: "A menu-bar launcher for floating classroom widgets.")
         ])
         NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func toggleLaunchAtLogin() {
         do {
-            let result = try launchAtLoginManager.setEnabled(!launchAtLoginManager.isEnabled)
-            if result == .requiresApproval {
-                presentLaunchAtLoginApprovalAlert()
+            if try launchAtLoginManager.setEnabled(!launchAtLoginManager.isEnabled) == .requiresApproval {
+                let alert = NSAlert()
+                alert.messageText = "Approval Needed"
+                alert.informativeText = "macOS needs approval in System Settings before Classroom Widgets can launch at login."
+                alert.runModal()
             }
         } catch {
-            presentError(error, title: "Launch at Login Failed")
+            let alert = NSAlert(error: error)
+            alert.messageText = "Launch at Login Failed"
+            alert.runModal()
         }
     }
 
-    @objc private func quitApp() {
-        NSApp.terminate(nil)
-    }
+    @objc private func quitApp() { NSApp.terminate(nil) }
 
-    private func presentLaunchAtLoginApprovalAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Approval Needed"
-        alert.informativeText = "macOS needs approval in System Settings before Classroom Widgets Dashboard can open at login."
-        alert.addButton(withTitle: "OK")
-        alert.runModal()
-    }
-
-    private func presentError(_ error: Error, title: String) {
-        let alert = NSAlert(error: error)
-        alert.messageText = title
-        alert.runModal()
-    }
-
-    private func shortcutKeyCode(for key: String, fallback: Int) -> Int {
+    private func shortcutKeyCode() -> Int {
         let defaults = UserDefaults.standard
-        guard defaults.object(forKey: key) != nil else {
-            return fallback
-        }
-
-        return defaults.integer(forKey: key)
+        return defaults.object(forKey: DashboardSettingKeys.settingsShortcutKeyCode) == nil
+            ? DashboardDefaults.settingsShortcutKeyCode
+            : defaults.integer(forKey: DashboardSettingKeys.settingsShortcutKeyCode)
     }
 
-    private func shortcutModifiers(for key: String) -> Int {
+    private func shortcutModifiers() -> Int {
         let defaults = UserDefaults.standard
-        guard defaults.object(forKey: key) != nil else {
-            return DashboardDefaults.shortcutModifiers
-        }
-
-        return defaults.integer(forKey: key)
+        return defaults.object(forKey: DashboardSettingKeys.settingsShortcutModifiers) == nil
+            ? DashboardDefaults.shortcutModifiers
+            : defaults.integer(forKey: DashboardSettingKeys.settingsShortcutModifiers)
     }
 
     private func carbonModifiers(from rawModifiers: Int) -> UInt32? {
         let flags = NSEvent.ModifierFlags(rawValue: UInt(rawModifiers))
-        var carbonModifiers: UInt32 = 0
-        if flags.contains(.command) { carbonModifiers |= UInt32(cmdKey) }
-        if flags.contains(.option) { carbonModifiers |= UInt32(optionKey) }
-        if flags.contains(.control) { carbonModifiers |= UInt32(controlKey) }
-        if flags.contains(.shift) { carbonModifiers |= UInt32(shiftKey) }
-
-        return carbonModifiers == 0 ? nil : carbonModifiers
+        var result: UInt32 = 0
+        if flags.contains(.command) { result |= UInt32(cmdKey) }
+        if flags.contains(.option) { result |= UInt32(optionKey) }
+        if flags.contains(.control) { result |= UInt32(controlKey) }
+        if flags.contains(.shift) { result |= UInt32(shiftKey) }
+        return result == 0 ? nil : result
     }
-
 }
