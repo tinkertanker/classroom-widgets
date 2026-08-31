@@ -9,7 +9,7 @@ enum LaunchAtLoginError: LocalizedError {
         case .serviceUnavailable:
             "Launch at login is not available in this build."
         case .registrationFailed(let underlying):
-            "Could not toggle launch at login: \(underlying.localizedDescription). Try moving Classroom Widgets Dashboard to /Applications, or restart your Mac."
+            "Could not toggle launch at login: \(underlying.localizedDescription). Try moving Classroom Widgets to /Applications, or restart your Mac."
         }
     }
 }

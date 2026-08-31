@@ -150,30 +150,6 @@ const CompactWidgetApp = () => {
   }, [reportState, requestedWidgetId]);
 
   useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (
-        event.key !== 'Escape' ||
-        event.defaultPrevented ||
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        event.target instanceof HTMLSelectElement ||
-        (event.target instanceof HTMLElement && event.target.isContentEditable) ||
-        document.querySelector('[role="dialog"], [role="menu"]')
-      ) {
-        return;
-      }
-      event.preventDefault();
-      window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
-        type: 'dashboard-hide-requested',
-        schemaVersion: 1,
-        widgetId: requestedWidgetId
-      });
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [requestedWidgetId]);
-
-  useEffect(() => {
     document.documentElement.classList.toggle('dark', snapshot?.theme === 'dark');
   }, [snapshot?.theme]);
 

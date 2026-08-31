@@ -12,19 +12,20 @@ if [ -f "${RELEASE_ENV_FILE}" ]; then
   set +a
 fi
 
-APP_NAME="Classroom Widgets Dashboard"
-PRODUCT_NAME="ClassroomWidgetsDashboard"
+APP_NAME="Classroom Widgets"
+APP_BUNDLE_NAME="Classroom Widgets Dashboard"
+PRODUCT_NAME="ClassroomWidgets"
 BUNDLE_ID="com.classroomwidgets.dashboard"
 MACOS_DIR="${ROOT_DIR}/packages/macos-dashboard"
-APP_BUNDLE="${ROOT_DIR}/dist/${APP_NAME}.app"
-INSTALL_APP_BUNDLE="/Applications/${APP_NAME}.app"
+APP_BUNDLE="${ROOT_DIR}/dist/${APP_BUNDLE_NAME}.app"
+INSTALL_APP_BUNDLE="/Applications/${APP_BUNDLE_NAME}.app"
 APP_CONTENTS="${APP_BUNDLE}/Contents"
 APP_MACOS="${APP_CONTENTS}/MacOS"
 APP_RESOURCES="${APP_CONTENTS}/Resources"
 WEB_RESOURCES="${APP_RESOURCES}/Web"
 STAGING_DIR="${ROOT_DIR}/dist/macos-dmg-staging"
 ENTITLEMENTS_PATH="${ROOT_DIR}/script/macos-distribution-entitlements.plist"
-APP_ICON_PATH="${MACOS_DIR}/Sources/${PRODUCT_NAME}/Resources/AppIcon.icns"
+APP_ICON_PATH="${MACOS_DIR}/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
 VERSION="$(node -p "require('./package.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 DMG_PATH="${DMG_PATH:-}"
@@ -200,7 +201,7 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
 <plist version="1.0">
 <dict>
   <key>CFBundleDisplayName</key>
-  <string>${APP_NAME}</string>
+  <string>${APP_BUNDLE_NAME}</string>
   <key>CFBundleExecutable</key>
   <string>${PRODUCT_NAME}</string>
   <key>CFBundleIdentifier</key>
@@ -208,7 +209,7 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
   <key>CFBundleIconFile</key>
   <string>AppIcon</string>
   <key>CFBundleName</key>
-  <string>${APP_NAME}</string>
+  <string>${APP_BUNDLE_NAME}</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
@@ -217,6 +218,8 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
   <string>${BUILD_NUMBER}</string>
   <key>LSApplicationCategoryType</key>
   <string>public.app-category.education</string>
+  <key>LSHasLocalizedDisplayName</key>
+  <true/>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
   <key>LSUIElement</key>
@@ -230,6 +233,12 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
 </dict>
 </plist>
 PLIST
+
+mkdir -p "${APP_RESOURCES}/en.lproj"
+cat > "${APP_RESOURCES}/en.lproj/InfoPlist.strings" <<STRINGS
+"CFBundleDisplayName" = "${APP_NAME}";
+"CFBundleName" = "${APP_NAME}";
+STRINGS
 
 if [ "${USE_DISTRIBUTION_SIGNING}" = "true" ]; then
   echo "Signing app with ${SIGNING_IDENTITY}"
@@ -255,9 +264,9 @@ if ! create-dmg \
   --window-size 560 360 \
   --icon-size 120 \
   --text-size 12 \
-  --icon "${APP_NAME}.app" 160 190 \
+  --icon "${APP_BUNDLE_NAME}.app" 160 190 \
   --app-drop-link 390 190 \
-  --hide-extension "${APP_NAME}.app" \
+  --hide-extension "${APP_BUNDLE_NAME}.app" \
   --no-internet-enable \
   "${DMG_PATH}" \
   "${STAGING_DIR}/"; then
@@ -270,9 +279,9 @@ if ! create-dmg \
     --window-size 560 360 \
     --icon-size 120 \
     --text-size 12 \
-    --icon "${APP_NAME}.app" 160 190 \
+    --icon "${APP_BUNDLE_NAME}.app" 160 190 \
     --app-drop-link 390 190 \
-    --hide-extension "${APP_NAME}.app" \
+    --hide-extension "${APP_BUNDLE_NAME}.app" \
     --no-internet-enable \
     "${DMG_PATH}" \
     "${STAGING_DIR}/"
