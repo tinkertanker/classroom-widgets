@@ -1,23 +1,32 @@
 # Backend Server Dockerfile
 # Build context: repo root (.)
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Install dumb-init for proper signal handling and wget for health checks
 RUN apk add --no-cache dumb-init wget
+
+# Install the pinned pnpm from the npm registry (registry-verified; avoids
+# relying on whatever corepack version ships in the base image).
+RUN npm install -g pnpm@11.22.0
 
 # Create app directory
 WORKDIR /usr/src/app
 
 # Copy workspace root package files
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy workspace package.json files for install
+# Copy every workspace package.json so pnpm can resolve the workspace graph
+# and validate the frozen lockfile
 COPY packages/shared/package.json packages/shared/
+COPY packages/teacher/package.json packages/teacher/
 COPY packages/student/package.json packages/student/
 COPY packages/server/package.json packages/server/
 
-# Install all dependencies
-RUN npm ci
+# Install only the server + student package graphs (this image is single-stage,
+# so filtering keeps teacher's dev tree out of what ships).
+RUN pnpm install --frozen-lockfile \
+      --filter "@classroom-widgets/server..." \
+      --filter "@classroom-widgets/student..."
 
 # Copy package sources
 COPY packages/shared/ packages/shared/
@@ -25,7 +34,7 @@ COPY packages/student/ packages/student/
 COPY packages/server/ packages/server/
 
 # Build the student app
-RUN npm run build -w @classroom-widgets/student
+RUN pnpm --filter @classroom-widgets/student build
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
