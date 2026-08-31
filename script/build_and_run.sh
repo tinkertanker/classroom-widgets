@@ -13,15 +13,16 @@ if [ -f "$RELEASE_ENV_FILE" ]; then
 fi
 
 APP_NAME="Classroom Widgets"
+APP_BUNDLE_NAME="Classroom Widgets Dashboard"
 PRODUCT_NAME="ClassroomWidgets"
 LEGACY_PRODUCT_NAME="ClassroomWidgetsDashboard"
 BUNDLE_ID="com.classroomwidgets.dashboard"
-APP_BUNDLE="$ROOT_DIR/dist/$APP_NAME.app"
+APP_BUNDLE="$ROOT_DIR/dist/$APP_BUNDLE_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
 APP_RESOURCES="$APP_CONTENTS/Resources"
 MACOS_DIR="$ROOT_DIR/packages/macos-dashboard"
-INSTALL_APP_BUNDLE="/Applications/$APP_NAME.app"
+INSTALL_APP_BUNDLE="/Applications/$APP_BUNDLE_NAME.app"
 ENTITLEMENTS_PATH="$ROOT_DIR/script/macos-distribution-entitlements.plist"
 APP_ICON_PATH="$MACOS_DIR/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"

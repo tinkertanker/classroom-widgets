@@ -13,11 +13,12 @@ if [ -f "${RELEASE_ENV_FILE}" ]; then
 fi
 
 APP_NAME="Classroom Widgets"
+APP_BUNDLE_NAME="Classroom Widgets Dashboard"
 PRODUCT_NAME="ClassroomWidgets"
 BUNDLE_ID="com.classroomwidgets.dashboard"
 MACOS_DIR="${ROOT_DIR}/packages/macos-dashboard"
-APP_BUNDLE="${ROOT_DIR}/dist/${APP_NAME}.app"
-INSTALL_APP_BUNDLE="/Applications/${APP_NAME}.app"
+APP_BUNDLE="${ROOT_DIR}/dist/${APP_BUNDLE_NAME}.app"
+INSTALL_APP_BUNDLE="/Applications/${APP_BUNDLE_NAME}.app"
 APP_CONTENTS="${APP_BUNDLE}/Contents"
 APP_MACOS="${APP_CONTENTS}/MacOS"
 APP_RESOURCES="${APP_CONTENTS}/Resources"
@@ -255,9 +256,9 @@ if ! create-dmg \
   --window-size 560 360 \
   --icon-size 120 \
   --text-size 12 \
-  --icon "${APP_NAME}.app" 160 190 \
+  --icon "${APP_BUNDLE_NAME}.app" 160 190 \
   --app-drop-link 390 190 \
-  --hide-extension "${APP_NAME}.app" \
+  --hide-extension "${APP_BUNDLE_NAME}.app" \
   --no-internet-enable \
   "${DMG_PATH}" \
   "${STAGING_DIR}/"; then
@@ -270,9 +271,9 @@ if ! create-dmg \
     --window-size 560 360 \
     --icon-size 120 \
     --text-size 12 \
-    --icon "${APP_NAME}.app" 160 190 \
+    --icon "${APP_BUNDLE_NAME}.app" 160 190 \
     --app-drop-link 390 190 \
-    --hide-extension "${APP_NAME}.app" \
+    --hide-extension "${APP_BUNDLE_NAME}.app" \
     --no-internet-enable \
     "${DMG_PATH}" \
     "${STAGING_DIR}/"
