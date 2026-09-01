@@ -1,4 +1,5 @@
 import AppKit
+import Foundation
 import WebKit
 
 /// Owns the authoritative React/Zustand widget store without presenting it.
@@ -21,6 +22,9 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var widgetOptions: [CompactWidgetOption] = []
 
     override init() {
+        let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+        let appVersionJSON = (try? JSONEncoder().encode(appVersion))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "\"unknown\""
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(
             DashboardWebKitShared.schemeHandler,
@@ -28,7 +32,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         )
         DashboardWebKitShared.schemeHandler.prewarmCriticalAssets()
         configuration.userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true;",
+            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGETS_MACOS_VERSION__ = \(appVersionJSON);",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))

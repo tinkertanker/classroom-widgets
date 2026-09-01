@@ -280,16 +280,14 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-The root `package.json` version is also used for macOS release artifacts. After the version change and release code have landed, tag the exact `master` commit:
+Web and macOS releases are versioned independently:
 
-```bash
-git tag v1.2.3
-git push origin v1.2.3
-```
+- Web deployments are identified by their Git commit and are started manually from the **Deploy Web to Production** GitHub Actions workflow.
+- macOS releases use the version in `packages/macos-dashboard/version.json` and tags named `macos-v<version>`.
 
-Pushing a `v*` tag triggers the GitHub Actions workflow that redeploys the production web services. It does **not** build or upload the macOS app. A public macOS release must be built, Developer ID signed, notarized, stapled, validated, and uploaded to the matching GitHub release from an authorized Mac.
+Creating a macOS release tag does not deploy the web application.
 
-See the [Deployment Guide](./docs/DEPLOYMENT.md) for the web deployment and the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for the native release process.
+See the [Deployment Guide](./docs/DEPLOYMENT.md) for web deployment instructions and the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for the native release process.
 
 ## 📖 Documentation
 

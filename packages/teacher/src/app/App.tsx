@@ -20,7 +20,7 @@ import SmallScreenWarning from '@shared/components/SmallScreenWarning';
 import { HudProximityProvider } from '@shared/hooks/useHudProximity';
 import { WidgetType, WidgetCategory } from '@shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
-import { APP_VERSION } from '../version';
+import { getReleaseLabel } from '../version';
 import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboardMode';
 import DesktopWindowControls from '../features/desktop/DesktopWindowControls';
 import CompactPanelHost from '../features/desktop/CompactPanelHost';
@@ -682,7 +682,7 @@ function App() {
 
           {/* Version label */}
           <a href="/about" data-dashboard-chrome="true" className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 hover:opacity-100 select-none z-10 transition-opacity">
-            v{APP_VERSION}
+            {getReleaseLabel()}
           </a>
 
           {/* Layout toggle - shows whenever in column mode (escape hatch to canvas) or on narrow screens */}

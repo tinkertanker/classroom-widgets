@@ -11,14 +11,15 @@ Complete guide for deploying Classroom Widgets to production.
 
 ## Automated Deployment (CD)
 
-Pushing a version tag triggers the GitHub Actions workflow, which SSHes into the production server and deploys automatically:
+Web deployments are identified by Git commit rather than by a shared product version. Start the **Deploy Web to Production** workflow from GitHub Actions and select the commit or branch to deploy, or use the GitHub CLI:
 
 ```bash
-git tag v1.2.3
-git push origin v1.2.3
+gh workflow run deploy.yml --ref master
 ```
 
-The workflow pulls the latest code, brings down the running containers, then rebuilds and restarts them.
+The workflow SSHes into the production server, checks out the exact selected commit, and rebuilds and restarts the containers. The short commit SHA is baked into the teacher app as its web build ID and appears in the UI as `Web <sha>`.
+
+macOS tags use the `macos-v<version>` namespace and do not trigger this workflow. See [macOS distribution](./MACOS_DISTRIBUTION.md) for that release process.
 
 **Required GitHub Secrets** (repo Settings → Secrets and variables → Actions):
 
@@ -69,7 +70,8 @@ Use the same `.env.production` file for frontend build-time variables and backen
 
 3. **Build and deploy**:
 ```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+VITE_BUILD_ID="$(git rev-parse --short HEAD)" \
+  docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
 4. **Verify**:
@@ -95,7 +97,8 @@ See [Analytics Setup](./ANALYTICS.md) for Umami configuration.
 
 ```bash
 # Build and start containers
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+VITE_BUILD_ID="$(git rev-parse --short HEAD)" \
+  docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 
 # View logs
 docker compose --env-file .env.production -f docker-compose.prod.yml logs -f
@@ -105,7 +108,8 @@ docker compose --env-file .env.production -f docker-compose.prod.yml down
 
 # Update deployment
 git pull
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+VITE_BUILD_ID="$(git rev-parse --short HEAD)" \
+  docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
 
 ### Local Docker Testing
