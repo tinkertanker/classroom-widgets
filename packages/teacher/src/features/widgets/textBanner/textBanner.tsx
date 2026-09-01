@@ -34,7 +34,7 @@ interface TextBannerState {
   customColor: string;
   fontFamily: TextBannerFontFamily;
   fontSizeCap: number;
-  /** Retained for saved-state compatibility; displayed-banner cycling is always enabled. */
+  /** Retained for rollback compatibility; displayed-banner cycling is always enabled. */
   clickToRecolour: boolean;
   columnHeight?: number;
 }
@@ -158,7 +158,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
     customColor: DEFAULT_CUSTOM_COLOR,
     fontFamily: 'sans',
     fontSizeCap: DEFAULT_FONT_SIZE_CAP,
-    clickToRecolour: false
+    clickToRecolour: true
   };
 
   const normalisedSavedState: TextBannerState | undefined = savedState
@@ -168,7 +168,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
         customColor: normaliseCustomColor(savedState.customColor),
         fontFamily: savedState.fontFamily ?? 'sans',
         fontSizeCap: savedState.fontSizeCap ?? DEFAULT_FONT_SIZE_CAP,
-        clickToRecolour: false,
+        clickToRecolour: savedState.clickToRecolour ?? true,
         columnHeight: savedState.columnHeight
       }
     : undefined;
@@ -245,7 +245,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
     const value = draft.text.trim()
       ? (hasCodeFence(draft.text) ? normaliseCode(draft.text) : draft.text)
       : '';
-    updateState({ ...draft, text: value, clickToRecolour: false });
+    updateState({ ...draft, text: value, clickToRecolour: true });
     closeEditor();
   }, [closeEditor, draft, text, updateState]);
 
@@ -263,7 +263,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
     const nextColorIndex = colorIndex >= colorCombinations.length
       ? 0
       : (colorIndex + 1) % colorCombinations.length;
-    updateState({ colorIndex: nextColorIndex, clickToRecolour: false });
+    updateState({ colorIndex: nextColorIndex, clickToRecolour: true });
   };
 
   const adjustColumnHeight = (delta: number) => {
@@ -361,129 +361,137 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
       )}
       style={widgetStyle}
     >
-      {isEditorOpen ? (
-        <TextBannerEditor
-          draft={draft}
-          isNew={!text}
-          onDraftChange={setDraft}
-          onTextChange={handleDraftTextChange}
-          onCancel={closeEditor}
-          onSave={saveDraft}
-        />
-      ) : (
-        <>
-          {text && (
-            <button
-              ref={editorTriggerRef}
-              type="button"
-              onClick={openEditor}
-              className={cn(
-                'no-drag absolute right-2 top-2 z-10 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-warm-gray-900/70 px-3 py-2 text-sm font-medium text-white shadow-lg transition-all hover:bg-warm-gray-900/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
-                isTouchDevice
-                  ? 'opacity-100'
-                  : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100'
-              )}
-              aria-label="Edit banner"
-            >
-              <FaPencil aria-hidden="true" />
-              <span>Edit</span>
-            </button>
+      {isEditorOpen && (
+        <div className="absolute inset-0 z-20">
+          <TextBannerEditor
+            draft={draft}
+            isNew={!text}
+            onDraftChange={setDraft}
+            onTextChange={handleDraftTextChange}
+            onCancel={closeEditor}
+            onSave={saveDraft}
+          />
+        </div>
+      )}
+
+      {text && (
+        <button
+          ref={editorTriggerRef}
+          type="button"
+          onClick={openEditor}
+          className={cn(
+            'no-drag absolute top-2 z-10 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-warm-gray-900/70 px-3 py-2 text-sm font-medium text-white shadow-lg transition-all hover:bg-warm-gray-900/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
+            isCompactPanel ? 'right-12' : 'right-2',
+            isTouchDevice
+              ? 'opacity-100'
+              : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
+            isEditorOpen && 'invisible pointer-events-none'
           )}
+          aria-label="Edit banner"
+          aria-hidden={isEditorOpen || undefined}
+        >
+          <FaPencil aria-hidden="true" />
+          <span>Edit</span>
+        </button>
+      )}
 
+      <div
+        ref={textAreaContainerRef}
+        data-testid="text-banner-display"
+        aria-hidden={isEditorOpen || undefined}
+        onMouseDown={event => {
+          surfacePointerStartRef.current = { x: event.clientX, y: event.clientY };
+        }}
+        onClick={cycleDisplayedColor}
+        className={cn(
+          'flex-1 flex items-center justify-center relative',
+          text ? 'cursor-pointer p-4' : 'p-1',
+          // Only constrain the content pane when the widget itself has a bounded height
+          // (canvas mode is always bounded via react-rnd; column mode only when columnHeight is set).
+          (!isColumnLayout || hasManualColumnHeight) && 'min-h-0 overflow-hidden',
+          isEditorOpen && 'invisible pointer-events-none'
+        )}
+      >
+        {text && (
           <div
-            ref={textAreaContainerRef}
-            onMouseDown={event => {
-              surfacePointerStartRef.current = { x: event.clientX, y: event.clientY };
-            }}
-            onClick={cycleDisplayedColor}
+            ref={textRef}
+            aria-hidden="true"
             className={cn(
-              'flex-1 flex items-center justify-center relative',
-              text ? 'cursor-pointer p-4' : 'p-1',
-              // Only constrain the content pane when the widget itself has a bounded height
-              // (canvas mode is always bounded via react-rnd; column mode only when columnHeight is set).
-              (!isColumnLayout || hasManualColumnHeight) && 'min-h-0 overflow-hidden'
+              'absolute left-4 right-4 top-4 pointer-events-none select-none opacity-0',
+              isCodeBlockOnly && codeBlock
+                ? 'max-w-full'
+                : cn(!isCustomColor && currentColors.text, 'text-center leading-tight')
             )}
+            style={{
+              fontSize: `${fontSize}px`,
+              fontFamily: isCodeBlockOnly && codeBlock
+                ? FONT_FAMILY_STACK.mono
+                : FONT_FAMILY_STACK[fontFamily],
+              color: customTextColor
+            }}
           >
-            {text && (
-              <div
-                ref={textRef}
-                aria-hidden="true"
-                className={cn(
-                  'absolute left-4 right-4 top-4 pointer-events-none select-none opacity-0',
-                  isCodeBlockOnly && codeBlock
-                    ? 'max-w-full'
-                    : cn(!isCustomColor && currentColors.text, 'text-center leading-tight')
-                )}
-                style={{
-                  fontSize: `${fontSize}px`,
-                  fontFamily: isCodeBlockOnly && codeBlock
-                    ? FONT_FAMILY_STACK.mono
-                    : FONT_FAMILY_STACK[fontFamily],
-                  color: customTextColor
-                }}
-              >
-                {isCodeBlockOnly && codeBlock ? (
-                  <pre className="text-banner-code">
-                    <code>{normaliseCode(codeBlock.code)}</code>
-                  </pre>
-                ) : (
-                  renderFormattedText(text)
-                )}
-              </div>
-            )}
-
-            {!text ? (
-              <button
-                ref={editorTriggerRef}
-                type="button"
-                onClick={openEditor}
-                className="no-drag inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-soft-white px-4 py-2.5 text-sm font-semibold text-warm-gray-900 shadow-lg transition-colors hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-soft-white focus-visible:ring-offset-2 focus-visible:ring-offset-terracotta-600"
-              >
-                <FaPlus aria-hidden="true" />
-                Add text
-              </button>
-            ) : isCodeBlockOnly && codeBlock ? (
-              <CodeBlockRender
-                code={codeBlock.code}
-                language={codeBlock.language}
-                fontSize={fontSize}
-              />
+            {isCodeBlockOnly && codeBlock ? (
+              <pre className="text-banner-code">
+                <code>{normaliseCode(codeBlock.code)}</code>
+              </pre>
             ) : (
-              <div
-                className={cn(!isCustomColor && currentColors.text, 'text-center leading-tight select-none')}
-                style={{
-                  fontSize: `${fontSize}px`,
-                  fontFamily: FONT_FAMILY_STACK[fontFamily],
-                  color: customTextColor
-                }}
-              >
-                {renderFormattedText(text)}
-              </div>
+              renderFormattedText(text)
             )}
           </div>
+        )}
 
-          {isColumnLayout && (
-            <div
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize banner height (use arrow keys)"
-              aria-valuenow={Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)}
-              aria-valuemin={MIN_COLUMN_HEIGHT}
-              aria-valuemax={MAX_COLUMN_HEIGHT}
-              aria-valuetext={`${Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)} pixels`}
-              tabIndex={0}
-              onMouseDown={handleResizeMouseDown}
-              onKeyDown={handleResizeKeyDown}
-              className={cn(
-                'absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize select-none',
-                'opacity-0 group-hover/banner:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-soft-white/70 transition-opacity',
-                pendingHeight !== null && 'opacity-100'
-              )}
-            >
-              <div className="w-10 h-1 rounded-full bg-soft-white/60" />
-            </div>
+        {!text ? (
+          <button
+            ref={editorTriggerRef}
+            type="button"
+            onClick={openEditor}
+            className="no-drag inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-soft-white px-4 py-2.5 text-sm font-semibold text-warm-gray-900 shadow-lg transition-colors hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-soft-white focus-visible:ring-offset-2 focus-visible:ring-offset-terracotta-600"
+          >
+            <FaPlus aria-hidden="true" />
+            Add text
+          </button>
+        ) : isCodeBlockOnly && codeBlock ? (
+          <CodeBlockRender
+            code={codeBlock.code}
+            language={codeBlock.language}
+            fontSize={fontSize}
+          />
+        ) : (
+          <div
+            className={cn(!isCustomColor && currentColors.text, 'text-center leading-tight select-none')}
+            style={{
+              fontSize: `${fontSize}px`,
+              fontFamily: FONT_FAMILY_STACK[fontFamily],
+              color: customTextColor
+            }}
+          >
+            {renderFormattedText(text)}
+          </div>
+        )}
+      </div>
+
+      {isColumnLayout && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Resize banner height (use arrow keys)"
+          aria-valuenow={Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)}
+          aria-valuemin={MIN_COLUMN_HEIGHT}
+          aria-valuemax={MAX_COLUMN_HEIGHT}
+          aria-valuetext={`${Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)} pixels`}
+          aria-hidden={isEditorOpen || undefined}
+          tabIndex={isEditorOpen ? -1 : 0}
+          onMouseDown={handleResizeMouseDown}
+          onKeyDown={handleResizeKeyDown}
+          className={cn(
+            'absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize select-none',
+            'opacity-0 group-hover/banner:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-soft-white/70 transition-opacity',
+            pendingHeight !== null && 'opacity-100',
+            isEditorOpen && 'invisible pointer-events-none'
           )}
-        </>
+        >
+          <div className="w-10 h-1 rounded-full bg-soft-white/60" />
+        </div>
       )}
     </div>
   );

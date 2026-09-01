@@ -53,7 +53,8 @@ describe('TextBanner text editor', () => {
 
     expect(onStateChange).toHaveBeenCalledTimes(1);
     expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
-      text: 'First line\nSecond line'
+      text: 'First line\nSecond line',
+      clickToRecolour: true
     }));
     expect(screen.getAllByText('First line')).not.toHaveLength(0);
     expect(screen.getAllByText('Second line')).not.toHaveLength(0);
@@ -91,6 +92,22 @@ describe('TextBanner text editor', () => {
     expect(onStateChange).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getAllByText('Keep this')).not.toHaveLength(0);
+  });
+
+  it('keeps the auto-size display node mounted across an editor session', async () => {
+    const user = userEvent.setup();
+    render(<TextBanner savedState={{ text: 'Keep fitting' }} />);
+
+    const display = screen.getByTestId('text-banner-display');
+    await user.click(screen.getByRole('button', { name: 'Edit banner' }));
+
+    expect(display).toBeInTheDocument();
+    expect(display).toHaveClass('invisible', 'pointer-events-none');
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByTestId('text-banner-display')).toBe(display);
+    expect(display).not.toHaveClass('invisible');
   });
 
   it('supports the save shortcut while plain Enter remains a newline', async () => {
@@ -143,7 +160,10 @@ describe('TextBanner text editor', () => {
     expect(visibleText).toBeDefined();
     await user.click(visibleText!);
     expect(onStateChange).toHaveBeenCalledTimes(1);
-    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({ colorIndex: 1 }));
+    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
+      colorIndex: 1,
+      clickToRecolour: true
+    }));
     onStateChange.mockClear();
 
     const displayedSurface = visibleText!.closest('.cursor-pointer');
@@ -256,6 +276,12 @@ describe('TextBanner text editor', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('button', { name: 'Edit banner' }).closest('.widget-container-custom-surface'))
       .toHaveStyle({ height: '60px' });
+  });
+
+  it('keeps the compact-panel Edit action clear of the top-right window control', () => {
+    render(<TextBanner isCompactPanel savedState={{ text: 'Compact banner' }} />);
+
+    expect(screen.getByRole('button', { name: 'Edit banner' })).toHaveClass('right-12');
   });
 
   it('enforces the editor-sized minimum in canvas and compact-panel hosts', () => {
