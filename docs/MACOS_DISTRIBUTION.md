@@ -75,6 +75,14 @@ This creates an ad hoc signed local package at `dist/ClassroomWidgets-v<version>
 
 ## Developer ID release
 
+The authorized release host is `yjmbpro`. Use a live Amp runner on that Mac for
+public builds; runner IDs are ephemeral, so select it by host or runner name.
+It has the Developer ID signing identity, local notarization configuration,
+Xcode toolchain, and `create-dmg` required by this workflow. Keep those
+credentials on the Mac and never transfer them through an orb. Build from a
+clean checkout pinned to the intended commit, without resetting or cleaning an
+existing checkout that contains unrelated work.
+
 Create an untracked `.env.release.local` with the authorized machine's signing and notarization configuration:
 
 ```bash

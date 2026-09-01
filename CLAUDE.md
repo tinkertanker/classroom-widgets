@@ -15,3 +15,14 @@
   files explicitly.
 - Keep topic-specific documentation in [`docs/`](docs/). Use
   [`README.md`](README.md) and `package.json` for project setup and commands.
+
+## macOS releases
+
+- Signed and notarized macOS builds can be produced on the `yjmbpro` Mac through
+  a live Amp runner. That machine has the required Developer ID identity,
+  notarization configuration, Xcode toolchain, and `create-dmg` installation.
+- Keep signing and notarization credentials on `yjmbpro`; never copy them into
+  an orb. Build the exact release commit in a clean checkout and leave unrelated
+  changes in the machine's existing checkout untouched.
+- Follow [`docs/MACOS_DISTRIBUTION.md`](docs/MACOS_DISTRIBUTION.md) for the
+  versioning, validation, tagging, and publication workflow.
