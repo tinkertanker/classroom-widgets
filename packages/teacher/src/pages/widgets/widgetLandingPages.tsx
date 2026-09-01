@@ -643,9 +643,9 @@ export const widgetLandingPages = {
       heading: 'How to use the Text Banner',
       items: [
         { step: 1, title: 'Launch the Text Banner widget', body: 'Click Text Banner in the toolbar. A large text display appears on your canvas.' },
-        { step: 2, title: 'Type or paste your text', body: 'Click the banner and type directly. The text scales to fill the widget so it\'s always as large as possible.' },
+        { step: 2, title: 'Add your text', body: 'Choose Add text, then type or paste your message. Use the editor to pick a colour, font, and text size, then confirm when it is ready.' },
         { step: 3, title: 'Resize as needed', body: 'Drag the widget to make it bigger or smaller. The text auto-sizes to fit, so it stays readable at any size.' },
-        { step: 4, title: 'Run multiple banners', body: 'Add more than one Text Banner to show different pieces of information simultaneously — e.g. the task and the deadline.' },
+        { step: 4, title: 'Edit or add more banners', body: 'Choose Edit on a banner whenever you need to change it, or add more banners to show different information at the same time.' },
       ],
     },
     cards: {

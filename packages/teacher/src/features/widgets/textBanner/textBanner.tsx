@@ -1,5 +1,21 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { FaMinus, FaPlus, FaLock, FaLockOpen, FaXmark } from 'react-icons/fa6';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from 'react';
+import { FaCheck, FaMinus, FaPencil, FaPlus } from 'react-icons/fa6';
+import {
+  FloatingArrow,
+  FloatingFocusManager,
+  FloatingPortal,
+  arrow,
+  autoUpdate,
+  flip,
+  offset,
+  shift,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+  useRole
+} from '@floating-ui/react';
+import { RgbColorPicker, type RgbColor } from 'react-colorful';
 import { useAutoFontSize } from './hooks';
 import {
   FONT_FAMILY_STACK,
@@ -9,21 +25,27 @@ import {
 } from './fonts';
 import { findCodeBlock, highlightCode, normaliseCode, type HighlightedCode } from './highlight';
 import { cn, widgetContainer } from '@shared/utils/styles';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface TextBannerState {
   text: string;
   colorIndex: number;
+  customColor: string;
   fontFamily: TextBannerFontFamily;
   fontSizeCap: number;
+  /** Retained for rollback compatibility; displayed-banner cycling is always enabled. */
   clickToRecolour: boolean;
   columnHeight?: number;
 }
 
+type TextBannerDraft = Pick<TextBannerState, 'text' | 'colorIndex' | 'customColor' | 'fontFamily' | 'fontSizeCap'>;
+
 const DEFAULT_COLUMN_HEIGHT = 160;
 const MIN_COLUMN_HEIGHT = 60;
 const MAX_COLUMN_HEIGHT = 1200;
+const EDITOR_MIN_HEIGHT = 260;
 
 interface TextBannerProps {
   savedState?: Partial<TextBannerState> & { text: string };
@@ -32,39 +54,47 @@ interface TextBannerProps {
 }
 
 const colorCombinations = [
-  { bg: 'bg-terracotta-500 dark:bg-terracotta-600', text: 'text-soft-white dark:text-white', swatch: '#d97757' },
-  { bg: 'bg-sage-600 dark:bg-sage-700', text: 'text-soft-white dark:text-white', swatch: '#5c7560' },
-  { bg: 'bg-warm-gray-800 dark:bg-warm-gray-900', text: 'text-soft-white dark:text-warm-gray-100', swatch: '#3f3a36' },
-  { bg: 'bg-dusty-rose-600 dark:bg-dusty-rose-700', text: 'text-soft-white dark:text-white', swatch: '#b96370' },
-  { bg: 'bg-soft-white dark:bg-warm-gray-200', text: 'text-warm-gray-900 dark:text-warm-gray-900', swatch: '#f8f5f0' },
-  { bg: 'bg-blue-600 dark:bg-blue-700', text: 'text-soft-white dark:text-white', swatch: '#2563eb' }
+  { name: 'Terracotta', bg: 'bg-terracotta-500 dark:bg-terracotta-600', text: 'text-soft-white dark:text-white', swatch: '#d97757' },
+  { name: 'Sage', bg: 'bg-sage-600 dark:bg-sage-700', text: 'text-soft-white dark:text-white', swatch: '#5c7560' },
+  { name: 'Charcoal', bg: 'bg-warm-gray-800 dark:bg-warm-gray-900', text: 'text-soft-white dark:text-warm-gray-100', swatch: '#3f3a36' },
+  { name: 'Rose', bg: 'bg-dusty-rose-600 dark:bg-dusty-rose-700', text: 'text-soft-white dark:text-white', swatch: '#b96370' },
+  { name: 'Cream', bg: 'bg-soft-white dark:bg-warm-gray-200', text: 'text-warm-gray-900 dark:text-warm-gray-900', swatch: '#f8f5f0' },
+  { name: 'Blue', bg: 'bg-blue-600 dark:bg-blue-700', text: 'text-soft-white dark:text-white', swatch: '#2563eb' }
 ];
 
-const PLACEHOLDER_TEXT = 'Double-click to edit';
+const LEGACY_PLACEHOLDER_TEXT = 'Double-click to edit';
 const DEFAULT_FONT_SIZE_CAP = 48;
 const MIN_FONT_SIZE_CAP = 24;
 const MAX_FONT_SIZE_CAP = 220;
 const FONT_SIZE_STEP = 16;
+const DEFAULT_CUSTOM_COLOR = '#7c3aed';
 
-const normaliseText = (value: string) => (value.length > 0 ? value : PLACEHOLDER_TEXT);
+const normaliseSavedText = (value: string) => value === LEGACY_PLACEHOLDER_TEXT ? '' : value;
+const normaliseCustomColor = (value?: string) =>
+  value && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : DEFAULT_CUSTOM_COLOR;
+
+const getCustomTextColor = (hex: string) => {
+  const channels = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)]
+    .map(channel => Number.parseInt(channel, 16) / 255)
+    .map(channel => channel <= 0.04045
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4);
+  const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  return luminance > 0.179 ? '#1c1917' : '#ffffff';
+};
+
+const hexToRgb = (hex: string): RgbColor => ({
+  r: Number.parseInt(hex.slice(1, 3), 16),
+  g: Number.parseInt(hex.slice(3, 5), 16),
+  b: Number.parseInt(hex.slice(5, 7), 16)
+});
+
+const rgbToHex = ({ r, g, b }: RgbColor) => `#${[r, g, b]
+  .map(channel => Math.round(channel).toString(16).padStart(2, '0'))
+  .join('')}`;
 
 const SMART_PUNCT_RE = /[‘’‚‛“”„‟–—…]/;
 const hasCodeFence = (value: string) => /```/.test(value);
-
-// Returns true when there is an odd number of ``` fences before the caret,
-// i.e. the caret sits after an open fence whose closing fence hasn't appeared
-// yet (whether it's been typed or not).
-const isCursorInsideFence = (text: string, cursor: number) => {
-  let count = 0;
-  let i = 0;
-  while (true) {
-    const next = text.indexOf('```', i);
-    if (next === -1 || next >= cursor) break;
-    count++;
-    i = next + 3;
-  }
-  return count % 2 === 1;
-};
 
 const formatInlineText = (line: string) => {
   const tokens = line.split(/(\*_[^_]+_\*|\*[^*]+\*|_[^_]+_|~[^~]+~|`[^`]+`)/g);
@@ -121,10 +151,13 @@ const renderFormattedText = (value: string) => {
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCompactPanel = false }) => {
   const workspaceIsColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
   const isColumnLayout = workspaceIsColumnLayout && !isCompactPanel;
+  const isDashboardMode = isDesktopDashboardMode();
+  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
 
   const initialState: TextBannerState = {
-    text: PLACEHOLDER_TEXT,
+    text: '',
     colorIndex: 0,
+    customColor: DEFAULT_CUSTOM_COLOR,
     fontFamily: 'sans',
     fontSizeCap: DEFAULT_FONT_SIZE_CAP,
     clickToRecolour: true
@@ -132,8 +165,9 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
 
   const normalisedSavedState: TextBannerState | undefined = savedState
     ? {
-        text: normaliseText(savedState.text),
+        text: normaliseSavedText(savedState.text),
         colorIndex: savedState.colorIndex ?? 0,
+        customColor: normaliseCustomColor(savedState.customColor),
         fontFamily: savedState.fontFamily ?? 'sans',
         fontSizeCap: savedState.fontSizeCap ?? DEFAULT_FONT_SIZE_CAP,
         clickToRecolour: savedState.clickToRecolour ?? true,
@@ -147,31 +181,25 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
     onStateChange
   });
 
-  const { text, colorIndex, fontFamily, fontSizeCap, clickToRecolour, columnHeight } = state;
+  const { text, colorIndex, customColor, fontFamily, fontSizeCap, columnHeight } = state;
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(text);
-  const [controlsVisible, setControlsVisible] = useState(() => !savedState);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<TextBannerDraft>({ text, colorIndex, customColor, fontFamily, fontSizeCap });
   const [pendingHeight, setPendingHeight] = useState<number | null>(null);
 
   const widgetRef = useRef<HTMLDivElement>(null);
   const textAreaContainerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorTriggerRef = useRef<HTMLButtonElement>(null);
   const resizeStartRef = useRef<{ y: number; startHeight: number } | null>(null);
-  const clickTimerRef = useRef<number | null>(null);
-  const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const surfacePointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
-  const previewText = isEditing ? normaliseText(editText) : text;
-  const isPlaceholderText = text === PLACEHOLDER_TEXT;
   const codeBlock = useMemo(() => findCodeBlock(text), [text]);
   const isCodeBlockOnly = codeBlock?.match.trim() === text.trim();
-  const previewCodeBlock = useMemo(() => findCodeBlock(previewText), [previewText]);
-  const isPreviewCodeBlockOnly = previewCodeBlock?.match.trim() === previewText.trim();
 
   const hasManualColumnHeight = isColumnLayout && columnHeight !== undefined;
   const fontSize = useAutoFontSize({
-    text: previewText,
+    text,
     containerRef: textAreaContainerRef,
     textRef,
     maxSize: fontSizeCap,
@@ -180,42 +208,8 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
     widthOnly: isColumnLayout && !hasManualColumnHeight,
     fontFamily
   });
-  const displayFontSize = isPlaceholderText ? fontSizeCap : fontSize;
 
-  useEffect(() => {
-    if (isEditing && textareaRef.current) {
-      textareaRef.current.select();
-    }
-  }, [isEditing]);
-
-  useEffect(() => {
-    return () => {
-      if (clickTimerRef.current !== null) {
-        window.clearTimeout(clickTimerRef.current);
-        clickTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  // Dismiss controls on outside click (when not editing)
-  useEffect(() => {
-    if (!controlsVisible || isEditing) return;
-    const handler = (event: MouseEvent) => {
-      if (!widgetRef.current) return;
-      if (!widgetRef.current.contains(event.target as Node)) {
-        setControlsVisible(false);
-      }
-    };
-    document.addEventListener('mousedown', handler, true);
-    return () => document.removeEventListener('mousedown', handler, true);
-  }, [controlsVisible, isEditing]);
-
-  const commitText = useCallback((nextText: string) => {
-    const value = hasCodeFence(nextText) ? normaliseCode(nextText) : nextText;
-    updateState({ text: normaliseText(value) });
-  }, [updateState]);
-
-  const handleEditChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleDraftTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const raw = e.target.value;
     const value = hasCodeFence(raw) && SMART_PUNCT_RE.test(raw)
       ? normaliseCode(raw)
@@ -227,99 +221,51 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
       // same logical position rather than mid-insertion.
       const rawCursor = ta.selectionStart;
       const adjustedCursor = normaliseCode(raw.slice(0, rawCursor)).length;
-      setEditText(value);
+      setDraft(current => ({ ...current, text: value }));
       requestAnimationFrame(() => {
         if (ta.isConnected) {
           ta.selectionStart = ta.selectionEnd = adjustedCursor;
         }
       });
     } else {
-      setEditText(value);
+      setDraft(current => ({ ...current, text: value }));
     }
   };
 
-  const handleBlur = () => {
-    commitText(editText);
-    setIsEditing(false);
-    setControlsVisible(false);
+  const openEditor = () => {
+    setDraft({ text, colorIndex, customColor, fontFamily, fontSizeCap });
+    setIsEditorOpen(true);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Escape') {
-      commitText(editText);
-      setIsEditing(false);
-      setControlsVisible(false);
-      return;
-    }
-    if (e.key === 'Tab' && isCursorInsideFence(editText, e.currentTarget.selectionStart)) {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const next = editText.slice(0, start) + '  ' + editText.slice(end);
-      setEditText(next);
-      requestAnimationFrame(() => {
-        if (ta.isConnected) {
-          ta.selectionStart = ta.selectionEnd = start + 2;
-        }
-      });
-    }
-  };
+  const closeEditor = useCallback(() => {
+    setIsEditorOpen(false);
+    window.setTimeout(() => editorTriggerRef.current?.focus(), 0);
+  }, []);
 
-  const wasDrag = (e: React.MouseEvent) => {
-    if (!mouseDownPosRef.current) return false;
-    const dx = e.clientX - mouseDownPosRef.current.x;
-    const dy = e.clientY - mouseDownPosRef.current.y;
-    return Math.sqrt(dx * dx + dy * dy) > 5;
-  };
+  const saveDraft = useCallback(() => {
+    if (!draft.text.trim() && !text) return;
+    const value = draft.text.trim()
+      ? (hasCodeFence(draft.text) ? normaliseCode(draft.text) : draft.text)
+      : '';
+    updateState({ ...draft, text: value, clickToRecolour: true });
+    closeEditor();
+  }, [closeEditor, draft, text, updateState]);
 
-  const handleTextAreaClick = (e: React.MouseEvent) => {
-    if (isEditing || e.detail !== 1 || wasDrag(e)) return;
-    if (!clickToRecolour) return;
-    cancelPendingColorCycle();
-    clickTimerRef.current = window.setTimeout(() => {
-      updateState({ colorIndex: (colorIndex + 1) % colorCombinations.length });
-      clickTimerRef.current = null;
-    }, 500);
-  };
+  const isCustomColor = colorIndex === colorCombinations.length;
+  const currentColors = colorCombinations[colorIndex] ?? colorCombinations[0];
+  const customTextColor = isCustomColor ? getCustomTextColor(customColor) : undefined;
 
-  const cancelPendingColorCycle = () => {
-    if (clickTimerRef.current) {
-      window.clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-    }
-  };
+  const cycleDisplayedColor = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!text) return;
 
-  const enterEditMode = () => {
-    if (clickTimerRef.current) {
-      window.clearTimeout(clickTimerRef.current);
-      clickTimerRef.current = null;
-    }
-    setIsEditing(true);
-    setEditText(text === PLACEHOLDER_TEXT ? '' : text);
-    setControlsVisible(true);
-  };
+    const start = surfacePointerStartRef.current;
+    surfacePointerStartRef.current = null;
+    if (start && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 5) return;
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    if (wasDrag(e)) return;
-    enterEditMode();
-  };
-
-  const currentColors = colorCombinations[colorIndex];
-
-  const stopAll = (e: React.SyntheticEvent) => {
-    e.stopPropagation();
-  };
-
-  // Prevent the textarea from losing focus when the toolbar is clicked.
-  const preventToolbarBlur = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const adjustFontCap = (delta: number) => {
-    const next = Math.min(MAX_FONT_SIZE_CAP, Math.max(MIN_FONT_SIZE_CAP, fontSizeCap + delta));
-    updateState({ fontSizeCap: next });
+    const nextColorIndex = colorIndex >= colorCombinations.length
+      ? 0
+      : (colorIndex + 1) % colorCombinations.length;
+    updateState({ colorIndex: nextColorIndex, clickToRecolour: true });
   };
 
   const adjustColumnHeight = (delta: number) => {
@@ -394,6 +340,17 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
   };
 
   const effectiveColumnHeight = pendingHeight ?? columnHeight;
+  const columnStyle = isColumnLayout
+    ? isEditorOpen
+      ? { height: `${Math.max(effectiveColumnHeight ?? 0, EDITOR_MIN_HEIGHT)}px` }
+      : effectiveColumnHeight
+        ? { height: `${effectiveColumnHeight}px` }
+        : undefined
+    : undefined;
+  const widgetStyle: React.CSSProperties = {
+    ...(columnStyle ?? {}),
+    ...(isCustomColor ? { backgroundColor: customColor } : {})
+  };
 
   return (
     <div
@@ -401,201 +358,100 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
       className={cn(
         widgetContainer,
         'widget-container-custom-surface',
-        currentColors.bg,
+        !isCustomColor && currentColors.bg,
         'relative overflow-hidden transition-colors duration-300 flex flex-col group/banner'
       )}
-      style={isColumnLayout && effectiveColumnHeight ? { height: `${effectiveColumnHeight}px` } : undefined}
-      onDoubleClick={handleDoubleClick}
+      style={widgetStyle}
     >
-      {controlsVisible && (
-        <div
-          className="flex-shrink-0 z-20 flex flex-col items-center gap-1.5 px-3 py-2 bg-warm-gray-900/85 dark:bg-black/80 text-soft-white backdrop-blur-sm text-xs select-none"
-          onMouseDown={preventToolbarBlur}
-          onClick={stopAll}
-          onDoubleClick={stopAll}
-        >
-          {/* Row 1: colours + lock | dismiss */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            <div className="flex items-center gap-1">
-              {colorCombinations.map((combo, idx) => (
-                <button
-                  key={combo.swatch}
-                  type="button"
-                  onClick={() => {
-                    cancelPendingColorCycle();
-                    updateState({ colorIndex: idx });
-                  }}
-                  className={cn(
-                    'w-5 h-5 rounded-full border transition-transform hover:scale-110',
-                    idx === colorIndex ? 'border-soft-white ring-2 ring-soft-white/40' : 'border-warm-gray-500'
-                  )}
-                  style={{ backgroundColor: combo.swatch }}
-                  aria-label={`Use colour ${idx + 1}`}
-                  aria-pressed={idx === colorIndex}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  cancelPendingColorCycle();
-                  updateState({ clickToRecolour: !clickToRecolour });
-                }}
-                className={cn(
-                  'w-7 h-7 ml-1 flex items-center justify-center rounded-full transition-colors',
-                  clickToRecolour ? 'hover:bg-warm-gray-700/60' : 'bg-soft-white text-warm-gray-900'
-                )}
-                aria-label={clickToRecolour ? 'Disable click-to-recolour' : 'Enable click-to-recolour'}
-                aria-pressed={!clickToRecolour}
-                title={clickToRecolour ? 'Click cycles colour — click to lock' : 'Colour locked — click to unlock'}
-              >
-                {clickToRecolour ? <FaLockOpen className="w-3 h-3" /> : <FaLock className="w-3 h-3" />}
-              </button>
-            </div>
-
-            <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
-
-            <button
-              type="button"
-              onClick={() => setControlsVisible(false)}
-              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60"
-              aria-label="Hide controls"
-              title="Hide controls"
-            >
-              <FaXmark className="w-3 h-3" />
-            </button>
-          </div>
-
-          {/* Row 2: font family | font size */}
-          <div className="flex items-center gap-1.5 flex-wrap justify-center">
-            <div className="flex items-center gap-1">
-              {FONT_FAMILY_ORDER.map((family) => (
-                <button
-                  key={family}
-                  type="button"
-                  onClick={() => updateState({ fontFamily: family })}
-                  className={cn(
-                    'px-2 py-1 rounded-md text-[11px] leading-none transition-colors',
-                    fontFamily === family
-                      ? 'bg-soft-white text-warm-gray-900'
-                      : 'hover:bg-warm-gray-700/60'
-                  )}
-                  style={{ fontFamily: FONT_FAMILY_STACK[family] }}
-                  title={FONT_FAMILY_LABEL[family]}
-                  aria-label={`Use ${FONT_FAMILY_LABEL[family]} font`}
-                  aria-pressed={fontFamily === family}
-                >
-                  Aa
-                </button>
-              ))}
-            </div>
-
-            <span className="w-px h-5 bg-warm-gray-500/60 mx-0.5" aria-hidden />
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
-                disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
-                aria-label="Decrease maximum font size"
-                title="Decrease size"
-              >
-                <FaMinus className="w-3 h-3" />
-              </button>
-              <span className="text-[10px] tabular-nums w-8 text-center opacity-80">{fontSizeCap}px</span>
-              <button
-                type="button"
-                onClick={() => adjustFontCap(FONT_SIZE_STEP)}
-                disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-warm-gray-700/60 disabled:opacity-40"
-                aria-label="Increase maximum font size"
-                title="Increase size"
-              >
-                <FaPlus className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
+      {isEditorOpen && (
+        <div className="absolute inset-0 z-20">
+          <TextBannerEditor
+            draft={draft}
+            isNew={!text}
+            onDraftChange={setDraft}
+            onTextChange={handleDraftTextChange}
+            onCancel={closeEditor}
+            onSave={saveDraft}
+          />
         </div>
+      )}
+
+      {text && (
+        <button
+          ref={editorTriggerRef}
+          type="button"
+          onClick={openEditor}
+          className={cn(
+            'no-drag absolute top-2 z-10 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-warm-gray-900/70 px-3 py-2 text-sm font-medium text-white shadow-lg transition-all hover:bg-warm-gray-900/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
+            isCompactPanel || isDashboardMode ? 'right-12' : 'right-2',
+            isTouchDevice
+              ? 'opacity-100'
+              : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus:pointer-events-auto focus:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
+            isEditorOpen && 'invisible pointer-events-none'
+          )}
+          aria-label="Edit banner"
+          aria-hidden={isEditorOpen || undefined}
+        >
+          <FaPencil aria-hidden="true" />
+          <span>Edit</span>
+        </button>
       )}
 
       <div
         ref={textAreaContainerRef}
+        data-testid="text-banner-display"
+        aria-hidden={isEditorOpen || undefined}
+        onMouseDown={event => {
+          surfacePointerStartRef.current = { x: event.clientX, y: event.clientY };
+        }}
+        onClick={cycleDisplayedColor}
         className={cn(
-          'flex-1 flex items-center justify-center p-4 relative',
+          'flex-1 flex items-center justify-center relative',
+          text ? 'cursor-pointer p-4' : 'p-1',
           // Only constrain the content pane when the widget itself has a bounded height
           // (canvas mode is always bounded via react-rnd; column mode only when columnHeight is set).
           (!isColumnLayout || hasManualColumnHeight) && 'min-h-0 overflow-hidden',
-          clickToRecolour && !isEditing ? 'cursor-pointer' : ''
+          isEditorOpen && 'invisible pointer-events-none'
         )}
-        onMouseDown={(e) => {
-          mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
-        }}
-        onClick={handleTextAreaClick}
       >
-        <div
-          ref={textRef}
-          aria-hidden="true"
-          className={cn(
-            'absolute left-4 right-4 top-4 pointer-events-none select-none opacity-0',
-            isPreviewCodeBlockOnly && previewCodeBlock
-              ? 'max-w-full'
-              : cn(currentColors.text, 'text-center leading-tight')
-          )}
-          style={{
-            fontSize: `${fontSize}px`,
-            fontFamily: isPreviewCodeBlockOnly && previewCodeBlock
-              ? FONT_FAMILY_STACK.mono
-              : FONT_FAMILY_STACK[fontFamily]
-          }}
-        >
-          {isPreviewCodeBlockOnly && previewCodeBlock ? (
-            <pre className="text-banner-code">
-              <code>{normaliseCode(previewCodeBlock.code)}</code>
-            </pre>
-          ) : (
-            renderFormattedText(previewText)
-          )}
-        </div>
-
-        {isEditing ? (
-          <div className="flex flex-col w-full h-full gap-1">
-            <textarea
-              ref={textareaRef}
-              value={editText}
-              onChange={handleEditChange}
-              onKeyDown={handleKeyDown}
-              onBlur={handleBlur}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => e.stopPropagation()}
-              spellCheck={!hasCodeFence(editText)}
-              autoCorrect="off"
-              autoCapitalize="off"
-              autoComplete="off"
-              data-gramm="false"
-              data-enable-grammarly="false"
-              style={{
-                fontFamily: hasCodeFence(editText) ? FONT_FAMILY_STACK.mono : FONT_FAMILY_STACK[fontFamily],
-                fontSize: `${fontSizeCap}px`,
-                lineHeight: 1.15
-              }}
-              className="flex-1 min-h-0 w-full p-4 text-base bg-soft-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-terracotta-600 dark:focus:ring-terracotta-500"
-              placeholder="Enter your message... (use ```language for code blocks)"
-              autoFocus
-            />
-            <div className={cn('text-[11px] text-center opacity-70 select-none', currentColors.text)}>
-              <a
-                href="https://commonmark.org/help/"
-                target="_blank"
-                rel="noopener noreferrer"
-                onMouseDown={(e) => e.preventDefault()}
-                className="underline hover:opacity-100"
-              >
-                Markdown
-              </a>{' '}
-              supported (subset)
-            </div>
+        {text && (
+          <div
+            ref={textRef}
+            aria-hidden="true"
+            className={cn(
+              'absolute left-4 right-4 top-4 pointer-events-none select-none opacity-0',
+              isCodeBlockOnly && codeBlock
+                ? 'max-w-full'
+                : cn(!isCustomColor && currentColors.text, 'text-center leading-tight')
+            )}
+            style={{
+              fontSize: `${fontSize}px`,
+              fontFamily: isCodeBlockOnly && codeBlock
+                ? FONT_FAMILY_STACK.mono
+                : FONT_FAMILY_STACK[fontFamily],
+              color: customTextColor
+            }}
+          >
+            {isCodeBlockOnly && codeBlock ? (
+              <pre className="text-banner-code">
+                <code>{normaliseCode(codeBlock.code)}</code>
+              </pre>
+            ) : (
+              renderFormattedText(text)
+            )}
           </div>
+        )}
+
+        {!text ? (
+          <button
+            ref={editorTriggerRef}
+            type="button"
+            onClick={openEditor}
+            className="no-drag inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-soft-white px-4 py-2.5 text-sm font-semibold text-warm-gray-900 shadow-lg transition-colors hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-soft-white focus-visible:ring-offset-2 focus-visible:ring-offset-terracotta-600"
+          >
+            <FaPlus aria-hidden="true" />
+            Add text
+          </button>
         ) : isCodeBlockOnly && codeBlock ? (
           <CodeBlockRender
             code={codeBlock.code}
@@ -604,12 +460,12 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
           />
         ) : (
           <div
-            className={cn(currentColors.text, 'text-center leading-tight select-none')}
+            className={cn(!isCustomColor && currentColors.text, 'text-center leading-tight select-none')}
             style={{
-              fontSize: `${displayFontSize}px`,
-              fontFamily: FONT_FAMILY_STACK[fontFamily]
+              fontSize: `${fontSize}px`,
+              fontFamily: FONT_FAMILY_STACK[fontFamily],
+              color: customTextColor
             }}
-            title="Double-click to edit"
           >
             {renderFormattedText(text)}
           </div>
@@ -625,19 +481,345 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
           aria-valuemin={MIN_COLUMN_HEIGHT}
           aria-valuemax={MAX_COLUMN_HEIGHT}
           aria-valuetext={`${Math.round(effectiveColumnHeight ?? widgetRef.current?.offsetHeight ?? DEFAULT_COLUMN_HEIGHT)} pixels`}
-          tabIndex={0}
+          aria-hidden={isEditorOpen || undefined}
+          tabIndex={isEditorOpen ? -1 : 0}
           onMouseDown={handleResizeMouseDown}
           onKeyDown={handleResizeKeyDown}
           className={cn(
             'absolute bottom-0 left-0 right-0 h-2 flex items-center justify-center cursor-ns-resize select-none',
             'opacity-0 group-hover/banner:opacity-100 focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-soft-white/70 transition-opacity',
-            pendingHeight !== null && 'opacity-100'
+            pendingHeight !== null && 'opacity-100',
+            isEditorOpen && 'invisible pointer-events-none'
           )}
         >
           <div className="w-10 h-1 rounded-full bg-soft-white/60" />
         </div>
       )}
     </div>
+  );
+};
+
+interface TextBannerEditorProps {
+  draft: TextBannerDraft;
+  isNew: boolean;
+  onDraftChange: React.Dispatch<React.SetStateAction<TextBannerDraft>>;
+  onTextChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
+interface CustomColourPickerProps {
+  color: string;
+  selected: boolean;
+  onChange: (color: string) => void;
+}
+
+const CustomColourPicker: React.FC<CustomColourPickerProps> = ({ color, selected, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const arrowRef = useRef<SVGSVGElement>(null);
+  const {
+    refs,
+    floatingStyles,
+    context
+  } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    placement: 'bottom',
+    middleware: [
+      offset(8),
+      flip({ padding: 8 }),
+      shift({ padding: 8 }),
+      arrow({ element: arrowRef })
+    ],
+    whileElementsMounted: autoUpdate
+  });
+  const click = useClick(context);
+  const dismiss = useDismiss(context);
+  const role = useRole(context, { role: 'dialog' });
+  const { getReferenceProps, getFloatingProps } = useInteractions([click, dismiss, role]);
+
+  return (
+    <>
+      <button
+        ref={refs.setReference}
+        {...getReferenceProps({
+          type: 'button',
+          'aria-label': 'Choose custom banner colour',
+          'aria-pressed': selected,
+          title: 'Custom colour',
+          className: cn(
+            'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border p-0 shadow-sm ring-1 ring-inset ring-black/30 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1 dark:ring-white/50',
+            selected
+              ? 'border-warm-gray-900 ring-1 ring-warm-gray-900 dark:border-white dark:ring-white'
+              : 'border-warm-gray-300 dark:border-warm-gray-600'
+          )
+        })}
+      >
+        <span
+          data-testid="custom-colour-wheel"
+          data-visual="rainbow-ring"
+          aria-hidden="true"
+          className="h-full w-full rounded-full p-0.5"
+          style={{
+            backgroundImage: 'conic-gradient(#ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)'
+          }}
+        >
+          <span
+            className="block h-full w-full rounded-full border border-white/80"
+            style={{ backgroundColor: color }}
+          />
+        </span>
+      </button>
+
+      {isOpen && (
+        <FloatingPortal>
+          <FloatingFocusManager context={context} modal={false}>
+            <div
+              ref={refs.setFloating}
+              style={floatingStyles}
+              {...getFloatingProps({
+                'aria-label': 'Custom banner colour',
+                onPointerDown: event => event.stopPropagation(),
+                onMouseDown: event => event.stopPropagation(),
+                onTouchStart: event => event.stopPropagation(),
+                onKeyDown: event => {
+                  if (event.key === 'Escape') event.stopPropagation();
+                }
+              })}
+              className="no-drag no-resize z-[2000] rounded-xl border border-warm-gray-300 bg-soft-white p-2 shadow-xl dark:border-warm-gray-600 dark:bg-warm-gray-800"
+              data-dashboard-interactive="true"
+            >
+              <FloatingArrow
+                ref={arrowRef}
+                context={context}
+                width={14}
+                height={7}
+                className="fill-soft-white stroke-warm-gray-300 dark:fill-warm-gray-800 dark:stroke-warm-gray-600"
+              />
+              <RgbColorPicker
+                color={hexToRgb(color)}
+                onChange={nextColor => onChange(rgbToHex(nextColor))}
+                aria-label="Custom banner RGB colour"
+                style={{ width: 176, height: 144 }}
+              />
+            </div>
+          </FloatingFocusManager>
+        </FloatingPortal>
+      )}
+    </>
+  );
+};
+
+const TextBannerEditor: React.FC<TextBannerEditorProps> = ({
+  draft,
+  isNew,
+  onDraftChange,
+  onTextChange,
+  onCancel,
+  onSave
+}) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const titleId = useId();
+  const hintId = useId();
+  const draftColors = colorCombinations[draft.colorIndex] ?? colorCombinations[0];
+  const draftIsCustomColor = draft.colorIndex === colorCombinations.length;
+  const draftCustomTextColor = draftIsCustomColor
+    ? getCustomTextColor(draft.customColor)
+    : undefined;
+  const canSave = !isNew || draft.text.trim().length > 0;
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }, []);
+
+  const adjustFontCap = (delta: number) => {
+    onDraftChange(current => ({
+      ...current,
+      fontSizeCap: Math.min(
+        MAX_FONT_SIZE_CAP,
+        Math.max(MIN_FONT_SIZE_CAP, current.fontSizeCap + delta)
+      )
+    }));
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      onCancel();
+    } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && canSave) {
+      event.preventDefault();
+      event.stopPropagation();
+      onSave();
+    }
+  };
+
+  return (
+    <section
+      role="region"
+      aria-labelledby={titleId}
+      onKeyDown={handleKeyDown}
+      className="no-drag flex h-full min-h-0 w-full flex-col overflow-hidden bg-soft-white text-warm-gray-900 dark:bg-warm-gray-800 dark:text-warm-gray-100"
+      data-dashboard-interactive="true"
+    >
+      <div className="flex min-h-9 flex-shrink-0 items-center border-b border-warm-gray-200 px-3 py-1.5 dark:border-warm-gray-700">
+        <h2 id={titleId} className="truncate text-sm font-semibold">
+          {isNew ? 'Add banner text' : 'Edit banner'}
+        </h2>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 py-1">
+        <div>
+          <label htmlFor={`${titleId}-text`} className="sr-only">
+            Banner text
+          </label>
+          <textarea
+            ref={textareaRef}
+            id={`${titleId}-text`}
+            value={draft.text}
+            onChange={onTextChange}
+            spellCheck={!hasCodeFence(draft.text)}
+            autoCorrect="off"
+            autoCapitalize="off"
+            autoComplete="off"
+            data-gramm="false"
+            data-enable-grammarly="false"
+            aria-describedby={hintId}
+            style={{
+              fontFamily: hasCodeFence(draft.text)
+                ? FONT_FAMILY_STACK.mono
+                : FONT_FAMILY_STACK[draft.fontFamily],
+              backgroundColor: draftIsCustomColor ? draft.customColor : undefined,
+              color: draftCustomTextColor
+            }}
+            className={cn(
+              'h-14 w-full resize-none rounded-lg border border-black/15 px-3 py-2 text-sm leading-relaxed shadow-inner placeholder:text-current placeholder:opacity-80',
+              'focus:outline-none focus:ring-2 focus:ring-sage-500 focus:ring-offset-1',
+              !draftIsCustomColor && draftColors.bg,
+              !draftIsCustomColor && draftColors.text
+            )}
+            placeholder="Type a message…"
+          />
+          <div id={hintId} className="mt-1 flex items-baseline gap-1 text-[10px] leading-4 text-warm-gray-600 dark:text-warm-gray-300">
+            <span>Enter ↵ · Ctrl/⌘+Enter saves ·</span>
+            <a
+              href="https://commonmark.org/help/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whitespace-nowrap underline hover:text-warm-gray-800 dark:hover:text-warm-gray-100"
+            >
+              Markdown help
+            </a>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div role="group" aria-label="Banner colour" className="flex items-center gap-1">
+              {colorCombinations.map((combo, index) => (
+                <button
+                  key={combo.name}
+                  type="button"
+                  onClick={() => onDraftChange(current => ({ ...current, colorIndex: index }))}
+                  className={cn(
+                    'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border shadow-sm ring-1 ring-inset ring-black/30 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1 dark:ring-white/50',
+                    index === draft.colorIndex
+                      ? 'border-warm-gray-900 ring-1 ring-warm-gray-900 dark:border-white dark:ring-white'
+                      : 'border-warm-gray-300 dark:border-warm-gray-600',
+                    index === 4 ? 'text-warm-gray-900' : 'text-white'
+                  )}
+                  style={{ backgroundColor: combo.swatch }}
+                  aria-label={`Set banner colour to ${combo.name}`}
+                  aria-pressed={index === draft.colorIndex}
+                  title={combo.name}
+                >
+                  {index === draft.colorIndex && <FaCheck className="h-2.5 w-2.5" aria-hidden="true" />}
+                </button>
+              ))}
+              <CustomColourPicker
+                color={draft.customColor}
+                selected={draftIsCustomColor}
+                onChange={nextCustomColor => onDraftChange(current => ({
+                  ...current,
+                  colorIndex: colorCombinations.length,
+                  customColor: nextCustomColor
+                }))}
+              />
+            </div>
+
+            <div role="group" aria-label="Maximum text size" className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => adjustFontCap(-FONT_SIZE_STEP)}
+                disabled={draft.fontSizeCap <= MIN_FONT_SIZE_CAP}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-warm-gray-300 text-xs transition-colors hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-warm-gray-600 dark:hover:bg-warm-gray-700"
+                aria-label="Decrease maximum font size"
+              >
+                <FaMinus aria-hidden="true" />
+              </button>
+              <output
+                className="w-7 text-center text-[10px] tabular-nums"
+                aria-label={`Maximum text size: ${draft.fontSizeCap} pixels`}
+                aria-live="polite"
+              >
+                {draft.fontSizeCap}
+              </output>
+              <button
+                type="button"
+                onClick={() => adjustFontCap(FONT_SIZE_STEP)}
+                disabled={draft.fontSizeCap >= MAX_FONT_SIZE_CAP}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-warm-gray-300 text-xs transition-colors hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-warm-gray-600 dark:hover:bg-warm-gray-700"
+                aria-label="Increase maximum font size"
+              >
+                <FaPlus aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <div role="group" aria-label="Banner font" className="grid grid-cols-4 gap-1">
+            {FONT_FAMILY_ORDER.map((family) => (
+              <button
+                key={family}
+                type="button"
+                onClick={() => onDraftChange(current => ({ ...current, fontFamily: family }))}
+                className={cn(
+                  'h-8 min-w-0 rounded-md border px-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500',
+                  family === draft.fontFamily
+                    ? 'border-sage-600 bg-sage-100 text-sage-800 dark:border-sage-400 dark:bg-sage-900/40 dark:text-sage-200'
+                    : 'border-warm-gray-300 hover:bg-warm-gray-100 dark:border-warm-gray-600 dark:hover:bg-warm-gray-700'
+                )}
+                style={{ fontFamily: FONT_FAMILY_STACK[family] }}
+                aria-pressed={family === draft.fontFamily}
+              >
+                {FONT_FAMILY_LABEL[family]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid flex-shrink-0 grid-cols-2 gap-2 border-t border-warm-gray-200 px-3 py-1.5 dark:border-warm-gray-700">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="min-h-10 rounded-lg border border-warm-gray-300 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 dark:border-warm-gray-600 dark:hover:bg-warm-gray-700"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={!canSave}
+          className="min-h-10 rounded-lg bg-sage-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-sage-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-45 dark:bg-sage-500 dark:text-warm-gray-900 dark:hover:bg-sage-400"
+        >
+          {isNew ? 'Add text' : 'Save changes'}
+        </button>
+      </div>
+    </section>
   );
 };
 
