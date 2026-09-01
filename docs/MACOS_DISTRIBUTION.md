@@ -2,6 +2,18 @@
 
 Classroom Widgets for macOS is a menu-bar app for opening floating classroom widgets. It is built locally from the teacher production build and the SwiftPM package in `packages/macos-dashboard`.
 
+## Versioning
+
+macOS releases are versioned independently from web deployments. The source of truth is:
+
+```text
+packages/macos-dashboard/version.json
+```
+
+That version is written to `CFBundleShortVersionString`, the DMG filename, and the version label shown by the embedded teacher UI. `CFBundleVersion` is a separate monotonically increasing build number and defaults to a timestamp for release builds.
+
+Use tags named `macos-v<version>`. Existing `v0.10.15` and older tags remain valid historical releases; the namespaced format starts with the next macOS release.
+
 ## Local run
 
 ```bash
@@ -24,6 +36,8 @@ This creates an ad hoc signed local DMG at:
 ```text
 dist/ClassroomWidgets-v<version>-macos.dmg
 ```
+
+`<version>` comes from `packages/macos-dashboard/version.json`.
 
 Use this only for local packaging checks. It is not suitable for public download.
 The built app is also installed to `/Applications/Classroom Widgets Dashboard.app`.
@@ -54,6 +68,27 @@ npm run macos:dmg -- --distribution --notarise
 
 The distribution signature uses hardened runtime and `script/macos-distribution-entitlements.plist`, which includes camera access for the Visualiser widget.
 Successful release builds also install the signed app to `/Applications/Classroom Widgets Dashboard.app` before packaging the DMG.
+
+## Publishing a release
+
+1. Update `packages/macos-dashboard/version.json` and commit the change.
+2. Build, validate, and test the signed and notarised DMG from that commit.
+3. Tag the validated commit with `macos-v<version>`.
+4. Push the commit and tag, then create a GitHub release containing the DMG.
+
+For example, after updating the version file:
+
+```bash
+VERSION="$(node -p "require('./packages/macos-dashboard/version.json').version")"
+npm run macos:dmg -- --distribution --notarise
+git tag "macos-v${VERSION}"
+git push origin master "macos-v${VERSION}"
+gh release create "macos-v${VERSION}" \
+  "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
+  --title "Classroom Widgets for macOS v${VERSION}"
+```
+
+Publishing a macOS tag or GitHub release does not deploy the web application.
 
 ## Validation
 

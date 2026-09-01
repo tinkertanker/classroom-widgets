@@ -26,7 +26,7 @@ WEB_RESOURCES="${APP_RESOURCES}/Web"
 STAGING_DIR="${ROOT_DIR}/dist/macos-dmg-staging"
 ENTITLEMENTS_PATH="${ROOT_DIR}/script/macos-distribution-entitlements.plist"
 APP_ICON_PATH="${MACOS_DIR}/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
-VERSION="$(node -p "require('./package.json').version")"
+VERSION="$(node -p "require('./packages/macos-dashboard/version.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 DMG_PATH="${DMG_PATH:-}"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
@@ -43,7 +43,6 @@ Usage:
   ./script/build_macos_release.sh [options]
 
 Options:
-  --version <version>   Artifact/app version suffix (default: package.json version)
   --build <number>      CFBundleVersion value (default: timestamp)
   --output <path>       DMG output path
   --distribution        Sign app and DMG with a Developer ID Application identity
@@ -80,11 +79,6 @@ trash_path() {
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version)
-      [[ -n "${2:-}" ]] || { echo "--version requires a value" >&2; usage; exit 1; }
-      VERSION="${2#v}"
-      shift 2
-      ;;
     --build)
       [[ -n "${2:-}" ]] || { echo "--build requires a value" >&2; usage; exit 1; }
       BUILD_NUMBER="$2"

@@ -249,16 +249,12 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-Use `npm version` to bump the version, commit, and tag in one step — the version is displayed in the app UI and is read from the root `package.json`:
+Web and macOS releases are versioned independently:
 
-```bash
-npm version 1.2.3
-git push origin master --tags
-```
+- Web deployments are identified by their Git commit and are started manually from the **Deploy Web to Production** GitHub Actions workflow.
+- macOS releases use the version in `packages/macos-dashboard/version.json` and tags named `macos-v<version>`.
 
-Pushing a `v*` tag triggers the GitHub Actions workflow which auto-deploys to production.
-
-> **Note:** This workflow is untested end-to-end. Verify that `npm version` correctly creates the git tag and that the version displayed in the app reflects the root `package.json` before relying on it.
+Creating a macOS release tag does not deploy the web application.
 
 See [Deployment Guide](./docs/DEPLOYMENT.md) for full instructions including CD setup, Docker, and environment configuration.
 

@@ -17,6 +17,7 @@ services:
         - VITE_SHORTIO_DOMAIN=${VITE_SHORTIO_DOMAIN}
         - VITE_UMAMI_SCRIPT_URL=${VITE_UMAMI_SCRIPT_URL}
         - VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID}
+        - VITE_BUILD_ID=${VITE_BUILD_ID:-development}
     image: classroom-widgets-frontend:latest
     container_name: classroom-widgets-frontend
     environment:
