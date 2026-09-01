@@ -5,6 +5,7 @@ interface ImportMetaEnv {
   readonly VITE_SHORTIO_API_KEY: string
   readonly VITE_SHORTIO_BASE_URL: string
   readonly VITE_SHORTIO_DOMAIN: string
+  readonly VITE_BUILD_ID?: string
 }
 
 interface ImportMeta {

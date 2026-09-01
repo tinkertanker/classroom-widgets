@@ -1,9 +1,7 @@
-name: Deploy to Production
+name: Deploy Web to Production
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -19,9 +17,12 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
+            DEPLOY_SHA="${{ github.sha }}"
             cd ${{ secrets.DEPLOY_PATH }}
-            git fetch origin
-            git reset --hard origin/master
+            git fetch origin "$DEPLOY_SHA"
+            git reset --hard "$DEPLOY_SHA"
+            git clean -ffd
+            export VITE_BUILD_ID="$(printf '%.7s' "$DEPLOY_SHA")"
             docker compose -f docker-compose.prod.yml down
             docker compose -f docker-compose.prod.yml up --build -d
-            echo "Deployed ${{ github.ref_name }} successfully"
+            echo "Deployed $DEPLOY_SHA successfully"

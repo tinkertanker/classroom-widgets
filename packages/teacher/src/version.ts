@@ -1,10 +1,15 @@
-// Application version configuration - reads from root package.json (source of truth)
-import packageJson from '../../../package.json';
+declare global {
+  interface Window {
+    __CLASSROOM_WIDGETS_MACOS_VERSION__?: string;
+  }
+}
 
-export const APP_VERSION = packageJson.version;
+const WEB_BUILD_ID = import.meta.env.VITE_BUILD_ID?.trim() || 'development';
 
-// You can also export additional version-related information
-export const VERSION_INFO = {
-  version: APP_VERSION,
-  codename: 'Classroom Widgets'
-};
+export function getReleaseLabel() {
+  const macOSVersion = typeof window === 'undefined'
+    ? undefined
+    : window.__CLASSROOM_WIDGETS_MACOS_VERSION__;
+
+  return macOSVersion ? `macOS v${macOSVersion}` : `Web ${WEB_BUILD_ID}`;
+}
