@@ -20,6 +20,7 @@ vi.mock('../../../store/workspaceStore.simple', () => ({
 afterEach(() => {
   vi.clearAllMocks();
   workspaceMock.layoutFormat = 'canvas';
+  window.history.replaceState({}, '', '/');
 });
 
 describe('TextBanner text editor', () => {
@@ -291,6 +292,13 @@ describe('TextBanner text editor', () => {
 
   it('keeps the compact-panel Edit action clear of the top-right window control', () => {
     render(<TextBanner isCompactPanel savedState={{ text: 'Compact banner' }} />);
+
+    expect(screen.getByRole('button', { name: 'Edit banner' })).toHaveClass('right-12');
+  });
+
+  it('keeps the dashboard Edit action clear of the top-right Close control', () => {
+    window.history.replaceState({}, '', '/?dashboard=1');
+    render(<TextBanner savedState={{ text: 'Dashboard banner' }} />);
 
     expect(screen.getByRole('button', { name: 'Edit banner' })).toHaveClass('right-12');
   });

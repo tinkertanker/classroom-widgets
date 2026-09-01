@@ -25,6 +25,7 @@ import {
 } from './fonts';
 import { findCodeBlock, highlightCode, normaliseCode, type HighlightedCode } from './highlight';
 import { cn, widgetContainer } from '@shared/utils/styles';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
@@ -150,6 +151,7 @@ const renderFormattedText = (value: string) => {
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCompactPanel = false }) => {
   const workspaceIsColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
   const isColumnLayout = workspaceIsColumnLayout && !isCompactPanel;
+  const isDashboardMode = isDesktopDashboardMode();
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
 
   const initialState: TextBannerState = {
@@ -381,7 +383,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
           onClick={openEditor}
           className={cn(
             'no-drag absolute top-2 z-10 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-warm-gray-900/70 px-3 py-2 text-sm font-medium text-white shadow-lg transition-all hover:bg-warm-gray-900/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
-            isCompactPanel ? 'right-12' : 'right-2',
+            isCompactPanel || isDashboardMode ? 'right-12' : 'right-2',
             isTouchDevice
               ? 'opacity-100'
               : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus:pointer-events-auto focus:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
