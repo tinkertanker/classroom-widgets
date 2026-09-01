@@ -11,7 +11,7 @@ npm run macos:run -- --verify
 This writes `dist/Classroom Widgets Dashboard.app`, opens it, and verifies that `ClassroomWidgets` is running.
 The app is installed and launched from `/Applications/Classroom Widgets Dashboard.app` after each successful local run build so existing installations are replaced in place and macOS camera permission remains tied to the canonical app location.
 
-The on-disk bundle filename deliberately remains `Classroom Widgets Dashboard.app` for upgrade compatibility, while Finder and macOS display the app as `Classroom Widgets`. The bundle identifier remains `com.classroomwidgets.dashboard`, so existing preferences, login-item registration, and macOS permissions continue to belong to the same app identity.
+The on-disk bundle filename deliberately remains `Classroom Widgets Dashboard.app` for upgrade compatibility, while Finder and macOS display the app as `Classroom Widgets`. The canonical bundle identifier is `sg.tk.classroomwidgets`. Releases before 0.10.15 used `com.classroomwidgets.dashboard`, so preferences, login-item registration, and macOS permissions from those releases do not carry over automatically.
 
 ## Local DMG
 
