@@ -6,6 +6,7 @@ Quick start guide for developers working on Classroom Widgets.
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Development](#development)
+- [macOS App](#macos-app)
 - [Project Structure](#project-structure)
 - [Available Widgets](#available-widgets)
 - [Testing](#testing)
@@ -16,6 +17,7 @@ Quick start guide for developers working on Classroom Widgets.
 - **Node.js** 20.19+ or 22.12+ and npm
 - **Git**
 - **Docker** (optional, for testing production builds)
+- **macOS 13+ and Xcode 15+** (optional, for the native macOS app)
 
 Check your versions:
 ```bash
@@ -42,6 +44,8 @@ This installs dependencies for:
 - Student app (`packages/student`)
 - Server (`packages/server`)
 - Shared workspace (`packages/shared`)
+
+The native app in `packages/macos-dashboard` is a Swift package; Xcode resolves and builds it when you run the macOS scripts.
 
 ### Environment Variables
 
@@ -100,6 +104,24 @@ npm run dev:concurrent
 
 **Note:** In development, the student app runs on its own Vite dev server (port 3002). In production, it's served by the Express server at `http://localhost:3001/student`.
 
+## macOS App
+
+On a Mac with Xcode installed, build the teacher assets and native Swift host, install the result to Applications, launch it, and verify the process:
+
+```bash
+npm run macos:run -- --verify
+```
+
+Classroom Widgets runs from the menu bar. Select its icon and use **New Floating Widget** to open a supported compact widget. Local builds replace `/Applications/Classroom Widgets Dashboard.app`.
+
+To create an ad hoc signed DMG for local packaging checks, install `create-dmg` and run:
+
+```bash
+npm run macos:dmg
+```
+
+Do not publish that ad hoc artifact. Public downloads must be Developer ID signed, notarized, and stapled. See [macOS App and Distribution](./MACOS_DISTRIBUTION.md) for installation, supported widgets, app identity, signing, validation, and release instructions.
+
 ## Project Structure
 
 ```
@@ -120,7 +142,9 @@ classroom-widgets/
 │   │   ├── src/sockets/        # Socket.io event handlers
 │   │   ├── src/server.js       # Server entry point
 │   │   └── package.json
-│   └── shared/                 # Shared types, hooks, constants, utilities
+│   ├── shared/                 # Shared types, hooks, constants, utilities
+│   └── macos-dashboard/        # Native menu-bar host (SwiftPM + AppKit/WebKit)
+├── script/                     # macOS build and distribution scripts
 ├── docs/                       # Documentation
 ├── package.json                # Root workspace scripts
 └── package-lock.json           # Locked dependency graph
@@ -137,6 +161,7 @@ classroom-widgets/
 - **Express.js** - Backend server
 - **React-RND** - Drag & drop + resize
 - **Vitest** - Testing framework
+- **Swift, AppKit, SwiftUI, and WebKit** - Native macOS host and settings UI
 
 ## Available Widgets
 
@@ -224,6 +249,8 @@ npm run dev:concurrent   # Start everything with concurrently
 npm run build            # Build all workspaces that define a build script
 npm run build:student    # Build student app for production
 npm run build:all        # Build everything
+npm run macos:run -- --verify  # Build, install, launch, and verify the macOS app
+npm run macos:dmg        # Create an ad hoc local DMG; do not publish it
 ```
 
 #### Testing

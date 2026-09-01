@@ -5,6 +5,7 @@ A suite of interactive classroom management tools with real-time student engagem
 ## 📚 Table of Contents
 
 - [Project Overview](#project-overview)
+- [macOS App](#macos-app)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Core Features](#core-features)
@@ -19,6 +20,7 @@ Classroom Widgets is a real-time classroom management system that enables teache
 - **Teacher Application**: A React-based interface for creating and managing classroom activities
 - **Student Application**: A responsive web app for students to participate in activities.
 - **Backend Server**: An Express.js server handling real-time communication via Socket.io.
+- **macOS Application**: A native menu-bar app for placing always-on-top classroom widgets over other apps.
 
 ### Available Widgets
 
@@ -32,6 +34,25 @@ The teacher-facing iPad app for creating and sharing self-contained interactive
 activities now lives in its own repository:
 [**Tapplet**](https://github.com/tinkertanker/tapplet).
 
+## 🖥️ macOS App
+
+Classroom Widgets for macOS is a signed and notarized menu-bar app for opening compact classroom widgets that stay above other apps. It requires macOS 13 or later.
+
+**[Download the latest macOS release](https://github.com/tinkertanker/classroom-widgets/releases)**
+
+To install it:
+
+1. Download `ClassroomWidgets-v<version>-macos.dmg` from the release page.
+2. Open the DMG and drag Classroom Widgets to Applications.
+3. Launch Classroom Widgets from Applications. The app runs from the menu bar rather than the Dock.
+4. Select the menu-bar icon, then **New Floating Widget**.
+
+The macOS app currently supports Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects. Settings include launch at login, showing widgets on all Spaces, widget background opacity, and a configurable global shortcut for opening Settings.
+
+The canonical bundle identifier is `sg.tk.classroomwidgets`. Upgrading from a release before 0.10.15 may require configuring preferences, login-item approval, and macOS permissions again because those releases used a different app identity.
+
+See the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for usage, local builds, signing, notarization, and release instructions.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -39,6 +60,7 @@ activities now lives in its own repository:
 - Node.js 20.19+ or 22.12+ and npm
 - Git
 - Docker and Docker Compose (only for Docker-based production deployment)
+- macOS 13+ and Xcode 15+ (only for building the native macOS app)
 
 ### First Time Setup
 
@@ -74,7 +96,7 @@ npm run build:all
 
 ### System Overview (Development Environment)
 
-The project is a monorepo consisting of three main parts that run concurrently during development using `npm run dev`.
+The web stack consists of three parts that run concurrently during development using `npm run dev`. The native macOS app is a separate Swift package that embeds a production build of the teacher interface for its floating widgets.
 
 ```
 ┌─────────────────┐         ┌─────────────────┐
@@ -114,7 +136,9 @@ classroom-widgets/
 │   │   ├── src/routes/       # API routes
 │   │   ├── src/sockets/      # Socket.IO event handlers
 │   │   └── package.json      # Backend workspace scripts
-│   └── shared/               # Shared types, hooks, constants, and utilities
+│   ├── shared/               # Shared types, hooks, constants, and utilities
+│   └── macos-dashboard/      # Native menu-bar host (SwiftPM + AppKit/WebKit)
+├── script/                   # macOS app and release packaging scripts
 ├── docs/                     # Project documentation
 ├── package.json              # Root workspace scripts
 └── package-lock.json         # Locked dependency graph for all workspaces
@@ -126,6 +150,7 @@ classroom-widgets/
 - **Backend**: Express.js, Socket.io
 - **State Management**: Zustand
 - **Deployment**: Docker, Nginx
+- **macOS Desktop**: Swift, AppKit, SwiftUI, WebKit, Swift Package Manager
 
 ## ✨ Features
 
@@ -206,6 +231,12 @@ npm run server
 
 # Run tests for the Teacher App
 npm test
+
+# Build, install, launch, and verify the macOS app (macOS only)
+npm run macos:run -- --verify
+
+# Create an ad hoc signed local DMG (macOS only; not for public download)
+npm run macos:dmg
 ```
 
 See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development details.
@@ -249,18 +280,16 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-Use `npm version` to bump the version, commit, and tag in one step — the version is displayed in the app UI and is read from the root `package.json`:
+The root `package.json` version is also used for macOS release artifacts. After the version change and release code have landed, tag the exact `master` commit:
 
 ```bash
-npm version 1.2.3
-git push origin master --tags
+git tag v1.2.3
+git push origin v1.2.3
 ```
 
-Pushing a `v*` tag triggers the GitHub Actions workflow which auto-deploys to production.
+Pushing a `v*` tag triggers the GitHub Actions workflow that redeploys the production web services. It does **not** build or upload the macOS app. A public macOS release must be built, Developer ID signed, notarized, stapled, validated, and uploaded to the matching GitHub release from an authorized Mac.
 
-> **Note:** This workflow is untested end-to-end. Verify that `npm version` correctly creates the git tag and that the version displayed in the app reflects the root `package.json` before relying on it.
-
-See [Deployment Guide](./docs/DEPLOYMENT.md) for full instructions including CD setup, Docker, and environment configuration.
+See the [Deployment Guide](./docs/DEPLOYMENT.md) for the web deployment and the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for the native release process.
 
 ## 📖 Documentation
 
@@ -275,6 +304,7 @@ All comprehensive documentation is in the [`docs/`](./docs) directory:
 
 ### For Deployment
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment (Docker, SSL, troubleshooting)
+- **[macOS App and Distribution](./docs/MACOS_DISTRIBUTION.md)** - Install, use, build, sign, notarize, and publish the native app
 - **[Analytics Setup](./docs/ANALYTICS.md)** - Privacy-focused analytics with Umami
 
 ### Reference
