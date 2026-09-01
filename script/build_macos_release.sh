@@ -15,7 +15,7 @@ fi
 APP_NAME="Classroom Widgets"
 APP_BUNDLE_NAME="Classroom Widgets Dashboard"
 PRODUCT_NAME="ClassroomWidgets"
-BUNDLE_ID="com.classroomwidgets.dashboard"
+BUNDLE_ID="sg.tk.classroomwidgets"
 MACOS_DIR="${ROOT_DIR}/packages/macos-dashboard"
 APP_BUNDLE="${ROOT_DIR}/dist/${APP_BUNDLE_NAME}.app"
 INSTALL_APP_BUNDLE="/Applications/${APP_BUNDLE_NAME}.app"

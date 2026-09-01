@@ -2,7 +2,7 @@ import Foundation
 import OSLog
 
 enum DashboardLog {
-    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.classroomwidgets.dashboard"
+    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "sg.tk.classroomwidgets"
 
     static let app = Logger(subsystem: bundleIdentifier, category: "App")
     static let menuBar = Logger(subsystem: bundleIdentifier, category: "MenuBar")
