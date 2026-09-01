@@ -442,9 +442,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         messageHandler = webContext.messageHandler
 
         let initialContentRect = NSRect(origin: .zero, size: descriptor.preferredContentSize.cgSize)
-        let styleMask: NSWindow.StyleMask = descriptor.isResizable
-            ? [.titled, .closable, .resizable]
-            : [.titled, .closable]
+        let styleMask: NSWindow.StyleMask = [.titled, .closable, .resizable]
         let panel = WidgetPanel(
             contentRect: initialContentRect,
             styleMask: styleMask,
@@ -461,10 +459,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         panel.acceptsMouseMovedEvents = true
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
-        panel.contentMinSize = descriptor.minimumContentSize.cgSize
-        if let maximumContentSize = descriptor.maximumContentSize?.cgSize {
-            panel.contentMaxSize = maximumContentSize
-        }
+        Self.applySizeConstraints(for: descriptor, to: panel)
         panel.contentAspectRatio = Self.contentAspectRatio(for: descriptor)
         panel.contentView = NSView()
         webView.frame = panel.contentView?.bounds ?? .zero
@@ -512,27 +507,9 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         if previous.title != descriptor.title {
             window?.title = descriptor.title
         }
-        if previous.minimumContentSize.width != descriptor.minimumContentSize.width
-            || previous.minimumContentSize.height != descriptor.minimumContentSize.height {
-            window?.contentMinSize = descriptor.minimumContentSize.cgSize
-        }
-        let previousMax = previous.maximumContentSize
-        let nextMax = descriptor.maximumContentSize
-        if previousMax?.width != nextMax?.width || previousMax?.height != nextMax?.height {
-            window?.contentMaxSize = nextMax?.cgSize ?? NSSize(
-                width: CGFloat.greatestFiniteMagnitude,
-                height: CGFloat.greatestFiniteMagnitude
-            )
-        }
+        Self.applySizeConstraints(for: descriptor, to: window)
         if previous.aspectRatio != descriptor.aspectRatio {
             window?.contentAspectRatio = Self.contentAspectRatio(for: descriptor)
-        }
-        if previous.isResizable != descriptor.isResizable, let window {
-            if descriptor.isResizable {
-                window.styleMask.insert(.resizable)
-            } else {
-                window.styleMask.remove(.resizable)
-            }
         }
     }
 
@@ -975,6 +952,20 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
               let layout = WidgetPanelLayout(rawValue: rawLayout)
         else { return }
         onLayoutRequested?(layout)
+    }
+
+    private static func applySizeConstraints(for descriptor: WidgetPanelDescriptor, to window: NSWindow?) {
+        guard let window else { return }
+        window.contentMinSize = descriptor.isResizable
+            ? descriptor.minimumContentSize.cgSize
+            : descriptor.preferredContentSize.cgSize
+        window.contentMaxSize = descriptor.isResizable
+            ? descriptor.maximumContentSize?.cgSize ?? NSSize(
+                width: CGFloat.greatestFiniteMagnitude,
+                height: CGFloat.greatestFiniteMagnitude
+            )
+            : descriptor.preferredContentSize.cgSize
+        window.standardWindowButton(.zoomButton)?.isEnabled = descriptor.isResizable
     }
 
     private static func collectionBehavior(joinsAllSpaces: Bool) -> NSWindow.CollectionBehavior {
