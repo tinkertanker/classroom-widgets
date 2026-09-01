@@ -59,7 +59,12 @@ describe('TextBanner text editor', () => {
     expect(screen.getAllByText('First line')).not.toHaveLength(0);
     expect(screen.getAllByText('Second line')).not.toHaveLength(0);
     const editButton = screen.getByRole('button', { name: 'Edit banner' });
-    expect(editButton).toHaveClass('opacity-0', 'group-hover/banner:opacity-100', 'focus-visible:opacity-100');
+    expect(editButton).toHaveClass(
+      'opacity-0',
+      'group-hover/banner:opacity-100',
+      'focus:opacity-100',
+      'focus-visible:opacity-100'
+    );
     await waitFor(() => expect(editButton).toHaveFocus());
   });
 
@@ -211,8 +216,14 @@ describe('TextBanner text editor', () => {
     const customColourButton = within(colourGroup).getByRole('button', {
       name: 'Choose custom banner colour'
     });
+    const creamButton = within(colourGroup).getByRole('button', {
+      name: 'Set banner colour to Cream'
+    });
 
+    expect(colourGroup).toHaveClass('gap-1');
     expect(colourGroup.lastElementChild).toBe(customColourButton);
+    expect(creamButton).toHaveClass('ring-inset', 'ring-black/30', 'dark:ring-white/50');
+    expect(customColourButton).toHaveClass('ring-inset', 'ring-black/30', 'dark:ring-white/50');
     expect(customColourButton).toHaveAttribute('aria-haspopup', 'dialog');
     expect(customColourButton).toHaveAttribute('aria-expanded', 'false');
     expect(within(customColourButton).getByTestId('custom-colour-wheel'))

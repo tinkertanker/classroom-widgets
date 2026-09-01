@@ -384,7 +384,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
             isCompactPanel ? 'right-12' : 'right-2',
             isTouchDevice
               ? 'opacity-100'
-              : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
+              : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus:pointer-events-auto focus:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
             isEditorOpen && 'invisible pointer-events-none'
           )}
           aria-label="Edit banner"
@@ -546,7 +546,7 @@ const CustomColourPicker: React.FC<CustomColourPickerProps> = ({ color, selected
           'aria-pressed': selected,
           title: 'Custom colour',
           className: cn(
-            'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border p-0 shadow-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1',
+            'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border p-0 shadow-sm ring-1 ring-inset ring-black/30 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1 dark:ring-white/50',
             selected
               ? 'border-warm-gray-900 ring-1 ring-warm-gray-900 dark:border-white dark:ring-white'
               : 'border-warm-gray-300 dark:border-warm-gray-600'
@@ -717,14 +717,14 @@ const TextBannerEditor: React.FC<TextBannerEditorProps> = ({
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <div role="group" aria-label="Banner colour" className="flex items-center gap-0.5">
+            <div role="group" aria-label="Banner colour" className="flex items-center gap-1">
               {colorCombinations.map((combo, index) => (
                 <button
                   key={combo.name}
                   type="button"
                   onClick={() => onDraftChange(current => ({ ...current, colorIndex: index }))}
                   className={cn(
-                    'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border shadow-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1',
+                    'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border shadow-sm ring-1 ring-inset ring-black/30 transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1 dark:ring-white/50',
                     index === draft.colorIndex
                       ? 'border-warm-gray-900 ring-1 ring-warm-gray-900 dark:border-white dark:ring-white'
                       : 'border-warm-gray-300 dark:border-warm-gray-600',
