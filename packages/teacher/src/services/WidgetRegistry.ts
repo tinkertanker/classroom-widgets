@@ -312,13 +312,13 @@ export class WidgetRegistry {
       icon: FaFont,
       component: LazyWidgets.TextBanner,
       defaultSize: { width: 400, height: 300 },
-      minSize: { width: 200, height: 80 },
+      minSize: { width: 300, height: 260 },
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'Customizable text display',
       compactPanel: {
         supported: true,
-        preferredSize: { width: 400, height: 240 },
-        minimumSize: { width: 260, height: 140 }
+        preferredSize: { width: 400, height: 300 },
+        minimumSize: { width: 300, height: 260 }
       },
       columnSizing: 'content',
       features: {
