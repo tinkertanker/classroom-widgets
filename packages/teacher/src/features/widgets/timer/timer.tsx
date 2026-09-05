@@ -22,7 +22,6 @@ import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
 type SoundMode = 'short' | 'long';
-const COMPACT_CONTROLS_HIDE_DELAY_MS = 1800;
 
 interface TimerProps {
   savedState?: any;
@@ -31,7 +30,7 @@ interface TimerProps {
   isCompactPanel?: boolean;
 }
 
-const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme, isCompactPanel = false }) => {
+const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme }) => {
   const workspaceTheme = useTheme();
   const isDark = renderTheme ? renderTheme === 'dark' : workspaceTheme.isDark;
   const [soundMode, setSoundMode] = useState<SoundMode>(() =>
@@ -48,76 +47,6 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme, i
   const [quickAddExpanded, setQuickAddExpanded] = useState(false);
   const [targetTimeExpanded, setTargetTimeExpanded] = useState(false);
   const [targetTime, setTargetTime] = useState<ClockTimeSelection>(() => getDefaultTargetSelection());
-  const [compactControlsVisible, setCompactControlsVisible] = useState(true);
-  const compactControlsRegionRef = useRef<HTMLDivElement>(null);
-  const compactControlsHideTimerRef = useRef<number | null>(null);
-  const compactControlsInputModalityRef = useRef<'keyboard' | 'pointer'>('pointer');
-  const compactControlsKeyboardFocusRef = useRef(false);
-
-  const clearCompactControlsHideTimer = useCallback(() => {
-    if (compactControlsHideTimerRef.current !== null) {
-      window.clearTimeout(compactControlsHideTimerRef.current);
-      compactControlsHideTimerRef.current = null;
-    }
-  }, []);
-
-  const revealCompactControls = useCallback(() => {
-    if (!isCompactPanel) return;
-    clearCompactControlsHideTimer();
-    setCompactControlsVisible(true);
-  }, [clearCompactControlsHideTimer, isCompactPanel]);
-
-  const scheduleCompactControlsHide = useCallback(() => {
-    if (!isCompactPanel || quickAddExpanded || targetTimeExpanded) return;
-    clearCompactControlsHideTimer();
-    compactControlsHideTimerRef.current = window.setTimeout(() => {
-      const controlsRegion = compactControlsRegionRef.current;
-      compactControlsHideTimerRef.current = null;
-      if (
-        compactControlsKeyboardFocusRef.current &&
-        controlsRegion?.contains(document.activeElement)
-      ) {
-        return;
-      }
-      compactControlsKeyboardFocusRef.current = false;
-      if (controlsRegion?.matches(':hover')) {
-        return;
-      }
-      setCompactControlsVisible(false);
-    }, COMPACT_CONTROLS_HIDE_DELAY_MS);
-  }, [clearCompactControlsHideTimer, isCompactPanel, quickAddExpanded, targetTimeExpanded]);
-
-  React.useEffect(() => {
-    if (!isCompactPanel) return;
-    const markKeyboardInput = () => {
-      compactControlsInputModalityRef.current = 'keyboard';
-      if (compactControlsRegionRef.current?.contains(document.activeElement)) {
-        compactControlsKeyboardFocusRef.current = true;
-        revealCompactControls();
-      }
-    };
-    const markPointerInput = () => {
-      compactControlsInputModalityRef.current = 'pointer';
-      compactControlsKeyboardFocusRef.current = false;
-    };
-    document.addEventListener('keydown', markKeyboardInput, true);
-    document.addEventListener('pointerdown', markPointerInput, true);
-    return () => {
-      document.removeEventListener('keydown', markKeyboardInput, true);
-      document.removeEventListener('pointerdown', markPointerInput, true);
-    };
-  }, [isCompactPanel, revealCompactControls]);
-
-  const handleCompactControlsFocus = useCallback(() => {
-    compactControlsKeyboardFocusRef.current = compactControlsInputModalityRef.current === 'keyboard';
-    revealCompactControls();
-  }, [revealCompactControls]);
-
-  const handleCompactControlsBlur = useCallback((event: React.FocusEvent<HTMLDivElement>) => {
-    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
-    compactControlsKeyboardFocusRef.current = false;
-    scheduleCompactControlsHide();
-  }, [scheduleCompactControlsHide]);
 
   // Mute gates playback rather than the hooks' enabled flag, so the Audio
   // element stays alive (and preloaded) across mute toggles.
@@ -195,30 +124,6 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme, i
     onTimeUp: playTimerSound,
     restoredState: savedState?.timer
   });
-
-  React.useEffect(() => {
-    if (!isCompactPanel) {
-      clearCompactControlsHideTimer();
-      setCompactControlsVisible(true);
-      return;
-    }
-    if (quickAddExpanded || targetTimeExpanded) {
-      revealCompactControls();
-      return;
-    }
-    scheduleCompactControlsHide();
-    return clearCompactControlsHideTimer;
-  }, [
-    clearCompactControlsHideTimer,
-    isCompactPanel,
-    isPaused,
-    isRunning,
-    quickAddExpanded,
-    revealCompactControls,
-    scheduleCompactControlsHide,
-    targetTimeExpanded,
-    timerFinished
-  ]);
 
   const segmentEditor = useTimeSegmentEditor({
     initialValues: savedState?.segmentValues ?? ['00', '00', '10'],
@@ -519,22 +424,12 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme, i
         </div>
 
         <div
-          ref={compactControlsRegionRef}
           data-testid="timer-bottom-controls-region"
-          onMouseEnter={revealCompactControls}
-          onMouseLeave={scheduleCompactControlsHide}
-          onFocusCapture={handleCompactControlsFocus}
-          onBlurCapture={handleCompactControlsBlur}
-          onClickCapture={scheduleCompactControlsHide}
         >
           <div
             data-testid="timer-bottom-controls"
-            className={cn(
-              'transition-opacity duration-200 motion-reduce:transition-none',
-              isCompactPanel && (
-                compactControlsVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
-              )
-            )}
+            data-widget-controls
+            className="transition-opacity duration-150 motion-reduce:transition-none"
           >
             <TimerControlBar
               timerFinished={timerFinished}

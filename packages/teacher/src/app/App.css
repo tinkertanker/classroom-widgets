@@ -146,6 +146,29 @@ html.compact-widget-panel #root {
   background: transparent;
 }
 
+/* Native panel hover owns both titlebar and widget controls. Never collapse
+   the footer's space: hiding chrome must not resize the widget content. */
+html.compact-widget-panel [data-widget-controls] {
+  transition: opacity 160ms ease;
+}
+
+html.compact-widget-panel[data-widget-chrome-visible="false"] [data-widget-controls] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Keyboard users can still tab into a hidden bar and see their focused control. */
+html.compact-widget-panel [data-widget-controls]:has(:focus-visible) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.compact-widget-panel [data-widget-controls] {
+    transition: none;
+  }
+}
+
 html.compact-widget-panel .widget-container-surface:not(.widget-container-custom-surface) {
   background-color: rgb(253 252 251 / calc(0.9 * var(--compact-widget-background-opacity, 1)));
 }

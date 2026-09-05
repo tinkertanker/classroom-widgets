@@ -19,7 +19,7 @@ export const WidgetControlBar: React.FC<WidgetControlBarProps> = ({
   justify = "justify-between"
 }) => {
   return (
-    <div className={cn(widgetControls, gap, justify, className)}>
+    <div data-widget-controls className={cn(widgetControls, gap, justify, className)}>
       {children}
     </div>
   );
