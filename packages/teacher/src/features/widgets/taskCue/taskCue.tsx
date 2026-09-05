@@ -89,7 +89,7 @@ function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) 
                 </div>
             </div>
             {isActive && (
-                <div className="px-3 pb-3">
+                <div data-widget-controls className="mt-[10px] px-3 pb-3">
                     <div id="widget1inside" className="flex flex-wrap justify-center gap-1">
                         {taskModes.map((mode, i) => {
                             const Icon = mode.icon;

@@ -78,16 +78,19 @@ describe('Timer Widget', () => {
     expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
   });
 
-  test('auto-hides compact panel controls when the pointer moves away', () => {
+  test('marks compact controls for shared chrome styling without independently hiding on pointer changes', () => {
     renderWithModal(<Timer isCompactPanel />);
 
     const controlsRegion = screen.getByTestId('timer-bottom-controls-region');
     const controls = screen.getByTestId('timer-bottom-controls');
 
+    expect(controls).toHaveAttribute('data-widget-controls');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
+
     act(() => {
       vi.advanceTimersByTime(1800);
     });
-    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
 
     fireEvent.mouseEnter(controlsRegion);
     expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
@@ -104,10 +107,10 @@ describe('Timer Widget', () => {
     act(() => {
       vi.advanceTimersByTime(1);
     });
-    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
   });
 
-  test('reveals compact panel controls for keyboard focus', () => {
+  test('does not independently hide compact controls after keyboard focus leaves', () => {
     renderWithModal(<Timer isCompactPanel />);
 
     const controls = screen.getByTestId('timer-bottom-controls');
@@ -130,10 +133,10 @@ describe('Timer Widget', () => {
     act(() => {
       vi.advanceTimersByTime(1800);
     });
-    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
   });
 
-  test('re-arms compact auto-hide when keyboard activation replaces the focused control', () => {
+  test('does not independently hide compact controls when starting replaces the focused control', () => {
     renderWithModal(<Timer isCompactPanel />);
 
     const controls = screen.getByTestId('timer-bottom-controls');
@@ -147,10 +150,17 @@ describe('Timer Widget', () => {
     act(() => {
       vi.advanceTimersByTime(1800);
     });
-    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
+
+    fireEvent.click(screen.getByRole('button', { name: /pause/i }));
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
   });
 
-  test('re-arms compact auto-hide when expiry replaces the keyboard-focused Pause control', () => {
+  test('does not independently hide compact controls when expiry replaces the focused Pause control', () => {
     renderWithModal(<Timer isCompactPanel />);
 
     const controls = screen.getByTestId('timer-bottom-controls');
@@ -168,10 +178,10 @@ describe('Timer Widget', () => {
     act(() => {
       vi.advanceTimersByTime(1800);
     });
-    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
   });
 
-  test('keeps compact panel controls visible while an options tray is open', () => {
+  test('does not independently hide compact controls when an options tray opens or closes', () => {
     renderWithModal(<Timer isCompactPanel />);
 
     const controlsRegion = screen.getByTestId('timer-bottom-controls-region');
@@ -188,17 +198,19 @@ describe('Timer Widget', () => {
     act(() => {
       vi.advanceTimersByTime(1800);
     });
-    expect(controls).toHaveClass('pointer-events-none', 'opacity-0');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
   });
 
-  test('keeps timer controls visible outside the compact Mac panel', () => {
+  test('marks controls for shared styling outside the compact Mac panel too', () => {
     renderWithModal(<Timer />);
 
     act(() => {
       vi.advanceTimersByTime(1800);
     });
 
-    expect(screen.getByTestId('timer-bottom-controls')).not.toHaveClass('pointer-events-none', 'opacity-0');
+    const controls = screen.getByTestId('timer-bottom-controls');
+    expect(controls).toHaveAttribute('data-widget-controls');
+    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
   });
 
   test('keeps the outer timer shell transparent in dark mode while filling the circle solid dark', () => {
