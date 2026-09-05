@@ -9,9 +9,6 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private let widgetPanelCoordinator: WidgetPanelCoordinator
-    private var lastInventoryWidgetIDs: Set<String> = []
-    private var widgetIDsBeforePendingCreation: Set<String>?
-    private var pendingWidgetCreation = false
     private var pendingRecoveryChanges: [WidgetPanelStateChange]?
     private var reloadInProgress = false
     private var pendingHostWriteCount = 0
@@ -78,8 +75,6 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func addWidget(_ widgetType: Int) {
-        pendingWidgetCreation = true
-        widgetIDsBeforePendingCreation = lastInventoryWidgetIDs
         webView.callAsyncJavaScript(
             """
             return (() => {
@@ -90,14 +85,9 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             arguments: ["widgetType": widgetType],
             in: nil,
             in: .page
-        ) { [weak self] result in
-            guard case let .success(value) = result, value as? Bool == true else {
-                self?.pendingWidgetCreation = false
-                self?.widgetIDsBeforePendingCreation = nil
-                if case let .failure(error) = result {
-                    DashboardLog.web.error("Unable to add widget: \(error.localizedDescription, privacy: .public)")
-                }
-                return
+        ) { result in
+            if case let .failure(error) = result {
+                DashboardLog.web.error("Unable to add widget: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -238,15 +228,8 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             widgets: descriptors
         )) else { return }
 
-        let widgetIDs = Set(descriptors.map(\.id))
-        lastInventoryWidgetIDs = widgetIDs
-        if pendingWidgetCreation,
-           !widgetIDs.subtracting(widgetIDsBeforePendingCreation ?? []).isEmpty {
-            pendingWidgetCreation = false
-            widgetIDsBeforePendingCreation = nil
-        }
-
         if let changes = pendingRecoveryChanges {
+            let widgetIDs = Set(descriptors.map(\.id))
             pendingRecoveryChanges = nil
             finishRecovery(changes.filter { widgetIDs.contains($0.widgetID) })
             return

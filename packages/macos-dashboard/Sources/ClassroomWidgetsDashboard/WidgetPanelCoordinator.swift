@@ -67,11 +67,6 @@ enum WidgetPanelLayout: String, Codable {
     case column
 }
 
-struct WidgetPanelReady {
-    let widgetID: String
-    let revision: Int?
-}
-
 struct WidgetPanelStateChange {
     let widgetID: String
     let payload: [String: Any]
@@ -86,7 +81,6 @@ struct WidgetPanelRandomiserListChange {
 /// arrive through the versioned host snapshot and per-panel web bridge.
 @MainActor
 final class WidgetPanelCoordinator: NSObject {
-    var onPanelReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onPanelStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
@@ -297,9 +291,6 @@ final class WidgetPanelCoordinator: NSObject {
             keepOnAllSpaces: panelsJoinAllSpaces
         )
         controller.setWidgetCreationOptions(widgetCreationOptions)
-        controller.onReady = { [weak self] ready in
-            self?.onPanelReady?(ready)
-        }
         controller.onStateChange = { [weak self] stateChange in
             guard let self, self.compactPresentationActive else { return }
             self.onPanelStateChange?(stateChange)
@@ -399,7 +390,6 @@ final class WidgetPanelCoordinator: NSObject {
 
 @MainActor
 private final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate {
-    var onReady: (@MainActor (WidgetPanelReady) -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onRemovalRequested: (@MainActor (String) -> Void)?
@@ -471,11 +461,10 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         webView.navigationDelegate = self
         webView.uiDelegate = self
 
-        messageHandler.onReady = { [weak self] ready in
+        messageHandler.onReady = { [weak self] in
             if let snapshot = self?.currentSnapshot {
                 self?.push(snapshot: snapshot, force: true)
             }
-            self?.onReady?(ready)
         }
         messageHandler.onStateChange = { [weak self] stateChange in
             self?.onStateChange?(stateChange)
@@ -1020,7 +1009,7 @@ private final class WidgetPanelWebViewFactory {
 
 @MainActor
 private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHandler {
-    var onReady: (@MainActor (WidgetPanelReady) -> Void)?
+    var onReady: (@MainActor () -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onWritesCheckpoint: (@MainActor () -> Void)?
@@ -1043,7 +1032,7 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
 
         switch type {
         case "panel-ready":
-            onReady?(WidgetPanelReady(widgetID: widgetID, revision: revision))
+            onReady?()
         case "panel-state-change":
             guard revision != nil, body["state"] != nil else { return }
             var payload = body

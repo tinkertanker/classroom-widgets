@@ -35,11 +35,6 @@ final class DebouncedDefaultsWriter {
         }
     }
 
-    func setImmediately(_ value: String, forKey key: String) {
-        pending[key] = value
-        flush()
-    }
-
     func flush() {
         generation += 1
         guard !pending.isEmpty else { return }
