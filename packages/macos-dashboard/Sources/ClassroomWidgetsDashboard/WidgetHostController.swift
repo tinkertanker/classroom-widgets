@@ -11,10 +11,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let widgetPanelCoordinator: WidgetPanelCoordinator
     private var pendingRecoveryChanges: [WidgetPanelStateChange]?
     private var reloadInProgress = false
-    private var pendingHostWriteCount = 0
-    private var pendingHostWriteFailed = false
-    private var hostWriteGeneration = 0
-    private var pendingHostWriteWaiters: [(@MainActor (Bool) -> Void)] = []
+    private let hostWrites = HostWriteTracker()
 
     private(set) var widgetOptions: [CompactWidgetOption] = []
 
@@ -98,9 +95,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         widgetPanelCoordinator.prepareForDeactivation { [weak self] changes, prepared in
             guard let self else { return }
             guard prepared else {
-                self.reloadInProgress = false
-                self.widgetPanelCoordinator.deactivate()
-                self.widgetPanelCoordinator.activate()
+                self.resumeAfterFailedDeactivation()
                 return
             }
             self.flushChangesAndReload(changes)
@@ -129,9 +124,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 widgetPanelCoordinator.prepareForDeactivation { completion(($0, $1)) }
             }
         ), preparation.1 else {
-            reloadInProgress = false
-            widgetPanelCoordinator.deactivate()
-            widgetPanelCoordinator.activate()
+            resumeAfterFailedDeactivation()
             return false
         }
 
@@ -146,10 +139,15 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 try? await Task.sleep(nanoseconds: 150_000_000)
             }
         }
+        resumeAfterFailedDeactivation()
+        return false
+    }
+
+    private func resumeAfterFailedDeactivation() {
+        hostWrites.acknowledgeFailure()
         reloadInProgress = false
         widgetPanelCoordinator.deactivate()
         widgetPanelCoordinator.activate()
-        return false
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -190,14 +188,14 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Widget host process terminated; reloading")
         guard !reloadInProgress else {
-            resetHostWriteTracking()
+            hostWrites.reset()
             loadHost()
             return
         }
         reloadInProgress = true
         widgetPanelCoordinator.prepareForDeactivation { [weak self] changes, _ in
             guard let self else { return }
-            self.resetHostWriteTracking()
+            self.hostWrites.reset()
             self.pendingRecoveryChanges = changes
             self.widgetPanelCoordinator.deactivate()
             self.loadHost()
@@ -271,8 +269,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func applyRandomiserListChange(_ change: WidgetPanelRandomiserListChange) {
-        let generation = hostWriteGeneration
-        pendingHostWriteCount += 1
+        let generation = hostWrites.begin()
         webView.callAsyncJavaScript(
             """
             return (() => {
@@ -290,7 +287,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             } else {
                 succeeded = false
             }
-            self?.finishHostWrite(succeeded: succeeded, generation: generation)
+            if !succeeded {
+                DashboardLog.web.error("Unable to apply Randomiser collection change; the next deactivation attempt will be refused")
+            }
+            self?.hostWrites.finish(succeeded: succeeded, generation: generation)
         }
     }
 
@@ -317,9 +317,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             guard let self else { return }
             guard applied else {
                 guard retriesRemaining > 0 else {
-                    self.reloadInProgress = false
-                    self.widgetPanelCoordinator.deactivate()
-                    self.widgetPanelCoordinator.activate()
+                    self.resumeAfterFailedDeactivation()
                     return
                 }
                 Task { @MainActor in
@@ -329,7 +327,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 return
             }
             self.widgetPanelCoordinator.deactivate()
-            self.resetHostWriteTracking()
+            self.hostWrites.reset()
             self.loadHost()
         }
     }
@@ -354,7 +352,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         completion: @escaping @MainActor (Bool) -> Void
     ) {
         guard !changes.isEmpty else {
-            awaitPendingHostWrites(completion: completion)
+            hostWrites.wait(completion: completion)
             return
         }
         var remaining = changes.count
@@ -364,38 +362,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
                 allApplied = allApplied && applied
                 remaining -= 1
                 if remaining == 0 {
-                    self.awaitPendingHostWrites { completion(allApplied && $0) }
+                    self.hostWrites.wait { completion(allApplied && $0) }
                 }
             }
         }
-    }
-
-    private func awaitPendingHostWrites(completion: @escaping @MainActor (Bool) -> Void) {
-        guard pendingHostWriteCount > 0 else {
-            completion(!pendingHostWriteFailed)
-            return
-        }
-        pendingHostWriteWaiters.append(completion)
-    }
-
-    private func finishHostWrite(succeeded: Bool, generation: Int) {
-        guard generation == hostWriteGeneration else { return }
-        pendingHostWriteCount = max(0, pendingHostWriteCount - 1)
-        pendingHostWriteFailed = pendingHostWriteFailed || !succeeded
-        guard pendingHostWriteCount == 0 else { return }
-        let waiters = pendingHostWriteWaiters
-        pendingHostWriteWaiters.removeAll()
-        let allSucceeded = !pendingHostWriteFailed
-        waiters.forEach { $0(allSucceeded) }
-    }
-
-    private func resetHostWriteTracking() {
-        let waiters = pendingHostWriteWaiters
-        pendingHostWriteWaiters.removeAll()
-        hostWriteGeneration += 1
-        pendingHostWriteCount = 0
-        pendingHostWriteFailed = false
-        waiters.forEach { $0(false) }
     }
 
     private func resultWithTimeout<Value>(
