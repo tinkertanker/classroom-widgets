@@ -20,9 +20,10 @@ describe('TaskCue', () => {
 
   it('restores and publishes the selected task mode', async () => {
     const onStateChange = vi.fn();
-    render(<TaskCue savedState={{ index: 3 }} onStateChange={onStateChange} />);
+    render(<TaskCue isActive savedState={{ index: 3 }} onStateChange={onStateChange} />);
 
     expect(screen.getByText('Work alone')).toBeInTheDocument();
+    expect(screen.getByTitle('Work alone').closest('[data-widget-controls]')).toHaveClass('mt-[10px]');
 
     await userEvent.click(screen.getByTitle('Click to cycle to next state'));
 

@@ -415,8 +415,9 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var widgetID: String { descriptor.id }
     var isResizable: Bool { descriptor.isResizable }
     var preferredFrameSize: NSSize {
-        guard let window else { return descriptor.preferredContentSize.cgSize }
-        return window.frameRect(forContentRect: NSRect(origin: .zero, size: descriptor.preferredContentSize.cgSize)).size
+        let size = WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
+        guard let window else { return size }
+        return window.frameRect(forContentRect: NSRect(origin: .zero, size: size)).size
     }
 
     init(
@@ -431,7 +432,10 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         webView = webContext.webView
         messageHandler = webContext.messageHandler
 
-        let initialContentRect = NSRect(origin: .zero, size: descriptor.preferredContentSize.cgSize)
+        let initialContentRect = NSRect(
+            origin: .zero,
+            size: WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
+        )
         let styleMask: NSWindow.StyleMask = [.titled, .closable, .resizable]
         let panel = WidgetPanel(
             contentRect: initialContentRect,
@@ -450,11 +454,15 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
         Self.applySizeConstraints(for: descriptor, to: panel)
-        panel.contentAspectRatio = Self.contentAspectRatio(for: descriptor)
-        panel.contentView = NSView()
-        webView.frame = panel.contentView?.bounds ?? .zero
+        let contentView = NSView(frame: initialContentRect)
+        panel.contentView = contentView
+        // NSView is unflipped: keep the web view bottom-aligned with a fixed transparent top margin.
+        webView.frame = NSRect(
+            origin: .zero,
+            size: NSSize(width: contentView.bounds.width, height: contentView.bounds.height - WidgetPanelContentLayout.topGap)
+        )
         webView.autoresizingMask = [.width, .height]
-        panel.contentView?.addSubview(webView)
+        contentView.addSubview(webView)
 
         super.init(window: panel)
         panel.delegate = self
@@ -475,6 +483,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
+        revealChrome()
         scheduleChromeHide()
         loadWidget()
     }
@@ -497,9 +506,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
             window?.title = descriptor.title
         }
         Self.applySizeConstraints(for: descriptor, to: window)
-        if previous.aspectRatio != descriptor.aspectRatio {
-            window?.contentAspectRatio = Self.contentAspectRatio(for: descriptor)
-        }
     }
 
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
@@ -672,9 +678,16 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func windowDidResize(_ notification: Notification) {
-        updateChromeTrackingArea()
         guard !isProgrammaticallyChangingFrame, let frame = window?.frame else { return }
         onFrameChanged?(widgetID, frame)
+    }
+
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        // NSWindow.contentAspectRatio would include the gap and distort the web viewport.
+        let proposed = sender.contentRect(forFrameRect: NSRect(origin: .zero, size: frameSize)).size
+        let current = sender.contentRect(forFrameRect: sender.frame).size
+        let size = WidgetPanelContentLayout.constrainedSize(proposed, current: current, descriptor: descriptor)
+        return sender.frameRect(forContentRect: NSRect(origin: .zero, size: size)).size
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
@@ -692,6 +705,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebBackgroundOpacity()
+        setWebChromeVisibility()
         guard let snapshot = currentSnapshot else { return }
         push(snapshot: snapshot, force: true)
     }
@@ -738,7 +752,12 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var currentSnapshot: [String: Any]?
     private var lastPushedRevision: Int?
     private var lastPushedStateRevision: Int?
-    private var lastTrackingRevealHeight: CGFloat = -1
+
+    private func setWebChromeVisibility() {
+        webView.evaluateJavaScript(
+            "document.documentElement.dataset.widgetChromeVisible = '\(chromeVisible ? "true" : "false")'"
+        )
+    }
 
     private func setWebBackgroundOpacity() {
         webView.evaluateJavaScript(
@@ -817,17 +836,12 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     private func updateChromeTrackingArea() {
         guard let frameView = chromeTrackingView else { return }
-        let revealHeight = min(frameView.bounds.height, max(44, frameView.bounds.height - (window?.contentLayoutRect.maxY ?? 0) + 12))
-        if chromeTrackingArea != nil, abs(revealHeight - lastTrackingRevealHeight) < 0.5 {
-            return
-        }
-        lastTrackingRevealHeight = revealHeight
         if let chromeTrackingArea {
             frameView.removeTrackingArea(chromeTrackingArea)
         }
         let area = NSTrackingArea(
-            rect: NSRect(x: 0, y: frameView.bounds.maxY - revealHeight, width: frameView.bounds.width, height: revealHeight),
-            options: [.mouseEnteredAndExited, .activeAlways],
+            rect: .zero,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
             owner: self,
             userInfo: nil
         )
@@ -844,19 +858,18 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         chromeHideGeneration += 1
         let generation = chromeHideGeneration
         Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
             guard let self,
                   self.chromeHideGeneration == generation,
-                  !self.pointerIsInChromeRevealArea
+                  !self.pointerIsInPanel
             else { return }
             self.setChromeVisible(false)
         }
     }
 
-    private var pointerIsInChromeRevealArea: Bool {
+    private var pointerIsInPanel: Bool {
         guard let panel = window, panel.isVisible else { return false }
-        let revealRect = NSRect(x: panel.frame.minX, y: panel.frame.maxY - 48, width: panel.frame.width, height: 48)
-        return revealRect.contains(NSEvent.mouseLocation)
+        return panel.frame.contains(NSEvent.mouseLocation)
     }
 
     private func setChromeVisible(_ visible: Bool) {
@@ -864,6 +877,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         let effectiveVisibility = visible || NSWorkspace.shared.isVoiceOverEnabled
         guard chromeVisible != effectiveVisibility else { return }
         chromeVisible = effectiveVisibility
+        setWebChromeVisibility()
         panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
 
@@ -946,14 +960,14 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private static func applySizeConstraints(for descriptor: WidgetPanelDescriptor, to window: NSWindow?) {
         guard let window else { return }
         window.contentMinSize = descriptor.isResizable
-            ? descriptor.minimumContentSize.cgSize
-            : descriptor.preferredContentSize.cgSize
+            ? WidgetPanelContentLayout.panelSize(for: descriptor.minimumContentSize.cgSize)
+            : WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
         window.contentMaxSize = descriptor.isResizable
-            ? descriptor.maximumContentSize?.cgSize ?? NSSize(
+            ? descriptor.maximumContentSize.map { WidgetPanelContentLayout.panelSize(for: $0.cgSize) } ?? NSSize(
                 width: CGFloat.greatestFiniteMagnitude,
                 height: CGFloat.greatestFiniteMagnitude
             )
-            : descriptor.preferredContentSize.cgSize
+            : WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
         window.standardWindowButton(.zoomButton)?.isEnabled = descriptor.isResizable
     }
 
@@ -965,11 +979,34 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         return behavior
     }
 
-    private static func contentAspectRatio(for descriptor: WidgetPanelDescriptor) -> NSSize {
-        guard let aspectRatio = descriptor.aspectRatio, aspectRatio > 0 else { return .zero }
-        return NSSize(width: aspectRatio, height: 1)
+}
+
+/// Descriptor sizes refer to the web viewport, not the transparent space below the titlebar.
+enum WidgetPanelContentLayout {
+    static let topGap: CGFloat = 10
+
+    static func panelSize(for webSize: NSSize) -> NSSize {
+        NSSize(width: webSize.width, height: webSize.height + topGap)
     }
 
+    static func constrainedSize(
+        _ proposed: NSSize,
+        current: NSSize,
+        descriptor: WidgetPanelDescriptor
+    ) -> NSSize {
+        guard descriptor.isResizable,
+              let ratio = descriptor.aspectRatio, ratio > 0 else { return proposed }
+        let minimum = descriptor.minimumContentSize.cgSize
+        let maximum = descriptor.maximumContentSize?.cgSize
+        let minimumWidth = max(minimum.width, minimum.height * ratio)
+        let maximumWidth = min(maximum?.width ?? .greatestFiniteMagnitude,
+                               (maximum?.height ?? .greatestFiniteMagnitude) * ratio)
+        let width = abs(proposed.width - current.width) >= abs(proposed.height - current.height) * ratio
+            ? proposed.width
+            : (proposed.height - topGap) * ratio
+        let constrainedWidth = max(minimumWidth, min(width, maximumWidth))
+        return panelSize(for: NSSize(width: constrainedWidth, height: constrainedWidth / ratio))
+    }
 }
 
 private final class WidgetPanel: NSPanel {

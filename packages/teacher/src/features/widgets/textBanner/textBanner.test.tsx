@@ -60,12 +60,7 @@ describe('TextBanner text editor', () => {
     expect(screen.getAllByText('First line')).not.toHaveLength(0);
     expect(screen.getAllByText('Second line')).not.toHaveLength(0);
     const editButton = screen.getByRole('button', { name: 'Edit banner' });
-    expect(editButton).toHaveClass(
-      'opacity-0',
-      'group-hover/banner:opacity-100',
-      'focus:opacity-100',
-      'focus-visible:opacity-100'
-    );
+    expect(editButton.closest('[data-widget-controls]')).not.toBeNull();
     await waitFor(() => expect(editButton).toHaveFocus());
   });
 
@@ -280,27 +275,69 @@ describe('TextBanner text editor', () => {
     render(<TextBanner savedState={{ text: 'Column banner', columnHeight: 60 }} />);
 
     const widget = screen.getByRole('button', { name: 'Edit banner' }).closest('.widget-container-custom-surface');
-    expect(widget).toHaveStyle({ height: '60px' });
+    expect(widget).toHaveStyle({ height: '128px' });
 
     await user.click(screen.getByRole('button', { name: 'Edit banner' }));
     expect(widget).toHaveStyle({ height: '260px' });
 
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('button', { name: 'Edit banner' }).closest('.widget-container-custom-surface'))
-      .toHaveStyle({ height: '60px' });
+      .toHaveStyle({ height: '128px' });
   });
 
-  it('keeps the compact-panel Edit action clear of the top-right window control', () => {
-    render(<TextBanner isCompactPanel savedState={{ text: 'Compact banner' }} />);
+  it('puts compact-panel editing and colours in the bottom bar, outside the display', () => {
+    render(<TextBanner isCompactPanel savedState={{ text: 'Compact banner', colorIndex: 6, customColor: '#123456' }} />);
 
-    expect(screen.getByRole('button', { name: 'Edit banner' })).toHaveClass('right-12');
+    const edit = screen.getByRole('button', { name: 'Edit banner' });
+    const bar = edit.closest('[data-widget-controls]');
+    expect(bar).toContainElement(screen.getByRole('group', { name: 'Banner colour' }));
+    expect(bar).toHaveClass('mt-[10px]');
+    expect(screen.getByTestId('text-banner-display')).toHaveStyle({ backgroundColor: '#123456' });
+    expect(bar?.parentElement).not.toHaveStyle({ backgroundColor: '#123456' });
+    expect(screen.getByTestId('text-banner-display')).not.toContainElement(edit);
+    expect(edit).not.toHaveClass('absolute');
   });
 
-  it('keeps the dashboard Edit action clear of the top-right Close control', () => {
+  it('uses the same bottom bar in the dashboard and applies colours without opening the editor', async () => {
     window.history.replaceState({}, '', '/?dashboard=1');
-    render(<TextBanner savedState={{ text: 'Dashboard banner' }} />);
+    const onStateChange = vi.fn();
+    render(<TextBanner savedState={{ text: 'Dashboard banner' }} onStateChange={onStateChange} />);
 
-    expect(screen.getByRole('button', { name: 'Edit banner' })).toHaveClass('right-12');
+    expect(screen.getByRole('button', { name: 'Edit banner' }).closest('[data-widget-controls]')).not.toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Set banner colour to Sage' }));
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ colorIndex: 1 }));
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('updates text size immediately from the bottom bar and shares it with the editor', async () => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    render(<TextBanner savedState={{ text: 'Quick sizing', fontSizeCap: 48 }} onStateChange={onStateChange} />);
+
+    const increase = screen.getByRole('button', { name: 'Increase text size' });
+    expect(increase.closest('[data-widget-controls]')).not.toBeNull();
+    await user.click(increase);
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ fontSizeCap: 64 }));
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Decrease text size' }));
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ fontSizeCap: 48 }));
+    await user.click(screen.getByRole('button', { name: 'Edit banner' }));
+    expect(screen.getByLabelText('Maximum text size: 48 pixels')).toBeInTheDocument();
+  });
+
+  it.each([
+    { start: 32, button: 'Decrease text size', limit: 24 },
+    { start: 212, button: 'Increase text size', limit: 220 }
+  ])('clamps quick sizing at $limit and disables further changes', async ({ start, button, limit }) => {
+    const user = userEvent.setup();
+    const onStateChange = vi.fn();
+    render(<TextBanner isCompactPanel savedState={{ text: 'Bounded sizing', fontSizeCap: start }} onStateChange={onStateChange} />);
+
+    await user.click(screen.getByRole('button', { name: button }));
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ fontSizeCap: limit }));
+    expect(screen.getByRole('button', { name: button })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: button }));
+    expect(onStateChange).toHaveBeenCalledTimes(1);
   });
 
   it('enforces the editor-sized minimum in canvas and compact-panel hosts', () => {

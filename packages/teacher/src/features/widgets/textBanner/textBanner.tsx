@@ -24,8 +24,8 @@ import {
   TextBannerFontFamily
 } from './fonts';
 import { findCodeBlock, highlightCode, normaliseCode, type HighlightedCode } from './highlight';
-import { cn, widgetContainer } from '@shared/utils/styles';
-import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { cn, widgetContainer, widgetWrapper } from '@shared/utils/styles';
+import { WidgetControlBar } from '../shared/components/WidgetControlBar';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
@@ -43,7 +43,7 @@ interface TextBannerState {
 type TextBannerDraft = Pick<TextBannerState, 'text' | 'colorIndex' | 'customColor' | 'fontFamily' | 'fontSizeCap'>;
 
 const DEFAULT_COLUMN_HEIGHT = 160;
-const MIN_COLUMN_HEIGHT = 60;
+const MIN_COLUMN_HEIGHT = 128;
 const MAX_COLUMN_HEIGHT = 1200;
 const EDITOR_MIN_HEIGHT = 260;
 
@@ -151,8 +151,6 @@ const renderFormattedText = (value: string) => {
 const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCompactPanel = false }) => {
   const workspaceIsColumnLayout = useWorkspaceStore((state) => state.layoutFormat === 'column');
   const isColumnLayout = workspaceIsColumnLayout && !isCompactPanel;
-  const isDashboardMode = isDesktopDashboardMode();
-  const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
 
   const initialState: TextBannerState = {
     text: '',
@@ -339,7 +337,10 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
     document.addEventListener('mouseup', handleUp);
   };
 
-  const effectiveColumnHeight = pendingHeight ?? columnHeight;
+  const requestedColumnHeight = pendingHeight ?? columnHeight;
+  const effectiveColumnHeight = requestedColumnHeight === undefined
+    ? undefined
+    : Math.max(MIN_COLUMN_HEIGHT, requestedColumnHeight);
   const columnStyle = isColumnLayout
     ? isEditorOpen
       ? { height: `${Math.max(effectiveColumnHeight ?? 0, EDITOR_MIN_HEIGHT)}px` }
@@ -347,21 +348,16 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
         ? { height: `${effectiveColumnHeight}px` }
         : undefined
     : undefined;
-  const widgetStyle: React.CSSProperties = {
-    ...(columnStyle ?? {}),
-    ...(isCustomColor ? { backgroundColor: customColor } : {})
-  };
 
   return (
     <div
       ref={widgetRef}
       className={cn(
-        widgetContainer,
+        widgetWrapper,
         'widget-container-custom-surface',
-        !isCustomColor && currentColors.bg,
-        'relative overflow-hidden transition-colors duration-300 flex flex-col group/banner'
+        '@container overflow-hidden rounded-lg group/banner'
       )}
-      style={widgetStyle}
+      style={columnStyle}
     >
       {isEditorOpen && (
         <div className="absolute inset-0 z-20">
@@ -376,27 +372,6 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
         </div>
       )}
 
-      {text && (
-        <button
-          ref={editorTriggerRef}
-          type="button"
-          onClick={openEditor}
-          className={cn(
-            'no-drag absolute top-2 z-10 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-warm-gray-900/70 px-3 py-2 text-sm font-medium text-white shadow-lg transition-all hover:bg-warm-gray-900/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white',
-            isCompactPanel || isDashboardMode ? 'right-12' : 'right-2',
-            isTouchDevice
-              ? 'opacity-100'
-              : 'pointer-events-none opacity-0 group-hover/banner:pointer-events-auto group-hover/banner:opacity-100 focus:pointer-events-auto focus:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
-            isEditorOpen && 'invisible pointer-events-none'
-          )}
-          aria-label="Edit banner"
-          aria-hidden={isEditorOpen || undefined}
-        >
-          <FaPencil aria-hidden="true" />
-          <span>Edit</span>
-        </button>
-      )}
-
       <div
         ref={textAreaContainerRef}
         data-testid="text-banner-display"
@@ -405,8 +380,12 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
           surfacePointerStartRef.current = { x: event.clientX, y: event.clientY };
         }}
         onClick={cycleDisplayedColor}
+        style={isCustomColor ? { backgroundColor: customColor } : undefined}
         className={cn(
-          'flex-1 flex items-center justify-center relative',
+          widgetContainer,
+          'widget-container-custom-surface',
+          !isCustomColor && currentColors.bg,
+          'h-auto flex-1 items-center justify-center relative transition-colors duration-300',
           text ? 'cursor-pointer p-4' : 'p-1',
           // Only constrain the content pane when the widget itself has a bounded height
           // (canvas mode is always bounded via react-rnd; column mode only when columnHeight is set).
@@ -471,6 +450,65 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
           </div>
         )}
       </div>
+
+      {text && !isEditorOpen && (
+        <WidgetControlBar className="no-drag flex-shrink-0 flex-nowrap gap-1 px-2 bg-soft-white text-warm-gray-900 dark:bg-warm-gray-800 dark:text-warm-gray-100">
+          <button
+            ref={editorTriggerRef}
+            type="button"
+            onClick={openEditor}
+            className="inline-flex min-h-8 items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-warm-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 dark:hover:bg-warm-gray-700"
+            aria-label="Edit banner"
+            title="Edit banner"
+          >
+            <FaPencil aria-hidden="true" />
+            <span className="hidden @[360px]:inline">Edit</span>
+          </button>
+          <div role="group" aria-label="Banner text size" className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => updateState({ fontSizeCap: Math.max(MIN_FONT_SIZE_CAP, fontSizeCap - FONT_SIZE_STEP) })}
+              disabled={fontSizeCap <= MIN_FONT_SIZE_CAP}
+              aria-label="Decrease text size"
+              title={`Decrease text size (maximum ${fontSizeCap}px)`}
+              className="inline-flex h-8 w-7 items-center justify-center rounded-md border border-warm-gray-300 text-xs hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-warm-gray-600 dark:hover:bg-warm-gray-700"
+            >
+              <FaMinus aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => updateState({ fontSizeCap: Math.min(MAX_FONT_SIZE_CAP, fontSizeCap + FONT_SIZE_STEP) })}
+              disabled={fontSizeCap >= MAX_FONT_SIZE_CAP}
+              aria-label="Increase text size"
+              title={`Increase text size (maximum ${fontSizeCap}px)`}
+              className="inline-flex h-8 w-7 items-center justify-center rounded-md border border-warm-gray-300 text-xs hover:bg-warm-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-warm-gray-600 dark:hover:bg-warm-gray-700"
+            >
+              <FaPlus aria-hidden="true" />
+            </button>
+          </div>
+          <div role="group" aria-label="Banner colour" className="flex items-center gap-1">
+            {colorCombinations.map((combo, index) => (
+              <button
+                key={combo.name}
+                type="button"
+                onClick={() => updateState({ colorIndex: index })}
+                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-black/30 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sage-500 focus-visible:ring-offset-1"
+                style={{ backgroundColor: combo.swatch, color: getCustomTextColor(combo.swatch) }}
+                aria-label={`Set banner colour to ${combo.name}`}
+                aria-pressed={index === colorIndex}
+                title={combo.name}
+              >
+                {index === colorIndex && <FaCheck className="h-2.5 w-2.5" aria-hidden="true" />}
+              </button>
+            ))}
+            <CustomColourPicker
+              color={customColor}
+              selected={isCustomColor}
+              onChange={nextColor => updateState({ colorIndex: colorCombinations.length, customColor: nextColor })}
+            />
+          </div>
+        </WidgetControlBar>
+      )}
 
       {isColumnLayout && (
         <div
