@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useHoverDelay } from './useHoverDelay';
 
-// The two delays the widget wrappers ship with; they are deliberately different.
+// Exercise the shared two-second timeout and a shorter configurable timeout.
 const CANVAS_DELAY = 2000;
 const COLUMN_DELAY = 1000;
 
@@ -42,7 +42,7 @@ describe('useHoverDelay', () => {
     expect(result.current.visible).toBe(false);
   });
 
-  it('keeps the shorter column delay from hiding a canvas widget early', () => {
+  it('does not hide before the configured delay', () => {
     const { result } = renderHook(() => useHoverDelay(CANVAS_DELAY));
 
     act(() => result.current.onMouseEnter());

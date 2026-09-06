@@ -130,6 +130,25 @@ html.desktop-dashboard-mode body {
   overflow: hidden;
 }
 
+/* Share one hover clock for web footers and trash. Opacity preserves geometry. */
+[data-web-chrome-visible] :is([data-widget-controls], [data-widget-controls-tray], [data-widget-actions]) {
+  transition: opacity 160ms ease;
+}
+
+@media (hover: hover) {
+  /* Shared settings dialogs are portaled outside their widget. */
+  html:not(.modal-open) [data-web-chrome-visible="false"]:not(:has(:focus-visible, input:focus, textarea:focus, select:focus, [aria-expanded="true"], [role="dialog"])) :is([data-widget-controls], [data-widget-controls-tray], [data-widget-actions]) {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-web-chrome-visible] :is([data-widget-controls], [data-widget-controls-tray], [data-widget-actions]) {
+    transition: none;
+  }
+}
+
 html.compact-widget-panel,
 html.compact-widget-panel body,
 html.compact-widget-panel #root {

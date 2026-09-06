@@ -3,7 +3,7 @@
 import React, { useCallback, useRef, useEffect, memo } from 'react';
 import { Rnd } from 'react-rnd';
 import { clsx } from 'clsx';
-import { FaTrash, FaXmark } from 'react-icons/fa6';
+import { FaXmark } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '@shared/hooks/useWidget';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
@@ -13,6 +13,7 @@ import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useHoverDelay } from './useHoverDelay';
 import { classifyDrop, useWidgetInteractionState } from './useWidgetInteractionState';
+import { WidgetActions } from './WidgetActions';
 
 interface WidgetWrapperProps {
   widgetId: string;
@@ -189,6 +190,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
       >
         <div
           className="widget-surface w-full h-full relative"
+          data-web-chrome-visible={!isDashboardMode ? showTrash && !isBeingDragged : undefined}
           onClick={handleWidgetClick}
         >
           {children}
@@ -210,19 +212,9 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleDeleteClick}
-              className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
-                         bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
-                         text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
-                         shadow-lg transition-all duration-300 ${
-                           showTrash && !isBeingDragged ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                         }`}
-              style={{ zIndex: 9999 }}
-              title="Delete widget"
-            >
-              <FaTrash className="w-3 h-3" />
-            </button>
+            <WidgetActions
+              onDelete={handleDeleteClick}
+            />
           )}
         </div>
       </Rnd>

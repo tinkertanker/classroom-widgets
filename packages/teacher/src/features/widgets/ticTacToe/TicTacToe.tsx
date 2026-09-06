@@ -164,7 +164,7 @@ const TicTacToe: React.FC<TicTacToeProps> = ({ savedState, onStateChange }) => {
       </div>
 
       {/* Control Buttons */}
-      <div className={cn(widgetControls, "gap-2", "justify-between")}>
+      <div data-widget-controls className={cn(widgetControls, "gap-2", "justify-between")}>
         <button
           onClick={resetGame}
           className={cn(buttons.primary, "px-3 py-1.5 text-sm")}

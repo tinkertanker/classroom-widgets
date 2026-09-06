@@ -460,6 +460,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
         {targetTimeExpanded && !timerFinished && !isRunning && !isPaused && (
           <div
             id="timer-target-time-tray"
+            data-widget-controls-tray
             className="mt-2 overflow-hidden transition-all duration-200 ease-out"
           >
             <div className="rounded-lg border border-white/40 bg-white/45 p-2 shadow-sm backdrop-blur-md dark:border-warm-gray-600/40 dark:bg-warm-gray-800/45">
@@ -533,6 +534,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
         {quickAddExpanded && !timerFinished && (
           <div
             id="timer-quick-add-tray"
+            data-widget-controls-tray
             className="mt-2 overflow-hidden transition-all duration-200 ease-out"
           >
             <div className="rounded-lg border border-white/40 bg-white/45 p-2 shadow-sm backdrop-blur-md dark:border-warm-gray-600/40 dark:bg-warm-gray-800/45">

@@ -9,11 +9,7 @@ export interface HoverDelay {
 
 /**
  * Hover state with a delayed hide, used by the widget wrappers to keep their
- * delete/trash affordance reachable for a moment after the pointer leaves.
- *
- * The delay is per call site on purpose — the canvas wrapper gives the pointer
- * longer to travel to a button that sits outside the widget's own bounds than
- * the column wrapper does.
+ * controls and delete affordance reachable after the pointer leaves.
  */
 export function useHoverDelay(delayMs: number): HoverDelay {
   const [visible, setVisible] = useState(false);

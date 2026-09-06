@@ -1,10 +1,11 @@
 import React, { useCallback, memo } from 'react';
-import { FaTrash, FaXmark } from 'react-icons/fa6';
+import { FaXmark } from 'react-icons/fa6';
 import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useHoverDelay } from './useHoverDelay';
+import { WidgetActions } from './WidgetActions';
 
 interface ColumnWidgetWrapperProps {
   widgetId: string;
@@ -17,9 +18,8 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
   const isFocused = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
-  // Shorter than the canvas wrapper's delay: in a column the pointer has a much
-  // shorter trip to the delete button
-  const { visible: showDelete, onMouseEnter, onMouseLeave } = useHoverDelay(1000);
+  // Match the canvas and native panel chrome timeout.
+  const { visible: showDelete, onMouseEnter, onMouseLeave } = useHoverDelay(2000);
 
   // Detect touch devices (no hover capability) - always show delete button on touch
   const isTouchDevice = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)')?.matches;
@@ -70,6 +70,7 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   return (
     <div
       className="column-widget-item relative break-inside-avoid mb-12"
+      data-web-chrome-visible={!isDashboardMode ? showDelete : undefined}
       onClick={handleWidgetClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -102,24 +103,11 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
           ) : null}
         </div>
       </div>
-      {/* Delete button - appears on hover below widget (outside bounds), always visible on touch devices */}
+      {/* Web actions remain reachable outside the content, even with its footer hidden. */}
       {!isDashboardMode ? (
-        <button
-          type="button"
-          onClick={handleDeleteClick}
-          tabIndex={isDeleteVisible ? 0 : -1}
-          aria-label="Delete widget"
-          className={`delete-button absolute -bottom-8 left-1/2 transform -translate-x-1/2
-                     bg-warm-gray-200 dark:bg-warm-gray-600 hover:bg-dusty-rose-500 dark:hover:bg-dusty-rose-500
-                     text-warm-gray-500 dark:text-warm-gray-400 hover:text-white p-2 rounded-full
-                     shadow-lg transition-all duration-300 ${
-                       isDeleteVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                     }`}
-          style={{ zIndex: 9999 }}
-          title="Delete widget"
-        >
-          <FaTrash className="w-3 h-3" aria-hidden="true" />
-        </button>
+        <WidgetActions
+          onDelete={handleDeleteClick}
+        />
       ) : null}
     </div>
   );
