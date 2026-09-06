@@ -292,6 +292,8 @@ describe('TextBanner text editor', () => {
     const bar = edit.closest('[data-widget-controls]');
     expect(bar).toContainElement(screen.getByRole('group', { name: 'Banner colour' }));
     expect(bar).toHaveClass('mt-[10px]');
+    expect(bar).toHaveClass('bg-white/50', 'dark:bg-warm-gray-800/50', 'backdrop-blur-md');
+    expect(bar).not.toHaveClass('bg-soft-white', 'dark:bg-warm-gray-800');
     expect(screen.getByTestId('text-banner-display')).toHaveStyle({ backgroundColor: '#123456' });
     expect(bar?.parentElement).not.toHaveStyle({ backgroundColor: '#123456' });
     expect(screen.getByTestId('text-banner-display')).not.toContainElement(edit);

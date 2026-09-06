@@ -452,7 +452,7 @@ const TextBanner: React.FC<TextBannerProps> = ({ savedState, onStateChange, isCo
       </div>
 
       {text && !isEditorOpen && (
-        <WidgetControlBar className="no-drag flex-shrink-0 flex-nowrap gap-1 px-2 bg-soft-white text-warm-gray-900 dark:bg-warm-gray-800 dark:text-warm-gray-100">
+        <WidgetControlBar className="no-drag flex-shrink-0 flex-nowrap gap-1 px-2 text-warm-gray-900 dark:text-warm-gray-100">
           <button
             ref={editorTriggerRef}
             type="button"
