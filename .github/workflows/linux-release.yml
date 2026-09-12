@@ -1,0 +1,46 @@
+name: Linux Release
+
+on:
+  push:
+    tags:
+      - 'linux-v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Linux app
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install linux-dashboard dependencies
+        working-directory: packages/linux-dashboard
+        run: npm ci || npm install
+
+      - run: npm run linux:publish
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ClassroomWidgets-linux-x64
+          path: |
+            packages/linux-dashboard/dist/*.AppImage
+            packages/linux-dashboard/dist/*.deb
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/linux-dashboard/dist/*.AppImage
+            packages/linux-dashboard/dist/*.deb

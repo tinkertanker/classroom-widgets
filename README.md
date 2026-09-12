@@ -7,6 +7,7 @@ A suite of interactive classroom management tools with real-time student engagem
 - [Project Overview](#project-overview)
 - [macOS App](#macos-app)
 - [Windows App](#windows-app)
+- [Linux App](#linux-app)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Core Features](#core-features)
@@ -23,6 +24,7 @@ Classroom Widgets is a real-time classroom management system that enables teache
 - **Backend Server**: An Express.js server handling real-time communication via Socket.io.
 - **macOS Application**: A native menu-bar app for placing always-on-top classroom widgets over other apps.
 - **Windows Application**: A native system-tray app with the same floating widgets, built on WebView2.
+- **Linux Application**: A native system-tray app with the same floating widgets, built on Electron.
 
 ### Available Widgets
 
@@ -62,6 +64,14 @@ Classroom Widgets for Windows is a system-tray app that opens the same compact w
 Click the tray icon, then **Add Widget**. Settings include launch at login, always on top, widget background opacity, and row/column arrangement. Build it locally with `npm run windows:run` (needs the .NET 8 SDK).
 
 See the [Windows app and distribution guide](./docs/WINDOWS_DISTRIBUTION.md) for usage, architecture, local builds, and publishing.
+
+## 🐧 Linux App
+
+Classroom Widgets for Linux is a system-tray app that opens the same compact widgets (Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects) as always-on-top floating panels. It requires a 64-bit Linux desktop with a system tray (on GNOME, the AppIndicator extension).
+
+Click the tray icon, then **Add Widget**. Settings include launch at login, always on top, widget background opacity, and row/column arrangement. Build it locally with `npm run linux:run`.
+
+See the [Linux app and distribution guide](./docs/LINUX_DISTRIBUTION.md) for usage, architecture, local builds, and publishing.
 
 ## 🚀 Quick Start
 
@@ -149,8 +159,9 @@ classroom-widgets/
 │   │   └── package.json      # Backend workspace scripts
 │   ├── shared/               # Shared types, hooks, constants, and utilities
 │   ├── macos-dashboard/      # Native menu-bar host (SwiftPM + AppKit/WebKit)
-│   └── windows-dashboard/    # Native system-tray host (.NET 8 WPF + WebView2)
-├── script/                   # macOS/Windows app and release packaging scripts
+│   ├── windows-dashboard/    # Native system-tray host (.NET 8 WPF + WebView2)
+│   └── linux-dashboard/      # Native system-tray host (Electron + TypeScript)
+├── script/                   # macOS/Windows/Linux app and release packaging scripts
 ├── docs/                     # Project documentation
 ├── package.json              # Root workspace scripts
 └── package-lock.json         # Locked dependency graph for all workspaces
@@ -252,6 +263,9 @@ npm run macos:dmg
 
 # Build and launch the Windows tray app (Windows only; needs .NET 8 SDK)
 npm run windows:run
+
+# Build and launch the Linux tray app (Linux only)
+npm run linux:run
 ```
 
 See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development details.
@@ -318,6 +332,8 @@ All comprehensive documentation is in the [`docs/`](./docs) directory:
 ### For Deployment
 - **[Deployment Guide](./docs/DEPLOYMENT.md)** - Production deployment (Docker, SSL, troubleshooting)
 - **[macOS App and Distribution](./docs/MACOS_DISTRIBUTION.md)** - Install, use, build, sign, notarize, and publish the native app
+- **[Windows App and Distribution](./docs/WINDOWS_DISTRIBUTION.md)** - Install, use, build, and publish the Windows tray app
+- **[Linux App and Distribution](./docs/LINUX_DISTRIBUTION.md)** - Install, use, build, and publish the Linux tray app
 - **[Analytics Setup](./docs/ANALYTICS.md)** - Privacy-focused analytics with Umami
 
 ### Reference

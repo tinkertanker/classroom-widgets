@@ -1,6 +1,6 @@
 # Windows App and Distribution
 
-Classroom Widgets for Windows is a system-tray app that opens compact classroom widgets as always-on-top floating panels over other applications. It is the Windows counterpart of the [macOS menu-bar app](./MACOS_DISTRIBUTION.md) and shares the same web widget code, panel contract, and settings model.
+Classroom Widgets for Windows is a system-tray app that opens compact classroom widgets as always-on-top floating panels over other applications. It is the Windows counterpart of the [macOS menu-bar app](./MACOS_DISTRIBUTION.md) and the [Linux tray app](./LINUX_DISTRIBUTION.md), and shares the same web widget code, panel contract, and settings model.
 
 ## Requirements
 
