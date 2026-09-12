@@ -47,13 +47,13 @@ export function registerPrivilegedScheme(): void {
 
 /** Serves the bundled teacher build under app://classroomwidgets/. */
 export function installProtocolHandler(): void {
-  protocol.handle(APP_SCHEME, (request) => {
+  protocol.handle(APP_SCHEME, async (request) => {
     const url = new URL(request.url);
     if (url.host !== APP_HOST) {
       return new Response('Not found', { status: 404 });
     }
 
-    const root = resolveWebRoot();
+    const root = resolve(resolveWebRoot());
     const decoded = decodeURIComponent(url.pathname);
     const candidate = resolve(normalize(join(root, decoded)));
     const hasExtension = extname(candidate) !== '';
@@ -62,12 +62,10 @@ export function installProtocolHandler(): void {
     const mime = MIME_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
 
     try {
-      const response = net.fetch(pathToFileURL(file).toString());
-      return response.then((res) => {
-        const headers = new Headers(res.headers);
-        headers.set('content-type', mime);
-        return new Response(res.body, { status: res.status, headers });
-      });
+      const res = await net.fetch(pathToFileURL(file).toString());
+      const headers = new Headers(res.headers);
+      headers.set('content-type', mime);
+      return new Response(res.body, { status: res.status, headers });
     } catch (error) {
       log.error(`app:// fetch failed for ${file}: ${error instanceof Error ? error.message : String(error)}`);
       return new Response('Not found', { status: 404 });

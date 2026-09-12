@@ -19,8 +19,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
+          # 20.x resolves to >=20.19 on the runner, which Electron's postinstall
+          # needs for require(esm); do not pin below 20.19.
           node-version: 20
           cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/linux-dashboard/package-lock.json
 
       - run: npm ci
 

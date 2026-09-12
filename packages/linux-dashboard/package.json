@@ -7,7 +7,7 @@
   "main": "out/main/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "electron --no-sandbox --disable-gpu .",
+    "start": "electron .",
     "dist": "electron-builder --linux"
   },
   "devDependencies": {

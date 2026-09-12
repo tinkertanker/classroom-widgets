@@ -32,7 +32,7 @@ Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (r
 | Electron profile (widget state, saved Randomiser lists, etc.) | `~/.config/ClassroomWidgets` |
 | Bundled teacher web build | `resources/Web` next to the installed app (overridable with `CLASSROOM_WIDGETS_WEB_ROOT`) |
 
-Handy environment variables for debugging: `CLASSROOM_WIDGETS_DEVTOOLS=1` opens detached dev tools for each web view; `CLASSROOM_WIDGETS_DEBUG_PORT=9333` exposes the Chromium remote-debugging port.
+Handy environment variables for debugging: `CLASSROOM_WIDGETS_DEVTOOLS=1` opens detached dev tools for each web view; `CLASSROOM_WIDGETS_DEBUG_PORT=9333` exposes the Chromium remote-debugging port. `CLASSROOM_WIDGETS_ELECTRON_FLAGS` is passed through to `npm start` by `script/build_linux.sh` — e.g. `CLASSROOM_WIDGETS_ELECTRON_FLAGS="--no-sandbox --disable-gpu"`, needed on some VMs/containers without a SUID sandbox or GPU.
 
 ## Architecture
 

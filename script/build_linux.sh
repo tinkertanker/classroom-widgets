@@ -41,7 +41,8 @@ fi
 
 (cd "$package_dir" && npm run build)
 
-pkill -f 'classroom-widgets.*electron' 2>/dev/null || true
+pkill -f "$package_dir/node_modules/electron/dist/electron" || true
+pkill -x classroom-widgets || true
 
 version="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$package_dir/version.json','utf8')).version)")"
 
@@ -50,7 +51,7 @@ if [[ "$publish" -eq 1 ]]; then
   echo "Published to $package_dir/dist"
 else
   if [[ "$no_run" -eq 0 ]]; then
-    (cd "$package_dir" && nohup npm start >/dev/null 2>&1 &)
+    (cd "$package_dir" && nohup npm start -- ${CLASSROOM_WIDGETS_ELECTRON_FLAGS:-} >/dev/null 2>&1 &)
     echo "Launched the app (look for the Classroom Widgets icon in the system tray)."
   fi
 fi
