@@ -68,7 +68,7 @@ The project copies `packages/teacher/build/**` into the output `Web` folder, so 
 
 ## Publishing a release
 
-The easiest path is GitHub Actions (`.github/workflows/windows-release.yml`): bump `packages/windows-dashboard/version.json`, then push a tag such as `windows-v0.1.0`. The workflow builds on a Windows runner and attaches two assets to the GitHub release for that tag:
+The easiest path is GitHub Actions (`.github/workflows/windows-release.yml`): bump `packages/windows-dashboard/version.json`, rewrite `packages/windows-dashboard/RELEASE_NOTES.md` with the "What's new" bullets for that version, then push a tag such as `windows-v0.1.0`. The workflow builds on a Windows runner and creates a GitHub release named "Classroom Widgets for Windows v<version>" whose description combines those notes with install requirements and SHA-256 checksums, and attaches two assets:
 
 - `ClassroomWidgets-v<version>-windows-x64-setup.exe` — per-user Inno Setup installer (no admin rights needed). It offers a **Start Classroom Widgets automatically when I sign in** checkbox, which writes the same `HKCU\...\Run` value the tray "Launch at login" toggle manages, so either can turn it off later. Uninstall is via Windows Settings › Apps.
 - `ClassroomWidgets-v<version>-windows-x64.zip` — portable build; unzip anywhere and run `ClassroomWidgets.exe`.

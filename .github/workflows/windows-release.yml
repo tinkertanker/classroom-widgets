@@ -60,10 +60,43 @@ jobs:
             ClassroomWidgets-v*-windows-x64.zip
             ClassroomWidgets-v*-windows-x64-setup.exe
 
+      - name: Write release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $setup = "ClassroomWidgets-v$v-windows-x64-setup.exe"
+          $zip = "ClassroomWidgets-v$v-windows-x64.zip"
+          $notes = (Get-Content packages/windows-dashboard/RELEASE_NOTES.md -Raw).Trim()
+          $sha = { (Get-FileHash $args[0] -Algorithm SHA256).Hash.ToLower() }
+          @"
+          Classroom Widgets for Windows is a system-tray app for adding floating classroom widgets that stay above your apps.
+
+          ## What's new
+
+          $notes
+
+          ## Install
+
+          - **``$setup``** — recommended. Per-user install, no admin rights; offers to start Classroom Widgets automatically when you sign in.
+          - **``$zip``** — portable; unzip anywhere and run ``ClassroomWidgets.exe``.
+
+          Requires Windows 10 (1809+) or Windows 11 with the Microsoft Edge WebView2 Runtime (already present on Windows 11 and up-to-date Windows 10). The build is not code-signed yet, so SmartScreen may ask you to choose **More info › Run anyway** on first launch.
+
+          Supported widgets: Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, Sound Effects.
+
+          ## Download verification
+
+          SHA-256 (``$setup``): ``$(& $sha $setup)``
+          SHA-256 (``$zip``): ``$(& $sha $zip)``
+          "@ | Set-Content release-body.md
+
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          name: Classroom Widgets for Windows v${{ steps.version.outputs.version }}
+          body_path: release-body.md
           files: |
             ClassroomWidgets-v*-windows-x64-setup.exe
             ClassroomWidgets-v*-windows-x64.zip
