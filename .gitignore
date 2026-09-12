@@ -73,3 +73,8 @@ packages/student/vite.config.js
 
 # Browser acceptance screenshots are local verification artefacts.
 /output/playwright/
+
+# Linux dashboard build artefacts
+packages/linux-dashboard/node_modules
+packages/linux-dashboard/out
+packages/linux-dashboard/dist

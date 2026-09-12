@@ -1,0 +1,77 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: system-ui, "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.chrome {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  -webkit-app-region: drag;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  background: #F5F5F7;
+  color: #1F2933;
+}
+
+.chrome.visible {
+  opacity: 1;
+}
+
+.chrome.dark {
+  background: #1E1F24;
+  color: #E6E8EC;
+}
+
+.title {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.btn {
+  -webkit-app-region: no-drag;
+  width: 26px;
+  height: 22px;
+  margin: 0 2px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  flex: none;
+}
+
+.btn:hover {
+  background: rgba(0, 0, 0, 0.13);
+}
+
+.chrome.dark .btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#close {
+  margin-left: 6px;
+}
+
+.right {
+  display: flex;
+  margin-right: 6px;
+}

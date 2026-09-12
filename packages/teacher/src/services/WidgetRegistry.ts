@@ -62,10 +62,15 @@ const widgetImports = {
 // don't see a "Loading widget..." flash - without blocking the critical path.
 const isCompactWidgetPanel = typeof window !== 'undefined'
   && new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
-type DesktopShellWindow = Window & { __CLASSROOM_WIDGETS_MACOS__?: boolean; __CLASSROOM_WIDGETS_WINDOWS__?: boolean };
+type DesktopShellWindow = Window & {
+  __CLASSROOM_WIDGETS_MACOS__?: boolean;
+  __CLASSROOM_WIDGETS_WINDOWS__?: boolean;
+  __CLASSROOM_WIDGETS_LINUX__?: boolean;
+};
 const isDesktopDashboard = typeof window !== 'undefined'
   && Boolean((window as DesktopShellWindow).__CLASSROOM_WIDGETS_MACOS__
-    || (window as DesktopShellWindow).__CLASSROOM_WIDGETS_WINDOWS__);
+    || (window as DesktopShellWindow).__CLASSROOM_WIDGETS_WINDOWS__
+    || (window as DesktopShellWindow).__CLASSROOM_WIDGETS_LINUX__);
 const compactPanelWarmImports = [
   widgetImports.Randomiser,
   widgetImports.Timer,
