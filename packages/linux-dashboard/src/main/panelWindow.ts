@@ -123,8 +123,9 @@ export class WidgetPanelWindow extends EventEmitter {
       },
     });
 
-    panelsByChromeContents.set(this.win.webContents.id, this);
-    this.win.webContents.once('destroyed', () => panelsByChromeContents.delete(this.win.webContents.id));
+    const chromeContentsId = this.win.webContents.id;
+    panelsByChromeContents.set(chromeContentsId, this);
+    this.win.webContents.once('destroyed', () => panelsByChromeContents.delete(chromeContentsId));
 
     this.view = new WebContentsView({
       webPreferences: {
