@@ -1,0 +1,57 @@
+body {
+  margin: 0;
+  background: #F5F5F7;
+  color: #1F2933;
+  font-family: system-ui, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+main {
+  padding: 20px;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+label {
+  display: block;
+  margin: 4px 0;
+}
+
+.label {
+  margin: 16px 0 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row input[type="range"] {
+  flex: 1;
+}
+
+.row span {
+  width: 48px;
+  text-align: right;
+}
+
+.hint {
+  color: #6B7280;
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+button {
+  margin-top: 18px;
+  padding: 4px 10px;
+}
+
+.footer {
+  color: #6B7280;
+  font-size: 12px;
+  margin-top: 18px;
+}

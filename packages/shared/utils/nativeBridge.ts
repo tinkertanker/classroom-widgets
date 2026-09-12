@@ -5,12 +5,15 @@ type WebKitMessageHandlers = Partial<Record<NativeMessageHandlerName, { postMess
 interface NativeBridgeWindow {
   webkit?: { messageHandlers?: WebKitMessageHandlers };
   chrome?: { webview?: { postMessage: (message: unknown) => void } };
+  classroomNativeBridge?: { postMessage: (message: unknown) => void };
 }
 
 /**
  * Posts a message to the native desktop shell. macOS (WKWebView) exposes one
  * script message handler per channel; Windows (WebView2) exposes a single
- * `chrome.webview.postMessage`, so the channel name is carried in the payload.
+ * `chrome.webview.postMessage`, and Linux (Electron) exposes a
+ * `window.classroomNativeBridge` via contextBridge — both carry the channel
+ * name in the payload.
  */
 export function postNativeMessage(handler: NativeMessageHandlerName, message: object): void {
   if (typeof window === 'undefined') return;
@@ -18,6 +21,11 @@ export function postNativeMessage(handler: NativeMessageHandlerName, message: ob
   const webkitHandler = bridgeWindow.webkit?.messageHandlers?.[handler];
   if (webkitHandler) {
     webkitHandler.postMessage(message);
+    return;
+  }
+  const nativeBridge = bridgeWindow.classroomNativeBridge;
+  if (nativeBridge) {
+    nativeBridge.postMessage({ handler, ...message });
     return;
   }
   bridgeWindow.chrome?.webview?.postMessage({ handler, ...message });

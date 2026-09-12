@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <main>
+    <h1>Widgets</h1>
+    <label><input type="checkbox" id="alwaysOnTop" /> Keep widgets above other windows</label>
+    <label><input type="checkbox" id="launchAtLogin" /> Launch at login</label>
+
+    <p class="label">Background opacity</p>
+    <div class="row">
+      <input type="range" id="opacity" min="0.2" max="1" step="0.05" />
+      <span id="opacityLabel"></span>
+    </div>
+    <p class="hint">Lower the opacity to let slides or other windows show through the widgets.</p>
+
+    <button id="reset">Forget saved widget positions</button>
+
+    <p class="footer" id="version"></p>
+  </main>
+  <script src="settings.js"></script>
+</body>
+</html>

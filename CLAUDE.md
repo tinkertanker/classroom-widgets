@@ -11,7 +11,9 @@
 ## Layout and verification
 
 - npm workspaces are `packages/{shared,teacher,student,server}`.
-  `packages/macos-dashboard` is a SwiftPM package, not an npm workspace.
+  `packages/macos-dashboard` (SwiftPM), `packages/windows-dashboard` (.NET)
+  and `packages/linux-dashboard` (Electron, with its own package-lock,
+  installed by `script/build_linux.sh`) are not npm workspaces.
 - `npm test` runs the teacher suite only. Run a workspace's own tests directly
   when you change it.
 - `packages/shared/voiceCommandDefinitions.json` is the source of truth for the
