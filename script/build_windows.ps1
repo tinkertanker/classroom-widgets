@@ -7,6 +7,7 @@
 param(
     [switch]$Publish,
     [switch]$NoRun,
+    [switch]$Installer,
     [switch]$SkipWeb
 )
 
@@ -41,6 +42,14 @@ if ($Publish) {
         -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
     Write-Host "Published to $dist"
+    if ($Installer) {
+        $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+        if (-not (Test-Path $iscc)) { throw 'Inno Setup 6 is required for -Installer (https://jrsoftware.org/isinfo.php).' }
+        $version = (Get-Content (Join-Path $projectDir 'version.json') | ConvertFrom-Json).version
+        & $iscc "/DAppVersion=$version" '/DSourceDir=..\dist' '/DOutputDir=..\dist-installer' (Join-Path $projectDir 'Installer\ClassroomWidgets.iss')
+        if ($LASTEXITCODE -ne 0) { throw 'Inno Setup build failed.' }
+        Write-Host "Installer written to $(Join-Path $projectDir 'dist-installer')"
+    }
     $exe = Join-Path $dist 'ClassroomWidgets.exe'
 } else {
     dotnet build $project -c Debug -nologo

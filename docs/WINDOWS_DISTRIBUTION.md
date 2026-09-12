@@ -68,7 +68,12 @@ The project copies `packages/teacher/build/**` into the output `Web` folder, so 
 
 ## Publishing a release
 
-The easiest path is GitHub Actions (`.github/workflows/windows-release.yml`): bump `packages/windows-dashboard/version.json`, then push a tag such as `windows-v0.1.0`. The workflow builds on a Windows runner and attaches `ClassroomWidgets-v<version>-windows-x64.zip` to the GitHub release for that tag. Teachers unzip it anywhere and run `ClassroomWidgets.exe`; nothing needs installing. It can also be run manually from the Actions tab, which uploads the zip as a workflow artifact.
+The easiest path is GitHub Actions (`.github/workflows/windows-release.yml`): bump `packages/windows-dashboard/version.json`, then push a tag such as `windows-v0.1.0`. The workflow builds on a Windows runner and attaches two assets to the GitHub release for that tag:
+
+- `ClassroomWidgets-v<version>-windows-x64-setup.exe` — per-user Inno Setup installer (no admin rights needed). It offers a **Start Classroom Widgets automatically when I sign in** checkbox, which writes the same `HKCU\...\Run` value the tray "Launch at login" toggle manages, so either can turn it off later. Uninstall is via Windows Settings › Apps.
+- `ClassroomWidgets-v<version>-windows-x64.zip` — portable build; unzip anywhere and run `ClassroomWidgets.exe`.
+
+It can also be run manually from the Actions tab, which uploads both as a workflow artifact. To build the installer locally, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `npm run windows:publish -- -Installer` (source in `packages/windows-dashboard/Installer/ClassroomWidgets.iss`).
 
 To build locally instead:
 
