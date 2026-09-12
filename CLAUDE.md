@@ -1,20 +1,24 @@
 # Agent Guide
 
-- Read the relevant code before changing it and follow nearby patterns.
-- Prefer the smallest correct change; avoid unrelated refactors and new
-  abstractions unless they clearly reduce complexity.
 - Keep state derived where possible. Reuse existing shared hooks, components,
   styles, and network infrastructure rather than duplicating them.
-- Preserve behavior across the teacher app, student app, server, and shared
-  contracts when a change crosses workspace boundaries.
-- Use explicit types and avoid `any`. Do not edit generated files without
-  changing their source of truth.
-- Add or update focused tests for behavior changes and run the narrowest useful
-  verification before finishing.
-- Do not discard unrelated worktree changes. Keep commits atomic and stage
-  files explicitly.
+- Preserve behaviour across the teacher app, student app, server, and
+  `packages/shared` contracts when a change crosses a workspace boundary.
+- Do not discard unrelated worktree changes. Stage files explicitly.
 - Keep topic-specific documentation in [`docs/`](docs/). Use
-  [`README.md`](README.md) and `package.json` for project setup and commands.
+  [`README.md`](README.md) and `package.json` for setup and commands.
+
+## Layout and verification
+
+- npm workspaces are `packages/{shared,teacher,student,server}`.
+  `packages/macos-dashboard` is a SwiftPM package, not an npm workspace.
+- `npm test` runs the teacher suite only. Run a workspace's own tests directly
+  when you change it.
+- `packages/shared/voiceCommandDefinitions.json` is the source of truth for the
+  generated voice-command constants under `packages/shared/constants/` and
+  `packages/server/src/shared/constants/`. Edit the JSON, then run
+  `npm run generate:voice-types` (also runs on `prebuild`). Never edit the
+  generated files.
 
 ## macOS releases
 
