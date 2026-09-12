@@ -1,89 +1,51 @@
-# Renders the tray/app icon as a multi-size .ico (PNG-compressed entries).
+# Packs the macOS app icon (packages/macos-dashboard/Assets/AppIcon.iconset) into a
+# multi-size .ico so the Windows app, tray and installer share the same artwork.
 # Usage: pwsh -File Scripts/make-icon.ps1 [-OutFile Assets/AppIcon.ico]
 param(
-    [string]$OutFile = (Join-Path $PSScriptRoot '..\Assets\AppIcon.ico')
+    [string]$OutFile = (Join-Path $PSScriptRoot '..\Assets\AppIcon.ico'),
+    [string]$IconSet = (Join-Path $PSScriptRoot '..\..\macos-dashboard\Assets\AppIcon.iconset')
 )
 
-Add-Type -AssemblyName System.Drawing
+$ErrorActionPreference = 'Stop'
 
-function New-IconPng([int]$size) {
-    $bitmap = New-Object System.Drawing.Bitmap $size, $size, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
-    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-    $graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-    $graphics.Clear([System.Drawing.Color]::Transparent)
+$sources = @(
+    @(16, 'icon_16x16.png'),
+    @(32, 'icon_32x32.png'),
+    @(64, 'icon_32x32@2x.png'),
+    @(128, 'icon_128x128.png'),
+    @(256, 'icon_256x256.png')
+)
 
-    $inset = [Math]::Max(1, [int]($size * 0.04))
-    $radius = [Math]::Max(2, [int]($size * 0.22))
-    $rect = New-Object System.Drawing.Rectangle $inset, $inset, ($size - 2 * $inset), ($size - 2 * $inset)
-    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $d = $radius * 2
-    $path.AddArc($rect.X, $rect.Y, $d, $d, 180, 90)
-    $path.AddArc($rect.Right - $d, $rect.Y, $d, $d, 270, 90)
-    $path.AddArc($rect.Right - $d, $rect.Bottom - $d, $d, $d, 0, 90)
-    $path.AddArc($rect.X, $rect.Bottom - $d, $d, $d, 90, 90)
-    $path.CloseFigure()
-
-    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, ([System.Drawing.Color]::FromArgb(255, 79, 70, 229)), ([System.Drawing.Color]::FromArgb(255, 14, 165, 233)), 45
-    $graphics.FillPath($brush, $path)
-
-    # Four "widget tiles" in a 2x2 grid.
-    $tileGap = [Math]::Max(1, [int]($size * 0.08))
-    $tileSize = [int](($rect.Width - 3 * $tileGap) / 2)
-    $tileBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(235, 255, 255, 255))
-    $tileRadius = [Math]::Max(1, [int]($tileSize * 0.2))
-    foreach ($row in 0..1) {
-        foreach ($col in 0..1) {
-            $x = $rect.X + $tileGap + $col * ($tileSize + $tileGap)
-            $y = $rect.Y + $tileGap + $row * ($tileSize + $tileGap)
-            $tile = New-Object System.Drawing.Drawing2D.GraphicsPath
-            $td = $tileRadius * 2
-            $tile.AddArc($x, $y, $td, $td, 180, 90)
-            $tile.AddArc($x + $tileSize - $td, $y, $td, $td, 270, 90)
-            $tile.AddArc($x + $tileSize - $td, $y + $tileSize - $td, $td, $td, 0, 90)
-            $tile.AddArc($x, $y + $tileSize - $td, $td, $td, 90, 90)
-            $tile.CloseFigure()
-            $graphics.FillPath($tileBrush, $tile)
-        }
-    }
-
-    $graphics.Dispose()
-    $stream = New-Object System.IO.MemoryStream
-    $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
-    $bitmap.Dispose()
-    return ,$stream.ToArray()
+$pngs = @()
+foreach ($entry in $sources) {
+    $path = Join-Path $IconSet $entry[1]
+    if (-not (Test-Path $path)) { continue }
+    $pngs += [pscustomobject]@{ Size = $entry[0]; Bytes = [IO.File]::ReadAllBytes($path) }
 }
+if ($pngs.Count -eq 0) { throw "No iconset PNGs found in $IconSet" }
 
-$sizes = @(16, 24, 32, 48, 64, 128, 256)
-$images = @()
-foreach ($s in $sizes) {
-    [byte[]]$png = New-IconPng $s
-    $images += [pscustomobject]@{ Size = $s; Bytes = $png }
-}
+$stream = New-Object IO.MemoryStream
+$writer = New-Object IO.BinaryWriter $stream
+$writer.Write([uint16]0)
+$writer.Write([uint16]1)
+$writer.Write([uint16]$pngs.Count)
 
-$out = New-Object System.IO.MemoryStream
-$writer = New-Object System.IO.BinaryWriter $out
-$writer.Write([UInt16]0)          # reserved
-$writer.Write([UInt16]1)          # type: icon
-$writer.Write([UInt16]$images.Count)
-$offset = 6 + 16 * $images.Count
-foreach ($entry in $images) {
-    $size = $entry.Size; [byte[]]$bytes = $entry.Bytes
-    $dim = if ($size -ge 256) { 0 } else { $size }
-    $writer.Write([Byte]$dim)      # width
-    $writer.Write([Byte]$dim)      # height
-    $writer.Write([Byte]0)         # palette
-    $writer.Write([Byte]0)         # reserved
-    $writer.Write([UInt16]1)       # planes
-    $writer.Write([UInt16]32)      # bpp
-    $writer.Write([UInt32]$bytes.Length)
-    $writer.Write([UInt32]$offset)
-    $offset += $bytes.Length
+$offset = 6 + 16 * $pngs.Count
+foreach ($png in $pngs) {
+    $dim = if ($png.Size -ge 256) { 0 } else { $png.Size }
+    $writer.Write([byte]$dim)
+    $writer.Write([byte]$dim)
+    $writer.Write([byte]0)
+    $writer.Write([byte]0)
+    $writer.Write([uint16]1)
+    $writer.Write([uint16]32)
+    $writer.Write([uint32]$png.Bytes.Length)
+    $writer.Write([uint32]$offset)
+    $offset += $png.Bytes.Length
 }
-foreach ($entry in $images) { [byte[]]$b = $entry.Bytes; $writer.Write($b) }
+foreach ($png in $pngs) { $writer.Write($png.Bytes) }
 $writer.Flush()
 
-$dir = Split-Path -Parent $OutFile
-if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
-[System.IO.File]::WriteAllBytes((Resolve-Path -LiteralPath $dir).Path + '\' + (Split-Path -Leaf $OutFile), $out.ToArray())
-Write-Host "Wrote $OutFile ($($out.Length) bytes)"
+$OutFile = [IO.Path]::GetFullPath($OutFile)
+[IO.File]::WriteAllBytes($OutFile, $stream.ToArray())
+Write-Host "Wrote $OutFile ($($pngs.Count) sizes from $IconSet)"

@@ -15,6 +15,7 @@ packages/macos-dashboard/.build/
 packages/windows-dashboard/bin/
 packages/windows-dashboard/obj/
 packages/windows-dashboard/dist/
+packages/windows-dashboard/dist-installer/
 .playwright-cli/
 
 # misc
