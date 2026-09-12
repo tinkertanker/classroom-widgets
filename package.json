@@ -23,6 +23,8 @@
     "prebuild": "npm run generate:voice-types",
     "macos:run": "./script/build_and_run.sh",
     "macos:dmg": "./script/build_macos_release.sh",
+    "windows:run": "powershell -ExecutionPolicy Bypass -File ./script/build_windows.ps1",
+    "windows:publish": "powershell -ExecutionPolicy Bypass -File ./script/build_windows.ps1 -Publish -NoRun",
     "server": "npm run start -w @classroom-widgets/server",
     "install:all": "npm install",
     "clean": "node scripts/clean-workspaces.cjs"

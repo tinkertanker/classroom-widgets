@@ -7,6 +7,7 @@ import type {
 } from '@shared/types/compactPanel';
 import ErrorBoundary from '@shared/components/ErrorBoundary';
 import { parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
+import { postNativeMessage } from '@shared/utils/nativeBridge';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { ModalProvider } from '../../contexts/ModalContext';
 import { ConfettiProvider } from '../../contexts/ConfettiContext';
@@ -36,7 +37,7 @@ const CompactWidgetApp = () => {
     if (!currentSnapshot || closingRef.current) return;
     inFlightStateRef.current = serializedState;
     lastReportedStateRef.current = serializedState;
-    window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+    postNativeMessage('classroomWidgetPanel', {
       type: 'panel-state-change',
       schemaVersion: 1,
       widgetId: currentSnapshot.widgetId,
@@ -96,7 +97,7 @@ const CompactWidgetApp = () => {
       saveRandomiserList: (name, choices) => {
         const currentSnapshot = snapshotRef.current;
         if (!currentSnapshot || closingRef.current) return;
-        window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+        postNativeMessage('classroomWidgetPanel', {
           type: 'randomiser-list-save',
           schemaVersion: 1,
           widgetId: currentSnapshot.widgetId,
@@ -107,7 +108,7 @@ const CompactWidgetApp = () => {
       deleteRandomiserList: (id) => {
         const currentSnapshot = snapshotRef.current;
         if (!currentSnapshot || closingRef.current) return;
-        window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+        postNativeMessage('classroomWidgetPanel', {
           type: 'randomiser-list-delete',
           schemaVersion: 1,
           widgetId: currentSnapshot.widgetId,
@@ -118,7 +119,7 @@ const CompactWidgetApp = () => {
         const currentSnapshot = snapshotRef.current;
         const pendingState = queuedStateRef.current ?? inFlightStateRef.current;
         closingRef.current = true;
-        window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+        postNativeMessage('classroomWidgetPanel', {
           type: 'panel-writes-checkpoint',
           schemaVersion: 1,
           widgetId: requestedWidgetId
@@ -135,7 +136,7 @@ const CompactWidgetApp = () => {
         };
       }
     };
-    window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({
+    postNativeMessage('classroomWidgetPanel', {
       type: 'panel-ready',
       schemaVersion: 1,
       widgetId: requestedWidgetId

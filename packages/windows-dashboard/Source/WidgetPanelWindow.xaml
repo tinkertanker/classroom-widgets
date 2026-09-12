@@ -1,0 +1,90 @@
+<Window x:Class="ClassroomWidgets.WidgetPanelWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="Classroom Widgets"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        Background="{DynamicResource PanelBackground}"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <SolidColorBrush x:Key="PanelBackground" Color="#F5F5F7" />
+        <SolidColorBrush x:Key="ChromeForeground" Color="#1F2933" />
+        <SolidColorBrush x:Key="ChromeHover" Color="#22000000" />
+        <Style x:Key="ChromeButton" TargetType="Button">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource ChromeForeground}" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource ChromeHover}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border x:Name="ChromeBar" Grid.Row="0" Background="Transparent"
+                MouseLeftButtonDown="ChromeBar_MouseLeftButtonDown">
+            <Grid x:Name="ChromeContent" Opacity="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="6,0,0,0" VerticalAlignment="Center">
+                    <Button x:Name="CloseButton" Style="{StaticResource ChromeButton}" Content="&#xE711;" ToolTip="Close widget" Click="CloseButton_Click" />
+                </StackPanel>
+                <TextBlock x:Name="TitleText" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                           FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource ChromeForeground}"
+                           TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center">
+                    <Button x:Name="ArrangeButton" Style="{StaticResource ChromeButton}" Content="&#xE80A;" ToolTip="Arrange widgets" Click="ArrangeButton_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="ArrangeMenu">
+                                <MenuItem Header="Free placement" Tag="Freeform" Click="ArrangeMenuItem_Click" />
+                                <MenuItem Header="Arrange in a row" Tag="Row" Click="ArrangeMenuItem_Click" />
+                                <MenuItem Header="Arrange in a column" Tag="Column" Click="ArrangeMenuItem_Click" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                    <Button x:Name="AddButton" Style="{StaticResource ChromeButton}" Content="&#xE710;" ToolTip="Add widget" Click="AddButton_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="AddMenu" />
+                        </Button.ContextMenu>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <wv2:WebView2 x:Name="WebView" Grid.Row="1" DefaultBackgroundColor="Transparent" />
+    </Grid>
+</Window>

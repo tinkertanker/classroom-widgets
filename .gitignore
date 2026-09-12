@@ -12,6 +12,9 @@ node_modules
 packages/teacher/build
 dist/
 packages/macos-dashboard/.build/
+packages/windows-dashboard/bin/
+packages/windows-dashboard/obj/
+packages/windows-dashboard/dist/
 .playwright-cli/
 
 # misc

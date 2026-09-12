@@ -6,6 +6,7 @@ A suite of interactive classroom management tools with real-time student engagem
 
 - [Project Overview](#project-overview)
 - [macOS App](#macos-app)
+- [Windows App](#windows-app)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Core Features](#core-features)
@@ -21,6 +22,7 @@ Classroom Widgets is a real-time classroom management system that enables teache
 - **Student Application**: A responsive web app for students to participate in activities.
 - **Backend Server**: An Express.js server handling real-time communication via Socket.io.
 - **macOS Application**: A native menu-bar app for placing always-on-top classroom widgets over other apps.
+- **Windows Application**: A native system-tray app with the same floating widgets, built on WebView2.
 
 ### Available Widgets
 
@@ -53,6 +55,14 @@ The canonical bundle identifier is `sg.tk.classroomwidgets`. Upgrading from a re
 
 See the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for usage, local builds, signing, notarization, and release instructions.
 
+## 🪟 Windows App
+
+Classroom Widgets for Windows is a system-tray app that opens the same compact widgets (Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects) as always-on-top floating panels. It requires Windows 10/11 and the Microsoft Edge WebView2 Runtime.
+
+Click the tray icon, then **Add Widget**. Settings include launch at login, always on top, widget background opacity, and row/column arrangement. Build it locally with `npm run windows:run` (needs the .NET 8 SDK).
+
+See the [Windows app and distribution guide](./docs/WINDOWS_DISTRIBUTION.md) for usage, architecture, local builds, and publishing.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -61,6 +71,7 @@ See the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for usa
 - Git
 - Docker and Docker Compose (only for Docker-based production deployment)
 - macOS 13+ and Xcode 15+ (only for building the native macOS app)
+- .NET 8 SDK and the WebView2 Runtime (only for building the native Windows app)
 
 ### First Time Setup
 
@@ -137,8 +148,9 @@ classroom-widgets/
 │   │   ├── src/sockets/      # Socket.IO event handlers
 │   │   └── package.json      # Backend workspace scripts
 │   ├── shared/               # Shared types, hooks, constants, and utilities
-│   └── macos-dashboard/      # Native menu-bar host (SwiftPM + AppKit/WebKit)
-├── script/                   # macOS app and release packaging scripts
+│   ├── macos-dashboard/      # Native menu-bar host (SwiftPM + AppKit/WebKit)
+│   └── windows-dashboard/    # Native system-tray host (.NET 8 WPF + WebView2)
+├── script/                   # macOS/Windows app and release packaging scripts
 ├── docs/                     # Project documentation
 ├── package.json              # Root workspace scripts
 └── package-lock.json         # Locked dependency graph for all workspaces
@@ -237,6 +249,9 @@ npm run macos:run -- --verify
 
 # Create an ad hoc signed local DMG (macOS only; not for public download)
 npm run macos:dmg
+
+# Build and launch the Windows tray app (Windows only; needs .NET 8 SDK)
+npm run windows:run
 ```
 
 See [Getting Started Guide](./docs/GETTING_STARTED.md) for more development details.
