@@ -277,7 +277,7 @@ export class WidgetPanelWindow extends EventEmitter {
     });
     const scriptPromise = evaluate(
       this.view.webContents,
-      'window.classroomWidgetPanel?.takePendingState?.() ?? null',
+      '(() => { const p = window.classroomWidgetPanel; if (!p?.takePendingState) return { ok: false }; return { ok: true, value: p.takePendingState() ?? null }; })()',
     );
     const delay = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 900));
     const completed = await Promise.race([Promise.all([scriptPromise, checkpoint]).then(() => 'done' as const), delay]);
@@ -285,9 +285,12 @@ export class WidgetPanelWindow extends EventEmitter {
     if (completed === 'timeout') return { change: null, prepared: false };
 
     const result = await scriptPromise;
-    if (result === null || result === undefined) return { change: null, prepared: false };
-    if (!isRecord(result)) return { change: null, prepared: true };
-    const payload = result;
+    if (!isRecord(result) || result.ok !== true) return { change: null, prepared: false };
+    const value = result.value;
+    // null means nothing pending; the panel is still prepared.
+    if (value === null || value === undefined) return { change: null, prepared: true };
+    if (!isRecord(value)) return { change: null, prepared: true };
+    const payload = value;
     if (
       payload.schemaVersion !== 1
       || payload.widgetId !== this.widgetId

@@ -1,4 +1,4 @@
-import { app } from 'electron';
+import { app, session } from 'electron';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
@@ -54,9 +54,22 @@ function bootstrap(): void {
       terminationPrepared = await host.prepareForTermination();
       if (!terminationPrepared) log.warn('Some widget state could not be flushed before quitting');
     }
+    host?.panelCoordinator.deactivate();
     settings?.save();
+    // Chromium commits localStorage lazily; force the host store to disk.
+    try {
+      await Promise.race([
+        session.defaultSession.flushStorageData(),
+        new Promise<void>((resolve) => setTimeout(resolve, 1000)),
+      ]);
+    } catch (error) {
+      log.warn(`Storage flush before quit failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
     app.quit();
   };
+
+  process.on('SIGTERM', () => void requestQuit());
+  process.on('SIGINT', () => void requestQuit());
 
   app.on('window-all-closed', () => {
     // Tray app: panels may all be closed; keep running.
@@ -66,6 +79,8 @@ function bootstrap(): void {
     shuttingDown = true;
     host?.markShuttingDown();
     host?.panelCoordinator.flushPersistedFrames();
+    // Panels must not preventDefault the close events that quit triggers.
+    host?.panelCoordinator.deactivate();
     settings?.save();
   });
 

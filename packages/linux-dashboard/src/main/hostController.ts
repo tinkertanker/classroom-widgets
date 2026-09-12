@@ -165,7 +165,7 @@ export class WidgetHostController extends EventEmitter {
     this.hostWrites.acknowledgeFailure();
     this.reloadInProgress = false;
     this.coordinator.deactivate();
-    this.coordinator.activate();
+    if (!this.shuttingDown) this.coordinator.activate();
   }
 
   private loadHost(): void {
