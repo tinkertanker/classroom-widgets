@@ -52,9 +52,9 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border x:Name="ChromeBar" Grid.Row="0" Background="{DynamicResource PanelBackground}"
+        <Border x:Name="ChromeBar" Grid.Row="0" Background="{DynamicResource PanelBackground}" Opacity="0"
                 MouseLeftButtonDown="ChromeBar_MouseLeftButtonDown">
-            <Grid x:Name="ChromeContent" Opacity="0">
+            <Grid x:Name="ChromeContent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />

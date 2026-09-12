@@ -8,6 +8,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 
@@ -408,7 +409,7 @@ public partial class WidgetPanelWindow : Window
     {
         if (_chromeVisible == visible) return;
         _chromeVisible = visible;
-        ChromeContent.Opacity = visible ? 1 : 0;
+        ChromeBar.BeginAnimation(OpacityProperty, new DoubleAnimation(visible ? 1 : 0, TimeSpan.FromMilliseconds(160)));
         ApplyWebPresentation();
     }
 

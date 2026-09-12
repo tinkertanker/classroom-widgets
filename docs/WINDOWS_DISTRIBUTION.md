@@ -68,6 +68,10 @@ The project copies `packages/teacher/build/**` into the output `Web` folder, so 
 
 ## Publishing a release
 
+The easiest path is GitHub Actions (`.github/workflows/windows-release.yml`): bump `packages/windows-dashboard/version.json`, then push a tag such as `windows-v0.1.0`. The workflow builds on a Windows runner and attaches `ClassroomWidgets-v<version>-windows-x64.zip` to the GitHub release for that tag. Teachers unzip it anywhere and run `ClassroomWidgets.exe`; nothing needs installing. It can also be run manually from the Actions tab, which uploads the zip as a workflow artifact.
+
+To build locally instead:
+
 ```powershell
 npm run windows:publish
 ```
