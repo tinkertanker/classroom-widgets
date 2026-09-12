@@ -80,7 +80,11 @@ public partial class WidgetPanelWindow : Window
 
         LocationChanged += (_, _) => NoteFrameChange();
         SizeChanged += (_, _) => NoteFrameChange();
-        SourceInitialized += (_, _) => ApplyWindowAlpha();
+        SourceInitialized += (_, _) =>
+        {
+            ApplyWindowAlpha();
+            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WindowProc);
+        };
         Loaded += async (_, _) => await InitializeWebViewAsync();
     }
 
@@ -408,6 +412,46 @@ public partial class WidgetPanelWindow : Window
         NativeMethods.SetLayeredWindowAttributes(handle, 0, alpha, NativeMethods.LWA_ALPHA);
     }
 
+    /// <summary>
+    /// Keeps interactive resizes on the descriptor's content aspect ratio
+    /// (chrome height excluded), matching the NSWindow contentAspectRatio
+    /// behaviour of the macOS shell.
+    /// </summary>
+    private IntPtr WindowProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != NativeMethods.WM_SIZING || _descriptor.AspectRatio is not { } ratio || ratio <= 0) return IntPtr.Zero;
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return IntPtr.Zero;
+
+        var scale = target.TransformToDevice.M22;
+        var chrome = ChromeHeight * scale;
+        var rect = Marshal.PtrToStructure<NativeMethods.RECT>(lParam);
+        var width = (double)(rect.Right - rect.Left);
+        var height = rect.Bottom - rect.Top - chrome;
+        var edge = wParam.ToInt32();
+
+        var drivesWidth = edge is NativeMethods.WMSZ_LEFT or NativeMethods.WMSZ_RIGHT;
+        var drivesHeight = edge is NativeMethods.WMSZ_TOP or NativeMethods.WMSZ_BOTTOM;
+        if (drivesWidth || (!drivesHeight && width / Math.Max(height, 1) > ratio))
+        {
+            height = width / ratio;
+        }
+        else
+        {
+            width = height * ratio;
+        }
+
+        var totalHeight = (int)Math.Round(height + chrome);
+        var totalWidth = (int)Math.Round(width);
+        if (edge is NativeMethods.WMSZ_LEFT or NativeMethods.WMSZ_TOPLEFT or NativeMethods.WMSZ_BOTTOMLEFT) rect.Left = rect.Right - totalWidth;
+        else rect.Right = rect.Left + totalWidth;
+        if (edge is NativeMethods.WMSZ_TOP or NativeMethods.WMSZ_TOPLEFT or NativeMethods.WMSZ_TOPRIGHT) rect.Top = rect.Bottom - totalHeight;
+        else rect.Bottom = rect.Top + totalHeight;
+
+        Marshal.StructureToPtr(rect, lParam, false);
+        handled = true;
+        return (IntPtr)1;
+    }
+
     private void ChromeBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs args)
     {
         if (args.ButtonState != MouseButtonState.Pressed) return;
@@ -445,6 +489,24 @@ public partial class WidgetPanelWindow : Window
         public const int GWL_EXSTYLE = -20;
         public const int WS_EX_LAYERED = 0x80000;
         public const uint LWA_ALPHA = 0x2;
+        public const int WM_SIZING = 0x0214;
+        public const int WMSZ_LEFT = 1;
+        public const int WMSZ_RIGHT = 2;
+        public const int WMSZ_TOP = 3;
+        public const int WMSZ_TOPLEFT = 4;
+        public const int WMSZ_TOPRIGHT = 5;
+        public const int WMSZ_BOTTOM = 6;
+        public const int WMSZ_BOTTOMLEFT = 7;
+        public const int WMSZ_BOTTOMRIGHT = 8;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT

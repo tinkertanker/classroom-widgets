@@ -16,6 +16,8 @@ public sealed class WidgetHostController
     private readonly WebView2 _webView;
     private readonly DashboardSettings _settings;
     private readonly WidgetPanelCoordinator _coordinator;
+    private readonly HostWriteTracker _hostWrites = new();
+    private IReadOnlyList<WidgetPanelStateChange>? _pendingRecoveryChanges;
     private bool _reloadInProgress;
     private bool _initialized;
 
@@ -114,6 +116,7 @@ public sealed class WidgetHostController
             return;
         }
         _coordinator.Deactivate();
+        _hostWrites.Reset();
         LoadHost();
     }
 
@@ -157,6 +160,7 @@ public sealed class WidgetHostController
 
     private void ResumeAfterFailedDeactivation()
     {
+        _hostWrites.AcknowledgeFailure();
         _reloadInProgress = false;
         _coordinator.Deactivate();
         _coordinator.Activate();
@@ -211,7 +215,25 @@ public sealed class WidgetHostController
             return;
         }
         DashboardLog.Error($"Widget host process failed ({args.ProcessFailedKind}); reloading");
-        _reloadInProgress = false;
+        _ = RecoverFromHostFailureAsync();
+    }
+
+    /// <summary>
+    /// Panels outlive a crashed host, so their unsent edits are collected first
+    /// and replayed once the replacement host publishes its inventory.
+    /// </summary>
+    private async Task RecoverFromHostFailureAsync()
+    {
+        if (_reloadInProgress)
+        {
+            _hostWrites.Reset();
+            LoadHost();
+            return;
+        }
+        _reloadInProgress = true;
+        var (changes, _) = await _coordinator.PrepareForDeactivationAsync();
+        _hostWrites.Reset();
+        _pendingRecoveryChanges = changes;
         _coordinator.Deactivate();
         LoadHost();
     }
@@ -224,6 +246,24 @@ public sealed class WidgetHostController
             WidgetOptions = inventory.Options;
             _coordinator.SetWidgetCreationOptions(inventory.Options);
             WidgetOptionsChanged?.Invoke();
+        }
+        if (_pendingRecoveryChanges is { } recovery)
+        {
+            _pendingRecoveryChanges = null;
+            var widgetIds = inventory.Widgets.Select(widget => widget.Id).ToHashSet();
+            _ = FinishRecoveryAsync(recovery.Where(change => widgetIds.Contains(change.WidgetId)).ToList());
+            return;
+        }
+        _reloadInProgress = false;
+        _coordinator.Activate();
+    }
+
+    private async Task FinishRecoveryAsync(IReadOnlyList<WidgetPanelStateChange> changes)
+    {
+        for (var attempt = 0; attempt <= 20; attempt++)
+        {
+            if (await ApplyFinalPanelStateChangesAsync(changes)) break;
+            await Task.Delay(150);
         }
         _reloadInProgress = false;
         _coordinator.Activate();
@@ -240,9 +280,18 @@ public sealed class WidgetHostController
     private async Task ApplyRandomiserListChangeAsync(JsonElement change)
     {
         if (!_initialized) return;
-        var applied = await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.applyRandomiserListChange ? host.applyRandomiserListChange({change.GetRawText()}) : false; }})()");
-        if (!applied) DashboardLog.Warn("Host refused Randomiser collection change");
+        var generation = _hostWrites.Begin();
+        var applied = false;
+        try
+        {
+            applied = await DashboardWebView.EvaluateBoolAsync(_webView,
+                $"(() => {{ const host = window.classroomPanelHost; return host?.applyRandomiserListChange ? host.applyRandomiserListChange({change.GetRawText()}) : false; }})()");
+        }
+        finally
+        {
+            _hostWrites.Finish(applied, generation);
+        }
+        if (!applied) DashboardLog.Warn("Host refused Randomiser collection change; the next deactivation attempt will be refused");
     }
 
     private async Task RemoveWidgetAsync(string widgetId)
@@ -260,6 +309,6 @@ public sealed class WidgetHostController
         {
             allApplied &= await ApplyPanelStateChangeAsync(change);
         }
-        return allApplied;
+        return allApplied && await _hostWrites.WaitAsync();
     }
 }
