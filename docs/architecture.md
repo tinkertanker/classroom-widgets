@@ -24,7 +24,7 @@ Classroom Widgets is a **monorepo** containing three main applications:
 ┌─────────────────┐         ┌─────────────────┐
 │   Teacher App   │         │  Student App    │
 │   (Vite+React)  │         │  (Vite+React)   │
-│  localhost:3000 │         │ localhost:3001/ │
+│  localhost:3000 │         │ localhost:3002/ │
 │                 │         │     student     │
 └────────┬────────┘         └────────┬────────┘
          │                           │
@@ -41,12 +41,13 @@ Classroom Widgets is a **monorepo** containing three main applications:
 
 **Development:**
 - Teacher → Vite dev server (port 3000)
-- Student → Express server (port 3001/student)
+- Student → Vite dev server (port 3002/student), proxying `/api` and
+  `/socket.io` to the Express server on 3001
 - WebSocket → Socket.io (port 3001)
 
 **Production:**
 - Teacher → Nginx → Static React build
-- Student → Nginx → Express → Static React build
+- Student → Nginx → Express (port 3001) → Static React build served at `/student`
 - WebSocket → Nginx → Express → Socket.io
 
 ### Why This Architecture?
