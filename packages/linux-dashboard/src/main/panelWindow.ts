@@ -78,7 +78,7 @@ export class WidgetPanelWindow extends EventEmitter {
   private chromeVisible = false;
   private panelReady = false;
   private closingPermanently = false;
-  private programmaticFrameChange = false;
+  private lastProgrammaticBounds: RectFrame | null = null;
   private lastPushedRevision: number | null = null;
   private lastPushedStateRevision: number | null = null;
   private writesCheckpoint: { resolve: () => void } | null = null;
@@ -235,17 +235,16 @@ export class WidgetPanelWindow extends EventEmitter {
 
   setFrame(frame: RectFrame, initializing = false): void {
     if (this.win.isDestroyed()) return;
-    this.programmaticFrameChange = true;
-    try {
-      this.win.setBounds({
-        x: Math.round(frame.x),
-        y: Math.round(frame.y),
-        width: Math.max(Math.round(frame.width), this.win.getMinimumSize()[0]),
-        height: Math.max(Math.round(frame.height), this.win.getMinimumSize()[1]),
-      });
-    } finally {
-      this.programmaticFrameChange = false;
-    }
+    const bounds: RectFrame = {
+      x: Math.round(frame.x),
+      y: Math.round(frame.y),
+      width: Math.max(Math.round(frame.width), this.win.getMinimumSize()[0]),
+      height: Math.max(Math.round(frame.height), this.win.getMinimumSize()[1]),
+    };
+    this.lastProgrammaticBounds = bounds;
+    this.win.setBounds(bounds);
+    const appliedBounds = this.win.getBounds();
+    if (!boundsMatch(appliedBounds, bounds)) this.lastProgrammaticBounds = appliedBounds;
     this.layoutView();
     if (initializing && this.frameTimer) {
       clearTimeout(this.frameTimer);
@@ -421,12 +420,27 @@ export class WidgetPanelWindow extends EventEmitter {
   }
 
   private noteFrameChange(): void {
-    if (this.programmaticFrameChange || this.closingPermanently || this.win.isDestroyed()) return;
+    if (this.closingPermanently || this.win.isDestroyed()) return;
     if (this.frameTimer) clearTimeout(this.frameTimer);
     this.frameTimer = setTimeout(() => {
       this.frameTimer = null;
-      if (!this.win.isDestroyed()) this.emit('frameChanged', this.widgetId, this.win.getBounds());
+      if (this.win.isDestroyed()) return;
+      const bounds = this.win.getBounds();
+      if (this.lastProgrammaticBounds && boundsMatch(bounds, this.lastProgrammaticBounds)) return;
+      if (this.lastProgrammaticBounds && this.isAspectRatioSettled(bounds, this.lastProgrammaticBounds)) {
+        this.lastProgrammaticBounds = bounds;
+        return;
+      }
+      this.lastProgrammaticBounds = null;
+      this.emit('frameChanged', this.widgetId, bounds);
     }, 400);
+  }
+
+  private isAspectRatioSettled(bounds: RectFrame, target: RectFrame): boolean {
+    return this.descriptor.aspectRatio !== null
+      && Math.abs(bounds.x - target.x) <= 2
+      && Math.abs(bounds.y - target.y) <= 2
+      && Math.abs(bounds.width - target.width) <= 2;
   }
 
   private startHoverTimer(): void {
@@ -518,6 +532,13 @@ export class WidgetPanelWindow extends EventEmitter {
       }
     }
   }
+}
+
+function boundsMatch(a: RectFrame, b: RectFrame): boolean {
+  return Math.abs(a.x - b.x) <= 2
+    && Math.abs(a.y - b.y) <= 2
+    && Math.abs(a.width - b.width) <= 2
+    && Math.abs(a.height - b.height) <= 2;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
