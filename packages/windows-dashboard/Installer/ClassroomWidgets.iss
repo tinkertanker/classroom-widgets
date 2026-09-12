@@ -14,9 +14,12 @@
 #define AppName "Classroom Widgets"
 #define AppExe "ClassroomWidgets.exe"
 #define RunValueName "ClassroomWidgets"
+#define RunKey "Software\Microsoft\Windows\CurrentVersion\Run"
+#define AppGuid "{7C1E2B54-3F0A-4D3B-9C7E-5B2A8E1F6D43}"
+#define AutostartDescription "Start " + AppName + " automatically when I sign in"
 
 [Setup]
-AppId={{7C1E2B54-3F0A-4D3B-9C7E-5B2A8E1F6D43}
+AppId={{#AppGuid}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Tinkertanker
@@ -40,7 +43,7 @@ CloseApplications=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
-Name: "autostart"; Description: "Start {#AppName} automatically when I sign in"; GroupDescription: "Startup:"
+Name: "autostart"; Description: "{#AutostartDescription}"; GroupDescription: "Startup:"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
@@ -52,11 +55,42 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Registry]
 ; Same HKCU Run value the app's "Launch at login" tray toggle manages.
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "{#RunValueName}"; ValueData: """{app}\{#AppExe}"""; Flags: uninsdeletevalue; Tasks: autostart
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueName: "{#RunValueName}"; Flags: deletevalue uninsdeletevalue; Tasks: not autostart
+Root: HKCU; Subkey: "{#RunKey}"; ValueType: string; ValueName: "{#RunValueName}"; ValueData: """{app}\{#AppExe}"""; Flags: uninsdeletevalue; Check: AutostartWanted
+Root: HKCU; Subkey: "{#RunKey}"; ValueName: "{#RunValueName}"; Flags: deletevalue uninsdeletevalue; Check: not AutostartWanted
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "taskkill"; Parameters: "/IM {#AppExe} /F"; Flags: runhidden; RunOnceId: "KillApp"
+
+[Code]
+// On upgrades the current Run value (which the app's tray toggle may have
+// changed) wins over whatever task selection Setup remembered last time.
+function IsUpgrade: Boolean;
+begin
+  Result := RegValueExists(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{#AppGuid}_is1', 'UninstallString');
+end;
+
+function AutostartCurrentlyEnabled: Boolean;
+begin
+  Result := RegValueExists(HKCU, '{#RunKey}', '{#RunValueName}');
+end;
+
+function AutostartWanted: Boolean;
+begin
+  if WizardSilent and IsUpgrade then
+    Result := AutostartCurrentlyEnabled
+  else
+    Result := WizardIsTaskSelected('autostart');
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+var
+  I: Integer;
+begin
+  if (CurPageID = wpSelectTasks) and IsUpgrade then
+    for I := 0 to WizardForm.TasksList.Items.Count - 1 do
+      if WizardForm.TasksList.ItemCaption[I] = '{#AutostartDescription}' then
+        WizardForm.TasksList.Checked[I] := AutostartCurrentlyEnabled;
+end;
