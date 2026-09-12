@@ -29,6 +29,7 @@ public partial class WidgetPanelWindow : Window
 
     private WidgetPanelDescriptor _descriptor;
     private double _backgroundOpacity;
+    private bool _isDark;
     private IReadOnlyList<CompactWidgetOption> _options = Array.Empty<CompactWidgetOption>();
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _frameTimer;
@@ -82,8 +83,11 @@ public partial class WidgetPanelWindow : Window
         SizeChanged += (_, _) => NoteFrameChange();
         SourceInitialized += (_, _) =>
         {
-            ApplyWindowAlpha();
-            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(WindowProc);
+            var handle = new WindowInteropHelper(this).Handle;
+            var source = HwndSource.FromHwnd(handle);
+            source?.AddHook(WindowProc);
+            if (source?.CompositionTarget is { } target) target.BackgroundColor = Colors.Transparent;
+            EnableCompositedTransparency(handle);
         };
         Loaded += async (_, _) => await InitializeWebViewAsync();
     }
@@ -118,9 +122,13 @@ public partial class WidgetPanelWindow : Window
 
     public void ApplyPresentationSettings(double backgroundOpacity, bool alwaysOnTop)
     {
-        _backgroundOpacity = Math.Clamp(backgroundOpacity, 0, 1);
+        var next = Math.Clamp(backgroundOpacity, 0, 1);
+        var opacityChanged = _backgroundOpacity != next;
+        _backgroundOpacity = next;
         Topmost = alwaysOnTop;
-        ApplyWindowAlpha();
+        if (!opacityChanged) return;
+        ApplyPanelBackground();
+        ApplyWebPresentation();
     }
 
     public void SetWidgetCreationOptions(IReadOnlyList<CompactWidgetOption> options)
@@ -252,7 +260,7 @@ public partial class WidgetPanelWindow : Window
         {
             ["surface"] = "widget-panel",
             ["widgetId"] = WidgetId,
-            ["backgroundOpacity"] = "1"
+            ["backgroundOpacity"] = OpacityText
         }));
     }
 
@@ -347,17 +355,24 @@ public partial class WidgetPanelWindow : Window
         ResizeMode = _descriptor.IsResizable ? ResizeMode.CanResize : ResizeMode.NoResize;
 
         var isDark = _descriptor.SnapshotPayload.TryGetProperty("theme", out var theme) && theme.GetString() == "dark";
-        Resources["PanelBackground"] = new SolidColorBrush(isDark ? DarkBackground : LightBackground);
+        _isDark = isDark;
+        ApplyPanelBackground();
         Resources["ChromeForeground"] = new SolidColorBrush(isDark ? DarkForeground : LightForeground);
         Resources["ChromeHover"] = new SolidColorBrush(isDark ? Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x22, 0x00, 0x00, 0x00));
     }
+
+    private void ApplyPanelBackground()
+        => Resources["PanelBackground"] = new SolidColorBrush(_isDark ? DarkBackground : LightBackground) { Opacity = _backgroundOpacity };
 
     private void ApplyWebPresentation()
     {
         if (!_webReady) return;
         _ = WebView.CoreWebView2.ExecuteScriptAsync(
-            $"document.documentElement.dataset.widgetChromeVisible = '{(_chromeVisible ? "true" : "false")}';");
+            $"document.documentElement.dataset.widgetChromeVisible = '{(_chromeVisible ? "true" : "false")}';"
+            + $"document.documentElement.style.setProperty('--compact-widget-background-opacity', '{OpacityText}');");
     }
+
+    private string OpacityText => _backgroundOpacity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
     private void NoteFrameChange()
     {
@@ -397,19 +412,36 @@ public partial class WidgetPanelWindow : Window
         ApplyWebPresentation();
     }
 
-    private void ApplyWindowAlpha()
+    /// <summary>
+    /// WPF's AllowsTransparency breaks WebView2, so unpainted pixels are made
+    /// see-through by DWM instead via a fully transparent accent policy.
+    /// </summary>
+    private static void EnableCompositedTransparency(IntPtr handle)
     {
-        var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return;
-        var style = NativeMethods.GetWindowLong(handle, NativeMethods.GWL_EXSTYLE);
-        var alpha = (byte)Math.Round(Math.Max(_backgroundOpacity, 0.2) * 255);
-        if (alpha >= 255)
+        var policy = new NativeMethods.ACCENT_POLICY
         {
-            NativeMethods.SetWindowLong(handle, NativeMethods.GWL_EXSTYLE, style & ~NativeMethods.WS_EX_LAYERED);
-            return;
+            AccentState = NativeMethods.ACCENT_ENABLE_TRANSPARENTGRADIENT,
+            AccentFlags = NativeMethods.ACCENT_FLAG_USE_GRADIENT_COLOR,
+            GradientColor = 0
+        };
+        var size = Marshal.SizeOf<NativeMethods.ACCENT_POLICY>();
+        var buffer = Marshal.AllocHGlobal(size);
+        try
+        {
+            Marshal.StructureToPtr(policy, buffer, false);
+            var data = new NativeMethods.WINDOWCOMPOSITIONATTRIBDATA
+            {
+                Attribute = NativeMethods.WCA_ACCENT_POLICY,
+                Data = buffer,
+                SizeOfData = size
+            };
+            NativeMethods.SetWindowCompositionAttribute(handle, ref data);
         }
-        NativeMethods.SetWindowLong(handle, NativeMethods.GWL_EXSTYLE, style | NativeMethods.WS_EX_LAYERED);
-        NativeMethods.SetLayeredWindowAttributes(handle, 0, alpha, NativeMethods.LWA_ALPHA);
+        finally
+        {
+            Marshal.FreeHGlobal(buffer);
+        }
     }
 
     /// <summary>
@@ -486,10 +518,31 @@ public partial class WidgetPanelWindow : Window
 
     private static class NativeMethods
     {
-        public const int GWL_EXSTYLE = -20;
-        public const int WS_EX_LAYERED = 0x80000;
-        public const uint LWA_ALPHA = 0x2;
         public const int WM_SIZING = 0x0214;
+        public const int WCA_ACCENT_POLICY = 19;
+        public const int ACCENT_ENABLE_TRANSPARENTGRADIENT = 2;
+        public const int ACCENT_FLAG_USE_GRADIENT_COLOR = 2;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ACCENT_POLICY
+        {
+            public int AccentState;
+            public int AccentFlags;
+            public uint GradientColor;
+            public int AnimationId;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WINDOWCOMPOSITIONATTRIBDATA
+        {
+            public int Attribute;
+            public IntPtr Data;
+            public int SizeOfData;
+        }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowCompositionAttribute(IntPtr hWnd, ref WINDOWCOMPOSITIONATTRIBDATA data);
         public const int WMSZ_LEFT = 1;
         public const int WMSZ_RIGHT = 2;
         public const int WMSZ_TOP = 3;
@@ -519,14 +572,5 @@ public partial class WidgetPanelWindow : Window
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetCursorPos(out POINT point);
 
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern int GetWindowLong(IntPtr hWnd, int index);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        public static extern int SetWindowLong(IntPtr hWnd, int index, int value);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetLayeredWindowAttributes(IntPtr hWnd, uint colorKey, byte alpha, uint flags);
     }
 }

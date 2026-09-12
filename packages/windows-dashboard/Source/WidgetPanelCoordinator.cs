@@ -309,21 +309,57 @@ public static class ScreenGeometry
     /// <summary>Work area (in WPF device-independent units) of the monitor holding most of the frame.</summary>
     public static Rect WorkAreaContaining(Rect frame)
     {
-        var scale = DisplayScale();
-        var best = System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
+        var best = Rect.Empty;
         double bestArea = -1;
         foreach (var screen in System.Windows.Forms.Screen.AllScreens)
         {
-            var area = ToDip(screen.WorkingArea, scale);
-            area.Intersect(frame);
-            var size = area.IsEmpty ? 0 : area.Width * area.Height;
+            var workArea = WorkAreaInDips(screen);
+            var overlap = Rect.Intersect(workArea, frame);
+            var size = overlap.IsEmpty ? 0 : overlap.Width * overlap.Height;
             if (size > bestArea)
             {
                 bestArea = size;
-                best = screen;
+                best = workArea;
             }
         }
-        return ToDip(best.WorkingArea, scale);
+        return best.IsEmpty ? PrimaryWorkArea() : best;
+    }
+
+    /// <summary>
+    /// Converts a monitor's pixel work area using that monitor's own effective
+    /// DPI, so mixed-DPI setups (e.g. a 150% laptop screen driving a 100%
+    /// projector) map to the right WPF coordinates.
+    /// </summary>
+    private static Rect WorkAreaInDips(System.Windows.Forms.Screen screen)
+    {
+        var bounds = screen.Bounds;
+        var center = new NativeMonitorMethods.POINT { X = bounds.Left + bounds.Width / 2, Y = bounds.Top + bounds.Height / 2 };
+        var monitor = NativeMonitorMethods.MonitorFromPoint(center, NativeMonitorMethods.MONITOR_DEFAULTTONEAREST);
+        var scale = monitor != IntPtr.Zero
+            && NativeMonitorMethods.GetDpiForMonitor(monitor, NativeMonitorMethods.MDT_EFFECTIVE_DPI, out var dpiX, out _) == 0
+            && dpiX > 0
+                ? dpiX / 96.0
+                : DisplayScale();
+        return ToDip(screen.WorkingArea, scale);
+    }
+
+    private static class NativeMonitorMethods
+    {
+        public const uint MONITOR_DEFAULTTONEAREST = 2;
+        public const int MDT_EFFECTIVE_DPI = 0;
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        public static extern IntPtr MonitorFromPoint(POINT point, uint flags);
+
+        [System.Runtime.InteropServices.DllImport("shcore.dll")]
+        public static extern int GetDpiForMonitor(IntPtr monitor, int dpiType, out uint dpiX, out uint dpiY);
     }
 
     public static Rect PrimaryWorkArea() => SystemParameters.WorkArea;

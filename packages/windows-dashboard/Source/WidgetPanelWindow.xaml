@@ -9,7 +9,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
-        Background="{DynamicResource PanelBackground}"
+        Background="Transparent"
         SnapsToDevicePixels="True"
         UseLayoutRounding="True">
     <shell:WindowChrome.WindowChrome>
@@ -52,7 +52,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border x:Name="ChromeBar" Grid.Row="0" Background="Transparent"
+        <Border x:Name="ChromeBar" Grid.Row="0" Background="{DynamicResource PanelBackground}"
                 MouseLeftButtonDown="ChromeBar_MouseLeftButtonDown">
             <Grid x:Name="ChromeContent" Opacity="0">
                 <Grid.ColumnDefinitions>
