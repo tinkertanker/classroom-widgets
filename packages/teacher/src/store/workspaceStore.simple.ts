@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { BackgroundType, WidgetType } from '@shared/types';
 import { LayoutFormat } from '@shared/types/storage';
+import { createDefaultShortenerSettings, type ShortenerSettings } from '@shared/utils/urlShortener';
 import { WorkspaceStore } from './workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { debug } from '@shared/utils/debug';
@@ -136,6 +137,21 @@ function applyWorkspaceSnapshot(
   };
 }
 
+/**
+ * Seed the shortener from the legacy build-time Short.io vars so existing
+ * deployments keep working; teachers can now change it at runtime instead.
+ */
+function defaultLinkShortener(): ShortenerSettings {
+  const shortioApiKey = import.meta.env.VITE_SHORTIO_API_KEY || '';
+  const shortioDomain = import.meta.env.VITE_SHORTIO_DOMAIN || '';
+  return {
+    ...createDefaultShortenerSettings(),
+    ...(shortioApiKey ? { provider: 'shortio' as const } : {}),
+    shortioApiKey,
+    shortioDomain
+  };
+}
+
 const defaultBottomBar = {
   visibleWidgets: [
     WidgetType.RANDOMISER,
@@ -233,6 +249,7 @@ const workspaceStorage: StateStorage = {
                 theme: v2Data.globalSettings.theme,
                 bottomBar: (v2Data.globalSettings as any).bottomBar || (v2Data.globalSettings as any).toolbar,
                 classEndTime: v2Data.globalSettings.classEndTime ?? null,
+                linkShortener: v2Data.globalSettings.linkShortener ?? defaultLinkShortener(),
                 sessionCode: v2Data.session.code,
                 sessionCreatedAt: v2Data.session.createdAt
               },
@@ -343,7 +360,8 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
       v2Data.globalSettings = {
         theme: state.theme || 'light',
         bottomBar: state.bottomBar || defaultBottomBar,
-        classEndTime: state.classEndTime ?? null
+        classEndTime: state.classEndTime ?? null,
+        linkShortener: state.linkShortener || defaultLinkShortener()
       };
 
       // Update session
@@ -491,6 +509,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   eventListeners: new Map(),
   focusedWidgetId: null,
   classEndTime: null,
+  linkShortener: defaultLinkShortener(),
   layoutFormat: 'canvas' as LayoutFormat,
 
   // Workspace management state (populated on rehydration)
@@ -617,6 +636,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   updateBottomBar: (updates) => {
     set((state) => ({
       bottomBar: { ...state.bottomBar, ...updates }
+    }));
+  },
+  updateLinkShortener: (updates) => {
+    set((state) => ({
+      linkShortener: { ...state.linkShortener, ...updates }
     }));
   },
   toggleWidgetVisibility: () => {},
@@ -801,7 +825,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         widgetStates: Array.from(state.widgetStates.entries()),
         sessionCode: state.sessionCode,
         sessionCreatedAt: state.sessionCreatedAt,
-        classEndTime: state.classEndTime
+        classEndTime: state.classEndTime,
+        linkShortener: state.linkShortener
       }),
       onRehydrateStorage: () => (state) => {
         try {
@@ -824,6 +849,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
                 ? state.bottomBar.recentWidgetsLimit
                 : defaultBottomBar.recentWidgetsLimit
             };
+          }
+
+          // Stores written before the shortener setting existed have no value
+          if (state) {
+            state.linkShortener = { ...defaultLinkShortener(), ...(state.linkShortener || {}) };
           }
 
           // Populate workspace management state

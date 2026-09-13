@@ -93,6 +93,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(LEGACY_STORAGE_KEY);
 });
@@ -259,6 +260,54 @@ describe('global settings', () => {
 
     store().deleteWorkspace(idC);
     expectGlobalsIntact('after deleting C');
+  });
+});
+
+describe('link shortener settings', () => {
+  it('fills defaults when rehydrating storage written before the setting existed', async () => {
+    // seedStorage writes a globalSettings object with no linkShortener key.
+    vi.stubEnv('VITE_SHORTIO_API_KEY', '');
+    vi.stubEnv('VITE_SHORTIO_DOMAIN', '');
+    await seedStorage();
+
+    expect(store().linkShortener).toEqual({
+      provider: 'tinyurl',
+      shortioApiKey: '',
+      shortioDomain: ''
+    });
+  });
+
+  it('seeds from the legacy build-time Short.io vars when they are set', async () => {
+    vi.stubEnv('VITE_SHORTIO_API_KEY', 'pk_from_env');
+    vi.stubEnv('VITE_SHORTIO_DOMAIN', 'go.legacy.edu');
+    await seedStorage();
+
+    expect(store().linkShortener).toEqual({
+      provider: 'shortio',
+      shortioApiKey: 'pk_from_env',
+      shortioDomain: 'go.legacy.edu'
+    });
+  });
+
+  it('merges partial updates and survives a workspace switch', async () => {
+    const { idA, idB } = await seedStorage();
+
+    store().updateLinkShortener({ provider: 'shortio', shortioApiKey: 'pk_test' });
+    expect(store().linkShortener).toEqual({
+      provider: 'shortio',
+      shortioApiKey: 'pk_test',
+      shortioDomain: ''
+    });
+
+    store().updateLinkShortener({ shortioDomain: 'go.example.edu' });
+    expect(store().linkShortener.provider).toBe('shortio');
+    expect(store().linkShortener.shortioDomain).toBe('go.example.edu');
+
+    store().switchWorkspace(idB);
+    expect(store().linkShortener.shortioApiKey, 'after switching to B').toBe('pk_test');
+
+    store().switchWorkspace(idA);
+    expect(store().linkShortener.shortioApiKey, 'after switching back to A').toBe('pk_test');
   });
 });
 

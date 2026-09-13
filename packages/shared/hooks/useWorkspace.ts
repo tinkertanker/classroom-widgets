@@ -103,6 +103,14 @@ export function useDragAndDrop() {
   };
 }
 
+// Link shortener settings, shared by the QR Code and Link Shortener widgets
+export function useLinkShortener() {
+  const settings = useWorkspaceStore((state) => state.linkShortener);
+  const updateSettings = useWorkspaceStore((state) => state.updateLinkShortener);
+
+  return { settings, updateSettings };
+}
+
 // Theme hook with side effects
 export function useTheme() {
   const theme = useWorkspaceStore((state) => state.theme);

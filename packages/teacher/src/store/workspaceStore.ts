@@ -1,5 +1,6 @@
 import { BackgroundType, WidgetType, Widget, Position, Size } from '@shared/types';
 import { SavedCollections, SavedRandomiserList, SavedQuestionBank, SavedPollQuestion, LayoutFormat } from '@shared/types/storage';
+import type { ShortenerSettings } from '@shared/utils/urlShortener';
 
 export interface BottomBarConfig {
   visibleWidgets: WidgetType[];
@@ -47,6 +48,7 @@ export interface WorkspaceStore {
   focusedWidgetId: string | null;
   classEndTime: number | null;  // Timestamp for class end time
   layoutFormat: LayoutFormat;
+  linkShortener: ShortenerSettings;  // Shared by the QR Code and Link Shortener widgets
 
   // Workspace management state
   currentWorkspaceId: string;
@@ -78,6 +80,9 @@ export interface WorkspaceStore {
   
   // Bottom bar actions
   updateBottomBar: (updates: Partial<BottomBarConfig>) => void;
+
+  // Link shortener actions
+  updateLinkShortener: (updates: Partial<ShortenerSettings>) => void;
   toggleWidgetVisibility: (widgetType: WidgetType) => void;
   pinWidget: (widgetType: WidgetType) => void;
   unpinWidget: (widgetType: WidgetType) => void;

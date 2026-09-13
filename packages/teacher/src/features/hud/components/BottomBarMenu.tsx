@@ -17,7 +17,8 @@ import {
   FaTableColumns,
   FaPalette,
   FaChevronRight,
-  FaChevronDown
+  FaChevronDown,
+  FaLink
 } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useTheme, useBottomBar } from '@shared/hooks/useWorkspace';
@@ -27,6 +28,8 @@ import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { BackgroundType } from '@shared/types';
 import { dropdownContainer, zIndex } from '@shared/utils/styles';
 import { MenuItem, MenuDivider, MenuSectionHeader } from '../../../components/ui';
+import { useModal } from '../../../contexts/ModalContext';
+import LinkShortenerSettings from '../../../components/settings/LinkShortenerSettings';
 
 interface BottomBarMenuProps {
   onClose: () => void;
@@ -38,6 +41,7 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
   const { theme, toggleTheme } = useTheme();
   const { removeAll } = useWidgets();
   const menuRef = useRef<HTMLDivElement>(null);
+  const { showModal, hideModal } = useModal();
   const bottomBar = useWorkspaceStore((state) => state.bottomBar);
   const updateBottomBar = useWorkspaceStore((state) => state.updateBottomBar);
 
@@ -53,6 +57,14 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
 
   const handleToggleLayout = () => {
     onToggleLayout();
+  };
+
+  const handleOpenLinkShortener = () => {
+    onClose();
+    showModal({
+      title: 'Link Shortener',
+      content: <LinkShortenerSettings onClose={hideModal} />
+    });
   };
 
   useEffect(() => {
@@ -222,6 +234,16 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
         variant="danger"
       >
         Reset Workspace
+      </MenuItem>
+
+      <MenuDivider />
+
+      {/* Integrations */}
+      <MenuItem
+        onClick={handleOpenLinkShortener}
+        icon={FaLink}
+      >
+        Link Shortener…
       </MenuItem>
 
       <MenuDivider />
