@@ -54,7 +54,8 @@ Create `.env` files from examples only when you need optional API keys or non-de
 ```bash
 # Teacher app (optional for Vite development)
 cp packages/teacher/.env.example packages/teacher/.env
-# Edit to add VITE_SHORTIO_API_KEY if using Link Shortener widget
+# Edit to pre-fill the Link Shortener setting with a Short.io account —
+# optional, the widget works without it using a free service
 
 # Server (optional for development)
 cp packages/server/.env.example packages/server/.env

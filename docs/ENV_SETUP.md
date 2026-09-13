@@ -30,7 +30,8 @@ cp .env.example .env
 # 2. Edit .env and add your secrets
 nano .env
 
-# 3. Update VITE_SHORTIO_API_KEY if using Link Shortener
+# 3. Optionally set VITE_SHORTIO_API_KEY and VITE_SHORTIO_DOMAIN to pre-fill
+#    the Link Shortener setting with your own Short.io account
 # That's it! Run: npm run dev
 ```
 
@@ -61,8 +62,8 @@ docker-compose -f docker-compose.prod.yml up -d
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `VITE_SERVER_URL` | Backend server URL | `http://localhost:3001` |
-| `VITE_SHORTIO_API_KEY` | Short.io API key (optional) | `pk_abc123...` |
-| `VITE_SHORTIO_BASE_URL` | Short.io base URL | `https://api.short.io/links` |
+| `VITE_SHORTIO_API_KEY` | Seeds the runtime Link Shortener setting with a Short.io public key (optional; see [Link Shortener services](#-link-shortener-services)) | `pk_abc123...` |
+| `VITE_SHORTIO_DOMAIN` | Seeds the runtime setting with a Short.io branded domain (optional) | `go.myschool.edu` |
 | `VITE_UMAMI_SCRIPT_URL` | Umami tracking script URL | `http://localhost:3003/script.js` |
 | `VITE_UMAMI_WEBSITE_ID` | Umami website ID (leave empty to disable) | `a1b2c3d4-...` |
 | `UMAMI_APP_SECRET` | Secret for Umami (docker-compose) | `random-string` |
@@ -82,6 +83,30 @@ All development variables PLUS:
 | `UMAMI_EMAIL` | Email for Umami SSL cert | `admin@example.com` |
 | `UMAMI_DB_USER` | Umami database username | `umami` |
 | `UMAMI_DB_PASSWORD` | Umami database password | `secure-password` |
+
+## 🔗 Link Shortener services
+
+The Link Shortener and QR Code widgets shorten links through a runtime setting,
+not a build-time environment variable. Open the bottom bar menu and choose
+"Link Shortener…" to pick a service; the choice (and any Short.io credentials)
+is stored per-browser in `localStorage`, so no rebuild or redeploy is needed to
+switch. This matters because some school networks block well-known shortening
+domains — teachers can swap services themselves if links stop opening on
+student devices.
+
+Three services are available:
+
+| Service | Sign-up | Notes |
+|---------|---------|-------|
+| **TinyURL** | None | Default. Free, custom endings supported. |
+| **spoo.me** | None | Free, open source, shorter links. |
+| **Short.io** | Required | Your own branded domain. Needs a *public* API key (`pk_...`, from your Short.io integrations page) and a domain. |
+
+`VITE_SHORTIO_API_KEY` and `VITE_SHORTIO_DOMAIN` are optional and only used to
+pre-fill the Short.io fields of that runtime setting on first load — they are
+not required for the widgets to work, and teachers can still change or clear
+them from the Settings dialog afterwards. `VITE_SHORTIO_BASE_URL` is
+deprecated and no longer read; the Short.io endpoint is fixed in code.
 
 ## 🔒 Security Best Practices
 
@@ -109,7 +134,7 @@ All development variables PLUS:
 **Option 2: Environment variables** (Recommended for CI/CD)
 ```bash
 # Pass secrets at runtime
-VITE_SHORTIO_API_KEY=secret123 docker-compose up
+VITE_SHORTIO_API_KEY=pk_abc123 docker-compose up
 ```
 
 **Option 3: Secrets manager** (Best for production)
@@ -207,7 +232,11 @@ CORS_ORIGINS=http://app.example.com
 
 ### "API key not found"
 
-Check that:
+For the Short.io key, remember it can also be set at runtime from the "Link
+Shortener…" dialog in the bottom bar menu — rebuilding only changes the
+pre-filled default, so a teacher can add or fix the key without a redeploy.
+
+For build-time variables generally, check that:
 1. Variable name is correct (including `VITE_` prefix for frontend)
 2. No quotes around the value
 3. No spaces around the `=` sign

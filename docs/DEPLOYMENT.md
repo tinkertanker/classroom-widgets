@@ -148,8 +148,11 @@ All variables must be prefixed with `VITE_`:
 # Required: Backend server URL
 VITE_SERVER_URL=https://your-backend-domain.com
 
-# Optional: Link Shortener widget API key
+# Optional: pre-fills the runtime Link Shortener setting with a Short.io
+# account. Not required — the widget works out of the box with a free
+# service. See docs/ENV_SETUP.md#-link-shortener-services.
 VITE_SHORTIO_API_KEY=your_api_key
+VITE_SHORTIO_DOMAIN=your_domain
 
 # Optional: Umami Analytics (see docs/ANALYTICS.md)
 VITE_UMAMI_SCRIPT_URL=https://your-umami-domain.com/script.js
