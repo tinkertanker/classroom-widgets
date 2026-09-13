@@ -18,17 +18,17 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    func testFirstNonemptyInventoryAssignsFirstNineSortedTypesOnlyOnce() {
+    func testFirstNonemptyInventoryAssignsFirstNineInventoryTypesOnlyOnce() {
         let store = WidgetLaunchShortcutStore(defaults: defaults)
         XCTAssertTrue(store.bindings(for: []).isEmpty)
 
         let initial = [10, 3, 7, 2, 12, 1, 6, 5, 4, 9, 8].map { CompactWidgetOption(widgetType: $0, title: "Widget \($0)") }
         let bindings = store.bindings(for: initial)
 
-        XCTAssertEqual(bindings.keys.sorted(), Array(1...9))
-        XCTAssertEqual(bindings[1]?.keyCode, Int(kVK_ANSI_1))
-        XCTAssertEqual(bindings[9]?.keyCode, Int(kVK_ANSI_9))
-        XCTAssertNil(bindings[10])
+        XCTAssertEqual(bindings.keys.sorted(), [1, 2, 3, 4, 5, 6, 7, 10, 12])
+        XCTAssertEqual(bindings[10]?.keyCode, Int(kVK_ANSI_1))
+        XCTAssertEqual(bindings[4]?.keyCode, Int(kVK_ANSI_9))
+        XCTAssertNil(bindings[8])
 
         let changed = [CompactWidgetOption(widgetType: 99, title: "New"), CompactWidgetOption(widgetType: 1, title: "Renamed")]
         XCTAssertEqual(store.bindings(for: changed), bindings)
@@ -44,7 +44,7 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertEqual(relaunchedStore.bindings(for: options)[42], DashboardShortcut(keyCode: -1, modifiers: 0))
     }
 
-    func testResetUsesCurrentSortedInventoryAndClearsTypesAfterNine() {
+    func testResetUsesCurrentInventoryOrderAndClearsTypesAfterNine() {
         let store = WidgetLaunchShortcutStore(defaults: defaults)
         let options = (1...10).reversed().map { CompactWidgetOption(widgetType: $0, title: "Widget") }
         _ = store.bindings(for: options)
@@ -53,8 +53,21 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         store.reset(options: options)
 
         let bindings = store.bindings(for: options)
-        XCTAssertEqual(bindings[1]?.keyCode, Int(kVK_ANSI_1))
-        XCTAssertEqual(bindings[9]?.keyCode, Int(kVK_ANSI_9))
-        XCTAssertEqual(bindings[10], DashboardShortcut(keyCode: -1, modifiers: 0))
+        XCTAssertEqual(bindings[10]?.keyCode, Int(kVK_ANSI_1))
+        XCTAssertEqual(bindings[2]?.keyCode, Int(kVK_ANSI_9))
+        XCTAssertEqual(bindings[1], DashboardShortcut(keyCode: -1, modifiers: 0))
+    }
+
+    func testShortcutRegistrationSuspensionTransitionsOnlyAtLifecycleBoundaries() {
+        var suspension = ShortcutRegistrationSuspension()
+
+        XCTAssertFalse(suspension.isActive)
+        XCTAssertTrue(suspension.recorderStarted())
+        XCTAssertFalse(suspension.recorderStarted())
+        XCTAssertTrue(suspension.isActive)
+        XCTAssertFalse(suspension.recorderEnded())
+        XCTAssertTrue(suspension.recorderEnded())
+        XCTAssertFalse(suspension.isActive)
+        XCTAssertFalse(suspension.recorderEnded())
     }
 }

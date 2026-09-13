@@ -8,6 +8,7 @@ struct KeyboardShortcutRecorder: View {
 
     var placeholder = "Click to set"
     var onShortcutChanged: ((Int, Int) -> Void)?
+    var onRecordingChanged: ((Bool) -> Void)?
     @State private var isRecording = false
 
     var body: some View {
@@ -17,7 +18,8 @@ struct KeyboardShortcutRecorder: View {
                 modifiers: $modifiers,
                 isRecording: $isRecording,
                 placeholder: placeholder,
-                onShortcutChanged: onShortcutChanged
+                onShortcutChanged: onShortcutChanged,
+                onRecordingChanged: onRecordingChanged
             )
             .frame(width: 150, height: 26)
             .background(isRecording ? Color.accentColor.opacity(0.15) : Color(nsColor: .controlBackgroundColor))
@@ -49,6 +51,7 @@ private struct RecorderField: NSViewRepresentable {
     @Binding var isRecording: Bool
     var placeholder: String
     var onShortcutChanged: ((Int, Int) -> Void)?
+    var onRecordingChanged: ((Bool) -> Void)?
 
     func makeNSView(context: Context) -> RecorderNSView {
         let view = RecorderNSView()
@@ -58,8 +61,13 @@ private struct RecorderField: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: RecorderNSView, context: Context) {
+        context.coordinator.parent = self
         nsView.placeholder = placeholder
         nsView.updateDisplay(keyCode: keyCode, modifiers: modifiers, isRecording: isRecording)
+    }
+
+    static func dismantleNSView(_ nsView: RecorderNSView, coordinator: Coordinator) {
+        nsView.endRecordingIfNeeded()
     }
 
     func makeCoordinator() -> Coordinator {
@@ -76,10 +84,12 @@ private struct RecorderField: NSViewRepresentable {
 
         func recorderDidStartRecording() {
             parent.isRecording = true
+            parent.onRecordingChanged?(true)
         }
 
         func recorderDidEndRecording() {
             parent.isRecording = false
+            parent.onRecordingChanged?(false)
         }
 
         func recorderDidCaptureShortcut(keyCode: Int, modifiers: Int) {
@@ -110,7 +120,6 @@ private final class RecorderNSView: NSView {
     private var isRecording = false
     private var currentKeyCode = -1
     private var currentModifiers = 0
-
     private let textField: NSTextField = {
         let field = NSTextField(labelWithString: "")
         field.alignment = .center
@@ -127,6 +136,10 @@ private final class RecorderNSView: NSView {
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setup()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -180,6 +193,23 @@ private final class RecorderNSView: NSView {
         return super.resignFirstResponder()
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        NotificationCenter.default.removeObserver(self)
+        guard let window else {
+            endRecordingIfNeeded()
+            return
+        }
+        let center = NotificationCenter.default
+        for name in [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
+            center.addObserver(self, selector: #selector(windowDidEndInteraction), name: name, object: window)
+        }
+    }
+
+    @objc private func windowDidEndInteraction(_ notification: Notification) {
+        endRecordingIfNeeded()
+    }
+
     func updateDisplay(keyCode: Int, modifiers: Int, isRecording: Bool) {
         currentKeyCode = keyCode
         currentModifiers = modifiers
@@ -206,6 +236,7 @@ private final class RecorderNSView: NSView {
     }
 
     private func startRecording() {
+        guard !isRecording else { return }
         isRecording = true
         window?.makeFirstResponder(self)
         textField.stringValue = "Press shortcut..."
@@ -215,10 +246,15 @@ private final class RecorderNSView: NSView {
     }
 
     private func stopRecording() {
+        guard isRecording else { return }
         isRecording = false
         window?.makeFirstResponder(nil)
         updateDisplayText()
         delegate?.recorderDidEndRecording()
+    }
+
+    func endRecordingIfNeeded() {
+        stopRecording()
     }
 
     private func updateDisplayText() {

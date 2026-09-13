@@ -35,19 +35,22 @@ final class DashboardSettingsContext: ObservableObject {
     private let onWidgetSettingsChanged: @MainActor () -> Void
     private let onWidgetShortcutChanged: @MainActor (Int, DashboardShortcut) -> Void
     private let onResetWidgetShortcuts: @MainActor () -> Void
+    private let onShortcutRecordingChanged: @MainActor (Bool) -> Void
 
     init(
         launchAtLoginManager: LaunchAtLoginManager,
         onShortcutChanged: @escaping @MainActor () -> Void,
         onWidgetSettingsChanged: @escaping @MainActor () -> Void,
         onWidgetShortcutChanged: @escaping @MainActor (Int, DashboardShortcut) -> Void,
-        onResetWidgetShortcuts: @escaping @MainActor () -> Void
+        onResetWidgetShortcuts: @escaping @MainActor () -> Void,
+        onShortcutRecordingChanged: @escaping @MainActor (Bool) -> Void
     ) {
         self.launchAtLoginManager = launchAtLoginManager
         self.onShortcutChanged = onShortcutChanged
         self.onWidgetSettingsChanged = onWidgetSettingsChanged
         self.onWidgetShortcutChanged = onWidgetShortcutChanged
         self.onResetWidgetShortcuts = onResetWidgetShortcuts
+        self.onShortcutRecordingChanged = onShortcutRecordingChanged
     }
 
     var canConfigureLaunchAtLogin: Bool { launchAtLoginManager.canConfigure }
@@ -61,6 +64,7 @@ final class DashboardSettingsContext: ObservableObject {
         onWidgetShortcutChanged(widgetType, shortcut)
     }
     func resetWidgetShortcuts() { onResetWidgetShortcuts() }
+    func shortcutRecordingChanged(_ isRecording: Bool) { onShortcutRecordingChanged(isRecording) }
     func updateWidgetShortcuts(
         options: [CompactWidgetOption],
         shortcuts: [Int: DashboardShortcut],
@@ -145,8 +149,13 @@ struct DashboardShortcutSettingsView: View {
         Form {
             Section("Keyboard Shortcut") {
                 LabeledContent("Open Settings") {
-                    KeyboardShortcutRecorder(keyCode: $keyCode, modifiers: $modifiers, placeholder: "None")
-                        .frame(width: 210, alignment: .trailing)
+                    KeyboardShortcutRecorder(
+                        keyCode: $keyCode,
+                        modifiers: $modifiers,
+                        placeholder: "None",
+                        onRecordingChanged: context.shortcutRecordingChanged
+                    )
+                    .frame(width: 210, alignment: .trailing)
                 }
                 Text("This shortcut works across macOS while Classroom Widgets is running.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -165,7 +174,8 @@ struct DashboardShortcutSettingsView: View {
                                     placeholder: "None",
                                     onShortcutChanged: { keyCode, modifiers in
                                         context.setWidgetShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers), for: option.widgetType)
-                                    }
+                                    },
+                                    onRecordingChanged: context.shortcutRecordingChanged
                                 )
                                 .frame(width: 210, alignment: .trailing)
                             }

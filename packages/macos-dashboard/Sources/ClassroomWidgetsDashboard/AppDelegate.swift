@@ -2,6 +2,23 @@ import AppKit
 import Carbon
 import SwiftUI
 
+struct ShortcutRegistrationSuspension {
+    private(set) var recorderCount = 0
+
+    mutating func recorderStarted() -> Bool {
+        recorderCount += 1
+        return recorderCount == 1
+    }
+
+    mutating func recorderEnded() -> Bool {
+        guard recorderCount > 0 else { return false }
+        recorderCount -= 1
+        return recorderCount == 0
+    }
+
+    var isActive: Bool { recorderCount > 0 }
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: WidgetHostController?
@@ -12,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var widgetShortcutStatuses: [Int: String] = [:]
     private var nextHotKeyID: UInt32 = 100
     private let widgetShortcutStore = WidgetLaunchShortcutStore()
+    private var shortcutRegistrationSuspension = ShortcutRegistrationSuspension()
     private var shortcutStatus: String?
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
@@ -20,7 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         onShortcutChanged: { [weak self] in self?.registerSettingsHotKey() },
         onWidgetSettingsChanged: { [weak self] in self?.controller?.applySettings() },
         onWidgetShortcutChanged: { [weak self] widgetType, shortcut in self?.setWidgetShortcut(shortcut, for: widgetType) },
-        onResetWidgetShortcuts: { [weak self] in self?.resetWidgetShortcuts() }
+        onResetWidgetShortcuts: { [weak self] in self?.resetWidgetShortcuts() },
+        onShortcutRecordingChanged: { [weak self] isRecording in self?.shortcutRecordingChanged(isRecording) }
     )
     private lazy var settingsWindowCoordinator = SettingsWindowCoordinator { [weak self] in
         guard let self else { return NSView() }
@@ -162,6 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func registerSettingsHotKey() {
+        guard !shortcutRegistrationSuspension.isActive else { return }
         let keyCode = shortcutKeyCode()
         guard keyCode != -1, let modifiers = carbonModifiers(from: shortcutModifiers()) else {
             settingsHotKey = nil
@@ -204,8 +224,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func setWidgetShortcut(_ shortcut: DashboardShortcut, for widgetType: Int) {
+        if shortcutRegistrationSuspension.isActive {
+            widgetShortcutStore.set(shortcut, for: widgetType)
+            widgetShortcutStatuses[widgetType] = nil
+            refreshShortcutContext()
+            return
+        }
         registerWidgetShortcut(shortcut, for: widgetType, persist: true)
         refreshShortcutContext()
+    }
+
+    private func shortcutRecordingChanged(_ isRecording: Bool) {
+        if isRecording {
+            guard shortcutRegistrationSuspension.recorderStarted() else { return }
+            settingsHotKey = nil
+            widgetHotKeys.removeAll()
+            return
+        }
+
+        guard shortcutRegistrationSuspension.recorderEnded() else { return }
+        registerSettingsHotKey()
+        if let options = controller?.widgetOptions { widgetOptionsChanged(options) }
     }
 
     private func registerWidgetShortcut(_ proposed: DashboardShortcut?, for widgetType: Int, persist: Bool) {

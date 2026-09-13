@@ -39,7 +39,7 @@ struct WidgetLaunchShortcutStore {
     }
 
     func reset(options: [CompactWidgetOption]) {
-        let widgetTypes = options.map(\.widgetType).sorted()
+        let widgetTypes = options.map(\.widgetType)
         var bindings = load()
         for widgetType in widgetTypes { bindings[widgetType] = DashboardShortcut(keyCode: -1, modifiers: 0) }
         for (widgetType, keyCode) in zip(widgetTypes.prefix(9), Self.defaultKeyCodes) {
@@ -52,7 +52,7 @@ struct WidgetLaunchShortcutStore {
     private func initializeIfNeeded(options: [CompactWidgetOption]) {
         guard !options.isEmpty, !defaults.bool(forKey: Self.initializedKey) else { return }
         var bindings: [Int: DashboardShortcut] = [:]
-        for (widgetType, keyCode) in zip(options.map(\.widgetType).sorted().prefix(9), Self.defaultKeyCodes) {
+        for (widgetType, keyCode) in zip(options.map(\.widgetType).prefix(9), Self.defaultKeyCodes) {
             bindings[widgetType] = DashboardShortcut(keyCode: keyCode, modifiers: Self.defaultModifiers)
         }
         save(bindings)
