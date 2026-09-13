@@ -27,7 +27,6 @@
       "out/**",
       "src/renderer/**",
       "assets/**",
-      "version.json",
       "package.json"
     ],
     "extraResources": [

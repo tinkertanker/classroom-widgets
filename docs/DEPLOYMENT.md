@@ -15,7 +15,7 @@ Web deployments are identified by Git commit rather than by a shared product ver
 
 The workflow SSHes into the production server, checks out the exact pushed commit, and rebuilds and restarts the containers. The short commit SHA is baked into the teacher app as its web build ID and appears in the UI as `Web <sha>`.
 
-macOS tags use the `macos-v<version>` namespace and do not trigger this workflow. See [macOS distribution](./MACOS_DISTRIBUTION.md) for that release process.
+Desktop release tags (`v<version>`) do not trigger this workflow. See [Releasing](./RELEASING.md) for that process.
 
 **Required GitHub Secrets** (repo Settings → Secrets and variables → Actions):
 

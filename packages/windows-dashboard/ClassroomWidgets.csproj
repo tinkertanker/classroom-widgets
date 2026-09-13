@@ -13,7 +13,7 @@
     <Company>Tinkertanker</Company>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version Condition="'$(Version)' == ''">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/version.json')), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</Version>
+    <Version Condition="'$(Version)' == ''">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../../version.json')), '"version"\s*:\s*"([^"]+)"').Groups[1].Value)</Version>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
@@ -35,7 +35,6 @@
 
   <ItemGroup>
     <Resource Include="Assets\AppIcon.ico" />
-    <None Include="version.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Bundle the teacher production build so the app runs without a dev server. -->

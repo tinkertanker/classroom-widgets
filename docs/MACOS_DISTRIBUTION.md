@@ -41,15 +41,9 @@ Releases before 0.10.15 used `com.classroomwidgets.dashboard`. Preferences, logi
 
 ## Versioning
 
-macOS releases are versioned independently from web deployments. The source of truth is:
+The desktop apps (macOS, Windows, Linux) share one version, independent of web deployments. The source of truth is the repo-root `version.json`. That version is written to `CFBundleShortVersionString`, the DMG filename, and the version label shown by the embedded teacher UI. `CFBundleVersion` is a separate monotonically increasing build number and defaults to a timestamp for release builds.
 
-```text
-packages/macos-dashboard/version.json
-```
-
-That version is written to `CFBundleShortVersionString`, the DMG filename, and the version label shown by the embedded teacher UI. `CFBundleVersion` is a separate monotonically increasing build number and defaults to a timestamp for release builds.
-
-Use tags named `macos-v<version>`. Existing `v0.10.15` and older tags remain valid historical releases; the namespaced format starts with the next macOS release.
+Releases are tagged `v<version>` and contain all platforms; see [Releasing](./RELEASING.md). Older `v0.10.x` / `macos-v*` tags remain valid historical macOS-only releases.
 
 ## Local development
 
@@ -71,7 +65,7 @@ Install [`create-dmg`](https://github.com/create-dmg/create-dmg), then run:
 npm run macos:dmg
 ```
 
-This creates an ad hoc signed local package at `dist/ClassroomWidgets-v<version>-macos.dmg` and installs the built app to `/Applications/Classroom Widgets Dashboard.app`. The version comes from `packages/macos-dashboard/version.json`. Use this only for local packaging checks; it is not suitable for public download.
+This creates an ad hoc signed local package at `dist/ClassroomWidgets-v<version>-macos.dmg` and installs the built app to `/Applications/Classroom Widgets Dashboard.app`. The version comes from the repo-root `version.json`. Use this only for local packaging checks; it is not suitable for public download.
 
 ## Developer ID release
 
@@ -124,22 +118,21 @@ Mount the DMG and repeat the app identity and signature checks against its copy.
 
 ## Publish a release
 
-1. Update `packages/macos-dashboard/version.json`, then land the release changes on `master`.
-2. Build and validate the signed, notarized DMG from that exact commit on an authorized Mac.
-3. Tag that exact commit as `macos-v<version>` and push the tag.
-4. Create the matching GitHub release, attach the DMG, and include its SHA-256 in the release notes.
-5. Verify the remote tag target, uploaded asset size and digest, and public download URL.
+The full cross-platform process is in [Releasing](./RELEASING.md). The macOS-specific part:
 
-For example, after updating the version file:
+1. Once the `v<version>` tag is pushed and the Release workflow has created the GitHub release, check out that exact tag on an authorized Mac.
+2. Build and validate the signed, notarized DMG (sections above).
+3. Upload it and add its SHA-256 to the release description:
 
-```bash
-VERSION="$(node -p "require('./packages/macos-dashboard/version.json').version")"
-npm run macos:dmg -- --distribution --notarise
-git tag "macos-v${VERSION}"
-git push origin master "macos-v${VERSION}"
-gh release create "macos-v${VERSION}" \
-  "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
-  --title "Classroom Widgets for macOS v${VERSION}"
-```
+   ```bash
+   VERSION="$(node -p "require('./version.json').version")"
+   npm run macos:dmg -- --distribution --notarise
+   gh release upload "v${VERSION}" "dist/ClassroomWidgets-v${VERSION}-macos.dmg"
+   shasum -a 256 "dist/ClassroomWidgets-v${VERSION}-macos.dmg"
+   ```
 
-Publishing a macOS tag or GitHub release does not deploy the web application.
+4. Verify the uploaded asset size and digest and the public download URL.
+
+Alternatively configure the Apple signing secrets described in [Releasing](./RELEASING.md) so the workflow builds and attaches the DMG itself.
+
+Publishing a release tag does not deploy the web application.

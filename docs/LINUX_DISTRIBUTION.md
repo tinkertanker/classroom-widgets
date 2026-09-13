@@ -66,7 +66,7 @@ cd packages/linux-dashboard && npm install && npm run build && npm start
 
 ## Publishing a release
 
-The easiest path is GitHub Actions (`.github/workflows/linux-release.yml`): bump `packages/linux-dashboard/version.json`, rewrite `packages/linux-dashboard/RELEASE_NOTES.md` with the "What's new" bullets for that version, then push a tag such as `linux-v0.1.0`. The workflow builds on an Ubuntu runner and creates a GitHub release named "Classroom Widgets for Linux v<version>" whose description combines those notes with install requirements and SHA-256 checksums, and attaches `ClassroomWidgets-v<version>-linux-x86_64.AppImage` and `ClassroomWidgets-v<version>-linux-amd64.deb`. It can also be run manually from the Actions tab, which uploads the same files as a workflow artifact.
+Linux ships in the shared cross-platform release — see [Releasing](./RELEASING.md). Pushing a `v<version>` tag runs `.github/workflows/release.yml`, whose Linux job builds on an Ubuntu runner and contributes `ClassroomWidgets-v<version>-linux-x86_64.AppImage` and `ClassroomWidgets-v<version>-linux-amd64.deb` to the release.
 
 To build locally instead:
 
@@ -76,6 +76,6 @@ npm run linux:publish
 
 This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, producing an AppImage and a `.deb`. The AppImage is self-contained; the `.deb` installs under `/opt/Classroom Widgets`.
 
-The native version comes from `packages/linux-dashboard/version.json` (passed to electron-builder via `-c.extraMetadata.version`) and is independent of the web build ID and the macOS/Windows versions. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_LINUX_VERSION__`.
+The native version comes from the repo-root `version.json` (shared with macOS and Windows; passed to electron-builder via `-c.extraMetadata.version`) and is independent of the web build ID. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_LINUX_VERSION__`.
 
 Code signing is not configured; AppImages and .deb packages run unsigned.

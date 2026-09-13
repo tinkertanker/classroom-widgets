@@ -44,7 +44,7 @@ fi
 pkill -f "$package_dir/node_modules/electron/dist/electron" || true
 pkill -x classroom-widgets || true
 
-version="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$package_dir/version.json','utf8')).version)")"
+version="$(node -e "console.log(JSON.parse(require('fs').readFileSync('$repo_root/version.json','utf8')).version)")"
 
 if [[ "$publish" -eq 1 ]]; then
   (cd "$package_dir" && npm run dist -- -c.extraMetadata.version="$version")

@@ -309,12 +309,12 @@ See [Adding New Widget Guide](./docs/ADDING_NEW_WIDGET.md) for a step-by-step gu
 
 ## 📦 Deployment
 
-Web and macOS releases are versioned independently:
+Web and desktop releases are versioned independently:
 
 - Web deployments are identified by their Git commit and deploy automatically whenever changes land on `master`.
-- macOS releases use the version in `packages/macos-dashboard/version.json` and tags named `macos-v<version>`.
+- The macOS, Windows and Linux apps share the version in the repo-root `version.json`; pushing a `v<version>` tag publishes one GitHub release with all platforms (see [Releasing](./docs/RELEASING.md)).
 
-Creating a macOS release tag does not deploy the web application.
+Creating a release tag does not deploy the web application.
 
 See the [Deployment Guide](./docs/DEPLOYMENT.md) for web deployment instructions and the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for the native release process.
 
