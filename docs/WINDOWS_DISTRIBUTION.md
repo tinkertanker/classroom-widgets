@@ -68,12 +68,12 @@ The project copies `packages/teacher/build/**` into the output `Web` folder, so 
 
 ## Publishing a release
 
-The easiest path is GitHub Actions (`.github/workflows/windows-release.yml`): bump `packages/windows-dashboard/version.json`, rewrite `packages/windows-dashboard/RELEASE_NOTES.md` with the "What's new" bullets for that version, then push a tag such as `windows-v0.1.0`. The workflow builds on a Windows runner and creates a GitHub release named "Classroom Widgets for Windows v<version>" whose description combines those notes with install requirements and SHA-256 checksums, and attaches two assets:
+Windows ships in the shared cross-platform release — see [Releasing](./RELEASING.md). Pushing a `v<version>` tag runs `.github/workflows/release.yml`, whose Windows job builds on a Windows runner and contributes two assets to the release:
 
 - `ClassroomWidgets-v<version>-windows-x64-setup.exe` — per-user Inno Setup installer (no admin rights needed). It offers a **Start Classroom Widgets automatically when I sign in** checkbox, which writes the same `HKCU\...\Run` value the tray "Launch at login" toggle manages, so either can turn it off later. Uninstall is via Windows Settings › Apps.
 - `ClassroomWidgets-v<version>-windows-x64.zip` — portable build; unzip anywhere and run `ClassroomWidgets.exe`.
 
-It can also be run manually from the Actions tab, which uploads both as a workflow artifact. To build the installer locally, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `npm run windows:publish -- -Installer` (source in `packages/windows-dashboard/Installer/ClassroomWidgets.iss`).
+To build the installer locally, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `npm run windows:publish -- -Installer` (source in `packages/windows-dashboard/Installer/ClassroomWidgets.iss`).
 
 To build locally instead:
 
@@ -83,6 +83,6 @@ npm run windows:publish
 
 This runs `dotnet publish -c Release -r win-x64 --self-contained` into `packages/windows-dashboard/dist`, producing a folder that runs on machines without the .NET runtime (the WebView2 Runtime is still required). Zip that folder as `ClassroomWidgets-v<version>-windows-x64.zip`, or wrap it with an installer of your choice.
 
-The native version comes from `packages/windows-dashboard/version.json` and is independent of the web build ID and the macOS version. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_WINDOWS_VERSION__`.
+The native version comes from the repo-root `version.json` (shared with macOS and Linux) and is independent of the web build ID. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_WINDOWS_VERSION__`.
 
 Code signing is not yet configured; unsigned builds trigger SmartScreen on first launch. Sign `ClassroomWidgets.exe` with `signtool` before distributing publicly.

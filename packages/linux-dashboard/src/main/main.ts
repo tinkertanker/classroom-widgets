@@ -17,9 +17,11 @@ if (!gotLock) {
   bootstrap();
 }
 
+// Packaged builds get the version via electron-builder extraMetadata; dev runs read the repo-root version.json.
 function readAppVersion(): string {
+  if (app.isPackaged) return app.getVersion();
   try {
-    const raw = JSON.parse(readFileSync(join(app.getAppPath(), 'version.json'), 'utf8')) as { version?: unknown };
+    const raw = JSON.parse(readFileSync(join(app.getAppPath(), '..', '..', 'version.json'), 'utf8')) as { version?: unknown };
     if (typeof raw.version === 'string' && raw.version) return raw.version;
   } catch {
     // Fall through to package metadata.
