@@ -135,7 +135,11 @@ public sealed class TrayController : IDisposable
             ?.Invoke(_icon, null);
     }
 
-    private void OpenSettings()
+    /// <summary>
+    /// Shows the settings window (single instance), also opened when a widget
+    /// panel asks for its link-shortener settings gear.
+    /// </summary>
+    public void OpenSettings()
     {
         if (_settingsWindow is { IsLoaded: true })
         {

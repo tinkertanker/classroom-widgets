@@ -14,6 +14,7 @@ import { bridgePreloadPath } from './panelWindow';
 import { WidgetPanelCoordinator } from './panelCoordinator';
 import { DashboardSettings } from './settings';
 import { configureWebContents, evaluateBool } from './webContentsSetup';
+import { shortenerSettingsScript } from './shortenerSettings';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,6 +48,7 @@ export class WidgetHostController extends EventEmitter {
     this.coordinator.on('randomiserListChanged', (change: unknown) => void this.applyRandomiserListChange(change));
     this.coordinator.on('widgetCreationRequested', (widgetType: number) => void this.addWidget(widgetType));
     this.coordinator.on('widgetRemovalRequested', (widgetId: string) => void this.removeWidget(widgetId));
+    this.coordinator.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
 
     this.window = new BrowserWindow({
       show: false,
@@ -70,6 +72,7 @@ export class WidgetHostController extends EventEmitter {
 
     configureWebContents(this.window.webContents);
     registerNativeMessages(this.window.webContents, (message) => this.handleHostMessage(message));
+    this.window.webContents.on('did-finish-load', () => this.applySettings());
     this.window.webContents.on('render-process-gone', (_event, details) => {
       if (details.reason === 'clean-exit') return;
       log.error(`Widget host process gone (${details.reason}); reloading`);
@@ -97,7 +100,8 @@ export class WidgetHostController extends EventEmitter {
     if (this.initialized) {
       void evaluateBool(
         this.window.webContents,
-        `window.classroomDashboard?.setBackgroundOpacity?.(${JSON.stringify(this.settings.backgroundOpacity)})`,
+        shortenerSettingsScript(this.settings.linkShortener)
+          + `window.classroomDashboard?.setBackgroundOpacity?.(${JSON.stringify(this.settings.backgroundOpacity)})`,
       );
     }
   }

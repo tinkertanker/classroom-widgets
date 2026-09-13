@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
 import { DashboardSettings } from './settings';
 import { rendererDir } from './panelWindow';
+import { readShortenerSettings } from './shortenerSettings';
 
 let settingsWindow: BrowserWindow | null = null;
 let ipcInstalled = false;
@@ -13,6 +14,7 @@ function installIpc(settings: DashboardSettings): void {
     backgroundOpacity: settings.backgroundOpacity,
     alwaysOnTop: settings.alwaysOnTop,
     launchAtLogin: settings.launchAtLoginEnabled,
+    linkShortener: settings.linkShortener,
   }));
   ipcMain.on('settings:set', (_event, update: unknown) => {
     if (typeof update !== 'object' || update === null) return;
@@ -25,6 +27,9 @@ function installIpc(settings: DashboardSettings): void {
     }
     if (typeof partial.launchAtLogin === 'boolean') {
       settings.launchAtLoginEnabled = partial.launchAtLogin;
+    }
+    if (partial.linkShortener && typeof partial.linkShortener === 'object') {
+      settings.linkShortener = readShortenerSettings(partial.linkShortener);
     }
     settings.notifyChanged();
   });
@@ -42,8 +47,8 @@ export function openSettingsWindow(settings: DashboardSettings, appVersion: stri
     return;
   }
   const win = new BrowserWindow({
-    width: 380,
-    height: 320,
+    width: 440,
+    height: 650,
     resizable: false,
     title: 'Classroom Widgets Settings',
     autoHideMenuBar: true,

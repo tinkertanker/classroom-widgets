@@ -47,6 +47,9 @@ public partial class App : Application
         _host.ApplySettings();
 
         _tray = new TrayController(_host, _settings);
+        // The widget settings gear posts classroomWidgetPanel open-settings;
+        // panels route it here so the same Settings window opens as from the tray.
+        _host.OpenSettingsRequested += () => _tray.OpenSettings();
         _ = _host.StartAsync();
     }
 

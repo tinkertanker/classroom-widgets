@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
+import { isNativeDesktop, postNativeMessage } from '@shared/utils/nativeBridge';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 import { useLinkShortener } from '@shared/hooks/useWorkspace';
 import {
@@ -39,8 +40,8 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
   }, []);
 
   const openSettings = () => {
-    if (window.__CLASSROOM_WIDGETS_MACOS__) {
-      window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({ type: 'open-settings' });
+    if (isNativeDesktop()) {
+      postNativeMessage('classroomWidgetPanel', { type: 'open-settings' });
       return;
     }
     showModal({

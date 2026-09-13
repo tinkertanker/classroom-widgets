@@ -4,6 +4,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { BackgroundType, WidgetType } from '../types';
+import { isNativeDesktop } from '../utils/nativeBridge';
 import { createDefaultShortenerSettings, type ShortenerSettings } from '../utils/urlShortener';
 
 declare global {
@@ -124,7 +125,7 @@ export function useLinkShortener() {
   const updateSettings = useWorkspaceStore((state) => state.updateLinkShortener);
   const nativeSettings = useSyncExternalStore(subscribeNativeShortenerSettings, getNativeShortenerSettings);
 
-  return { settings: window.__CLASSROOM_WIDGETS_MACOS__ ? nativeSettings : settings, updateSettings };
+  return { settings: isNativeDesktop() ? nativeSettings : settings, updateSettings };
 }
 
 // Theme hook with side effects

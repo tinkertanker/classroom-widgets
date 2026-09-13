@@ -89,11 +89,12 @@ The website's Link Shortener still uses `VITE_SHORTIO_API_KEY`,
 `VITE_SHORTIO_DOMAIN`, and the optional `VITE_SHORTIO_BASE_URL` at build time.
 It remains hidden from the web launcher when no API key is configured.
 
-The macOS app instead uses **Settings → Link Shortener** at runtime, shared
+The desktop apps instead use **Settings → Link Shortener** at runtime, shared
 across floating widgets and saved in native preferences. TinyURL is the default
 and needs no key. See [macOS usage](MACOS_DISTRIBUTION.md#use-the-app) for provider
 choices and QR-code fallback behavior. No web redeployment is needed to change
-the Mac's provider.
+the desktop provider. Windows and Linux expose the same provider choices in
+their Settings windows, also accessible from the widget's settings gear.
 
 ## 🔒 Security Best Practices
 

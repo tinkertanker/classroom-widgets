@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { isNativeDesktop, postNativeMessage } from '@shared/utils/nativeBridge';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 import { useLinkShortener } from '@shared/hooks/useWorkspace';
@@ -34,7 +35,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     savedState,
     onStateChange
   });
-  const isDesktop = isDesktopDashboardMode() || window.__CLASSROOM_WIDGETS_MACOS__ === true;
+  const isDesktop = isDesktopDashboardMode() || isNativeDesktop();
   const { url, title } = state;
   const shortUrl = isDesktop ? state.shortUrl : undefined;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -119,8 +120,8 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   }, [url]);
 
   const openSettings = useCallback(() => {
-    if (window.__CLASSROOM_WIDGETS_MACOS__) {
-      window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({ type: 'open-settings' });
+    if (isNativeDesktop()) {
+      postNativeMessage('classroomWidgetPanel', { type: 'open-settings' });
       return;
     }
     showModal({

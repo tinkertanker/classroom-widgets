@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- Allow cross-building the Windows-targeted projects (compile and tests)
+       on non-Windows machines; the property is unnecessary on Windows. -->
+  <PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+</Project>

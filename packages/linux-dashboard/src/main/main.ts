@@ -6,6 +6,7 @@ import { WidgetHostController } from './hostController';
 import { log } from './log';
 import { DashboardSettings } from './settings';
 import { TrayController } from './tray';
+import { openSettingsWindow } from './settingsWindow';
 
 app.setName('ClassroomWidgets');
 
@@ -92,6 +93,7 @@ function bootstrap(): void {
 
     settings = DashboardSettings.load();
     host = new WidgetHostController(settings, version);
+    host.on('openSettingsRequested', () => openSettingsWindow(settings!, version));
     settings.on('changed', () => host?.applySettings());
     host.applySettings();
 

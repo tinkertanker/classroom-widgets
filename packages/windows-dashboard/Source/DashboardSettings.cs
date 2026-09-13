@@ -37,6 +37,15 @@ public sealed class DashboardSettings
     public bool AlwaysOnTop { get; set; } = true;
     public Dictionary<string, PanelFrame> PanelFrames { get; set; } = new();
 
+    /// <summary>Shortening service used by Link Shortener and QR Code widgets.</summary>
+    public string LinkShortenerProvider { get; set; } = DashboardShortenerSettings.DefaultProvider;
+
+    /// <summary>Short.io public API key (pk_…). Never a secret API key.</summary>
+    public string LinkShortenerPublicApiKey { get; set; } = "";
+
+    /// <summary>Short.io branded domain (e.g. go.myschool.edu).</summary>
+    public string LinkShortenerDomain { get; set; } = "";
+
     public event Action? Changed;
 
     public static DashboardSettings Load()

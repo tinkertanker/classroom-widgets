@@ -30,6 +30,7 @@ public partial class WidgetPanelWindow : Window
 
     private WidgetPanelDescriptor _descriptor;
     private double _backgroundOpacity;
+    private readonly DashboardSettings _shortenerSettings;
     private bool _isDark;
     private IReadOnlyList<CompactWidgetOption> _options = Array.Empty<CompactWidgetOption>();
     private readonly DispatcherTimer _hoverTimer;
@@ -50,6 +51,7 @@ public partial class WidgetPanelWindow : Window
     public event Action<int>? WidgetCreationRequested;
     public event Action<WidgetPanelLayout>? LayoutRequested;
     public event Action<string, Rect>? FrameChanged;
+    public event Action? OpenSettingsRequested;
 
     public string WidgetId => _descriptor.Id;
     public bool IsResizable => _descriptor.IsResizable;
@@ -63,10 +65,11 @@ public partial class WidgetPanelWindow : Window
         }
     }
 
-    public WidgetPanelWindow(WidgetPanelDescriptor descriptor, double backgroundOpacity, bool alwaysOnTop)
+    public WidgetPanelWindow(WidgetPanelDescriptor descriptor, double backgroundOpacity, bool alwaysOnTop, DashboardSettings settings)
     {
         _descriptor = descriptor;
         _backgroundOpacity = Math.Clamp(backgroundOpacity, 0, 1);
+        _shortenerSettings = settings;
         InitializeComponent();
         Topmost = alwaysOnTop;
         ApplyDescriptorPresentation();
@@ -127,9 +130,23 @@ public partial class WidgetPanelWindow : Window
         var opacityChanged = _backgroundOpacity != next;
         _backgroundOpacity = next;
         Topmost = alwaysOnTop;
+        // Native shortener preferences outrank anything a panel cached, so
+        // republish them on every settings change, like macOS does.
+        ApplyShortenerSettings();
         if (!opacityChanged) return;
         ApplyPanelBackground();
         ApplyWebPresentation();
+    }
+
+    /// <summary>
+    /// Publishes the native link-shortener settings into this panel's web
+    /// view. Values are JSON-serialized by <see cref="DashboardShortenerSettings"/>
+    /// so credentials can never break out of the assignment.
+    /// </summary>
+    private void ApplyShortenerSettings()
+    {
+        if (!_webReady) return;
+        _ = WebView.CoreWebView2.ExecuteScriptAsync(DashboardShortenerSettings.Script(_shortenerSettings));
     }
 
     public void SetWidgetCreationOptions(IReadOnlyList<CompactWidgetOption> options)
@@ -240,7 +257,13 @@ public partial class WidgetPanelWindow : Window
         if (_closingPermanently) return;
         _webReady = true;
         WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
-        WebView.CoreWebView2.NavigationCompleted += (_, _) => ApplyWebPresentation();
+        WebView.CoreWebView2.NavigationCompleted += (_, args) =>
+        {
+            // Mirror the macOS didFinish navigation behaviour: republish the
+            // native shortener settings before the reloaded panel state.
+            if (args.IsSuccess) ApplyShortenerSettings();
+            ApplyWebPresentation();
+        };
         WebView.CoreWebView2.ProcessFailed += (_, args) =>
         {
             if (args.ProcessFailedKind is CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)
@@ -288,6 +311,9 @@ public partial class WidgetPanelWindow : Window
 
             switch (typeValue.GetString())
             {
+                case "open-settings":
+                    OpenSettingsRequested?.Invoke();
+                    break;
                 case "panel-ready":
                     _panelReady = true;
                     PushSnapshot(force: true);
@@ -331,8 +357,12 @@ public partial class WidgetPanelWindow : Window
         _lastPushedRevision = _descriptor.Revision;
         _lastPushedStateRevision = _descriptor.StateRevision;
         var snapshot = _descriptor.SnapshotPayload.GetRawText();
+        // Publish the native shortener settings ahead of the snapshot in the
+        // same script so widgets read current preferences on their first
+        // render, the way the macOS panel does.
         _ = DashboardWebView.EvaluateBoolAsync(WebView,
-            $"(() => {{ const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot({snapshot}); return true; }})()");
+            DashboardShortenerSettings.Script(_shortenerSettings)
+            + $"(() => {{ const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot({snapshot}); return true; }})()");
     }
 
     private void ApplyDescriptorPresentation()

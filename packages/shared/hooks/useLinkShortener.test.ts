@@ -4,12 +4,14 @@ import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 
 afterEach(() => {
   delete window.__CLASSROOM_WIDGETS_MACOS__;
+  delete window.__CLASSROOM_WIDGETS_WINDOWS__;
+  delete window.__CLASSROOM_WIDGETS_LINUX__;
   delete window.classroomShortenerSettings;
 });
 
-test('Mac panels use native preferences, including live changes and remounts, rather than local storage', () => {
+test.each(['__CLASSROOM_WIDGETS_MACOS__', '__CLASSROOM_WIDGETS_WINDOWS__', '__CLASSROOM_WIDGETS_LINUX__'] as const)('%s panels use live native preferences rather than local storage', (flag) => {
   useWorkspaceStore.getState().updateLinkShortener({ provider: 'tinyurl' });
-  window.__CLASSROOM_WIDGETS_MACOS__ = true;
+  window[flag] = true;
   window.classroomShortenerSettings = { provider: 'shortio', shortioApiKey: 'pk_test', shortioDomain: 'go.school.edu' };
   const first = renderHook(() => useLinkShortener());
   expect(first.result.current.settings.provider).toBe('shortio');

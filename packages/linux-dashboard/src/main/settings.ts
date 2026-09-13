@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from '
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { log } from './log';
+import { readShortenerSettings, ShortenerSettings } from './shortenerSettings';
 
 export interface PanelFrame {
   left: number;
@@ -16,6 +17,7 @@ export interface DashboardSettingsData {
   backgroundOpacity: number;
   alwaysOnTop: boolean;
   panelFrames: Record<string, PanelFrame>;
+  linkShortener: ShortenerSettings;
 }
 
 /**
@@ -28,6 +30,7 @@ export class DashboardSettings extends EventEmitter {
   backgroundOpacity = 1;
   alwaysOnTop = true;
   panelFrames: Record<string, PanelFrame> = {};
+  linkShortener = readShortenerSettings();
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -42,6 +45,7 @@ export class DashboardSettings extends EventEmitter {
           settings.backgroundOpacity = Math.min(1, Math.max(0, raw.backgroundOpacity));
         }
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
+        settings.linkShortener = readShortenerSettings(raw.linkShortener);
         if (raw.panelFrames && typeof raw.panelFrames === 'object') {
           for (const [id, frame] of Object.entries(raw.panelFrames)) {
             if (
@@ -67,6 +71,7 @@ export class DashboardSettings extends EventEmitter {
         backgroundOpacity: this.backgroundOpacity,
         alwaysOnTop: this.alwaysOnTop,
         panelFrames: this.panelFrames,
+        linkShortener: this.linkShortener,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {

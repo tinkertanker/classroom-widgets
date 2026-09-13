@@ -9,6 +9,8 @@ async function getShortener() {
 
 afterEach(() => {
   delete window.__CLASSROOM_WIDGETS_MACOS__;
+  delete window.__CLASSROOM_WIDGETS_WINDOWS__;
+  delete window.__CLASSROOM_WIDGETS_LINUX__;
   window.history.replaceState({}, '', '/');
   vi.unstubAllEnvs();
 });
@@ -20,10 +22,10 @@ test('the web launcher still requires its build-time key', async () => {
   expect((await getShortener())?.features?.hidden).toBe(false);
 });
 
-test('only the Mac shell advertises floating Link Shortener until other shells have settings support', async () => {
+test.each(['__CLASSROOM_WIDGETS_MACOS__', '__CLASSROOM_WIDGETS_WINDOWS__', '__CLASSROOM_WIDGETS_LINUX__'] as const)('%s advertises floating Link Shortener without a build-time key', async (flag) => {
   window.history.replaceState({}, '', '/?dashboard=1&mode=compact');
   expect((await getShortener())?.compactPanel?.supported).toBe(false);
-  window.__CLASSROOM_WIDGETS_MACOS__ = true;
+  window[flag] = true;
   const config = await getShortener();
   expect(config?.compactPanel?.supported).toBe(true);
   expect(config?.features?.hidden).toBe(false);

@@ -32,6 +32,26 @@
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
                    Text="Lower the opacity to let slides or other windows show through the widgets." />
 
+        <TextBlock Text="Link Shortener" FontWeight="SemiBold" FontSize="15" Margin="0,20,0,8" />
+
+        <ComboBox x:Name="ProviderCombo" Margin="0,4" SelectionChanged="ProviderCombo_SelectionChanged">
+            <ComboBoxItem Content="TinyURL — no sign-up" Tag="tinyurl" />
+            <ComboBoxItem Content="spoo.me — no sign-up" Tag="spoo" />
+            <ComboBoxItem Content="Short.io — your branded domain" Tag="shortio" />
+        </ComboBox>
+
+        <StackPanel x:Name="ShortioFields" Margin="0,8,0,0" Visibility="Collapsed">
+            <TextBlock Text="Public API key (pk_…)" Margin="0,4,0,2" />
+            <PasswordBox x:Name="ApiKeyBox" PasswordChanged="ApiKeyBox_PasswordChanged" />
+            <TextBlock Text="Domain (e.g. go.myschool.edu)" Margin="0,8,0,2" />
+            <TextBox x:Name="DomainBox" TextChanged="DomainBox_TextChanged" />
+            <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,6,0,0"
+                       Text="Use a public key, never a secret API key." />
+        </StackPanel>
+
+        <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,6,0,0"
+                   Text="These settings are saved on this PC and shared by all Link Shortener and QR Code widgets. Creating a short link sends its destination to the selected provider; if your school blocks a shortening domain, try another service." />
+
         <Button x:Name="ResetPositionsButton" Content="Forget saved widget positions" Margin="0,18,0,0" Padding="10,4"
                 HorizontalAlignment="Left" Click="ResetPositionsButton_Click" />
 

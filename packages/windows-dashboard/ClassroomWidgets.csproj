@@ -28,6 +28,12 @@
     <Using Remove="System.Windows.Forms" />
   </ItemGroup>
 
+  <!-- The xUnit tests live in their own project below this directory. -->
+  <ItemGroup>
+    <Compile Remove="Tests\**" />
+    <None Remove="Tests\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <ApplicationDefinition Include="Source\App.xaml" />
     <Page Remove="Source\App.xaml" />
