@@ -1,4 +1,4 @@
-import { app, session } from 'electron';
+import { app, globalShortcut, session } from 'electron';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
@@ -6,6 +6,7 @@ import { WidgetHostController } from './hostController';
 import { log } from './log';
 import { DashboardSettings } from './settings';
 import { TrayController } from './tray';
+import { WidgetShortcutController } from './widgetShortcuts';
 
 app.setName('ClassroomWidgets');
 
@@ -33,6 +34,7 @@ function bootstrap(): void {
   const version = readAppVersion();
 
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+  if (process.platform === 'linux') app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal');
   const debugPort = Number.parseInt(process.env.CLASSROOM_WIDGETS_DEBUG_PORT ?? '', 10);
   if (Number.isInteger(debugPort) && debugPort > 0) {
     app.commandLine.appendSwitch('remote-debugging-port', String(debugPort));
@@ -45,6 +47,7 @@ function bootstrap(): void {
   let settings: DashboardSettings | null = null;
   let host: WidgetHostController | null = null;
   let tray: TrayController | null = null;
+  let shortcuts: WidgetShortcutController | null = null;
   let shuttingDown = false;
   let terminationPrepared = false;
 
@@ -92,14 +95,18 @@ function bootstrap(): void {
 
     settings = DashboardSettings.load();
     host = new WidgetHostController(settings, version);
+    shortcuts = new WidgetShortcutController(settings, globalShortcut, (widgetType) => void host?.addWidget(widgetType));
+    host.on('widgetOptionsChanged', () => shortcuts?.updateOptions(host?.widgetOptions ?? []));
+    host.on('hostAvailabilityChanged', (available: boolean) => shortcuts?.setHostAvailable(available));
     settings.on('changed', () => host?.applySettings());
     host.applySettings();
 
-    tray = new TrayController(host, settings, version, () => void requestQuit());
+    tray = new TrayController(host, settings, shortcuts, version, () => void requestQuit());
     void host.start();
   });
 
   app.on('will-quit', () => {
+    shortcuts?.unregisterAll();
     tray?.destroy();
     log.info('Classroom Widgets exited');
   });
