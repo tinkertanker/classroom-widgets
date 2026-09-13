@@ -17,6 +17,16 @@
     </div>
     <p class="hint">Lower the opacity to let slides or other windows show through the widgets.</p>
 
+    <section aria-labelledby="shortcutsHeading">
+      <div class="section-heading">
+        <h2 id="shortcutsHeading">Launch shortcuts</h2>
+        <button id="resetShortcuts" class="secondary">Reset</button>
+      </div>
+      <p class="hint">These shortcuts work globally while Classroom Widgets is running. Select a shortcut, then press a modifier and key.</p>
+      <p class="hint warning" id="waylandWarning" hidden>Wayland may prevent global shortcuts unless your desktop compositor supports Electron shortcut registration. Conflicts are shown below.</p>
+      <div id="shortcuts" class="shortcut-list" aria-live="polite"></div>
+    </section>
+
     <button id="reset">Forget saved widget positions</button>
 
     <p class="footer" id="version"></p>

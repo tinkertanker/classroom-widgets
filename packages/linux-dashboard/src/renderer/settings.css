@@ -15,6 +15,11 @@ h1 {
   margin: 0 0 8px;
 }
 
+h2 {
+  font-size: 14px;
+  margin: 0;
+}
+
 label {
   display: block;
   margin: 4px 0;
@@ -45,9 +50,65 @@ label {
   margin: 4px 0 0;
 }
 
+.warning {
+  color: #92400E;
+}
+
+section {
+  border-top: 1px solid #D1D5DB;
+  margin-top: 18px;
+  padding-top: 14px;
+}
+
+.section-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.shortcut-list {
+  margin-top: 10px;
+}
+
+.shortcut-row {
+  align-items: center;
+  display: grid;
+  gap: 5px 8px;
+  grid-template-columns: minmax(90px, 1fr) minmax(145px, auto) auto;
+  padding: 7px 0;
+}
+
+.shortcut-name {
+  font-weight: 600;
+}
+
+.shortcut-capture {
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  margin: 0;
+  min-width: 145px;
+}
+
+.shortcut-capture.capturing {
+  outline: 2px solid #2563EB;
+}
+
+.shortcut-status {
+  font-size: 11px;
+  grid-column: 2 / 4;
+}
+
+.shortcut-status.active { color: #047857; }
+.shortcut-status.inactive { color: #6B7280; }
+.shortcut-status.conflict { color: #B91C1C; }
+
 button {
   margin-top: 18px;
   padding: 4px 10px;
+}
+
+button.secondary,
+button.clear {
+  margin-top: 0;
 }
 
 .footer {

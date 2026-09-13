@@ -16,7 +16,7 @@ The app has no main window. After launch a **Classroom Widgets** icon appears in
 | **Add Widget ▸** | Opens a floating panel for Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, or Sound Effects. |
 | **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
 | **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
-| **Settings…** | Always on top, launch at login, widget background opacity, reset remembered positions. |
+| **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles a `~/.config/autostart/classroom-widgets.desktop` entry. |
 | **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
 | **Quit** | Flushes pending widget state and exits. |
@@ -63,6 +63,8 @@ cd packages/linux-dashboard && npm install && npm run build && npm start
 ```
 
 `packages/linux-dashboard` is intentionally **not** an npm workspace — it carries its own `package-lock.json` so Electron stays out of server and Docker installs. Rebuild the teacher app whenever web code changes. Only one instance runs at a time (Electron single-instance lock).
+
+The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but Wayland support depends on the desktop compositor and Electron's portal support; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
 
 ## Publishing a release
 

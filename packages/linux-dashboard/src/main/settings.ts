@@ -16,6 +16,8 @@ export interface DashboardSettingsData {
   backgroundOpacity: number;
   alwaysOnTop: boolean;
   panelFrames: Record<string, PanelFrame>;
+  widgetShortcutsInitialized: boolean;
+  widgetShortcuts: Record<string, string | null>;
 }
 
 /**
@@ -28,6 +30,8 @@ export class DashboardSettings extends EventEmitter {
   backgroundOpacity = 1;
   alwaysOnTop = true;
   panelFrames: Record<string, PanelFrame> = {};
+  widgetShortcutsInitialized = false;
+  widgetShortcuts: Record<string, string | null> = {};
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -42,6 +46,14 @@ export class DashboardSettings extends EventEmitter {
           settings.backgroundOpacity = Math.min(1, Math.max(0, raw.backgroundOpacity));
         }
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
+        if (raw.widgetShortcutsInitialized === true) settings.widgetShortcutsInitialized = true;
+        if (raw.widgetShortcuts && typeof raw.widgetShortcuts === 'object') {
+          for (const [widgetType, shortcut] of Object.entries(raw.widgetShortcuts)) {
+            if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
+              settings.widgetShortcuts[widgetType] = shortcut;
+            }
+          }
+        }
         if (raw.panelFrames && typeof raw.panelFrames === 'object') {
           for (const [id, frame] of Object.entries(raw.panelFrames)) {
             if (
@@ -67,6 +79,8 @@ export class DashboardSettings extends EventEmitter {
         backgroundOpacity: this.backgroundOpacity,
         alwaysOnTop: this.alwaysOnTop,
         panelFrames: this.panelFrames,
+        widgetShortcutsInitialized: this.widgetShortcutsInitialized,
+        widgetShortcuts: this.widgetShortcuts,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {

@@ -169,6 +169,7 @@ export class WidgetHostController extends EventEmitter {
   }
 
   private loadHost(): void {
+    this.emit('hostAvailabilityChanged', false);
     const url = buildUrl({
       dashboard: '1',
       visible: '0',
@@ -215,6 +216,7 @@ export class WidgetHostController extends EventEmitter {
       this.coordinator.setWidgetCreationOptions(inventory.options);
       this.emit('widgetOptionsChanged');
     }
+    this.emit('hostAvailabilityChanged', true);
     if (this.pendingRecoveryChanges) {
       const recovery = this.pendingRecoveryChanges;
       this.pendingRecoveryChanges = null;

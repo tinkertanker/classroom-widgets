@@ -4,9 +4,11 @@
   "version": "0.0.0",
   "description": "Linux tray app for Classroom Widgets (Electron)",
   "homepage": "https://github.com/tinkertanker/classroom-widgets",
+  "desktopName": "classroom-widgets.desktop",
   "main": "out/main/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.js",
     "start": "electron .",
     "dist": "electron-builder --linux"
   },
@@ -37,6 +39,7 @@
       }
     ],
     "linux": {
+      "syncDesktopName": true,
       "target": [
         "AppImage",
         "deb"
