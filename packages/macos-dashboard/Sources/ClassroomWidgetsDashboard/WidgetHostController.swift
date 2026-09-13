@@ -14,6 +14,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let hostWrites = HostWriteTracker()
 
     private(set) var widgetOptions: [CompactWidgetOption] = []
+    var onWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
 
     override init() {
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
@@ -240,6 +241,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         guard options != widgetOptions else { return }
         widgetOptions = options
         widgetPanelCoordinator.setWidgetCreationOptions(options)
+        onWidgetOptionsChanged?(options)
     }
 
     private func applyPanelStateChange(

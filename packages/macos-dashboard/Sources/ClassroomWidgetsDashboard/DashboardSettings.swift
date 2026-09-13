@@ -25,19 +25,29 @@ enum DashboardDefaults {
 }
 
 @MainActor
-final class DashboardSettingsContext {
+final class DashboardSettingsContext: ObservableObject {
+    @Published private(set) var widgetOptions: [CompactWidgetOption] = []
+    @Published private(set) var widgetShortcuts: [Int: DashboardShortcut] = [:]
+    @Published private(set) var widgetShortcutStatuses: [Int: String] = [:]
+    @Published private(set) var shortcutStatus: String?
     private let launchAtLoginManager: LaunchAtLoginManager
     private let onShortcutChanged: @MainActor () -> Void
     private let onWidgetSettingsChanged: @MainActor () -> Void
+    private let onWidgetShortcutChanged: @MainActor (Int, DashboardShortcut) -> Void
+    private let onResetWidgetShortcuts: @MainActor () -> Void
 
     init(
         launchAtLoginManager: LaunchAtLoginManager,
         onShortcutChanged: @escaping @MainActor () -> Void,
-        onWidgetSettingsChanged: @escaping @MainActor () -> Void
+        onWidgetSettingsChanged: @escaping @MainActor () -> Void,
+        onWidgetShortcutChanged: @escaping @MainActor (Int, DashboardShortcut) -> Void,
+        onResetWidgetShortcuts: @escaping @MainActor () -> Void
     ) {
         self.launchAtLoginManager = launchAtLoginManager
         self.onShortcutChanged = onShortcutChanged
         self.onWidgetSettingsChanged = onWidgetSettingsChanged
+        self.onWidgetShortcutChanged = onWidgetShortcutChanged
+        self.onResetWidgetShortcuts = onResetWidgetShortcuts
     }
 
     var canConfigureLaunchAtLogin: Bool { launchAtLoginManager.canConfigure }
@@ -47,6 +57,21 @@ final class DashboardSettingsContext {
     }
     func shortcutChanged() { onShortcutChanged() }
     func widgetSettingsChanged() { onWidgetSettingsChanged() }
+    func setWidgetShortcut(_ shortcut: DashboardShortcut, for widgetType: Int) {
+        onWidgetShortcutChanged(widgetType, shortcut)
+    }
+    func resetWidgetShortcuts() { onResetWidgetShortcuts() }
+    func updateWidgetShortcuts(
+        options: [CompactWidgetOption],
+        shortcuts: [Int: DashboardShortcut],
+        widgetStatuses: [Int: String],
+        status: String?
+    ) {
+        widgetOptions = options
+        widgetShortcuts = shortcuts
+        widgetShortcutStatuses = widgetStatuses
+        shortcutStatus = status
+    }
 }
 
 struct DashboardGeneralSettingsView: View {
@@ -114,7 +139,7 @@ struct DashboardGeneralSettingsView: View {
 struct DashboardShortcutSettingsView: View {
     @AppStorage(DashboardSettingKeys.settingsShortcutKeyCode) private var keyCode = DashboardDefaults.settingsShortcutKeyCode
     @AppStorage(DashboardSettingKeys.settingsShortcutModifiers) private var modifiers = DashboardDefaults.shortcutModifiers
-    let context: DashboardSettingsContext
+    @ObservedObject var context: DashboardSettingsContext
 
     var body: some View {
         Form {
@@ -126,11 +151,43 @@ struct DashboardShortcutSettingsView: View {
                 Text("This shortcut works across macOS while Classroom Widgets is running.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Section("Launch Widgets") {
+                if context.widgetOptions.isEmpty {
+                    Text("Widget shortcuts will appear when the widget inventory is available.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(context.widgetOptions, id: \.widgetType) { option in
+                        VStack(alignment: .leading, spacing: 3) {
+                            LabeledContent(option.title) {
+                                KeyboardShortcutRecorder(
+                                    keyCode: widgetKeyCodeBinding(for: option.widgetType),
+                                    modifiers: widgetModifiersBinding(for: option.widgetType),
+                                    placeholder: "None",
+                                    onShortcutChanged: { keyCode, modifiers in
+                                        context.setWidgetShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers), for: option.widgetType)
+                                    }
+                                )
+                                .frame(width: 210, alignment: .trailing)
+                            }
+                            if let status = context.widgetShortcutStatuses[option.widgetType] {
+                                Text(status).font(.caption).foregroundStyle(.red)
+                            }
+                        }
+                    }
+                }
+                Text("These shortcuts work across macOS while Classroom Widgets is running.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let status = context.shortcutStatus {
+                    Text(status).font(.caption).foregroundStyle(.red)
+                }
+            }
             Section {
                 Button("Restore Default Shortcut") {
                     keyCode = DashboardDefaults.settingsShortcutKeyCode
                     modifiers = DashboardDefaults.shortcutModifiers
                 }
+                Button("Reset Widget Shortcuts") { context.resetWidgetShortcuts() }
+                    .disabled(context.widgetOptions.isEmpty)
             }
         }
         .formStyle(.grouped)
@@ -138,6 +195,20 @@ struct DashboardShortcutSettingsView: View {
     }
 
     private var shortcutSignature: String { "\(keyCode):\(modifiers)" }
+
+    private func widgetKeyCodeBinding(for widgetType: Int) -> Binding<Int> {
+        Binding(
+            get: { context.widgetShortcuts[widgetType]?.keyCode ?? -1 },
+            set: { context.setWidgetShortcut(DashboardShortcut(keyCode: $0, modifiers: context.widgetShortcuts[widgetType]?.modifiers ?? 0), for: widgetType) }
+        )
+    }
+
+    private func widgetModifiersBinding(for widgetType: Int) -> Binding<Int> {
+        Binding(
+            get: { context.widgetShortcuts[widgetType]?.modifiers ?? 0 },
+            set: { context.setWidgetShortcut(DashboardShortcut(keyCode: context.widgetShortcuts[widgetType]?.keyCode ?? -1, modifiers: $0), for: widgetType) }
+        )
+    }
 }
 
 struct DashboardSettingsView: View {

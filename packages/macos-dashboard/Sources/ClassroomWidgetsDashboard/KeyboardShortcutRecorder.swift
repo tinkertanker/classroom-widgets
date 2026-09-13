@@ -7,6 +7,7 @@ struct KeyboardShortcutRecorder: View {
     @Binding var modifiers: Int
 
     var placeholder = "Click to set"
+    var onShortcutChanged: ((Int, Int) -> Void)?
     @State private var isRecording = false
 
     var body: some View {
@@ -15,7 +16,8 @@ struct KeyboardShortcutRecorder: View {
                 keyCode: $keyCode,
                 modifiers: $modifiers,
                 isRecording: $isRecording,
-                placeholder: placeholder
+                placeholder: placeholder,
+                onShortcutChanged: onShortcutChanged
             )
             .frame(width: 150, height: 26)
             .background(isRecording ? Color.accentColor.opacity(0.15) : Color(nsColor: .controlBackgroundColor))
@@ -27,8 +29,10 @@ struct KeyboardShortcutRecorder: View {
 
             if keyCode != -1 {
                 Button("Clear shortcut", systemImage: "xmark.circle.fill") {
-                    keyCode = -1
-                    modifiers = 0
+                    if let onShortcutChanged { onShortcutChanged(-1, 0) } else {
+                        keyCode = -1
+                        modifiers = 0
+                    }
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.plain)
@@ -44,6 +48,7 @@ private struct RecorderField: NSViewRepresentable {
     @Binding var modifiers: Int
     @Binding var isRecording: Bool
     var placeholder: String
+    var onShortcutChanged: ((Int, Int) -> Void)?
 
     func makeNSView(context: Context) -> RecorderNSView {
         let view = RecorderNSView()
@@ -78,8 +83,12 @@ private struct RecorderField: NSViewRepresentable {
         }
 
         func recorderDidCaptureShortcut(keyCode: Int, modifiers: Int) {
-            parent.keyCode = keyCode
-            parent.modifiers = modifiers
+            if let onShortcutChanged = parent.onShortcutChanged {
+                onShortcutChanged(keyCode, modifiers)
+            } else {
+                parent.keyCode = keyCode
+                parent.modifiers = modifiers
+            }
             parent.isRecording = false
         }
     }
