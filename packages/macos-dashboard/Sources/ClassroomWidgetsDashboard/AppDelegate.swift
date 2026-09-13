@@ -181,6 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             settingsHotKey = (shortcut, replacement)
             shortcutStatus = nil
+            refreshShortcutContext()
         } catch {
             shortcutStatus = "The Open Settings shortcut is unavailable. The previous shortcut remains active."
             restorePersistedSettingsShortcut()
@@ -244,6 +245,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func resetWidgetShortcuts() {
         guard let options = controller?.widgetOptions else { return }
+        widgetHotKeys.removeAll()
+        widgetShortcutStatuses.removeAll()
         widgetShortcutStore.reset(options: options)
         widgetOptionsChanged(options)
     }
