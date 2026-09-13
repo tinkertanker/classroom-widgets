@@ -291,17 +291,16 @@ export class WidgetRegistry {
       icon: FaLink,
       component: LazyWidgets.ShortenLink,
       defaultSize: DEFAULT_SIZE,
-      minSize: { width: 200, height: 200 },
+      // Square, to stay consistent with maintainAspectRatio; the widget now
+      // carries a provider header, a custom-ending field and a submit button,
+      // which no longer fit the old 200px floor.
+      minSize: { width: 280, height: 280 },
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'URL shortening service',
       columnSizing: 'aspect-ratio',
       features: {
-        requiresApiKey: true,
-        isResizable: true,
-        // Needs a build-time Short.io key (VITE_SHORTIO_API_KEY); without one
-        // the widget can only show an error, so keep it out of the launcher.
-        hidden: !import.meta.env.VITE_SHORTIO_API_KEY
+        isResizable: true
       }
     });
 
