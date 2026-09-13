@@ -2,14 +2,16 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Classroom Widgets Settings"
-        Width="380"
-        SizeToContent="Height"
+        Width="560"
+        Height="680"
+        MinHeight="520"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         Topmost="True"
         Background="#F5F5F7"
         FontSize="13">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="20">
         <TextBlock Text="Widgets" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8" />
 
@@ -32,9 +34,17 @@
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
                    Text="Lower the opacity to let slides or other windows show through the widgets." />
 
+        <Separator Margin="0,18,0,14" />
+        <TextBlock Text="Widget launch shortcuts" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+        <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,0,0,12"
+                   Text="Choose a field, then press a shortcut with Ctrl, Alt, Shift, or the Windows key. Shortcuts work globally." />
+        <StackPanel x:Name="ShortcutRows" />
+        <TextBlock x:Name="ShortcutLoadingLabel" Text="Loading widgets…" Foreground="#6B7280" FontSize="12" />
+
         <Button x:Name="ResetPositionsButton" Content="Forget saved widget positions" Margin="0,18,0,0" Padding="10,4"
                 HorizontalAlignment="Left" Click="ResetPositionsButton_Click" />
 
         <TextBlock x:Name="VersionLabel" Margin="0,18,0,0" Foreground="#6B7280" FontSize="12" />
     </StackPanel>
+    </ScrollViewer>
 </Window>

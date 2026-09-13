@@ -16,6 +16,7 @@ public partial class App : Application
     private Mutex? _instanceMutex;
     private DashboardSettings? _settings;
     private WidgetHostController? _host;
+    private WidgetShortcutManager? _shortcuts;
     private TrayController? _tray;
     private bool _terminationPrepared;
 
@@ -46,7 +47,8 @@ public partial class App : Application
         _settings.Changed += () => _host.ApplySettings();
         _host.ApplySettings();
 
-        _tray = new TrayController(_host, _settings);
+        _shortcuts = new WidgetShortcutManager(_settings, _host);
+        _tray = new TrayController(_host, _settings, _shortcuts);
         _ = _host.StartAsync();
     }
 
@@ -79,6 +81,7 @@ public partial class App : Application
     {
         IsShuttingDown = true;
         _tray?.Dispose();
+        _shortcuts?.Dispose();
         _instanceMutex?.Dispose();
         DashboardLog.Info("Classroom Widgets exited");
         base.OnExit(args);
