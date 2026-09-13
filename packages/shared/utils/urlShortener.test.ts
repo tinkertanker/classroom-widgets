@@ -221,6 +221,26 @@ describe('shortenUrl', () => {
   const okResponse = (body: string, status = 200) =>
     ({ status, text: async () => body }) as unknown as Response;
 
+  test.each(['headers', 'body'])('times out stalled %s without aborting the caller', async (stage) => {
+    vi.useFakeTimers();
+    try {
+      const caller = new AbortController();
+      const fetchMock = vi.fn((_url, init) => {
+        const pending = new Promise<Response>((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        });
+        return stage === 'headers' ? pending : Promise.resolve({ status: 200, text: () => pending });
+      });
+      const result = shortenUrl({ url: 'example.com', settings: tinyurl }, { fetch: fetchMock as typeof fetch, signal: caller.signal });
+      await vi.advanceTimersByTimeAsync(15000);
+      expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+      expect(caller.signal.aborted).toBe(false);
+      expect(await result).toEqual({ ok: false, message: 'Shortening took too long. Please try again.' });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   test('returns the short link on success', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse('https://tinyurl.com/abcd'));
     const result = await shortenUrl({ url: 'example.com', settings: tinyurl }, { fetch: fetchMock });

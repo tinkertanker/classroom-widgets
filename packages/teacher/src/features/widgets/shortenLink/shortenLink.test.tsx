@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createDefaultShortenerSettings, type ShortenerSettings } from '@shared/utils/urlShortener';
-import ShortenLink from './shortenLink';
+import ShortenLink from './DesktopShortenLink';
 
 let currentSettings: ShortenerSettings = createDefaultShortenerSettings();
 const updateSettingsMock = vi.fn();

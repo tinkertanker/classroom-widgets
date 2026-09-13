@@ -514,6 +514,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         self.backgroundOpacity = nextOpacity
         window?.backgroundColor = .clear
         window?.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
+        webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
         if opacityChanged {
             setWebBackgroundOpacity()
         }
@@ -646,6 +647,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         currentSnapshot = snapshot
         webView.callAsyncJavaScript(
             """
+            \(DashboardShortenerSettings.script())
             (() => {
               const panel = window.classroomWidgetPanel;
               if (!panel?.receiveSnapshot) return false;
@@ -704,6 +706,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
         setWebBackgroundOpacity()
         setWebChromeVisibility()
         guard let snapshot = currentSnapshot else { return }
@@ -1068,6 +1071,8 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
         let revision = (body["baseRevision"] as? NSNumber)?.intValue
 
         switch type {
+        case "open-settings":
+            NSApp.sendAction(#selector(AppDelegate.showSettings), to: NSApp.delegate, from: nil)
         case "panel-ready":
             onReady?()
         case "panel-state-change":

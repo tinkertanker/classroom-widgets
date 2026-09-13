@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 import { useLinkShortener } from '@shared/hooks/useWorkspace';
@@ -33,7 +34,9 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
     savedState,
     onStateChange
   });
-  const { url, title, shortUrl } = state;
+  const isDesktop = isDesktopDashboardMode() || window.__CLASSROOM_WIDGETS_MACOS__ === true;
+  const { url, title } = state;
+  const shortUrl = isDesktop ? state.shortUrl : undefined;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -116,6 +119,10 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
   }, [url]);
 
   const openSettings = useCallback(() => {
+    if (window.__CLASSROOM_WIDGETS_MACOS__) {
+      window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({ type: 'open-settings' });
+      return;
+    }
     showModal({
       title: 'Link Shortener',
       content: <LinkShortenerSettings onClose={hideModal} />
@@ -234,9 +241,9 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
 
   return (
     <div className={`${widgetContainer} p-2 relative`}>
-      <div className="absolute top-1 right-1 z-10">
+      {isDesktop && <div className="absolute top-1 right-1 z-10">
         <SettingsButton onClick={openSettings} title="Link shortener settings" size="sm" />
-      </div>
+      </div>}
       {!url ? (
         // Initial state - show input form
         <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -256,7 +263,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
                 disabled={isShorteningOnSubmit}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-warm-gray-600 dark:text-warm-gray-400 cursor-pointer">
+            {isDesktop && <label className="flex items-center gap-2 text-sm text-warm-gray-600 dark:text-warm-gray-400 cursor-pointer">
               <input
                 type="checkbox"
                 checked={shortenOnSubmit}
@@ -265,7 +272,7 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
                 className="accent-sage-500"
               />
               Shorten the link first
-            </label>
+            </label>}
           </div>
           <button
             type="submit"
@@ -357,14 +364,14 @@ function QRCodeWidget({ savedState, onStateChange }: QRCodeWidgetProps) {
                   <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 break-all max-w-full">
                     {url}
                   </p>
-                  <button
+                  {isDesktop && <button
                     type="button"
                     onClick={handleShortenClick}
                     disabled={isShortening}
                     className="shrink-0 text-xs px-2 py-0.5 rounded border border-sage-500 text-sage-600 dark:text-sage-400 hover:bg-sage-50 dark:hover:bg-sage-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                   >
                     {isShortening ? 'Shortening…' : 'Shorten'}
-                  </button>
+                  </button>}
                 </div>
                 {shortenError && (
                   <p className="text-dusty-rose-500 dark:text-dusty-rose-400 text-xs mt-1">

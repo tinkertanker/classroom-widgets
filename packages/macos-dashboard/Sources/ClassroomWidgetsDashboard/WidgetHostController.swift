@@ -108,6 +108,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             keepOnAllSpaces: UserDefaults.standard.bool(forKey: DashboardSettingKeys.keepOnAllSpaces)
         )
         setWebBackgroundOpacity(backgroundOpacity)
+        webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
     }
 
     func flushPersistedState() {
@@ -152,6 +153,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebBackgroundOpacity(backgroundOpacity)
+        webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
     }
 
     func webView(

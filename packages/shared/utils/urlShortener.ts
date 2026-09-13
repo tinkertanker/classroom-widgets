@@ -310,18 +310,31 @@ export async function shortenUrl(
   const request = buildShortenRequest(input);
   const doFetch = deps.fetch ?? globalThis.fetch;
 
-  let response: Response;
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  deps.signal?.addEventListener('abort', abort, { once: true });
+  if (deps.signal?.aborted) abort();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 15000);
+
   try {
-    response = await doFetch(request.url, { ...request.init, signal: deps.signal });
+    const response = await doFetch(request.url, { ...request.init, signal: controller.signal });
+    const body = await response.text();
+    return parseShortenResponse(input.settings.provider, response.status, body, {
+      aliasRequested: Boolean(input.alias)
+    });
   } catch {
     return {
       ok: false,
-      message: `Could not reach ${getProviderInfo(input.settings.provider).domain}. Check the connection, or try another shortener in Settings.`
+      message: timedOut
+        ? 'Shortening took too long. Please try again.'
+        : `Could not reach ${getProviderInfo(input.settings.provider).domain}. Check the connection, or try another shortener in Settings.`
     };
+  } finally {
+    clearTimeout(timeout);
+    deps.signal?.removeEventListener('abort', abort);
   }
-
-  const body = await response.text().catch(() => '');
-  return parseShortenResponse(input.settings.provider, response.status, body, {
-    aliasRequested: Boolean(input.alias)
-  });
 }

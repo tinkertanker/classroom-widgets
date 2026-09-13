@@ -239,14 +239,14 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
       <MenuDivider />
 
       {/* Integrations */}
-      <MenuItem
-        onClick={handleOpenLinkShortener}
-        icon={FaLink}
-      >
-        Link Shortener…
-      </MenuItem>
-
-      <MenuDivider />
+      {isDashboardMode && (
+        <>
+          <MenuItem onClick={handleOpenLinkShortener} icon={FaLink}>
+            Link Shortener…
+          </MenuItem>
+          <MenuDivider />
+        </>
+      )}
 
       {/* Alpha Features */}
       <MenuSectionHeader>Alpha Features</MenuSectionHeader>

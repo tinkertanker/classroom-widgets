@@ -1,68 +1,97 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
-
-// Use environment variables for API configuration
-const API_KEY = import.meta.env.VITE_SHORTIO_API_KEY || '';
-const BASE_URL = import.meta.env.VITE_SHORTIO_BASE_URL || 'https://api.short.io/links/public';
-const SHORTIO_DOMAIN = import.meta.env.VITE_SHORTIO_DOMAIN || '';
+import { useLinkShortener } from '@shared/hooks/useWorkspace';
+import {
+  getProviderInfo,
+  shortenUrl,
+  validateAlias,
+  validateShortenerSettings,
+  validateTargetUrl
+} from '@shared/utils/urlShortener';
+import { SettingsButton } from '../shared/components/SettingsButton';
+import { useModal } from '../../../contexts/ModalContext';
+import LinkShortenerSettings from '../../../components/settings/LinkShortenerSettings';
 
 interface ShortenLinkProps {
 }
 
 const ShortenLink: React.FC<ShortenLinkProps> = () => {
+  const { settings } = useLinkShortener();
+  const { showModal, hideModal } = useModal();
+
   const [link, setLink] = useState<string>('');
+  const [alias, setAlias] = useState<string>('');
   const [shortenedLink, setShortenedLink] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [aliasError, setAliasError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { value: copied, setTemporaryValue: showCopied, clear: clearCopied } = useTemporaryState(false, 2000);
 
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      controllerRef.current?.abort();
+    };
+  }, []);
+
+  const openSettings = () => {
+    if (window.__CLASSROOM_WIDGETS_MACOS__) {
+      window.webkit?.messageHandlers?.classroomWidgetPanel?.postMessage({ type: 'open-settings' });
+      return;
+    }
+    showModal({
+      title: 'Link Shortener',
+      content: <LinkShortenerSettings onClose={hideModal} />
+    });
+  };
+
+  const setupMessage = validateShortenerSettings(settings);
+  const providerLabel = getProviderInfo(settings.provider).label;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!link.trim()) {
-      setError('Please enter a URL');
+
+    const urlError = validateTargetUrl(link);
+    if (urlError) {
+      setLinkError(urlError);
       return;
     }
 
-    if (!API_KEY) {
-      setError('Short.io API key not configured. Please set VITE_SHORTIO_API_KEY in your environment.');
+    const trimmedAlias = alias.trim();
+    const aliasValidationError = validateAlias(trimmedAlias || undefined);
+    if (aliasValidationError) {
+      setAliasError(aliasValidationError);
       return;
     }
-    
+
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
     setIsLoading(true);
-    setError(null);
+    setLinkError(null);
+    setAliasError(null);
     setShortenedLink('');
-    
-    try {
-      const response = await axios.post(
-        BASE_URL,
-        {
-          originalURL: link,
-          domain: SHORTIO_DOMAIN
-        },
-        {
-          headers: {
-            authorization: API_KEY,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
 
-      if (response.data && (response.data.secureShortURL || response.data.shortURL)) {
-        setShortenedLink(response.data.secureShortURL || response.data.shortURL);
-        setError(null);
-      } else {
-        setError('Failed to shorten the link. Please try again.');
-      }
-    } catch (err) {
-      console.error('Error shortening the link:', err);
-      setError('Unable to shorten link. Please check your internet connection.');
-    } finally {
-      setIsLoading(false);
+    const result = await shortenUrl(
+      { url: link, settings, alias: trimmedAlias || undefined },
+      { signal: controller.signal }
+    );
+
+    if (controller.signal.aborted) {
+      return;
+    }
+
+    setIsLoading(false);
+
+    if (result.ok) {
+      setShortenedLink(result.shortUrl);
+    } else {
+      setLinkError(result.message);
     }
   };
 
@@ -73,36 +102,92 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
 
   const resetForm = () => {
     setLink('');
+    setAlias('');
     setShortenedLink('');
-    setError(null);
+    setLinkError(null);
+    setAliasError(null);
     clearCopied();
   };
 
+  const header = (
+    <div className="flex items-center justify-between mb-2">
+      <span className="text-xs text-warm-gray-500 dark:text-warm-gray-400">
+        via {providerLabel}
+      </span>
+      <SettingsButton onClick={openSettings} title="Link Shortener settings" />
+    </div>
+  );
+
+  if (setupMessage) {
+    return (
+      <div className={`${widgetContainer} p-4`}>
+        {header}
+        <div className="flex-1 flex flex-col items-center justify-center space-y-4 text-center">
+          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
+            {providerLabel} needs a bit more setup.
+          </p>
+          <p className="text-xs text-warm-gray-500 dark:text-warm-gray-500 px-2">
+            {setupMessage}
+          </p>
+          <button
+            onClick={openSettings}
+            className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
+          >
+            Open Settings
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`${widgetContainer} p-4`}>
+      {header}
       {!shortenedLink ? (
         // Input state
-        <form onSubmit={handleSubmit} className="flex flex-col h-full">
-          <div className="flex-1 flex flex-col justify-center space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1">
+          <div className="flex-1 flex flex-col justify-center space-y-3">
             <div>
               <h2 className="text-lg font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-4 text-center">
                 Shorten Your Link
               </h2>
               <WidgetInput
-                type="url"
+                type="text"
+                inputMode="url"
                 value={link}
                 onChange={(e) => {
                   setLink(e.target.value);
-                  setError(null);
+                  setLinkError(null);
                 }}
                 placeholder="https://example.com"
                 className="text-sm"
                 autoFocus
                 disabled={isLoading}
               />
-              {error && (
+              {linkError && (
                 <p className="text-dusty-rose-500 dark:text-dusty-rose-400 text-xs mt-2">
-                  {error}
+                  {linkError}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-warm-gray-500 dark:text-warm-gray-400 mb-1">
+                Custom ending (optional)
+              </label>
+              <WidgetInput
+                type="text"
+                value={alias}
+                onChange={(e) => {
+                  setAlias(e.target.value);
+                  setAliasError(null);
+                }}
+                placeholder="e.g. p5-quiz"
+                className="text-sm"
+                disabled={isLoading}
+              />
+              {aliasError && (
+                <p className="text-dusty-rose-500 dark:text-dusty-rose-400 text-xs mt-2">
+                  {aliasError}
                 </p>
               )}
             </div>
@@ -117,7 +202,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
         </form>
       ) : (
         // Result state
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col flex-1">
           <div className="flex-1 flex flex-col items-center justify-center space-y-4">
             <div className="text-center space-y-2">
               <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
@@ -127,24 +212,24 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
                 {link}
               </p>
             </div>
-            
+
             <div className="bg-white p-3 rounded-lg shadow-inner">
-              <QRCode 
-                value={shortenedLink} 
+              <QRCode
+                value={shortenedLink}
                 size={150}
                 fgColor="#1f2937"
                 bgColor="#ffffff"
               />
             </div>
-            
+
             <div className="text-center space-y-2">
               <p className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
                 Shortened Link:
               </p>
               <div className="flex items-center gap-2 justify-center">
-                <a 
-                  href={shortenedLink} 
-                  target="_blank" 
+                <a
+                  href={shortenedLink}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-sage-600 dark:text-sage-400 hover:text-sage-700 dark:hover:text-sage-300 text-sm"
                 >
@@ -170,7 +255,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
               </div>
             </div>
           </div>
-          
+
           <button
             onClick={(e) => {
               resetForm();

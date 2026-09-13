@@ -34,6 +34,7 @@ vi.mock('@shared/hooks/useWorkspace', () => ({
 }));
 
 beforeEach(() => {
+  window.history.replaceState({}, '', '/?desktop=1');
   vi.stubGlobal('ResizeObserver', ResizeObserverMock);
   useLinkShortenerMock.mockReturnValue({
     settings: createDefaultShortenerSettings(),
@@ -42,11 +43,22 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  window.history.replaceState({}, '', '/');
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
 describe('QRCodeWidget', () => {
+  test('web QR codes have no shortening controls and encode the original URL', async () => {
+    window.history.replaceState({}, '', '/');
+    const { rerender } = render(<QRCodeWidget />);
+    expect(screen.queryByLabelText(/shorten the link first/i)).not.toBeInTheDocument();
+    expect(screen.queryByTitle(/link shortener settings/i)).not.toBeInTheDocument();
+    rerender(<QRCodeWidget savedState={{ url: 'https://example.com/original', title: 'Lesson', shortUrl: 'https://tinyurl.com/old' }} />);
+    expect(screen.queryByRole('button', { name: /^shorten$/i })).not.toBeInTheDocument();
+    await waitFor(() => expect(toCanvasMock.mock.calls.at(-1)?.[1]).toBe('https://example.com/original'));
+  });
+
   test('renders a QR for a plain URL and publishes {url, title} through onStateChange', async () => {
     const onStateChange = vi.fn();
     render(<QRCodeWidget onStateChange={onStateChange} />);

@@ -47,6 +47,17 @@ describe('BottomBarMenu', () => {
     isDesktopDashboardMode.mockReturnValue(false);
   });
 
+  it('keeps runtime shortener settings off the web menu', () => {
+    renderMenu();
+    expect(screen.queryByText('Link Shortener…')).not.toBeInTheDocument();
+  });
+
+  it('offers runtime shortener settings in desktop mode', () => {
+    isDesktopDashboardMode.mockReturnValue(true);
+    renderMenu();
+    expect(screen.getByText('Link Shortener…')).toBeInTheDocument();
+  });
+
   it('links to the macOS releases immediately above About', () => {
     renderMenu();
 
