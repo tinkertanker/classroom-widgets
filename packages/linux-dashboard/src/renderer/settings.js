@@ -15,13 +15,32 @@
     if (event.metaKey) modifiers.push('Super');
     var ignored = ['Control', 'Alt', 'Shift', 'Meta'];
     if (ignored.indexOf(event.key) !== -1 || modifiers.length === 0) return null;
-    var names = { ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right' };
-    var key = names[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key);
+    var codeMatch = /^(?:Digit([0-9])|Key([A-Z])|F(1[0-9]|2[0-4]|[1-9]))$/.exec(event.code);
+    var key;
+    if (codeMatch) {
+      key = codeMatch[1] || codeMatch[2] || 'F' + codeMatch[3];
+    } else {
+      var names = { ' ': 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right' };
+      key = names[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key);
+    }
     return modifiers.concat(key).join('+');
+  }
+
+  var capturingRow = null;
+  var pendingShortcuts = null;
+  var rowError = null;
+
+  function onShortcutsChanged(shortcuts) {
+    if (capturingRow) {
+      pendingShortcuts = shortcuts;
+      return;
+    }
+    renderShortcuts(shortcuts);
   }
 
   function renderShortcuts(shortcuts) {
     shortcutList.replaceChildren();
+    document.getElementById('resetShortcuts').disabled = !shortcuts.length;
     if (!shortcuts.length) {
       var loading = document.createElement('p');
       loading.className = 'hint';
@@ -48,29 +67,45 @@
       status.className = 'shortcut-status ' + shortcut.state;
       status.textContent = shortcut.detail;
       status.setAttribute('role', 'status');
+      if (rowError && rowError.widgetType === shortcut.widgetType) {
+        status.className = 'shortcut-status conflict';
+        status.textContent = rowError.message;
+        rowError = null;
+      }
 
+      function stopCapture() {
+        capture.classList.remove('capturing');
+        capture.textContent = shortcut.accelerator || 'Set shortcut';
+        capturingRow = null;
+        window.classroomSettings.setCapturing(false);
+        if (pendingShortcuts) {
+          var next = pendingShortcuts;
+          pendingShortcuts = null;
+          renderShortcuts(next);
+        }
+      }
       capture.addEventListener('click', function () {
+        capturingRow = shortcut.widgetType;
         capture.textContent = 'Press shortcut…';
         capture.classList.add('capturing');
+        window.classroomSettings.setCapturing(true);
+      });
+      capture.addEventListener('blur', function () {
+        if (capture.classList.contains('capturing')) stopCapture();
       });
       capture.addEventListener('keydown', function (event) {
         if (!capture.classList.contains('capturing')) return;
         event.preventDefault();
         event.stopPropagation();
         if (event.key === 'Escape') {
-          capture.classList.remove('capturing');
-          capture.textContent = shortcut.accelerator || 'Set shortcut';
+          stopCapture();
           return;
         }
         var accelerator = acceleratorFromEvent(event);
         if (!accelerator) return;
         window.classroomSettings.setShortcut(shortcut.widgetType, accelerator).then(function (result) {
-          capture.classList.remove('capturing');
-          if (!result.ok) {
-            capture.textContent = shortcut.accelerator || 'Set shortcut';
-            status.className = 'shortcut-status conflict';
-            status.textContent = result.error;
-          }
+          if (!result.ok) rowError = { widgetType: shortcut.widgetType, message: result.error };
+          stopCapture();
         });
       });
       clear.addEventListener('click', function () {
@@ -93,7 +128,7 @@
     renderShortcuts(state.shortcuts || []);
     document.getElementById('waylandWarning').hidden = state.wayland !== true;
   });
-  window.classroomSettings.onShortcutsChanged(renderShortcuts);
+  window.classroomSettings.onShortcutsChanged(onShortcutsChanged);
 
   version.textContent = 'Classroom Widgets for Linux v' + (window.__CLASSROOM_SETTINGS_VERSION__ || '0.0.0');
 

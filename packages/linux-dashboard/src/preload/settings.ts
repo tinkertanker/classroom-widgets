@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('classroomSettings', {
   resetPositions: () => ipcRenderer.send('settings:reset-positions'),
   setShortcut: (widgetType: number, accelerator: string | null) => ipcRenderer.invoke('settings:set-shortcut', widgetType, accelerator),
   resetShortcuts: () => ipcRenderer.send('settings:reset-shortcuts'),
+  setCapturing: (active: boolean) => ipcRenderer.send('settings:capturing', active),
   onShortcutsChanged: (callback: (shortcuts: unknown) => void) => ipcRenderer.on('settings:shortcuts-changed', (_event, shortcuts) => callback(shortcuts)),
 });
 contextBridge.exposeInMainWorld('__CLASSROOM_SETTINGS_VERSION__', appVersion);

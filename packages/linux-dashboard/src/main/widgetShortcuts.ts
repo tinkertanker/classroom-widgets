@@ -49,6 +49,7 @@ export function normalizeAccelerator(value: string): string | null {
 export class WidgetShortcutController extends EventEmitter {
   private options: CompactWidgetOption[] = [];
   private hostAvailable = false;
+  private capturing = false;
   private statuses: WidgetShortcutStatus[] = [];
 
   constructor(
@@ -69,6 +70,12 @@ export class WidgetShortcutController extends EventEmitter {
       this.settings.widgetShortcutsInitialized = true;
       this.settings.notifyChanged();
     }
+    this.refresh();
+  }
+
+  setCapturing(active: boolean): void {
+    if (this.capturing === active) return;
+    this.capturing = active;
     this.refresh();
   }
 
@@ -94,6 +101,7 @@ export class WidgetShortcutController extends EventEmitter {
   }
 
   reset(): void {
+    if (this.options.length === 0) return;
     this.settings.widgetShortcuts = {};
     this.options.slice(0, 9).forEach((option, index) => {
       this.settings.widgetShortcuts[String(option.widgetType)] = `Ctrl+Alt+Shift+${index + 1}`;
@@ -120,7 +128,9 @@ export class WidgetShortcutController extends EventEmitter {
       if (!accelerator) return { ...option, accelerator: null, state: 'inactive', detail: 'Not assigned' } as WidgetShortcutStatus;
       if (seen.has(accelerator)) return { ...option, accelerator, state: 'conflict', detail: 'Duplicate assignment' };
       seen.add(accelerator);
-      if (!this.hostAvailable) return { ...option, accelerator, state: 'inactive', detail: 'Widgets are unavailable' };
+      if (!this.hostAvailable || this.capturing) {
+        return { ...option, accelerator, state: 'inactive', detail: this.capturing ? 'Paused while recording' : 'Widgets are unavailable' };
+      }
       const registered = this.registrar.register(accelerator, () => {
         this.launch(option.widgetType);
       });

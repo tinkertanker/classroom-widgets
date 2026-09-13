@@ -43,6 +43,25 @@ test('preserves explicit clears and intended assignments when registration fails
   assert.deepEqual(h.controller.getStatuses().map((item) => item.state), ['inactive', 'conflict']);
 });
 
+test('reset is a no-op before options load', () => {
+  const h = harness();
+  h.controller.reset();
+  assert.equal(h.settings.widgetShortcutsInitialized, false);
+  assert.deepEqual(h.settings.widgetShortcuts, {});
+});
+
+test('setCapturing unregisters shortcuts and restores them', () => {
+  const h = harness({ widgetShortcutsInitialized: true, widgetShortcuts: { '1': 'Ctrl+Alt+A' } });
+  h.controller.updateOptions([{ widgetType: 1, title: 'One' }]);
+  assert.equal(h.callbacks.has('Ctrl+Alt+A'), true);
+  h.controller.setCapturing(true);
+  assert.equal(h.callbacks.has('Ctrl+Alt+A'), false);
+  assert.deepEqual(h.controller.getStatuses().map((item) => [item.state, item.detail]), [['inactive', 'Paused while recording']]);
+  h.controller.setCapturing(false);
+  assert.equal(h.callbacks.has('Ctrl+Alt+A'), true);
+  assert.deepEqual(h.controller.getStatuses().map((item) => item.state), ['active']);
+});
+
 test('rejects duplicates and never launches while the host is unavailable', () => {
   const h = harness({ widgetShortcutsInitialized: true, widgetShortcuts: { '1': 'Ctrl+Alt+A', '2': null } });
   h.controller.updateOptions([{ widgetType: 1, title: 'One' }, { widgetType: 2, title: 'Two' }], false);

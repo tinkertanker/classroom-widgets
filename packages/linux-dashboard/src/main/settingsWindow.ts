@@ -42,6 +42,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     return shortcuts.setShortcut(widgetType, accelerator);
   });
   ipcMain.on('settings:reset-shortcuts', () => shortcuts.reset());
+  ipcMain.on('settings:capturing', (_event, active: unknown) => shortcuts.setCapturing(active === true));
   shortcuts.on('changed', () => {
     if (settingsWindow && !settingsWindow.isDestroyed()) {
       settingsWindow.webContents.send('settings:shortcuts-changed', shortcuts.getStatuses());
@@ -57,8 +58,8 @@ export function openSettingsWindow(settings: DashboardSettings, shortcuts: Widge
     return;
   }
   const win = new BrowserWindow({
-    width: 380,
-    height: 620,
+    width: 460,
+    height: 700,
     minWidth: 420,
     minHeight: 480,
     resizable: true,
@@ -76,6 +77,7 @@ export function openSettingsWindow(settings: DashboardSettings, shortcuts: Widge
   });
   settingsWindow = win;
   win.once('closed', () => {
+    shortcuts.setCapturing(false);
     settingsWindow = null;
   });
   void win.loadFile(join(rendererDir(), 'settings.html'));
