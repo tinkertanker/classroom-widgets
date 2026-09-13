@@ -7,6 +7,7 @@ struct KeyboardShortcutRecorder: View {
     @Binding var modifiers: Int
 
     var placeholder = "Click to set"
+    var accessibilityLabel = "Keyboard shortcut"
     var onShortcutChanged: ((Int, Int) -> Void)?
     var onRecordingChanged: ((Bool) -> Void)?
     @State private var isRecording = false
@@ -18,6 +19,7 @@ struct KeyboardShortcutRecorder: View {
                 modifiers: $modifiers,
                 isRecording: $isRecording,
                 placeholder: placeholder,
+                accessibilityLabel: accessibilityLabel,
                 onShortcutChanged: onShortcutChanged,
                 onRecordingChanged: onRecordingChanged
             )
@@ -50,6 +52,7 @@ private struct RecorderField: NSViewRepresentable {
     @Binding var modifiers: Int
     @Binding var isRecording: Bool
     var placeholder: String
+    var accessibilityLabel: String
     var onShortcutChanged: ((Int, Int) -> Void)?
     var onRecordingChanged: ((Bool) -> Void)?
 
@@ -57,12 +60,14 @@ private struct RecorderField: NSViewRepresentable {
         let view = RecorderNSView()
         view.delegate = context.coordinator
         view.placeholder = placeholder
+        view.setAccessibilityLabel(accessibilityLabel)
         return view
     }
 
     func updateNSView(_ nsView: RecorderNSView, context: Context) {
         context.coordinator.parent = self
         nsView.placeholder = placeholder
+        nsView.setAccessibilityLabel(accessibilityLabel)
         nsView.updateDisplay(keyCode: keyCode, modifiers: modifiers, isRecording: isRecording)
     }
 
@@ -146,6 +151,11 @@ private final class RecorderNSView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         startRecording()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        startRecording()
+        return true
     }
 
     override func keyDown(with event: NSEvent) {

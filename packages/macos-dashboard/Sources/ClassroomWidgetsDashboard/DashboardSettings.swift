@@ -31,7 +31,7 @@ final class DashboardSettingsContext: ObservableObject {
     @Published private(set) var widgetShortcutStatuses: [Int: String] = [:]
     @Published private(set) var shortcutStatus: String?
     private let launchAtLoginManager: LaunchAtLoginManager
-    private let onShortcutChanged: @MainActor () -> Void
+    private let onShortcutChanged: @MainActor (DashboardShortcut) -> Void
     private let onWidgetSettingsChanged: @MainActor () -> Void
     private let onWidgetShortcutChanged: @MainActor (Int, DashboardShortcut) -> Void
     private let onResetWidgetShortcuts: @MainActor () -> Void
@@ -39,7 +39,7 @@ final class DashboardSettingsContext: ObservableObject {
 
     init(
         launchAtLoginManager: LaunchAtLoginManager,
-        onShortcutChanged: @escaping @MainActor () -> Void,
+        onShortcutChanged: @escaping @MainActor (DashboardShortcut) -> Void,
         onWidgetSettingsChanged: @escaping @MainActor () -> Void,
         onWidgetShortcutChanged: @escaping @MainActor (Int, DashboardShortcut) -> Void,
         onResetWidgetShortcuts: @escaping @MainActor () -> Void,
@@ -58,7 +58,7 @@ final class DashboardSettingsContext: ObservableObject {
     func setLaunchAtLoginEnabled(_ enabled: Bool) throws -> LaunchAtLoginManager.ChangeResult {
         try launchAtLoginManager.setEnabled(enabled)
     }
-    func shortcutChanged() { onShortcutChanged() }
+    func setSettingsShortcut(_ shortcut: DashboardShortcut) { onShortcutChanged(shortcut) }
     func widgetSettingsChanged() { onWidgetSettingsChanged() }
     func setWidgetShortcut(_ shortcut: DashboardShortcut, for widgetType: Int) {
         onWidgetShortcutChanged(widgetType, shortcut)
@@ -153,6 +153,10 @@ struct DashboardShortcutSettingsView: View {
                         keyCode: $keyCode,
                         modifiers: $modifiers,
                         placeholder: "None",
+                        accessibilityLabel: "Open Settings keyboard shortcut",
+                        onShortcutChanged: { keyCode, modifiers in
+                            context.setSettingsShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers))
+                        },
                         onRecordingChanged: context.shortcutRecordingChanged
                     )
                     .frame(width: 210, alignment: .trailing)
@@ -172,6 +176,7 @@ struct DashboardShortcutSettingsView: View {
                                     keyCode: widgetKeyCodeBinding(for: option.widgetType),
                                     modifiers: widgetModifiersBinding(for: option.widgetType),
                                     placeholder: "None",
+                                    accessibilityLabel: "\(option.title) keyboard shortcut",
                                     onShortcutChanged: { keyCode, modifiers in
                                         context.setWidgetShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers), for: option.widgetType)
                                     },
@@ -193,18 +198,17 @@ struct DashboardShortcutSettingsView: View {
             }
             Section {
                 Button("Restore Default Shortcut") {
-                    keyCode = DashboardDefaults.settingsShortcutKeyCode
-                    modifiers = DashboardDefaults.shortcutModifiers
+                    context.setSettingsShortcut(DashboardShortcut(
+                        keyCode: DashboardDefaults.settingsShortcutKeyCode,
+                        modifiers: DashboardDefaults.shortcutModifiers
+                    ))
                 }
                 Button("Reset Widget Shortcuts") { context.resetWidgetShortcuts() }
                     .disabled(context.widgetOptions.isEmpty)
             }
         }
         .formStyle(.grouped)
-        .onChange(of: shortcutSignature) { _ in context.shortcutChanged() }
     }
-
-    private var shortcutSignature: String { "\(keyCode):\(modifiers)" }
 
     private func widgetKeyCodeBinding(for widgetType: Int) -> Binding<Int> {
         Binding(

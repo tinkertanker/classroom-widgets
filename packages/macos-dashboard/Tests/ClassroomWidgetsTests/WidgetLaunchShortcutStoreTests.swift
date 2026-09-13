@@ -58,16 +58,66 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertEqual(bindings[1], DashboardShortcut(keyCode: -1, modifiers: 0))
     }
 
-    func testShortcutRegistrationSuspensionTransitionsOnlyAtLifecycleBoundaries() {
-        var suspension = ShortcutRegistrationSuspension()
+    func testSuspendedWidgetCaptureRejectsAnotherWidgetsAcceptedBinding() {
+        let command = Int(NSEvent.ModifierFlags.command.rawValue)
+        let first = DashboardShortcut(keyCode: 18, modifiers: command)
+        let second = DashboardShortcut(keyCode: 19, modifiers: command)
+        var state = ShortcutBindingState(settings: DashboardShortcut(keyCode: 20, modifiers: command))
+        state.replaceWidgets(with: [41: first, 72: second])
+        XCTAssertTrue(state.recorderStarted())
 
-        XCTAssertFalse(suspension.isActive)
-        XCTAssertTrue(suspension.recorderStarted())
-        XCTAssertFalse(suspension.recorderStarted())
-        XCTAssertTrue(suspension.isActive)
-        XCTAssertFalse(suspension.recorderEnded())
-        XCTAssertTrue(suspension.recorderEnded())
-        XCTAssertFalse(suspension.isActive)
-        XCTAssertFalse(suspension.recorderEnded())
+        XCTAssertEqual(state.stage(second, for: .widget(41)), .duplicate(.widget(72)))
+        XCTAssertEqual(state.shortcut(for: .widget(41)), first)
+        XCTAssertEqual(state.shortcut(for: .widget(72)), second)
+        XCTAssertNil(state.candidate(for: .widget(41)))
+    }
+
+    func testSuspendedWidgetCaptureRejectsSettingsAcceptedBinding() {
+        let option = Int(NSEvent.ModifierFlags.option.rawValue)
+        let settings = DashboardShortcut(keyCode: 31, modifiers: option)
+        let widget = DashboardShortcut(keyCode: 32, modifiers: option)
+        var state = ShortcutBindingState(settings: settings)
+        state.replaceWidgets(with: [9: widget])
+        _ = state.recorderStarted()
+
+        XCTAssertEqual(state.stage(settings, for: .widget(9)), .duplicate(.settings))
+        XCTAssertEqual(state.shortcut(for: .settings), settings)
+        XCTAssertEqual(state.shortcut(for: .widget(9)), widget)
+    }
+
+    func testFailedReplacementRollsBackWidgetAndSettingsAcceptedBindings() {
+        let control = Int(NSEvent.ModifierFlags.control.rawValue)
+        let oldSettings = DashboardShortcut(keyCode: 1, modifiers: control)
+        let oldWidget = DashboardShortcut(keyCode: 2, modifiers: control)
+        var state = ShortcutBindingState(settings: oldSettings)
+        state.replaceWidgets(with: [88: oldWidget])
+
+        XCTAssertEqual(state.stage(DashboardShortcut(keyCode: 3, modifiers: control), for: .settings), .staged)
+        XCTAssertEqual(state.stage(DashboardShortcut(keyCode: 4, modifiers: control), for: .widget(88)), .staged)
+        state.complete(.settings, succeeded: false)
+        state.complete(.widget(88), succeeded: false)
+
+        XCTAssertEqual(state.shortcut(for: .settings), oldSettings)
+        XCTAssertEqual(state.shortcut(for: .widget(88)), oldWidget)
+        XCTAssertTrue(state.pending.isEmpty)
+    }
+
+    func testInventoryArrivalDuringNestedSuspensionDoesNotResumeRegistrationsEarly() {
+        let shift = Int(NSEvent.ModifierFlags.shift.rawValue)
+        var state = ShortcutBindingState(settings: DashboardShortcut(keyCode: 5, modifiers: shift))
+        XCTAssertTrue(state.recorderStarted())
+        XCTAssertFalse(state.recorderStarted())
+
+        let pending = DashboardShortcut(keyCode: 7, modifiers: shift)
+        XCTAssertEqual(state.stage(pending, for: .widget(123)), .staged)
+        let arrived = DashboardShortcut(keyCode: 6, modifiers: shift)
+        state.replaceWidgets(with: [123: arrived])
+        XCTAssertTrue(state.registrationsSuspended)
+        XCTAssertEqual(state.shortcut(for: .widget(123)), arrived)
+        XCTAssertEqual(state.candidate(for: .widget(123)), pending)
+        XCTAssertFalse(state.recorderEnded())
+        XCTAssertTrue(state.registrationsSuspended)
+        XCTAssertTrue(state.recorderEnded())
+        XCTAssertFalse(state.registrationsSuspended)
     }
 }
