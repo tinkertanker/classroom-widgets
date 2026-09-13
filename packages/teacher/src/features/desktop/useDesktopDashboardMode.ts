@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isDesktopDashboardMode, parseBackgroundOpacityFromSearch } from '@shared/utils/dashboardMode';
+import { postNativeMessage } from '@shared/utils/nativeBridge';
 
 export type DashboardWindowMode = 'compact' | 'canvas';
 export type CompactWidgetLayout = 'row' | 'column';
@@ -93,7 +94,7 @@ export function useDesktopDashboardMode() {
 
   const requestWindowMode = useCallback((mode: DashboardWindowMode) => {
     setWindowModeFromNative(mode);
-    window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+    postNativeMessage('classroomDashboard', {
       type: 'window-mode-requested',
       mode
     });
@@ -133,7 +134,7 @@ export function useDesktopDashboardMode() {
   useEffect(() => {
     if (!isDashboardMode) return;
 
-    window.webkit?.messageHandlers?.classroomDashboard?.postMessage({
+    postNativeMessage('classroomDashboard', {
       type: 'visibility-changed',
       visible: isDashboardVisible
     });

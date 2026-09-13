@@ -1,0 +1,49 @@
+{
+  "name": "@classroom-widgets/linux-dashboard",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Linux tray app for Classroom Widgets (Electron)",
+  "homepage": "https://github.com/tinkertanker/classroom-widgets",
+  "main": "out/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "electron .",
+    "dist": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "electron": "44.2.0",
+    "electron-builder": "26.16.0",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "sg.tk.classroomwidgets",
+    "productName": "Classroom Widgets",
+    "executableName": "classroom-widgets",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**",
+      "src/renderer/**",
+      "assets/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../teacher/build",
+        "to": "Web"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education",
+      "maintainer": "Tinkertanker",
+      "icon": "assets/icon.png",
+      "artifactName": "ClassroomWidgets-v${version}-linux-${arch}.${ext}"
+    }
+  }
+}

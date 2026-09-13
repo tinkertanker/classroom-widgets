@@ -10,6 +10,7 @@ import type {
   JsonValue
 } from '@shared/types/compactPanel';
 import { WidgetType } from '@shared/types';
+import { postNativeMessage } from '@shared/utils/nativeBridge';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 
@@ -163,7 +164,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
       compactWidgetOptions
     };
 
-    window.webkit?.messageHandlers?.classroomDashboard?.postMessage(inventory);
+    postNativeMessage('classroomDashboard', inventory);
   }, [compactWidgetOptions, snapshots, windowMode]);
 
   useEffect(() => {

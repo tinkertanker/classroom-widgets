@@ -25,7 +25,7 @@ MACOS_DIR="$ROOT_DIR/packages/macos-dashboard"
 INSTALL_APP_BUNDLE="/Applications/$APP_BUNDLE_NAME.app"
 ENTITLEMENTS_PATH="$ROOT_DIR/script/macos-distribution-entitlements.plist"
 APP_ICON_PATH="$MACOS_DIR/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
-VERSION="$(node -p "require('./packages/macos-dashboard/version.json').version")"
+VERSION="$(node -p "require('./version.json').version")"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 MODE="${1:-run}"
 
