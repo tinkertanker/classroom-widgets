@@ -304,7 +304,8 @@ export class WidgetRegistry {
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'URL shortening service',
       compactPanel: {
-        supported: true,
+        // Other desktop shells do not yet bridge app-wide shortener settings.
+        supported: window.__CLASSROOM_WIDGETS_MACOS__ === true,
         preferredSize: { width: 350, height: 440 },
         minimumSize: { width: 300, height: 400 }
       },

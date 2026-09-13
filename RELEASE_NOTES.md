@@ -1,5 +1,6 @@
-First release with a single version number across macOS, Windows and Linux.
+Desktop link shortening for macOS. Windows and Linux retain their existing widget set.
 
-- **Windows** and **Linux** apps join the macOS menu-bar app: a system-tray icon that opens the same floating classroom widgets, floating above other apps with adjustable background transparency.
-- Windows ships as a per-user installer (no admin rights) with a **Start Classroom Widgets automatically when I sign in** option, plus a portable zip. Linux ships as an AppImage and a `.deb`.
-- Tray menu on every platform: Add Widget, Arrange in Row / Column, Reload, Settings, Launch at Login, Open Full Web App. Widget positions are remembered between launches.
+- **macOS:** Open Link Shortener as a floating widget. TinyURL works without sign-up; choose spoo.me or your own Short.io public key and branded domain in **Settings → Link Shortener**.
+- **macOS:** Provider settings are saved on the Mac and shared by all Link Shortener and QR Code widgets, including newly opened windows.
+- **macOS:** QR Code can shorten a link before encoding it. If the provider fails or takes longer than 15 seconds, the original URL's QR code remains available.
+- The website keeps its existing build-time Short.io configuration; no runtime provider picker or QR-shortening controls are added to the web app.

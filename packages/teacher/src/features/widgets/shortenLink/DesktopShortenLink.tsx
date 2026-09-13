@@ -202,8 +202,8 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
         </form>
       ) : (
         // Result state
-        <div className="flex flex-col flex-1">
-          <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+        <div className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-3">
             <div className="text-center space-y-2">
               <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
                 Original URL:
@@ -213,7 +213,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
               </p>
             </div>
 
-            <div className="bg-white p-3 rounded-lg shadow-inner">
+            <div className="bg-white p-3 rounded-lg shadow-inner w-fit mx-auto">
               <QRCode
                 value={shortenedLink}
                 size={150}
@@ -260,7 +260,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
             onClick={(e) => {
               resetForm();
             }}
-            className="w-full px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
+            className="shrink-0 w-full px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
           >
             Shorten Another Link
           </button>
