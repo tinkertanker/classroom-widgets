@@ -23,6 +23,7 @@ public partial class SettingsWindow : Window
         _host = host;
         _shortcuts = shortcuts;
         InitializeComponent();
+        Height = Math.Min(Height, SystemParameters.WorkArea.Height - 40);
 
         _opacityCommit = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _opacityCommit.Tick += (_, _) =>
