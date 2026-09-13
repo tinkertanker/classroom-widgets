@@ -50,6 +50,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['src/setupTests.ts'],
-    css: true
+    css: true,
+    // Shared workspace code keeps its tests beside the source it covers.
+    include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}', '../shared/**/*.{test,spec}.{js,ts}']
   }
 })
