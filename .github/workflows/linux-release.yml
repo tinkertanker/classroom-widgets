@@ -42,10 +42,46 @@ jobs:
             packages/linux-dashboard/dist/*.AppImage
             packages/linux-dashboard/dist/*.deb
 
+      - name: Read version
+        id: version
+        run: echo "version=$(node -p "require('./packages/linux-dashboard/version.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Write release notes
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: packages/linux-dashboard/dist
+        run: |
+          v='${{ steps.version.outputs.version }}'
+          appimage="ClassroomWidgets-v$v-linux-x86_64.AppImage"
+          deb="ClassroomWidgets-v$v-linux-amd64.deb"
+          notes="$(sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' ../RELEASE_NOTES.md)"
+          cat > release-body.md <<EOF
+          Classroom Widgets for Linux is a system-tray app for adding floating classroom widgets that stay above your apps.
+
+          ## What's new
+
+          $notes
+
+          ## Install
+
+          - **\`$appimage\`** — portable; \`chmod +x\` it and run. No installation needed.
+          - **\`$deb\`** — Debian/Ubuntu package (\`sudo apt install ./$deb\`); installs under \`/opt/Classroom Widgets\`.
+
+          Requires a 64-bit Linux desktop with a system tray. On GNOME, install an AppIndicator extension (e.g. *AppIndicator and KStatusNotifierItem Support*); KDE Plasma, Cinnamon and XFCE work out of the box.
+
+          Supported widgets: Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, Sound Effects.
+
+          ## Download verification
+
+          SHA-256 (\`$appimage\`): \`$(sha256sum "$appimage" | cut -d' ' -f1)\`
+          SHA-256 (\`$deb\`): \`$(sha256sum "$deb" | cut -d' ' -f1)\`
+          EOF
+
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          name: Classroom Widgets for Linux v${{ steps.version.outputs.version }}
+          body_path: packages/linux-dashboard/dist/release-body.md
           files: |
             packages/linux-dashboard/dist/*.AppImage
             packages/linux-dashboard/dist/*.deb
