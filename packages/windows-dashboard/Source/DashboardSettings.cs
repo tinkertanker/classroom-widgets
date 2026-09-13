@@ -36,6 +36,9 @@ public sealed class DashboardSettings
     public double BackgroundOpacity { get; set; } = 1.0;
     public bool AlwaysOnTop { get; set; } = true;
     public Dictionary<string, PanelFrame> PanelFrames { get; set; } = new();
+    public bool WidgetShortcutsInitialized { get; set; }
+    public Dictionary<int, string?> WidgetShortcuts { get; set; } = new();
+    public Dictionary<int, string> WidgetShortcutDefaults { get; set; } = new();
 
     public event Action? Changed;
 
@@ -49,6 +52,8 @@ public sealed class DashboardSettings
                 if (loaded is not null)
                 {
                     loaded.BackgroundOpacity = Math.Clamp(loaded.BackgroundOpacity, 0, 1);
+                    loaded.WidgetShortcuts ??= new();
+                    loaded.WidgetShortcutDefaults ??= new();
                     return loaded;
                 }
             }
@@ -77,6 +82,21 @@ public sealed class DashboardSettings
     {
         Save();
         Changed?.Invoke();
+    }
+
+    public bool InitializeWidgetShortcuts(IReadOnlyList<CompactWidgetOption> options)
+    {
+        if (WidgetShortcutsInitialized || options.Count == 0) return false;
+
+        WidgetShortcutsInitialized = true;
+        foreach (var (option, index) in options.Take(9).Select((option, index) => (option, index)))
+        {
+            var shortcut = $"Ctrl+Alt+Shift+{index + 1}";
+            WidgetShortcuts[option.WidgetType] = shortcut;
+            WidgetShortcutDefaults[option.WidgetType] = shortcut;
+        }
+        NotifyChanged();
+        return true;
     }
 
     public static bool LaunchAtLoginEnabled

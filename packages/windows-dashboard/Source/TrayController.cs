@@ -13,6 +13,7 @@ public sealed class TrayController : IDisposable
 {
     private readonly WidgetHostController _host;
     private readonly DashboardSettings _settings;
+    private readonly WidgetShortcutManager _shortcuts;
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _addMenu = new("Add Widget");
@@ -20,10 +21,11 @@ public sealed class TrayController : IDisposable
     private readonly ToolStripMenuItem _launchAtLogin = new("Launch at Login") { CheckOnClick = true };
     private SettingsWindow? _settingsWindow;
 
-    public TrayController(WidgetHostController host, DashboardSettings settings)
+    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts)
     {
         _host = host;
         _settings = settings;
+        _shortcuts = shortcuts;
 
         _icon = new NotifyIcon
         {
@@ -142,7 +144,7 @@ public sealed class TrayController : IDisposable
             _settingsWindow.Activate();
             return;
         }
-        _settingsWindow = new SettingsWindow(_settings);
+        _settingsWindow = new SettingsWindow(_settings, _host, _shortcuts);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
         _settingsWindow.Activate();

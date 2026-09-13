@@ -17,12 +17,14 @@ The app has no main window. After launch a **Classroom Widgets** icon appears in
 | **Add Widget ▸** | Opens a floating panel for Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, or Sound Effects. |
 | **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
 | **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
-| **Settings…** | Always on top, launch at login, widget background opacity, reset remembered positions. |
+| **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` entry. |
 | **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
 | **Quit** | Flushes pending widget state and exits. |
 
 Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
+
+The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each global shortcut. An assignment remains saved if Windows cannot register it, and Settings reports the conflict so it can be changed without losing the intended shortcut.
 
 ### Where things live
 

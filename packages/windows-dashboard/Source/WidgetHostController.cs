@@ -22,6 +22,7 @@ public sealed class WidgetHostController
     private bool _initialized;
 
     public IReadOnlyList<CompactWidgetOption> WidgetOptions { get; private set; } = Array.Empty<CompactWidgetOption>();
+    public bool IsAvailable { get; private set; }
     public event Action? WidgetOptionsChanged;
 
     public WidgetPanelCoordinator Coordinator => _coordinator;
@@ -94,7 +95,7 @@ public sealed class WidgetHostController
 
     public async Task AddWidgetAsync(int widgetType)
     {
-        if (!_initialized) return;
+        if (!_initialized || !IsAvailable) return;
         var applied = await DashboardWebView.EvaluateBoolAsync(_webView,
             $"(() => {{ const host = window.classroomPanelHost; return host?.addWidget ? host.addWidget({widgetType}) : false; }})()");
         if (!applied) DashboardLog.Warn($"Host refused to add widget type {widgetType}");
@@ -103,6 +104,7 @@ public sealed class WidgetHostController
     public async Task ReloadWidgetsAsync()
     {
         if (_reloadInProgress || !_initialized) return;
+        IsAvailable = false;
         _reloadInProgress = true;
         var (changes, prepared) = await _coordinator.PrepareForDeactivationAsync();
         if (!prepared)
@@ -129,6 +131,7 @@ public sealed class WidgetHostController
     {
         _coordinator.FlushPersistedFrames();
         if (!_initialized || _reloadInProgress) return !_initialized;
+        IsAvailable = false;
         _reloadInProgress = true;
 
         var preparation = _coordinator.PrepareForDeactivationAsync();
@@ -164,10 +167,12 @@ public sealed class WidgetHostController
         _reloadInProgress = false;
         _coordinator.Deactivate();
         _coordinator.Activate();
+        IsAvailable = true;
     }
 
     private void LoadHost()
     {
+        IsAvailable = false;
         var url = DashboardWebView.BuildUrl(new Dictionary<string, string>
         {
             ["dashboard"] = "1",
@@ -224,6 +229,7 @@ public sealed class WidgetHostController
     /// </summary>
     private async Task RecoverFromHostFailureAsync()
     {
+        IsAvailable = false;
         if (_reloadInProgress)
         {
             _hostWrites.Reset();
@@ -241,6 +247,7 @@ public sealed class WidgetHostController
     private void ReconcileWidgetPanels(WidgetPanelInventory inventory)
     {
         if (!_coordinator.Reconcile(inventory)) return;
+        IsAvailable = true;
         if (inventory.Options is not null && !inventory.Options.SequenceEqual(WidgetOptions))
         {
             WidgetOptions = inventory.Options;
