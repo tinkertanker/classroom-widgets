@@ -32,6 +32,7 @@ Settings include:
 - Show floating widgets on all Spaces
 - Floating-widget background opacity
 - A configurable global shortcut for opening Settings (default: Command-Option-Comma)
+- Configurable global shortcuts for launching each widget (the first nine default to Command-Option-Control-1 through 9)
 
 ## App identity and upgrades
 
