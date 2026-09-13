@@ -161,9 +161,17 @@ public partial class SettingsWindow : Window
 
     private void CaptureShortcut(int widgetType, TextBox capture, KeyEventArgs args)
     {
-        args.Handled = true;
         var key = args.Key == Key.System ? args.SystemKey : args.Key;
-        if (!WidgetShortcutGesture.TryFromKey(key, Keyboard.Modifiers, out var gesture)) return;
+        var modifiers = Keyboard.Modifiers;
+        if (key == Key.Tab && (modifiers & ~ModifierKeys.Shift) == ModifierKeys.None) return;
+        if (key == Key.F4 && modifiers == ModifierKeys.Alt) return;
+        args.Handled = true;
+        if (key == Key.Escape && modifiers == ModifierKeys.None)
+        {
+            capture.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+            return;
+        }
+        if (!WidgetShortcutGesture.TryFromKey(key, modifiers, out var gesture)) return;
         if (_shortcuts.IsDuplicate(widgetType, gesture.Display))
         {
             var status = _shortcutControls[widgetType].Status;
