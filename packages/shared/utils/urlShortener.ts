@@ -277,7 +277,7 @@ export function parseShortenResponse(
   // Short.io
   const shortUrl = json?.secureShortURL ?? json?.shortURL;
   if (status < 400 && typeof shortUrl === 'string' && shortUrl) {
-    return { ok: true, shortUrl: preferHttps(shortUrl) };
+    return { ok: true, shortUrl };
   }
   if (status === 401 || status === 403) {
     return { ok: false, message: 'Short.io rejected that API key. Check it in Settings.' };

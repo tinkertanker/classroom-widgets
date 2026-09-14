@@ -190,7 +190,7 @@ describe('parseShortenResponse', () => {
     const body = JSON.stringify({ shortURL: 'http://go.example.edu/abc' });
     expect(parseShortenResponse('shortio', 200, body)).toEqual({
       ok: true,
-      shortUrl: 'https://go.example.edu/abc'
+      shortUrl: 'http://go.example.edu/abc'
     });
   });
 
