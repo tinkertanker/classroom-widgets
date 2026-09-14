@@ -24,11 +24,14 @@
 
 ## macOS releases
 
-- Signed and notarized macOS builds can be produced on the `yjmbpro` Mac through
-  a live Amp runner. That machine has the required Developer ID identity,
-  notarization configuration, Xcode toolchain, and `create-dmg` installation.
-- Keep signing and notarization credentials on `yjmbpro`; never copy them into
-  an orb. Build the exact release commit in a clean checkout and leave unrelated
-  changes in the machine's existing checkout untouched.
+- The Release workflow is configured to build, sign, notarize, and attach the
+  macOS DMG in GitHub Actions when `MACOS_RELEASE_IN_CI=true`. Verify the macOS
+  job succeeds before attempting a manual build; never print or retrieve Actions
+  secret values.
+- If CI is unavailable, signed and notarized macOS builds can be produced on an
+  authorized Mac through a live Amp runner. Keep signing and notarization
+  credentials on that Mac; never copy them into an orb. Build the exact release
+  commit in a clean checkout and leave unrelated changes in the machine's
+  existing checkout untouched.
 - Follow [`docs/MACOS_DISTRIBUTION.md`](docs/MACOS_DISTRIBUTION.md) for the
   versioning, validation, tagging, and publication workflow.
