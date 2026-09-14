@@ -18,6 +18,8 @@ export interface DashboardSettingsData {
   alwaysOnTop: boolean;
   panelFrames: Record<string, PanelFrame>;
   linkShortener: ShortenerSettings;
+  widgetShortcutsInitialized: boolean;
+  widgetShortcuts: Record<string, string | null>;
 }
 
 /**
@@ -31,6 +33,8 @@ export class DashboardSettings extends EventEmitter {
   alwaysOnTop = true;
   panelFrames: Record<string, PanelFrame> = {};
   linkShortener = readShortenerSettings();
+  widgetShortcutsInitialized = false;
+  widgetShortcuts: Record<string, string | null> = {};
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -46,6 +50,14 @@ export class DashboardSettings extends EventEmitter {
         }
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
         settings.linkShortener = readShortenerSettings(raw.linkShortener);
+        if (raw.widgetShortcutsInitialized === true) settings.widgetShortcutsInitialized = true;
+        if (raw.widgetShortcuts && typeof raw.widgetShortcuts === 'object') {
+          for (const [widgetType, shortcut] of Object.entries(raw.widgetShortcuts)) {
+            if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
+              settings.widgetShortcuts[widgetType] = shortcut;
+            }
+          }
+        }
         if (raw.panelFrames && typeof raw.panelFrames === 'object') {
           for (const [id, frame] of Object.entries(raw.panelFrames)) {
             if (
@@ -72,6 +84,8 @@ export class DashboardSettings extends EventEmitter {
         alwaysOnTop: this.alwaysOnTop,
         panelFrames: this.panelFrames,
         linkShortener: this.linkShortener,
+        widgetShortcutsInitialized: this.widgetShortcutsInitialized,
+        widgetShortcuts: this.widgetShortcuts,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {

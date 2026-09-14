@@ -7,6 +7,9 @@ struct KeyboardShortcutRecorder: View {
     @Binding var modifiers: Int
 
     var placeholder = "Click to set"
+    var accessibilityLabel = "Keyboard shortcut"
+    var onShortcutChanged: ((Int, Int) -> Void)?
+    var onRecordingChanged: ((Bool) -> Void)?
     @State private var isRecording = false
 
     var body: some View {
@@ -15,7 +18,10 @@ struct KeyboardShortcutRecorder: View {
                 keyCode: $keyCode,
                 modifiers: $modifiers,
                 isRecording: $isRecording,
-                placeholder: placeholder
+                placeholder: placeholder,
+                accessibilityLabel: accessibilityLabel,
+                onShortcutChanged: onShortcutChanged,
+                onRecordingChanged: onRecordingChanged
             )
             .frame(width: 150, height: 26)
             .background(isRecording ? Color.accentColor.opacity(0.15) : Color(nsColor: .controlBackgroundColor))
@@ -27,8 +33,10 @@ struct KeyboardShortcutRecorder: View {
 
             if keyCode != -1 {
                 Button("Clear shortcut", systemImage: "xmark.circle.fill") {
-                    keyCode = -1
-                    modifiers = 0
+                    if let onShortcutChanged { onShortcutChanged(-1, 0) } else {
+                        keyCode = -1
+                        modifiers = 0
+                    }
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.plain)
@@ -44,17 +52,27 @@ private struct RecorderField: NSViewRepresentable {
     @Binding var modifiers: Int
     @Binding var isRecording: Bool
     var placeholder: String
+    var accessibilityLabel: String
+    var onShortcutChanged: ((Int, Int) -> Void)?
+    var onRecordingChanged: ((Bool) -> Void)?
 
     func makeNSView(context: Context) -> RecorderNSView {
         let view = RecorderNSView()
         view.delegate = context.coordinator
         view.placeholder = placeholder
+        view.setAccessibilityLabel(accessibilityLabel)
         return view
     }
 
     func updateNSView(_ nsView: RecorderNSView, context: Context) {
+        context.coordinator.parent = self
         nsView.placeholder = placeholder
+        nsView.setAccessibilityLabel(accessibilityLabel)
         nsView.updateDisplay(keyCode: keyCode, modifiers: modifiers, isRecording: isRecording)
+    }
+
+    static func dismantleNSView(_ nsView: RecorderNSView, coordinator: Coordinator) {
+        nsView.endRecordingIfNeeded()
     }
 
     func makeCoordinator() -> Coordinator {
@@ -71,15 +89,21 @@ private struct RecorderField: NSViewRepresentable {
 
         func recorderDidStartRecording() {
             parent.isRecording = true
+            parent.onRecordingChanged?(true)
         }
 
         func recorderDidEndRecording() {
             parent.isRecording = false
+            parent.onRecordingChanged?(false)
         }
 
         func recorderDidCaptureShortcut(keyCode: Int, modifiers: Int) {
-            parent.keyCode = keyCode
-            parent.modifiers = modifiers
+            if let onShortcutChanged = parent.onShortcutChanged {
+                onShortcutChanged(keyCode, modifiers)
+            } else {
+                parent.keyCode = keyCode
+                parent.modifiers = modifiers
+            }
             parent.isRecording = false
         }
     }
@@ -101,7 +125,6 @@ private final class RecorderNSView: NSView {
     private var isRecording = false
     private var currentKeyCode = -1
     private var currentModifiers = 0
-
     private let textField: NSTextField = {
         let field = NSTextField(labelWithString: "")
         field.alignment = .center
@@ -120,10 +143,19 @@ private final class RecorderNSView: NSView {
         setup()
     }
 
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
     override var acceptsFirstResponder: Bool { true }
 
     override func mouseDown(with event: NSEvent) {
         startRecording()
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        startRecording()
+        return true
     }
 
     override func keyDown(with event: NSEvent) {
@@ -171,6 +203,23 @@ private final class RecorderNSView: NSView {
         return super.resignFirstResponder()
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        NotificationCenter.default.removeObserver(self)
+        guard let window else {
+            endRecordingIfNeeded()
+            return
+        }
+        let center = NotificationCenter.default
+        for name in [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
+            center.addObserver(self, selector: #selector(windowDidEndInteraction), name: name, object: window)
+        }
+    }
+
+    @objc private func windowDidEndInteraction(_ notification: Notification) {
+        endRecordingIfNeeded()
+    }
+
     func updateDisplay(keyCode: Int, modifiers: Int, isRecording: Bool) {
         currentKeyCode = keyCode
         currentModifiers = modifiers
@@ -197,6 +246,7 @@ private final class RecorderNSView: NSView {
     }
 
     private func startRecording() {
+        guard !isRecording else { return }
         isRecording = true
         window?.makeFirstResponder(self)
         textField.stringValue = "Press shortcut..."
@@ -206,10 +256,15 @@ private final class RecorderNSView: NSView {
     }
 
     private func stopRecording() {
+        guard isRecording else { return }
         isRecording = false
         window?.makeFirstResponder(nil)
         updateDisplayText()
         delegate?.recorderDidEndRecording()
+    }
+
+    func endRecordingIfNeeded() {
+        stopRecording()
     }
 
     private func updateDisplayText() {

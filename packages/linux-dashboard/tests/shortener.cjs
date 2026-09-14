@@ -15,6 +15,7 @@ registerPrivilegedScheme();
 const { DashboardSettings } = require('../out/main/settings');
 const { shortenerSettingsScript } = require('../out/main/shortenerSettings');
 const { openSettingsWindow } = require('../out/main/settingsWindow');
+const { WidgetShortcutController } = require('../out/main/widgetShortcuts');
 const { WidgetPanelWindow } = require('../out/main/panelWindow');
 const { parseDescriptor } = require('../out/main/models');
 
@@ -48,7 +49,10 @@ app.whenReady().then(async () => {
   const contents = first.view.webContents;
   await waitFor(() => contents.executeJavaScript("window.classroomShortenerSettings?.provider === 'tinyurl'"));
   await waitFor(() => contents.executeJavaScript("!!document.querySelector('[title=\"Link Shortener settings\"]')"));
-  openSettingsWindow(settings, '0.11.1');
+  const shortcuts = new WidgetShortcutController(settings, { register: () => true, unregisterAll() {} }, () => {});
+  shortcuts.updateOptions([{ widgetType: 6, title: 'Link Shortener' }, { widgetType: 1, title: 'Timer' }]);
+  assert.equal(shortcuts.setShortcut(6, 'Ctrl+Alt+K').ok, true);
+  openSettingsWindow(settings, shortcuts, '0.11.2');
   const win = BrowserWindow.getAllWindows().find(w => w.getTitle() === 'Classroom Widgets Settings');
   await waitFor(() => win.webContents.executeJavaScript("document.querySelector('#shortenerProvider')?.value === 'tinyurl'"));
   if (process.env.SCREENSHOT_DIR) {
@@ -64,6 +68,8 @@ app.whenReady().then(async () => {
   await waitFor(() => contents.executeJavaScript("window.classroomShortenerSettings?.shortioDomain === 'go.school.edu'"));
   assert.equal(DashboardSettings.load().linkShortener.shortioApiKey, 'pk_verification_only');
   assert.equal(DashboardSettings.load().backgroundOpacity, 0.45);
+  assert.equal(DashboardSettings.load().widgetShortcuts['6'], 'Ctrl+Alt+K');
+  assert.equal(await win.webContents.executeJavaScript("document.querySelectorAll('.shortcut-row').length"), 2);
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('#shortioFields').hidden"), false);
   // capturePage may return the previous compositor frame immediately after input.
   await new Promise(resolve => setTimeout(resolve, 200));

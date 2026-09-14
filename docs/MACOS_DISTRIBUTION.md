@@ -34,6 +34,7 @@ Settings include:
 - Floating-widget background opacity
 - Link shortening provider: TinyURL (default, no sign-up), spoo.me, or Short.io
 - A configurable global shortcut for opening Settings (default: Command-Option-Comma)
+- Configurable global shortcuts for launching each widget (the first nine default to Command-Option-Control-1 through 9)
 
 The **Link Shortener** settings tab stores the provider and optional Short.io public
 key/domain in this Mac's preferences. All floating Link Shortener and QR Code

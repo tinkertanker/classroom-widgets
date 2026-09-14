@@ -3,11 +3,12 @@ import { join } from 'node:path';
 import { DashboardSettings } from './settings';
 import { rendererDir } from './panelWindow';
 import { readShortenerSettings } from './shortenerSettings';
+import { WidgetShortcutController } from './widgetShortcuts';
 
 let settingsWindow: BrowserWindow | null = null;
 let ipcInstalled = false;
 
-function installIpc(settings: DashboardSettings): void {
+function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutController): void {
   if (ipcInstalled) return;
   ipcInstalled = true;
   ipcMain.handle('settings:get', () => ({
@@ -15,6 +16,8 @@ function installIpc(settings: DashboardSettings): void {
     alwaysOnTop: settings.alwaysOnTop,
     launchAtLogin: settings.launchAtLoginEnabled,
     linkShortener: settings.linkShortener,
+    shortcuts: shortcuts.getStatuses(),
+    wayland: process.platform === 'linux' && Boolean(process.env.WAYLAND_DISPLAY),
   }));
   ipcMain.on('settings:set', (_event, update: unknown) => {
     if (typeof update !== 'object' || update === null) return;
@@ -37,19 +40,34 @@ function installIpc(settings: DashboardSettings): void {
     settings.panelFrames = {};
     settings.notifyChanged();
   });
+  ipcMain.handle('settings:set-shortcut', (_event, widgetType: unknown, accelerator: unknown) => {
+    if (typeof widgetType !== 'number' || (typeof accelerator !== 'string' && accelerator !== null)) {
+      return { ok: false, error: 'Invalid shortcut.' };
+    }
+    return shortcuts.setShortcut(widgetType, accelerator);
+  });
+  ipcMain.on('settings:reset-shortcuts', () => shortcuts.reset());
+  ipcMain.on('settings:capturing', (_event, active: unknown) => shortcuts.setCapturing(active === true));
+  shortcuts.on('changed', () => {
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send('settings:shortcuts-changed', shortcuts.getStatuses());
+    }
+  });
 }
 
-export function openSettingsWindow(settings: DashboardSettings, appVersion: string): void {
-  installIpc(settings);
+export function openSettingsWindow(settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string): void {
+  installIpc(settings, shortcuts);
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.show();
     settingsWindow.focus();
     return;
   }
   const win = new BrowserWindow({
-    width: 440,
-    height: 650,
-    resizable: false,
+    width: 460,
+    height: 700,
+    minWidth: 420,
+    minHeight: 480,
+    resizable: true,
     title: 'Classroom Widgets Settings',
     autoHideMenuBar: true,
     alwaysOnTop: true,
@@ -64,6 +82,7 @@ export function openSettingsWindow(settings: DashboardSettings, appVersion: stri
   });
   settingsWindow = win;
   win.once('closed', () => {
+    shortcuts.setCapturing(false);
     settingsWindow = null;
   });
   void win.loadFile(join(rendererDir(), 'settings.html'));

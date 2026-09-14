@@ -5,6 +5,7 @@ import { WidgetHostController } from './hostController';
 import { DashboardSettings } from './settings';
 import { openSettingsWindow } from './settingsWindow';
 import { WidgetPanelLayout } from './models';
+import { WidgetShortcutController } from './widgetShortcuts';
 
 const FULL_WEB_APP_URL = 'https://widgets.tk.sg';
 const ABOUT_URL = 'https://github.com/tinkertanker/classroom-widgets';
@@ -17,12 +18,14 @@ export class TrayController {
   private readonly tray: Tray;
   private readonly host: WidgetHostController;
   private readonly settings: DashboardSettings;
+  private readonly shortcuts: WidgetShortcutController;
   private readonly appVersion: string;
   private readonly onQuit: () => void;
 
-  constructor(host: WidgetHostController, settings: DashboardSettings, appVersion: string, onQuit: () => void) {
+  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onQuit: () => void) {
     this.host = host;
     this.settings = settings;
+    this.shortcuts = shortcuts;
     this.appVersion = appVersion;
     this.onQuit = onQuit;
 
@@ -67,7 +70,7 @@ export class TrayController {
       },
       { label: 'Reload Widgets', click: () => void this.host.reloadWidgets() },
       { type: 'separator' },
-      { label: 'Settings…', click: () => openSettingsWindow(this.settings, this.appVersion) },
+      { label: 'Settings…', click: () => openSettingsWindow(this.settings, this.shortcuts, this.appVersion) },
       {
         label: 'Launch at Login',
         type: 'checkbox',
