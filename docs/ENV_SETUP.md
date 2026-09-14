@@ -83,6 +83,19 @@ All development variables PLUS:
 | `UMAMI_DB_USER` | Umami database username | `umami` |
 | `UMAMI_DB_PASSWORD` | Umami database password | `secure-password` |
 
+## Desktop link shortening
+
+The website's Link Shortener still uses `VITE_SHORTIO_API_KEY`,
+`VITE_SHORTIO_DOMAIN`, and the optional `VITE_SHORTIO_BASE_URL` at build time.
+It remains hidden from the web launcher when no API key is configured.
+
+The desktop apps instead use **Settings → Link Shortener** at runtime, shared
+across floating widgets and saved in native preferences. TinyURL is the default
+and needs no key. See [macOS usage](MACOS_DISTRIBUTION.md#use-the-app) for provider
+choices and QR-code fallback behavior. No web redeployment is needed to change
+the desktop provider. Windows and Linux expose the same provider choices in
+their Settings windows, also accessible from the widget's settings gear.
+
 ## 🔒 Security Best Practices
 
 ### What to NEVER Commit

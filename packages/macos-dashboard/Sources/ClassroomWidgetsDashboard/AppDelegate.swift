@@ -380,7 +380,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func addWidget(_ sender: NSMenuItem) { controller?.addWidget(sender.tag) }
     @objc private func reloadWidgets() { controller?.reloadWidgets() }
-    @objc private func showSettings() { settingsWindowCoordinator.show() }
+    @objc func showSettings() { settingsWindowCoordinator.show() }
 
     @objc private func showAbout() {
         let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage()

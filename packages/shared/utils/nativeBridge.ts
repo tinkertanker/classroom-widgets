@@ -1,5 +1,18 @@
 export type NativeMessageHandlerName = 'classroomDashboard' | 'classroomWidgetPanel';
 
+declare global {
+  interface Window {
+    __CLASSROOM_WIDGETS_MACOS__?: boolean;
+    __CLASSROOM_WIDGETS_WINDOWS__?: boolean;
+    __CLASSROOM_WIDGETS_LINUX__?: boolean;
+  }
+}
+
+export function isNativeDesktop(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.__CLASSROOM_WIDGETS_MACOS__
+    || window.__CLASSROOM_WIDGETS_WINDOWS__ || window.__CLASSROOM_WIDGETS_LINUX__);
+}
+
 type WebKitMessageHandlers = Partial<Record<NativeMessageHandlerName, { postMessage: (message: unknown) => void }>>;
 
 interface NativeBridgeWindow {

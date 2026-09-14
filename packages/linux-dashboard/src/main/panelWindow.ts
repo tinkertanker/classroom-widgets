@@ -13,6 +13,8 @@ import {
 } from './models';
 import { registerNativeMessages, unregisterNativeMessages } from './nativeMessages';
 import { configureWebContents, evaluate, evaluateBool } from './webContentsSetup';
+import type { DashboardSettings } from './settings';
+import { shortenerSettingsScript } from './shortenerSettings';
 
 export interface RectFrame {
   x: number;
@@ -90,7 +92,7 @@ export class WidgetPanelWindow extends EventEmitter {
   /** Set by the coordinator so the arrange menu can check the active layout. */
   getCurrentLayout: () => WidgetPanelLayout = () => 'freeform';
 
-  constructor(descriptor: WidgetPanelDescriptor, backgroundOpacity: number, alwaysOnTop: boolean, appVersion: string) {
+  constructor(descriptor: WidgetPanelDescriptor, backgroundOpacity: number, alwaysOnTop: boolean, appVersion: string, private readonly settings: DashboardSettings) {
     super();
     installChromeListener();
     this.descriptor = descriptor;
@@ -223,9 +225,9 @@ export class WidgetPanelWindow extends EventEmitter {
     const opacityChanged = this.backgroundOpacity !== next;
     this.backgroundOpacity = next;
     if (!this.win.isDestroyed()) this.win.setAlwaysOnTop(alwaysOnTop);
+    this.applyWebPresentation();
     if (!opacityChanged) return;
     this.pushChromeUpdate();
-    this.applyWebPresentation();
   }
 
   setWidgetCreationOptions(options: CompactWidgetOption[]): void {
@@ -320,6 +322,9 @@ export class WidgetPanelWindow extends EventEmitter {
     if (typeof body.widgetId === 'string' && body.widgetId !== this.widgetId) return;
 
     switch (body.type) {
+      case 'open-settings':
+        this.emit('openSettingsRequested');
+        break;
       case 'panel-ready':
         this.panelReady = true;
         this.pushSnapshot(true);
@@ -362,7 +367,8 @@ export class WidgetPanelWindow extends EventEmitter {
     const snapshot = JSON.stringify(this.descriptor.snapshotPayload);
     void evaluateBool(
       this.view.webContents,
-      `(() => { const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot(${snapshot}); return true; })()`,
+      shortenerSettingsScript(this.settings.linkShortener)
+        + `(() => { const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot(${snapshot}); return true; })()`,
     );
   }
 
@@ -407,7 +413,8 @@ export class WidgetPanelWindow extends EventEmitter {
     if (this.view.webContents.isDestroyed()) return;
     void evaluate(
       this.view.webContents,
-      `document.documentElement.dataset.widgetChromeVisible = '${this.chromeVisible ? 'true' : 'false'}';`
+      shortenerSettingsScript(this.settings.linkShortener)
+        + `document.documentElement.dataset.widgetChromeVisible = '${this.chromeVisible ? 'true' : 'false'}';`
         + `document.documentElement.style.setProperty('--compact-widget-background-opacity', '${this.opacityText()}');`,
     );
   }

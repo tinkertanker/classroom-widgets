@@ -22,6 +22,7 @@ Select the Classroom Widgets menu-bar icon, then **New Floating Widget**. The cu
 - Traffic Light
 - Text Banner
 - QR Code
+- Link Shortener
 - Sound Effects
 
 Each widget opens in its own floating window. Use the standard macOS title bar to move or close it. The menu also provides **Reload Widgets**, **Launch at Login**, **Settings**, **About**, and **Quit**.
@@ -31,8 +32,23 @@ Settings include:
 - Launch at login
 - Show floating widgets on all Spaces
 - Floating-widget background opacity
+- Link shortening provider: TinyURL (default, no sign-up), spoo.me, or Short.io
 - A configurable global shortcut for opening Settings (default: Command-Option-Comma)
 - Configurable global shortcuts for launching each widget (the first nine default to Command-Option-Control-1 through 9)
+
+The **Link Shortener** settings tab stores the provider and optional Short.io public
+key/domain in this Mac's preferences. All floating Link Shortener and QR Code
+widgets share these settings, including newly opened widgets. Widget settings
+buttons open the native Settings window. Use a public `pk_...` key, never a secret
+API key. Creating a short link sends its destination URL to the selected provider.
+
+QR Code can optionally shorten a link before encoding it. If shortening fails or
+takes more than 15 seconds, it displays the original URL's QR code so the lesson
+can continue. School networks may block particular shortener domains; test the
+result on student devices and select another provider if needed.
+
+These runtime controls are desktop-only. The website retains its build-time
+Short.io configuration and does not expose the provider picker or QR shortening.
 
 ## App identity and upgrades
 

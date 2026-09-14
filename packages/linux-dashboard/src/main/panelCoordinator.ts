@@ -282,13 +282,14 @@ export class WidgetPanelCoordinator extends EventEmitter {
   }
 
   private makePanel(descriptor: WidgetPanelDescriptor): WidgetPanelWindow {
-    const panel = new WidgetPanelWindow(descriptor, this.backgroundOpacity, this.alwaysOnTop, this.appVersion);
+    const panel = new WidgetPanelWindow(descriptor, this.backgroundOpacity, this.alwaysOnTop, this.appVersion, this.settings);
     panel.setWidgetCreationOptions(this.options);
     panel.getCurrentLayout = () => this.layout;
     panel.on('panelStateChanged', (change: WidgetPanelStateChange) => this.emit('panelStateChanged', change));
     panel.on('randomiserListChanged', (change: unknown) => this.emit('randomiserListChanged', change));
     panel.on('removalRequested', (widgetId: string) => this.emit('widgetRemovalRequested', widgetId));
     panel.on('widgetCreationRequested', (widgetType: number) => this.emit('widgetCreationRequested', widgetType));
+    panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
     panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout));
     panel.on('frameChanged', (widgetId: string, frame: RectFrame) => {
       if (this.layout !== 'freeform') {

@@ -6,6 +6,7 @@ import { WidgetHostController } from './hostController';
 import { log } from './log';
 import { DashboardSettings } from './settings';
 import { TrayController } from './tray';
+import { openSettingsWindow } from './settingsWindow';
 import { WidgetShortcutController } from './widgetShortcuts';
 
 app.setName('ClassroomWidgets');
@@ -96,6 +97,7 @@ function bootstrap(): void {
     settings = DashboardSettings.load();
     host = new WidgetHostController(settings, version);
     shortcuts = new WidgetShortcutController(settings, globalShortcut, (widgetType) => void host?.addWidget(widgetType));
+    host.on('openSettingsRequested', () => openSettingsWindow(settings!, shortcuts!, version));
     host.on('widgetOptionsChanged', () => shortcuts?.updateOptions(host?.widgetOptions ?? []));
     host.on('hostAvailabilityChanged', (available: boolean) => shortcuts?.setHostAvailable(available));
     settings.on('changed', () => host?.applySettings());

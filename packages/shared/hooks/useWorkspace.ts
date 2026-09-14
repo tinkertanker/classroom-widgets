@@ -1,9 +1,25 @@
 // Workspace-level hooks for managing the overall workspace state
 
-import { useCallback } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { BackgroundType, WidgetType } from '../types';
+import { isNativeDesktop } from '../utils/nativeBridge';
+import { createDefaultShortenerSettings, type ShortenerSettings } from '../utils/urlShortener';
+
+declare global {
+  interface Window {
+    __CLASSROOM_WIDGETS_MACOS__?: boolean;
+    classroomShortenerSettings?: ShortenerSettings;
+  }
+}
+
+const defaultNativeShortenerSettings = createDefaultShortenerSettings();
+const getNativeShortenerSettings = () => window.classroomShortenerSettings ?? defaultNativeShortenerSettings;
+const subscribeNativeShortenerSettings = (listener: () => void) => {
+  window.addEventListener('classroom-shortener-settings-changed', listener);
+  return () => window.removeEventListener('classroom-shortener-settings-changed', listener);
+};
 
 // Main workspace hook
 export function useWorkspace() {
@@ -101,6 +117,15 @@ export function useDragAndDrop() {
     setDropTarget,
     isOverTrash: dropTarget === 'trash'
   };
+}
+
+// Link shortener settings, shared by the QR Code and Link Shortener widgets
+export function useLinkShortener() {
+  const settings = useWorkspaceStore((state) => state.linkShortener);
+  const updateSettings = useWorkspaceStore((state) => state.updateLinkShortener);
+  const nativeSettings = useSyncExternalStore(subscribeNativeShortenerSettings, getNativeShortenerSettings);
+
+  return { settings: isNativeDesktop() ? nativeSettings : settings, updateSettings };
 }
 
 // Theme hook with side effects

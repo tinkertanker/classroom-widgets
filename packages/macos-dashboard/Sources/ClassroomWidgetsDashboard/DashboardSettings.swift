@@ -3,6 +3,26 @@ import Carbon
 import Combine
 import SwiftUI
 
+enum DashboardShortenerSettings {
+    static let providerKey = "linkShortenerProvider"
+    static let apiKeyKey = "linkShortenerPublicApiKey"
+    static let domainKey = "linkShortenerDomain"
+
+    // This is a public client-side key, not a Short.io secret key. Keep the
+    // native preferences authoritative; compact WebViews have ephemeral storage.
+    static func script(defaults: UserDefaults = .standard) -> String {
+        let provider = defaults.string(forKey: providerKey) ?? "tinyurl"
+        let settings = [
+            "provider": ["tinyurl", "spoo", "shortio"].contains(provider) ? provider : "tinyurl",
+            "shortioApiKey": defaults.string(forKey: apiKeyKey) ?? "",
+            "shortioDomain": defaults.string(forKey: domainKey) ?? ""
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys]),
+              let json = String(data: data, encoding: .utf8) else { return "" }
+        return "window.classroomShortenerSettings = \(json); window.dispatchEvent(new Event('classroom-shortener-settings-changed'));"
+    }
+}
+
 enum DashboardSettingKeys {
     static let settingsShortcutKeyCode = "dashboardSettingsShortcutKeyCode"
     static let settingsShortcutModifiers = "dashboardSettingsShortcutModifiers"
@@ -230,11 +250,43 @@ struct DashboardSettingsView: View {
     var body: some View {
         TabView {
             DashboardGeneralSettingsView(context: context).tabItem { Text("General") }
+            DashboardShortenerSettingsView(context: context).tabItem { Text("Link Shortener") }
             DashboardShortcutSettingsView(context: context).tabItem { Text("Shortcuts") }
         }
         .dashboardTabBarStyle()
         .frame(width: 600, height: 640)
         .navigationTitle("Classroom Widgets Settings")
+    }
+}
+
+struct DashboardShortenerSettingsView: View {
+    @AppStorage(DashboardShortenerSettings.providerKey) private var provider = "tinyurl"
+    @AppStorage(DashboardShortenerSettings.apiKeyKey) private var apiKey = ""
+    @AppStorage(DashboardShortenerSettings.domainKey) private var domain = ""
+    let context: DashboardSettingsContext
+
+    var body: some View {
+        Form {
+            Section("Shortening service") {
+                Picker("Provider", selection: $provider) {
+                    Text("TinyURL — no sign-up").tag("tinyurl")
+                    Text("spoo.me — no sign-up").tag("spoo")
+                    Text("Short.io — your branded domain").tag("shortio")
+                }
+                if provider == "shortio" {
+                    SecureField("Public API key (pk_…)", text: $apiKey)
+                    TextField("Domain (e.g. go.myschool.edu)", text: $domain)
+                    Text("Use a public key, never a secret API key. These settings are saved on this Mac and shared by all Link Shortener and QR Code widgets.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Text("If your school blocks a shortening domain, try another service. Creating a short link sends its destination to the selected provider.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .onChange(of: provider) { _ in context.widgetSettingsChanged() }
+        .onChange(of: apiKey) { _ in context.widgetSettingsChanged() }
+        .onChange(of: domain) { _ in context.widgetSettingsChanged() }
     }
 }
 

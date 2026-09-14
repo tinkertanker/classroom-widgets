@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
 import { DashboardSettings } from './settings';
 import { rendererDir } from './panelWindow';
+import { readShortenerSettings } from './shortenerSettings';
 import { WidgetShortcutController } from './widgetShortcuts';
 
 let settingsWindow: BrowserWindow | null = null;
@@ -14,6 +15,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     backgroundOpacity: settings.backgroundOpacity,
     alwaysOnTop: settings.alwaysOnTop,
     launchAtLogin: settings.launchAtLoginEnabled,
+    linkShortener: settings.linkShortener,
     shortcuts: shortcuts.getStatuses(),
     wayland: process.platform === 'linux' && Boolean(process.env.WAYLAND_DISPLAY),
   }));
@@ -28,6 +30,9 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     }
     if (typeof partial.launchAtLogin === 'boolean') {
       settings.launchAtLoginEnabled = partial.launchAtLogin;
+    }
+    if (partial.linkShortener && typeof partial.linkShortener === 'object') {
+      settings.linkShortener = readShortenerSettings(partial.linkShortener);
     }
     settings.notifyChanged();
   });

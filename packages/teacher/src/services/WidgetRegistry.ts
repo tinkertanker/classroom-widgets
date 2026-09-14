@@ -29,6 +29,8 @@ import { GiSnake } from 'react-icons/gi';
 
 import { WidgetType, WidgetConfig, WidgetCategory, WidgetFeatures, Size, ColumnSizing } from '@shared/types';
 import { WIDGET_TYPES } from '@shared/constants/widgetTypes';
+import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { isNativeDesktop } from '@shared/utils/nativeBridge';
 
 // Preload all widget chunks immediately so they're browser-cached
 // before React.lazy needs them (prevents "Loading widget..." flash)
@@ -298,17 +300,19 @@ export class WidgetRegistry {
       icon: FaLink,
       component: LazyWidgets.ShortenLink,
       defaultSize: DEFAULT_SIZE,
-      minSize: { width: 200, height: 200 },
-      maintainAspectRatio: true,
+      minSize: isDesktopDashboardMode() || isNativeDesktop() ? { width: 300, height: 400 } : { width: 200, height: 200 },
+      maintainAspectRatio: !isDesktopDashboardMode() && !isNativeDesktop(),
       category: WidgetCategory.TEACHING_TOOLS,
       description: 'URL shortening service',
+      compactPanel: {
+        supported: isNativeDesktop(),
+        preferredSize: { width: 350, height: 440 },
+        minimumSize: { width: 300, height: 400 }
+      },
       columnSizing: 'aspect-ratio',
       features: {
-        requiresApiKey: true,
-        isResizable: true,
-        // Needs a build-time Short.io key (VITE_SHORTIO_API_KEY); without one
-        // the widget can only show an error, so keep it out of the launcher.
-        hidden: !import.meta.env.VITE_SHORTIO_API_KEY
+        hidden: !isDesktopDashboardMode() && !isNativeDesktop() && !import.meta.env.VITE_SHORTIO_API_KEY,
+        isResizable: true
       }
     });
 

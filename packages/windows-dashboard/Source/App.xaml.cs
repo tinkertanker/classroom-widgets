@@ -49,6 +49,9 @@ public partial class App : Application
 
         _shortcuts = new WidgetShortcutManager(_settings, _host);
         _tray = new TrayController(_host, _settings, _shortcuts);
+        // The widget settings gear posts classroomWidgetPanel open-settings;
+        // panels route it here so the same Settings window opens as from the tray.
+        _host.OpenSettingsRequested += () => _tray.OpenSettings();
         _ = _host.StartAsync();
     }
 

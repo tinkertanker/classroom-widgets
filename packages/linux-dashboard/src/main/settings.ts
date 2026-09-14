@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from '
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { log } from './log';
+import { readShortenerSettings, ShortenerSettings } from './shortenerSettings';
 
 export interface PanelFrame {
   left: number;
@@ -16,6 +17,7 @@ export interface DashboardSettingsData {
   backgroundOpacity: number;
   alwaysOnTop: boolean;
   panelFrames: Record<string, PanelFrame>;
+  linkShortener: ShortenerSettings;
   widgetShortcutsInitialized: boolean;
   widgetShortcuts: Record<string, string | null>;
 }
@@ -30,6 +32,7 @@ export class DashboardSettings extends EventEmitter {
   backgroundOpacity = 1;
   alwaysOnTop = true;
   panelFrames: Record<string, PanelFrame> = {};
+  linkShortener = readShortenerSettings();
   widgetShortcutsInitialized = false;
   widgetShortcuts: Record<string, string | null> = {};
 
@@ -46,6 +49,7 @@ export class DashboardSettings extends EventEmitter {
           settings.backgroundOpacity = Math.min(1, Math.max(0, raw.backgroundOpacity));
         }
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
+        settings.linkShortener = readShortenerSettings(raw.linkShortener);
         if (raw.widgetShortcutsInitialized === true) settings.widgetShortcutsInitialized = true;
         if (raw.widgetShortcuts && typeof raw.widgetShortcuts === 'object') {
           for (const [widgetType, shortcut] of Object.entries(raw.widgetShortcuts)) {
@@ -79,6 +83,7 @@ export class DashboardSettings extends EventEmitter {
         backgroundOpacity: this.backgroundOpacity,
         alwaysOnTop: this.alwaysOnTop,
         panelFrames: this.panelFrames,
+        linkShortener: this.linkShortener,
         widgetShortcutsInitialized: this.widgetShortcutsInitialized,
         widgetShortcuts: this.widgetShortcuts,
       };

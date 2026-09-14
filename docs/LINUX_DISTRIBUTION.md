@@ -64,6 +64,18 @@ cd packages/linux-dashboard && npm install && npm run build && npm start
 
 `packages/linux-dashboard` is intentionally **not** an npm workspace — it carries its own `package-lock.json` so Electron stays out of server and Docker installs. Rebuild the teacher app whenever web code changes. Only one instance runs at a time (Electron single-instance lock).
 
+After building both packages, run the shortener integration check from the
+repository root (install `xvfb` on headless Linux):
+
+```bash
+xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/shortener.cjs
+```
+
+This uses disposable preferences and real Electron panels to check native
+settings, persistence, live updates, reloads, and the widget's settings gear.
+It makes no shortening requests. Set `SCREENSHOT_DIR` to an existing directory
+to capture the default and Short.io Settings screens.
+
 The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but Wayland support depends on the desktop compositor and Electron's portal support; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
 
 ## Publishing a release

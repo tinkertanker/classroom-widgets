@@ -29,6 +29,22 @@
 
     <button id="reset">Forget saved widget positions</button>
 
+    <h1 class="label">Link Shortener</h1>
+    <label for="shortenerProvider">Shortening service</label>
+    <select id="shortenerProvider">
+      <option value="tinyurl">TinyURL — no sign-up</option>
+      <option value="spoo">spoo.me — no sign-up</option>
+      <option value="shortio">Short.io — your branded domain</option>
+    </select>
+    <div id="shortioFields" hidden>
+      <label for="shortioApiKey" class="label">Public API key (pk_…)</label>
+      <input id="shortioApiKey" type="password" autocomplete="new-password" />
+      <label for="shortioDomain" class="label">Domain (e.g. go.school.edu)</label>
+      <input id="shortioDomain" type="text" autocomplete="off" />
+      <p class="hint">Use a public key, never a secret API key.</p>
+    </div>
+    <p class="hint">Saved on this computer and shared by all Link Shortener and QR Code widgets. Creating a short link sends its destination to the selected provider. If your school blocks a shortening domain, try another service.</p>
+
     <p class="footer" id="version"></p>
   </main>
   <script src="settings.js"></script>

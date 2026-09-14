@@ -24,6 +24,7 @@ public sealed class WidgetHostController
     public IReadOnlyList<CompactWidgetOption> WidgetOptions { get; private set; } = Array.Empty<CompactWidgetOption>();
     public bool IsAvailable { get; private set; }
     public event Action? WidgetOptionsChanged;
+    public event Action? OpenSettingsRequested;
 
     public WidgetPanelCoordinator Coordinator => _coordinator;
 
@@ -35,6 +36,7 @@ public sealed class WidgetHostController
         _coordinator.RandomiserListChanged += change => _ = ApplyRandomiserListChangeAsync(change);
         _coordinator.WidgetCreationRequested += widgetType => _ = AddWidgetAsync(widgetType);
         _coordinator.WidgetRemovalRequested += widgetId => _ = RemoveWidgetAsync(widgetId);
+        _coordinator.OpenSettingsRequested += () => OpenSettingsRequested?.Invoke();
 
         _webView = new WebView2();
         _hostWindow = new Window
@@ -77,7 +79,15 @@ public sealed class WidgetHostController
         core.ProcessFailed += OnProcessFailed;
         core.NavigationCompleted += (_, args) =>
         {
-            if (!args.IsSuccess) DashboardLog.Error($"Widget host navigation failed: {args.WebErrorStatus}");
+            if (!args.IsSuccess)
+            {
+                DashboardLog.Error($"Widget host navigation failed: {args.WebErrorStatus}");
+                return;
+            }
+            // Republish after every (re)load so the host store sees the same
+            // shortener preferences as the visible panels, mirroring the
+            // macOS didFinish navigation behaviour.
+            _ = core.ExecuteScriptAsync(DashboardShortenerSettings.Script(_settings));
         };
         _initialized = true;
         LoadHost();
@@ -90,6 +100,7 @@ public sealed class WidgetHostController
         {
             _ = _webView.CoreWebView2.ExecuteScriptAsync(
                 $"window.classroomDashboard?.setBackgroundOpacity?.({_settings.BackgroundOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+            _ = _webView.CoreWebView2.ExecuteScriptAsync(DashboardShortenerSettings.Script(_settings));
         }
     }
 

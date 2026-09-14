@@ -9,6 +9,7 @@
  */
 
 import { BackgroundType, WidgetType } from './index';
+import { createDefaultShortenerSettings, type ShortenerSettings } from '../utils/urlShortener';
 
 export type LayoutFormat = 'canvas' | 'column';
 
@@ -118,6 +119,8 @@ export interface GlobalSettings {
   bottomBar: StoredBottomBarConfig;
   /** Class end time shown by the toolbar clock (epoch ms), null when unset */
   classEndTime?: number | null;
+  /** Which URL shortener the QR Code and Link Shortener widgets use */
+  linkShortener?: ShortenerSettings;
 }
 
 /**
@@ -189,6 +192,7 @@ export function createDefaultWorkspace(id: string, name: string = DEFAULT_WORKSP
 export function createDefaultGlobalSettings(): GlobalSettings {
   return {
     theme: 'light',
+    linkShortener: createDefaultShortenerSettings(),
     bottomBar: {
       visibleWidgets: [
         WidgetType.RANDOMISER,

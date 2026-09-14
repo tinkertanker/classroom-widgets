@@ -116,3 +116,12 @@ button.clear {
   font-size: 12px;
   margin-top: 18px;
 }
+
+select, input[type="text"], input[type="password"] {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #CBD0D6;
+  border-radius: 4px;
+  font: inherit;
+}
