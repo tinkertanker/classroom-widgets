@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
 import { WidgetHostController } from './hostController';
+import { LauncherWindow } from './launcherWindow';
 import { log } from './log';
 import { DashboardSettings } from './settings';
 import { TrayController } from './tray';
@@ -48,11 +49,25 @@ function bootstrap(): void {
 
   let settings: DashboardSettings | null = null;
   let host: WidgetHostController | null = null;
+  let launcher: LauncherWindow | null = null;
   let tray: TrayController | null = null;
   let updates: UpdateController | null = null;
   let shortcuts: WidgetShortcutController | null = null;
   let shuttingDown = false;
   let terminationPrepared = false;
+  let launcherRequested = !process.argv.includes('--background');
+
+  const openLauncher = (): void => {
+    if (!host || host.widgetOptions.length === 0) {
+      launcherRequested = true;
+      return;
+    }
+    launcherRequested = false;
+    launcher?.show();
+  };
+
+  app.on('second-instance', () => openLauncher());
+  app.on('activate', () => openLauncher());
 
   const requestQuit = async (): Promise<void> => {
     if (shuttingDown) return;
@@ -98,15 +113,23 @@ function bootstrap(): void {
 
     settings = DashboardSettings.load();
     host = new WidgetHostController(settings, version);
+    launcher = new LauncherWindow(version, (widgetType) => {
+      if (host?.widgetOptions.some((option) => option.widgetType === widgetType)) {
+        void host.addWidget(widgetType);
+      }
+    });
     shortcuts = new WidgetShortcutController(settings, globalShortcut, (widgetType) => void host?.addWidget(widgetType));
     host.on('openSettingsRequested', () => openSettingsWindow(settings!, shortcuts!, version));
-    host.on('widgetOptionsChanged', () => shortcuts?.updateOptions(host?.widgetOptions ?? []));
+    host.on('widgetOptionsChanged', () => {
+      shortcuts?.updateOptions(host?.widgetOptions ?? []);
+      if (launcherRequested) openLauncher();
+    });
     host.on('hostAvailabilityChanged', (available: boolean) => shortcuts?.setHostAvailable(available));
     settings.on('changed', () => host?.applySettings());
     host.applySettings();
 
     updates = new UpdateController(version, () => void requestQuit());
-    tray = new TrayController(host, settings, shortcuts, version, () => void updates?.check(true), () => void requestQuit());
+    tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit());
     void host.start();
     setTimeout(() => void updates?.check(), 10_000);
   });

@@ -121,7 +121,7 @@ public sealed class DashboardSettings
             if (key is null) return;
             if (value)
             {
-                key.SetValue(RunValueName, $"\"{Environment.ProcessPath}\"");
+                key.SetValue(RunValueName, $"\"{Environment.ProcessPath}\" --background");
             }
             else
             {

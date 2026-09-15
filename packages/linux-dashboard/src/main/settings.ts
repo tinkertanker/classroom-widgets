@@ -73,6 +73,8 @@ export class DashboardSettings extends EventEmitter {
     } catch (error) {
       log.warn(`Unable to read settings: ${error instanceof Error ? error.message : String(error)}`);
     }
+    // Rewrite entries created by older versions so login startup remains quiet.
+    if (settings.launchAtLoginEnabled) settings.launchAtLoginEnabled = true;
     return settings;
   }
 
@@ -120,8 +122,8 @@ export class DashboardSettings extends EventEmitter {
     }
     const executable = process.env.APPIMAGE ?? process.execPath;
     const execLine = app.isPackaged
-      ? `"${executable}"`
-      : `"${process.execPath}" "${app.getAppPath()}"`;
+      ? `"${executable}" --background`
+      : `"${process.execPath}" "${app.getAppPath()}" --background`;
     const contents = [
       '[Desktop Entry]',
       'Type=Application',

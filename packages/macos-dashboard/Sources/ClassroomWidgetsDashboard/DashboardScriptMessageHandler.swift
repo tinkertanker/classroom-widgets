@@ -21,6 +21,8 @@ struct WidgetPanelInventoryPayload {
 final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
     var onWidgetPanelsChanged: (@MainActor (WidgetPanelInventoryPayload) -> Void)?
     var onCompactWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
+    var onDesktopLauncherAddWidget: (@MainActor (Int) -> Void)?
+    var onDesktopLauncherClose: (@MainActor () -> Void)?
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         // The user script is injected into all frames, so only honour messages
@@ -39,6 +41,14 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
         }
 
         switch type {
+        case "desktop-launcher-add-widget":
+            guard (body["schemaVersion"] as? NSNumber)?.intValue == 1,
+                  let widgetType = (body["widgetType"] as? NSNumber)?.intValue
+            else { return }
+            onDesktopLauncherAddWidget?(widgetType)
+        case "desktop-launcher-close":
+            guard (body["schemaVersion"] as? NSNumber)?.intValue == 1 else { return }
+            onDesktopLauncherClose?()
         case "widget-panels-changed":
             guard (body["schemaVersion"] as? NSNumber)?.intValue == 1,
                   let rawHostInstanceID = body["hostInstanceId"] as? String,

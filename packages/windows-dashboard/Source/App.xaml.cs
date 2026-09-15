@@ -6,20 +6,26 @@ using System.Windows.Threading;
 namespace ClassroomWidgets;
 
 /// <summary>
-/// Tray-only application: no main window, a hidden widget host, and visible
-/// per-widget panels. A named mutex keeps a second launch from starting.
+/// Desktop application with a launcher window, a hidden widget host, a tray
+/// menu, and visible per-widget panels. A named mutex keeps a second launch
+/// from starting while a named event routes it to the existing launcher.
 /// </summary>
 public partial class App : Application
 {
     private const string MutexName = "Local\\ClassroomWidgets.SingleInstance";
+    private const string ShowLauncherEventName = "Local\\ClassroomWidgets.ShowLauncher";
 
     private Mutex? _instanceMutex;
+    private EventWaitHandle? _showLauncherEvent;
+    private RegisteredWaitHandle? _showLauncherRegistration;
     private DashboardSettings? _settings;
     private WidgetHostController? _host;
+    private LauncherWindow? _launcher;
     private WidgetShortcutManager? _shortcuts;
     private TrayController? _tray;
     private UpdateController? _updates;
     private bool _terminationPrepared;
+    private bool _launcherRequested;
 
     public static bool IsShuttingDown { get; private set; }
 
@@ -36,26 +42,66 @@ public partial class App : Application
         if (!createdNew)
         {
             DashboardLog.Info("Another instance is already running; exiting");
+            try
+            {
+                using var showLauncherEvent = EventWaitHandle.OpenExisting(ShowLauncherEventName);
+                showLauncherEvent.Set();
+            }
+            catch (WaitHandleCannotBeOpenedException)
+            {
+                DashboardLog.Warn("Running instance is not ready to open the widget launcher");
+            }
             Shutdown();
             return;
         }
+
+        _showLauncherEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowLauncherEventName);
+        _showLauncherRegistration = ThreadPool.RegisterWaitForSingleObject(
+            _showLauncherEvent,
+            (_, _) => Dispatcher.BeginInvoke(new Action(RequestOpenLauncher)),
+            null,
+            Timeout.Infinite,
+            executeOnlyOnce: false);
+        _launcherRequested = !args.Args.Contains("--background", StringComparer.OrdinalIgnoreCase);
 
         DispatcherUnhandledException += OnDispatcherUnhandledException;
         DashboardLog.Info($"Classroom Widgets {AppVersion} starting");
 
         _settings = DashboardSettings.Load();
         _host = new WidgetHostController(_settings);
+        _launcher = new LauncherWindow(widgetType =>
+        {
+            if (_host.WidgetOptions.Any(option => option.WidgetType == widgetType))
+            {
+                _ = _host.AddWidgetAsync(widgetType);
+            }
+        });
+        _host.WidgetOptionsChanged += () =>
+        {
+            if (_launcherRequested) RequestOpenLauncher();
+        };
         _settings.Changed += () => _host.ApplySettings();
         _host.ApplySettings();
 
         _shortcuts = new WidgetShortcutManager(_settings, _host);
         _updates = new UpdateController(RequestQuitAsync);
-        _tray = new TrayController(_host, _settings, _shortcuts, _updates);
+        _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher);
         // The widget settings gear posts classroomWidgetPanel open-settings;
         // panels route it here so the same Settings window opens as from the tray.
         _host.OpenSettingsRequested += () => _tray.OpenSettings();
         _ = _host.StartAsync();
         _ = CheckForUpdatesAfterDelayAsync();
+    }
+
+    private void RequestOpenLauncher()
+    {
+        if (_host is null || _host.WidgetOptions.Count == 0)
+        {
+            _launcherRequested = true;
+            return;
+        }
+        _launcherRequested = false;
+        _launcher?.Show();
     }
 
     private async Task CheckForUpdatesAfterDelayAsync()
@@ -94,6 +140,8 @@ public partial class App : Application
         IsShuttingDown = true;
         _tray?.Dispose();
         _shortcuts?.Dispose();
+        _showLauncherRegistration?.Unregister(null);
+        _showLauncherEvent?.Dispose();
         _instanceMutex?.Dispose();
         DashboardLog.Info("Classroom Widgets exited");
         base.OnExit(args);

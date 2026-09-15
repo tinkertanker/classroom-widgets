@@ -9,6 +9,8 @@ import { useServerConnection } from '@shared/hooks/useWorkspace';
 interface WidgetLaunchpadProps {
   onClose: () => void;
   onSelectWidget: (type: WidgetType) => void;
+  compactOnly?: boolean;
+  groupByCategory?: boolean;
 }
 
 const categoryTitles: Record<WidgetCategory, string> = {
@@ -18,12 +20,22 @@ const categoryTitles: Record<WidgetCategory, string> = {
   [WidgetCategory.FUN]: 'Fun'
 };
 
-const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidget }) => {
+const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
+  onClose,
+  onSelectWidget,
+  compactOnly = false,
+  groupByCategory = true
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const widgetRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const { connected: serverConnected } = useServerConnection();
+  const availableCategories = useMemo(() => new Set(
+    widgetRegistry.getAll()
+      .filter(widget => !widget.features?.hidden && (!compactOnly || widget.compactPanel?.supported))
+      .map(widget => widget.category || WidgetCategory.TEACHING_TOOLS)
+  ), [compactOnly]);
   
   // Auto-focus search input
   useEffect(() => {
@@ -54,6 +66,10 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
         return false;
       }
 
+      if (compactOnly && !widget.compactPanel?.supported) {
+        return false;
+      }
+
       // Category filter
       if (selectedCategory && widget.category !== selectedCategory) {
         return false;
@@ -70,7 +86,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
 
       return true;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [compactOnly, searchQuery, selectedCategory]);
 
   const highlightedIndex = filteredWidgets.length === 1 ? 0 : -1;
   
@@ -158,7 +174,9 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
           >
             All
           </button>
-          {Object.entries(categoryTitles).map(([category, title]) => (
+          {Object.entries(categoryTitles)
+            .filter(([category]) => availableCategories.has(category as WidgetCategory))
+            .map(([category, title]) => (
             <button
               key={category}
               onClick={() => setSelectedCategory(category as WidgetCategory)}
@@ -174,7 +192,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
         </div>
         
         {/* Server status warning */}
-        {!serverConnected && (
+        {!compactOnly && !serverConnected && (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-lg text-xs">
             <FaWifi className="w-3 h-3" />
             <span>Some widgets require server connection</span>
@@ -196,7 +214,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({ onClose, onSelectWidg
               Try a different search term or category
             </p>
           </div>
-        ) : selectedCategory ? (
+        ) : selectedCategory || !groupByCategory ? (
           // Show widgets in selected category
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {filteredWidgets.map((widget, index) => {
