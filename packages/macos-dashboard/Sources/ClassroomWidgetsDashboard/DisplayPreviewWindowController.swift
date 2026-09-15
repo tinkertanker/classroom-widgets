@@ -26,6 +26,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         )
         panel.title = "Display Preview"
         panel.level = .floating
+        panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.contentMinSize = NSSize(width: 320, height: 240)
         super.init(window: panel)
