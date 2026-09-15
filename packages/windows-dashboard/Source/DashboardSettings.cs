@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace ClassroomWidgets;
@@ -82,7 +83,7 @@ public sealed class DashboardSettings
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
             if (key?.GetValue(RunValueName) is string command
-                && !command.Contains("--background", StringComparison.OrdinalIgnoreCase))
+                && !HasBackgroundArgument(command))
             {
                 key.SetValue(RunValueName, $"\"{Environment.ProcessPath}\" --background");
             }
@@ -92,6 +93,9 @@ public sealed class DashboardSettings
             DashboardLog.Warn($"Unable to update launch-at-login command: {error.Message}");
         }
     }
+
+    internal static bool HasBackgroundArgument(string command)
+        => Regex.IsMatch(command, @"(?:^|\s)--background(?=\s|$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     public void Save()
     {
