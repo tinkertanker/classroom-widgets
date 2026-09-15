@@ -17,23 +17,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var updates = UpdateController(
         prepareForTermination: { [weak self] in
             guard let self, let controller = self.controller else { return false }
+            guard await self.displayPreviewCoordinator.prepareForTermination() else { return false }
             let ready = await controller.prepareForTermination()
+            if !ready { self.displayPreviewCoordinator.terminationCancelled() }
             self.terminationApproved = ready
             return ready
         },
         cancelTermination: { [weak self] in
             self?.terminationApproved = false
             self?.controller?.resumeAfterCancelledTermination()
+            self?.displayPreviewCoordinator.terminationCancelled()
         }
     )
     private var shortcutState: ShortcutBindingState?
     private var shortcutStatus: String?
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
+    private let displayPreviewCoordinator = DisplayPreviewCoordinator()
     private lazy var settingsContext = DashboardSettingsContext(
         launchAtLoginManager: launchAtLoginManager,
         onShortcutChanged: { [weak self] shortcut in self?.settingsShortcutChanged(shortcut) },
-        onWidgetSettingsChanged: { [weak self] in self?.controller?.applySettings() },
+        onWidgetSettingsChanged: { [weak self] in self?.applyPresentationSettings() },
         onWidgetShortcutChanged: { [weak self] widgetType, action, shortcut in self?.setWidgetShortcut(shortcut, action: action, for: widgetType) },
         onResetWidgetShortcuts: { [weak self] in self?.resetWidgetShortcuts() },
         onShortcutRecordingChanged: { [weak self] isRecording in self?.shortcutRecordingChanged(isRecording) }
@@ -63,6 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.widgetOptionsChanged(options)
             if self?.launcherRequested == true { self?.requestOpenLauncher() }
         }
+        controller?.onDisplayPreviewRequested = { [weak self] in self?.displayPreviewCoordinator.open() }
+        applyPresentationSettings()
         setupStatusItem()
         registerAcceptedSettingsHotKey()
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
@@ -90,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         controller?.flushPersistedState()
+        displayPreviewCoordinator.flushPersistedState()
         settingsHotKey = nil
         widgetHotKeys.removeAll()
     }
@@ -102,10 +109,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         terminationPending = true
         Task { @MainActor [weak self, weak sender] in
+            guard await self?.displayPreviewCoordinator.prepareForTermination() == true else {
+                self?.terminationPending = false
+                sender?.reply(toApplicationShouldTerminate: false)
+                return
+            }
             let ready = await controller.prepareForTermination()
             guard let self, let sender else { return }
             terminationPending = false
             terminationApproved = ready
+            if !ready { displayPreviewCoordinator.terminationCancelled() }
             sender.reply(toApplicationShouldTerminate: ready)
         }
         return .terminateLater
@@ -177,6 +190,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.tag = option.widgetType
             newWidgetMenu.addItem(item)
         }
+        if !newWidgetMenu.items.isEmpty { newWidgetMenu.addItem(.separator()) }
+        let previewItem = NSMenuItem(title: "Display Preview…", action: #selector(showDisplayPreview), keyEquivalent: "")
+        previewItem.target = self
+        newWidgetMenu.addItem(previewItem)
         if newWidgetMenu.items.isEmpty {
             let item = NSMenuItem(title: "No widgets available", action: nil, keyEquivalent: "")
             item.isEnabled = false
@@ -494,7 +511,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openLauncher() { requestOpenLauncher() }
     @objc private func addWidget(_ sender: NSMenuItem) { controller?.addWidget(sender.tag) }
-    @objc private func reloadWidgets() { controller?.reloadWidgets() }
+    @objc private func reloadWidgets() {
+        controller?.reloadWidgets()
+        displayPreviewCoordinator.restartIfRunning()
+    }
+    @objc private func showDisplayPreview() { displayPreviewCoordinator.open() }
     @objc func showSettings() { settingsWindowCoordinator.show() }
     @objc private func checkForUpdates() { Task { await updates.check(manual: true) } }
 
@@ -503,7 +524,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "Classroom Widgets",
             .applicationIcon: appIcon,
-            .credits: NSAttributedString(string: "A menu-bar launcher for floating classroom widgets.")
+            .credits: NSAttributedString(
+                string: "A menu-bar launcher for floating classroom widgets.\n\nDisplay Preview was inspired by BetterDisplay by waydabber (betterdisplay.com). The implementation uses only public Apple APIs and contains no BetterDisplay source code."
+            )
         ])
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -524,6 +547,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func quitApp() { NSApp.terminate(nil) }
+
+    private func applyPresentationSettings() {
+        controller?.applySettings()
+        displayPreviewCoordinator.applyPresentationSettings(
+            backgroundOpacity: UserDefaults.standard.double(forKey: DashboardSettingKeys.compactBackgroundOpacity),
+            keepOnAllSpaces: UserDefaults.standard.bool(forKey: DashboardSettingKeys.keepOnAllSpaces)
+        )
+    }
 
     private func shortcutKeyCode() -> Int {
         let defaults = UserDefaults.standard
