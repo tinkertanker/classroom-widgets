@@ -207,12 +207,14 @@ final class DisplayPreviewCoordinator: NSObject {
         }
         capture.onStop = { [weak self, weak capture] error in
             guard let self, let capture, self.session === capture else { return }
+            self.cancelDeferredRestarts()
             self.intent.pause()
+            guard self.reconcileTerminalStop(of: capture) else { return }
             self.clearFrame(status: "Capture stopped: \(error.localizedDescription)")
-            if self.stopLifecycle.release(capture) { self.session = nil }
         }
         capture.onUnavailable = { [weak self, weak capture] in
             guard let self, let capture, self.session === capture else { return }
+            self.cancelDeferredRestarts()
             self.clearFrame(status: "The selected display is temporarily unavailable. Press Resume when it returns.")
             self.intent.pause()
             self.stopCurrent(message: "The selected display is temporarily unavailable.")
@@ -450,6 +452,16 @@ final class DisplayPreviewCoordinator: NSObject {
         )
     }
 
+    @discardableResult
+    private func reconcileTerminalStop(of capture: DisplayCaptureSession) -> Bool {
+        guard stopLifecycle.terminalStopConfirmed(for: capture) else { return false }
+        let operation = stopOperation?.matches(capture) == true ? stopOperation : nil
+        session = nil
+        stopOperation = nil
+        operation?.confirmTerminalStop()
+        return true
+    }
+
     private func captureOutputSize(for source: DisplayDescriptor, view: NSView) -> CGSize {
         let backing = view.convertToBacking(view.bounds).size
         let desiredLongEdge = min(max(backing.width, backing.height), 1920)
@@ -509,10 +521,11 @@ final class DisplayPreviewStopOperation {
         Task { @MainActor [weak self] in
             do {
                 try await operation()
-                self?.finish(succeeded: true)
+                _ = self?.finish(succeeded: true)
             } catch {
-                self?.onFailure(error)
-                self?.finish(succeeded: false)
+                if self?.finish(succeeded: false) == true {
+                    self?.onFailure(error)
+                }
             }
         }
     }
@@ -537,8 +550,13 @@ final class DisplayPreviewStopOperation {
         }
     }
 
-    private func finish(succeeded: Bool) {
-        guard state == .running else { return }
+    func confirmTerminalStop() {
+        _ = finish(succeeded: true)
+    }
+
+    @discardableResult
+    private func finish(succeeded: Bool) -> Bool {
+        guard state == .running else { return false }
         state = succeeded ? .succeeded : .failed
         let pending = Array(waiters.values)
         waiters.removeAll()
@@ -546,6 +564,7 @@ final class DisplayPreviewStopOperation {
         for continuation in pending {
             continuation.resume(returning: succeeded)
         }
+        return true
     }
 
     private func timeout(_ waiterID: UUID) {

@@ -204,4 +204,33 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertTrue(lifecycle.owns(replacement))
         XCTAssertFalse(lifecycle.canStart)
     }
+
+    func testTerminalDelegateStopReleasesMatchingBlockedOwnerButNotReplacement() {
+        let first = CaptureOwner()
+        let replacement = CaptureOwner()
+        var active = DisplayPreviewStopLifecycle()
+        active.adopt(first)
+        XCTAssertTrue(active.terminalStopConfirmed(for: first))
+
+        var stopping = DisplayPreviewStopLifecycle()
+        stopping.adopt(first)
+        XCTAssertTrue(stopping.beginStop(of: first))
+        XCTAssertTrue(stopping.terminalStopConfirmed(for: first))
+
+        var blocked = DisplayPreviewStopLifecycle()
+        blocked.adopt(first)
+        XCTAssertTrue(blocked.beginStop(of: first))
+        XCTAssertTrue(blocked.stopDidNotComplete(for: first))
+
+        XCTAssertTrue(blocked.terminalStopConfirmed(for: first))
+        XCTAssertTrue(blocked.canStart)
+
+        var replaced = DisplayPreviewStopLifecycle()
+        replaced.adopt(first)
+        XCTAssertTrue(replaced.beginStop(of: first))
+        replaced.adopt(replacement)
+
+        XCTAssertFalse(replaced.terminalStopConfirmed(for: first))
+        XCTAssertTrue(replaced.owns(replacement))
+    }
 }

@@ -100,6 +100,22 @@ struct DisplayPreviewStopLifecycle {
         return true
     }
 
+    mutating func terminalStopConfirmed(for owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        switch phase {
+        case .active(let ownerID) where ownerID == id:
+            break
+        case .stopping(let ownerID) where ownerID == id:
+            break
+        case .blocked(let ownerID) where ownerID == id:
+            break
+        default:
+            return false
+        }
+        phase = .idle
+        return true
+    }
+
     mutating func release(_ owner: AnyObject) -> Bool {
         let id = ObjectIdentifier(owner)
         guard case .active(let ownerID) = phase, ownerID == id else { return false }
