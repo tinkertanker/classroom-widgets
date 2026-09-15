@@ -112,9 +112,12 @@ public sealed class UpdateController
             Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue
             $installed = [System.Collections.Generic.List[string]]::new()
             $cleanup = $false
+            $separators = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+            $stagingRoot = $Staging.TrimEnd($separators) + [System.IO.Path]::DirectorySeparatorChar
+            $backupRoot = $Backup.TrimEnd($separators) + [System.IO.Path]::DirectorySeparatorChar
             try {
               foreach ($file in Get-ChildItem -LiteralPath $Staging -File -Recurse) {
-                $relative = [System.IO.Path]::GetRelativePath($Staging, $file.FullName)
+                $relative = $file.FullName.Substring($stagingRoot.Length)
                 $destination = Join-Path $Target $relative
                 $saved = Join-Path $Backup $relative
                 New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
@@ -136,7 +139,7 @@ public sealed class UpdateController
                 }
                 if (Test-Path -LiteralPath $Backup) {
                   foreach ($file in Get-ChildItem -LiteralPath $Backup -File -Recurse) {
-                    $relative = [System.IO.Path]::GetRelativePath($Backup, $file.FullName)
+                    $relative = $file.FullName.Substring($backupRoot.Length)
                     $destination = Join-Path $Target $relative
                     New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
                     Move-Item -LiteralPath $file.FullName -Destination $destination -Force

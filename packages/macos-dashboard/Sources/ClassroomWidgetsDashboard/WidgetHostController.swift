@@ -152,6 +152,11 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         widgetPanelCoordinator.activate()
     }
 
+    func resumeAfterCancelledTermination() {
+        guard reloadInProgress else { return }
+        resumeAfterFailedDeactivation()
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebBackgroundOpacity(backgroundOpacity)
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)

@@ -6,10 +6,12 @@ import Foundation
 final class UpdateController {
     private static let latestReleaseURL = URL(string: "https://api.github.com/repos/tinkertanker/classroom-widgets/releases/latest")!
     private let prepareForTermination: () async -> Bool
+    private let cancelTermination: () -> Void
     private var checking = false
 
-    init(prepareForTermination: @escaping () async -> Bool) {
+    init(prepareForTermination: @escaping () async -> Bool, cancelTermination: @escaping () -> Void) {
         self.prepareForTermination = prepareForTermination
+        self.cancelTermination = cancelTermination
     }
 
     func check(manual: Bool = false) async {
@@ -96,8 +98,6 @@ final class UpdateController {
         guard target.pathExtension == "app", fileManager.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
             throw UpdateError.readOnlyApplication
         }
-        guard await prepareForTermination() else { throw UpdateError.unableToQuit }
-
         let script = staging.appendingPathComponent("install-update.sh")
         let backup = target.deletingLastPathComponent().appendingPathComponent(".\(target.lastPathComponent).previous-\(UUID().uuidString)")
         try Self.helperScript.write(to: script, atomically: true, encoding: .utf8)
@@ -105,7 +105,13 @@ final class UpdateController {
         let helper = Process()
         helper.executableURL = URL(fileURLWithPath: "/bin/sh")
         helper.arguments = [script.path, String(ProcessInfo.processInfo.processIdentifier), replacement.path, target.path, staging.path, backup.path]
-        try helper.run()
+        guard await prepareForTermination() else { throw UpdateError.unableToQuit }
+        do {
+            try helper.run()
+        } catch {
+            cancelTermination()
+            throw error
+        }
         NSApp.terminate(nil)
     }
 
