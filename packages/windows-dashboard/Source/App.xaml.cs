@@ -45,6 +45,7 @@ public partial class App : Application
             if (!args.Args.Contains("--background", StringComparer.OrdinalIgnoreCase))
             {
                 var signaled = false;
+                Exception? signalError = null;
                 for (var attempt = 0; attempt < 10 && !signaled; attempt++)
                 {
                     try
@@ -56,8 +57,17 @@ public partial class App : Application
                     {
                         if (attempt < 9) Thread.Sleep(50);
                     }
+                    catch (Exception error) when (error is UnauthorizedAccessException or System.IO.IOException)
+                    {
+                        signalError = error;
+                        break;
+                    }
                 }
-                if (!signaled) DashboardLog.Warn("Running instance is not ready to open the widget launcher");
+                if (!signaled)
+                {
+                    var detail = signalError is null ? "" : $": {signalError.Message}";
+                    DashboardLog.Warn($"Running instance is not ready to open the widget launcher{detail}");
+                }
             }
             Shutdown();
             return;
@@ -103,6 +113,7 @@ public partial class App : Application
 
     private void RequestOpenLauncher()
     {
+        if (IsShuttingDown) return;
         if (_host is null || _host.WidgetOptions.Count == 0)
         {
             _launcherRequested = true;

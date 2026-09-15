@@ -7,8 +7,6 @@ import WidgetLaunchpad from '../hud/components/WidgetLaunchpad';
 const DesktopWidgetLauncher = () => {
   useEffect(() => {
     document.title = 'Add Widget — Classroom Widgets';
-    document.documentElement.classList.add('desktop-widget-launcher');
-    return () => document.documentElement.classList.remove('desktop-widget-launcher');
   }, []);
 
   const close = useCallback(() => {

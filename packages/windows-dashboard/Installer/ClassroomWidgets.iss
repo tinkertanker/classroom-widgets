@@ -60,7 +60,7 @@ Root: HKCU; Subkey: "{#RunKey}"; ValueName: "{#RunValueName}"; Flags: deletevalu
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
-Filename: "{app}\{#AppExe}"; Flags: nowait runhidden; Check: WizardSilent
+Filename: "{app}\{#AppExe}"; Parameters: "--background"; Flags: nowait runhidden; Check: WizardSilent
 
 [UninstallRun]
 Filename: "taskkill"; Parameters: "/IM {#AppExe} /F"; Flags: runhidden; RunOnceId: "KillApp"
