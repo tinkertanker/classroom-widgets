@@ -925,7 +925,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
         let menu = NSMenu(title: "Add Widget")
         let previewItem = NSMenuItem(
-            title: "Display Preview…", action: #selector(requestDisplayPreview), keyEquivalent: ""
+            title: DisplayPreviewMenu.title, action: #selector(requestDisplayPreview), keyEquivalent: ""
         )
         previewItem.target = self
         menu.addItem(previewItem)

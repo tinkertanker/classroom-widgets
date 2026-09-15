@@ -183,23 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(openLauncherItem)
 
         let newWidgetItem = NSMenuItem(title: "New Floating Widget", action: nil, keyEquivalent: "")
-        let newWidgetMenu = NSMenu(title: "New Floating Widget")
-        for option in controller?.widgetOptions ?? [] {
-            let item = NSMenuItem(title: option.title, action: #selector(addWidget(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = option.widgetType
-            newWidgetMenu.addItem(item)
-        }
-        if !newWidgetMenu.items.isEmpty { newWidgetMenu.addItem(.separator()) }
-        let previewItem = NSMenuItem(title: "Display Preview…", action: #selector(showDisplayPreview), keyEquivalent: "")
-        previewItem.target = self
-        newWidgetMenu.addItem(previewItem)
-        if newWidgetMenu.items.isEmpty {
-            let item = NSMenuItem(title: "No widgets available", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            newWidgetMenu.addItem(item)
-        }
-        newWidgetItem.submenu = newWidgetMenu
+        newWidgetItem.submenu = makeNewWidgetMenu(options: controller?.widgetOptions ?? [])
         menu.addItem(newWidgetItem)
 
         let reloadItem = NSMenuItem(title: "Reload Widgets", action: #selector(reloadWidgets), keyEquivalent: "")
@@ -227,6 +211,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
+    }
+
+    func makeNewWidgetMenu(options: [CompactWidgetOption]) -> NSMenu {
+        let newWidgetMenu = NSMenu(title: "New Floating Widget")
+        for option in options {
+            let item = NSMenuItem(title: option.title, action: #selector(addWidget(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = option.widgetType
+            newWidgetMenu.addItem(item)
+        }
+        if !newWidgetMenu.items.isEmpty { newWidgetMenu.addItem(.separator()) }
+        let previewItem = NSMenuItem(title: DisplayPreviewMenu.title, action: #selector(showDisplayPreview), keyEquivalent: "")
+        previewItem.target = self
+        newWidgetMenu.addItem(previewItem)
+        if newWidgetMenu.items.isEmpty {
+            let item = NSMenuItem(title: "No widgets available", action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            newWidgetMenu.addItem(item)
+        }
+        return newWidgetMenu
     }
 
     private func applySettingsShortcut(to item: NSMenuItem) {

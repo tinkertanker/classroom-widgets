@@ -15,6 +15,12 @@ enum DisplayCaptureSessionError: LocalizedError {
     }
 }
 
+enum DisplayCaptureFrameDisposition: Equatable {
+    case ignore
+    case deliver
+    case unavailable
+}
+
 final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     let sourceID: CGDirectDisplayID
     private let outputQueue = DispatchQueue(label: "sg.tk.classroomwidgets.display-preview.frames")
@@ -90,12 +96,22 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
               let statusNumber = attachments.first?[.status] as? NSNumber,
               let status = SCFrameStatus(rawValue: statusNumber.intValue)
         else { return }
-        if status == .idle { return }
-        guard status == .complete, let imageBuffer = sampleBuffer.imageBuffer else {
+        switch Self.disposition(for: status) {
+        case .ignore:
+            return
+        case .unavailable:
             Task { @MainActor [weak self] in self?.onUnavailable?() }
             return
+        case .deliver:
+            break
         }
+        guard let imageBuffer = sampleBuffer.imageBuffer else { return }
         delivery.offer(sampleBuffer, size: CGSize(width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer)))
+    }
+
+    static func disposition(for status: SCFrameStatus) -> DisplayCaptureFrameDisposition {
+        if status == .idle { return .ignore }
+        return status == .complete ? .deliver : .unavailable
     }
 
     private var isStartInProgress: Bool {
