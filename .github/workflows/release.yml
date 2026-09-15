@@ -135,7 +135,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: dist/ClassroomWidgets-v*-macos.dmg
+          path: |
+            dist/ClassroomWidgets-v*-macos.dmg
+            dist/ClassroomWidgets-v*-macos.zip
 
   release:
     name: Publish GitHub release
@@ -156,6 +158,7 @@ jobs:
           cd assets
           ls -l
           dmg="ClassroomWidgets-v$VERSION-macos.dmg"
+          mac_zip="ClassroomWidgets-v$VERSION-macos.zip"
           setup="ClassroomWidgets-v$VERSION-windows-x64-setup.exe"
           zip="ClassroomWidgets-v$VERSION-windows-x64.zip"
           appimage="ClassroomWidgets-v$VERSION-linux-x86_64.AppImage"
@@ -164,8 +167,10 @@ jobs:
 
           if [[ -f "$dmg" ]]; then
             mac_line="- **\`$dmg\`** — open and drag *Classroom Widgets Dashboard* to Applications. Signed and notarised."
+            mac_update_line="- **\`$mac_zip\`** — automatic-update payload for existing installations."
           else
             mac_line="- **\`$dmg\`** — open and drag *Classroom Widgets Dashboard* to Applications. (Uploaded separately from a signed build; if it is not attached yet, it is on its way.)"
+            mac_update_line="- **\`$mac_zip\`** — automatic-update payload. Uploaded with the separately signed macOS build."
           fi
 
           {
@@ -180,6 +185,7 @@ jobs:
 
           ### macOS
           $mac_line
+          $mac_update_line
 
           Requires macOS 13 or later.
 
@@ -200,7 +206,7 @@ jobs:
           ## Download verification
 
           EOF
-            for f in "$dmg" "$setup" "$zip" "$appimage" "$deb"; do
+            for f in "$dmg" "$mac_zip" "$setup" "$zip" "$appimage" "$deb"; do
               if [[ -f "$f" ]]; then
                 echo "SHA-256 (\`$f\`): \`$(sha256sum "$f" | cut -d' ' -f1)\`"
               fi

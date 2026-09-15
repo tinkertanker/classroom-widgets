@@ -14,6 +14,7 @@ public sealed class TrayController : IDisposable
     private readonly WidgetHostController _host;
     private readonly DashboardSettings _settings;
     private readonly WidgetShortcutManager _shortcuts;
+    private readonly UpdateController _updates;
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _addMenu = new("Add Widget");
@@ -21,11 +22,12 @@ public sealed class TrayController : IDisposable
     private readonly ToolStripMenuItem _launchAtLogin = new("Launch at Login") { CheckOnClick = true };
     private SettingsWindow? _settingsWindow;
 
-    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts)
+    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts, UpdateController updates)
     {
         _host = host;
         _settings = settings;
         _shortcuts = shortcuts;
+        _updates = updates;
 
         _icon = new NotifyIcon
         {
@@ -79,6 +81,9 @@ public sealed class TrayController : IDisposable
         var openWeb = new ToolStripMenuItem("Open Full Web App");
         openWeb.Click += (_, _) => OpenUrl("https://widgets.tk.sg");
 
+        var checkForUpdates = new ToolStripMenuItem("Check for Updates…");
+        checkForUpdates.Click += (_, _) => _ = _updates.CheckAsync(manual: true);
+
         var quit = new ToolStripMenuItem("Quit Classroom Widgets");
         quit.Click += (_, _) => _ = ((App)System.Windows.Application.Current).RequestQuitAsync();
 
@@ -90,6 +95,7 @@ public sealed class TrayController : IDisposable
         _menu.Items.Add(_launchAtLogin);
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(openWeb);
+        _menu.Items.Add(checkForUpdates);
         _menu.Items.Add(about);
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(quit);

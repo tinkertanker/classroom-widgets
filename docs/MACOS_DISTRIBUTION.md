@@ -42,6 +42,19 @@ widgets share these settings, including newly opened widgets. Widget settings
 buttons open the native Settings window. Use a public `pk_...` key, never a secret
 API key. Creating a short link sends its destination URL to the selected provider.
 
+## Automatic updates
+
+The installed app checks the latest stable GitHub release shortly after launch.
+Select **Check for Updates…** from the menu-bar menu to check on demand. The app
+asks before downloading, verifies the release asset's published SHA-256 digest,
+bundle identifier, version, and code signature, then replaces and restarts itself.
+The app must be run from a writable location such as `/Applications`; a copy still
+running from a mounted DMG cannot replace itself.
+
+The DMG remains the first-install artifact. Each release also includes
+`ClassroomWidgets-v<version>-macos.zip`, which contains the signed app used only
+by automatic updates.
+
 QR Code can optionally shorten a link before encoding it. If shortening fails or
 takes more than 15 seconds, it displays the original URL's QR code so the lesson
 can continue. School networks may block particular shortener domains; test the
@@ -139,13 +152,16 @@ The full cross-platform process is in [Releasing](./RELEASING.md). The macOS-spe
 
 1. Once the `v<version>` tag is pushed and the Release workflow has created the GitHub release, check out that exact tag on an authorized Mac.
 2. Build and validate the signed, notarized DMG (sections above).
-3. Upload it and add its SHA-256 to the release description:
+3. Upload the DMG and update ZIP and add their SHA-256 values to the release description:
 
    ```bash
    VERSION="$(node -p "require('./version.json').version")"
    npm run macos:dmg -- --distribution --notarise
-   gh release upload "v${VERSION}" "dist/ClassroomWidgets-v${VERSION}-macos.dmg"
-   shasum -a 256 "dist/ClassroomWidgets-v${VERSION}-macos.dmg"
+   gh release upload "v${VERSION}" \
+     "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
+     "dist/ClassroomWidgets-v${VERSION}-macos.zip"
+   shasum -a 256 "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
+     "dist/ClassroomWidgets-v${VERSION}-macos.zip"
    ```
 
 4. Verify the uploaded asset size and digest and the public download URL.

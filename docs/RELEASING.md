@@ -13,14 +13,14 @@ The macOS, Windows and Linux apps share one version number and ship together in 
    git push origin "v${VERSION}"
    ```
 
-3. The **Release** workflow (`.github/workflows/release.yml`) builds the Windows installer + portable zip, Linux AppImage + `.deb`, and—when `MACOS_RELEASE_IN_CI=true`—the signed and notarised macOS DMG. It then publishes a release named **Classroom Widgets v\<version\>** whose description is: intro, `RELEASE_NOTES.md`, per-platform download and install notes, supported widgets, and SHA-256 for every attached asset. The workflow fails if the tag does not match `version.json`.
-4. Verify all three build jobs and their release assets. If the macOS job was skipped because CI signing is disabled, build and attach the DMG manually (see below).
+3. The **Release** workflow (`.github/workflows/release.yml`) builds the Windows installer + portable zip, Linux AppImage + `.deb`, and—when `MACOS_RELEASE_IN_CI=true`—the signed and notarised macOS DMG plus signed app ZIP used for automatic updates. It then publishes a release named **Classroom Widgets v\<version\>** whose description is: intro, `RELEASE_NOTES.md`, per-platform download and install notes, supported widgets, and SHA-256 for every attached asset. The workflow fails if the tag does not match `version.json`.
+4. Verify all three build jobs and their release assets. If the macOS job was skipped because CI signing is disabled, build and attach both macOS assets manually (see below). Missing or renamed assets prevent that platform's automatic updater from offering the release.
 
 Asset names are fixed:
 
 | Platform | Asset |
 | --- | --- |
-| macOS | `ClassroomWidgets-v<version>-macos.dmg` |
+| macOS | `ClassroomWidgets-v<version>-macos.dmg`, `ClassroomWidgets-v<version>-macos.zip` |
 | Windows | `ClassroomWidgets-v<version>-windows-x64-setup.exe`, `ClassroomWidgets-v<version>-windows-x64.zip` |
 | Linux | `ClassroomWidgets-v<version>-linux-x86_64.AppImage`, `ClassroomWidgets-v<version>-linux-amd64.deb` |
 
@@ -28,18 +28,21 @@ Asset names are fixed:
 
 The repository is configured to build the signed and notarised DMG in CI. The `macos` job runs when the repository variable `MACOS_RELEASE_IN_CI` is `true` and the required Actions secrets below are present. Secrets are write-only: verify their names with `gh secret list --repo tinkertanker/classroom-widgets`, but never print, retrieve, or copy their values into an orb.
 
-If CI signing is disabled or unavailable, build on an authorised Mac from the tagged commit and upload the DMG to the release the workflow created:
+If CI signing is disabled or unavailable, build on an authorised Mac from the tagged commit and upload both macOS assets to the release the workflow created:
 
 ```bash
 git checkout "v${VERSION}"
 npm run macos:dmg -- --distribution --notarise
-gh release upload "v${VERSION}" "dist/ClassroomWidgets-v${VERSION}-macos.dmg"
-shasum -a 256 "dist/ClassroomWidgets-v${VERSION}-macos.dmg"   # add to the release description
+gh release upload "v${VERSION}" \
+  "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
+  "dist/ClassroomWidgets-v${VERSION}-macos.zip"
+shasum -a 256 "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
+  "dist/ClassroomWidgets-v${VERSION}-macos.zip"   # add both to the release description
 ```
 
 Validation steps are in [macOS distribution](./MACOS_DISTRIBUTION.md). Do not perform this manual path merely because the macOS CI job is still running; first inspect the workflow result.
 
-CI requires these Actions secrets; when enabled, the DMG and its SHA-256 appear in the release automatically:
+CI requires these Actions secrets; when enabled, the DMG, update ZIP, and their SHA-256 values appear in the release automatically:
 
 | Secret | Value |
 | --- | --- |

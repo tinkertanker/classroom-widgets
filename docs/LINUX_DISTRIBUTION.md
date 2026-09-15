@@ -19,6 +19,7 @@ The app has no main window. After launch a **Classroom Widgets** icon appears in
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles a `~/.config/autostart/classroom-widgets.desktop` entry. |
 | **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
+| **Check for Updates…** | Checks the latest GitHub release and installs it after confirmation. |
 | **Quit** | Flushes pending widget state and exits. |
 
 Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
@@ -93,3 +94,17 @@ This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, produ
 The native version comes from the repo-root `version.json` (shared with macOS and Windows; passed to electron-builder via `-c.extraMetadata.version`) and is independent of the web build ID. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_LINUX_VERSION__`.
 
 Code signing is not configured; AppImages and .deb packages run unsigned.
+
+## Automatic updates
+
+Packaged builds check for a newer stable GitHub release shortly after launch. You
+can also select **Check for Updates…** from the tray menu. The app always asks
+before downloading and verifies GitHub's published SHA-256 digest before running
+an update.
+
+- AppImage builds replace the running AppImage in place and restart it.
+- Debian/Ubuntu installs ask PolicyKit for permission to install the downloaded
+  `.deb`, then restart. If no graphical PolicyKit agent is available, the app
+  opens the package in the desktop package manager for manual confirmation.
+
+Development builds do not check for updates.

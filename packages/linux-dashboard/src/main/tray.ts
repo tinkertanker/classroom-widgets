@@ -20,13 +20,15 @@ export class TrayController {
   private readonly settings: DashboardSettings;
   private readonly shortcuts: WidgetShortcutController;
   private readonly appVersion: string;
+  private readonly onCheckForUpdates: () => void;
   private readonly onQuit: () => void;
 
-  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onQuit: () => void) {
+  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onCheckForUpdates: () => void, onQuit: () => void) {
     this.host = host;
     this.settings = settings;
     this.shortcuts = shortcuts;
     this.appVersion = appVersion;
+    this.onCheckForUpdates = onCheckForUpdates;
     this.onQuit = onQuit;
 
     const iconPath = join(app.getAppPath(), 'assets', 'tray-icon.png');
@@ -82,6 +84,7 @@ export class TrayController {
       },
       { type: 'separator' },
       { label: 'Open Full Web App', click: () => void openUrl(FULL_WEB_APP_URL) },
+      { label: 'Check for Updates…', click: () => this.onCheckForUpdates() },
       { label: `About Classroom Widgets (v${this.appVersion})`, click: () => void openUrl(ABOUT_URL) },
       { type: 'separator' },
       { label: 'Quit Classroom Widgets', click: () => this.onQuit() },

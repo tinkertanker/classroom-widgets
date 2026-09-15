@@ -20,6 +20,7 @@ The app has no main window. After launch a **Classroom Widgets** icon appears in
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` entry. |
 | **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
+| **Check for Updates…** | Checks the latest GitHub release and installs it after confirmation. |
 | **Quit** | Flushes pending widget state and exits. |
 
 Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
@@ -88,3 +89,15 @@ This runs `dotnet publish -c Release -r win-x64 --self-contained` into `packages
 The native version comes from the repo-root `version.json` (shared with macOS and Linux) and is independent of the web build ID. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_WINDOWS_VERSION__`.
 
 Code signing is not yet configured; unsigned builds trigger SmartScreen on first launch. Sign `ClassroomWidgets.exe` with `signtool` before distributing publicly.
+
+## Automatic updates
+
+The app checks the latest stable GitHub release shortly after launch. Select
+**Check for Updates…** from the tray menu to check on demand. It always asks
+before downloading and verifies GitHub's published SHA-256 digest before running
+the update.
+
+Installed builds run the existing per-user installer silently, preserve the
+current launch-at-login choice, and restart. Portable builds download the new
+portable ZIP, replace the files beside the running executable after it exits, and
+restart from the same location.

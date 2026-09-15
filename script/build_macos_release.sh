@@ -29,6 +29,7 @@ APP_ICON_PATH="${MACOS_DIR}/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.
 VERSION="$(node -p "require('./version.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
 DMG_PATH="${DMG_PATH:-}"
+ZIP_PATH="${ZIP_PATH:-${ROOT_DIR}/dist/${PRODUCT_NAME}-v${VERSION}-macos.zip}"
 SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:-}"
 DEVELOPMENT_TEAM="${APPLE_TEAM_ID:-}"
 API_KEY_PATH="${APPLE_API_KEY_PATH:-}"
@@ -172,6 +173,7 @@ mkdir -p "${ROOT_DIR}/dist"
 trash_path "${APP_BUNDLE}"
 trash_path "${STAGING_DIR}"
 trash_path "${DMG_PATH}"
+trash_path "${ZIP_PATH}"
 
 echo "Building teacher web assets"
 npm run build -w @classroom-widgets/teacher
@@ -303,7 +305,11 @@ if [ "${USE_NOTARISATION}" = "true" ]; then
   "${NOTARY_CMD[@]}"
   xcrun stapler staple "${DMG_PATH}"
   xcrun stapler validate "${DMG_PATH}"
+  xcrun stapler staple "${APP_BUNDLE}"
 fi
+
+echo "Creating update archive at ${ZIP_PATH}"
+ditto -c -k --sequesterRsrc --keepParent "${APP_BUNDLE}" "${ZIP_PATH}"
 
 trash_path "${STAGING_DIR}"
 
@@ -311,3 +317,4 @@ echo "Built:"
 echo "  - ${APP_BUNDLE}"
 echo "  - ${INSTALL_APP_BUNDLE}"
 echo "  - ${DMG_PATH}"
+echo "  - ${ZIP_PATH}"
