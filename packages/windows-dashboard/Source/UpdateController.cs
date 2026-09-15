@@ -23,6 +23,8 @@ public sealed class UpdateController
         if (_checking) return;
         _checking = true;
         var installApproved = false;
+        var handoffStarted = false;
+        string? downloadPath = null;
         try
         {
             using var response = await Client.GetAsync(LatestReleaseApi);
@@ -39,8 +41,7 @@ public sealed class UpdateController
                 return;
             }
 
-            var installedDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Classroom Widgets");
-            var isInstalled = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar).Equals(installedDirectory, StringComparison.OrdinalIgnoreCase);
+            var isInstalled = WindowsInstallation.IsInstallerManaged(AppContext.BaseDirectory);
             var expectedName = isInstalled
                 ? $"ClassroomWidgets-v{available.ToString(3)}-windows-x64-setup.exe"
                 : $"ClassroomWidgets-v{available.ToString(3)}-windows-x64.zip";
@@ -59,28 +60,30 @@ public sealed class UpdateController
             if (choice != MessageBoxResult.OK) return;
             installApproved = true;
 
-            var installer = Path.Combine(Path.GetTempPath(), expectedName);
+            downloadPath = Path.Combine(Path.GetTempPath(), expectedName);
             using (var download = await Client.GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
             {
                 download.EnsureSuccessStatusCode();
                 await using var source = await download.Content.ReadAsStreamAsync();
-                await using var destination = File.Create(installer);
+                await using var destination = File.Create(downloadPath);
                 await source.CopyToAsync(destination);
             }
-            await using (var downloaded = File.OpenRead(installer))
+            await using (var downloaded = File.OpenRead(downloadPath))
             {
                 var digest = $"sha256:{Convert.ToHexString(await SHA256.HashDataAsync(downloaded)).ToLowerInvariant()}";
                 if (!digest.Equals(asset.Digest, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Update checksum verification failed");
             }
 
             if (isInstalled)
-                StartInstalledUpdate(installer);
+                StartInstalledUpdate(downloadPath);
             else
-                StartPortableUpdate(installer);
+                StartPortableUpdate(downloadPath);
+            handoffStarted = true;
             await _quit();
         }
         catch (Exception error)
         {
+            if (!handoffStarted && downloadPath is not null) TryDeleteFile(downloadPath);
             DashboardLog.Warn($"Update check failed: {error.Message}");
             if (manual || installApproved) MessageBox.Show("The update could not be installed. The existing app has not been changed. Check your connection and try again.", "Unable to update Classroom Widgets", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
@@ -102,11 +105,12 @@ public sealed class UpdateController
         var staging = $"{target}.update-{Guid.NewGuid():N}";
         var backup = $"{target}.previous-{Guid.NewGuid():N}";
         var executable = Path.GetFileName(Environment.ProcessPath) ?? "ClassroomWidgets.exe";
-        ZipFile.ExtractToDirectory(archive, staging);
-        File.Delete(archive);
-
         var script = Path.Combine(Path.GetTempPath(), $"classroom-widgets-update-{Guid.NewGuid():N}.ps1");
-        File.WriteAllText(script, """
+        try
+        {
+            ZipFile.ExtractToDirectory(archive, staging);
+            File.Delete(archive);
+            File.WriteAllText(script, """
             param([int]$ProcessId, [string]$Staging, [string]$Target, [string]$Backup, [string]$Executable)
             $ErrorActionPreference = 'Stop'
             Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue
@@ -155,10 +159,17 @@ public sealed class UpdateController
               Remove-Item -LiteralPath $Staging, $Backup, $PSCommandPath -Recurse -Force -ErrorAction SilentlyContinue
             }
             """);
-        var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath() };
-        foreach (var argument in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-ProcessId", Environment.ProcessId.ToString(), "-Staging", staging, "-Target", target, "-Backup", backup, "-Executable", executable })
-            start.ArgumentList.Add(argument);
-        Process.Start(start);
+            var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath() };
+            foreach (var argument in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-ProcessId", Environment.ProcessId.ToString(), "-Staging", staging, "-Target", target, "-Backup", backup, "-Executable", executable })
+                start.ArgumentList.Add(argument);
+            Process.Start(start);
+        }
+        catch
+        {
+            TryDeleteDirectory(staging);
+            TryDeleteFile(script);
+            throw;
+        }
     }
 
     private static void StartInstalledUpdate(string installer)
@@ -182,6 +193,30 @@ public sealed class UpdateController
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("ClassroomWidgets", App.AppVersion));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
+    }
+
+    private static void TryDeleteFile(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            DashboardLog.Warn($"Unable to remove update file: {error.Message}");
+        }
+    }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            DashboardLog.Warn($"Unable to remove update directory: {error.Message}");
+        }
     }
 
     private sealed record GitHubRelease(

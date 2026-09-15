@@ -15,3 +15,24 @@ public sealed class UpdateVersionTests
         Assert.Equal(expected, UpdateVersion.IsNewer(candidate, current));
     }
 }
+
+public sealed class WindowsInstallationTests
+{
+    [Fact]
+    public void RecognizesCustomInstallerDirectory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "Classroom Widgets Custom");
+
+        Assert.True(WindowsInstallation.MatchesInstallLocation(directory, directory + Path.DirectorySeparatorChar));
+    }
+
+    [Fact]
+    public void RejectsPortableDirectoryBesideInstallation()
+    {
+        var installed = Path.Combine(Path.GetTempPath(), "Classroom Widgets");
+        var portable = Path.Combine(Path.GetTempPath(), "Classroom Widgets Portable");
+
+        Assert.False(WindowsInstallation.MatchesInstallLocation(portable, installed));
+        Assert.False(WindowsInstallation.MatchesInstallLocation(portable, null));
+    }
+}
