@@ -7,6 +7,7 @@ import { log } from './log';
 import { DashboardSettings } from './settings';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
+import { UpdateController } from './updateController';
 import { WidgetShortcutController } from './widgetShortcuts';
 
 app.setName('ClassroomWidgets');
@@ -48,6 +49,7 @@ function bootstrap(): void {
   let settings: DashboardSettings | null = null;
   let host: WidgetHostController | null = null;
   let tray: TrayController | null = null;
+  let updates: UpdateController | null = null;
   let shortcuts: WidgetShortcutController | null = null;
   let shuttingDown = false;
   let terminationPrepared = false;
@@ -103,8 +105,10 @@ function bootstrap(): void {
     settings.on('changed', () => host?.applySettings());
     host.applySettings();
 
-    tray = new TrayController(host, settings, shortcuts, version, () => void requestQuit());
+    updates = new UpdateController(version, () => void requestQuit());
+    tray = new TrayController(host, settings, shortcuts, version, () => void updates?.check(true), () => void requestQuit());
     void host.start();
+    setTimeout(() => void updates?.check(), 10_000);
   });
 
   app.on('will-quit', () => {

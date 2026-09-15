@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var widgetShortcutStatuses: [Int: String] = [:]
     private var nextHotKeyID: UInt32 = 100
     private let widgetShortcutStore = WidgetLaunchShortcutStore()
+    private let updates = UpdateController()
     private var shortcutState: ShortcutBindingState?
     private var shortcutStatus: String?
     private var statusItem: NSStatusItem?
@@ -41,6 +42,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setupStatusItem()
         registerAcceptedSettingsHotKey()
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(10))
+            await self?.updates.check()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -79,6 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.target = self
         appMenu.addItem(settingsItem)
+        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        appMenu.addItem(updateItem)
         appMenu.addItem(.separator())
         appMenu.addItem(NSMenuItem(title: "Quit Classroom Widgets", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
@@ -150,6 +158,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
+        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
         menu.addItem(aboutItem)
         menu.addItem(.separator())
         let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
@@ -381,6 +392,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func addWidget(_ sender: NSMenuItem) { controller?.addWidget(sender.tag) }
     @objc private func reloadWidgets() { controller?.reloadWidgets() }
     @objc func showSettings() { settingsWindowCoordinator.show() }
+    @objc private func checkForUpdates() { Task { await updates.check(manual: true) } }
 
     @objc private func showAbout() {
         let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage()

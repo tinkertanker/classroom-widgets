@@ -18,6 +18,7 @@ public partial class App : Application
     private WidgetHostController? _host;
     private WidgetShortcutManager? _shortcuts;
     private TrayController? _tray;
+    private UpdateController? _updates;
     private bool _terminationPrepared;
 
     public static bool IsShuttingDown { get; private set; }
@@ -48,11 +49,19 @@ public partial class App : Application
         _host.ApplySettings();
 
         _shortcuts = new WidgetShortcutManager(_settings, _host);
-        _tray = new TrayController(_host, _settings, _shortcuts);
+        _updates = new UpdateController(RequestQuitAsync);
+        _tray = new TrayController(_host, _settings, _shortcuts, _updates);
         // The widget settings gear posts classroomWidgetPanel open-settings;
         // panels route it here so the same Settings window opens as from the tray.
         _host.OpenSettingsRequested += () => _tray.OpenSettings();
         _ = _host.StartAsync();
+        _ = CheckForUpdatesAfterDelayAsync();
+    }
+
+    private async Task CheckForUpdatesAfterDelayAsync()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(10));
+        if (_updates is not null) await _updates.CheckAsync();
     }
 
     /// <summary>

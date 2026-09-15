@@ -19,6 +19,7 @@
     <Compile Include="..\..\Source\WidgetPanelModels.cs" Link="WidgetPanelModels.cs" />
     <Compile Include="..\..\Source\DashboardShortenerSettings.cs" Link="DashboardShortenerSettings.cs" />
     <Compile Include="..\..\Source\DashboardLog.cs" Link="DashboardLog.cs" />
+    <Compile Include="..\..\Source\UpdateVersion.cs" Link="UpdateVersion.cs" />
   </ItemGroup>
 
 </Project>
