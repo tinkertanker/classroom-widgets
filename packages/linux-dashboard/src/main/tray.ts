@@ -20,14 +20,16 @@ export class TrayController {
   private readonly settings: DashboardSettings;
   private readonly shortcuts: WidgetShortcutController;
   private readonly appVersion: string;
+  private readonly onOpenLauncher: () => void;
   private readonly onCheckForUpdates: () => void;
   private readonly onQuit: () => void;
 
-  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onCheckForUpdates: () => void, onQuit: () => void) {
+  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onOpenLauncher: () => void, onCheckForUpdates: () => void, onQuit: () => void) {
     this.host = host;
     this.settings = settings;
     this.shortcuts = shortcuts;
     this.appVersion = appVersion;
+    this.onOpenLauncher = onOpenLauncher;
     this.onCheckForUpdates = onCheckForUpdates;
     this.onQuit = onQuit;
 
@@ -60,6 +62,7 @@ export class TrayController {
     });
 
     const template: MenuItemConstructorOptions[] = [
+      { label: 'Open Widget Launcher', click: () => this.onOpenLauncher() },
       { label: 'Add Widget', submenu: addSubmenu },
       {
         label: 'Arrange Widgets',

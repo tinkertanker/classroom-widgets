@@ -36,3 +36,16 @@ public sealed class WindowsInstallationTests
         Assert.False(WindowsInstallation.MatchesInstallLocation(portable, null));
     }
 }
+
+public sealed class DashboardSettingsTests
+{
+    [Theory]
+    [InlineData("\"C:\\Apps\\ClassroomWidgets.exe\" --background", true)]
+    [InlineData("\"C:\\Apps\\ClassroomWidgets.exe\" --background --other", true)]
+    [InlineData("\"C:\\Apps\\--background\\ClassroomWidgets.exe\"", false)]
+    [InlineData("\"C:\\Apps\\ClassroomWidgets.exe\" --backgrounding", false)]
+    public void DetectsBackgroundAsAnExactArgument(string command, bool expected)
+    {
+        Assert.Equal(expected, DashboardSettings.HasBackgroundArgument(command));
+    }
+}

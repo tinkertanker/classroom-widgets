@@ -55,12 +55,12 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Registry]
 ; Same HKCU Run value the app's "Launch at login" tray toggle manages.
-Root: HKCU; Subkey: "{#RunKey}"; ValueType: string; ValueName: "{#RunValueName}"; ValueData: """{app}\{#AppExe}"""; Flags: uninsdeletevalue; Check: AutostartWanted
+Root: HKCU; Subkey: "{#RunKey}"; ValueType: string; ValueName: "{#RunValueName}"; ValueData: """{app}\{#AppExe}"" --background"; Flags: uninsdeletevalue; Check: AutostartWanted
 Root: HKCU; Subkey: "{#RunKey}"; ValueName: "{#RunValueName}"; Flags: deletevalue uninsdeletevalue; Check: not AutostartWanted
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
-Filename: "{app}\{#AppExe}"; Flags: nowait runhidden; Check: WizardSilent
+Filename: "{app}\{#AppExe}"; Parameters: "--background"; Flags: nowait runhidden; Check: WizardSilent
 
 [UninstallRun]
 Filename: "taskkill"; Parameters: "/IM {#AppExe} /F"; Flags: runhidden; RunOnceId: "KillApp"

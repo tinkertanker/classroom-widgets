@@ -9,11 +9,12 @@ Classroom Widgets for Linux is a system-tray app that opens compact classroom wi
 
 ## Using the app
 
-The app has no main window. After launch a **Classroom Widgets** icon appears in the system tray. Click it for the menu:
+Launching the app from the desktop application menu opens a searchable widget launcher. Closing that window leaves widgets running and keeps a **Classroom Widgets** icon in the system tray. Launching the app again focuses the existing launcher. Click the tray icon for the menu:
 
 | Menu item | What it does |
 | --- | --- |
-| **Add Widget ▸** | Opens a floating panel for Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, or Sound Effects. |
+| **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
+| **Add Widget ▸** | Opens a floating panel for Randomiser, Timer, List, Task Cue, Traffic Light, Link Shortener, Text Banner, QR Code, or Sound Effects. |
 | **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
 | **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
@@ -21,6 +22,8 @@ The app has no main window. After launch a **Classroom Widgets** icon appears in
 | **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
 | **Check for Updates…** | Checks the latest GitHub release and installs it after confirmation. |
 | **Quit** | Flushes pending widget state and exits. |
+
+Launch at login starts quietly without opening the launcher.
 
 Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
 

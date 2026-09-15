@@ -218,8 +218,6 @@ cat > "${APP_CONTENTS}/Info.plist" <<PLIST
   <true/>
   <key>LSMinimumSystemVersion</key>
   <string>13.0</string>
-  <key>LSUIElement</key>
-  <true/>
   <key>NSCameraUsageDescription</key>
   <string>Classroom Widgets uses the camera for the Visualiser widget.</string>
   <key>NSHighResolutionCapable</key>

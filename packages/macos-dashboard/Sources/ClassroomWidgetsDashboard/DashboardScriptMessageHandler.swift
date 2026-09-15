@@ -1,4 +1,21 @@
+import CoreFoundation
 import WebKit
+
+func dashboardInteger(_ value: Any?) -> Int? {
+    guard let number = value as? NSNumber,
+          CFGetTypeID(number) != CFBooleanGetTypeID()
+    else { return nil }
+
+    var decimal = number.decimalValue
+    guard !decimal.isNaN else { return nil }
+    var rounded = Decimal()
+    NSDecimalRound(&rounded, &decimal, 0, .plain)
+    guard decimal == rounded,
+          decimal >= Decimal(Int.min),
+          decimal <= Decimal(Int.max)
+    else { return nil }
+    return Int(NSDecimalNumber(decimal: decimal).stringValue)
+}
 
 /// A widget type that the web renderer has declared safe to create in an
 /// isolated compact panel. The host remains the authority here: native only
@@ -21,6 +38,8 @@ struct WidgetPanelInventoryPayload {
 final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
     var onWidgetPanelsChanged: (@MainActor (WidgetPanelInventoryPayload) -> Void)?
     var onCompactWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
+    var onDesktopLauncherAddWidget: (@MainActor (Int) -> Void)?
+    var onDesktopLauncherClose: (@MainActor () -> Void)?
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         // The user script is injected into all frames, so only honour messages
@@ -39,11 +58,19 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
         }
 
         switch type {
+        case "desktop-launcher-add-widget":
+            guard dashboardInteger(body["schemaVersion"]) == 1,
+                  let widgetType = dashboardInteger(body["widgetType"])
+            else { return }
+            onDesktopLauncherAddWidget?(widgetType)
+        case "desktop-launcher-close":
+            guard dashboardInteger(body["schemaVersion"]) == 1 else { return }
+            onDesktopLauncherClose?()
         case "widget-panels-changed":
-            guard (body["schemaVersion"] as? NSNumber)?.intValue == 1,
+            guard dashboardInteger(body["schemaVersion"]) == 1,
                   let rawHostInstanceID = body["hostInstanceId"] as? String,
                   !rawHostInstanceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  let revision = (body["inventoryRevision"] as? NSNumber)?.intValue,
+                  let revision = dashboardInteger(body["inventoryRevision"]),
                   revision >= 0,
                   let widgets = body["widgets"] as? [[String: Any]]
             else { return }
@@ -63,7 +90,7 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
     private static func compactWidgetOptions(from payload: [[String: Any]]) -> [CompactWidgetOption] {
         var seenWidgetTypes = Set<Int>()
         return payload.compactMap { option in
-            guard let widgetType = (option["widgetType"] as? NSNumber)?.intValue,
+            guard let widgetType = dashboardInteger(option["widgetType"]),
                   let rawTitle = option["title"] as? String
             else { return nil }
 

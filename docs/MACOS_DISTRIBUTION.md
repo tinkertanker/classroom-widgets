@@ -1,19 +1,19 @@
 # macOS app and distribution
 
-Classroom Widgets for macOS is a signed and notarized menu-bar app for opening compact classroom widgets that stay above other apps. It requires macOS 13 or later. The native Swift host embeds a production build of the teacher interface for its widget content.
+Classroom Widgets for macOS is a signed and notarized desktop and menu-bar app for opening compact classroom widgets that stay above other apps. It requires macOS 13 or later. The native Swift host embeds a production build of the teacher interface for its widget content.
 
 ## Install
 
 1. Open the [GitHub releases page](https://github.com/tinkertanker/classroom-widgets/releases), where the latest release appears first.
 2. Download `ClassroomWidgets-v<version>-macos.dmg` and open it.
 3. Drag Classroom Widgets to Applications.
-4. Launch Classroom Widgets from Applications. It appears in the menu bar rather than the Dock.
+4. Launch Classroom Widgets from Applications. Its widget launcher appears in the Dock, and quick actions remain available from the menu bar.
 
 Public DMGs are Developer ID signed, notarized by Apple, and stapled. Each release page includes the DMG SHA-256 checksum.
 
 ## Use the app
 
-Select the Classroom Widgets menu-bar icon, then **New Floating Widget**. The current macOS app supports:
+Launch Classroom Widgets from Applications or select **Open Widget Launcher** from its menu-bar menu to browse and search the available widgets. For faster access, select **New Floating Widget** directly from the menu. The current macOS app supports:
 
 - Randomiser
 - Timer
@@ -25,7 +25,7 @@ Select the Classroom Widgets menu-bar icon, then **New Floating Widget**. The cu
 - Link Shortener
 - Sound Effects
 
-Each widget opens in its own floating window. Use the standard macOS title bar to move or close it. The menu also provides **Reload Widgets**, **Launch at Login**, **Settings**, **About**, and **Quit**.
+Each widget opens in its own floating window. Closing the launcher does not close the widgets or quit the app; use Command-Q or **Quit** to exit. Clicking the Dock icon reopens the launcher. Launch at login starts the app without presenting the launcher. The menu also provides **Reload Widgets**, **Launch at Login**, **Settings**, **About**, and **Quit**.
 
 Settings include:
 

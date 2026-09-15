@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { log } from './log';
 import { readShortenerSettings, ShortenerSettings } from './shortenerSettings';
+import { migrateAutostartDesktopEntry } from './startup';
 
 export interface PanelFrame {
   left: number;
@@ -73,7 +74,19 @@ export class DashboardSettings extends EventEmitter {
     } catch (error) {
       log.warn(`Unable to read settings: ${error instanceof Error ? error.message : String(error)}`);
     }
+    settings.migrateLaunchAtLoginEntry();
     return settings;
+  }
+
+  private migrateLaunchAtLoginEntry(): void {
+    if (!existsSync(this.autostartPath)) return;
+    try {
+      const contents = readFileSync(this.autostartPath, 'utf8');
+      const migrated = migrateAutostartDesktopEntry(contents);
+      if (migrated !== contents) writeFileSync(this.autostartPath, migrated);
+    } catch (error) {
+      log.warn(`Unable to update autostart entry: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   save(): void {
@@ -120,8 +133,8 @@ export class DashboardSettings extends EventEmitter {
     }
     const executable = process.env.APPIMAGE ?? process.execPath;
     const execLine = app.isPackaged
-      ? `"${executable}"`
-      : `"${process.execPath}" "${app.getAppPath()}"`;
+      ? `"${executable}" --background`
+      : `"${process.execPath}" "${app.getAppPath()}" --background`;
     const contents = [
       '[Desktop Entry]',
       'Type=Application',

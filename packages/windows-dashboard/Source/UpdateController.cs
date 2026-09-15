@@ -132,7 +132,7 @@ public sealed class UpdateController
                 Move-Item -LiteralPath $file.FullName -Destination $destination
                 $installed.Add($destination)
               }
-              $replacement = Start-Process -FilePath (Join-Path $Target $Executable) -PassThru
+              $replacement = Start-Process -FilePath (Join-Path $Target $Executable) -ArgumentList '--background' -PassThru
               Start-Sleep -Seconds 2
               if ($replacement.HasExited) { throw 'The updated app exited during startup.' }
               $cleanup = $true
@@ -149,7 +149,7 @@ public sealed class UpdateController
                     Move-Item -LiteralPath $file.FullName -Destination $destination -Force
                   }
                 }
-                if (Test-Path -LiteralPath (Join-Path $Target $Executable)) { Start-Process -FilePath (Join-Path $Target $Executable) }
+                if (Test-Path -LiteralPath (Join-Path $Target $Executable)) { Start-Process -FilePath (Join-Path $Target $Executable) -ArgumentList '--background' }
                 $cleanup = $true
               } catch {
                 # Preserve staging and backup for manual recovery.

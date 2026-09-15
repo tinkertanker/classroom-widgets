@@ -15,6 +15,7 @@ public sealed class TrayController : IDisposable
     private readonly DashboardSettings _settings;
     private readonly WidgetShortcutManager _shortcuts;
     private readonly UpdateController _updates;
+    private readonly Action _openLauncher;
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _addMenu = new("Add Widget");
@@ -22,12 +23,13 @@ public sealed class TrayController : IDisposable
     private readonly ToolStripMenuItem _launchAtLogin = new("Launch at Login") { CheckOnClick = true };
     private SettingsWindow? _settingsWindow;
 
-    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts, UpdateController updates)
+    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts, UpdateController updates, Action openLauncher)
     {
         _host = host;
         _settings = settings;
         _shortcuts = shortcuts;
         _updates = updates;
+        _openLauncher = openLauncher;
 
         _icon = new NotifyIcon
         {
@@ -55,6 +57,9 @@ public sealed class TrayController : IDisposable
     {
         RebuildAddMenu();
         RebuildArrangeMenu();
+
+        var openLauncher = new ToolStripMenuItem("Open Widget Launcher");
+        openLauncher.Click += (_, _) => _openLauncher();
 
         var reload = new ToolStripMenuItem("Reload Widgets");
         reload.Click += (_, _) => _ = _host.ReloadWidgetsAsync();
@@ -87,6 +92,7 @@ public sealed class TrayController : IDisposable
         var quit = new ToolStripMenuItem("Quit Classroom Widgets");
         quit.Click += (_, _) => _ = ((App)System.Windows.Application.Current).RequestQuitAsync();
 
+        _menu.Items.Add(openLauncher);
         _menu.Items.Add(_addMenu);
         _menu.Items.Add(_arrangeMenu);
         _menu.Items.Add(reload);

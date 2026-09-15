@@ -5,6 +5,8 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: WidgetHostController?
+    private var launcherRequested = false
+    private var initialActivationPending = false
     private var terminationPending = false
     private var terminationApproved = false
     private var settingsHotKey: (shortcut: DashboardShortcut, hotKey: DashboardHotKey)?
@@ -40,16 +42,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let self else { return NSView() }
         return NSHostingView(rootView: DashboardSettingsView(context: self.settingsContext))
     }
+    private lazy var launcherWindowCoordinator = LauncherWindowCoordinator { [weak self] widgetType in
+        guard let self, self.controller?.widgetOptions.contains(where: { $0.widgetType == widgetType }) == true else { return }
+        self.controller?.addWidget(widgetType)
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        initialActivationPending = Self.shouldOpenLauncherOnInitialActivation(
+            arguments: CommandLine.arguments,
+            launchedAsLoginItem: Self.launchedAsLoginItem
+        )
         DashboardDefaults.register()
         shortcutState = ShortcutBindingState(settings: persistedSettingsShortcut())
-        NSApp.setActivationPolicy(.accessory)
+        NSApp.setActivationPolicy(.regular)
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         setupMainMenu()
 
         controller = WidgetHostController()
-        controller?.onWidgetOptionsChanged = { [weak self] options in self?.widgetOptionsChanged(options) }
+        controller?.onWidgetOptionsChanged = { [weak self] options in
+            self?.widgetOptionsChanged(options)
+            if self?.launcherRequested == true { self?.requestOpenLauncher() }
+        }
         setupStatusItem()
         registerAcceptedSettingsHotKey()
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
@@ -57,6 +70,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try? await Task.sleep(for: .seconds(10))
             await self?.updates.check()
         }
+    }
+
+    nonisolated static func shouldOpenLauncherOnInitialActivation(arguments: [String], launchedAsLoginItem: Bool) -> Bool {
+        !launchedAsLoginItem && !arguments.contains("--background")
+    }
+
+    private static var launchedAsLoginItem: Bool {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        return event?.eventID == kAEOpenApplication
+            && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        guard initialActivationPending else { return }
+        initialActivationPending = false
+        requestOpenLauncher()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -135,6 +164,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+
+        let openLauncherItem = NSMenuItem(title: "Open Widget Launcher", action: #selector(openLauncher), keyEquivalent: "")
+        openLauncherItem.target = self
+        menu.addItem(openLauncherItem)
 
         let newWidgetItem = NSMenuItem(title: "New Floating Widget", action: nil, keyEquivalent: "")
         let newWidgetMenu = NSMenu(title: "New Floating Widget")
@@ -396,10 +429,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showSettings()
+        requestOpenLauncher()
         return true
     }
 
+    private func requestOpenLauncher() {
+        guard controller?.widgetOptions.isEmpty == false else {
+            launcherRequested = true
+            return
+        }
+        launcherRequested = false
+        launcherWindowCoordinator.show()
+    }
+
+    @objc private func openLauncher() { requestOpenLauncher() }
     @objc private func addWidget(_ sender: NSMenuItem) { controller?.addWidget(sender.tag) }
     @objc private func reloadWidgets() { controller?.reloadWidgets() }
     @objc func showSettings() { settingsWindowCoordinator.show() }

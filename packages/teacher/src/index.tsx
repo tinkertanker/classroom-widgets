@@ -2,13 +2,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 
-const isCompactWidgetPanel = new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
+const surface = new URLSearchParams(window.location.search).get('surface');
+const isCompactWidgetPanel = surface === 'widget-panel';
+const isDesktopWidgetLauncher = surface === 'widget-launcher';
 
 // Load Umami analytics conditionally (only if env vars are set)
 const umamiScriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL;
 const umamiWebsiteId = import.meta.env.VITE_UMAMI_WEBSITE_ID;
 
-if (!isCompactWidgetPanel && umamiScriptUrl && umamiWebsiteId) {
+if (!surface && umamiScriptUrl && umamiWebsiteId) {
   const script = document.createElement('script');
   script.defer = true;
   script.src = umamiScriptUrl;
@@ -29,6 +31,16 @@ async function renderApp() {
     root.render(
       <React.StrictMode>
         <CompactWidgetApp />
+      </React.StrictMode>
+    );
+    return;
+  }
+
+  if (isDesktopWidgetLauncher) {
+    const { default: DesktopWidgetLauncher } = await import('./features/desktop/DesktopWidgetLauncher');
+    root.render(
+      <React.StrictMode>
+        <DesktopWidgetLauncher />
       </React.StrictMode>
     );
     return;
