@@ -96,7 +96,7 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
               let statusNumber = attachments.first?[.status] as? NSNumber,
               let status = SCFrameStatus(rawValue: statusNumber.intValue)
         else { return }
-        switch Self.disposition(for: status) {
+        switch Self.disposition(for: status, hasImageBuffer: sampleBuffer.imageBuffer != nil) {
         case .ignore:
             return
         case .unavailable:
@@ -109,9 +109,12 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         delivery.offer(sampleBuffer, size: CGSize(width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer)))
     }
 
-    static func disposition(for status: SCFrameStatus) -> DisplayCaptureFrameDisposition {
-        if status == .idle { return .ignore }
-        return status == .complete ? .deliver : .unavailable
+    static func disposition(
+        for status: SCFrameStatus,
+        hasImageBuffer: Bool = true
+    ) -> DisplayCaptureFrameDisposition {
+        if status == .idle || status == .started { return .ignore }
+        return status == .complete && hasImageBuffer ? .deliver : .unavailable
     }
 
     private var isStartInProgress: Bool {

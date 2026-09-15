@@ -15,10 +15,8 @@ final class DisplayPreviewCoordinator: NSObject {
     private var selectedSource: DisplayDescriptor?
     private var session: DisplayCaptureSession?
     private var presentedGeometry: DisplayPreviewFrameGeometry?
-    private var stopping = false
-    private var stopFailed = false
+    private var stopLifecycle = DisplayPreviewStopLifecycle()
     private var visibilityResume = DisplayPreviewVisibilityResumeState()
-    private var terminating = false
     private var backgroundOpacity = 1.0
     private var keepOnAllSpaces = true
     private var observers: [NSObjectProtocol] = []
@@ -67,36 +65,40 @@ final class DisplayPreviewCoordinator: NSObject {
     func restartIfRunning() {
         guard intent.wantsCapture else { return }
         visibilityResume.requestRestart(sourceUUID: selectedSource?.uuid)
-        pause(message: "Restarting preview…")
+        pause(message: "Restarting preview…", preservingDeferredRestart: true)
     }
 
     func flushPersistedState() { defaultsWriter.flush() }
 
     func prepareForTermination() async -> Bool {
-        terminating = true
+        stopLifecycle.beginTermination()
         cancelDeferredRestarts()
         intent.pause()
         clearFrame(status: "Paused while Classroom Widgets quits.")
-        if stopping {
+        if stopLifecycle.isStopping {
             let deadline = ContinuousClock.now + .seconds(2)
-            while stopping, ContinuousClock.now < deadline {
+            while stopLifecycle.isStopping, ContinuousClock.now < deadline {
                 try? await Task.sleep(nanoseconds: 20_000_000)
             }
             return session == nil
         }
         guard let session else { return true }
+        guard stopLifecycle.beginStop(of: session) else { return false }
         if await stopWithTimeout(session) {
-            self.session = nil
+            if stopLifecycle.confirmedStopCompleted(for: session) {
+                self.session = nil
+            }
             return true
         } else {
-            stopFailed = true
-            DashboardLog.windowing.error("Display Preview stream did not stop within the cleanup deadline")
+            if stopLifecycle.stopDidNotComplete(for: session) {
+                DashboardLog.windowing.error("Display Preview stream did not stop within the cleanup deadline")
+            }
             return false
         }
     }
 
     func terminationCancelled() {
-        terminating = false
+        stopLifecycle.cancelTermination()
         cancelDeferredRestarts()
         windowController?.showStatus(
             "Quit was cancelled. Preview remains paused; press Resume when ready.",
@@ -152,15 +154,28 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func start(trigger: DisplayPreviewStartTrigger = .explicit) {
-        guard !terminating, !stopping, !stopFailed, session == nil, let source = selectedSource,
+        guard stopLifecycle.canStart, session == nil, let source = selectedSource,
               let controller = windowController, let window = controller.window,
               !sourceOverlapsPreview(source)
         else {
-            if stopFailed { controllerStatus("The previous stream could not stop. Quit Classroom Widgets to recover.", enabled: false) }
+            if stopLifecycle.isBlocked { controllerStatus("The previous stream could not stop. Quit Classroom Widgets to recover.", enabled: false) }
             else if selectedSource != nil { controllerStatus("Move the preview to a different display before starting.", enabled: true) }
             return
         }
         let preflightGranted = CGPreflightScreenCaptureAccess()
+        guard DisplayPreviewPermissionPolicy.canStart(
+            for: trigger,
+            preflightGranted: preflightGranted
+        ) else {
+            intent.pause()
+            visibilityResume.cancel()
+            controllerStatus(
+                "Screen Recording access is off. Press Resume to request access again.",
+                button: "Resume",
+                enabled: true
+            )
+            return
+        }
         if DisplayPreviewPermissionPolicy.shouldRequestPermission(
             for: trigger,
             preflightGranted: preflightGranted
@@ -171,6 +186,7 @@ final class DisplayPreviewCoordinator: NSObject {
         controller.showStatus("Starting…", buttonTitle: "Pause", buttonEnabled: true, centerEnabled: false)
         let capture = DisplayCaptureSession(sourceID: source.id)
         session = capture
+        stopLifecycle.adopt(capture)
         capture.onFrame = { [weak self, weak capture] buffer, size in
             guard let self, let capture, self.session === capture,
                   self.intent.accepts(generation: generation, sourceID: source.id),
@@ -193,7 +209,7 @@ final class DisplayPreviewCoordinator: NSObject {
             guard let self, let capture, self.session === capture else { return }
             self.intent.pause()
             self.clearFrame(status: "Capture stopped: \(error.localizedDescription)")
-            self.session = nil
+            if self.stopLifecycle.release(capture) { self.session = nil }
         }
         capture.onUnavailable = { [weak self, weak capture] in
             guard let self, let capture, self.session === capture else { return }
@@ -207,16 +223,19 @@ final class DisplayPreviewCoordinator: NSObject {
             do {
                 try await capture.start(excludingWindowID: CGWindowID(window.windowNumber), outputSize: outputSize)
                 guard self.session === capture, self.intent.accepts(generation: generation, sourceID: source.id) else {
+                    let ownsCapture = self.stopLifecycle.beginStop(of: capture)
                     if await self.stopWithTimeout(capture) {
-                        if self.session === capture { self.session = nil }
-                    } else {
-                        self.stopFailed = true
+                        if ownsCapture && self.stopLifecycle.confirmedStopCompleted(for: capture) {
+                            self.session = nil
+                        }
+                    } else if ownsCapture {
+                        _ = self.stopLifecycle.stopDidNotComplete(for: capture)
                     }
                     return
                 }
                 self.beginFirstFrameTimeout(generation: generation, sourceID: source.id, capture: capture)
             } catch {
-                if self.session === capture { self.session = nil }
+                if self.stopLifecycle.release(capture) { self.session = nil }
                 guard self.intent.accepts(generation: generation, sourceID: source.id) else { return }
                 self.intent.pause()
                 self.clearFrame(status: "Unable to start: \(error.localizedDescription)")
@@ -250,35 +269,36 @@ final class DisplayPreviewCoordinator: NSObject {
         return true
     }
 
-    private func pause(message: String) {
+    private func pause(message: String, preservingDeferredRestart: Bool = false) {
+        visibilityResume.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
         intent.pause()
         clearFrame(status: message)
         stopCurrent(message: message)
     }
 
     private func stopCurrent(message: String) {
-        guard let capture = session, !stopping else {
-            controllerStatus(message, button: "Start", enabled: selectedSource != nil && !stopFailed)
+        guard let capture = session, stopLifecycle.beginStop(of: capture) else {
+            controllerStatus(message, button: "Start", enabled: selectedSource != nil && !stopLifecycle.isBlocked)
             return
         }
-        stopping = true
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
             if await self.stopWithTimeout(capture) {
-                if self.session === capture { self.session = nil }
-                self.stopping = false
+                if self.stopLifecycle.confirmedStopCompleted(for: capture) {
+                    self.session = nil
+                }
                 self.controllerStatus(message, button: "Resume", enabled: self.selectedSource != nil)
                 if self.visibilityResume.stopCompleted(
                     currentSourceUUID: self.selectedSource?.uuid,
-                    terminating: self.terminating
+                    terminating: self.stopLifecycle.terminating
                 ) {
-                    self.start()
+                    self.start(trigger: .visibilityResume)
                 }
             } else {
-                self.stopping = false
-                self.visibilityResume.cancel()
-                self.stopFailed = true
-                self.controllerStatus("Capture could not stop. Quit Classroom Widgets to recover safely.", enabled: false)
+                if self.stopLifecycle.stopDidNotComplete(for: capture) {
+                    self.visibilityResume.cancel()
+                    self.controllerStatus("Capture could not stop. Quit Classroom Widgets to recover safely.", enabled: false)
+                }
             }
         }
     }
@@ -312,10 +332,13 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func visibilityChanged(_ visible: Bool) {
         if !visible, intent.wantsCapture {
-            visibilityResume.hidden(wasRunning: true)
-            pause(message: "Preview suspended while its window is hidden.")
+            visibilityResume.hidden(wasRunning: true, sourceUUID: selectedSource?.uuid)
+            pause(message: "Preview suspended while its window is hidden.", preservingDeferredRestart: true)
         } else if visible {
-            switch visibilityResume.revealed(sessionExists: session != nil) {
+            switch visibilityResume.revealed(
+                sessionExists: session != nil,
+                currentSourceUUID: selectedSource?.uuid
+            ) {
             case .startNow: start(trigger: .visibilityResume)
             case .startAfterStop, .none: break
             }
@@ -360,7 +383,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private func clearFrame(status: String) {
         presentedGeometry = nil
         windowController?.clearFrame()
-        controllerStatus(status, button: "Resume", enabled: selectedSource != nil && !stopFailed)
+        controllerStatus(status, button: "Resume", enabled: selectedSource != nil && !stopLifecycle.isBlocked)
     }
 
     private func controllerStatus(_ message: String, button: String = "Resume", enabled: Bool) {
@@ -386,7 +409,10 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func stopWithTimeout(_ capture: DisplayCaptureSession) async -> Bool {
         await withCheckedContinuation { continuation in
-            let gate = DisplayPreviewStopGate(continuation)
+            let gate = DisplayPreviewStopGate(continuation) { [weak self, weak capture] in
+                guard let self, let capture else { return }
+                self.reconcileConfirmedLateStop(of: capture)
+            }
             Task { @MainActor in
                 do {
                     try await capture.stop()
@@ -401,6 +427,18 @@ final class DisplayPreviewCoordinator: NSObject {
                 gate.finish(false)
             }
         }
+    }
+
+    private func reconcileConfirmedLateStop(of capture: DisplayCaptureSession) {
+        guard stopLifecycle.confirmedStopCompleted(for: capture) else { return }
+        if session === capture { session = nil }
+        visibilityResume.cancel()
+        intent.pause()
+        controllerStatus(
+            "Capture stopped. Press Resume when ready.",
+            button: "Resume",
+            enabled: selectedSource != nil
+        )
     }
 
     private func captureOutputSize(for source: DisplayDescriptor, view: NSView) -> CGSize {
@@ -450,7 +488,10 @@ final class DisplayPreviewStopGate {
     }
 
     func finish(_ result: Bool) {
-        guard let continuation else { return }
+        guard let continuation else {
+            if result { onLateSuccess() }
+            return
+        }
         self.continuation = nil
         continuation.resume(returning: result)
     }

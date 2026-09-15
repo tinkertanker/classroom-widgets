@@ -10,7 +10,102 @@ enum DisplayPreviewPermissionPolicy {
         for trigger: DisplayPreviewStartTrigger,
         preflightGranted: Bool
     ) -> Bool {
-        !preflightGranted
+        switch trigger {
+        case .explicit: !preflightGranted
+        case .visibilityResume: false
+        }
+    }
+
+    static func canStart(
+        for trigger: DisplayPreviewStartTrigger,
+        preflightGranted: Bool
+    ) -> Bool {
+        switch trigger {
+        case .explicit: true
+        case .visibilityResume: preflightGranted
+        }
+    }
+}
+
+struct DisplayPreviewStopLifecycle {
+    private enum Phase {
+        case idle
+        case active(ObjectIdentifier)
+        case stopping(ObjectIdentifier)
+        case blocked(ObjectIdentifier)
+    }
+
+    private var phase: Phase = .idle
+    private(set) var terminating = false
+
+    var isStopping: Bool {
+        if case .stopping = phase { return true }
+        return false
+    }
+
+    var isBlocked: Bool {
+        if case .blocked = phase { return true }
+        return false
+    }
+
+    var canStart: Bool {
+        if case .idle = phase { return !terminating }
+        return false
+    }
+
+    mutating func adopt(_ owner: AnyObject) {
+        phase = .active(ObjectIdentifier(owner))
+    }
+
+    func owns(_ owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        switch phase {
+        case .active(let ownerID), .stopping(let ownerID), .blocked(let ownerID): ownerID == id
+        default: false
+        }
+    }
+
+    mutating func beginStop(of owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        guard case .active(let ownerID) = phase, ownerID == id else { return false }
+        phase = .stopping(id)
+        return true
+    }
+
+    mutating func confirmedStopCompleted(for owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        switch phase {
+        case .stopping(let ownerID) where ownerID == id:
+            break
+        case .blocked(let ownerID) where ownerID == id:
+            break
+        default:
+            return false
+        }
+        phase = .idle
+        return true
+    }
+
+    mutating func stopDidNotComplete(for owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        guard case .stopping(let ownerID) = phase, ownerID == id else { return false }
+        phase = .blocked(id)
+        return true
+    }
+
+    mutating func release(_ owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        guard case .active(let ownerID) = phase, ownerID == id else { return false }
+        phase = .idle
+        return true
+    }
+
+    mutating func beginTermination() {
+        terminating = true
+    }
+
+    mutating func cancelTermination() {
+        terminating = false
     }
 }
 
@@ -21,37 +116,49 @@ struct DisplayPreviewVisibilityResumeState {
         case startAfterStop
     }
 
-    private var resumeAfterVisibilitySuspension = false
-    private var restartAfterStop = false
-    private var restartSourceUUID: String?
+    private var suspendedSourceUUID: String?
+    private var revealedBeforeStop = false
 
-    mutating func hidden(wasRunning: Bool) {
-        if wasRunning { resumeAfterVisibilitySuspension = true }
+    mutating func hidden(wasRunning: Bool, sourceUUID: String?) {
+        guard wasRunning, let sourceUUID else { return }
+        suspendedSourceUUID = sourceUUID
+        revealedBeforeStop = false
     }
 
-    mutating func revealed(sessionExists: Bool) -> Action {
-        guard resumeAfterVisibilitySuspension else { return .none }
-        resumeAfterVisibilitySuspension = false
+    mutating func revealed(sessionExists: Bool, currentSourceUUID: String?) -> Action {
+        guard let suspendedSourceUUID, suspendedSourceUUID == currentSourceUUID else {
+            cancel()
+            return .none
+        }
         if sessionExists {
-            restartAfterStop = true
+            revealedBeforeStop = true
             return .startAfterStop
         }
+        cancel()
         return .startNow
     }
 
     mutating func requestRestart(sourceUUID: String?) {
-        restartAfterStop = true
-        restartSourceUUID = sourceUUID
+        suspendedSourceUUID = sourceUUID
+        revealedBeforeStop = true
     }
 
     mutating func stopCompleted(currentSourceUUID: String?, terminating: Bool) -> Bool {
-        defer { cancel() }
-        return restartAfterStop && restartSourceUUID == currentSourceUUID && !terminating
+        guard suspendedSourceUUID == currentSourceUUID, !terminating else {
+            cancel()
+            return false
+        }
+        guard revealedBeforeStop else { return false }
+        cancel()
+        return true
+    }
+
+    mutating func pauseRequested(preservingDeferredRestart: Bool) {
+        if !preservingDeferredRestart { cancel() }
     }
 
     mutating func cancel() {
-        restartAfterStop = false
-        restartSourceUUID = nil
-        resumeAfterVisibilitySuspension = false
+        suspendedSourceUUID = nil
+        revealedBeforeStop = false
     }
 }

@@ -17,7 +17,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private lazy var updates = UpdateController(
         prepareForTermination: { [weak self] in
             guard let self, let controller = self.controller else { return false }
-            guard await self.displayPreviewCoordinator.prepareForTermination() else { return false }
+            guard await self.displayPreviewCoordinator.prepareForTermination() else {
+                self.displayPreviewCoordinator.terminationCancelled()
+                return false
+            }
             let ready = await controller.prepareForTermination()
             if !ready { self.displayPreviewCoordinator.terminationCancelled() }
             self.terminationApproved = ready
@@ -109,13 +112,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         terminationPending = true
         Task { @MainActor [weak self, weak sender] in
-            guard await self?.displayPreviewCoordinator.prepareForTermination() == true else {
-                self?.terminationPending = false
-                sender?.reply(toApplicationShouldTerminate: false)
+            guard let self, let sender else { return }
+            guard await displayPreviewCoordinator.prepareForTermination() else {
+                terminationPending = false
+                displayPreviewCoordinator.terminationCancelled()
+                sender.reply(toApplicationShouldTerminate: false)
                 return
             }
             let ready = await controller.prepareForTermination()
-            guard let self, let sender else { return }
             terminationPending = false
             terminationApproved = ready
             if !ready { displayPreviewCoordinator.terminationCancelled() }
@@ -221,7 +225,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.tag = option.widgetType
             newWidgetMenu.addItem(item)
         }
-        if !newWidgetMenu.items.isEmpty { newWidgetMenu.addItem(.separator()) }
         let previewItem = NSMenuItem(title: DisplayPreviewMenu.title, action: #selector(showDisplayPreview), keyEquivalent: "")
         previewItem.target = self
         newWidgetMenu.addItem(previewItem)

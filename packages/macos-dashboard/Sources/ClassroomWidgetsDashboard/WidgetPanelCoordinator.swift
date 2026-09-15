@@ -923,24 +923,12 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
-        let menu = NSMenu(title: "Add Widget")
-        let previewItem = NSMenuItem(
-            title: DisplayPreviewMenu.title, action: #selector(requestDisplayPreview), keyEquivalent: ""
+        let menu = DisplayPreviewMenu.makePanelMenu(
+            options: widgetCreationOptions,
+            target: self,
+            displayAction: #selector(requestDisplayPreview),
+            widgetAction: #selector(requestWidgetCreation(_:))
         )
-        previewItem.target = self
-        menu.addItem(previewItem)
-        if !widgetCreationOptions.isEmpty { menu.addItem(.separator()) }
-        for option in widgetCreationOptions {
-            let item = NSMenuItem(title: option.title, action: #selector(requestWidgetCreation(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = option.widgetType
-            menu.addItem(item)
-        }
-        if widgetCreationOptions.isEmpty {
-            let item = NSMenuItem(title: "No compact widgets available", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            menu.addItem(item)
-        }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
     }
 

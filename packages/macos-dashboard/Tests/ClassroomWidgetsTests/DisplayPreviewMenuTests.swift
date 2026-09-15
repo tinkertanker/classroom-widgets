@@ -18,4 +18,20 @@ final class DisplayPreviewMenuTests: XCTestCase {
             XCTAssertEqual(DisplayPreviewMenu.title, "Display")
         }
     }
+
+    func testPanelMenuUsesDisplayLabelAndPreservesDisplayFirstOrdering() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let menu = DisplayPreviewMenu.makePanelMenu(
+                options: [CompactWidgetOption(widgetType: 1, title: "Timer")],
+                target: nil,
+                displayAction: nil,
+                widgetAction: nil
+            )
+
+            XCTAssertEqual(menu.items.map(\.title), ["Display", "", "Timer"])
+            XCTAssertFalse(menu.items[0].isSeparatorItem)
+            XCTAssertTrue(menu.items[1].isSeparatorItem)
+        }
+    }
 }
