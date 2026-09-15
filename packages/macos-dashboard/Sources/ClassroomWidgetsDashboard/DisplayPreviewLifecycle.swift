@@ -59,7 +59,7 @@ struct DisplayPreviewStopLifecycle {
 
     func owns(_ owner: AnyObject) -> Bool {
         let id = ObjectIdentifier(owner)
-        switch phase {
+        return switch phase {
         case .active(let ownerID), .stopping(let ownerID), .blocked(let ownerID): ownerID == id
         default: false
         }
