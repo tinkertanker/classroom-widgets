@@ -5,7 +5,12 @@ import Foundation
 @MainActor
 final class UpdateController {
     private static let latestReleaseURL = URL(string: "https://api.github.com/repos/tinkertanker/classroom-widgets/releases/latest")!
+    private let prepareForTermination: () async -> Bool
     private var checking = false
+
+    init(prepareForTermination: @escaping () async -> Bool) {
+        self.prepareForTermination = prepareForTermination
+    }
 
     func check(manual: Bool = false) async {
         guard !checking else { return }
@@ -68,8 +73,11 @@ final class UpdateController {
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
         let archive = staging.appendingPathComponent(asset.name)
         try fileManager.moveItem(at: download, to: archive)
+        guard let expectedDigest = asset.digest, expectedDigest.hasPrefix("sha256:"), expectedDigest.count == 71 else {
+            throw UpdateError.checksumMismatch
+        }
         let digest = "sha256:" + SHA256.hash(data: try Data(contentsOf: archive)).map { String(format: "%02x", $0) }.joined()
-        guard digest == asset.digest else { throw UpdateError.checksumMismatch }
+        guard digest == expectedDigest else { throw UpdateError.checksumMismatch }
         try run("/usr/bin/ditto", arguments: ["-x", "-k", archive.path, staging.path])
 
         let replacement = staging.appendingPathComponent("Classroom Widgets Dashboard.app", isDirectory: true)
@@ -88,13 +96,15 @@ final class UpdateController {
         guard target.pathExtension == "app", fileManager.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
             throw UpdateError.readOnlyApplication
         }
+        guard await prepareForTermination() else { throw UpdateError.unableToQuit }
 
         let script = staging.appendingPathComponent("install-update.sh")
+        let backup = target.deletingLastPathComponent().appendingPathComponent(".\(target.lastPathComponent).previous-\(UUID().uuidString)")
         try Self.helperScript.write(to: script, atomically: true, encoding: .utf8)
         try fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         let helper = Process()
         helper.executableURL = URL(fileURLWithPath: "/bin/sh")
-        helper.arguments = [script.path, String(ProcessInfo.processInfo.processIdentifier), replacement.path, target.path, staging.path]
+        helper.arguments = [script.path, String(ProcessInfo.processInfo.processIdentifier), replacement.path, target.path, staging.path, backup.path]
         try helper.run()
         NSApp.terminate(nil)
     }
@@ -148,11 +158,13 @@ final class UpdateController {
     source="$2"
     target="$3"
     staging="$4"
-    backup="${target}.previous"
+    backup="$5"
     while kill -0 "$pid" 2>/dev/null; do sleep 1; done
-    rm -rf "$backup"
-    if mv "$target" "$backup" && /usr/bin/ditto "$source" "$target"; then
-      /usr/bin/open "$target"
+    if ! mv "$target" "$backup"; then
+      rm -rf "$staging"
+      exit 1
+    fi
+    if /usr/bin/ditto "$source" "$target" && /usr/bin/open "$target"; then
       rm -rf "$backup"
     else
       rm -rf "$target"
@@ -178,7 +190,7 @@ private struct GitHubRelease: Decodable {
 private struct GitHubAsset: Decodable {
     let name: String
     let downloadURL: URL
-    let digest: String
+    let digest: String?
 
     enum CodingKeys: String, CodingKey {
         case name
@@ -192,6 +204,7 @@ private enum UpdateError: LocalizedError {
     case invalidApplication
     case readOnlyApplication
     case checksumMismatch
+    case unableToQuit
     case commandFailed(String)
 
     var errorDescription: String? {
@@ -200,6 +213,7 @@ private enum UpdateError: LocalizedError {
         case .invalidApplication: "The downloaded application is not a valid Classroom Widgets update."
         case .readOnlyApplication: "Classroom Widgets cannot replace itself from this location."
         case .checksumMismatch: "The downloaded update did not match its published checksum."
+        case .unableToQuit: "Classroom Widgets could not save its state, so the update was cancelled."
         case .commandFailed(let command): "The update command failed: \(command)"
         }
     }

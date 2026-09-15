@@ -12,7 +12,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var widgetShortcutStatuses: [Int: String] = [:]
     private var nextHotKeyID: UInt32 = 100
     private let widgetShortcutStore = WidgetLaunchShortcutStore()
-    private let updates = UpdateController()
+    private lazy var updates = UpdateController { [weak self] in
+        guard let self, let controller = self.controller else { return false }
+        let ready = await controller.prepareForTermination()
+        self.terminationApproved = ready
+        return ready
+    }
     private var shortcutState: ShortcutBindingState?
     private var shortcutStatus: String?
     private var statusItem: NSStatusItem?

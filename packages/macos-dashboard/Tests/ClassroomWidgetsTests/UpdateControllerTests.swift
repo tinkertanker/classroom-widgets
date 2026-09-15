@@ -2,6 +2,7 @@ import XCTest
 @testable import ClassroomWidgets
 
 final class UpdateControllerTests: XCTestCase {
+    @MainActor
     func testSemanticVersionComparison() {
         XCTAssertTrue(UpdateController.isNewerVersion("0.12.0", than: "0.11.9"))
         XCTAssertTrue(UpdateController.isNewerVersion("0.11.10", than: "0.11.9"))

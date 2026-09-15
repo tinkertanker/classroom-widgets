@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -21,6 +22,7 @@ public sealed class UpdateController
     {
         if (_checking) return;
         _checking = true;
+        var installApproved = false;
         try
         {
             using var response = await Client.GetAsync(LatestReleaseApi);
@@ -55,6 +57,7 @@ public sealed class UpdateController
                 MessageBoxButton.OKCancel,
                 MessageBoxImage.Information);
             if (choice != MessageBoxResult.OK) return;
+            installApproved = true;
 
             var installer = Path.Combine(Path.GetTempPath(), expectedName);
             using (var download = await Client.GetAsync(asset.DownloadUrl, HttpCompletionOption.ResponseHeadersRead))
@@ -76,10 +79,10 @@ public sealed class UpdateController
                 StartPortableUpdate(installer);
             await _quit();
         }
-        catch (Exception error) when (error is HttpRequestException or IOException or JsonException or InvalidOperationException or System.ComponentModel.Win32Exception or FormatException)
+        catch (Exception error)
         {
             DashboardLog.Warn($"Update check failed: {error.Message}");
-            if (manual) MessageBox.Show("Check your connection and try again.", "Unable to check for updates", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (manual || installApproved) MessageBox.Show("The update could not be installed. The existing app has not been changed. Check your connection and try again.", "Unable to update Classroom Widgets", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -95,31 +98,79 @@ public sealed class UpdateController
 
     private static void StartPortableUpdate(string archive)
     {
-        var script = Path.Combine(Path.GetTempPath(), $"classroom-widgets-update-{Environment.ProcessId}.ps1");
+        var target = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
+        var staging = $"{target}.update-{Guid.NewGuid():N}";
+        var backup = $"{target}.previous-{Guid.NewGuid():N}";
+        var executable = Path.GetFileName(Environment.ProcessPath) ?? "ClassroomWidgets.exe";
+        ZipFile.ExtractToDirectory(archive, staging);
+        File.Delete(archive);
+
+        var script = Path.Combine(Path.GetTempPath(), $"classroom-widgets-update-{Guid.NewGuid():N}.ps1");
         File.WriteAllText(script, """
-            param([int]$ProcessId, [string]$Archive, [string]$Target, [string]$Executable)
+            param([int]$ProcessId, [string]$Staging, [string]$Target, [string]$Backup, [string]$Executable)
+            $ErrorActionPreference = 'Stop'
             Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue
-            $staging = Join-Path ([System.IO.Path]::GetTempPath()) ("classroom-widgets-extract-" + [guid]::NewGuid())
-            Expand-Archive -LiteralPath $Archive -DestinationPath $staging -Force
-            Copy-Item -Path (Join-Path $staging '*') -Destination $Target -Recurse -Force
-            Start-Process -FilePath (Join-Path $Target $Executable)
-            Remove-Item -LiteralPath $staging, $Archive, $PSCommandPath -Recurse -Force -ErrorAction SilentlyContinue
+            $installed = [System.Collections.Generic.List[string]]::new()
+            $cleanup = $false
+            try {
+              foreach ($file in Get-ChildItem -LiteralPath $Staging -File -Recurse) {
+                $relative = [System.IO.Path]::GetRelativePath($Staging, $file.FullName)
+                $destination = Join-Path $Target $relative
+                $saved = Join-Path $Backup $relative
+                New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
+                if (Test-Path -LiteralPath $destination) {
+                  New-Item -ItemType Directory -Path (Split-Path $saved) -Force | Out-Null
+                  Move-Item -LiteralPath $destination -Destination $saved
+                }
+                Move-Item -LiteralPath $file.FullName -Destination $destination
+                $installed.Add($destination)
+              }
+              $replacement = Start-Process -FilePath (Join-Path $Target $Executable) -PassThru
+              Start-Sleep -Seconds 2
+              if ($replacement.HasExited) { throw 'The updated app exited during startup.' }
+              $cleanup = $true
+            } catch {
+              try {
+                foreach ($destination in $installed) {
+                  Remove-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+                }
+                if (Test-Path -LiteralPath $Backup) {
+                  foreach ($file in Get-ChildItem -LiteralPath $Backup -File -Recurse) {
+                    $relative = [System.IO.Path]::GetRelativePath($Backup, $file.FullName)
+                    $destination = Join-Path $Target $relative
+                    New-Item -ItemType Directory -Path (Split-Path $destination) -Force | Out-Null
+                    Move-Item -LiteralPath $file.FullName -Destination $destination -Force
+                  }
+                }
+                if (Test-Path -LiteralPath (Join-Path $Target $Executable)) { Start-Process -FilePath (Join-Path $Target $Executable) }
+                $cleanup = $true
+              } catch {
+                # Preserve staging and backup for manual recovery.
+              }
+            }
+            if ($cleanup) {
+              Remove-Item -LiteralPath $Staging, $Backup, $PSCommandPath -Recurse -Force -ErrorAction SilentlyContinue
+            }
             """);
-        var arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" -ProcessId {Environment.ProcessId} -Archive \"{archive}\" -Target \"{AppContext.BaseDirectory}\" -Executable \"{Path.GetFileName(Environment.ProcessPath)}\"";
-        Process.Start(new ProcessStartInfo("powershell.exe", arguments) { UseShellExecute = false, CreateNoWindow = true });
+        var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath() };
+        foreach (var argument in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-ProcessId", Environment.ProcessId.ToString(), "-Staging", staging, "-Target", target, "-Backup", backup, "-Executable", executable })
+            start.ArgumentList.Add(argument);
+        Process.Start(start);
     }
 
     private static void StartInstalledUpdate(string installer)
     {
-        var script = Path.Combine(Path.GetTempPath(), $"classroom-widgets-update-{Environment.ProcessId}.ps1");
+        var script = Path.Combine(Path.GetTempPath(), $"classroom-widgets-update-{Guid.NewGuid():N}.ps1");
         File.WriteAllText(script, """
             param([int]$ProcessId, [string]$Installer)
             Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue
             Start-Process -FilePath $Installer -ArgumentList '/SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS' -Wait
             Remove-Item -LiteralPath $Installer, $PSCommandPath -Force -ErrorAction SilentlyContinue
             """);
-        var arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" -ProcessId {Environment.ProcessId} -Installer \"{installer}\"";
-        Process.Start(new ProcessStartInfo("powershell.exe", arguments) { UseShellExecute = false, CreateNoWindow = true });
+        var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath() };
+        foreach (var argument in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-ProcessId", Environment.ProcessId.ToString(), "-Installer", installer })
+            start.ArgumentList.Add(argument);
+        Process.Start(start);
     }
 
     private static HttpClient CreateClient()

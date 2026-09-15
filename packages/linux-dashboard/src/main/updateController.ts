@@ -1,8 +1,8 @@
 import { app, dialog, net, shell } from 'electron';
 import { execFile, spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { chmod, mkdtemp, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdtemp, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -78,13 +78,37 @@ export class UpdateController {
   private async installAppImage(download: string): Promise<void> {
     const current = process.env.APPIMAGE;
     if (!current) throw new Error('The running AppImage path is unavailable');
-    await chmod(download, 0o755);
-    const script = join(tmpdir(), `classroom-widgets-update-${process.pid}.sh`);
-    await writeFile(script, '#!/bin/sh\nwhile kill -0 "$1" 2>/dev/null; do sleep 1; done\nmv "$2" "$3" && chmod +x "$3" && "$3" >/dev/null 2>&1 &\nrm -f "$0"\n');
-    await chmod(script, 0o755);
-    const child = spawn(script, [String(process.pid), download, current], { detached: true, stdio: 'ignore' });
+    const token = randomUUID();
+    const staged = `${current}.update-${token}`;
+    const backup = `${current}.previous-${token}`;
+    await copyFile(download, staged);
+    await chmod(staged, 0o755);
+    if (await this.sha256(staged) !== await this.sha256(download)) {
+      await unlink(staged).catch(() => undefined);
+      throw new Error('Update staging verification failed');
+    }
+    await unlink(download).catch(() => undefined);
+
+    const script = join(tmpdir(), `classroom-widgets-update-${token}.sh`);
+    await writeFile(script, '#!/bin/sh\nwhile kill -0 "$1" 2>/dev/null; do sleep 1; done\nif ! mv "$3" "$4"; then rm -f "$2" "$5"; exit 1; fi\nif mv "$2" "$3" && chmod +x "$3"; then\n  "$3" >/dev/null 2>&1 &\n  replacement_pid=$!\n  sleep 2\n  if kill -0 "$replacement_pid" 2>/dev/null; then rm -f "$4"; exit 0; fi\nfi\nrm -f "$3"\nmv "$4" "$3"\n"$3" >/dev/null 2>&1 &\nrm -f "$5"\n');
+    const child = spawn('/bin/sh', [script, String(process.pid), staged, current, backup, script], { detached: true, stdio: 'ignore' });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        child.once('spawn', resolve);
+        child.once('error', reject);
+      });
+    } catch (error) {
+      await Promise.all([unlink(staged).catch(() => undefined), unlink(script).catch(() => undefined)]);
+      throw error;
+    }
     child.unref();
     this.onQuit();
+  }
+
+  private async sha256(path: string): Promise<string> {
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(path)) hash.update(chunk);
+    return hash.digest('hex');
   }
 
   private async installDeb(download: string, releasePage: string): Promise<void> {
