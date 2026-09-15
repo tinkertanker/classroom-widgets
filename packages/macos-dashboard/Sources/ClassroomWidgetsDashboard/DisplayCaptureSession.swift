@@ -50,12 +50,12 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     }
 
     func start(excludingWindowID: CGWindowID, outputSize: CGSize) async throws {
-        let wasCancelled = stateLock.withLock {
+        let wasAlreadyCancelled = stateLock.withLock {
             startInProgress = true
             return cancelled
         }
         defer { stateLock.withLock { startInProgress = false } }
-        if wasCancelled { throw CancellationError() }
+        if wasAlreadyCancelled { throw CancellationError() }
         let content = try await contentDiscovery()
         try checkCancellation()
         guard let display = content.displays.first(where: { $0.displayID == sourceID }) else {

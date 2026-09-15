@@ -16,6 +16,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private var session: DisplayCaptureSession?
     private var presentedGeometry: DisplayPreviewFrameGeometry?
     private var stopLifecycle = DisplayPreviewStopLifecycle()
+    private var stopOperation: DisplayPreviewStopOperation?
     private var visibilityResume = DisplayPreviewVisibilityResumeState()
     private var backgroundOpacity = 1.0
     private var keepOnAllSpaces = true
@@ -75,26 +76,25 @@ final class DisplayPreviewCoordinator: NSObject {
         cancelDeferredRestarts()
         intent.pause()
         clearFrame(status: "Paused while Classroom Widgets quits.")
-        if stopLifecycle.isStopping {
-            let deadline = ContinuousClock.now + .seconds(2)
-            while stopLifecycle.isStopping, ContinuousClock.now < deadline {
-                try? await Task.sleep(nanoseconds: 20_000_000)
-            }
-            return session == nil
-        }
         guard let session else { return true }
-        guard stopLifecycle.beginStop(of: session) else { return false }
-        if await stopWithTimeout(session) {
-            if stopLifecycle.confirmedStopCompleted(for: session) {
-                self.session = nil
+        if stopLifecycle.isBlocked {
+            if stopOperation?.matches(session) == true, stopOperation?.state == .running {
+                // Join the still-running cleanup below without issuing another stop.
+            } else {
+                guard stopLifecycle.retryBlockedStop(of: session) else { return false }
             }
-            return true
-        } else {
-            if stopLifecycle.stopDidNotComplete(for: session) {
-                DashboardLog.windowing.error("Display Preview stream did not stop within the cleanup deadline")
-            }
-            return false
+        } else if !stopLifecycle.isStopping {
+            guard stopLifecycle.beginStop(of: session) else { return false }
         }
+        let stopped = await stopWithTimeout(session, retryFailed: true)
+        if stopped {
+            let reconciled = reconcileConfirmedStop(of: session)
+            return reconciled || self.session == nil
+        }
+        if stopLifecycle.stopDidNotComplete(for: session) {
+            DashboardLog.windowing.error("Display Preview stream did not stop within the cleanup deadline")
+        }
+        return false
     }
 
     func terminationCancelled() {
@@ -226,12 +226,10 @@ final class DisplayPreviewCoordinator: NSObject {
             do {
                 try await capture.start(excludingWindowID: CGWindowID(window.windowNumber), outputSize: outputSize)
                 guard self.session === capture, self.intent.accepts(generation: generation, sourceID: source.id) else {
-                    let ownsCapture = self.stopLifecycle.beginStop(of: capture)
+                    guard self.stopLifecycle.beginStop(of: capture) else { return }
                     if await self.stopWithTimeout(capture) {
-                        if ownsCapture && self.stopLifecycle.confirmedStopCompleted(for: capture) {
-                            self.session = nil
-                        }
-                    } else if ownsCapture {
+                        _ = self.reconcileConfirmedStop(of: capture)
+                    } else {
                         _ = self.stopLifecycle.stopDidNotComplete(for: capture)
                     }
                     return
@@ -287,9 +285,7 @@ final class DisplayPreviewCoordinator: NSObject {
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
             if await self.stopWithTimeout(capture) {
-                if self.stopLifecycle.confirmedStopCompleted(for: capture) {
-                    self.session = nil
-                }
+                guard self.reconcileConfirmedStop(of: capture) else { return }
                 self.controllerStatus(message, button: "Resume", enabled: self.selectedSource != nil)
                 if self.visibilityResume.stopCompleted(
                     currentSourceUUID: self.selectedSource?.uuid,
@@ -410,31 +406,41 @@ final class DisplayPreviewCoordinator: NSObject {
         visibilityResume.cancel()
     }
 
-    private func stopWithTimeout(_ capture: DisplayCaptureSession) async -> Bool {
-        await withCheckedContinuation { continuation in
-            let gate = DisplayPreviewStopGate(continuation) { [weak self, weak capture] in
-                guard let self, let capture else { return }
-                self.reconcileConfirmedLateStop(of: capture)
-            }
-            Task { @MainActor in
-                do {
-                    try await capture.stop()
-                    gate.finish(true)
-                } catch {
+    private func stopWithTimeout(
+        _ capture: DisplayCaptureSession,
+        retryFailed: Bool = false
+    ) async -> Bool {
+        let operation: DisplayPreviewStopOperation
+        if let current = stopOperation, current.matches(capture),
+           current.state != .failed || !retryFailed {
+            operation = current
+        } else {
+            operation = DisplayPreviewStopOperation(
+                owner: capture,
+                operation: { try await capture.stop() },
+                onFailure: { error in
                     DashboardLog.windowing.error("Display Preview stream stop failed: \(error.localizedDescription, privacy: .public)")
-                    gate.finish(false)
+                },
+                onLateSuccess: { [weak self, weak capture] in
+                    guard let self, let capture else { return }
+                    self.reconcileConfirmedLateStop(of: capture)
                 }
-            }
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                gate.finish(false)
-            }
+            )
+            stopOperation = operation
         }
+        return await operation.wait(timeoutNanoseconds: 2_000_000_000)
+    }
+
+    @discardableResult
+    private func reconcileConfirmedStop(of capture: DisplayCaptureSession) -> Bool {
+        guard stopLifecycle.confirmedStopCompleted(for: capture) else { return false }
+        if session === capture { session = nil }
+        if stopOperation?.matches(capture) == true { stopOperation = nil }
+        return true
     }
 
     private func reconcileConfirmedLateStop(of capture: DisplayCaptureSession) {
-        guard stopLifecycle.confirmedStopCompleted(for: capture) else { return }
-        if session === capture { session = nil }
+        guard reconcileConfirmedStop(of: capture) else { return }
         visibilityResume.cancel()
         intent.pause()
         controllerStatus(
@@ -478,25 +484,73 @@ final class DisplayPreviewCoordinator: NSObject {
 }
 
 @MainActor
-final class DisplayPreviewStopGate {
-    private var continuation: CheckedContinuation<Bool, Never>?
+final class DisplayPreviewStopOperation {
+    enum State: Equatable {
+        case running
+        case succeeded
+        case failed
+    }
+
+    private let ownerID: ObjectIdentifier
+    private var waiters: [UUID: CheckedContinuation<Bool, Never>] = [:]
+    private(set) var state: State = .running
+    private let onFailure: (Error) -> Void
     private let onLateSuccess: () -> Void
 
     init(
-        _ continuation: CheckedContinuation<Bool, Never>,
+        owner: AnyObject,
+        operation: @escaping () async throws -> Void,
+        onFailure: @escaping (Error) -> Void = { _ in },
         onLateSuccess: @escaping () -> Void = {}
     ) {
-        self.continuation = continuation
+        ownerID = ObjectIdentifier(owner)
+        self.onFailure = onFailure
         self.onLateSuccess = onLateSuccess
+        Task { @MainActor [weak self] in
+            do {
+                try await operation()
+                self?.finish(succeeded: true)
+            } catch {
+                self?.onFailure(error)
+                self?.finish(succeeded: false)
+            }
+        }
     }
 
-    func finish(_ result: Bool) {
-        guard let continuation else {
-            if result { onLateSuccess() }
-            return
+    func matches(_ owner: AnyObject) -> Bool {
+        ownerID == ObjectIdentifier(owner)
+    }
+
+    func wait(timeoutNanoseconds: UInt64) async -> Bool {
+        switch state {
+        case .succeeded: return true
+        case .failed: return false
+        case .running: break
         }
-        self.continuation = nil
-        continuation.resume(returning: result)
+        let waiterID = UUID()
+        return await withCheckedContinuation { continuation in
+            waiters[waiterID] = continuation
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                self?.timeout(waiterID)
+            }
+        }
+    }
+
+    private func finish(succeeded: Bool) {
+        guard state == .running else { return }
+        state = succeeded ? .succeeded : .failed
+        let pending = Array(waiters.values)
+        waiters.removeAll()
+        if pending.isEmpty, succeeded { onLateSuccess() }
+        for continuation in pending {
+            continuation.resume(returning: succeeded)
+        }
+    }
+
+    private func timeout(_ waiterID: UUID) {
+        guard let continuation = waiters.removeValue(forKey: waiterID) else { return }
+        continuation.resume(returning: false)
     }
 }
 

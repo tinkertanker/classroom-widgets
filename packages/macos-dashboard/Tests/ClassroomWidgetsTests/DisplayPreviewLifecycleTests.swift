@@ -3,6 +3,25 @@ import XCTest
 
 final class DisplayPreviewLifecycleTests: XCTestCase {
     private final class CaptureOwner {}
+    private enum TestError: Error { case stopFailed }
+
+    @MainActor
+    private final class StopControl {
+        private(set) var callCount = 0
+        private var continuation: CheckedContinuation<Void, Error>?
+
+        func run() async throws {
+            callCount += 1
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+            }
+        }
+
+        func succeed() {
+            continuation?.resume(returning: ())
+            continuation = nil
+        }
+    }
 
     func testRevealAfterVisibilityStopResumesSameSource() {
         var state = DisplayPreviewVisibilityResumeState()
@@ -64,15 +83,48 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
 
     @MainActor
     func testConfirmedLateStopSuccessIsNotDiscardedAfterTimeout() async {
+        let capture = CaptureOwner()
+        let control = StopControl()
         var reconciled = false
-        let initialResult: Bool = await withCheckedContinuation { continuation in
-            let gate = DisplayPreviewStopGate(continuation) { reconciled = true }
-            gate.finish(false)
-            gate.finish(true)
-        }
+        let operation = DisplayPreviewStopOperation(
+            owner: capture,
+            operation: { try await control.run() },
+            onLateSuccess: { reconciled = true }
+        )
+
+        let initialResult = await operation.wait(timeoutNanoseconds: 0)
+        while control.callCount == 0 { await Task.yield() }
+        control.succeed()
+        while operation.state == .running { await Task.yield() }
 
         XCTAssertFalse(initialResult)
         XCTAssertTrue(reconciled)
+        XCTAssertEqual(control.callCount, 1)
+    }
+
+    @MainActor
+    func testOverlappingWaitersShareOneUnderlyingStop() async {
+        let capture = CaptureOwner()
+        let control = StopControl()
+        let operation = DisplayPreviewStopOperation(
+            owner: capture,
+            operation: { try await control.run() }
+        )
+        let first = Task { @MainActor in
+            await operation.wait(timeoutNanoseconds: 1_000_000_000)
+        }
+        let second = Task { @MainActor in
+            await operation.wait(timeoutNanoseconds: 1_000_000_000)
+        }
+        while control.callCount == 0 { await Task.yield() }
+
+        control.succeed()
+        let firstResult = await first.value
+        let secondResult = await second.value
+
+        XCTAssertTrue(firstResult)
+        XCTAssertTrue(secondResult)
+        XCTAssertEqual(control.callCount, 1)
     }
 
     @MainActor
@@ -82,15 +134,7 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         lifecycle.adopt(capture)
         XCTAssertTrue(lifecycle.beginStop(of: capture))
 
-        let timedOut: Bool = await withCheckedContinuation { continuation in
-            let gate = DisplayPreviewStopGate(continuation) {
-                XCTAssertTrue(lifecycle.confirmedStopCompleted(for: capture))
-            }
-            gate.finish(false)
-            gate.finish(true)
-        }
-
-        XCTAssertFalse(timedOut)
+        XCTAssertTrue(lifecycle.confirmedStopCompleted(for: capture))
         XCTAssertFalse(lifecycle.stopDidNotComplete(for: capture))
         XCTAssertTrue(lifecycle.canStart)
         XCTAssertFalse(lifecycle.isBlocked)
@@ -121,6 +165,31 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertFalse(lifecycle.terminating)
         XCTAssertTrue(lifecycle.isBlocked)
         XCTAssertFalse(lifecycle.canStart)
+    }
+
+    @MainActor
+    func testSettledStopFailureCanBeRetriedForTermination() async {
+        let capture = CaptureOwner()
+        var callCount = 0
+        var lifecycle = DisplayPreviewStopLifecycle()
+        lifecycle.adopt(capture)
+        lifecycle.beginTermination()
+        XCTAssertTrue(lifecycle.beginStop(of: capture))
+        let failed = DisplayPreviewStopOperation(owner: capture) {
+            callCount += 1
+            throw TestError.stopFailed
+        }
+
+        let failedResult = await failed.wait(timeoutNanoseconds: 1_000_000_000)
+        XCTAssertFalse(failedResult)
+        XCTAssertTrue(lifecycle.stopDidNotComplete(for: capture))
+        XCTAssertTrue(lifecycle.retryBlockedStop(of: capture))
+        let retry = DisplayPreviewStopOperation(owner: capture) { callCount += 1 }
+
+        let retryResult = await retry.wait(timeoutNanoseconds: 1_000_000_000)
+        XCTAssertTrue(retryResult)
+        XCTAssertTrue(lifecycle.confirmedStopCompleted(for: capture))
+        XCTAssertEqual(callCount, 2)
     }
 
     func testLateCompletionCannotReleaseReplacementCapture() {

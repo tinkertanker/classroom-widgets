@@ -93,6 +93,13 @@ struct DisplayPreviewStopLifecycle {
         return true
     }
 
+    mutating func retryBlockedStop(of owner: AnyObject) -> Bool {
+        let id = ObjectIdentifier(owner)
+        guard case .blocked(let ownerID) = phase, ownerID == id else { return false }
+        phase = .stopping(id)
+        return true
+    }
+
     mutating func release(_ owner: AnyObject) -> Bool {
         let id = ObjectIdentifier(owner)
         guard case .active(let ownerID) = phase, ownerID == id else { return false }
