@@ -6,7 +6,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: WidgetHostController?
     private var launcherRequested = false
-    private var initialActivationPending = !CommandLine.arguments.contains("--background")
+    private var initialActivationPending = false
     private var terminationPending = false
     private var terminationApproved = false
     private var settingsHotKey: (shortcut: DashboardShortcut, hotKey: DashboardHotKey)?
@@ -48,6 +48,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        initialActivationPending = Self.shouldOpenLauncherOnInitialActivation(
+            arguments: CommandLine.arguments,
+            launchedAsLoginItem: Self.launchedAsLoginItem
+        )
         DashboardDefaults.register()
         shortcutState = ShortcutBindingState(settings: persistedSettingsShortcut())
         NSApp.setActivationPolicy(.regular)
@@ -66,6 +70,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try? await Task.sleep(for: .seconds(10))
             await self?.updates.check()
         }
+    }
+
+    nonisolated static func shouldOpenLauncherOnInitialActivation(arguments: [String], launchedAsLoginItem: Bool) -> Bool {
+        !launchedAsLoginItem && !arguments.contains("--background")
+    }
+
+    private static var launchedAsLoginItem: Bool {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        return event?.eventID == kAEOpenApplication
+            && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {

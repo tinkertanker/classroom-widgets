@@ -12,8 +12,8 @@ public sealed class LauncherWindow
     private readonly WebView2 _webView;
     private readonly Action<int> _addWidget;
     private bool _initializing;
+    private bool _initialized;
     private bool _ready;
-    private bool _showWhenReady;
 
     public LauncherWindow(Action<int> addWidget)
     {
@@ -35,18 +35,13 @@ public sealed class LauncherWindow
 
     public void Show()
     {
-        _showWhenReady = true;
-        if (_ready)
-        {
-            ShowReadyWindow();
-            return;
-        }
+        ShowWindow();
+        if (_ready) return;
         if (!_initializing) _ = InitializeAsync();
     }
 
     public void Hide()
     {
-        _showWhenReady = false;
         _window.Hide();
     }
 
@@ -55,19 +50,15 @@ public sealed class LauncherWindow
         _initializing = true;
         try
         {
-            await DashboardWebView.InitializeAsync(_webView, string.Empty);
-            var core = _webView.CoreWebView2;
-            core.WebMessageReceived += OnWebMessageReceived;
-            core.NavigationCompleted += (_, args) =>
+            if (!_initialized)
             {
-                if (!args.IsSuccess)
-                {
-                    DashboardLog.Error($"Widget launcher navigation failed: {args.WebErrorStatus}");
-                    return;
-                }
-                _ready = true;
-                if (_showWhenReady) ShowReadyWindow();
-            };
+                await DashboardWebView.InitializeAsync(_webView, string.Empty);
+                var initializedCore = _webView.CoreWebView2;
+                initializedCore.WebMessageReceived += OnWebMessageReceived;
+                initializedCore.NavigationCompleted += OnNavigationCompleted;
+                _initialized = true;
+            }
+            var core = _webView.CoreWebView2;
             core.Navigate(DashboardWebView.BuildUrl(new Dictionary<string, string>
             {
                 ["surface"] = "widget-launcher"
@@ -76,14 +67,22 @@ public sealed class LauncherWindow
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or System.Runtime.InteropServices.COMException)
         {
             DashboardLog.Error($"Unable to open widget launcher: {error.Message}");
-        }
-        finally
-        {
             _initializing = false;
         }
     }
 
-    private void ShowReadyWindow()
+    private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
+    {
+        _initializing = false;
+        if (!args.IsSuccess)
+        {
+            DashboardLog.Error($"Widget launcher navigation failed: {args.WebErrorStatus}");
+            return;
+        }
+        _ready = true;
+    }
+
+    private void ShowWindow()
     {
         if (_window.WindowState == WindowState.Minimized) _window.WindowState = WindowState.Normal;
         _window.Show();
@@ -114,9 +113,9 @@ public sealed class LauncherWindow
         {
             var body = document.RootElement;
             if (body.ValueKind != JsonValueKind.Object
-                || !body.TryGetProperty("handler", out var handler) || handler.GetString() != "classroomDashboard"
-                || !body.TryGetProperty("schemaVersion", out var schemaVersion) || !schemaVersion.TryGetInt32(out var version) || version != 1
-                || !body.TryGetProperty("type", out var type)) return;
+                || !body.TryGetProperty("handler", out var handler) || handler.ValueKind != JsonValueKind.String || handler.GetString() != "classroomDashboard"
+                || !body.TryGetProperty("schemaVersion", out var schemaVersion) || schemaVersion.ValueKind != JsonValueKind.Number || !schemaVersion.TryGetInt32(out var version) || version != 1
+                || !body.TryGetProperty("type", out var type) || type.ValueKind != JsonValueKind.String) return;
 
             if (type.GetString() == "desktop-launcher-close")
             {
@@ -125,6 +124,7 @@ public sealed class LauncherWindow
             }
             if (type.GetString() == "desktop-launcher-add-widget"
                 && body.TryGetProperty("widgetType", out var widgetType)
+                && widgetType.ValueKind == JsonValueKind.Number
                 && widgetType.TryGetInt32(out var value))
             {
                 _addWidget(value);

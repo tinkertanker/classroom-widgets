@@ -42,14 +42,22 @@ public partial class App : Application
         if (!createdNew)
         {
             DashboardLog.Info("Another instance is already running; exiting");
-            try
+            if (!args.Args.Contains("--background", StringComparer.OrdinalIgnoreCase))
             {
-                using var showLauncherEvent = EventWaitHandle.OpenExisting(ShowLauncherEventName);
-                showLauncherEvent.Set();
-            }
-            catch (WaitHandleCannotBeOpenedException)
-            {
-                DashboardLog.Warn("Running instance is not ready to open the widget launcher");
+                var signaled = false;
+                for (var attempt = 0; attempt < 10 && !signaled; attempt++)
+                {
+                    try
+                    {
+                        using var showLauncherEvent = EventWaitHandle.OpenExisting(ShowLauncherEventName);
+                        signaled = showLauncherEvent.Set();
+                    }
+                    catch (WaitHandleCannotBeOpenedException)
+                    {
+                        if (attempt < 9) Thread.Sleep(50);
+                    }
+                }
+                if (!signaled) DashboardLog.Warn("Running instance is not ready to open the widget launcher");
             }
             Shutdown();
             return;

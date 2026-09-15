@@ -53,6 +53,7 @@ public sealed class DashboardSettings
 
     public static DashboardSettings Load()
     {
+        var settings = new DashboardSettings();
         try
         {
             if (File.Exists(SettingsPath))
@@ -63,7 +64,7 @@ public sealed class DashboardSettings
                     loaded.BackgroundOpacity = Math.Clamp(loaded.BackgroundOpacity, 0, 1);
                     loaded.WidgetShortcuts ??= new();
                     loaded.WidgetShortcutDefaults ??= new();
-                    return loaded;
+                    settings = loaded;
                 }
             }
         }
@@ -71,7 +72,25 @@ public sealed class DashboardSettings
         {
             DashboardLog.Warn($"Unable to read settings: {error.Message}");
         }
-        return new DashboardSettings();
+        MigrateLaunchAtLoginCommand();
+        return settings;
+    }
+
+    private static void MigrateLaunchAtLoginCommand()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            if (key?.GetValue(RunValueName) is string command
+                && !command.Contains("--background", StringComparison.OrdinalIgnoreCase))
+            {
+                key.SetValue(RunValueName, $"\"{Environment.ProcessPath}\" --background");
+            }
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            DashboardLog.Warn($"Unable to update launch-at-login command: {error.Message}");
+        }
     }
 
     public void Save()

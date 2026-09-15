@@ -6,6 +6,7 @@ import { WidgetHostController } from './hostController';
 import { LauncherWindow } from './launcherWindow';
 import { log } from './log';
 import { DashboardSettings } from './settings';
+import { isBackgroundLaunch } from './startup';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
 import { UpdateController } from './updateController';
@@ -55,7 +56,7 @@ function bootstrap(): void {
   let shortcuts: WidgetShortcutController | null = null;
   let shuttingDown = false;
   let terminationPrepared = false;
-  let launcherRequested = !process.argv.includes('--background');
+  let launcherRequested = !isBackgroundLaunch(process.argv);
 
   const openLauncher = (): void => {
     if (!host || host.widgetOptions.length === 0) {
@@ -66,7 +67,9 @@ function bootstrap(): void {
     launcher?.show();
   };
 
-  app.on('second-instance', () => openLauncher());
+  app.on('second-instance', (_event, commandLine) => {
+    if (!isBackgroundLaunch(commandLine)) openLauncher();
+  });
   app.on('activate', () => openLauncher());
 
   const requestQuit = async (): Promise<void> => {
