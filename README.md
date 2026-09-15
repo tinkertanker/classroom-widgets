@@ -5,9 +5,8 @@ A suite of interactive classroom management tools with real-time student engagem
 ## 📚 Table of Contents
 
 - [Project Overview](#project-overview)
-- [macOS App](#macos-app)
-- [Windows App](#windows-app)
-- [Linux App](#linux-app)
+- [Download](#download)
+- [Desktop Apps](#desktop-apps)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Core Features](#core-features)
@@ -22,9 +21,7 @@ Classroom Widgets is a real-time classroom management system that enables teache
 - **Teacher Application**: A React-based interface for creating and managing classroom activities
 - **Student Application**: A responsive web app for students to participate in activities.
 - **Backend Server**: An Express.js server handling real-time communication via Socket.io.
-- **macOS Application**: A native menu-bar app for placing always-on-top classroom widgets over other apps.
-- **Windows Application**: A native system-tray app with the same floating widgets, built on WebView2.
-- **Linux Application**: A native system-tray app with the same floating widgets, built on Electron.
+- **Desktop Applications**: Native macOS, Windows, and Linux apps for placing always-on-top classroom widgets over other apps.
 
 ### Available Widgets
 
@@ -38,40 +35,31 @@ The teacher-facing iPad app for creating and sharing self-contained interactive
 activities now lives in its own repository:
 [**Tapplet**](https://github.com/tinkertanker/tapplet).
 
-## 🖥️ macOS App
+## Download
 
-Classroom Widgets for macOS is a signed and notarized menu-bar app for opening compact classroom widgets that stay above other apps. It requires macOS 13 or later.
+[![Download Classroom Widgets for macOS](https://img.shields.io/github/v/release/tinkertanker/classroom-widgets?label=Download%20macOS&logo=apple&style=for-the-badge)](https://github.com/tinkertanker/classroom-widgets/releases/latest)
+[![Download Classroom Widgets for Windows](https://img.shields.io/github/v/release/tinkertanker/classroom-widgets?label=Download%20Windows&logo=windows11&style=for-the-badge)](https://github.com/tinkertanker/classroom-widgets/releases/latest)
+[![Download Classroom Widgets for Linux](https://img.shields.io/github/v/release/tinkertanker/classroom-widgets?label=Download%20Linux&logo=linux&style=for-the-badge)](https://github.com/tinkertanker/classroom-widgets/releases/latest)
 
-**[Download the latest macOS release](https://github.com/tinkertanker/classroom-widgets/releases)**
+Choose the file for your platform from the latest release:
 
-To install it:
+| Platform | Download | Requirements |
+| --- | --- | --- |
+| macOS | `ClassroomWidgets-v<version>-macos.dmg` | macOS 13 or later |
+| Windows | `ClassroomWidgets-v<version>-windows-x64-setup.exe` (recommended) or the portable `.zip` | Windows 10 (1809+) or Windows 11, 64-bit, with the Microsoft Edge WebView2 Runtime |
+| Linux | `ClassroomWidgets-v<version>-linux-x86_64.AppImage` or the Debian/Ubuntu `.deb` | 64-bit Linux with a system tray (GNOME requires an AppIndicator extension) |
 
-1. Download `ClassroomWidgets-v<version>-macos.dmg` from the release page.
-2. Open the DMG and drag Classroom Widgets to Applications.
-3. Launch Classroom Widgets from Applications. The app runs from the menu bar rather than the Dock.
-4. Select the menu-bar icon, then **New Floating Widget**.
+You can also browse [all releases](https://github.com/tinkertanker/classroom-widgets/releases).
 
-The macOS app currently supports Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects. Settings include launch at login, showing widgets on all Spaces, widget background opacity, and a configurable global shortcut for opening Settings.
+## 🖥️ Desktop Apps
 
-The canonical bundle identifier is `sg.tk.classroomwidgets`. Upgrading from a release before 0.10.15 may require configuring preferences, login-item approval, and macOS permissions again because those releases used a different app identity.
+The desktop app lives in the menu bar on macOS and the system tray on Windows and Linux. Open its menu and choose **New Floating Widget** on macOS or **Add Widget** on Windows and Linux.
 
-See the [macOS app and distribution guide](./docs/MACOS_DISTRIBUTION.md) for usage, local builds, signing, notarization, and release instructions.
+All three platforms support Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects as compact, always-on-top panels. Settings vary by platform and include launch at login, widget background opacity, row/column arrangement, showing widgets on all Spaces, and a configurable global shortcut.
 
-## 🪟 Windows App
+The macOS app is signed and notarized, checks for updates, and can update itself. The Windows installer is per-user and does not require administrator access. Linux is available as a portable AppImage or a Debian/Ubuntu package.
 
-Classroom Widgets for Windows is a system-tray app that opens the same compact widgets (Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects) as always-on-top floating panels. It requires Windows 10/11 and the Microsoft Edge WebView2 Runtime.
-
-Click the tray icon, then **Add Widget**. Settings include launch at login, always on top, widget background opacity, and row/column arrangement. Build it locally with `npm run windows:run` (needs the .NET 8 SDK).
-
-See the [Windows app and distribution guide](./docs/WINDOWS_DISTRIBUTION.md) for usage, architecture, local builds, and publishing.
-
-## 🐧 Linux App
-
-Classroom Widgets for Linux is a system-tray app that opens the same compact widgets (Randomiser, Timer, List, Task Cue, Traffic Light, Text Banner, QR Code, and Sound Effects) as always-on-top floating panels. It requires a 64-bit Linux desktop with a system tray (on GNOME, the AppIndicator extension).
-
-Click the tray icon, then **Add Widget**. Settings include launch at login, always on top, widget background opacity, and row/column arrangement. Build it locally with `npm run linux:run`.
-
-See the [Linux app and distribution guide](./docs/LINUX_DISTRIBUTION.md) for usage, architecture, local builds, and publishing.
+See the platform guides for detailed installation, usage, and development instructions: [macOS](./docs/MACOS_DISTRIBUTION.md), [Windows](./docs/WINDOWS_DISTRIBUTION.md), and [Linux](./docs/LINUX_DISTRIBUTION.md).
 
 ## 🚀 Quick Start
 
@@ -117,7 +105,7 @@ npm run build:all
 
 ### System Overview (Development Environment)
 
-The web stack consists of three parts that run concurrently during development using `npm run dev`. The native macOS app is a separate Swift package that embeds a production build of the teacher interface for its floating widgets.
+The web stack consists of three parts that run concurrently during development using `npm run dev`. Each desktop app wraps a production build of the teacher interface in a platform-specific host for its floating widgets.
 
 ```
 ┌─────────────────┐         ┌─────────────────┐
@@ -174,6 +162,8 @@ classroom-widgets/
 - **State Management**: Zustand
 - **Deployment**: Docker, Nginx
 - **macOS Desktop**: Swift, AppKit, SwiftUI, WebKit, Swift Package Manager
+- **Windows Desktop**: C#, WPF, WebView2, .NET 8
+- **Linux Desktop**: Electron, TypeScript
 
 ## ✨ Features
 
