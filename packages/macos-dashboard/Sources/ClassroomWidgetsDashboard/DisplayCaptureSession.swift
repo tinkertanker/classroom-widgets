@@ -22,9 +22,12 @@ enum DisplayCaptureFrameDisposition: Equatable {
 }
 
 final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
+    typealias ContentDiscovery = () async throws -> SCShareableContent
+
     let sourceID: CGDirectDisplayID
     private let outputQueue = DispatchQueue(label: "sg.tk.classroomwidgets.display-preview.frames")
     private let delivery: FrameDelivery
+    private let contentDiscovery: ContentDiscovery
     private let stateLock = NSLock()
     private var stream: SCStream?
     private var startInProgress = false
@@ -33,20 +36,27 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     var onUnavailable: (@MainActor () -> Void)?
     var onStop: (@MainActor (Error) -> Void)?
 
-    init(sourceID: CGDirectDisplayID) {
+    init(
+        sourceID: CGDirectDisplayID,
+        contentDiscovery: @escaping ContentDiscovery = {
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        }
+    ) {
         self.sourceID = sourceID
+        self.contentDiscovery = contentDiscovery
         delivery = FrameDelivery()
         super.init()
         delivery.owner = self
     }
 
     func start(excludingWindowID: CGWindowID, outputSize: CGSize) async throws {
-        stateLock.withLock {
+        let wasCancelled = stateLock.withLock {
             startInProgress = true
-            cancelled = false
+            return cancelled
         }
         defer { stateLock.withLock { startInProgress = false } }
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        if wasCancelled { throw CancellationError() }
+        let content = try await contentDiscovery()
         try checkCancellation()
         guard let display = content.displays.first(where: { $0.displayID == sourceID }) else {
             throw DisplayCaptureSessionError.sourceUnavailable

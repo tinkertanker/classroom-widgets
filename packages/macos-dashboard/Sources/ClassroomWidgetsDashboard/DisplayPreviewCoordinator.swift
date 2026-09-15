@@ -220,6 +220,9 @@ final class DisplayPreviewCoordinator: NSObject {
         let outputSize = captureOutputSize(for: source, view: controller.previewView)
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
+            guard self.session === capture,
+                  self.intent.accepts(generation: generation, sourceID: source.id)
+            else { return }
             do {
                 try await capture.start(excludingWindowID: CGWindowID(window.windowNumber), outputSize: outputSize)
                 guard self.session === capture, self.intent.accepts(generation: generation, sourceID: source.id) else {
