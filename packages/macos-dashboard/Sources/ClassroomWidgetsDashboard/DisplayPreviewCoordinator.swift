@@ -118,7 +118,6 @@ final class DisplayPreviewCoordinator: NSObject {
         }
         controller.onVisibilityChanged = { [weak self] visible in self?.visibilityChanged(visible) }
         controller.previewView.onGeometryInvalidated = { [weak self] in self?.presentedGeometry = nil }
-        controller.previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
         controller.previewView.onCompletedPrimaryClick = { [weak self] point, _ in self?.warp(from: point) }
     }
 

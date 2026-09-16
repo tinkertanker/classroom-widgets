@@ -47,6 +47,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         super.init(window: panel)
         panel.delegate = self
         configureContent(in: panel)
+        previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
         applyPresentationSettings(backgroundOpacity: backgroundOpacity, keepOnAllSpaces: keepOnAllSpaces)
