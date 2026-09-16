@@ -24,24 +24,24 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
     }
 
     func testRevealAfterVisibilityStopResumesSameSource() {
-        var state = DisplayPreviewVisibilityResumeState()
-        state.hidden(wasRunning: true, sourceUUID: "source-a")
+        var state = DisplayPreviewAutoResumeState()
+        _ = state.hidden(wasRunning: true, sourceUUID: "source-a")
 
         XCTAssertFalse(state.stopCompleted(currentSourceUUID: "source-a", terminating: false))
         XCTAssertEqual(state.revealed(sessionExists: false, currentSourceUUID: "source-a"), .startNow)
     }
 
     func testRevealBeforeVisibilityStopRestartsAfterOwnedStopCompletes() {
-        var state = DisplayPreviewVisibilityResumeState()
-        state.hidden(wasRunning: true, sourceUUID: "source-a")
+        var state = DisplayPreviewAutoResumeState()
+        _ = state.hidden(wasRunning: true, sourceUUID: "source-a")
 
         XCTAssertEqual(state.revealed(sessionExists: true, currentSourceUUID: "source-a"), .startAfterStop)
         XCTAssertTrue(state.stopCompleted(currentSourceUUID: "source-a", terminating: false))
     }
 
     func testExplicitCancellationPreventsVisibilityResume() {
-        var state = DisplayPreviewVisibilityResumeState()
-        state.hidden(wasRunning: true, sourceUUID: "source-a")
+        var state = DisplayPreviewAutoResumeState()
+        _ = state.hidden(wasRunning: true, sourceUUID: "source-a")
         state.pauseRequested(preservingDeferredRestart: false)
 
         XCTAssertEqual(state.revealed(sessionExists: false, currentSourceUUID: "source-a"), .none)
@@ -49,14 +49,14 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
     }
 
     func testSourceChangeOrTerminationPreventsVisibilityResume() {
-        var sourceChanged = DisplayPreviewVisibilityResumeState()
-        sourceChanged.hidden(wasRunning: true, sourceUUID: "source-a")
+        var sourceChanged = DisplayPreviewAutoResumeState()
+        _ = sourceChanged.hidden(wasRunning: true, sourceUUID: "source-a")
         sourceChanged.requestRestart(sourceUUID: "source-a")
         _ = sourceChanged.revealed(sessionExists: true, currentSourceUUID: "source-a")
         XCTAssertFalse(sourceChanged.stopCompleted(currentSourceUUID: "source-b", terminating: false))
 
-        var terminating = DisplayPreviewVisibilityResumeState()
-        terminating.hidden(wasRunning: true, sourceUUID: "source-a")
+        var terminating = DisplayPreviewAutoResumeState()
+        _ = terminating.hidden(wasRunning: true, sourceUUID: "source-a")
         terminating.requestRestart(sourceUUID: "source-a")
         _ = terminating.revealed(sessionExists: true, currentSourceUUID: "source-a")
         XCTAssertFalse(terminating.stopCompleted(currentSourceUUID: "source-a", terminating: true))
@@ -79,6 +79,32 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
             for: .explicit,
             preflightGranted: false
         ))
+    }
+
+    func testOnlyCurrentAcceptedCaptureCallbacksMayChangeRestartIntent() {
+        XCTAssertTrue(DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
+            ownsSession: true,
+            acceptsGeneration: true
+        ))
+        XCTAssertFalse(DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
+            ownsSession: true,
+            acceptsGeneration: false
+        ), "A callback queued by the intentionally stopped generation must preserve auto-resume")
+        XCTAssertFalse(DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
+            ownsSession: false,
+            acceptsGeneration: true
+        ), "A replacement session must not be affected by its predecessor's callback")
+    }
+
+    func testExplicitPausePreventsEarlierStopFromRepublishingAutomaticResumeStatus() {
+        XCTAssertTrue(DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
+            startGeneration: 8,
+            currentGeneration: 8
+        ))
+        XCTAssertFalse(DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
+            startGeneration: 8,
+            currentGeneration: 9
+        ), "Explicit Pause advances intent and makes the overlap-stop status stale")
     }
 
     func testReadyStatusUsesActionableIdlePrompt() {

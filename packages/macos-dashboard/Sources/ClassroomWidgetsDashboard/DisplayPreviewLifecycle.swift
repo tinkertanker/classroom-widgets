@@ -28,8 +28,20 @@ enum DisplayPreviewPermissionPolicy {
 }
 
 enum DisplayPreviewStatus {
-    static func ready(sourceName: String) -> String {
-        "Ready to preview \(sourceName)."
+    static func ready(sourceName _: String) -> String {
+        "Click to see display"
+    }
+}
+
+enum DisplayPreviewCaptureCallbackPolicy {
+    static func mayChangeIntent(ownsSession: Bool, acceptsGeneration: Bool) -> Bool {
+        ownsSession && acceptsGeneration
+    }
+}
+
+enum DisplayPreviewStopCompletionPolicy {
+    static func shouldPublishStatus(startGeneration: UInt64, currentGeneration: UInt64) -> Bool {
+        startGeneration == currentGeneration
     }
 }
 
@@ -138,46 +150,57 @@ struct DisplayPreviewStopLifecycle {
     }
 }
 
-struct DisplayPreviewVisibilityResumeState {
+struct DisplayPreviewAutoResumeState {
     enum Action: Equatable {
         case none
+        case suspend
         case startNow
         case startAfterStop
     }
 
-    private var suspendedSourceUUID: String?
-    private var revealedBeforeStop = false
+    private enum Blocker: Hashable {
+        case hidden
+        case overlap
+    }
 
-    mutating func hidden(wasRunning: Bool, sourceUUID: String?) {
-        guard wasRunning, let sourceUUID else { return }
-        suspendedSourceUUID = sourceUUID
-        revealedBeforeStop = false
+    private var sourceUUID: String?
+    private var blockers: Set<Blocker> = []
+    private var restartRequested = false
+    var hasPendingRestart: Bool { restartRequested }
+
+    mutating func hidden(wasRunning: Bool, sourceUUID: String?) -> Action {
+        blockerAdded(.hidden, wasRunning: wasRunning, sourceUUID: sourceUUID)
     }
 
     mutating func revealed(sessionExists: Bool, currentSourceUUID: String?) -> Action {
-        guard let suspendedSourceUUID, suspendedSourceUUID == currentSourceUUID else {
-            cancel()
-            return .none
+        blockerRemoved(.hidden, sessionExists: sessionExists, currentSourceUUID: currentSourceUUID)
+    }
+
+    mutating func placementChanged(
+        overlapsSource: Bool,
+        wasRunning: Bool,
+        sessionExists: Bool,
+        sourceUUID: String?
+    ) -> Action {
+        if overlapsSource {
+            return blockerAdded(.overlap, wasRunning: wasRunning, sourceUUID: sourceUUID)
         }
-        if sessionExists {
-            revealedBeforeStop = true
-            return .startAfterStop
-        }
-        cancel()
-        return .startNow
+        return blockerRemoved(.overlap, sessionExists: sessionExists, currentSourceUUID: sourceUUID)
     }
 
     mutating func requestRestart(sourceUUID: String?) {
-        suspendedSourceUUID = sourceUUID
-        revealedBeforeStop = true
+        guard let sourceUUID else { cancel(); return }
+        self.sourceUUID = sourceUUID
+        blockers.removeAll()
+        restartRequested = true
     }
 
     mutating func stopCompleted(currentSourceUUID: String?, terminating: Bool) -> Bool {
-        guard suspendedSourceUUID == currentSourceUUID, !terminating else {
+        guard !terminating, sourceUUID == currentSourceUUID else {
             cancel()
             return false
         }
-        guard revealedBeforeStop else { return false }
+        guard restartRequested, blockers.isEmpty else { return false }
         cancel()
         return true
     }
@@ -187,57 +210,40 @@ struct DisplayPreviewVisibilityResumeState {
     }
 
     mutating func cancel() {
-        suspendedSourceUUID = nil
-        revealedBeforeStop = false
-    }
-}
-
-struct DisplayPreviewAutoResumeState {
-    enum Action: Equatable {
-        case none
-        case suspend
-        case startNow
-        case startAfterStop
+        sourceUUID = nil
+        blockers.removeAll()
+        restartRequested = false
     }
 
-    private var visibility = DisplayPreviewVisibilityResumeState()
-    var hasPendingRestart: Bool { false }
-
-    mutating func hidden(wasRunning: Bool, sourceUUID: String?) -> Action {
-        visibility.hidden(wasRunning: wasRunning, sourceUUID: sourceUUID)
+    private mutating func blockerAdded(
+        _ blocker: Blocker,
+        wasRunning: Bool,
+        sourceUUID: String?
+    ) -> Action {
+        guard let sourceUUID else { cancel(); return .none }
+        if wasRunning {
+            self.sourceUUID = sourceUUID
+            restartRequested = true
+        } else if !restartRequested || self.sourceUUID != sourceUUID {
+            return .none
+        }
+        blockers.insert(blocker)
         return wasRunning ? .suspend : .none
     }
 
-    mutating func revealed(sessionExists: Bool, currentSourceUUID: String?) -> Action {
-        switch visibility.revealed(sessionExists: sessionExists, currentSourceUUID: currentSourceUUID) {
-        case .none: return .none
-        case .startNow: return .startNow
-        case .startAfterStop: return .startAfterStop
-        }
-    }
-
-    mutating func placementChanged(
-        overlapsSource: Bool,
-        wasRunning: Bool,
+    private mutating func blockerRemoved(
+        _ blocker: Blocker,
         sessionExists: Bool,
-        sourceUUID: String?
+        currentSourceUUID: String?
     ) -> Action {
-        guard overlapsSource, wasRunning else { return .none }
-        visibility.cancel()
-        return .suspend
+        guard restartRequested, sourceUUID == currentSourceUUID else {
+            if restartRequested { cancel() }
+            return .none
+        }
+        blockers.remove(blocker)
+        guard blockers.isEmpty else { return .none }
+        if sessionExists { return .startAfterStop }
+        cancel()
+        return .startNow
     }
-
-    mutating func requestRestart(sourceUUID: String?) {
-        visibility.requestRestart(sourceUUID: sourceUUID)
-    }
-
-    mutating func stopCompleted(currentSourceUUID: String?, terminating: Bool) -> Bool {
-        visibility.stopCompleted(currentSourceUUID: currentSourceUUID, terminating: terminating)
-    }
-
-    mutating func pauseRequested(preservingDeferredRestart: Bool) {
-        visibility.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
-    }
-
-    mutating func cancel() { visibility.cancel() }
 }

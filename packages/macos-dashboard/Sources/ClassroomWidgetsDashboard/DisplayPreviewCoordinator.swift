@@ -215,13 +215,29 @@ final class DisplayPreviewCoordinator: NSObject {
         }
         capture.onStop = { [weak self, weak capture] error in
             guard let self, let capture, self.session === capture else { return }
-            self.cancelDeferredRestarts()
-            self.intent.pause()
+            let mayChangeIntent = DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
+                ownsSession: true,
+                acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
+            )
             guard self.reconcileTerminalStop(of: capture) else { return }
-            self.clearFrame(status: "Capture stopped: \(error.localizedDescription)")
+            if mayChangeIntent {
+                self.cancelDeferredRestarts()
+                self.intent.pause()
+                self.clearFrame(status: "Capture stopped: \(error.localizedDescription)")
+            } else if self.autoResume.stopCompleted(
+                currentSourceUUID: self.selectedSource?.uuid,
+                terminating: self.stopLifecycle.terminating
+            ) {
+                self.start(trigger: .visibilityResume)
+            }
         }
         capture.onUnavailable = { [weak self, weak capture] in
-            guard let self, let capture, self.session === capture else { return }
+            guard let self, let capture,
+                  DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
+                    ownsSession: self.session === capture,
+                    acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
+                  )
+            else { return }
             self.cancelDeferredRestarts()
             self.clearFrame(status: "The selected display is temporarily unavailable. Press Resume when it returns.")
             self.intent.pause()
@@ -288,20 +304,29 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func stopCurrent(message: String) {
-        guard let capture = session, stopLifecycle.beginStop(of: capture) else {
-            controllerStatus(message, button: "Start", enabled: selectedSource != nil && !stopLifecycle.isBlocked)
+        guard let capture = session else {
+            publishStopStatus(message)
             return
         }
+        guard stopLifecycle.beginStop(of: capture) else {
+            if stopLifecycle.owns(capture) { publishStopStatus(message) }
+            return
+        }
+        let statusGeneration = intent.generation
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
             if await self.stopWithTimeout(capture) {
                 guard self.reconcileConfirmedStop(of: capture) else { return }
-                self.controllerStatus(message, button: "Resume", enabled: self.selectedSource != nil)
                 if self.autoResume.stopCompleted(
                     currentSourceUUID: self.selectedSource?.uuid,
                     terminating: self.stopLifecycle.terminating
                 ) {
                     self.start(trigger: .visibilityResume)
+                } else if DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
+                    startGeneration: statusGeneration,
+                    currentGeneration: self.intent.generation
+                ) {
+                    self.publishStopStatus(message)
                 }
             } else {
                 if self.stopLifecycle.stopDidNotComplete(for: capture) {
@@ -340,9 +365,10 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func visibilityChanged(_ visible: Bool) {
-        if !visible, intent.wantsCapture {
-            if autoResume.hidden(wasRunning: true, sourceUUID: selectedSource?.uuid) == .suspend {
+        if !visible {
+            if autoResume.hidden(wasRunning: intent.wantsCapture, sourceUUID: selectedSource?.uuid) == .suspend {
                 pause(message: "Preview suspended while its window is hidden.", preservingDeferredRestart: true)
+                publishStopStatus("Preview suspended while its window is hidden.")
             }
         } else if visible {
             switch autoResume.revealed(
@@ -409,10 +435,12 @@ final class DisplayPreviewCoordinator: NSObject {
             sourceUUID: source.uuid
         ) {
         case .suspend:
-            cancelDeferredRestarts()
-            pause(message: "Move the preview completely off the source display, then press Resume.")
-        case .none, .startNow, .startAfterStop:
-            break
+            let message = "Preview suspended while it overlaps the source display. Move it fully clear to resume."
+            pause(message: message, preservingDeferredRestart: true)
+            publishStopStatus(message)
+        case .startNow:
+            start(trigger: .visibilityResume)
+        case .none, .startAfterStop: break
         }
     }
 
@@ -425,6 +453,15 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func cancelDeferredRestarts() {
         autoResume.cancel()
+    }
+
+    private func publishStopStatus(_ message: String) {
+        let pendingRestart = autoResume.hasPendingRestart
+        controllerStatus(
+            message,
+            button: pendingRestart ? "Pause" : "Resume",
+            enabled: selectedSource != nil && !stopLifecycle.isBlocked
+        )
     }
 
     private func stopWithTimeout(

@@ -4,13 +4,17 @@ import CoreMedia
 
 @MainActor
 final class DisplayPreviewView: NSView {
+    private enum PendingClick {
+        case idle(CGPoint)
+        case live(CGPoint, UInt64)
+    }
+
     var onIdlePrimaryClick: (() -> Void)?
     var onCompletedPrimaryClick: ((CGPoint, UInt64) -> Void)?
     var onGeometryInvalidated: (() -> Void)?
     private let videoLayer = AVSampleBufferDisplayLayer()
     private var sourceSize: CGSize?
-    private var mouseDownPoint: CGPoint?
-    private var mouseDownToken: UInt64?
+    private var pendingClick: PendingClick?
     private var idleStartEnabled = false
     private(set) var geometryToken: UInt64 = 0
 
@@ -58,7 +62,10 @@ final class DisplayPreviewView: NSView {
         self.sourceSize = sourceSize
     }
 
-    func setIdleStartEnabled(_ enabled: Bool) { idleStartEnabled = enabled }
+    func setIdleStartEnabled(_ enabled: Bool) {
+        if idleStartEnabled != enabled { discardPendingClick() }
+        idleStartEnabled = enabled
+    }
 
     func clear() {
         sourceSize = nil
@@ -82,12 +89,14 @@ final class DisplayPreviewView: NSView {
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         guard event.buttonNumber == 0,
-              event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-              let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: point, viewBounds: bounds),
-              fittedImageRectTopLeft()?.contains(topLeft) == true
+              event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty
         else { return }
-        mouseDownPoint = point
-        mouseDownToken = geometryToken
+        if let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: point, viewBounds: bounds),
+           fittedImageRectTopLeft()?.contains(topLeft) == true {
+            pendingClick = .live(point, geometryToken)
+        } else if sourceSize == nil, idleStartEnabled {
+            pendingClick = .idle(point)
+        }
     }
 
     override func mouseDragged(with event: NSEvent) { discardPendingClick() }
@@ -95,20 +104,31 @@ final class DisplayPreviewView: NSView {
     override func mouseUp(with event: NSEvent) {
         guard event.buttonNumber == 0,
               event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
-              let down = mouseDownPoint,
-              let token = mouseDownToken,
-              token == geometryToken
+              let pendingClick
         else { discardPendingClick(); return }
         let up = convert(event.locationInWindow, from: nil)
         discardPendingClick()
-        guard hypot(up.x - down.x, up.y - down.y) < 4,
-              let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: up, viewBounds: bounds)
-        else { return }
-        onCompletedPrimaryClick?(topLeft, token)
+        switch pendingClick {
+        case .idle(let down):
+            guard idleStartEnabled, sourceSize == nil, hypot(up.x - down.x, up.y - down.y) < 4 else { return }
+            onIdlePrimaryClick?()
+        case .live(let down, let token):
+            guard token == geometryToken, sourceSize != nil,
+                  hypot(up.x - down.x, up.y - down.y) < 4,
+                  let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: up, viewBounds: bounds),
+                  fittedImageRectTopLeft()?.contains(topLeft) == true
+            else { return }
+            onCompletedPrimaryClick?(topLeft, token)
+        }
     }
 
     func discardPendingClick() {
-        mouseDownPoint = nil
-        mouseDownToken = nil
+        pendingClick = nil
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard idleStartEnabled, sourceSize == nil else { return false }
+        onIdlePrimaryClick?()
+        return true
     }
 }

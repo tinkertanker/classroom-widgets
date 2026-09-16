@@ -161,6 +161,7 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                         guard let superview = button.superview else { return XCTFail("Expected titlebar button container") }
                         let rect = superview.convert(button.frame, to: frameView)
                         XCTAssertEqual(rect.midY, closeRect.midY, accuracy: 0.5, "\(title) titlebar control is vertically misaligned")
+                        XCTAssertLessThanOrEqual(rect.maxX, frameView.bounds.maxX, "\(title) titlebar control extends beyond the panel")
                     }
                 }
             }

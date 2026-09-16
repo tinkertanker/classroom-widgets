@@ -161,12 +161,23 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         controls.orientation = .horizontal
         controls.alignment = .centerY
         controls.spacing = 6
-        controls.frame.size = controls.fittingSize
+        controls.translatesAutoresizingMaskIntoConstraints = false
+        let container = NSView()
+        container.addSubview(controls)
+        let titlebarHeight = panel.standardWindowButton(.closeButton)?.superview?.bounds.height ?? 32
+        NSLayoutConstraint.activate([
+            container.widthAnchor.constraint(equalTo: controls.widthAnchor, constant: 8),
+            container.heightAnchor.constraint(equalToConstant: titlebarHeight),
+            controls.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            controls.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
+            controls.centerYAnchor.constraint(equalTo: container.centerYAnchor)
+        ])
+        container.frame.size = container.fittingSize
         let accessory = NSTitlebarAccessoryViewController()
-        accessory.view = controls
+        accessory.view = container
         accessory.layoutAttribute = .right
         panel.addTitlebarAccessoryViewController(accessory)
-        compactControls = controls
+        compactControls = container
         compactAccessoryController = accessory
     }
 
@@ -313,6 +324,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
 
     func windowWillClose(_ notification: Notification) { onClose?() }
     func windowDidMove(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
+    func windowDidResize(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
     func windowDidEndLiveResize(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
     func windowDidBecomeKey(_ notification: Notification) { revealChrome(); scheduleChromeHide() }
     override func mouseEntered(with event: NSEvent) { revealChrome() }
