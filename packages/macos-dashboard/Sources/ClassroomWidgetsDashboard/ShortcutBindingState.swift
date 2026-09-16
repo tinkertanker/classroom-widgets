@@ -1,6 +1,7 @@
 struct ShortcutBindingState {
     enum Owner: Hashable {
         case settings
+        case display
         case widget(Int)
         case widgetDismiss(Int)
 
@@ -24,8 +25,9 @@ struct ShortcutBindingState {
     private(set) var pending: [Owner: DashboardShortcut] = [:]
     private(set) var recorderCount = 0
 
-    init(settings: DashboardShortcut) {
+    init(settings: DashboardShortcut, display: DashboardShortcut? = nil) {
         accepted = [.settings: settings.normalized]
+        if let display { accepted[.display] = display.normalized }
     }
 
     var registrationsSuspended: Bool { recorderCount > 0 }
@@ -42,7 +44,12 @@ struct ShortcutBindingState {
     }
 
     mutating func replaceWidgets(with bindings: [Int: WidgetShortcutBinding], discardPending: Bool = false) {
-        accepted = accepted.filter { if case .settings = $0.key { true } else { false } }
+        accepted = accepted.filter {
+            switch $0.key {
+            case .settings, .display: true
+            case .widget, .widgetDismiss: false
+            }
+        }
         for (widgetType, binding) in bindings {
             accepted[.widget(widgetType)] = binding.show.normalized
             accepted[.widgetDismiss(widgetType)] = binding.dismiss.normalized
@@ -51,7 +58,7 @@ struct ShortcutBindingState {
             switch owner {
             case let .widget(widgetType), let .widgetDismiss(widgetType):
                 return !discardPending && bindings[widgetType] != nil
-            case .settings:
+            case .settings, .display:
                 return true
             }
         }

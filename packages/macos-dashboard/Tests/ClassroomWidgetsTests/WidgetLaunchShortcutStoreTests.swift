@@ -205,4 +205,43 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertTrue(state.recorderEnded())
         XCTAssertFalse(state.registrationsSuspended)
     }
+
+    func testDisplayShortcutDefaultsToZeroUnlessAlreadyReservedAndPersistsUserChoice() {
+        let store = WidgetLaunchShortcutStore(defaults: defaults)
+        let preferred = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_0),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        XCTAssertEqual(store.displayBinding(reserving: []), preferred)
+        XCTAssertEqual(store.displayBinding(reserving: [preferred]), DashboardShortcut(keyCode: -1, modifiers: 0))
+        XCTAssertEqual(
+            store.displayBinding(reserving: []),
+            DashboardShortcut(keyCode: -1, modifiers: 0),
+            "A conflicted default must remain unassigned instead of being claimed after inventory changes"
+        )
+
+        let custom = DashboardShortcut(keyCode: Int(kVK_ANSI_D), modifiers: Int(NSEvent.ModifierFlags.command.rawValue))
+        store.setDisplay(custom)
+        XCTAssertEqual(WidgetLaunchShortcutStore(defaults: defaults).displayBinding(reserving: []), custom)
+        store.setDisplay(DashboardShortcut(keyCode: -1, modifiers: 123))
+        XCTAssertEqual(store.displayBinding(reserving: []), DashboardShortcut(keyCode: -1, modifiers: 0))
+    }
+
+    func testDisplayOwnerConflictsBothDirectionsAndSurvivesWidgetInventoryRefresh() {
+        let command = Int(NSEvent.ModifierFlags.command.rawValue)
+        let settings = DashboardShortcut(keyCode: 1, modifiers: command)
+        let display = DashboardShortcut(keyCode: 2, modifiers: command)
+        let widget = DashboardShortcut(keyCode: 3, modifiers: command)
+        var state = ShortcutBindingState(settings: settings, display: display)
+        state.replaceWidgets(with: [42: widget])
+
+        XCTAssertEqual(state.stage(display, for: .widget(42)), .duplicate(.display))
+        XCTAssertEqual(state.stage(widget, for: .display), .duplicate(.widget(42)))
+        state.replaceWidgets(with: [99: DashboardShortcut(keyCode: 4, modifiers: command)])
+
+        XCTAssertEqual(state.shortcut(for: .display), display)
+        XCTAssertTrue(state.recorderStarted())
+        XCTAssertTrue(state.registrationsSuspended)
+        XCTAssertTrue(state.recorderEnded())
+    }
 }

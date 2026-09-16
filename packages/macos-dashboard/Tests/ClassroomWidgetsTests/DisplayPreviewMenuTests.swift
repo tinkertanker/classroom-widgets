@@ -16,6 +16,11 @@ final class DisplayPreviewMenuTests: XCTestCase {
             XCTAssertGreaterThan(displayIndex, 0)
             XCTAssertFalse(menu.items[displayIndex - 1].isSeparatorItem)
             XCTAssertEqual(DisplayPreviewMenu.title, "Display")
+            XCTAssertEqual(menu.items[displayIndex].keyEquivalent, "0")
+            XCTAssertEqual(
+                menu.items[displayIndex].keyEquivalentModifierMask,
+                [.command, .option, .control]
+            )
         }
     }
 

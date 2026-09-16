@@ -43,6 +43,9 @@ struct WidgetLaunchShortcutStore {
     static let defaultKeyCodes = [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_5,
                                   kVK_ANSI_6, kVK_ANSI_7, kVK_ANSI_8, kVK_ANSI_9].map { Int($0) }
     static let defaultModifiers = Int(NSEvent.ModifierFlags([.command, .option, .control]).rawValue)
+    static let displayKeyCodeKey = "displayPreviewShortcutKeyCode"
+    static let displayModifiersKey = "displayPreviewShortcutModifiers"
+    static let displayInitializedKey = "displayPreviewShortcutInitialized"
 
     private let defaults: UserDefaults
 
@@ -91,6 +94,24 @@ struct WidgetLaunchShortcutStore {
         }
         bindings[widgetType] = binding
         save(bindings)
+    }
+
+    func displayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
+        if defaults.bool(forKey: Self.displayInitializedKey) {
+            return DashboardShortcut(
+                keyCode: defaults.integer(forKey: Self.displayKeyCodeKey),
+                modifiers: defaults.integer(forKey: Self.displayModifiersKey)
+            ).normalized
+        }
+        let preferred = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: Self.defaultModifiers)
+        return reserved.contains(preferred) ? DashboardShortcut(keyCode: -1, modifiers: 0) : preferred
+    }
+
+    func setDisplay(_ shortcut: DashboardShortcut) {
+        let shortcut = shortcut.normalized
+        defaults.set(shortcut.keyCode, forKey: Self.displayKeyCodeKey)
+        defaults.set(shortcut.modifiers, forKey: Self.displayModifiersKey)
+        defaults.set(true, forKey: Self.displayInitializedKey)
     }
 
     func reset(options: [CompactWidgetOption], reserving additionalShortcuts: [DashboardShortcut] = []) {
