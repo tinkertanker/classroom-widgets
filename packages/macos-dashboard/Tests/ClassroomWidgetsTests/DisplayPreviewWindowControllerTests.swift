@@ -104,13 +104,13 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             panel.orderFront(nil)
 
             for message in [
-                "Choose a source display, then press Start.",
+                "Choose a source display, then turn the preview on.",
                 "Preview suspended while it overlaps the source display. Move it fully clear to resume."
             ] {
                 controller.showStatus(
                     message,
-                    buttonTitle: "Pause",
-                    buttonEnabled: true,
+                    powerState: .on,
+                    powerEnabled: true,
                     centerEnabled: false
                 )
                 panel.setContentSize(panel.contentMinSize)
@@ -163,12 +163,12 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
 
             for state in [
-                ("Ready to preview Built-in Display.", "Start", true, false),
-                ("Live: Built-in Display", "Pause", true, true),
-                ("Paused.", "Resume", true, false),
-                ("Capture stopped: unavailable", "Resume", false, false)
+                ("Click to see display", DisplayPreviewPowerState.off, true, false),
+                ("Live: Built-in Display", DisplayPreviewPowerState.on, true, true),
+                ("Paused.", DisplayPreviewPowerState.off, true, false),
+                ("Capture stopped: unavailable", DisplayPreviewPowerState.off, false, false)
             ] {
-                controller.showStatus(state.0, buttonTitle: state.1, buttonEnabled: state.2, centerEnabled: state.3)
+                controller.showStatus(state.0, powerState: state.1, powerEnabled: state.2, centerEnabled: state.3)
                 let accessoryButtons = panel.titlebarAccessoryViewControllers.flatMap {
                     descendants(of: $0.view, type: NSButton.self)
                 }
@@ -197,43 +197,47 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             var toggleCount = 0
             controller.onToggleCapture = { toggleCount += 1 }
 
-            let states: [(String, String, Bool, NSControl.StateValue, String)] = [
-                ("Click to see display", "Start", true, .off, "Turn preview on"),
-                ("Starting…", "Pause", true, .on, "Turn preview off"),
-                ("Live: Built-in Display", "Pause", true, .on, "Turn preview off"),
-                ("Preview suspended while it overlaps the source display. Move it fully clear to resume.", "Pause", true, .on, "Turn preview off"),
-                ("Paused.", "Resume", true, .off, "Turn preview on"),
-                ("Capture stopped: unavailable", "Resume", false, .off, "Turn preview on"),
-                ("Choose a source display, then turn the preview on.", "Start", false, .off, "Turn preview on")
+            let states: [(String, DisplayPreviewPowerState, Bool, NSControl.StateValue, String)] = [
+                ("Click to see display", .off, true, .off, "Turn preview on"),
+                ("Starting…", .on, true, .on, "Turn preview off"),
+                ("Live: Built-in Display", .on, true, .on, "Turn preview off"),
+                ("Preview suspended while it overlaps the source display. Move it fully clear to resume.", .on, true, .on, "Turn preview off"),
+                ("Paused.", .off, true, .off, "Turn preview on"),
+                ("Capture stopped: unavailable", .off, false, .off, "Turn preview on"),
+                ("Choose a source display, then turn the preview on.", .off, false, .off, "Turn preview on")
             ]
 
-            for (message, legacyTitle, enabled, expectedState, actionLabel) in states {
+            for (message, powerState, enabled, expectedState, actionLabel) in states {
                 controller.showStatus(
                     message,
-                    buttonTitle: legacyTitle,
-                    buttonEnabled: enabled,
+                    powerState: powerState,
+                    powerEnabled: enabled,
                     centerEnabled: false
                 )
                 XCTAssertEqual(powerButton.title, "", "Power toggle must never expose a visible text title")
                 XCTAssertNotNil(powerButton.image)
                 XCTAssertEqual(powerButton.imagePosition, .imageOnly)
                 XCTAssertEqual(powerButton.state, expectedState)
+                XCTAssertEqual(
+                    powerButton.contentTintColor,
+                    expectedState == .on ? NSColor.controlAccentColor : NSColor.secondaryLabelColor
+                )
                 XCTAssertEqual(powerButton.toolTip, actionLabel)
                 XCTAssertEqual(powerButton.accessibilityLabel(), actionLabel)
                 XCTAssertEqual(powerButton.accessibilityValue() as? String, expectedState == .on ? "On" : "Off")
                 XCTAssertEqual(powerButton.isEnabled, enabled)
             }
 
-            controller.showStatus("Click to see display", buttonTitle: "Start", buttonEnabled: true, centerEnabled: false)
+            controller.showStatus("Click to see display", powerState: .off, powerEnabled: true, centerEnabled: false)
             powerButton.performClick(nil)
             controller.showStatus(
                 "Preview suspended while it overlaps the source display. Move it fully clear to resume.",
-                buttonTitle: "Pause",
-                buttonEnabled: true,
+                powerState: .on,
+                powerEnabled: true,
                 centerEnabled: false
             )
             powerButton.performClick(nil)
-            controller.showStatus("Unavailable", buttonTitle: "Resume", buttonEnabled: false, centerEnabled: false)
+            controller.showStatus("Unavailable", powerState: .off, powerEnabled: false, centerEnabled: false)
             powerButton.performClick(nil)
             XCTAssertEqual(toggleCount, 2, "Each enabled power action must emit exactly one shared toggle callback")
             controller.close()
@@ -262,8 +266,8 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             let rawChildren = contentView.accessibilityChildren() ?? []
             let unignoredChildren = NSAccessibility.unignoredChildren(from: rawChildren)
             let pressSelector = NSSelectorFromString("accessibilityPerformPress")
-            XCTAssertEqual(ready.buttonTitle, "Start")
-            XCTAssertTrue(ready.buttonEnabled)
+            XCTAssertEqual(ready.powerState, .off)
+            XCTAssertTrue(ready.powerEnabled)
             XCTAssertTrue(ready.idleStartEnabled)
             XCTAssertTrue(startButton?.isEnabled == true)
             XCTAssertTrue(controller.previewView.isAccessibilityElement())
@@ -276,8 +280,8 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
 
             controller.showStatus(
                 "Stopping…",
-                buttonTitle: "Start",
-                buttonEnabled: false,
+                powerState: .off,
+                powerEnabled: false,
                 centerEnabled: false
             )
             XCTAssertFalse(startButton?.isEnabled == true)
@@ -322,8 +326,8 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 panel.setContentSize(size)
                 frameView.layoutSubtreeIfNeeded()
                 let closeRect = closeSuperview.convert(closeButton.frame, to: frameView)
-                for title in ["Start", "Pause", "Resume"] {
-                    controller.showStatus("State", buttonTitle: title, buttonEnabled: true, centerEnabled: false)
+                for powerState in [DisplayPreviewPowerState.off, .on] {
+                    controller.showStatus("State", powerState: powerState, powerEnabled: true, centerEnabled: false)
                     frameView.layoutSubtreeIfNeeded()
                     let buttons = panel.titlebarAccessoryViewControllers.flatMap {
                         descendants(of: $0.view, type: NSButton.self)
@@ -332,8 +336,8 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                     for button in buttons {
                         guard let superview = button.superview else { return XCTFail("Expected titlebar button container") }
                         let rect = superview.convert(button.frame, to: frameView)
-                        XCTAssertEqual(rect.midY, closeRect.midY, accuracy: 0.5, "\(title) titlebar control is vertically misaligned")
-                        XCTAssertLessThanOrEqual(rect.maxX, frameView.bounds.maxX, "\(title) titlebar control extends beyond the panel")
+                        XCTAssertEqual(rect.midY, closeRect.midY, accuracy: 0.5, "Power titlebar control is vertically misaligned")
+                        XCTAssertLessThanOrEqual(rect.maxX, frameView.bounds.maxX, "Power titlebar control extends beyond the panel")
                     }
                 }
             }

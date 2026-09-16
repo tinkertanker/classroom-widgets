@@ -102,8 +102,8 @@ final class DisplayPreviewCoordinator: NSObject {
         stopLifecycle.cancelTermination()
         cancelDeferredRestarts()
         windowController?.showStatus(
-            "Quit was cancelled. Preview remains paused; press Resume when ready.",
-            buttonTitle: "Resume", buttonEnabled: session == nil, centerEnabled: false
+            "Quit was cancelled. Preview remains paused; turn the preview on when ready.",
+            powerState: .off, powerEnabled: session == nil, centerEnabled: false
         )
     }
 
@@ -134,14 +134,14 @@ final class DisplayPreviewCoordinator: NSObject {
         if candidates.isEmpty {
             windowController?.showStatus(
                 "Connect another display or use an extended desktop.",
-                buttonTitle: "Start", buttonEnabled: false, centerEnabled: false
+                powerState: .off, powerEnabled: false, centerEnabled: false
             )
         } else if let selectedSource {
             windowController?.showStatus(DisplayPreviewPresentation.ready(sourceName: selectedSource.name))
         } else {
             windowController?.showStatus(
-                "Choose a source display, then press Start.",
-                buttonTitle: "Start", buttonEnabled: false, centerEnabled: false
+                "Choose a source display, then turn the preview on.",
+                powerState: .off, powerEnabled: false, centerEnabled: false
             )
         }
     }
@@ -191,8 +191,7 @@ final class DisplayPreviewCoordinator: NSObject {
             intent.pause()
             autoResume.cancel()
             controllerStatus(
-                "Screen Recording access is off. Press Resume to request access again.",
-                button: "Resume",
+                "Screen Recording access is off. Turn the preview on to request access again.",
                 enabled: true
             )
             return
@@ -204,7 +203,7 @@ final class DisplayPreviewCoordinator: NSObject {
             guard requestCapturePermission() else { return }
         }
         guard let generation = intent.start() else { return }
-        controller.showStatus("Starting…", buttonTitle: "Pause", buttonEnabled: true, centerEnabled: false)
+        controller.showStatus("Starting…", powerState: .on, powerEnabled: true, centerEnabled: false)
         let capture = DisplayCaptureSession(sourceID: source.id)
         session = capture
         stopLifecycle.adopt(capture)
@@ -214,7 +213,7 @@ final class DisplayPreviewCoordinator: NSObject {
                   self.catalog.currentMatching(source) != nil
             else { return }
             guard self.windowController?.showFrame(buffer, size: size) == true else {
-                self.clearFrame(status: "The preview renderer stopped. Press Retry.")
+                self.clearFrame(status: "The preview renderer stopped. Turn the preview off, then on to retry.")
                 return
             }
             guard let publishedRect = self.windowController?.previewView.fittedImageRectTopLeft() else { return }
@@ -223,7 +222,7 @@ final class DisplayPreviewCoordinator: NSObject {
                 sourceID: source.id, topologyRevision: self.catalog.topologyRevision
             )
             self.windowController?.showStatus(
-                "Live: \(source.name)", buttonTitle: "Pause", buttonEnabled: true, centerEnabled: true
+                "Live: \(source.name)", powerState: .on, powerEnabled: true, centerEnabled: true
             )
         }
         capture.onStop = { [weak self, weak capture] error in
@@ -256,7 +255,7 @@ final class DisplayPreviewCoordinator: NSObject {
                   )
             else { return }
             self.cancelDeferredRestarts()
-            self.clearFrame(status: "The selected display is temporarily unavailable. Press Resume when it returns.")
+            self.clearFrame(status: "The selected display is temporarily unavailable. Turn the preview on when it returns.")
             self.intent.pause()
             self.stopCurrent(message: "The selected display is temporarily unavailable.")
         }
@@ -307,7 +306,7 @@ final class DisplayPreviewCoordinator: NSObject {
                let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
                 NSWorkspace.shared.open(url)
             }
-            controllerStatus("Allow Classroom Widgets in System Settings > Privacy & Security > Screen Recording, then press Retry.", button: "Retry", enabled: true)
+            controllerStatus("Allow Classroom Widgets in System Settings > Privacy & Security > Screen Recording, then turn the preview on.", enabled: true)
             return false
         }
         return true
@@ -381,7 +380,7 @@ final class DisplayPreviewCoordinator: NSObject {
         windowController?.previewView.discardPendingClick()
         presentedGeometry = nil
         guard windowController != nil else { return }
-        pause(message: "Display arrangement changed. Check the source and press Resume.")
+        pause(message: "Display arrangement changed. Check the source, then turn the preview on.")
         selectedSource = nil
         intent.select(sourceID: nil)
         refreshSources(preselect: true)
@@ -415,7 +414,7 @@ final class DisplayPreviewCoordinator: NSObject {
         else { return }
         let result = CGWarpMouseCursorPosition(target)
         if result != .success {
-            controllerStatus("Could not move the pointer (error \(result.rawValue)). Preview remains live.", button: "Pause", enabled: true)
+            controllerStatus("Could not move the pointer (error \(result.rawValue)). Preview remains live.", powerState: .on, enabled: true)
         }
     }
 
@@ -425,7 +424,7 @@ final class DisplayPreviewCoordinator: NSObject {
         else { return }
         let target = CGPoint(x: source.bounds.midX, y: source.bounds.midY)
         if CGWarpMouseCursorPosition(target) != .success {
-            controllerStatus("Could not move the pointer. Preview remains live.", button: "Pause", enabled: true)
+            controllerStatus("Could not move the pointer. Preview remains live.", powerState: .on, enabled: true)
         }
     }
 
@@ -435,18 +434,27 @@ final class DisplayPreviewCoordinator: NSObject {
             guard let self, let capture, self.session === capture,
                   self.intent.accepts(generation: generation, sourceID: sourceID), self.presentedGeometry == nil
             else { return }
-            self.pause(message: "No usable frame arrived. Press Retry.")
+            self.pause(message: "No usable frame arrived. Turn the preview on to retry.")
         }
     }
 
     private func clearFrame(status: String) {
         presentedGeometry = nil
         windowController?.clearFrame()
-        controllerStatus(status, button: "Resume", enabled: selectedSource != nil && !stopLifecycle.isBlocked)
+        controllerStatus(status, enabled: selectedSource != nil && !stopLifecycle.isBlocked)
     }
 
-    private func controllerStatus(_ message: String, button: String = "Resume", enabled: Bool) {
-        windowController?.showStatus(message, buttonTitle: button, buttonEnabled: enabled, centerEnabled: false)
+    private func controllerStatus(
+        _ message: String,
+        powerState: DisplayPreviewPowerState? = nil,
+        enabled: Bool
+    ) {
+        windowController?.showStatus(
+            message,
+            powerState: powerState ?? currentPowerState,
+            powerEnabled: enabled,
+            centerEnabled: false
+        )
     }
 
     private func validateWindowPlacement() {
@@ -479,10 +487,8 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func publishStopStatus(_ message: String) {
-        let pendingRestart = autoResume.hasPendingRestart
         controllerStatus(
             message,
-            button: pendingRestart ? "Pause" : "Resume",
             enabled: selectedSource != nil && !stopLifecycle.isBlocked
         )
     }
@@ -494,17 +500,22 @@ final class DisplayPreviewCoordinator: NSObject {
         if let completionPresentation {
             windowController?.showStatus(
                 message,
-                buttonTitle: completionPresentation.buttonTitle,
-                buttonEnabled: false,
+                powerState: completionPresentation.powerState,
+                powerEnabled: false,
                 centerEnabled: false
             )
             return
         }
-        let pendingRestart = autoResume.hasPendingRestart
         controllerStatus(
             message,
-            button: pendingRestart ? "Pause" : "Resume",
-            enabled: pendingRestart
+            enabled: autoResume.hasPendingRestart
+        )
+    }
+
+    private var currentPowerState: DisplayPreviewPowerState {
+        .current(
+            wantsCapture: intent.wantsCapture,
+            hasPendingRestart: autoResume.hasPendingRestart
         )
     }
 
@@ -555,8 +566,7 @@ final class DisplayPreviewCoordinator: NSObject {
         autoResume.cancel()
         intent.pause()
         controllerStatus(
-            "Capture stopped. Press Resume when ready.",
-            button: "Resume",
+            "Capture stopped. Turn the preview on when ready.",
             enabled: selectedSource != nil
         )
     }

@@ -35,17 +35,29 @@ enum DisplayPreviewStatus {
 
 struct DisplayPreviewPresentation: Equatable {
     let message: String
-    let buttonTitle: String
-    let buttonEnabled: Bool
+    let powerState: DisplayPreviewPowerState
+    let powerEnabled: Bool
     let idleStartEnabled: Bool
 
     static func ready(sourceName: String) -> DisplayPreviewPresentation {
         DisplayPreviewPresentation(
             message: DisplayPreviewStatus.ready(sourceName: sourceName),
-            buttonTitle: "Start",
-            buttonEnabled: true,
+            powerState: .off,
+            powerEnabled: true,
             idleStartEnabled: true
         )
+    }
+}
+
+enum DisplayPreviewPowerState: Equatable {
+    case off
+    case on
+
+    var actionLabel: String { self == .on ? "Turn preview off" : "Turn preview on" }
+    var accessibilityValue: String { self == .on ? "On" : "Off" }
+
+    static func current(wantsCapture: Bool, hasPendingRestart: Bool) -> DisplayPreviewPowerState {
+        wantsCapture || hasPendingRestart ? .on : .off
     }
 }
 

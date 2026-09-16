@@ -132,6 +132,12 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertEqual(DisplayPreviewStatus.ready(sourceName: "Creston"), "Click to see display")
     }
 
+    func testPowerStateReflectsCaptureIntentAndAutomaticRestartIntent() {
+        XCTAssertEqual(DisplayPreviewPowerState.current(wantsCapture: false, hasPendingRestart: false), .off)
+        XCTAssertEqual(DisplayPreviewPowerState.current(wantsCapture: true, hasPendingRestart: false), .on)
+        XCTAssertEqual(DisplayPreviewPowerState.current(wantsCapture: false, hasPendingRestart: true), .on)
+    }
+
     func testOverlapThenClearBeforeStopRestartsOnlyAfterOwnedStopCompletes() {
         var state = DisplayPreviewAutoResumeState()
         XCTAssertEqual(state.placementChanged(

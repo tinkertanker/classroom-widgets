@@ -13,7 +13,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     var onFrameChanged: ((NSRect) -> Void)?
     var onVisibilityChanged: ((Bool) -> Void)?
 
-    private let captureButton = NSButton(title: "Start", target: nil, action: nil)
+    private let captureButton = NSButton()
     private let menuButton = NSButton()
     private let statusLabel = NonInteractiveStatusLabel(labelWithString: "Choose a display to preview.")
     private let statusBackdrop = DisplayStatusEffectView()
@@ -78,8 +78,8 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
 
     func showStatus(
         _ text: String,
-        buttonTitle: String,
-        buttonEnabled: Bool,
+        powerState: DisplayPreviewPowerState,
+        powerEnabled: Bool,
         centerEnabled: Bool,
         idleStartEnabled: Bool = false
     ) {
@@ -89,11 +89,12 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
             statusLabel.stringValue = text
             statusLabel.setAccessibilityLabel("Display Preview status: \(text)")
         }
-        if captureButton.title != buttonTitle { captureButton.title = buttonTitle }
-        if let compactControls { compactControls.frame.size = compactControls.fittingSize }
-        captureButton.toolTip = buttonTitle
-        captureButton.setAccessibilityLabel(buttonTitle)
-        captureButton.isEnabled = buttonEnabled
+        captureButton.state = powerState == .on ? .on : .off
+        captureButton.contentTintColor = powerState == .on ? .controlAccentColor : .secondaryLabelColor
+        captureButton.toolTip = powerState.actionLabel
+        captureButton.setAccessibilityLabel(powerState.actionLabel)
+        captureButton.setAccessibilityValue(powerState.accessibilityValue)
+        captureButton.isEnabled = powerEnabled
         self.centerEnabled = centerEnabled
         statusBackdrop.isHidden = text.hasPrefix("Live:")
         updateMenuAccessibility()
@@ -102,8 +103,8 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     func showStatus(_ presentation: DisplayPreviewPresentation) {
         showStatus(
             presentation.message,
-            buttonTitle: presentation.buttonTitle,
-            buttonEnabled: presentation.buttonEnabled,
+            powerState: presentation.powerState,
+            powerEnabled: presentation.powerEnabled,
             centerEnabled: false,
             idleStartEnabled: presentation.idleStartEnabled
         )
@@ -168,9 +169,13 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         captureButton.identifier = Self.powerToggleIdentifier
         captureButton.target = self
         captureButton.action = #selector(toggleCapture)
+        captureButton.setButtonType(.toggle)
         captureButton.bezelStyle = .texturedRounded
         captureButton.controlSize = .small
-        captureButton.toolTip = "Start"
+        captureButton.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Preview power")
+        captureButton.imagePosition = .imageOnly
+        captureButton.title = ""
+        captureButton.toolTip = DisplayPreviewPowerState.off.actionLabel
 
         menuButton.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: "Display controls")
         menuButton.imagePosition = .imageOnly
