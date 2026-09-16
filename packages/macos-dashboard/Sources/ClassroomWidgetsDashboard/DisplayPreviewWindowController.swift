@@ -173,8 +173,8 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         captureButton.bezelStyle = .texturedRounded
         captureButton.controlSize = .small
         captureButton.image = NSImage(systemSymbolName: "power", accessibilityDescription: "Preview power")
-        captureButton.imagePosition = .imageOnly
         captureButton.title = ""
+        captureButton.imagePosition = .imageOnly
         captureButton.toolTip = DisplayPreviewPowerState.off.actionLabel
 
         menuButton.image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: "Display controls")
