@@ -79,10 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             launchedAsLoginItem: Self.launchedAsLoginItem
         )
         DashboardDefaults.register()
-        shortcutState = ShortcutBindingState(
-            settings: persistedSettingsShortcut(),
-            display: widgetShortcutStore.storedDisplayBinding()
-        )
+        shortcutState = initialShortcutBindingState()
         NSApp.setActivationPolicy(.regular)
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         setupMainMenu()
@@ -399,8 +396,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         shortcutState = state
         refreshShortcutContext()
-        guard state.candidate(for: .display) != nil, !state.registrationsSuspended else { return }
+        guard shouldApplyPendingDisplayShortcut(in: state) else { return }
         applyPendingDisplayShortcut()
+    }
+
+    func initialShortcutBindingState() -> ShortcutBindingState {
+        ShortcutBindingState(
+            settings: persistedSettingsShortcut(),
+            display: widgetShortcutStore.storedDisplayBinding()
+        )
+    }
+
+    func shouldApplyPendingDisplayShortcut(in state: ShortcutBindingState) -> Bool {
+        state.candidate(for: .display) != nil && !state.registrationsSuspended
     }
 
     private func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
@@ -610,7 +618,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private var acceptedNativeShortcuts: [DashboardShortcut] {
-        [.settings, .display].compactMap { shortcutState?.shortcut(for: $0) }
+        [ShortcutBindingState.Owner.settings, .display].compactMap { shortcutState?.shortcut(for: $0) }
     }
 
     private func refreshShortcutContext() {

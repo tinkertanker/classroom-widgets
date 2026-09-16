@@ -297,4 +297,33 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertTrue(state.registrationsSuspended)
         XCTAssertTrue(state.recorderEnded())
     }
+
+    @MainActor
+    func testStartupStateReservesSavedWidgetBindingBeforeDisplayCanBeEdited() {
+        let widgetShortcut = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_D),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        WidgetLaunchShortcutStore(defaults: defaults).set(widgetShortcut, for: 42)
+        let delegate = AppDelegate(defaults: defaults)
+        var state = delegate.initialShortcutBindingState()
+
+        XCTAssertEqual(state.stage(widgetShortcut, for: .display), .duplicate(.widget(42)))
+    }
+
+    @MainActor
+    func testNewDisplayAssignmentWaitsForFirstDefaultWidgetInventory() {
+        let delegate = AppDelegate(defaults: defaults)
+        var state = delegate.initialShortcutBindingState()
+        let firstWidgetDefault = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_1),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        XCTAssertEqual(state.stage(firstWidgetDefault, for: .display), .staged)
+
+        XCTAssertFalse(
+            delegate.shouldApplyPendingDisplayShortcut(in: state),
+            "Display must not persist or register a new assignment until widget defaults are reserved"
+        )
+    }
 }
