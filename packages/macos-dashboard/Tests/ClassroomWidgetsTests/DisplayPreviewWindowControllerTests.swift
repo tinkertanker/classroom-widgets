@@ -75,6 +75,31 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             XCTAssertTrue(descendants(of: contentView, type: NSPopUpButton.self).isEmpty)
             XCTAssertTrue(descendants(of: contentView, type: NSButton.self).isEmpty)
             XCTAssertEqual(panel.contentMinSize, NSSize(width: 320, height: 240))
+            panel.setContentSize(panel.contentMinSize)
+            contentView.layoutSubtreeIfNeeded()
+            XCTAssertEqual(contentView.bounds.size, NSSize(width: 320, height: 240))
+            XCTAssertEqual(controller.previewView.frame.minY, contentView.bounds.minY, accuracy: 0.5)
+            XCTAssertEqual(
+                contentView.bounds.maxY - controller.previewView.frame.maxY,
+                WidgetPanelContentLayout.topGap,
+                accuracy: 0.5
+            )
+            controller.close()
+        }
+    }
+
+    func testBackgroundOpacityDoesNotMakeCapturedPixelsTranslucent() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 0.2,
+                keepOnAllSpaces: true
+            )
+
+            XCTAssertEqual(controller.previewView.alphaValue, 1)
+            XCTAssertEqual(controller.previewView.layer?.opacity, 1)
+            XCTAssertEqual(controller.window?.backgroundColor, .clear)
             controller.close()
         }
     }

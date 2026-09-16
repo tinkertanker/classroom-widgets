@@ -64,6 +64,17 @@ struct ShortcutBindingState {
         }
     }
 
+    mutating func setInitialDisplay(_ shortcut: DashboardShortcut) {
+        guard accepted[.display] == nil else { return }
+        accepted[.display] = shortcut.normalized
+    }
+
+    func assignedShortcuts(excluding owner: Owner) -> Set<DashboardShortcut> {
+        Set(accepted.compactMap { existingOwner, shortcut in
+            existingOwner == owner || !shortcut.isAssigned ? nil : shortcut
+        })
+    }
+
     mutating func stage(_ shortcut: DashboardShortcut, for owner: Owner) -> StageResult {
         let shortcut = shortcut.normalized
         if accepted[owner] == shortcut {

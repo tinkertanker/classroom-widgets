@@ -96,15 +96,25 @@ struct WidgetLaunchShortcutStore {
         save(bindings)
     }
 
-    func displayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
-        if defaults.bool(forKey: Self.displayInitializedKey) {
-            return DashboardShortcut(
-                keyCode: defaults.integer(forKey: Self.displayKeyCodeKey),
-                modifiers: defaults.integer(forKey: Self.displayModifiersKey)
-            ).normalized
-        }
+    func storedDisplayBinding() -> DashboardShortcut? {
+        guard defaults.bool(forKey: Self.displayInitializedKey) else { return nil }
+        return DashboardShortcut(
+            keyCode: defaults.integer(forKey: Self.displayKeyCodeKey),
+            modifiers: defaults.integer(forKey: Self.displayModifiersKey)
+        ).normalized
+    }
+
+    func proposedDisplayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
+        if let stored = storedDisplayBinding() { return stored }
         let preferred = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: Self.defaultModifiers)
         return reserved.contains(preferred) ? DashboardShortcut(keyCode: -1, modifiers: 0) : preferred
+    }
+
+    func initializeDisplayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
+        if let stored = storedDisplayBinding() { return stored }
+        let proposed = proposedDisplayBinding(reserving: reserved)
+        setDisplay(proposed)
+        return proposed
     }
 
     func setDisplay(_ shortcut: DashboardShortcut) {

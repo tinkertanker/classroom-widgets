@@ -6,7 +6,10 @@ final class DisplayPreviewMenuTests: XCTestCase {
     func testDisplayEntryHasRequestedLabelAndNoPrecedingSeparator() async {
         await MainActor.run {
             _ = NSApplication.shared
-            let delegate = AppDelegate()
+            let suiteName = "DisplayPreviewMenuTests.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            let delegate = AppDelegate(defaults: defaults)
             let menu = delegate.makeNewWidgetMenu(options: [
                 CompactWidgetOption(widgetType: 1, title: "Timer")
             ])
@@ -21,6 +24,40 @@ final class DisplayPreviewMenuTests: XCTestCase {
                 menu.items[displayIndex].keyEquivalentModifierMask,
                 [.command, .option, .control]
             )
+        }
+    }
+
+    func testNativeDisplayShortcutDispatchesDisplayAction() async {
+        await MainActor.run {
+            let suiteName = "DisplayPreviewMenuTests.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            var dispatchCount = 0
+            let delegate = AppDelegate(defaults: defaults) { dispatchCount += 1 }
+
+            delegate.performDisplayShortcut()
+
+            XCTAssertEqual(dispatchCount, 1)
+        }
+    }
+
+    func testDisplayMenuShowsPersistedCustomShortcutAndOmitsUnassignedShortcut() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let suiteName = "DisplayPreviewMenuTests.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suiteName)!
+            defer { defaults.removePersistentDomain(forName: suiteName) }
+            let store = WidgetLaunchShortcutStore(defaults: defaults)
+            store.setDisplay(DashboardShortcut(
+                keyCode: Int(kVK_ANSI_D),
+                modifiers: Int(NSEvent.ModifierFlags.command.rawValue)
+            ))
+            let delegate = AppDelegate(defaults: defaults)
+
+            XCTAssertEqual(delegate.makeNewWidgetMenu(options: []).items[0].keyEquivalent, "d")
+            store.setDisplay(DashboardShortcut(keyCode: -1, modifiers: 0))
+            let unassignedDelegate = AppDelegate(defaults: defaults)
+            XCTAssertEqual(unassignedDelegate.makeNewWidgetMenu(options: []).items[0].keyEquivalent, "")
         }
     }
 
