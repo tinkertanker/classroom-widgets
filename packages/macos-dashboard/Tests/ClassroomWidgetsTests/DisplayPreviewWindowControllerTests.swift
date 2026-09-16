@@ -192,15 +192,24 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
 
             let ready = DisplayPreviewPresentation.ready(sourceName: "Built-in Display")
             controller.showStatus(ready)
-            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            guard let panel = controller.window as? NSPanel,
+                  let contentView = panel.contentView
+            else { return XCTFail("Expected panel") }
             let startButton = panel.titlebarAccessoryViewControllers.flatMap {
                 descendants(of: $0.view, type: NSButton.self)
             }.first { $0.title == "Start" }
+            let rawChildren = contentView.accessibilityChildren() ?? []
+            let unignoredChildren = NSAccessibility.unignoredChildren(from: rawChildren)
+            let pressSelector = NSSelectorFromString("accessibilityPerformPress")
             XCTAssertEqual(ready.buttonTitle, "Start")
             XCTAssertTrue(ready.buttonEnabled)
             XCTAssertTrue(ready.idleStartEnabled)
             XCTAssertTrue(startButton?.isEnabled == true)
+            XCTAssertTrue(controller.previewView.isAccessibilityElement())
+            XCTAssertTrue(rawChildren.contains { ($0 as AnyObject) === controller.previewView })
+            XCTAssertTrue(unignoredChildren.contains { ($0 as AnyObject) === controller.previewView })
             XCTAssertEqual(controller.previewView.accessibilityRole(), NSAccessibility.Role.button)
+            XCTAssertTrue(controller.previewView.isAccessibilitySelectorAllowed(pressSelector))
             XCTAssertTrue(controller.previewView.accessibilityPerformPress())
             XCTAssertEqual(starts, 1)
 
@@ -211,8 +220,23 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 centerEnabled: false
             )
             XCTAssertFalse(startButton?.isEnabled == true)
+            XCTAssertTrue(controller.previewView.isAccessibilityElement())
+            XCTAssertTrue(NSAccessibility.unignoredChildren(
+                from: contentView.accessibilityChildren() ?? []
+            ).contains { ($0 as AnyObject) === controller.previewView })
             XCTAssertEqual(controller.previewView.accessibilityRole(), NSAccessibility.Role.image)
+            XCTAssertFalse(controller.previewView.isAccessibilitySelectorAllowed(pressSelector))
             XCTAssertFalse(controller.previewView.accessibilityPerformPress(), "Start text alone must not make a stopping card actionable")
+            XCTAssertEqual(starts, 1)
+
+            controller.previewView.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+            XCTAssertTrue(controller.previewView.isAccessibilityElement())
+            XCTAssertTrue(NSAccessibility.unignoredChildren(
+                from: contentView.accessibilityChildren() ?? []
+            ).contains { ($0 as AnyObject) === controller.previewView })
+            XCTAssertEqual(controller.previewView.accessibilityRole(), NSAccessibility.Role.image)
+            XCTAssertFalse(controller.previewView.isAccessibilitySelectorAllowed(pressSelector))
+            XCTAssertFalse(controller.previewView.accessibilityPerformPress())
             XCTAssertEqual(starts, 1)
             controller.close()
         }

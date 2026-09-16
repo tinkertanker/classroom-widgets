@@ -103,23 +103,31 @@ final class DisplayPreviewInteractionTests: XCTestCase {
             _ = NSApplication.shared
             let view = DisplayPreviewView(frame: NSRect(x: 0, y: 0, width: 160, height: 90))
             var starts = 0
+            let pressSelector = NSSelectorFromString("accessibilityPerformPress")
             view.onIdlePrimaryClick = { starts += 1 }
             view.setIdleStartEnabled(false)
+            XCTAssertTrue(view.isAccessibilityElement())
             XCTAssertEqual(view.accessibilityRole(), NSAccessibility.Role.image)
             XCTAssertEqual(view.accessibilityLabel(), "Display preview")
+            XCTAssertFalse(view.isAccessibilitySelectorAllowed(pressSelector))
             XCTAssertFalse(view.accessibilityPerformPress())
             XCTAssertEqual(starts, 0)
 
             view.setIdleStartEnabled(true)
+            XCTAssertTrue(view.isAccessibilityElement())
             XCTAssertEqual(view.accessibilityRole(), NSAccessibility.Role.button)
             XCTAssertEqual(view.accessibilityLabel(), "Click to see display")
+            XCTAssertTrue(view.isAccessibilitySelectorAllowed(pressSelector))
             XCTAssertTrue(view.accessibilityPerformPress())
             XCTAssertEqual(starts, 1)
 
             view.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+            XCTAssertTrue(view.isAccessibilityElement())
             XCTAssertEqual(view.accessibilityRole(), NSAccessibility.Role.image)
             XCTAssertEqual(view.accessibilityLabel(), "Live image of the selected display")
+            XCTAssertFalse(view.isAccessibilitySelectorAllowed(pressSelector))
             XCTAssertFalse(view.accessibilityPerformPress())
+            XCTAssertEqual(starts, 1)
         }
     }
 

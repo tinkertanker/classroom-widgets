@@ -24,6 +24,7 @@ final class DisplayPreviewView: NSView {
         layer?.backgroundColor = NSColor.black.cgColor
         videoLayer.videoGravity = .resizeAspect
         layer?.addSublayer(videoLayer)
+        setAccessibilityElement(true)
         updateAccessibility()
         addCursorRect(bounds, cursor: .crosshair)
     }
@@ -135,6 +136,13 @@ final class DisplayPreviewView: NSView {
         guard idleStartEnabled, sourceSize == nil else { return false }
         onIdlePrimaryClick?()
         return true
+    }
+
+    override func isAccessibilitySelectorAllowed(_ selector: Selector) -> Bool {
+        if selector == NSSelectorFromString("accessibilityPerformPress") {
+            return idleStartEnabled && sourceSize == nil
+        }
+        return super.isAccessibilitySelectorAllowed(selector)
     }
 
     private func updateAccessibility() {
