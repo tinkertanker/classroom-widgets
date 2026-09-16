@@ -3,6 +3,8 @@ import CoreMedia
 
 @MainActor
 final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate {
+    static let powerToggleIdentifier = NSUserInterfaceItemIdentifier("displayPreviewPowerToggle")
+
     let previewView = DisplayPreviewView(frame: .zero)
     var onSourceSelected: ((CGDirectDisplayID?) -> Void)?
     var onToggleCapture: (() -> Void)?
@@ -163,6 +165,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     }
 
     private func addCompactAccessories(to panel: NSPanel) {
+        captureButton.identifier = Self.powerToggleIdentifier
         captureButton.target = self
         captureButton.action = #selector(toggleCapture)
         captureButton.bezelStyle = .texturedRounded
