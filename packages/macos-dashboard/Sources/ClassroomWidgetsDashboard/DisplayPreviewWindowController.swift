@@ -121,6 +121,10 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         statusLabel.alignment = .center
         statusLabel.maximumNumberOfLines = 3
         statusLabel.lineBreakMode = .byWordWrapping
+        statusLabel.usesSingleLineMode = false
+        statusLabel.cell?.wraps = true
+        statusLabel.cell?.isScrollable = false
+        statusLabel.setContentCompressionResistancePriority(.fittingSizeCompression, for: .horizontal)
         statusBackdrop.material = .hudWindow
         statusBackdrop.blendingMode = .withinWindow
         statusBackdrop.state = .active

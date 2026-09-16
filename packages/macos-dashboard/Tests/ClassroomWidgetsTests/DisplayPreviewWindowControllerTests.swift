@@ -88,6 +88,54 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
+    func testLongStatusesWrapWithoutGrowingShownMinimumPanel() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel,
+                  let contentView = panel.contentView,
+                  let frameView = contentView.superview,
+                  let statusLabel = descendants(of: contentView, type: NSTextField.self).first
+            else { return XCTFail("Expected Display status label") }
+            panel.orderFront(nil)
+
+            for message in [
+                "Choose a source display, then press Start.",
+                "Preview suspended while it overlaps the source display. Move it fully clear to resume."
+            ] {
+                controller.showStatus(
+                    message,
+                    buttonTitle: "Pause",
+                    buttonEnabled: true,
+                    centerEnabled: false
+                )
+                panel.setContentSize(panel.contentMinSize)
+                frameView.layoutSubtreeIfNeeded()
+                panel.displayIfNeeded()
+
+                XCTAssertEqual(contentView.bounds.size, NSSize(width: 320, height: 240))
+                XCTAssertEqual(statusLabel.stringValue, message)
+                XCTAssertEqual(statusLabel.lineBreakMode, .byWordWrapping)
+                XCTAssertEqual(statusLabel.maximumNumberOfLines, 3)
+                let textHeight = (message as NSString).boundingRect(
+                    with: NSSize(width: statusLabel.bounds.width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    attributes: [.font: statusLabel.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)]
+                ).height
+                XCTAssertGreaterThanOrEqual(
+                    statusLabel.bounds.height + 0.5,
+                    textHeight,
+                    "The full status must wrap without clipping"
+                )
+            }
+            controller.close()
+        }
+    }
+
     func testBackgroundOpacityDoesNotMakeCapturedPixelsTranslucent() async {
         await MainActor.run {
             _ = NSApplication.shared
