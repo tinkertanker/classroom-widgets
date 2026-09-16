@@ -99,3 +99,38 @@ struct ShortcutBindingState {
     func shortcut(for owner: Owner) -> DashboardShortcut? { accepted[owner] }
     func candidate(for owner: Owner) -> DashboardShortcut? { pending[owner] }
 }
+
+struct DisplayShortcutStartupGate {
+    enum InventoryResolution: Equatable {
+        case none
+        case applyPending
+        case rejectedDuplicate(ShortcutBindingState.Owner)
+    }
+
+    private(set) var hasWidgetInventory = false
+
+    func shouldApplyPending(in state: ShortcutBindingState) -> Bool {
+        guard let candidate = state.candidate(for: .display), !state.registrationsSuspended else { return false }
+        return !candidate.isAssigned || hasWidgetInventory
+    }
+
+    mutating func mergeWidgetBindings(
+        _ bindings: [Int: WidgetShortcutBinding],
+        inventoryIsReady: Bool,
+        into state: inout ShortcutBindingState
+    ) -> InventoryResolution {
+        let pendingDisplay = state.candidate(for: .display)
+        state.replaceWidgets(with: bindings)
+        guard inventoryIsReady else { return .none }
+        hasWidgetInventory = true
+        guard let pendingDisplay else { return .none }
+        switch state.stage(pendingDisplay, for: .display) {
+        case .staged:
+            return shouldApplyPending(in: state) ? .applyPending : .none
+        case let .duplicate(owner):
+            return .rejectedDuplicate(owner)
+        case .unchanged:
+            return .none
+        }
+    }
+}

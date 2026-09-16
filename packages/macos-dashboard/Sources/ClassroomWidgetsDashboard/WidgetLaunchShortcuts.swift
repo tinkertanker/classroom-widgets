@@ -84,6 +84,8 @@ struct WidgetLaunchShortcutStore {
         return bindings
     }
 
+    func storedBindings() -> [Int: WidgetShortcutBinding] { load() }
+
     func set(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
         var bindings = load()
         let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)

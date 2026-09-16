@@ -128,7 +128,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
             previewView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             previewView.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             previewView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-            previewView.topAnchor.constraint(equalTo: root.topAnchor, constant: -WidgetPanelContentLayout.topGap),
+            previewView.topAnchor.constraint(equalTo: root.topAnchor, constant: WidgetPanelContentLayout.topGap),
             statusBackdrop.centerXAnchor.constraint(equalTo: previewView.centerXAnchor),
             statusBackdrop.centerYAnchor.constraint(equalTo: previewView.centerYAnchor),
             statusBackdrop.leadingAnchor.constraint(greaterThanOrEqualTo: previewView.leadingAnchor, constant: 24),

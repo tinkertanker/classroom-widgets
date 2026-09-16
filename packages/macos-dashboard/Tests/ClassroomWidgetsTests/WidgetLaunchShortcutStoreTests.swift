@@ -325,5 +325,113 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
             delegate.shouldApplyPendingDisplayShortcut(in: state),
             "Display must not persist or register a new assignment until widget defaults are reserved"
         )
+        XCTAssertNil(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding())
+    }
+
+    @MainActor
+    func testFirstInventoryDrainsNonconflictingDeferredDisplayChoice() {
+        var gate = DisplayShortcutStartupGate()
+        var state = ShortcutBindingState(settings: DashboardShortcut(keyCode: 40, modifiers: 0))
+        let candidate = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_D),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        XCTAssertEqual(state.stage(candidate, for: .display), .staged)
+        XCTAssertFalse(gate.shouldApplyPending(in: state))
+        XCTAssertNil(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding())
+
+        let resolution = gate.mergeWidgetBindings(
+            [42: DashboardShortcut(keyCode: Int(kVK_ANSI_1), modifiers: candidate.modifiers)],
+            inventoryIsReady: true,
+            into: &state
+        )
+
+        XCTAssertEqual(resolution, .applyPending)
+        XCTAssertTrue(gate.shouldApplyPending(in: state))
+        XCTAssertEqual(state.candidate(for: .display), candidate)
+    }
+
+    @MainActor
+    func testRecorderEndDrainsDeferredDisplayChoiceAfterInventory() {
+        var gate = DisplayShortcutStartupGate()
+        var state = ShortcutBindingState(settings: DashboardShortcut(keyCode: 40, modifiers: 0))
+        let candidate = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_D),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        XCTAssertTrue(state.recorderStarted())
+        XCTAssertEqual(state.stage(candidate, for: .display), .staged)
+        XCTAssertEqual(
+            gate.mergeWidgetBindings([:], inventoryIsReady: true, into: &state),
+            .none,
+            "Inventory must not apply a shortcut while its recorder still owns registration suspension"
+        )
+        XCTAssertFalse(gate.shouldApplyPending(in: state))
+
+        XCTAssertTrue(state.recorderEnded())
+        XCTAssertTrue(gate.shouldApplyPending(in: state))
+    }
+
+    @MainActor
+    func testFirstInventoryRejectsNewlyConflictingChoiceAndPersistsUnassigned() {
+        let delegate = AppDelegate(defaults: defaults)
+        var gate = DisplayShortcutStartupGate()
+        var state = delegate.initialShortcutBindingState()
+        let candidate = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_1),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        XCTAssertEqual(state.stage(candidate, for: .display), .staged)
+
+        XCTAssertEqual(
+            gate.mergeWidgetBindings([42: candidate], inventoryIsReady: true, into: &state),
+            .rejectedDuplicate(.widget(42))
+        )
+        delegate.preserveUnassignedDisplayChoiceIfNeeded(in: &state)
+
+        XCTAssertNil(state.candidate(for: .display))
+        XCTAssertEqual(state.shortcut(for: .widget(42)), candidate)
+        XCTAssertEqual(state.shortcut(for: .display), DashboardShortcut(keyCode: -1, modifiers: 0))
+        XCTAssertEqual(
+            WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(),
+            DashboardShortcut(keyCode: -1, modifiers: 0)
+        )
+    }
+
+    @MainActor
+    func testRejectedDeferredReplacementPreservesStoredAcceptedDisplayChoice() {
+        let accepted = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_D),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        let conflicting = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_1),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        WidgetLaunchShortcutStore(defaults: defaults).setDisplay(accepted)
+        let delegate = AppDelegate(defaults: defaults)
+        var state = delegate.initialShortcutBindingState()
+        var gate = DisplayShortcutStartupGate()
+        XCTAssertEqual(state.stage(conflicting, for: .display), .staged)
+
+        XCTAssertEqual(
+            gate.mergeWidgetBindings([42: conflicting], inventoryIsReady: true, into: &state),
+            .rejectedDuplicate(.widget(42))
+        )
+        delegate.preserveUnassignedDisplayChoiceIfNeeded(in: &state)
+
+        XCTAssertEqual(state.shortcut(for: .display), accepted)
+        XCTAssertEqual(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(), accepted)
+    }
+
+    func testExplicitDisplayClearingDoesNotWaitForWidgetInventory() {
+        var gate = DisplayShortcutStartupGate()
+        var state = ShortcutBindingState(
+            settings: DashboardShortcut(keyCode: 40, modifiers: 0),
+            display: DashboardShortcut(keyCode: Int(kVK_ANSI_D), modifiers: WidgetLaunchShortcutStore.defaultModifiers)
+        )
+        XCTAssertEqual(state.stage(DashboardShortcut(keyCode: -1, modifiers: 0), for: .display), .staged)
+
+        XCTAssertTrue(gate.shouldApplyPending(in: state))
     }
 }

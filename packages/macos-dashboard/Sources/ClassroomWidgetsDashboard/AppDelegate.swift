@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     )
     private var shortcutState: ShortcutBindingState?
+    private var displayShortcutStartupGate = DisplayShortcutStartupGate()
     private var shortcutStatus: String?
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
@@ -362,9 +363,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         let bindings = widgetShortcutStore.bindings(for: options, reserving: acceptedNativeShortcuts)
+        var displayResolution = DisplayShortcutStartupGate.InventoryResolution.none
+        var hadPendingDisplay = false
         if var state = shortcutState {
-            state.replaceWidgets(with: bindings)
-            if state.shortcut(for: .display) == nil, !options.isEmpty {
+            hadPendingDisplay = state.candidate(for: .display) != nil
+            displayResolution = displayShortcutStartupGate.mergeWidgetBindings(
+                bindings,
+                inventoryIsReady: !options.isEmpty,
+                into: &state
+            )
+            if case .rejectedDuplicate = displayResolution {
+                displayShortcutStatus = "Already assigned in Classroom Widgets."
+                preserveUnassignedDisplayChoiceIfNeeded(in: &state)
+            }
+            if state.shortcut(for: .display) == nil, !options.isEmpty, !hadPendingDisplay {
                 let binding = widgetShortcutStore.initializeDisplayBinding(
                     reserving: state.assignedShortcuts(excluding: .display)
                 )
@@ -381,6 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         registerAcceptedDisplayHotKey()
         for option in options { registerAcceptedWidgetShortcuts(for: option.widgetType) }
+        if displayResolution == .applyPending { applyPendingDisplayShortcut() }
         refreshShortcutContext()
     }
 
@@ -389,6 +402,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch state.stage(shortcut, for: .display) {
         case .duplicate:
             displayShortcutStatus = "Already assigned in Classroom Widgets."
+            preserveUnassignedDisplayChoiceIfNeeded(in: &state)
         case .unchanged:
             displayShortcutStatus = nil
         case .staged:
@@ -401,14 +415,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func initialShortcutBindingState() -> ShortcutBindingState {
-        ShortcutBindingState(
+        var state = ShortcutBindingState(
             settings: persistedSettingsShortcut(),
             display: widgetShortcutStore.storedDisplayBinding()
         )
+        state.replaceWidgets(with: widgetShortcutStore.storedBindings())
+        return state
     }
 
     func shouldApplyPendingDisplayShortcut(in state: ShortcutBindingState) -> Bool {
-        state.candidate(for: .display) != nil && !state.registrationsSuspended
+        displayShortcutStartupGate.shouldApplyPending(in: state)
+    }
+
+    func preserveUnassignedDisplayChoiceIfNeeded(in state: inout ShortcutBindingState) {
+        guard state.shortcut(for: .display) == nil else { return }
+        let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
+        state.setInitialDisplay(unassigned)
+        widgetShortcutStore.setDisplay(unassigned)
     }
 
     private func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
@@ -446,7 +469,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let duplicateSettingsStatus { shortcutStatus = duplicateSettingsStatus }
         widgetShortcutStatuses.merge(duplicateWidgetStatuses) { _, duplicate in duplicate }
         if shortcutState?.candidate(for: .settings) != nil { applyPendingSettingsShortcut() }
-        if shortcutState?.candidate(for: .display) != nil { applyPendingDisplayShortcut() }
+        if let state = shortcutState, shouldApplyPendingDisplayShortcut(in: state) {
+            applyPendingDisplayShortcut()
+        }
         for option in controller?.widgetOptions ?? [] {
             if shortcutState?.candidate(for: .widget(option.widgetType)) != nil {
                 applyPendingWidgetShortcut(for: option.widgetType, action: .show)
@@ -625,7 +650,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let options = controller?.widgetOptions ?? []
         settingsContext.updateWidgetShortcuts(
             options: options,
-            displayShortcut: shortcutState?.shortcut(for: .display),
+            displayShortcut: shortcutState?.candidate(for: .display)
+                ?? shortcutState?.shortcut(for: .display),
             shortcuts: Dictionary(uniqueKeysWithValues: options.compactMap { option in
                 guard let show = shortcutState?.shortcut(for: .widget(option.widgetType)),
                       let dismiss = shortcutState?.shortcut(for: .widgetDismiss(option.widgetType)) else { return nil }
