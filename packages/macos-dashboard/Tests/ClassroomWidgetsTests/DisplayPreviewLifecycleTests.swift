@@ -107,6 +107,27 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         ), "Explicit Pause advances intent and makes the overlap-stop status stale")
     }
 
+    func testSourceChangeDuringStopPublishesOnlyLatestReadyPresentationAfterCleanup() {
+        var pending = DisplayPreviewPendingStopPresentation()
+        pending.update(
+            generation: 4,
+            message: "Paused source A.",
+            presentation: nil
+        )
+        let sourceB = DisplayPreviewPresentation.ready(sourceName: "Source B")
+        pending.update(
+            generation: 5,
+            message: sourceB.message,
+            presentation: sourceB
+        )
+
+        XCTAssertNil(pending.consume(currentGeneration: 4), "Source A completion must not consume source B's state")
+        let completed = pending.consume(currentGeneration: 5)
+        XCTAssertEqual(completed?.message, "Click to see display")
+        XCTAssertEqual(completed?.presentation, sourceB)
+        XCTAssertTrue(completed?.presentation?.idleStartEnabled == true)
+    }
+
     func testReadyStatusUsesActionableIdlePrompt() {
         XCTAssertEqual(DisplayPreviewStatus.ready(sourceName: "Creston"), "Click to see display")
     }

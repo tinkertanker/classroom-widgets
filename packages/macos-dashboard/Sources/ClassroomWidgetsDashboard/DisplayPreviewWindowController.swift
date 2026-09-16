@@ -73,8 +73,14 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         updateMenuAccessibility()
     }
 
-    func showStatus(_ text: String, buttonTitle: String, buttonEnabled: Bool, centerEnabled: Bool) {
-        previewView.setIdleStartEnabled(buttonTitle == "Start" && buttonEnabled)
+    func showStatus(
+        _ text: String,
+        buttonTitle: String,
+        buttonEnabled: Bool,
+        centerEnabled: Bool,
+        idleStartEnabled: Bool = false
+    ) {
+        previewView.setIdleStartEnabled(idleStartEnabled)
         if statusText != text {
             statusText = text
             statusLabel.stringValue = text
@@ -88,6 +94,16 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         self.centerEnabled = centerEnabled
         statusBackdrop.isHidden = text.hasPrefix("Live:")
         updateMenuAccessibility()
+    }
+
+    func showStatus(_ presentation: DisplayPreviewPresentation) {
+        showStatus(
+            presentation.message,
+            buttonTitle: presentation.buttonTitle,
+            buttonEnabled: presentation.buttonEnabled,
+            centerEnabled: false,
+            idleStartEnabled: presentation.idleStartEnabled
+        )
     }
 
     @discardableResult

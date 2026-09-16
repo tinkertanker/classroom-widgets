@@ -131,6 +131,45 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
+    func testSourceReadyPresentationExplicitlyEnablesIdleCard() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            var starts = 0
+            controller.onToggleCapture = { starts += 1 }
+
+            let ready = DisplayPreviewPresentation.ready(sourceName: "Built-in Display")
+            controller.showStatus(ready)
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let startButton = panel.titlebarAccessoryViewControllers.flatMap {
+                descendants(of: $0.view, type: NSButton.self)
+            }.first { $0.title == "Start" }
+            XCTAssertEqual(ready.buttonTitle, "Start")
+            XCTAssertTrue(ready.buttonEnabled)
+            XCTAssertTrue(ready.idleStartEnabled)
+            XCTAssertTrue(startButton?.isEnabled == true)
+            XCTAssertEqual(controller.previewView.accessibilityRole(), NSAccessibility.Role.button)
+            XCTAssertTrue(controller.previewView.accessibilityPerformPress())
+            XCTAssertEqual(starts, 1)
+
+            controller.showStatus(
+                "Stopping…",
+                buttonTitle: "Start",
+                buttonEnabled: false,
+                centerEnabled: false
+            )
+            XCTAssertFalse(startButton?.isEnabled == true)
+            XCTAssertEqual(controller.previewView.accessibilityRole(), NSAccessibility.Role.image)
+            XCTAssertFalse(controller.previewView.accessibilityPerformPress(), "Start text alone must not make a stopping card actionable")
+            XCTAssertEqual(starts, 1)
+            controller.close()
+        }
+    }
+
     func testTitlebarControlsAlignWithStandardWindowControlsAtNormalAndMinimumSizes() async {
         await MainActor.run {
             _ = NSApplication.shared

@@ -17,6 +17,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private var presentedGeometry: DisplayPreviewFrameGeometry?
     private var stopLifecycle = DisplayPreviewStopLifecycle()
     private var stopOperation: DisplayPreviewStopOperation?
+    private var pendingStopPresentation = DisplayPreviewPendingStopPresentation()
     private var autoResume = DisplayPreviewAutoResumeState()
     private var backgroundOpacity = 1.0
     private var keepOnAllSpaces = true
@@ -131,10 +132,19 @@ final class DisplayPreviewCoordinator: NSObject {
             intent.select(sourceID: selectedSource?.id)
         }
         windowController?.setSources(candidates, selectedID: selectedSource?.id)
-        let message = candidates.isEmpty
-            ? "Connect another display or use an extended desktop."
-            : selectedSource == nil ? "Choose a source display, then press Start." : DisplayPreviewStatus.ready(sourceName: selectedSource!.name)
-        windowController?.showStatus(message, buttonTitle: "Start", buttonEnabled: selectedSource != nil, centerEnabled: false)
+        if candidates.isEmpty {
+            windowController?.showStatus(
+                "Connect another display or use an extended desktop.",
+                buttonTitle: "Start", buttonEnabled: false, centerEnabled: false
+            )
+        } else if let selectedSource {
+            windowController?.showStatus(DisplayPreviewPresentation.ready(sourceName: selectedSource.name))
+        } else {
+            windowController?.showStatus(
+                "Choose a source display, then press Start.",
+                buttonTitle: "Start", buttonEnabled: false, centerEnabled: false
+            )
+        }
     }
 
     private func selectSource(_ id: CGDirectDisplayID?) {
@@ -147,7 +157,11 @@ final class DisplayPreviewCoordinator: NSObject {
         presentedGeometry = nil
         windowController?.clearFrame()
         if let source { defaultsWriter.set(source.uuid, forKey: Keys.sourceUUID) }
-        stopCurrent(message: source.map { DisplayPreviewStatus.ready(sourceName: $0.name) } ?? "Choose a source display.")
+        let readyPresentation = source.map { DisplayPreviewPresentation.ready(sourceName: $0.name) }
+        stopCurrent(
+            message: readyPresentation?.message ?? "Choose a source display.",
+            completionPresentation: readyPresentation
+        )
     }
 
     private func toggleCapture() {
@@ -221,6 +235,7 @@ final class DisplayPreviewCoordinator: NSObject {
             )
             guard self.reconcileTerminalStop(of: capture) else { return }
             if mayChangeIntent {
+                self.pendingStopPresentation.clear()
                 self.cancelDeferredRestarts()
                 self.intent.pause()
                 self.clearFrame(status: "Capture stopped: \(error.localizedDescription)")
@@ -228,7 +243,10 @@ final class DisplayPreviewCoordinator: NSObject {
                 currentSourceUUID: self.selectedSource?.uuid,
                 terminating: self.stopLifecycle.terminating
             ) {
+                self.pendingStopPresentation.clear()
                 self.start(trigger: .visibilityResume)
+            } else {
+                self.publishPendingStopPresentation()
             }
         }
         capture.onUnavailable = { [weak self, weak capture] in
@@ -303,16 +321,23 @@ final class DisplayPreviewCoordinator: NSObject {
         stopCurrent(message: message)
     }
 
-    private func stopCurrent(message: String) {
+    private func stopCurrent(
+        message: String,
+        completionPresentation: DisplayPreviewPresentation? = nil
+    ) {
+        pendingStopPresentation.update(
+            generation: intent.generation,
+            message: message,
+            presentation: completionPresentation
+        )
         guard let capture = session else {
-            publishStopStatus(message)
+            publishPendingStopPresentation()
             return
         }
+        publishInFlightStopStatus(message, completionPresentation: completionPresentation)
         guard stopLifecycle.beginStop(of: capture) else {
-            if stopLifecycle.owns(capture) { publishStopStatus(message) }
             return
         }
-        let statusGeneration = intent.generation
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
             if await self.stopWithTimeout(capture) {
@@ -321,16 +346,15 @@ final class DisplayPreviewCoordinator: NSObject {
                     currentSourceUUID: self.selectedSource?.uuid,
                     terminating: self.stopLifecycle.terminating
                 ) {
+                    self.pendingStopPresentation.clear()
                     self.start(trigger: .visibilityResume)
-                } else if DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
-                    startGeneration: statusGeneration,
-                    currentGeneration: self.intent.generation
-                ) {
-                    self.publishStopStatus(message)
+                } else {
+                    self.publishPendingStopPresentation()
                 }
             } else {
                 if self.stopLifecycle.stopDidNotComplete(for: capture) {
                     self.autoResume.cancel()
+                    self.pendingStopPresentation.clear()
                     self.controllerStatus("Capture could not stop. Quit Classroom Widgets to recover safely.", enabled: false)
                 }
             }
@@ -462,6 +486,36 @@ final class DisplayPreviewCoordinator: NSObject {
             button: pendingRestart ? "Pause" : "Resume",
             enabled: selectedSource != nil && !stopLifecycle.isBlocked
         )
+    }
+
+    private func publishInFlightStopStatus(
+        _ message: String,
+        completionPresentation: DisplayPreviewPresentation?
+    ) {
+        if let completionPresentation {
+            windowController?.showStatus(
+                message,
+                buttonTitle: completionPresentation.buttonTitle,
+                buttonEnabled: false,
+                centerEnabled: false
+            )
+            return
+        }
+        let pendingRestart = autoResume.hasPendingRestart
+        controllerStatus(
+            message,
+            button: pendingRestart ? "Pause" : "Resume",
+            enabled: pendingRestart
+        )
+    }
+
+    private func publishPendingStopPresentation() {
+        guard let pending = pendingStopPresentation.consume(currentGeneration: intent.generation) else { return }
+        if let presentation = pending.presentation {
+            windowController?.showStatus(presentation)
+        } else {
+            publishStopStatus(pending.message)
+        }
     }
 
     private func stopWithTimeout(

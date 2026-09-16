@@ -33,6 +33,22 @@ enum DisplayPreviewStatus {
     }
 }
 
+struct DisplayPreviewPresentation: Equatable {
+    let message: String
+    let buttonTitle: String
+    let buttonEnabled: Bool
+    let idleStartEnabled: Bool
+
+    static func ready(sourceName: String) -> DisplayPreviewPresentation {
+        DisplayPreviewPresentation(
+            message: DisplayPreviewStatus.ready(sourceName: sourceName),
+            buttonTitle: "Start",
+            buttonEnabled: true,
+            idleStartEnabled: true
+        )
+    }
+}
+
 enum DisplayPreviewCaptureCallbackPolicy {
     static func mayChangeIntent(ownsSession: Bool, acceptsGeneration: Bool) -> Bool {
         ownsSession && acceptsGeneration
@@ -42,6 +58,43 @@ enum DisplayPreviewCaptureCallbackPolicy {
 enum DisplayPreviewStopCompletionPolicy {
     static func shouldPublishStatus(startGeneration: UInt64, currentGeneration: UInt64) -> Bool {
         startGeneration == currentGeneration
+    }
+}
+
+struct DisplayPreviewPendingStopPresentation {
+    private(set) var generation: UInt64?
+    private(set) var message: String?
+    private(set) var presentation: DisplayPreviewPresentation?
+
+    mutating func update(
+        generation: UInt64,
+        message: String,
+        presentation: DisplayPreviewPresentation?
+    ) {
+        self.generation = generation
+        self.message = message
+        self.presentation = presentation
+    }
+
+    mutating func consume(currentGeneration: UInt64) -> (
+        message: String,
+        presentation: DisplayPreviewPresentation?
+    )? {
+        guard let generation, let message,
+              DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
+                startGeneration: generation,
+                currentGeneration: currentGeneration
+              )
+        else { return nil }
+        let result = (message: message, presentation: presentation)
+        clear()
+        return result
+    }
+
+    mutating func clear() {
+        generation = nil
+        message = nil
+        presentation = nil
     }
 }
 

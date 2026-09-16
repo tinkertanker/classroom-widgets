@@ -24,8 +24,7 @@ final class DisplayPreviewView: NSView {
         layer?.backgroundColor = NSColor.black.cgColor
         videoLayer.videoGravity = .resizeAspect
         layer?.addSublayer(videoLayer)
-        setAccessibilityRole(.image)
-        setAccessibilityLabel("Live image of the selected display")
+        updateAccessibility()
         addCursorRect(bounds, cursor: .crosshair)
     }
 
@@ -60,11 +59,14 @@ final class DisplayPreviewView: NSView {
             onGeometryInvalidated?()
         }
         self.sourceSize = sourceSize
+        setIdleStartEnabled(false)
+        updateAccessibility()
     }
 
     func setIdleStartEnabled(_ enabled: Bool) {
         if idleStartEnabled != enabled { discardPendingClick() }
         idleStartEnabled = enabled
+        updateAccessibility()
     }
 
     func clear() {
@@ -72,6 +74,7 @@ final class DisplayPreviewView: NSView {
         geometryToken &+= 1
         discardPendingClick()
         videoLayer.flushAndRemoveImage()
+        updateAccessibility()
     }
 
     func fittedImageRectTopLeft() -> CGRect? {
@@ -94,7 +97,7 @@ final class DisplayPreviewView: NSView {
         if let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: point, viewBounds: bounds),
            fittedImageRectTopLeft()?.contains(topLeft) == true {
             pendingClick = .live(point, geometryToken)
-        } else if sourceSize == nil, idleStartEnabled {
+        } else if sourceSize == nil, idleStartEnabled, bounds.contains(point) {
             pendingClick = .idle(point)
         }
     }
@@ -110,7 +113,9 @@ final class DisplayPreviewView: NSView {
         discardPendingClick()
         switch pendingClick {
         case .idle(let down):
-            guard idleStartEnabled, sourceSize == nil, hypot(up.x - down.x, up.y - down.y) < 4 else { return }
+            guard idleStartEnabled, sourceSize == nil, bounds.contains(up),
+                  hypot(up.x - down.x, up.y - down.y) < 4
+            else { return }
             onIdlePrimaryClick?()
         case .live(let down, let token):
             guard token == geometryToken, sourceSize != nil,
@@ -130,5 +135,17 @@ final class DisplayPreviewView: NSView {
         guard idleStartEnabled, sourceSize == nil else { return false }
         onIdlePrimaryClick?()
         return true
+    }
+
+    private func updateAccessibility() {
+        if idleStartEnabled, sourceSize == nil {
+            setAccessibilityRole(.button)
+            setAccessibilityLabel("Click to see display")
+            setAccessibilityHelp("Starts the selected display preview")
+        } else {
+            setAccessibilityRole(.image)
+            setAccessibilityLabel(sourceSize == nil ? "Display preview" : "Live image of the selected display")
+            setAccessibilityHelp("Display preview image")
+        }
     }
 }

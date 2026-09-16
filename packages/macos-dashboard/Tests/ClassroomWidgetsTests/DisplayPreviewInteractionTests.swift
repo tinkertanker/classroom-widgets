@@ -29,6 +29,12 @@ final class DisplayPreviewInteractionTests: XCTestCase {
             fixture.view.setIdleStartEnabled(false)
             click(fixture, at: NSPoint(x: 80, y: 40))
             XCTAssertEqual(idleStarts, 0)
+
+            fixture.view.setIdleStartEnabled(true)
+            click(fixture, at: NSPoint(x: -1, y: 40))
+            mouseDown(fixture, at: NSPoint(x: 1, y: 40))
+            mouseUp(fixture, at: NSPoint(x: -1, y: 40))
+            XCTAssertEqual(idleStarts, 0, "Idle activation must begin and end inside the preview")
             fixture.window.close()
         }
     }
@@ -99,12 +105,21 @@ final class DisplayPreviewInteractionTests: XCTestCase {
             var starts = 0
             view.onIdlePrimaryClick = { starts += 1 }
             view.setIdleStartEnabled(false)
+            XCTAssertEqual(view.accessibilityRole(), NSAccessibility.Role.image)
+            XCTAssertEqual(view.accessibilityLabel(), "Display preview")
             XCTAssertFalse(view.accessibilityPerformPress())
             XCTAssertEqual(starts, 0)
 
             view.setIdleStartEnabled(true)
+            XCTAssertEqual(view.accessibilityRole(), NSAccessibility.Role.button)
+            XCTAssertEqual(view.accessibilityLabel(), "Click to see display")
             XCTAssertTrue(view.accessibilityPerformPress())
             XCTAssertEqual(starts, 1)
+
+            view.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+            XCTAssertEqual(view.accessibilityRole(), NSAccessibility.Role.image)
+            XCTAssertEqual(view.accessibilityLabel(), "Live image of the selected display")
+            XCTAssertFalse(view.accessibilityPerformPress())
         }
     }
 
