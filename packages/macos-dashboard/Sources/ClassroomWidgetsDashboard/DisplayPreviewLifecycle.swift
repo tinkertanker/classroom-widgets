@@ -27,6 +27,12 @@ enum DisplayPreviewPermissionPolicy {
     }
 }
 
+enum DisplayPreviewStatus {
+    static func ready(sourceName: String) -> String {
+        "Ready to preview \(sourceName)."
+    }
+}
+
 struct DisplayPreviewStopLifecycle {
     private enum Phase {
         case idle
@@ -184,4 +190,54 @@ struct DisplayPreviewVisibilityResumeState {
         suspendedSourceUUID = nil
         revealedBeforeStop = false
     }
+}
+
+struct DisplayPreviewAutoResumeState {
+    enum Action: Equatable {
+        case none
+        case suspend
+        case startNow
+        case startAfterStop
+    }
+
+    private var visibility = DisplayPreviewVisibilityResumeState()
+    var hasPendingRestart: Bool { false }
+
+    mutating func hidden(wasRunning: Bool, sourceUUID: String?) -> Action {
+        visibility.hidden(wasRunning: wasRunning, sourceUUID: sourceUUID)
+        return wasRunning ? .suspend : .none
+    }
+
+    mutating func revealed(sessionExists: Bool, currentSourceUUID: String?) -> Action {
+        switch visibility.revealed(sessionExists: sessionExists, currentSourceUUID: currentSourceUUID) {
+        case .none: return .none
+        case .startNow: return .startNow
+        case .startAfterStop: return .startAfterStop
+        }
+    }
+
+    mutating func placementChanged(
+        overlapsSource: Bool,
+        wasRunning: Bool,
+        sessionExists: Bool,
+        sourceUUID: String?
+    ) -> Action {
+        guard overlapsSource, wasRunning else { return .none }
+        visibility.cancel()
+        return .suspend
+    }
+
+    mutating func requestRestart(sourceUUID: String?) {
+        visibility.requestRestart(sourceUUID: sourceUUID)
+    }
+
+    mutating func stopCompleted(currentSourceUUID: String?, terminating: Bool) -> Bool {
+        visibility.stopCompleted(currentSourceUUID: currentSourceUUID, terminating: terminating)
+    }
+
+    mutating func pauseRequested(preservingDeferredRestart: Bool) {
+        visibility.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
+    }
+
+    mutating func cancel() { visibility.cancel() }
 }

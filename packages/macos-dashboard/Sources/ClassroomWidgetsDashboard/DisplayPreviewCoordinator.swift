@@ -17,7 +17,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private var presentedGeometry: DisplayPreviewFrameGeometry?
     private var stopLifecycle = DisplayPreviewStopLifecycle()
     private var stopOperation: DisplayPreviewStopOperation?
-    private var visibilityResume = DisplayPreviewVisibilityResumeState()
+    private var autoResume = DisplayPreviewAutoResumeState()
     private var backgroundOpacity = 1.0
     private var keepOnAllSpaces = true
     private var observers: [NSObjectProtocol] = []
@@ -65,7 +65,7 @@ final class DisplayPreviewCoordinator: NSObject {
 
     func restartIfRunning() {
         guard intent.wantsCapture else { return }
-        visibilityResume.requestRestart(sourceUUID: selectedSource?.uuid)
+        autoResume.requestRestart(sourceUUID: selectedSource?.uuid)
         pause(message: "Restarting preview…", preservingDeferredRestart: true)
     }
 
@@ -117,6 +117,7 @@ final class DisplayPreviewCoordinator: NSObject {
         }
         controller.onVisibilityChanged = { [weak self] visible in self?.visibilityChanged(visible) }
         controller.previewView.onGeometryInvalidated = { [weak self] in self?.presentedGeometry = nil }
+        controller.previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
         controller.previewView.onCompletedPrimaryClick = { [weak self] point, _ in self?.warp(from: point) }
     }
 
@@ -132,7 +133,7 @@ final class DisplayPreviewCoordinator: NSObject {
         windowController?.setSources(candidates, selectedID: selectedSource?.id)
         let message = candidates.isEmpty
             ? "Connect another display or use an extended desktop."
-            : selectedSource == nil ? "Choose a source display, then press Start." : "Ready to preview \(selectedSource!.name)."
+            : selectedSource == nil ? "Choose a source display, then press Start." : DisplayPreviewStatus.ready(sourceName: selectedSource!.name)
         windowController?.showStatus(message, buttonTitle: "Start", buttonEnabled: selectedSource != nil, centerEnabled: false)
     }
 
@@ -146,11 +147,18 @@ final class DisplayPreviewCoordinator: NSObject {
         presentedGeometry = nil
         windowController?.clearFrame()
         if let source { defaultsWriter.set(source.uuid, forKey: Keys.sourceUUID) }
-        stopCurrent(message: source.map { "Ready to preview \($0.name)." } ?? "Choose a source display.")
+        stopCurrent(message: source.map { DisplayPreviewStatus.ready(sourceName: $0.name) } ?? "Choose a source display.")
     }
 
     private func toggleCapture() {
-        if intent.wantsCapture { pause(message: "Paused.") } else { start() }
+        if autoResume.hasPendingRestart {
+            autoResume.cancel()
+            pause(message: "Paused.")
+        } else if intent.wantsCapture {
+            pause(message: "Paused.")
+        } else {
+            start()
+        }
     }
 
     private func start(trigger: DisplayPreviewStartTrigger = .explicit) {
@@ -168,7 +176,7 @@ final class DisplayPreviewCoordinator: NSObject {
             preflightGranted: preflightGranted
         ) else {
             intent.pause()
-            visibilityResume.cancel()
+            autoResume.cancel()
             controllerStatus(
                 "Screen Recording access is off. Press Resume to request access again.",
                 button: "Resume",
@@ -273,7 +281,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func pause(message: String, preservingDeferredRestart: Bool = false) {
-        visibilityResume.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
+        autoResume.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
         intent.pause()
         clearFrame(status: message)
         stopCurrent(message: message)
@@ -289,7 +297,7 @@ final class DisplayPreviewCoordinator: NSObject {
             if await self.stopWithTimeout(capture) {
                 guard self.reconcileConfirmedStop(of: capture) else { return }
                 self.controllerStatus(message, button: "Resume", enabled: self.selectedSource != nil)
-                if self.visibilityResume.stopCompleted(
+                if self.autoResume.stopCompleted(
                     currentSourceUUID: self.selectedSource?.uuid,
                     terminating: self.stopLifecycle.terminating
                 ) {
@@ -297,7 +305,7 @@ final class DisplayPreviewCoordinator: NSObject {
                 }
             } else {
                 if self.stopLifecycle.stopDidNotComplete(for: capture) {
-                    self.visibilityResume.cancel()
+                    self.autoResume.cancel()
                     self.controllerStatus("Capture could not stop. Quit Classroom Widgets to recover safely.", enabled: false)
                 }
             }
@@ -333,15 +341,16 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func visibilityChanged(_ visible: Bool) {
         if !visible, intent.wantsCapture {
-            visibilityResume.hidden(wasRunning: true, sourceUUID: selectedSource?.uuid)
-            pause(message: "Preview suspended while its window is hidden.", preservingDeferredRestart: true)
+            if autoResume.hidden(wasRunning: true, sourceUUID: selectedSource?.uuid) == .suspend {
+                pause(message: "Preview suspended while its window is hidden.", preservingDeferredRestart: true)
+            }
         } else if visible {
-            switch visibilityResume.revealed(
+            switch autoResume.revealed(
                 sessionExists: session != nil,
                 currentSourceUUID: selectedSource?.uuid
             ) {
             case .startNow: start(trigger: .visibilityResume)
-            case .startAfterStop, .none: break
+            case .startAfterStop, .suspend, .none: break
             }
         }
     }
@@ -392,9 +401,19 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func validateWindowPlacement() {
-        guard let source = selectedSource, intent.wantsCapture, sourceOverlapsPreview(source) else { return }
-        cancelDeferredRestarts()
-        pause(message: "Move the preview completely off the source display, then press Resume.")
+        guard let source = selectedSource else { return }
+        switch autoResume.placementChanged(
+            overlapsSource: sourceOverlapsPreview(source),
+            wasRunning: intent.wantsCapture,
+            sessionExists: session != nil,
+            sourceUUID: source.uuid
+        ) {
+        case .suspend:
+            cancelDeferredRestarts()
+            pause(message: "Move the preview completely off the source display, then press Resume.")
+        case .none, .startNow, .startAfterStop:
+            break
+        }
     }
 
     private func sourceOverlapsPreview(_ source: DisplayDescriptor) -> Bool {
@@ -405,7 +424,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func cancelDeferredRestarts() {
-        visibilityResume.cancel()
+        autoResume.cancel()
     }
 
     private func stopWithTimeout(
@@ -443,7 +462,7 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func reconcileConfirmedLateStop(of capture: DisplayCaptureSession) {
         guard reconcileConfirmedStop(of: capture) else { return }
-        visibilityResume.cancel()
+        autoResume.cancel()
         intent.pause()
         controllerStatus(
             "Capture stopped. Press Resume when ready.",

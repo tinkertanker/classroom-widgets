@@ -74,6 +74,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     }
 
     func showStatus(_ text: String, buttonTitle: String, buttonEnabled: Bool, centerEnabled: Bool) {
+        previewView.setIdleStartEnabled(buttonTitle == "Start" && buttonEnabled)
         if statusText != text {
             statusText = text
             statusLabel.stringValue = text

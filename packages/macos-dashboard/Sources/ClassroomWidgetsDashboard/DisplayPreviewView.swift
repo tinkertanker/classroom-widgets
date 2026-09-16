@@ -4,12 +4,14 @@ import CoreMedia
 
 @MainActor
 final class DisplayPreviewView: NSView {
+    var onIdlePrimaryClick: (() -> Void)?
     var onCompletedPrimaryClick: ((CGPoint, UInt64) -> Void)?
     var onGeometryInvalidated: (() -> Void)?
     private let videoLayer = AVSampleBufferDisplayLayer()
     private var sourceSize: CGSize?
     private var mouseDownPoint: CGPoint?
     private var mouseDownToken: UInt64?
+    private var idleStartEnabled = false
     private(set) var geometryToken: UInt64 = 0
 
     override init(frame frameRect: NSRect) {
@@ -38,12 +40,7 @@ final class DisplayPreviewView: NSView {
 
     @discardableResult
     func display(_ sampleBuffer: CMSampleBuffer, sourceSize: CGSize) -> Bool {
-        if self.sourceSize != sourceSize {
-            geometryToken &+= 1
-            discardPendingClick()
-            onGeometryInvalidated?()
-        }
-        self.sourceSize = sourceSize
+        prepareForLiveInteraction(sourceSize: sourceSize)
         videoLayer.enqueue(sampleBuffer)
         guard videoLayer.status != .failed else {
             clear()
@@ -51,6 +48,17 @@ final class DisplayPreviewView: NSView {
         }
         return true
     }
+
+    func prepareForLiveInteraction(sourceSize: CGSize) {
+        if self.sourceSize != sourceSize {
+            geometryToken &+= 1
+            discardPendingClick()
+            onGeometryInvalidated?()
+        }
+        self.sourceSize = sourceSize
+    }
+
+    func setIdleStartEnabled(_ enabled: Bool) { idleStartEnabled = enabled }
 
     func clear() {
         sourceSize = nil

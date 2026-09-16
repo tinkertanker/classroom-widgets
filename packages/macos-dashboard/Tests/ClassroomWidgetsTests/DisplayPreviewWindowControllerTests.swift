@@ -131,6 +131,62 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
+    func testTitlebarControlsAlignWithStandardWindowControlsAtNormalAndMinimumSizes() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel,
+                  let frameView = panel.contentView?.superview,
+                  let closeButton = panel.standardWindowButton(.closeButton),
+                  let closeSuperview = closeButton.superview else {
+                return XCTFail("Expected panel titlebar controls")
+            }
+
+            for size in [NSSize(width: 480, height: 360), panel.contentMinSize] {
+                panel.setContentSize(size)
+                frameView.layoutSubtreeIfNeeded()
+                let closeRect = closeSuperview.convert(closeButton.frame, to: frameView)
+                for title in ["Start", "Pause", "Resume"] {
+                    controller.showStatus("State", buttonTitle: title, buttonEnabled: true, centerEnabled: false)
+                    frameView.layoutSubtreeIfNeeded()
+                    let buttons = panel.titlebarAccessoryViewControllers.flatMap {
+                        descendants(of: $0.view, type: NSButton.self)
+                    }
+                    XCTAssertEqual(buttons.count, 2)
+                    for button in buttons {
+                        guard let superview = button.superview else { return XCTFail("Expected titlebar button container") }
+                        let rect = superview.convert(button.frame, to: frameView)
+                        XCTAssertEqual(rect.midY, closeRect.midY, accuracy: 0.5, "\(title) titlebar control is vertically misaligned")
+                    }
+                }
+            }
+            controller.close()
+        }
+    }
+
+    func testLiveResizeEmitsPlacementChangesBeforeResizeEnds() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            var frameChanges = 0
+            controller.onFrameChanged = { _ in frameChanges += 1 }
+            let delegate: NSWindowDelegate = controller
+
+            delegate.windowDidResize?(Notification(name: NSWindow.didResizeNotification, object: controller.window))
+
+            XCTAssertEqual(frameChanges, 1, "Placement must be checked during live resize, not only after it ends")
+            controller.close()
+        }
+    }
+
     @MainActor
     private func descendants<T: NSView>(of view: NSView, type: T.Type) -> [T] {
         let current = (view as? T).map { [$0] } ?? []

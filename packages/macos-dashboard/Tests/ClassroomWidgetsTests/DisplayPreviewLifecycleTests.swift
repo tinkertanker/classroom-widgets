@@ -81,6 +81,117 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         ))
     }
 
+    func testReadyStatusUsesActionableIdlePrompt() {
+        XCTAssertEqual(DisplayPreviewStatus.ready(sourceName: "Creston"), "Click to see display")
+    }
+
+    func testOverlapThenClearBeforeStopRestartsOnlyAfterOwnedStopCompletes() {
+        var state = DisplayPreviewAutoResumeState()
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
+        ), .suspend)
+        XCTAssertTrue(state.hasPendingRestart, "Pause must remain an explicit way to cancel overlap auto-resume")
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        ), .startAfterStop)
+        XCTAssertTrue(state.stopCompleted(currentSourceUUID: "source-a", terminating: false))
+    }
+
+    func testMovingIdlePreviewNeverCreatesAutomaticStartIntent() {
+        var state = DisplayPreviewAutoResumeState()
+
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: true, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+        ), .none)
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+        ), .none)
+        XCTAssertFalse(state.hasPendingRestart)
+    }
+
+    func testOverlapClearAfterStopStartsImmediately() {
+        var state = DisplayPreviewAutoResumeState()
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
+        ), .suspend)
+        XCTAssertFalse(state.stopCompleted(currentSourceUUID: "source-a", terminating: false))
+
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+        ), .startNow)
+    }
+
+    func testOverlapReentryBeforeStopPreventsPrematureRestart() {
+        var state = DisplayPreviewAutoResumeState()
+        _ = state.placementChanged(
+            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
+        )
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        ), .startAfterStop)
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: true, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        ), .none)
+
+        XCTAssertFalse(state.stopCompleted(currentSourceUUID: "source-a", terminating: false))
+        XCTAssertEqual(state.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+        ), .startNow)
+    }
+
+    func testHiddenAndOverlapBlockersComposeInEitherOrder() {
+        var overlapThenHidden = DisplayPreviewAutoResumeState()
+        _ = overlapThenHidden.placementChanged(
+            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
+        )
+        _ = overlapThenHidden.hidden(wasRunning: false, sourceUUID: "source-a")
+        XCTAssertEqual(overlapThenHidden.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        ), .none)
+        XCTAssertEqual(
+            overlapThenHidden.revealed(sessionExists: true, currentSourceUUID: "source-a"),
+            .startAfterStop
+        )
+
+        var hiddenThenOverlap = DisplayPreviewAutoResumeState()
+        _ = hiddenThenOverlap.hidden(wasRunning: true, sourceUUID: "source-a")
+        _ = hiddenThenOverlap.placementChanged(
+            overlapsSource: true, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        )
+        XCTAssertEqual(
+            hiddenThenOverlap.revealed(sessionExists: true, currentSourceUUID: "source-a"),
+            .none
+        )
+        XCTAssertEqual(hiddenThenOverlap.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        ), .startAfterStop)
+    }
+
+    func testExplicitPauseSourceChangeTerminationAndTimeoutCancelOverlapResume() {
+        var explicitPause = overlappingState()
+        explicitPause.pauseRequested(preservingDeferredRestart: false)
+        XCTAssertEqual(explicitPause.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+        ), .none)
+
+        var sourceChanged = overlappingState()
+        XCTAssertEqual(sourceChanged.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-b"
+        ), .none)
+
+        var terminating = overlappingState()
+        _ = terminating.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: true, sourceUUID: "source-a"
+        )
+        XCTAssertFalse(terminating.stopCompleted(currentSourceUUID: "source-a", terminating: true))
+
+        var timedOut = overlappingState()
+        timedOut.cancel()
+        XCTAssertEqual(timedOut.placementChanged(
+            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+        ), .none)
+    }
+
     @MainActor
     func testConfirmedLateStopSuccessIsNotDiscardedAfterTimeout() async {
         let capture = CaptureOwner()
@@ -232,5 +343,13 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
 
         XCTAssertFalse(replaced.terminalStopConfirmed(for: first))
         XCTAssertTrue(replaced.owns(replacement))
+    }
+
+    private func overlappingState() -> DisplayPreviewAutoResumeState {
+        var state = DisplayPreviewAutoResumeState()
+        _ = state.placementChanged(
+            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
+        )
+        return state
     }
 }
