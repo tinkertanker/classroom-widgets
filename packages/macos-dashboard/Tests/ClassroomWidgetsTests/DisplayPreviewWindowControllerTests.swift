@@ -479,12 +479,81 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 "The aspect snap must not install a persistent resize lock"
             )
 
-            // ...until the menu action is used again.
+            // ...until the menu action is used again. The 600 pt width asks for a
+            // 337.5 pt viewport, which the window server cannot land on: it snaps
+            // the outer height to the point grid. Measured on a 2x panel on
+            // 2026-09-17: requested outer 600x379.5 settles at 600x380 /
+            // content 600x348 / preview 600x338, i.e. exactly one backing pixel of
+            // aspect error, identical for setFrame and setContentSize.
             XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            let idealPreviewHeight = 600.0 / (16.0 / 9.0)
+            let backingScale = panel.backingScaleFactor
+            XCTAssertGreaterThan(backingScale, 0)
+            XCTAssertEqual(controller.previewSize.width, 600, accuracy: 0.5)
+            XCTAssertEqual(
+                controller.previewSize.height,
+                idealPreviewHeight.rounded(),
+                accuracy: 1.0 / backingScale + 0.0001,
+                "The viewport height must be the integral point neighbour of the ideal 337.5 pt"
+            )
+            XCTAssertLessThanOrEqual(
+                abs(controller.previewSize.height - idealPreviewHeight) * backingScale,
+                1 + 0.0001,
+                "The residual aspect error must stay within the single backing pixel that point quantization costs"
+            )
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(controller.previewView.bounds.width, 600, accuracy: 0.5)
+            XCTAssertLessThanOrEqual(
+                abs(controller.previewView.bounds.height - idealPreviewHeight) * backingScale,
+                1 + 0.0001,
+                "The laid-out preview view must carry the same quantized viewport height"
+            )
+            controller.close()
+        }
+    }
+
+    func testAspectSnapIsExactForAnExactlyRepresentableViewport() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 608, height: 500),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let source = DisplayDescriptor(
+                id: 2,
+                uuid: "DELL-P2217H",
+                name: "DELL P2217H",
+                bounds: CGRect(x: -212, y: -1080, width: 1920, height: 1080),
+                isActive: true,
+                mirrorMasterID: nil
+            )
+            controller.setSources([source], selectedID: source.id)
+
+            // 608 pt is exactly representable at 16:9, so a correct snap lands on
+            // the integral viewport with no quantization slack: preview 608x342 and
+            // outer 608x384. A snap that used the outer window rectangle, dropped
+            // the titlebar or the 10 pt gap, or never resized cannot reach 342.
+            XCTAssertEqual(608.0 * 9.0 / 16.0, 342.0, accuracy: 0.0001)
+
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+
+            XCTAssertEqual(controller.previewSize.width, 608, accuracy: 0.01)
+            XCTAssertEqual(controller.previewSize.height, 342, accuracy: 0.01)
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(controller.previewView.bounds.width, 608, accuracy: 0.01)
+            XCTAssertEqual(controller.previewView.bounds.height, 342, accuracy: 0.01)
             XCTAssertEqual(
                 controller.previewSize.width / controller.previewSize.height,
                 16.0 / 9.0,
-                accuracy: 0.002
+                accuracy: 0.0001,
+                "An exactly representable viewport must match the source aspect tightly"
+            )
+            XCTAssertGreaterThan(
+                controller.previewChromeHeight,
+                WidgetPanelContentLayout.topGap,
+                "The sizing math must carry the native titlebar as well as the 10 pt gap"
             )
             controller.close()
         }
