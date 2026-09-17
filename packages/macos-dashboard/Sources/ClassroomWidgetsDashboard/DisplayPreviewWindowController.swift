@@ -130,8 +130,12 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         let target = NSRect(origin: window.frame.origin, size: size).clamped(to: visibleFrame)
         guard !target.isEmpty else { return false }
         // A valid source reports success even when the viewport already matches, so a
-        // repeated snap is a no-op instead of another frame change.
-        guard frameDiffers(target.size, from: window.frame.size, in: window) else { return true }
+        // repeated snap is a no-op instead of another frame change. A clamped origin
+        // still moves, which keeps the bounded placement behavior for a frame that is
+        // off screen even though its size is already correct.
+        guard frameDiffers(target.size, from: window.frame.size, in: window)
+            || target.origin != window.frame.origin
+        else { return true }
         window.setFrame(target, display: true, animate: animated)
         return true
     }
@@ -202,7 +206,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     /// point quantization the window server applies, which keeps a settled window
     /// from shrinking or jittering and keeps the correction from recursing.
     private func normalizeViewportAspectIfNeeded(in window: NSWindow) {
-        guard !isNormalizingAspect, let aspect = currentSourceAspect else { return }
+        guard let aspect = currentSourceAspect else { return }
         let target = aspectMatchedFrameSize(proposingFrame: window.frame.size, aspect: aspect, in: window)
         guard frameDiffers(target, from: window.frame.size, in: window) else { return }
         isNormalizingAspect = true
@@ -210,9 +214,11 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         isNormalizingAspect = false
     }
 
-    /// One point-grid step plus a numeric epsilon: the smallest frame difference the
-    /// window server can actually represent, so a quantized settled window is never
-    /// re-corrected into a shrinking or jittering loop.
+    /// Allowed residual between a requested frame and the settled frame: one backing
+    /// pixel plus a numeric epsilon. This is the measured error from the earlier
+    /// geometry probe, not a documented AppKit guarantee, and it exists only so a
+    /// quantized settled window is never re-corrected into a shrinking or jittering
+    /// loop.
     private func frameDiffers(_ size: NSSize, from current: NSSize, in window: NSWindow) -> Bool {
         let tolerance = 1 / max(window.backingScaleFactor, 1) + 0.01
         return abs(size.width - current.width) > tolerance || abs(size.height - current.height) > tolerance
@@ -542,9 +548,11 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     func windowDidMove(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
 
     /// Re-fits programmatic frame changes, then always reports the final frame so
-    /// overlap placement stays current during a live resize.
+    /// overlap placement stays current during a live resize. A correction posts its
+    /// own nested notification, which is ignored here so the settled frame is
+    /// reported once instead of once per setFrame.
     func windowDidResize(_ notification: Notification) {
-        guard let window else { return }
+        guard !isNormalizingAspect, let window else { return }
         normalizeViewportAspectIfNeeded(in: window)
         onFrameChanged?(window.frame)
     }

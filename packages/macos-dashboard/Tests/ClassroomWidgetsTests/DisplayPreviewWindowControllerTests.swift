@@ -474,6 +474,14 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 NSRect(origin: panel.frame.origin, size: NSSize(width: 600, height: 500)),
                 display: false
             )
+            // The correction's own setFrame posts a nested notification; only the
+            // settled frame may be reported, so one programmatic normalization must not
+            // duplicate the final callback.
+            XCTAssertLessThanOrEqual(
+                frameCallbacks,
+                1,
+                "A programmatic normalization must not duplicate final frame callbacks"
+            )
             delegate.windowDidResize?(Notification(name: NSWindow.didResizeNotification, object: panel))
             panel.contentView?.layoutSubtreeIfNeeded()
 
@@ -954,6 +962,45 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 "The pure constraint must be numerically idempotent; no rasterization happens inside it"
             )
             XCTAssertEqual(twice.height, once.height, accuracy: 0.001)
+            controller.close()
+        }
+    }
+
+    func testAspectSnapReturnsAnOffscreenMatchedFrameIntoTheVisibleFrame() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 608, height: 500),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(controller.previewSize.width, 608, accuracy: 0.01)
+            XCTAssertEqual(controller.previewSize.height, 342, accuracy: 0.01)
+
+            // Already aspect-matched but hanging below the visible frame: the snap must
+            // still move the window back inside, without changing the matched size. The
+            // strict inside check is what a size-only no-op decision would skip.
+            let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame ?? panel.frame
+            let hangingOrigin = NSPoint(x: visibleFrame.minX, y: visibleFrame.minY - 120)
+            panel.setFrame(
+                NSRect(
+                    origin: hangingOrigin,
+                    size: NSSize(width: panel.frame.width, height: panel.frame.height)
+                ),
+                display: false
+            )
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            XCTAssertEqual(controller.previewSize.width, 608, accuracy: 0.5)
+            XCTAssertEqual(controller.previewSize.height, 342, accuracy: 0.5)
+            XCTAssertGreaterThan(
+                panel.frame.minY,
+                visibleFrame.minY + 0.5,
+                "A matched but off-screen frame must be brought back inside the visible frame"
+            )
+            XCTAssertLessThanOrEqual(panel.frame.maxY, visibleFrame.maxY + 0.5)
             controller.close()
         }
     }
