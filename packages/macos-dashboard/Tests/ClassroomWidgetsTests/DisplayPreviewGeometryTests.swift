@@ -95,6 +95,80 @@ final class DisplayPreviewGeometryTests: XCTestCase {
         )
     }
 
+    func testAspectNormalizedWindowSizeMatchesLandscapePreviewViewport() {
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: 16.0 / 9.0,
+            preservingPreviewSize: CGSize(width: 480, height: 322),
+            chromeHeight: 38,
+            minimumPreviewSize: CGSize(width: 320, height: 230),
+            maximumSize: CGSize(width: 2000, height: 2000)
+        )
+        XCTAssertEqual(size.width, 480, accuracy: 0.001, "Approximate current preview width is preserved")
+        XCTAssertEqual(size.height - 38, 270, accuracy: 0.001)
+        XCTAssertEqual(size.width / (size.height - 38), 16.0 / 9.0, accuracy: 0.001)
+    }
+
+    func testAspectNormalizedWindowSizeFitsPortraitSourceWithinScreen() {
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: 1080.0 / 1920.0,
+            preservingPreviewSize: CGSize(width: 480, height: 322),
+            chromeHeight: 38,
+            minimumPreviewSize: CGSize(width: 320, height: 230),
+            maximumSize: CGSize(width: 1000, height: 800)
+        )
+        XCTAssertEqual(size.width / (size.height - 38), 1080.0 / 1920.0, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(size.height, 800)
+        XCTAssertLessThanOrEqual(size.width, 1000)
+        XCTAssertGreaterThanOrEqual(size.width, 320 - 0.001)
+    }
+
+    func testAspectNormalizedWindowSizeHonoursPreviewMinimum() {
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: 21.0 / 9.0,
+            preservingPreviewSize: CGSize(width: 100, height: 60),
+            chromeHeight: 38,
+            minimumPreviewSize: CGSize(width: 320, height: 230),
+            maximumSize: CGSize(width: 2000, height: 2000)
+        )
+        XCTAssertGreaterThanOrEqual(size.width, 320 - 0.001)
+        XCTAssertGreaterThanOrEqual(size.height - 38, 230 - 0.001)
+        XCTAssertEqual(size.width / (size.height - 38), 21.0 / 9.0, accuracy: 0.001)
+    }
+
+    func testAspectNormalizedWindowSizeKeepsChromeOutOfTheViewport() {
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: 16.0 / 10.0,
+            preservingPreviewSize: CGSize(width: 640, height: 400),
+            chromeHeight: 38,
+            minimumPreviewSize: CGSize(width: 320, height: 230),
+            maximumSize: CGSize(width: 4000, height: 4000)
+        )
+        XCTAssertEqual(size.height - (size.width / (16.0 / 10.0)), 38, accuracy: 0.001)
+    }
+
+    func testAspectNormalizedWindowSizeRejectsInvalidAspect() {
+        XCTAssertEqual(
+            DisplayPreviewGeometry.aspectNormalizedWindowSize(
+                matchingAspect: 0,
+                preservingPreviewSize: CGSize(width: 480, height: 322),
+                chromeHeight: 38,
+                minimumPreviewSize: CGSize(width: 320, height: 230),
+                maximumSize: CGSize(width: 2000, height: 2000)
+            ),
+            CGSize(width: 480, height: 360)
+        )
+        XCTAssertEqual(
+            DisplayPreviewGeometry.aspectNormalizedWindowSize(
+                matchingAspect: .nan,
+                preservingPreviewSize: CGSize(width: 480, height: 322),
+                chromeHeight: 38,
+                minimumPreviewSize: CGSize(width: 320, height: 230),
+                maximumSize: CGSize(width: 2000, height: 2000)
+            ),
+            CGSize(width: 480, height: 360)
+        )
+    }
+
     private func target(_ x: CGFloat, _ y: CGFloat) -> CGPoint? {
         DisplayPreviewGeometry.target(
             topLeftPoint: CGPoint(x: x, y: y), geometry: landscape, currentTopologyRevision: 4

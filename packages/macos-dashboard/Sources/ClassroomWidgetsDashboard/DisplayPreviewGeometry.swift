@@ -47,6 +47,24 @@ enum DisplayPreviewGeometry {
         guard appKitPoint.isFinite, viewBounds.isFinitePositive else { return nil }
         return CGPoint(x: appKitPoint.x, y: viewBounds.minY + viewBounds.maxY - appKitPoint.y)
     }
+
+    /// Window frame size whose preview viewport matches the source display aspect
+    /// while preserving the approximate current preview width.
+    ///
+    /// `previewSize` is the preview viewport only: the content area minus the
+    /// shared 10 pt titlebar gap. `chromeHeight` carries the native titlebar plus
+    /// that gap, so callers never mix viewport and window coordinates.
+    static func aspectNormalizedWindowSize(
+        matchingAspect aspect: CGFloat,
+        preservingPreviewSize previewSize: CGSize,
+        chromeHeight: CGFloat,
+        minimumPreviewSize: CGSize,
+        maximumSize: CGSize
+    ) -> CGSize {
+        // Mirrors today's coordinator, which opens at the remembered size and
+        // never normalizes the preview viewport to the source aspect.
+        CGSize(width: previewSize.width, height: previewSize.height + max(chromeHeight, 0))
+    }
 }
 
 private extension CGPoint {

@@ -398,6 +398,150 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertTrue(replaced.owns(replacement))
     }
 
+    func testNoOpScreenNoticePreservesLiveSourceInsteadOfResetting() {
+        XCTAssertEqual(
+            DisplayPreviewTopologyPolicy.outcome(
+                hasWindow: true, selectedSourceID: 2, currentMatchID: 2, isStillEligible: true
+            ),
+            .preserveSource
+        )
+        XCTAssertEqual(
+            DisplayPreviewTopologyPolicy.outcome(
+                hasWindow: true, selectedSourceID: 2, currentMatchID: 2, isStillEligible: false
+            ),
+            .reset,
+            "A source that is no longer eligible must reset fail-closed"
+        )
+        XCTAssertEqual(
+            DisplayPreviewTopologyPolicy.outcome(
+                hasWindow: true, selectedSourceID: 2, currentMatchID: nil, isStillEligible: false
+            ),
+            .reset
+        )
+        XCTAssertEqual(
+            DisplayPreviewTopologyPolicy.outcome(
+                hasWindow: true, selectedSourceID: nil, currentMatchID: nil, isStillEligible: false
+            ),
+            .ignore
+        )
+        XCTAssertEqual(
+            DisplayPreviewTopologyPolicy.outcome(
+                hasWindow: false, selectedSourceID: 2, currentMatchID: 2, isStillEligible: true
+            ),
+            .ignore
+        )
+        XCTAssertEqual(
+            DisplayPreviewTopologyPolicy.outcome(
+                hasWindow: true, selectedSourceID: 2, currentMatchID: 3, isStillEligible: true
+            ),
+            .reset,
+            "A reconnected display with a new CGDirectDisplayID must restart capture"
+        )
+    }
+
+    func testStaticIdleNeverTriggersFirstFramePause() {
+        XCTAssertEqual(
+            DisplayPreviewFirstFramePolicy.outcome(deliveredFrame: true, streamActivity: true),
+            .wait
+        )
+        XCTAssertEqual(
+            DisplayPreviewFirstFramePolicy.outcome(deliveredFrame: true, streamActivity: false),
+            .wait
+        )
+        XCTAssertEqual(
+            DisplayPreviewFirstFramePolicy.outcome(deliveredFrame: false, streamActivity: true),
+            .hold,
+            "Frame status activity (including static .idle) proves the stream is alive and must not pause"
+        )
+        XCTAssertEqual(
+            DisplayPreviewFirstFramePolicy.outcome(deliveredFrame: false, streamActivity: false),
+            .pauseBroken
+        )
+    }
+
+    func testDeliberateLaunchStartsWhileIncidentalNoticeDoesNot() {
+        XCTAssertEqual(
+            DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: false, wantsCapture: false, hasPendingRestart: false, hasSelectedSource: true
+            ),
+            .createAndStart
+        )
+        XCTAssertEqual(
+            DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: false, wantsCapture: false, hasPendingRestart: false, hasSelectedSource: false
+            ),
+            .createWithoutStart
+        )
+        XCTAssertEqual(
+            DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: true, wantsCapture: true, hasPendingRestart: false, hasSelectedSource: true
+            ),
+            .raiseOnly,
+            "An already-live launch only raises the window"
+        )
+        XCTAssertEqual(
+            DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: true, wantsCapture: false, hasPendingRestart: true, hasSelectedSource: true
+            ),
+            .raiseOnly,
+            "A launch during deferred recovery must not start a second stream"
+        )
+        XCTAssertEqual(
+            DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: true, wantsCapture: false, hasPendingRestart: false, hasSelectedSource: true
+            ),
+            .raiseAndStart
+        )
+        XCTAssertEqual(
+            DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: true, wantsCapture: false, hasPendingRestart: false, hasSelectedSource: false
+            ),
+            .raiseOnly
+        )
+    }
+
+    func testFrameRecoveryHoldsThenRestoresSameSourceWithoutChurn() {
+        var recovery = DisplayPreviewFrameRecovery()
+        XCTAssertFalse(recovery.isHolding)
+
+        XCTAssertEqual(recovery.gapDetected(generation: 5), .holdBegan)
+        XCTAssertTrue(recovery.isHolding)
+        XCTAssertEqual(
+            recovery.gapDetected(generation: 5),
+            .holdExtended,
+            "Repeated gap frames for the same stream must not restart recovery"
+        )
+        XCTAssertEqual(recovery.frameRestored(generation: 5), .restored)
+        XCTAssertFalse(recovery.isHolding)
+        XCTAssertEqual(recovery.frameRestored(generation: 5), .ignored)
+    }
+
+    func testFrameRecoveryIsBoundedAndCancellable() {
+        var recovery = DisplayPreviewFrameRecovery()
+        _ = recovery.gapDetected(generation: 9)
+        XCTAssertEqual(
+            recovery.windowExpired(generation: 9),
+            .holdExtended,
+            "The first bounded hold window may be retried once"
+        )
+        XCTAssertEqual(recovery.windowExpired(generation: 9), .exhausted)
+        XCTAssertFalse(recovery.isHolding)
+
+        var cancelled = DisplayPreviewFrameRecovery()
+        _ = cancelled.gapDetected(generation: 4)
+        cancelled.cancel()
+        XCTAssertFalse(cancelled.isHolding)
+        XCTAssertEqual(cancelled.windowExpired(generation: 4), .ignored)
+    }
+
+    func testFrameRecoveryIgnoresStaleGenerations() {
+        var recovery = DisplayPreviewFrameRecovery()
+        _ = recovery.gapDetected(generation: 3)
+        XCTAssertEqual(recovery.gapDetected(generation: 4), .ignored)
+        XCTAssertEqual(recovery.frameRestored(generation: 3), .restored)
+        XCTAssertEqual(recovery.frameRestored(generation: 4), .ignored)
+    }
+
     private func overlappingState() -> DisplayPreviewAutoResumeState {
         var state = DisplayPreviewAutoResumeState()
         _ = state.placementChanged(

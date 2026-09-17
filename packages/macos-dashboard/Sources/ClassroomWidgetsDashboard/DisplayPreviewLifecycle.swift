@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 enum DisplayPreviewStartTrigger {
@@ -30,6 +31,108 @@ enum DisplayPreviewPermissionPolicy {
 enum DisplayPreviewStatus {
     static func ready(sourceName _: String) -> String {
         "Click to see display"
+    }
+}
+
+/// What a `didChangeScreenParameters` notice means for the current preview.
+enum DisplayPreviewTopologyOutcome: Equatable {
+    /// Nothing to do: no preview window or no selected source.
+    case ignore
+    /// The selected source is still uniquely present and eligible; keep intent and image.
+    case preserveSource
+    /// The selected source changed, disappeared, or is no longer eligible.
+    case reset
+}
+
+enum DisplayPreviewTopologyPolicy {
+    /// Mirrors today's coordinator, which resets the selected source on every
+    /// screen-parameter notice while a preview window exists.
+    static func outcome(
+        hasWindow: Bool,
+        selectedSourceID: CGDirectDisplayID?,
+        currentMatchID: CGDirectDisplayID?,
+        isStillEligible: Bool
+    ) -> DisplayPreviewTopologyOutcome {
+        guard hasWindow, selectedSourceID != nil else { return .ignore }
+        return .reset
+    }
+}
+
+/// What the first-frame deadline should do once it expires.
+enum DisplayPreviewFirstFrameOutcome: Equatable {
+    /// A frame was delivered; nothing to do.
+    case wait
+    /// The stream is delivering frame statuses but no image yet; hold with bounded recovery.
+    case hold
+    /// Nothing arrived at all; the stream is broken.
+    case pauseBroken
+}
+
+enum DisplayPreviewFirstFramePolicy {
+    /// Mirrors today's timeout, which pauses whenever no frame was delivered.
+    static func outcome(deliveredFrame: Bool, streamActivity: Bool) -> DisplayPreviewFirstFrameOutcome {
+        deliveredFrame ? .wait : .pauseBroken
+    }
+}
+
+/// What a deliberate `open()` (menu, shortcut, widget launch) should do.
+enum DisplayPreviewLaunchOutcome: Equatable {
+    case raiseOnly
+    case raiseAndStart
+    case createWithoutStart
+    case createAndStart
+}
+
+enum DisplayPreviewLaunchPolicy {
+    /// Mirrors today's `open()`, which only raises an existing window and never
+    /// starts capture from a fresh window.
+    static func outcome(
+        existingWindow: Bool,
+        wantsCapture: Bool,
+        hasPendingRestart: Bool,
+        hasSelectedSource: Bool
+    ) -> DisplayPreviewLaunchOutcome {
+        existingWindow ? .raiseOnly : .createWithoutStart
+    }
+}
+
+/// Bounded hold state for temporary frame gaps on an already-authorized source.
+/// It never restarts the stream; it only keeps the last good image and enabled
+/// intent while the same source reports `.blank`/`.suspended`/missing-image frames.
+struct DisplayPreviewFrameRecovery {
+    enum Decision: Equatable {
+        case ignored
+        case holdBegan
+        case holdExtended
+        case restored
+        case exhausted
+    }
+
+    /// Two bounded hold windows before the preview falls back to a truthful paused state.
+    static let maximumHoldWindows = 2
+    static let holdWindowNanoseconds: UInt64 = 6_000_000_000
+
+    private(set) var generation: UInt64?
+    private(set) var holdWindows = 0
+
+    var isHolding: Bool { generation != nil }
+
+    /// Mirrors today's coordinator, which treats a single gap frame as terminal.
+    mutating func gapDetected(generation: UInt64) -> Decision {
+        .exhausted
+    }
+
+    mutating func frameRestored(generation: UInt64) -> Decision {
+        .ignored
+    }
+
+    mutating func windowExpired(generation: UInt64) -> Decision {
+        .ignored
+    }
+
+    mutating func cancel() {
+        generation = nil
+        holdWindows = 0
     }
 }
 

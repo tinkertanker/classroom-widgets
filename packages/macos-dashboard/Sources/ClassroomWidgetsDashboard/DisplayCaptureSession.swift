@@ -18,7 +18,17 @@ enum DisplayCaptureSessionError: LocalizedError {
 enum DisplayCaptureFrameDisposition: Equatable {
     case ignore
     case deliver
+    case hold
+    case stopped
     case unavailable
+}
+
+/// Privacy-safe reason for a frame gap, suitable for structured logging.
+enum DisplayCaptureGapReason: String, Equatable {
+    case blank
+    case suspended
+    case missingImageBuffer
+    case stopped
 }
 
 final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
@@ -125,6 +135,16 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     ) -> DisplayCaptureFrameDisposition {
         if status == .idle || status == .started { return .ignore }
         return status == .complete && hasImageBuffer ? .deliver : .unavailable
+    }
+
+    static func gapReason(
+        for status: SCFrameStatus,
+        hasImageBuffer: Bool
+    ) -> DisplayCaptureGapReason {
+        if status == .stopped { return .stopped }
+        if status == .suspended { return .suspended }
+        if status == .blank { return .blank }
+        return hasImageBuffer ? .blank : .missingImageBuffer
     }
 
     private var isStartInProgress: Bool {

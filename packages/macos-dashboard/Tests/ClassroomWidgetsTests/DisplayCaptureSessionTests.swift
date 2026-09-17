@@ -12,14 +12,29 @@ final class DisplayCaptureSessionTests: XCTestCase {
         )
     }
 
-    func testUnavailableFramesStillFailClosedWhileIdleRetainsCurrentFrame() {
+    func testTransientFrameStatusesHoldWhileIdleRetainsCurrentFrame() {
         XCTAssertEqual(DisplayCaptureSession.disposition(for: .idle), .ignore)
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .blank), .unavailable)
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .suspended), .unavailable)
+        XCTAssertEqual(DisplayCaptureSession.disposition(for: .started), .ignore)
+        XCTAssertEqual(DisplayCaptureSession.disposition(for: .blank), .hold)
+        XCTAssertEqual(DisplayCaptureSession.disposition(for: .suspended), .hold)
+        XCTAssertEqual(DisplayCaptureSession.disposition(for: .stopped), .stopped)
+        XCTAssertEqual(DisplayCaptureSession.disposition(for: .complete), .deliver)
         XCTAssertEqual(
             DisplayCaptureSession.disposition(for: .complete, hasImageBuffer: false),
-            .unavailable
+            .hold,
+            "A complete frame without pixels is a temporary gap, not a terminal stop"
         )
+    }
+
+    func testGapReasonsAreStableAndPrivacySafeForLogging() {
+        XCTAssertEqual(DisplayCaptureSession.gapReason(for: .blank, hasImageBuffer: true), .blank)
+        XCTAssertEqual(DisplayCaptureSession.gapReason(for: .suspended, hasImageBuffer: true), .suspended)
+        XCTAssertEqual(
+            DisplayCaptureSession.gapReason(for: .complete, hasImageBuffer: false),
+            .missingImageBuffer
+        )
+        XCTAssertEqual(DisplayCaptureSession.gapReason(for: .stopped, hasImageBuffer: false), .stopped)
+        XCTAssertEqual(DisplayCaptureGapReason.blank.rawValue, "blank")
     }
 
     func testStopBeforeStartKeepsCancellationStickyAndSkipsContentDiscovery() async throws {
