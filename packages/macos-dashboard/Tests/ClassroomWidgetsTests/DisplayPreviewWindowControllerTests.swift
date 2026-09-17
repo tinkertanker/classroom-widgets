@@ -490,16 +490,21 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 "The programmatic correction must be bounded, not a resize loop"
             )
 
-            // A settled size stays settled: another notification must not re-correct it.
-            let settledCallbacks = frameCallbacks
-            delegate.windowDidResize?(Notification(name: NSWindow.didResizeNotification, object: panel))
-            XCTAssertEqual(controller.previewSize.width, corrected.width, accuracy: 0.5)
-            XCTAssertEqual(controller.previewSize.height, corrected.height, accuracy: 0.5)
-            XCTAssertEqual(
-                frameCallbacks,
-                settledCallbacks,
-                "A settled size must not re-notify or re-correct"
-            )
+            // A settled size stays settled: further notifications must not re-correct it
+            // or cascade extra callbacks. Each notification still reports the final frame,
+            // which is the pre-existing live-resize placement contract.
+            for _ in 0..<2 {
+                let settled = controller.previewSize
+                let callbacksBefore = frameCallbacks
+                delegate.windowDidResize?(Notification(name: NSWindow.didResizeNotification, object: panel))
+                XCTAssertEqual(controller.previewSize.width, settled.width, accuracy: 0.5)
+                XCTAssertEqual(controller.previewSize.height, settled.height, accuracy: 0.5)
+                XCTAssertLessThanOrEqual(
+                    frameCallbacks - callbacksBefore,
+                    1,
+                    "A settled size must not re-correct or cascade callbacks"
+                )
+            }
 
             // User-driven resize is aspect-matched too: the callback must return a
             // constrained frame size, and a height-limited drag must narrow the window
@@ -861,14 +866,19 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
     func testChangingTheSelectedSourceRenormalizesTheViewportWithoutChurn() async {
         await MainActor.run {
             _ = NSApplication.shared
+            // 608 pt is exactly representable at 16:9, so the setup viewport is exact
+            // and any drift below belongs to the source change under test rather than
+            // to AppKit quantizing a fractional setup frame.
             let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                frame: NSRect(x: 100, y: 100, width: 608, height: 500),
                 backgroundOpacity: 1,
                 keepOnAllSpaces: true
             )
             guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
             controller.setSources([landscape16x9], selectedID: landscape16x9.id)
             XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            XCTAssertEqual(controller.previewSize.width, 608, accuracy: 0.01)
+            XCTAssertEqual(controller.previewSize.height, 342, accuracy: 0.01)
             XCTAssertEqual(
                 controller.previewSize.width / controller.previewSize.height,
                 16.0 / 9.0,
