@@ -26,6 +26,8 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     private var chromeVisible = false
     private var sources: [DisplayDescriptor] = []
     private var selectedSourceID: CGDirectDisplayID?
+    private var lastNormalizedSourceAspect: CGFloat?
+    private var isNormalizingAspect = false
     private var statusText = "Choose a display to preview."
     private var centerEnabled = false
 
@@ -83,6 +85,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         selectedSourceID = sources.contains(where: { $0.id == selectedID }) ? selectedID : nil
         menuButton.isEnabled = !sources.isEmpty
         updateMenuAccessibility()
+        normalizeSelectedSourceAspectIfNeeded()
     }
 
     /// Preview viewport size: the content layout area minus the shared titlebar gap.
@@ -109,27 +112,26 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         return source.bounds.width / source.bounds.height
     }
 
-    /// One-shot snap of the preview viewport to the source display aspect. It
-    /// preserves the approximate current width and location and installs no
-    /// persistent aspect lock, so later user resizes stay unrestricted.
+    /// One-shot snap of the preview viewport to the source display aspect, keeping
+    /// the current location. Ongoing resizing keeps the same smaller-side fit, so
+    /// this menu action only re-snaps on demand.
     @discardableResult
     func matchSourceAspect(_ aspect: CGFloat, animated: Bool) -> Bool {
         guard let window, aspect.isFinite, aspect > 0 else { return false }
-        let screen = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
-        let visibleFrame = (screen?.visibleFrame ?? window.frame).insetBy(dx: 12, dy: 12)
+        let visibleFrame = Self.aspectConstrainingFrame(for: window)
         guard !visibleFrame.isEmpty else { return false }
         let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
             matchingAspect: aspect,
-            preservingPreviewSize: previewSize,
+            proposedPreviewSize: previewSize,
             chromeHeight: previewChromeHeight,
-            minimumPreviewSize: NSSize(
-                width: window.contentMinSize.width,
-                height: max(window.contentMinSize.height - WidgetPanelContentLayout.topGap, 1)
-            ),
+            minimumPreviewSize: minimumPreviewSize,
             maximumSize: visibleFrame.size
         )
         let target = NSRect(origin: window.frame.origin, size: size).clamped(to: visibleFrame)
         guard !target.isEmpty else { return false }
+        // A valid source reports success even when the viewport already matches, so a
+        // repeated snap is a no-op instead of another frame change.
+        guard frameDiffers(target.size, from: window.frame.size, in: window) else { return true }
         window.setFrame(target, display: true, animate: animated)
         return true
     }
@@ -138,6 +140,82 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     func matchCurrentSourceAspect(animated: Bool = true) -> Bool {
         guard let aspect = currentSourceAspect else { return false }
         return matchSourceAspect(aspect, animated: animated)
+    }
+
+    /// Re-fits the viewport when the selected source aspect changed, so a source or
+    /// resolution change never leaves the old ratio behind until the next manual
+    /// resize. An unchanged source is a no-op and emits no frame callback.
+    private func normalizeSelectedSourceAspectIfNeeded() {
+        guard let aspect = currentSourceAspect else {
+            lastNormalizedSourceAspect = nil
+            return
+        }
+        guard aspect != lastNormalizedSourceAspect else { return }
+        lastNormalizedSourceAspect = aspect
+        matchSourceAspect(aspect, animated: false)
+    }
+
+    /// Native minimum preview viewport: the content minimum minus the shared gap.
+    private var minimumPreviewSize: NSSize {
+        guard let window else { return NSSize(width: 1, height: 1) }
+        return NSSize(
+            width: max(window.contentMinSize.width, 1),
+            height: max(window.contentMinSize.height - WidgetPanelContentLayout.topGap, 1)
+        )
+    }
+
+    /// Frame size whose preview viewport matches `aspect`, fitted on the smaller
+    /// proposed side. The proposal is returned unchanged when there is no valid
+    /// source or no usable proposal.
+    private func aspectMatchedFrameSize(
+        proposingFrame frameSize: NSSize,
+        aspect: CGFloat,
+        in window: NSWindow
+    ) -> NSSize {
+        let content = window.contentRect(forFrameRect: NSRect(origin: .zero, size: frameSize)).size
+        guard content.width > 0, content.height > 0 else { return frameSize }
+        let viewport = NSSize(
+            width: content.width,
+            height: max(content.height - WidgetPanelContentLayout.topGap, 1)
+        )
+        let visibleFrame = Self.aspectConstrainingFrame(for: window)
+        // The geometry returns a window frame size: the fitted viewport plus the
+        // measured native titlebar and the shared gap, so it is already the frame the
+        // caller must return.
+        return DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: aspect,
+            proposedPreviewSize: viewport,
+            chromeHeight: previewChromeHeight,
+            minimumPreviewSize: minimumPreviewSize,
+            maximumSize: visibleFrame.isEmpty ? window.frame.size : visibleFrame.size
+        )
+    }
+
+    /// Available screen area for aspect sizing, inset from the visible frame.
+    private static func aspectConstrainingFrame(for window: NSWindow) -> NSRect {
+        let screen = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
+        return (screen?.visibleFrame ?? window.frame).insetBy(dx: 12, dy: 12)
+    }
+
+    /// Programmatic frames (`setFrame`) bypass `windowWillResize`, so the viewport is
+    /// re-fitted here too. The correction is skipped once the viewport is within the
+    /// point quantization the window server applies, which keeps a settled window
+    /// from shrinking or jittering and keeps the correction from recursing.
+    private func normalizeViewportAspectIfNeeded(in window: NSWindow) {
+        guard !isNormalizingAspect, let aspect = currentSourceAspect else { return }
+        let target = aspectMatchedFrameSize(proposingFrame: window.frame.size, aspect: aspect, in: window)
+        guard frameDiffers(target, from: window.frame.size, in: window) else { return }
+        isNormalizingAspect = true
+        window.setFrame(NSRect(origin: window.frame.origin, size: target), display: true)
+        isNormalizingAspect = false
+    }
+
+    /// One point-grid step plus a numeric epsilon: the smallest frame difference the
+    /// window server can actually represent, so a quantized settled window is never
+    /// re-corrected into a shrinking or jittering loop.
+    private func frameDiffers(_ size: NSSize, from current: NSSize, in window: NSWindow) -> Bool {
+        let tolerance = 1 / max(window.backingScaleFactor, 1) + 0.01
+        return abs(size.width - current.width) > tolerance || abs(size.height - current.height) > tolerance
     }
 
     func showStatus(
@@ -330,7 +408,11 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         let id = (sender.representedObject as? NSNumber)?.uint32Value
         selectedSourceID = id
         updateMenuAccessibility()
+        // The coordinator accepts the new source first: a resize-triggered
+        // onFrameChanged runs its persist and placement validation, which must see the
+        // new selection rather than the previous one.
         onSourceSelected?(id)
+        normalizeSelectedSourceAspectIfNeeded()
     }
 
     @objc private func toggleCapture() { onToggleCapture?() }
@@ -449,8 +531,23 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     }
 
     func windowWillClose(_ notification: Notification) { onClose?() }
+
+    /// Live resize proposes a frame; the returned frame keeps the preview viewport
+    /// aspect-matched. Without a valid source the proposal is untouched.
+    func windowWillResize(_ sender: NSWindow, to frameSize: NSSize) -> NSSize {
+        guard let aspect = currentSourceAspect else { return frameSize }
+        return aspectMatchedFrameSize(proposingFrame: frameSize, aspect: aspect, in: sender)
+    }
+
     func windowDidMove(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
-    func windowDidResize(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
+
+    /// Re-fits programmatic frame changes, then always reports the final frame so
+    /// overlap placement stays current during a live resize.
+    func windowDidResize(_ notification: Notification) {
+        guard let window else { return }
+        normalizeViewportAspectIfNeeded(in: window)
+        onFrameChanged?(window.frame)
+    }
     func windowDidEndLiveResize(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
     func windowDidBecomeKey(_ notification: Notification) { revealChrome(); scheduleChromeHide() }
     override func mouseEntered(with event: NSEvent) { revealChrome() }

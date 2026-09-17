@@ -98,20 +98,41 @@ final class DisplayPreviewGeometryTests: XCTestCase {
     func testAspectNormalizedWindowSizeMatchesLandscapePreviewViewport() {
         let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
             matchingAspect: 16.0 / 9.0,
-            preservingPreviewSize: CGSize(width: 480, height: 322),
+            proposedPreviewSize: CGSize(width: 480, height: 322),
             chromeHeight: 38,
             minimumPreviewSize: CGSize(width: 320, height: 230),
             maximumSize: CGSize(width: 2000, height: 2000)
         )
-        XCTAssertEqual(size.width, 480, accuracy: 0.001, "Approximate current preview width is preserved")
+        XCTAssertEqual(
+            size.width,
+            480,
+            accuracy: 0.001,
+            "The proposed width survives because the proposed height has slack"
+        )
         XCTAssertEqual(size.height - 38, 270, accuracy: 0.001)
+        XCTAssertEqual(size.width / (size.height - 38), 16.0 / 9.0, accuracy: 0.001)
+    }
+
+    func testAspectNormalizedWindowSizeFitsTheSmallerProposedSide() {
+        // A height-limited proposal must narrow the viewport instead of growing the
+        // window to preserve the proposed width.
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: 16.0 / 9.0,
+            proposedPreviewSize: CGSize(width: 480, height: 250),
+            chromeHeight: 38,
+            minimumPreviewSize: CGSize(width: 320, height: 230),
+            maximumSize: CGSize(width: 2000, height: 2000)
+        )
+        XCTAssertEqual(size.height - 38, 250, accuracy: 0.001)
+        XCTAssertEqual(size.width, 250 * 16.0 / 9.0, accuracy: 0.001, "The smaller side must set the scale")
+        XCTAssertLessThan(size.width, 480, "A height-limited proposal must not keep its width")
         XCTAssertEqual(size.width / (size.height - 38), 16.0 / 9.0, accuracy: 0.001)
     }
 
     func testAspectNormalizedWindowSizeFitsPortraitSourceWithinScreen() {
         let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
             matchingAspect: 1080.0 / 1920.0,
-            preservingPreviewSize: CGSize(width: 480, height: 322),
+            proposedPreviewSize: CGSize(width: 480, height: 322),
             chromeHeight: 38,
             minimumPreviewSize: CGSize(width: 320, height: 230),
             maximumSize: CGSize(width: 1000, height: 800)
@@ -125,7 +146,7 @@ final class DisplayPreviewGeometryTests: XCTestCase {
     func testAspectNormalizedWindowSizeHonoursPreviewMinimum() {
         let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
             matchingAspect: 21.0 / 9.0,
-            preservingPreviewSize: CGSize(width: 100, height: 60),
+            proposedPreviewSize: CGSize(width: 100, height: 60),
             chromeHeight: 38,
             minimumPreviewSize: CGSize(width: 320, height: 230),
             maximumSize: CGSize(width: 2000, height: 2000)
@@ -138,7 +159,7 @@ final class DisplayPreviewGeometryTests: XCTestCase {
     func testAspectNormalizedWindowSizeKeepsChromeOutOfTheViewport() {
         let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
             matchingAspect: 16.0 / 10.0,
-            preservingPreviewSize: CGSize(width: 640, height: 400),
+            proposedPreviewSize: CGSize(width: 640, height: 400),
             chromeHeight: 38,
             minimumPreviewSize: CGSize(width: 320, height: 230),
             maximumSize: CGSize(width: 4000, height: 4000)
@@ -153,7 +174,7 @@ final class DisplayPreviewGeometryTests: XCTestCase {
             XCTAssertEqual(
                 DisplayPreviewGeometry.aspectNormalizedWindowSize(
                     matchingAspect: aspect,
-                    preservingPreviewSize: current,
+                    proposedPreviewSize: current,
                     chromeHeight: 38,
                     minimumPreviewSize: CGSize(width: 320, height: 230),
                     maximumSize: CGSize(width: 2000, height: 2000)
@@ -167,7 +188,7 @@ final class DisplayPreviewGeometryTests: XCTestCase {
     func testAspectNormalizedWindowSizeKeepsNativeMinimumOnAShortScreen() {
         let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
             matchingAspect: 900.0 / 1600.0,
-            preservingPreviewSize: CGSize(width: 480, height: 322),
+            proposedPreviewSize: CGSize(width: 480, height: 322),
             chromeHeight: 38,
             minimumPreviewSize: CGSize(width: 320, height: 230),
             maximumSize: CGSize(width: 700, height: 400)

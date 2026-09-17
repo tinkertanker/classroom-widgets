@@ -48,18 +48,22 @@ enum DisplayPreviewGeometry {
         return CGPoint(x: appKitPoint.x, y: viewBounds.minY + viewBounds.maxY - appKitPoint.y)
     }
 
-    /// Window frame size whose preview viewport matches the source display aspect
-    /// while preserving the approximate current preview width and location.
+    /// Window frame size whose preview viewport matches the source display aspect,
+    /// fitted on whichever side of the proposal is smaller.
     ///
-    /// `previewSize` is the preview viewport only: the content area minus the
-    /// shared 10 pt titlebar gap. `chromeHeight` carries the native titlebar plus
-    /// that gap, so callers never mix viewport and window coordinates. The native
-    /// preview minimum wins: when an exact ratio cannot satisfy both the minimum
-    /// and the physical screen, the frame keeps the minimum and fits the screen,
+    /// `proposedPreviewSize` is the preview viewport only: the content area minus
+    /// the shared 10 pt titlebar gap. `chromeHeight` carries the native titlebar
+    /// plus that gap, so callers never mix viewport and window coordinates. The
+    /// returned viewport is the largest aspect-correct viewport that fits inside
+    /// the proposal, so neither proposed dimension is exceeded unless the native
+    /// minimum has to win. Below the minimum the viewport expands uniformly, which
+    /// may exceed an undersized proposal but keeps the ratio. The native preview
+    /// minimum wins over the physical screen only when an exact ratio cannot
+    /// satisfy both, in which case the frame keeps the minimum and fits the screen,
     /// leaving residual letterbox bars to the video layer.
     static func aspectNormalizedWindowSize(
         matchingAspect aspect: CGFloat,
-        preservingPreviewSize previewSize: CGSize,
+        proposedPreviewSize previewSize: CGSize,
         chromeHeight: CGFloat,
         minimumPreviewSize: CGSize,
         maximumSize: CGSize
@@ -72,22 +76,20 @@ enum DisplayPreviewGeometry {
             width: max(minimumPreviewSize.width, 1),
             height: max(minimumPreviewSize.height, 1)
         )
-        var width = previewSize.width
-        var height = width / aspect
-        if height < minimum.height {
-            height = minimum.height
-            width = height * aspect
-        }
-        if width < minimum.width {
-            width = minimum.width
-            height = width / aspect
+        let scale = min(previewSize.width / aspect, previewSize.height)
+        var width = aspect * scale
+        var height = scale
+        if width < minimum.width || height < minimum.height {
+            let minimumScale = max(minimum.width / aspect, minimum.height)
+            width = aspect * minimumScale
+            height = minimumScale
         }
         if maximumSize.isFinitePositive {
             let maximumPreviewHeight = max(maximumSize.height - chrome, 1)
-            let scale = min(1, min(maximumSize.width / width, maximumPreviewHeight / height))
-            if scale < 1 {
-                let scaledWidth = width * scale
-                let scaledHeight = height * scale
+            let screenScale = min(1, min(maximumSize.width / width, maximumPreviewHeight / height))
+            if screenScale < 1 {
+                let scaledWidth = width * screenScale
+                let scaledHeight = height * screenScale
                 if scaledWidth >= minimum.width, scaledHeight >= minimum.height {
                     width = scaledWidth
                     height = scaledHeight

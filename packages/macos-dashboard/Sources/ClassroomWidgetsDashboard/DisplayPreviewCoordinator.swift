@@ -215,7 +215,8 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     /// A fresh deliberate launch sizes the preview viewport to the source display
-    /// aspect once. Later user resizes stay unrestricted; the menu item re-snaps on demand.
+    /// aspect once. The same smaller-side fit keeps later resizes and source changes
+    /// aspect-matched; the menu item re-snaps on demand.
     private func normalizeOpeningAspectIfNeeded() {
         guard pendingOpeningAspect, let source = selectedSource, let controller = windowController else { return }
         pendingOpeningAspect = false

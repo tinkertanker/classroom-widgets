@@ -958,6 +958,45 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
+    func testSourceSelectionIsAcceptedBeforeAnyAspectResizeCallback() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 608, height: 500),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            controller.setSources([landscape16x9, portrait9x16], selectedID: landscape16x9.id)
+            var order: [String] = []
+            controller.onSourceSelected = { _ in order.append("source") }
+            controller.onFrameChanged = { _ in order.append("frame") }
+
+            let menu = controller.makeControlsMenu()
+            guard let item = menu.items.first(where: {
+                ($0.representedObject as? NSNumber)?.uint32Value == portrait9x16.id
+            }) else { return XCTFail("Expected a source menu item for the portrait display") }
+            guard let action = item.action else { return XCTFail("Expected a source action") }
+            XCTAssertTrue(NSApp.sendAction(action, to: item.target, from: item))
+
+            // The coordinator's persist and placement validation run from
+            // onFrameChanged, so the new selection must be accepted first.
+            XCTAssertEqual(
+                order.first,
+                "source",
+                "The coordinator must accept the selection before any resize callback"
+            )
+            XCTAssertEqual(order.filter { $0 == "source" }.count, 1)
+            XCTAssertEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                1080.0 / 1920.0,
+                accuracy: 0.002,
+                "The source change must re-fit the viewport"
+            )
+            controller.close()
+        }
+    }
+
     func testSourceMenuSelectionRenormalizesTheViewport() async {
         await MainActor.run {
             _ = NSApplication.shared
