@@ -408,7 +408,7 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
-    func testAspectSnapMatchesSourceViewportAndLeavesUserResizeUnrestricted() async {
+    func testAspectSnapMatchesSourceViewportAndResizeStaysAspectMatched() async {
         await MainActor.run {
             _ = NSApplication.shared
             let controller = DisplayPreviewWindowController(
@@ -461,7 +461,8 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 XCTAssertLessThanOrEqual(panel.frame.height, visibleFrame.height + 0.5)
             }
 
-            // A user resize is never forced back onto the source aspect...
+            // A programmatic setFrame bypasses the delegate callback, so the app can
+            // still place the window freely.
             panel.setFrame(
                 NSRect(origin: panel.frame.origin, size: NSSize(width: 600, height: 500)),
                 display: false
@@ -471,13 +472,28 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 controller.previewSize.width / controller.previewSize.height,
                 16.0 / 9.0,
                 accuracy: 0.01,
-                "Unrestricted user resize must be able to letterbox"
+                "Programmatic frames are not intercepted; only user-driven resize is constrained"
             )
+
+            // User-driven resize is now aspect-matched: the callback must return a
+            // constrained frame size, and a height-limited drag must narrow the window
+            // too rather than only its height.
             let delegate: NSWindowDelegate = controller
-            XCTAssertNil(
-                delegate.windowWillResize?(panel, to: NSSize(width: 640, height: 640)),
-                "The aspect snap must not install a persistent resize lock"
+            let heightLimited = NSSize(width: 700, height: 400)
+            guard let constrained = delegate.windowWillResize?(panel, to: heightLimited) else {
+                return XCTFail("A user resize must be aspect-constrained while a source is selected")
+            }
+            assertViewport(
+                constrained,
+                matches: fittedPreviewViewport(proposingFrameSize: heightLimited, in: panel, aspect: 16.0 / 9.0),
+                in: panel
             )
+            XCTAssertLessThan(
+                constrained.width,
+                heightLimited.width,
+                "A height-limited drag must narrow the window, not only its height"
+            )
+            XCTAssertLessThanOrEqual(constrained.height, heightLimited.height)
 
             // ...until the menu action is used again. The 600 pt width asks for a
             // 337.5 pt viewport, which the window server cannot land on: it snaps
@@ -600,6 +616,403 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             }
             controller.close()
         }
+    }
+
+    // MARK: - Aspect-matched user resize (preview viewport)
+
+    func testResizeConstraintUsesTheSmallerFitScaleForBothProposalShapes() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let delegate: NSWindowDelegate = controller
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+
+            // Width-limited: the proposed height has slack, so the width survives.
+            let widthLimited = NSSize(width: 800, height: 500)
+            guard let wide = delegate.windowWillResize?(panel, to: widthLimited) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            assertViewport(
+                wide,
+                matches: fittedPreviewViewport(proposingFrameSize: widthLimited, in: panel, aspect: 16.0 / 9.0),
+                in: panel
+            )
+
+            // Height-limited: a width-only rule would keep 800 pt, so the width must
+            // shrink here instead of the height being stretched or cropped.
+            let heightLimited = NSSize(width: 800, height: 400)
+            guard let tall = delegate.windowWillResize?(panel, to: heightLimited) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            assertViewport(
+                tall,
+                matches: fittedPreviewViewport(proposingFrameSize: heightLimited, in: panel, aspect: 16.0 / 9.0),
+                in: panel
+            )
+            XCTAssertLessThan(
+                tall.width,
+                heightLimited.width,
+                "A height-limited drag must narrow the window, not only its height"
+            )
+            XCTAssertLessThanOrEqual(tall.height, heightLimited.height)
+            controller.close()
+        }
+    }
+
+    func testResizeConstraintIsExactForAnExactlyRepresentableViewport() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let delegate: NSWindowDelegate = controller
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+
+            // 608 pt is exactly representable at 16:9, so the constrained frame must
+            // carry a 608x342 viewport with no quantization slack.
+            let proposed = NSSize(width: 608, height: 500)
+            guard let constrained = delegate.windowWillResize?(panel, to: proposed) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            let viewport = previewViewport(forFrameSize: constrained, in: panel)
+            XCTAssertEqual(viewport.width, 608, accuracy: 0.01)
+            XCTAssertEqual(viewport.height, 342, accuracy: 0.01)
+
+            // The returned size is a window frame: the native titlebar and the shared
+            // 10 pt gap stay outside the matched viewport.
+            let expectedFrame = panel.frameRect(
+                forContentRect: NSRect(
+                    origin: .zero,
+                    size: NSSize(width: 608, height: 342 + WidgetPanelContentLayout.topGap)
+                )
+            ).size
+            XCTAssertEqual(constrained.width, expectedFrame.width, accuracy: 0.01)
+            XCTAssertEqual(constrained.height, expectedFrame.height, accuracy: 0.01)
+            controller.close()
+        }
+    }
+
+    func testResizeConstraintFitsPortraitWithoutTransposing() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let delegate: NSWindowDelegate = controller
+            controller.setSources([portrait9x16], selectedID: portrait9x16.id)
+
+            let proposed = NSSize(width: 500, height: 900)
+            guard let constrained = delegate.windowWillResize?(panel, to: proposed) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            let viewport = previewViewport(forFrameSize: constrained, in: panel)
+            XCTAssertEqual(viewport.width / viewport.height, 1080.0 / 1920.0, accuracy: 0.01)
+            XCTAssertLessThan(viewport.width, viewport.height, "A portrait source must not be transposed")
+            XCTAssertLessThan(
+                constrained.width,
+                proposed.width,
+                "A height-limited portrait drag must narrow the window"
+            )
+            controller.close()
+        }
+    }
+
+    func testResizeConstraintHonoursMinimumAndScreenSafetyLimits() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let delegate: NSWindowDelegate = controller
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+
+            // Below the native minimum the safety floor wins instead of a sub-minimum
+            // viewport, and the residual is letterboxed rather than cropped.
+            let tiny = NSSize(width: 200, height: 150)
+            guard let floored = delegate.windowWillResize?(panel, to: tiny) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            let flooredViewport = previewViewport(forFrameSize: floored, in: panel)
+            XCTAssertGreaterThanOrEqual(flooredViewport.width, panel.contentMinSize.width - 0.5)
+            XCTAssertGreaterThanOrEqual(
+                flooredViewport.height,
+                panel.contentMinSize.height - WidgetPanelContentLayout.topGap - 0.5
+            )
+
+            // Above the minimum the fit never grows either proposed dimension.
+            let roomy = NSSize(width: 900, height: 700)
+            guard let fitted = delegate.windowWillResize?(panel, to: roomy) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            XCTAssertLessThanOrEqual(fitted.width, roomy.width + 0.5)
+            XCTAssertLessThanOrEqual(fitted.height, roomy.height + 0.5)
+            let fittedViewport = previewViewport(forFrameSize: fitted, in: panel)
+            XCTAssertEqual(fittedViewport.width / fittedViewport.height, 16.0 / 9.0, accuracy: 0.01)
+
+            // On-screen bounds remain a safety limit even for an oversized proposal.
+            if let screen = panel.screen ?? NSScreen.main {
+                let oversized = NSSize(
+                    width: screen.visibleFrame.width + 400,
+                    height: screen.visibleFrame.height + 400
+                )
+                guard let clamped = delegate.windowWillResize?(panel, to: oversized) else {
+                    return XCTFail("A user resize with a selected source must be aspect-constrained")
+                }
+                XCTAssertLessThanOrEqual(clamped.width, screen.visibleFrame.width + 0.5)
+                XCTAssertLessThanOrEqual(clamped.height, screen.visibleFrame.height + 0.5)
+                let clampedViewport = previewViewport(forFrameSize: clamped, in: panel)
+                XCTAssertEqual(
+                    clampedViewport.width / clampedViewport.height,
+                    16.0 / 9.0,
+                    accuracy: 0.01,
+                    "A screen clamp must preserve the aspect instead of cropping"
+                )
+            }
+            controller.close()
+        }
+    }
+
+    func testResizeConstraintDoesNotInventARatioWithoutAValidSource() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let delegate: NSWindowDelegate = controller
+            let proposed = NSSize(width: 700, height: 500)
+
+            controller.setSources([], selectedID: nil)
+            XCTAssertNil(controller.currentSourceAspect)
+            let unconstrained = delegate.windowWillResize?(panel, to: proposed)
+            XCTAssertTrue(
+                unconstrained == nil || unconstrained == proposed,
+                "No source must not impose an invented ratio"
+            )
+
+            let zeroSized = DisplayDescriptor(
+                id: 9,
+                uuid: "ZERO",
+                name: "Zero",
+                bounds: .zero,
+                isActive: true,
+                mirrorMasterID: nil
+            )
+            controller.setSources([zeroSized], selectedID: zeroSized.id)
+            XCTAssertNil(controller.currentSourceAspect)
+            let stillUnconstrained = delegate.windowWillResize?(panel, to: proposed)
+            XCTAssertTrue(
+                stillUnconstrained == nil || stillUnconstrained == proposed,
+                "An invalid aspect must not impose an invented ratio"
+            )
+            controller.close()
+        }
+    }
+
+    func testChangingTheSelectedSourceRenormalizesTheViewportWithoutChurn() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            XCTAssertEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                16.0 / 9.0,
+                accuracy: 0.002
+            )
+
+            // Switching to a portrait source must not leave the old ratio behind until
+            // the next manual resize.
+            controller.setSources([portrait9x16], selectedID: portrait9x16.id)
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                1080.0 / 1920.0,
+                accuracy: 0.002,
+                "A source change must re-normalize the viewport aspect"
+            )
+
+            // A resolution change on the same display is an aspect change too.
+            let resizedSameDisplay = DisplayDescriptor(
+                id: landscape16x9.id,
+                uuid: landscape16x9.uuid,
+                name: landscape16x9.name,
+                bounds: CGRect(x: -212, y: -1080, width: 1600, height: 1200),
+                isActive: true,
+                mirrorMasterID: nil
+            )
+            controller.setSources([resizedSameDisplay], selectedID: resizedSameDisplay.id)
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                4.0 / 3.0,
+                accuracy: 0.002,
+                "An aspect change on the same display must re-normalize"
+            )
+
+            // Repeated same-source refreshes must not churn the window or frame callbacks.
+            var frameCallbacks = 0
+            controller.onFrameChanged = { _ in frameCallbacks += 1 }
+            let settled = controller.previewSize
+            controller.setSources([resizedSameDisplay], selectedID: resizedSameDisplay.id)
+            controller.setSources([resizedSameDisplay], selectedID: resizedSameDisplay.id)
+            XCTAssertEqual(frameCallbacks, 0, "An unchanged source must not resize or notify")
+            XCTAssertEqual(controller.previewSize.width, settled.width, accuracy: 0.5)
+            XCTAssertEqual(controller.previewSize.height, settled.height, accuracy: 0.5)
+            controller.close()
+        }
+    }
+
+    func testResizeConstraintIsIdempotent() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let delegate: NSWindowDelegate = controller
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+
+            let proposed = NSSize(width: 700, height: 400)
+            guard let once = delegate.windowWillResize?(panel, to: proposed) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            guard let twice = delegate.windowWillResize?(panel, to: once) else {
+                return XCTFail("A user resize with a selected source must be aspect-constrained")
+            }
+            XCTAssertEqual(twice.width, once.width, accuracy: 1, "Re-constraining a settled size must not jitter")
+            XCTAssertEqual(twice.height, once.height, accuracy: 1)
+            controller.close()
+        }
+    }
+
+    func testSourceMenuSelectionRenormalizesTheViewport() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            controller.setSources([landscape16x9, portrait9x16], selectedID: landscape16x9.id)
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            var selected: CGDirectDisplayID?
+            controller.onSourceSelected = { selected = $0 }
+
+            let menu = controller.makeControlsMenu()
+            guard let item = menu.items.first(where: {
+                ($0.representedObject as? NSNumber)?.uint32Value == portrait9x16.id
+            }) else { return XCTFail("Expected a source menu item for the portrait display") }
+            guard let action = item.action else { return XCTFail("Expected a source action") }
+            XCTAssertTrue(
+                NSApp.sendAction(action, to: item.target, from: item),
+                "Fixture: the source menu item must dispatch to its target"
+            )
+
+            XCTAssertEqual(selected, portrait9x16.id)
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                1080.0 / 1920.0,
+                accuracy: 0.002,
+                "Choosing a source from the menu must re-normalize the viewport aspect"
+            )
+            controller.close()
+        }
+    }
+
+    // MARK: - Aspect fixtures and independent geometry helpers
+
+    private var landscape16x9: DisplayDescriptor {
+        DisplayDescriptor(
+            id: 2,
+            uuid: "DELL-P2217H",
+            name: "DELL P2217H",
+            bounds: CGRect(x: -212, y: -1080, width: 1920, height: 1080),
+            isActive: true,
+            mirrorMasterID: nil
+        )
+    }
+
+    private var portrait9x16: DisplayDescriptor {
+        DisplayDescriptor(
+            id: 3,
+            uuid: "PORTRAIT-1080",
+            name: "Portrait 1080",
+            bounds: CGRect(x: 1512, y: -800, width: 1080, height: 1920),
+            isActive: true,
+            mirrorMasterID: nil
+        )
+    }
+
+    /// AppKit-derived preview viewport for a window frame size: the content rect minus
+    /// the shared 10 pt gap. Deliberately independent of the production chrome formula
+    /// so a dropped titlebar or gap cannot pass.
+    @MainActor
+    private func previewViewport(forFrameSize size: NSSize, in panel: NSPanel) -> NSSize {
+        let content = panel.contentRect(forFrameRect: NSRect(origin: .zero, size: size)).size
+        return NSSize(width: content.width, height: content.height - WidgetPanelContentLayout.topGap)
+    }
+
+    /// Smaller-scale fit of a source aspect inside the proposed viewport, with the
+    /// documented fallback where the native minimum wins and the residual is letterboxed.
+    @MainActor
+    private func fittedPreviewViewport(
+        proposingFrameSize size: NSSize,
+        in panel: NSPanel,
+        aspect: CGFloat
+    ) -> NSSize {
+        let proposed = previewViewport(forFrameSize: size, in: panel)
+        let scale = min(proposed.width / aspect, proposed.height)
+        var width = aspect * scale
+        var height = scale
+        let minimum = NSSize(
+            width: panel.contentMinSize.width,
+            height: panel.contentMinSize.height - WidgetPanelContentLayout.topGap
+        )
+        if width < minimum.width || height < minimum.height {
+            width = max(minimum.width, min(width, proposed.width))
+            height = max(minimum.height, min(height, proposed.height))
+        }
+        return NSSize(width: width, height: height)
+    }
+
+    @MainActor
+    private func assertViewport(
+        _ frameSize: NSSize,
+        matches expected: NSSize,
+        in panel: NSPanel,
+        accuracy: CGFloat = 0.5,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let actual = previewViewport(forFrameSize: frameSize, in: panel)
+        XCTAssertEqual(actual.width, expected.width, accuracy: accuracy, file: file, line: line)
+        XCTAssertEqual(actual.height, expected.height, accuracy: accuracy, file: file, line: line)
     }
 
     @MainActor
