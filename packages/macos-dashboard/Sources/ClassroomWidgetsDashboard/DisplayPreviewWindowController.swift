@@ -30,8 +30,15 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     private var centerEnabled = false
 
     init(frame: NSRect, backgroundOpacity: Double, keepOnAllSpaces: Bool) {
+        let minimumContentSize = NSSize(width: 320, height: 240)
         let panel = NSPanel(
-            contentRect: frame,
+            contentRect: NSRect(
+                origin: .zero,
+                size: NSSize(
+                    width: max(frame.width, minimumContentSize.width),
+                    height: max(frame.height, minimumContentSize.height)
+                )
+            ),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -45,10 +52,12 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         panel.hidesOnDeactivate = false
         panel.acceptsMouseMovedEvents = true
         panel.isReleasedWhenClosed = false
-        panel.contentMinSize = NSSize(width: 320, height: 240)
+        panel.contentMinSize = minimumContentSize
         super.init(window: panel)
         panel.delegate = self
         configureContent(in: panel)
+        // `frame` is a window frame, matching the value persisted from `window.frame`.
+        panel.setFrame(frame, display: false)
         previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
@@ -74,6 +83,61 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         selectedSourceID = sources.contains(where: { $0.id == selectedID }) ? selectedID : nil
         menuButton.isEnabled = !sources.isEmpty
         updateMenuAccessibility()
+    }
+
+    /// Preview viewport size: the content layout area minus the shared titlebar gap.
+    var previewSize: NSSize {
+        guard let window else { return .zero }
+        let layout = window.contentLayoutRect
+        return NSSize(width: layout.width, height: max(layout.height - WidgetPanelContentLayout.topGap, 1))
+    }
+
+    /// Native titlebar plus the shared 10 pt gap. Measured from the live window so
+    /// callers never have to hard-code chrome height.
+    var previewChromeHeight: CGFloat {
+        guard let window else { return 0 }
+        let contentHeight = window.contentLayoutRect.height
+        guard contentHeight > 0 else { return 0 }
+        return max(window.frame.height - contentHeight, 0) + WidgetPanelContentLayout.topGap
+    }
+
+    var currentSourceAspect: CGFloat? {
+        guard let selectedSourceID,
+              let source = sources.first(where: { $0.id == selectedSourceID }),
+              source.bounds.width > 0, source.bounds.height > 0
+        else { return nil }
+        return source.bounds.width / source.bounds.height
+    }
+
+    /// One-shot snap of the preview viewport to the source display aspect. It
+    /// preserves the approximate current width and location and installs no
+    /// persistent aspect lock, so later user resizes stay unrestricted.
+    @discardableResult
+    func matchSourceAspect(_ aspect: CGFloat, animated: Bool) -> Bool {
+        guard let window, aspect.isFinite, aspect > 0 else { return false }
+        let screen = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
+        let visibleFrame = (screen?.visibleFrame ?? window.frame).insetBy(dx: 12, dy: 12)
+        guard !visibleFrame.isEmpty else { return false }
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: aspect,
+            preservingPreviewSize: previewSize,
+            chromeHeight: previewChromeHeight,
+            minimumPreviewSize: NSSize(
+                width: window.contentMinSize.width,
+                height: max(window.contentMinSize.height - WidgetPanelContentLayout.topGap, 1)
+            ),
+            maximumSize: visibleFrame.size
+        )
+        let target = NSRect(origin: window.frame.origin, size: size).clamped(to: visibleFrame)
+        guard !target.isEmpty else { return false }
+        window.setFrame(target, display: true, animate: animated)
+        return true
+    }
+
+    @discardableResult
+    func matchCurrentSourceAspect(animated: Bool = true) -> Bool {
+        guard let aspect = currentSourceAspect else { return false }
+        return matchSourceAspect(aspect, animated: animated)
     }
 
     func showStatus(
@@ -211,6 +275,12 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     }
 
     @objc private func showControlsMenu(_ sender: NSButton) {
+        let menu = makeControlsMenu()
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
+    }
+
+    /// Exposed for tests so the menu contract is checked without popping it up.
+    func makeControlsMenu() -> NSMenu {
         let menu = NSMenu(title: "Display")
         let status = NSMenuItem(title: statusText, action: nil, keyEquivalent: "")
         status.isEnabled = false
@@ -230,6 +300,14 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
             }
         }
         menu.addItem(.separator())
+        let matchAspect = NSMenuItem(
+            title: "Match Display Aspect Ratio",
+            action: #selector(matchDisplayAspectRatio),
+            keyEquivalent: ""
+        )
+        matchAspect.target = self
+        matchAspect.isEnabled = currentSourceAspect != nil
+        menu.addItem(matchAspect)
         let center = NSMenuItem(
             title: "Move Pointer to Source Center",
             action: #selector(moveToCenter),
@@ -245,7 +323,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         )
         help.isEnabled = false
         menu.addItem(help)
-        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
+        return menu
     }
 
     @objc private func sourceChanged(_ sender: NSMenuItem) {
@@ -257,6 +335,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
 
     @objc private func toggleCapture() { onToggleCapture?() }
     @objc private func moveToCenter() { onMoveToCenter?() }
+    @objc private func matchDisplayAspectRatio() { matchCurrentSourceAspect(animated: true) }
 
     private func updateMenuAccessibility() {
         let source = sources.first(where: { $0.id == selectedSourceID })?.name ?? "No source selected"
@@ -349,6 +428,12 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     private func standardWindowButtons(in panel: NSWindow) -> [NSButton] {
         [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
             .compactMap { panel.standardWindowButton($0) }
+    }
+
+    private static func screen(containingMostOf frame: NSRect) -> NSScreen? {
+        NSScreen.screens
+            .max { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area }
+            .flatMap { $0.frame.intersection(frame).area > 0 ? $0 : nil }
     }
 
     func windowWillClose(_ notification: Notification) { onClose?() }

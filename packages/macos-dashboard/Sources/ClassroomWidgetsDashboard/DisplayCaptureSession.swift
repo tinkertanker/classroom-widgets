@@ -20,7 +20,6 @@ enum DisplayCaptureFrameDisposition: Equatable {
     case deliver
     case hold
     case stopped
-    case unavailable
 }
 
 /// Privacy-safe reason for a frame gap, suitable for structured logging.
@@ -42,8 +41,12 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     private var stream: SCStream?
     private var startInProgress = false
     private var cancelled = false
+    private var gapReported = false
     var onFrame: (@MainActor (CMSampleBuffer, CGSize) -> Void)?
-    var onUnavailable: (@MainActor () -> Void)?
+    /// Temporary frame gap on an otherwise live stream: hold the last image.
+    var onTransientGap: (@MainActor (DisplayCaptureGapReason) -> Void)?
+    /// Terminal stream status: the display stopped sending frames.
+    var onUnavailable: (@MainActor (DisplayCaptureGapReason) -> Void)?
     var onStop: (@MainActor (Error) -> Void)?
 
     init(
@@ -103,6 +106,7 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         guard let stream else { delivery.clear(); return }
         try await stream.stopCapture()
         stateLock.withLock { self.stream = nil }
+        endGapReport()
         delivery.clear()
     }
 
@@ -116,16 +120,25 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
               let statusNumber = attachments.first?[.status] as? NSNumber,
               let status = SCFrameStatus(rawValue: statusNumber.intValue)
         else { return }
-        switch Self.disposition(for: status, hasImageBuffer: sampleBuffer.imageBuffer != nil) {
+        let hasImageBuffer = sampleBuffer.imageBuffer != nil
+        switch Self.disposition(for: status, hasImageBuffer: hasImageBuffer) {
         case .ignore:
             return
-        case .unavailable:
-            Task { @MainActor [weak self] in self?.onUnavailable?() }
+        case .hold:
+            let reason = Self.gapReason(for: status, hasImageBuffer: hasImageBuffer)
+            guard beginGapReport() else { return }
+            Task { @MainActor [weak self] in self?.onTransientGap?(reason) }
+            return
+        case .stopped:
+            let reason = Self.gapReason(for: status, hasImageBuffer: hasImageBuffer)
+            guard beginGapReport() else { return }
+            Task { @MainActor [weak self] in self?.onUnavailable?(reason) }
             return
         case .deliver:
             break
         }
         guard let imageBuffer = sampleBuffer.imageBuffer else { return }
+        endGapReport()
         delivery.offer(sampleBuffer, size: CGSize(width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer)))
     }
 
@@ -133,8 +146,12 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         for status: SCFrameStatus,
         hasImageBuffer: Bool = true
     ) -> DisplayCaptureFrameDisposition {
+        // Deliberately if-based rather than an exhaustive switch so an SDK that
+        // adds status values cannot break the macOS 13 build.
         if status == .idle || status == .started { return .ignore }
-        return status == .complete && hasImageBuffer ? .deliver : .unavailable
+        if status == .complete { return hasImageBuffer ? .deliver : .hold }
+        if status == .blank || status == .suspended { return .hold }
+        return .stopped
     }
 
     static func gapReason(
@@ -145,6 +162,20 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         if status == .suspended { return .suspended }
         if status == .blank { return .blank }
         return hasImageBuffer ? .blank : .missingImageBuffer
+    }
+
+    /// Coalesces a run of gap frames into one transition so a blank or suspended
+    /// display cannot churn the coordinator at frame rate.
+    private func beginGapReport() -> Bool {
+        stateLock.withLock {
+            guard !gapReported else { return false }
+            gapReported = true
+            return true
+        }
+    }
+
+    private func endGapReport() {
+        stateLock.withLock { gapReported = false }
     }
 
     private var isStartInProgress: Bool {

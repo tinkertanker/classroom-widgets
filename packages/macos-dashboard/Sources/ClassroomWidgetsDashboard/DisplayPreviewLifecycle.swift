@@ -2,8 +2,21 @@ import CoreGraphics
 import Foundation
 
 enum DisplayPreviewStartTrigger {
+    /// A direct power-button press. May request Screen Recording access.
     case explicit
+    /// An automatic start from `open()` on a deliberate launch. Preflight only:
+    /// it must never present a new permission dialog.
+    case launch
+    /// An automatic resume after hidden/overlap. Preflight only.
     case visibilityResume
+
+    var logLabel: String {
+        switch self {
+        case .explicit: return "explicit"
+        case .launch: return "launch"
+        case .visibilityResume: return "visibilityResume"
+        }
+    }
 }
 
 enum DisplayPreviewPermissionPolicy {
@@ -13,7 +26,7 @@ enum DisplayPreviewPermissionPolicy {
     ) -> Bool {
         switch trigger {
         case .explicit: !preflightGranted
-        case .visibilityResume: false
+        case .launch, .visibilityResume: false
         }
     }
 
@@ -23,7 +36,7 @@ enum DisplayPreviewPermissionPolicy {
     ) -> Bool {
         switch trigger {
         case .explicit: true
-        case .visibilityResume: preflightGranted
+        case .launch, .visibilityResume: preflightGranted
         }
     }
 }
@@ -32,6 +45,52 @@ enum DisplayPreviewStatus {
     static func ready(sourceName _: String) -> String {
         "Click to see display"
     }
+
+    static func live(sourceName: String) -> String {
+        "Live: \(sourceName)"
+    }
+
+    /// Shown while the last good image is held across a temporary frame gap.
+    static func reconnecting(sourceName: String) -> String {
+        "Reconnecting to \(sourceName)…"
+    }
+
+    static func waitingForFirstFrame(sourceName: String) -> String {
+        "Waiting for \(sourceName) to send its first frame…"
+    }
+
+    /// Truthful terminal status for a source that stopped sending frames.
+    static func unavailable(sourceName: String) -> String {
+        "\(sourceName) stopped sending frames. Turn the preview on to retry."
+    }
+}
+
+/// Stable, privacy-safe identifiers for coordinator transitions. These are logged
+/// instead of localized status text so a later occurrence is diagnosable.
+enum DisplayPreviewTransition: String {
+    case open
+    case raise
+    case start
+    case startFailed
+    case firstFrame
+    case frameGap
+    case hold
+    case recovered
+    case recoveryExhausted
+    case streamStopped
+    case firstFrameTimeout
+    case topologyNotice
+    case topologyPreserved
+    case topologyReset
+    case sourceSelected
+    case pause
+    case close
+    case overlapSuspend
+    case overlapResume
+    case hidden
+    case revealed
+    case deferredRestart
+    case termination
 }
 
 /// What a `didChangeScreenParameters` notice means for the current preview.
@@ -45,16 +104,18 @@ enum DisplayPreviewTopologyOutcome: Equatable {
 }
 
 enum DisplayPreviewTopologyPolicy {
-    /// Mirrors today's coordinator, which resets the selected source on every
-    /// screen-parameter notice while a preview window exists.
+    /// A screen-parameter notice is only relevant when it changes the source that
+    /// is actually being previewed. Notices also fire for menu bar, Dock, colour,
+    /// and unrelated display changes, so they must not reset a live preview.
     static func outcome(
         hasWindow: Bool,
         selectedSourceID: CGDirectDisplayID?,
         currentMatchID: CGDirectDisplayID?,
         isStillEligible: Bool
     ) -> DisplayPreviewTopologyOutcome {
-        guard hasWindow, selectedSourceID != nil else { return .ignore }
-        return .reset
+        guard hasWindow, let selectedSourceID else { return .ignore }
+        guard isStillEligible, currentMatchID == selectedSourceID else { return .reset }
+        return .preserveSource
     }
 }
 
@@ -69,9 +130,11 @@ enum DisplayPreviewFirstFrameOutcome: Equatable {
 }
 
 enum DisplayPreviewFirstFramePolicy {
-    /// Mirrors today's timeout, which pauses whenever no frame was delivered.
+    /// A static display can report only `.idle` frames, which still proves the
+    /// stream is alive. Only total silence means the stream never started.
     static func outcome(deliveredFrame: Bool, streamActivity: Bool) -> DisplayPreviewFirstFrameOutcome {
-        deliveredFrame ? .wait : .pauseBroken
+        if deliveredFrame { return .wait }
+        return streamActivity ? .hold : .pauseBroken
     }
 }
 
@@ -84,15 +147,19 @@ enum DisplayPreviewLaunchOutcome: Equatable {
 }
 
 enum DisplayPreviewLaunchPolicy {
-    /// Mirrors today's `open()`, which only raises an existing window and never
-    /// starts capture from a fresh window.
+    /// A deliberate launch starts the saved or sole eligible source, but an
+    /// incidental notice must never turn an explicitly paused preview back on.
     static func outcome(
         existingWindow: Bool,
         wantsCapture: Bool,
         hasPendingRestart: Bool,
         hasSelectedSource: Bool
     ) -> DisplayPreviewLaunchOutcome {
-        existingWindow ? .raiseOnly : .createWithoutStart
+        if existingWindow {
+            guard !wantsCapture, !hasPendingRestart, hasSelectedSource else { return .raiseOnly }
+            return .raiseAndStart
+        }
+        return hasSelectedSource ? .createAndStart : .createWithoutStart
     }
 }
 
@@ -117,17 +184,30 @@ struct DisplayPreviewFrameRecovery {
 
     var isHolding: Bool { generation != nil }
 
-    /// Mirrors today's coordinator, which treats a single gap frame as terminal.
     mutating func gapDetected(generation: UInt64) -> Decision {
-        .exhausted
+        if self.generation == generation { return .holdExtended }
+        guard self.generation == nil else { return .ignored }
+        self.generation = generation
+        holdWindows = 1
+        return .holdBegan
     }
 
     mutating func frameRestored(generation: UInt64) -> Decision {
-        .ignored
+        guard self.generation == generation else { return .ignored }
+        self.generation = nil
+        holdWindows = 0
+        return .restored
     }
 
     mutating func windowExpired(generation: UInt64) -> Decision {
-        .ignored
+        guard self.generation == generation else { return .ignored }
+        guard holdWindows < Self.maximumHoldWindows else {
+            self.generation = nil
+            holdWindows = 0
+            return .exhausted
+        }
+        holdWindows += 1
+        return .holdExtended
     }
 
     mutating func cancel() {

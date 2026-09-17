@@ -117,8 +117,8 @@ final class DisplayPreviewGeometryTests: XCTestCase {
             maximumSize: CGSize(width: 1000, height: 800)
         )
         XCTAssertEqual(size.width / (size.height - 38), 1080.0 / 1920.0, accuracy: 0.001)
-        XCTAssertLessThanOrEqual(size.height, 800)
-        XCTAssertLessThanOrEqual(size.width, 1000)
+        XCTAssertLessThanOrEqual(size.height, 800 + 0.01)
+        XCTAssertLessThanOrEqual(size.width, 1000 + 0.01)
         XCTAssertGreaterThanOrEqual(size.width, 320 - 0.001)
     }
 

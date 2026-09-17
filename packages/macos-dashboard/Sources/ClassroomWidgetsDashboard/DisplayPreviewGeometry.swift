@@ -49,11 +49,13 @@ enum DisplayPreviewGeometry {
     }
 
     /// Window frame size whose preview viewport matches the source display aspect
-    /// while preserving the approximate current preview width.
+    /// while preserving the approximate current preview width and location.
     ///
     /// `previewSize` is the preview viewport only: the content area minus the
     /// shared 10 pt titlebar gap. `chromeHeight` carries the native titlebar plus
-    /// that gap, so callers never mix viewport and window coordinates.
+    /// that gap, so callers never mix viewport and window coordinates. The
+    /// preview minimum wins over the maximum; the maximum keeps the frame on the
+    /// physical screen.
     static func aspectNormalizedWindowSize(
         matchingAspect aspect: CGFloat,
         preservingPreviewSize previewSize: CGSize,
@@ -61,9 +63,48 @@ enum DisplayPreviewGeometry {
         minimumPreviewSize: CGSize,
         maximumSize: CGSize
     ) -> CGSize {
-        // Mirrors today's coordinator, which opens at the remembered size and
-        // never normalizes the preview viewport to the source aspect.
-        CGSize(width: previewSize.width, height: previewSize.height + max(chromeHeight, 0))
+        let chrome = chromeHeight.isFinite ? max(chromeHeight, 0) : 0
+        let fallback = CGSize(width: previewSize.width, height: previewSize.height + chrome)
+        guard aspect.isFinitePositive, previewSize.isFinitePositive else { return fallback }
+
+        let minimum = CGSize(
+            width: max(minimumPreviewSize.width, 1),
+            height: max(minimumPreviewSize.height, 1)
+        )
+        var width = previewSize.width
+        var height = width / aspect
+        if height < minimum.height {
+            height = minimum.height
+            width = height * aspect
+        }
+        if width < minimum.width {
+            width = minimum.width
+            height = width / aspect
+        }
+        if maximumSize.isFinitePositive {
+            let maximumPreviewHeight = max(maximumSize.height - chrome, 1)
+            let scale = min(1, min(maximumSize.width / width, maximumPreviewHeight / height))
+            if scale < 1 {
+                width *= scale
+                height *= scale
+            }
+        }
+        return CGSize(width: width, height: height + chrome)
+    }
+}
+
+extension CGRect {
+    var area: CGFloat { isNull ? 0 : width * height }
+
+    func clamped(to bounds: CGRect) -> CGRect {
+        guard !bounds.isEmpty else { return self }
+        let size = CGSize(width: min(width, bounds.width), height: min(height, bounds.height))
+        return CGRect(
+            x: min(max(minX, bounds.minX), bounds.maxX - size.width),
+            y: min(max(minY, bounds.minY), bounds.maxY - size.height),
+            width: size.width,
+            height: size.height
+        )
     }
 }
 

@@ -25,8 +25,28 @@ struct DisplayDescriptor: Equatable {
 @MainActor
 final class DisplayCatalog {
     private(set) var topologyRevision: UInt64 = 1
+    private var topologySignature: String?
 
-    func topologyChanged() { topologyRevision &+= 1 }
+    /// Returns true only when the connected-display set actually changed.
+    /// `didChangeScreenParameters` also fires for menu bar, Dock, colour, and
+    /// unrelated display changes, so callers must not treat every notice as a reset.
+    @discardableResult
+    func refreshTopology() -> Bool {
+        let signature = displays().map { display in
+            "\(display.id):\(display.uuid):\(display.bounds):\(display.isActive):\(display.mirrorMasterID ?? 0)"
+        }.joined(separator: "|")
+        guard signature != topologySignature else { return false }
+        topologySignature = signature
+        topologyRevision &+= 1
+        return true
+    }
+
+    /// Public display IDs and bounds only; safe for structured logging.
+    func topologySummary() -> String {
+        displays().map { display in
+            "\(display.id)@\(Int(display.bounds.minX)),\(Int(display.bounds.minY)):\(Int(display.bounds.width))x\(Int(display.bounds.height))\(display.isActive ? "" : ":inactive")"
+        }.joined(separator: ",")
+    }
 
     func displays() -> [DisplayDescriptor] {
         NSScreen.screens.compactMap { screen in

@@ -19,6 +19,10 @@ final class DisplayPreviewCoordinator: NSObject {
     private var stopOperation: DisplayPreviewStopOperation?
     private var pendingStopPresentation = DisplayPreviewPendingStopPresentation()
     private var autoResume = DisplayPreviewAutoResumeState()
+    private var frameRecovery = DisplayPreviewFrameRecovery()
+    private var deliveredFrameGeneration: UInt64?
+    private var streamActivityGeneration: UInt64?
+    private var pendingOpeningAspect = false
     private var backgroundOpacity = 1.0
     private var keepOnAllSpaces = true
     private var observers: [NSObjectProtocol] = []
@@ -44,9 +48,24 @@ final class DisplayPreviewCoordinator: NSObject {
         if let window = windowController?.window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
+            switch DisplayPreviewLaunchPolicy.outcome(
+                existingWindow: true,
+                wantsCapture: intent.wantsCapture,
+                hasPendingRestart: autoResume.hasPendingRestart,
+                hasSelectedSource: selectedSource != nil
+            ) {
+            case .raiseAndStart:
+                logDisplayTransition(.raise, trigger: "deliberateLaunch", intent: intent.wantsCapture, enabled: true)
+                start(trigger: .launch)
+            case .raiseOnly:
+                logDisplayTransition(.raise, trigger: "deliberateLaunch", intent: intent.wantsCapture, enabled: selectedSource != nil)
+            case .createWithoutStart, .createAndStart:
+                break
+            }
             return
         }
         intent.open()
+        pendingOpeningAspect = true
         let frame = restoredFrame() ?? initialFrame()
         let controller = DisplayPreviewWindowController(
             frame: frame, backgroundOpacity: backgroundOpacity, keepOnAllSpaces: keepOnAllSpaces
@@ -54,8 +73,23 @@ final class DisplayPreviewCoordinator: NSObject {
         windowController = controller
         wire(controller)
         refreshSources(preselect: true)
+        logDisplayTransition(
+            .open,
+            trigger: "deliberateLaunch",
+            source: selectedSource,
+            intent: intent.wantsCapture,
+            enabled: selectedSource != nil
+        )
         controller.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        if DisplayPreviewLaunchPolicy.outcome(
+            existingWindow: false,
+            wantsCapture: intent.wantsCapture,
+            hasPendingRestart: autoResume.hasPendingRestart,
+            hasSelectedSource: selectedSource != nil
+        ) == .createAndStart {
+            start(trigger: .launch)
+        }
     }
 
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
@@ -66,6 +100,13 @@ final class DisplayPreviewCoordinator: NSObject {
 
     func restartIfRunning() {
         guard intent.wantsCapture else { return }
+        logDisplayTransition(
+            .deferredRestart,
+            trigger: "reloadWidgets",
+            source: selectedSource,
+            intent: true,
+            enabled: true
+        )
         autoResume.requestRestart(sourceUUID: selectedSource?.uuid)
         pause(message: "Restarting preview…", preservingDeferredRestart: true)
     }
@@ -75,8 +116,16 @@ final class DisplayPreviewCoordinator: NSObject {
     func prepareForTermination() async -> Bool {
         stopLifecycle.beginTermination()
         cancelDeferredRestarts()
+        frameRecovery.cancel()
         intent.pause()
         clearFrame(status: "Paused while Classroom Widgets quits.")
+        logDisplayTransition(
+            .termination,
+            trigger: "prepareForTermination",
+            source: selectedSource,
+            intent: false,
+            enabled: session != nil
+        )
         guard let session else { return true }
         if stopLifecycle.isBlocked {
             if stopOperation?.matches(session) == true, stopOperation?.state == .running {
@@ -144,6 +193,24 @@ final class DisplayPreviewCoordinator: NSObject {
                 powerState: .off, powerEnabled: false, centerEnabled: false
             )
         }
+        normalizeOpeningAspectIfNeeded()
+    }
+
+    /// A fresh deliberate launch sizes the preview viewport to the source display
+    /// aspect once. Later user resizes stay unrestricted; the menu item re-snaps on demand.
+    private func normalizeOpeningAspectIfNeeded() {
+        guard pendingOpeningAspect, let source = selectedSource, let controller = windowController else { return }
+        pendingOpeningAspect = false
+        let aspect = source.bounds.width / source.bounds.height
+        guard controller.matchSourceAspect(aspect, animated: false) else { return }
+        logDisplayTransition(
+            .open,
+            trigger: "openingAspect",
+            source: source,
+            intent: intent.wantsCapture,
+            enabled: true,
+            extra: "aspect=\(String(format: "%.3f", aspect))"
+        )
     }
 
     private func selectSource(_ id: CGDirectDisplayID?) {
@@ -151,23 +218,38 @@ final class DisplayPreviewCoordinator: NSObject {
         let source = catalog.eligibleSources(hostDisplayID: hostID).first { $0.id == id }
         guard source != selectedSource else { return }
         cancelDeferredRestarts()
+        frameRecovery.cancel()
         intent.select(sourceID: source?.id)
         selectedSource = source
         presentedGeometry = nil
         windowController?.clearFrame()
         if let source { defaultsWriter.set(source.uuid, forKey: Keys.sourceUUID) }
+        logDisplayTransition(
+            .sourceSelected,
+            trigger: "sourceMenu",
+            source: source,
+            intent: intent.wantsCapture,
+            enabled: source != nil
+        )
         let readyPresentation = source.map { DisplayPreviewPresentation.ready(sourceName: $0.name) }
         stopCurrent(
             message: readyPresentation?.message ?? "Choose a source display.",
             completionPresentation: readyPresentation
         )
+        normalizeOpeningAspectIfNeeded()
     }
 
     private func toggleCapture() {
         if autoResume.hasPendingRestart {
+            logDisplayTransition(
+                .pause, trigger: "powerToggle", source: selectedSource, intent: false, enabled: true
+            )
             autoResume.cancel()
             pause(message: "Paused.")
         } else if intent.wantsCapture {
+            logDisplayTransition(
+                .pause, trigger: "powerToggle", source: selectedSource, intent: false, enabled: true
+            )
             pause(message: "Paused.")
         } else {
             start()
@@ -190,6 +272,14 @@ final class DisplayPreviewCoordinator: NSObject {
         ) else {
             intent.pause()
             autoResume.cancel()
+            logDisplayTransition(
+                .startFailed,
+                trigger: trigger.logLabel,
+                reason: "permissionPreflightDenied",
+                source: source,
+                intent: false,
+                enabled: true
+            )
             controllerStatus(
                 "Screen Recording access is off. Turn the preview on to request access again.",
                 enabled: true
@@ -203,6 +293,17 @@ final class DisplayPreviewCoordinator: NSObject {
             guard requestCapturePermission() else { return }
         }
         guard let generation = intent.start() else { return }
+        deliveredFrameGeneration = nil
+        streamActivityGeneration = nil
+        frameRecovery.cancel()
+        logDisplayTransition(
+            .start,
+            trigger: trigger.logLabel,
+            source: source,
+            intent: true,
+            enabled: true,
+            generation: generation
+        )
         controller.showStatus("Starting…", powerState: .on, powerEnabled: true, centerEnabled: false)
         let capture = DisplayCaptureSession(sourceID: source.id)
         session = capture
@@ -212,6 +313,19 @@ final class DisplayPreviewCoordinator: NSObject {
                   self.intent.accepts(generation: generation, sourceID: source.id),
                   self.catalog.currentMatching(source) != nil
             else { return }
+            let isFirstDeliveredFrame = self.deliveredFrameGeneration != generation
+            self.deliveredFrameGeneration = generation
+            self.streamActivityGeneration = generation
+            if self.frameRecovery.frameRestored(generation: generation) == .restored {
+                self.logDisplayTransition(
+                    .recovered,
+                    trigger: "frame",
+                    source: source,
+                    intent: true,
+                    enabled: true,
+                    generation: generation
+                )
+            }
             guard self.windowController?.showFrame(buffer, size: size) == true else {
                 self.clearFrame(status: "The preview renderer stopped. Turn the preview off, then on to retry.")
                 return
@@ -222,7 +336,34 @@ final class DisplayPreviewCoordinator: NSObject {
                 sourceID: source.id, topologyRevision: self.catalog.topologyRevision
             )
             self.windowController?.showStatus(
-                "Live: \(source.name)", powerState: .on, powerEnabled: true, centerEnabled: true
+                DisplayPreviewStatus.live(sourceName: source.name),
+                powerState: .on, powerEnabled: true, centerEnabled: true
+            )
+            if isFirstDeliveredFrame {
+                self.logDisplayTransition(
+                    .firstFrame,
+                    trigger: "frame",
+                    source: source,
+                    intent: true,
+                    enabled: true,
+                    generation: generation
+                )
+            }
+        }
+        capture.onTransientGap = { [weak self, weak capture] reason in
+            guard let self, let capture,
+                  DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
+                    ownsSession: self.session === capture,
+                    acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
+                  )
+            else { return }
+            self.streamActivityGeneration = generation
+            self.holdForFrameGap(
+                generation: generation,
+                source: source,
+                capture: capture,
+                reason: reason,
+                message: DisplayPreviewStatus.reconnecting(sourceName: source.name)
             )
         }
         capture.onStop = { [weak self, weak capture] error in
@@ -247,17 +388,28 @@ final class DisplayPreviewCoordinator: NSObject {
                 self.publishPendingStopPresentation()
             }
         }
-        capture.onUnavailable = { [weak self, weak capture] in
+        capture.onUnavailable = { [weak self, weak capture] reason in
             guard let self, let capture,
                   DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
                     ownsSession: self.session === capture,
                     acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
                   )
             else { return }
+            self.frameRecovery.cancel()
             self.cancelDeferredRestarts()
-            self.clearFrame(status: "The selected display is temporarily unavailable. Turn the preview on when it returns.")
+            let message = DisplayPreviewStatus.unavailable(sourceName: source.name)
+            self.logDisplayTransition(
+                .streamStopped,
+                trigger: "frameStatus",
+                reason: reason.rawValue,
+                source: source,
+                intent: false,
+                enabled: true,
+                generation: generation
+            )
+            self.clearFrame(status: message)
             self.intent.pause()
-            self.stopCurrent(message: "The selected display is temporarily unavailable.")
+            self.stopCurrent(message: message)
         }
         let outputSize = captureOutputSize(for: source, view: controller.previewView)
         Task { @MainActor [weak self, weak capture] in
@@ -280,6 +432,15 @@ final class DisplayPreviewCoordinator: NSObject {
             } catch {
                 if self.stopLifecycle.release(capture) { self.session = nil }
                 guard self.intent.accepts(generation: generation, sourceID: source.id) else { return }
+                self.logDisplayTransition(
+                    .startFailed,
+                    trigger: "start",
+                    reason: "startThrew",
+                    source: source,
+                    intent: false,
+                    enabled: true,
+                    generation: generation
+                )
                 self.intent.pause()
                 self.clearFrame(status: "Unable to start: \(error.localizedDescription)")
             }
@@ -315,6 +476,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private func pause(message: String, preservingDeferredRestart: Bool = false) {
         autoResume.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
         intent.pause()
+        frameRecovery.cancel()
         clearFrame(status: message)
         stopCurrent(message: message)
     }
@@ -361,8 +523,12 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func close() {
         cancelDeferredRestarts()
+        frameRecovery.cancel()
         intent.close()
         clearFrame(status: "Closed.")
+        logDisplayTransition(
+            .close, trigger: "closeButton", source: selectedSource, intent: false, enabled: false
+        )
         persist(frame: windowController?.window?.frame ?? .zero)
         windowController = nil
         stopCurrent(message: "Closed.")
@@ -371,15 +537,79 @@ final class DisplayPreviewCoordinator: NSObject {
     private func interrupt(message: String) {
         guard windowController != nil else { return }
         cancelDeferredRestarts()
+        logDisplayTransition(
+            .pause, trigger: "systemInterrupt", source: selectedSource, intent: false, enabled: true
+        )
         pause(message: message)
     }
 
     private func screenParametersChanged() {
-        catalog.topologyChanged()
+        let topologyChanged = catalog.refreshTopology()
+        logDisplayTransition(
+            .topologyNotice,
+            trigger: "didChangeScreenParameters",
+            reason: topologyChanged ? "topologyChanged" : "noTopologyChange",
+            source: selectedSource,
+            intent: intent.wantsCapture,
+            enabled: selectedSource != nil,
+            extra: "displays=\(catalog.topologySummary())"
+        )
+        guard let controller = windowController else { return }
+        controller.previewView.discardPendingClick()
+        let hostID = DisplayCatalog.displayID(for: controller.window?.screen)
+        let candidates = catalog.eligibleSources(hostDisplayID: hostID)
+        let match = selectedSource.flatMap { catalog.currentMatching($0) }
+        let isStillEligible = match.map { current in
+            candidates.contains { $0.uuid == current.uuid }
+        } ?? false
+
+        switch DisplayPreviewTopologyPolicy.outcome(
+            hasWindow: true,
+            selectedSourceID: selectedSource?.id,
+            currentMatchID: match?.id,
+            isStillEligible: isStillEligible
+        ) {
+        case .ignore:
+            controller.setSources(candidates, selectedID: selectedSource?.id)
+            return
+        case .preserveSource:
+            guard let current = match else { return }
+            selectedSource = current
+            controller.setSources(candidates, selectedID: current.id)
+            if topologyChanged, let geometry = presentedGeometry {
+                // Same source and bounds: keep pointer mapping usable by adopting
+                // the new revision instead of discarding it.
+                presentedGeometry = DisplayPreviewFrameGeometry(
+                    imageRect: geometry.imageRect,
+                    sourceBounds: current.bounds,
+                    sourceID: current.id,
+                    topologyRevision: catalog.topologyRevision
+                )
+            }
+            logDisplayTransition(
+                .topologyPreserved,
+                trigger: "didChangeScreenParameters",
+                reason: "sourceStillValid",
+                source: current,
+                intent: intent.wantsCapture,
+                enabled: true
+            )
+            return
+        case .reset:
+            break
+        }
+
         cancelDeferredRestarts()
-        windowController?.previewView.discardPendingClick()
+        frameRecovery.cancel()
         presentedGeometry = nil
-        guard windowController != nil else { return }
+        logDisplayTransition(
+            .topologyReset,
+            trigger: "didChangeScreenParameters",
+            reason: selectedSource == nil ? "noSelectedSource" : "sourceChanged",
+            source: selectedSource,
+            intent: false,
+            enabled: false
+        )
         pause(message: "Display arrangement changed. Check the source, then turn the preview on.")
         selectedSource = nil
         intent.select(sourceID: nil)
@@ -389,6 +619,9 @@ final class DisplayPreviewCoordinator: NSObject {
     private func visibilityChanged(_ visible: Bool) {
         if !visible {
             if autoResume.hidden(wasRunning: intent.wantsCapture, sourceUUID: selectedSource?.uuid) == .suspend {
+                logDisplayTransition(
+                    .hidden, trigger: "miniaturize", source: selectedSource, intent: false, enabled: true
+                )
                 pause(message: "Preview suspended while its window is hidden.", preservingDeferredRestart: true)
                 publishStopStatus("Preview suspended while its window is hidden.")
             }
@@ -397,7 +630,11 @@ final class DisplayPreviewCoordinator: NSObject {
                 sessionExists: session != nil,
                 currentSourceUUID: selectedSource?.uuid
             ) {
-            case .startNow: start(trigger: .visibilityResume)
+            case .startNow:
+                logDisplayTransition(
+                    .revealed, trigger: "deminiaturize", source: selectedSource, intent: true, enabled: true
+                )
+                start(trigger: .visibilityResume)
             case .startAfterStop, .suspend, .none: break
             }
         }
@@ -428,14 +665,151 @@ final class DisplayPreviewCoordinator: NSObject {
         }
     }
 
+    /// Retains the last good image and enabled intent across a temporary frame gap
+    /// on the same authorized source. Bounded and cancellable; it never starts a
+    /// replacement stream and never requests permission.
+    private func holdForFrameGap(
+        generation: UInt64,
+        source: DisplayDescriptor,
+        capture: DisplayCaptureSession,
+        reason: DisplayCaptureGapReason,
+        message: String
+    ) {
+        switch frameRecovery.gapDetected(generation: generation) {
+        case .holdBegan:
+            presentedGeometry = nil
+            windowController?.previewView.discardPendingClick()
+            windowController?.previewView.setImageStale(true)
+            windowController?.showStatus(
+                message,
+                powerState: .on,
+                powerEnabled: true,
+                centerEnabled: false
+            )
+            logDisplayTransition(
+                .hold,
+                trigger: "frameStatus",
+                reason: reason.rawValue,
+                source: source,
+                intent: true,
+                enabled: true,
+                generation: generation
+            )
+            scheduleRecoveryWindow(generation: generation, source: source, capture: capture)
+        case .holdExtended, .ignored, .restored, .exhausted:
+            break
+        }
+    }
+
+    private func scheduleRecoveryWindow(
+        generation: UInt64,
+        source: DisplayDescriptor,
+        capture: DisplayCaptureSession
+    ) {
+        Task { @MainActor [weak self, weak capture] in
+            try? await Task.sleep(nanoseconds: DisplayPreviewFrameRecovery.holdWindowNanoseconds)
+            guard let self, let capture, self.session === capture,
+                  self.intent.accepts(generation: generation, sourceID: source.id)
+            else { return }
+            guard CGPreflightScreenCaptureAccess() else {
+                // Permission was revoked while holding: stop recovery immediately
+                // rather than waiting out the remaining hold window.
+                self.frameRecovery.cancel()
+                self.logDisplayTransition(
+                    .recoveryExhausted,
+                    trigger: "permissionRevoked",
+                    source: source,
+                    intent: false,
+                    enabled: true,
+                    generation: generation
+                )
+                self.pause(message: DisplayPreviewStatus.unavailable(sourceName: source.name))
+                return
+            }
+            switch self.frameRecovery.windowExpired(generation: generation) {
+            case .holdExtended:
+                self.scheduleRecoveryWindow(generation: generation, source: source, capture: capture)
+            case .exhausted:
+                self.logDisplayTransition(
+                    .recoveryExhausted,
+                    trigger: "holdWindowExpired",
+                    source: source,
+                    intent: false,
+                    enabled: true,
+                    generation: generation
+                )
+                self.pause(message: DisplayPreviewStatus.unavailable(sourceName: source.name))
+            case .holdBegan, .restored, .ignored:
+                break
+            }
+        }
+    }
+
     private func beginFirstFrameTimeout(generation: UInt64, sourceID: CGDirectDisplayID, capture: DisplayCaptureSession) {
         Task { @MainActor [weak self, weak capture] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             guard let self, let capture, self.session === capture,
-                  self.intent.accepts(generation: generation, sourceID: sourceID), self.presentedGeometry == nil
+                  self.intent.accepts(generation: generation, sourceID: sourceID),
+                  let source = self.selectedSource
             else { return }
-            self.pause(message: "No usable frame arrived. Turn the preview on to retry.")
+            switch DisplayPreviewFirstFramePolicy.outcome(
+                deliveredFrame: self.deliveredFrameGeneration == generation,
+                streamActivity: self.streamActivityGeneration == generation
+            ) {
+            case .wait:
+                return
+            case .hold:
+                self.holdForFrameGap(
+                    generation: generation,
+                    source: source,
+                    capture: capture,
+                    reason: .missingImageBuffer,
+                    message: DisplayPreviewStatus.waitingForFirstFrame(sourceName: source.name)
+                )
+            case .pauseBroken:
+                self.logDisplayTransition(
+                    .firstFrameTimeout,
+                    trigger: "firstFrameDeadline",
+                    source: source,
+                    intent: false,
+                    enabled: true,
+                    generation: generation
+                )
+                self.pause(message: "No usable frame arrived. Turn the preview on to retry.")
+            }
         }
+    }
+
+    private func logDisplayTransition(
+        _ transition: DisplayPreviewTransition,
+        trigger: String,
+        reason: String? = nil,
+        source: DisplayDescriptor? = nil,
+        intent: Bool? = nil,
+        enabled: Bool? = nil,
+        generation: UInt64? = nil,
+        extra: String? = nil
+    ) {
+        var fields = "event=\(transition.rawValue) trigger=\(trigger)"
+        if let reason { fields += " reason=\(reason)" }
+        if let intent { fields += " intent=\(intent ? "capture" : "paused")" }
+        if let enabled { fields += " enabled=\(enabled)" }
+        if let source {
+            fields += " sourceID=\(source.id) sourceHash=\(Self.displayIdentifierHash(source.uuid))"
+        }
+        fields += " topology=\(catalog.topologyRevision)"
+        if let generation { fields += " generation=\(generation)" }
+        if let extra { fields += " \(extra)" }
+        DashboardLog.windowing.info("Display Preview \(fields, privacy: .public)")
+    }
+
+    /// Non-reversible identifier so logs never carry a raw display UUID.
+    private static func displayIdentifierHash(_ uuid: String) -> String {
+        var hash: UInt64 = 0xcbf2_9ce4_8422_2325
+        for byte in uuid.utf8 {
+            hash = (hash ^ UInt64(byte)) &* 0x0000_0100_0000_01b3
+        }
+        return String(hash, radix: 16)
     }
 
     private func clearFrame(status: String) {
@@ -467,9 +841,15 @@ final class DisplayPreviewCoordinator: NSObject {
         ) {
         case .suspend:
             let message = "Preview suspended while it overlaps the source display. Move it fully clear to resume."
+            logDisplayTransition(
+                .overlapSuspend, trigger: "windowPlacement", source: source, intent: false, enabled: true
+            )
             pause(message: message, preservingDeferredRestart: true)
             publishStopStatus(message)
         case .startNow:
+            logDisplayTransition(
+                .overlapResume, trigger: "windowPlacement", source: source, intent: true, enabled: true
+            )
             start(trigger: .visibilityResume)
         case .none, .startAfterStop: break
         }
@@ -689,18 +1069,5 @@ final class DisplayPreviewStopOperation {
     private func timeout(_ waiterID: UUID) {
         guard let continuation = waiters.removeValue(forKey: waiterID) else { return }
         continuation.resume(returning: false)
-    }
-}
-
-private extension CGRect {
-    var area: CGFloat { isNull ? 0 : width * height }
-    func clamped(to bounds: CGRect) -> CGRect {
-        guard !bounds.isEmpty else { return self }
-        let size = CGSize(width: min(width, bounds.width), height: min(height, bounds.height))
-        return CGRect(
-            x: min(max(minX, bounds.minX), bounds.maxX - size.width),
-            y: min(max(minY, bounds.minY), bounds.maxY - size.height),
-            width: size.width, height: size.height
-        )
     }
 }

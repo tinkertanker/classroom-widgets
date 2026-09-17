@@ -542,6 +542,56 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertEqual(recovery.frameRestored(generation: 4), .ignored)
     }
 
+    func testDeliberateLaunchStartsWithPreflightOnlyPermission() {
+        XCTAssertFalse(
+            DisplayPreviewPermissionPolicy.shouldRequestPermission(for: .launch, preflightGranted: false),
+            "An automatic launch must never present a new Screen Recording dialog"
+        )
+        XCTAssertFalse(
+            DisplayPreviewPermissionPolicy.canStart(for: .launch, preflightGranted: false),
+            "Without preflight access a launch leaves an actionable status instead of prompting"
+        )
+        XCTAssertTrue(DisplayPreviewPermissionPolicy.canStart(for: .launch, preflightGranted: true))
+        XCTAssertFalse(DisplayPreviewPermissionPolicy.shouldRequestPermission(for: .launch, preflightGranted: true))
+        XCTAssertTrue(
+            DisplayPreviewPermissionPolicy.shouldRequestPermission(for: .explicit, preflightGranted: false),
+            "A direct power click keeps the existing explicit permission request flow"
+        )
+        XCTAssertTrue(DisplayPreviewPermissionPolicy.canStart(for: .explicit, preflightGranted: false))
+        XCTAssertEqual(DisplayPreviewStartTrigger.launch.logLabel, "launch")
+    }
+
+    func testHoldStatusesNameTheSourceAndStayTruthful() {
+        XCTAssertEqual(DisplayPreviewStatus.ready(sourceName: "DELL P2217H"), "Click to see display")
+        XCTAssertEqual(DisplayPreviewStatus.live(sourceName: "DELL P2217H"), "Live: DELL P2217H")
+        XCTAssertEqual(
+            DisplayPreviewStatus.reconnecting(sourceName: "DELL P2217H"),
+            "Reconnecting to DELL P2217H…"
+        )
+        XCTAssertEqual(
+            DisplayPreviewStatus.waitingForFirstFrame(sourceName: "DELL P2217H"),
+            "Waiting for DELL P2217H to send its first frame…"
+        )
+        XCTAssertEqual(
+            DisplayPreviewStatus.unavailable(sourceName: "DELL P2217H"),
+            "DELL P2217H stopped sending frames. Turn the preview on to retry."
+        )
+    }
+
+    func testRepeatedTopologyRefreshWithoutChangeDoesNotInvalidateLiveGeometry() async {
+        await MainActor.run {
+            let catalog = DisplayCatalog()
+            XCTAssertTrue(catalog.refreshTopology(), "The first observation establishes the signature")
+            let revision = catalog.topologyRevision
+            XCTAssertFalse(
+                catalog.refreshTopology(),
+                "A screen-parameter notice with an unchanged display set must not bump the revision"
+            )
+            XCTAssertEqual(catalog.topologyRevision, revision)
+            XCTAssertFalse(catalog.topologySummary().isEmpty)
+        }
+    }
+
     private func overlappingState() -> DisplayPreviewAutoResumeState {
         var state = DisplayPreviewAutoResumeState()
         _ = state.placementChanged(

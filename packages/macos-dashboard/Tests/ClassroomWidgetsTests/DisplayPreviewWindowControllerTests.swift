@@ -364,6 +364,154 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
+    func testControlsMenuOffersAspectSnapOnlyForACurrentSource() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            controller.setSources([], selectedID: nil)
+            XCTAssertNil(controller.currentSourceAspect)
+            let disabledMenu = controller.makeControlsMenu()
+            guard let disabledItem = disabledMenu.items.first(where: { $0.title == "Match Display Aspect Ratio" })
+            else { return XCTFail("Expected Match Display Aspect Ratio menu item") }
+            XCTAssertFalse(disabledItem.isEnabled)
+            XCTAssertFalse(controller.matchCurrentSourceAspect(animated: false))
+
+            let source = DisplayDescriptor(
+                id: 2,
+                uuid: "DELL-P2217H",
+                name: "DELL P2217H",
+                bounds: CGRect(x: -212, y: -1080, width: 1920, height: 1080),
+                isActive: true,
+                mirrorMasterID: nil
+            )
+            controller.setSources([source], selectedID: source.id)
+            let enabledMenu = controller.makeControlsMenu()
+            guard let enabledItem = enabledMenu.items.first(where: { $0.title == "Match Display Aspect Ratio" })
+            else { return XCTFail("Expected Match Display Aspect Ratio menu item") }
+            XCTAssertTrue(enabledItem.isEnabled)
+            XCTAssertEqual(controller.currentSourceAspect ?? 0, 1920.0 / 1080.0, accuracy: 0.0001)
+            controller.close()
+        }
+    }
+
+    func testAspectSnapMatchesSourceViewportAndLeavesUserResizeUnrestricted() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 40, y: 60, width: 1198, height: 783),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let source = DisplayDescriptor(
+                id: 2,
+                uuid: "DELL-P2217H",
+                name: "DELL P2217H",
+                bounds: CGRect(x: -212, y: -1080, width: 1920, height: 1080),
+                isActive: true,
+                mirrorMasterID: nil
+            )
+            controller.setSources([source], selectedID: source.id)
+
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            let snapped = controller.previewSize
+            XCTAssertEqual(
+                snapped.width / snapped.height,
+                16.0 / 9.0,
+                accuracy: 0.002,
+                "The preview viewport, not the outer window rectangle, must match the source aspect"
+            )
+            XCTAssertEqual(
+                controller.previewChromeHeight,
+                panel.frame.height - snapped.height,
+                accuracy: 0.5,
+                "Titlebar and the 10 pt gap must stay outside the matched viewport"
+            )
+            XCTAssertEqual(
+                (panel.contentView?.bounds.height ?? 0) - snapped.height,
+                WidgetPanelContentLayout.topGap,
+                accuracy: 0.5
+            )
+            let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame
+            if let visibleFrame {
+                XCTAssertGreaterThanOrEqual(snapped.width, panel.contentMinSize.width - 0.5)
+                XCTAssertLessThanOrEqual(panel.frame.width, visibleFrame.width + 0.5)
+                XCTAssertLessThanOrEqual(panel.frame.height, visibleFrame.height + 0.5)
+            }
+
+            // A user resize is never forced back onto the source aspect...
+            panel.setFrame(
+                NSRect(origin: panel.frame.origin, size: NSSize(width: 600, height: 500)),
+                display: false
+            )
+            XCTAssertEqual(controller.previewSize.width, 600, accuracy: 1)
+            XCTAssertNotEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                16.0 / 9.0,
+                accuracy: 0.01,
+                "Unrestricted user resize must be able to letterbox"
+            )
+            let delegate: NSWindowDelegate = controller
+            XCTAssertNil(
+                delegate.windowWillResize?(panel, to: NSSize(width: 640, height: 640)),
+                "The aspect snap must not install a persistent resize lock"
+            )
+
+            // ...until the menu action is used again.
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            XCTAssertEqual(
+                controller.previewSize.width / controller.previewSize.height,
+                16.0 / 9.0,
+                accuracy: 0.002
+            )
+            controller.close()
+        }
+    }
+
+    func testAspectSnapHonoursMinimumPreviewViewportForPortraitSource() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            let portrait = DisplayDescriptor(
+                id: 3,
+                uuid: "PORTRAIT-1080",
+                name: "Portrait 1080",
+                bounds: CGRect(x: 1512, y: -800, width: 1080, height: 1920),
+                isActive: true,
+                mirrorMasterID: nil
+            )
+            controller.setSources([portrait], selectedID: portrait.id)
+
+            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
+            let preview = controller.previewSize
+            XCTAssertEqual(
+                preview.width / preview.height,
+                1080.0 / 1920.0,
+                accuracy: 0.002,
+                "Portrait sources must not be transposed"
+            )
+            let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame ?? panel.frame
+            let maximumPreviewHeight = visibleFrame.height - controller.previewChromeHeight
+            if maximumPreviewHeight >= panel.contentMinSize.height - WidgetPanelContentLayout.topGap {
+                XCTAssertGreaterThanOrEqual(preview.width, panel.contentMinSize.width - 0.5)
+                XCTAssertGreaterThanOrEqual(
+                    preview.height,
+                    panel.contentMinSize.height - WidgetPanelContentLayout.topGap - 0.5
+                )
+            }
+            controller.close()
+        }
+    }
+
     @MainActor
     private func descendants<T: NSView>(of view: NSView, type: T.Type) -> [T] {
         let current = (view as? T).map { [$0] } ?? []

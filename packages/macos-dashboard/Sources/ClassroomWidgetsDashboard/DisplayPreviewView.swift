@@ -16,6 +16,7 @@ final class DisplayPreviewView: NSView {
     private var sourceSize: CGSize?
     private var pendingClick: PendingClick?
     private var idleStartEnabled = false
+    private var isStale = false
     private(set) var geometryToken: UInt64 = 0
 
     override init(frame frameRect: NSRect) {
@@ -60,7 +61,18 @@ final class DisplayPreviewView: NSView {
             onGeometryInvalidated?()
         }
         self.sourceSize = sourceSize
+        isStale = false
         setIdleStartEnabled(false)
+        updateAccessibility()
+    }
+
+    /// Marks the retained image as stale while a frame gap is being held. The
+    /// image stays visible, but it no longer advertises a live preview and stale
+    /// pointer actions are refused until a usable new frame arrives.
+    func setImageStale(_ stale: Bool) {
+        guard isStale != stale else { return }
+        isStale = stale
+        if stale { discardPendingClick() }
         updateAccessibility()
     }
 
@@ -72,6 +84,7 @@ final class DisplayPreviewView: NSView {
 
     func clear() {
         sourceSize = nil
+        isStale = false
         geometryToken &+= 1
         discardPendingClick()
         videoLayer.flushAndRemoveImage()
@@ -79,7 +92,7 @@ final class DisplayPreviewView: NSView {
     }
 
     func fittedImageRectTopLeft() -> CGRect? {
-        guard let sourceSize,
+        guard !isStale, let sourceSize,
               let appKitRect = DisplayPreviewGeometry.aspectFit(contentSize: sourceSize, in: bounds)
         else { return nil }
         return CGRect(
@@ -95,7 +108,8 @@ final class DisplayPreviewView: NSView {
         guard event.buttonNumber == 0,
               event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty
         else { return }
-        if let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: point, viewBounds: bounds),
+        if !isStale,
+           let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: point, viewBounds: bounds),
            fittedImageRectTopLeft()?.contains(topLeft) == true {
             pendingClick = .live(point, geometryToken)
         } else if sourceSize == nil, idleStartEnabled, bounds.contains(point) {
@@ -119,7 +133,7 @@ final class DisplayPreviewView: NSView {
             else { return }
             onIdlePrimaryClick?()
         case .live(let down, let token):
-            guard token == geometryToken, sourceSize != nil,
+            guard !isStale, token == geometryToken, sourceSize != nil,
                   hypot(up.x - down.x, up.y - down.y) < 4,
                   let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: up, viewBounds: bounds),
                   fittedImageRectTopLeft()?.contains(topLeft) == true
@@ -146,7 +160,11 @@ final class DisplayPreviewView: NSView {
     }
 
     private func updateAccessibility() {
-        if idleStartEnabled, sourceSize == nil {
+        if isStale, sourceSize != nil {
+            setAccessibilityRole(.image)
+            setAccessibilityLabel("Display preview reconnecting")
+            setAccessibilityHelp("Holding the last image until a usable frame arrives")
+        } else if idleStartEnabled, sourceSize == nil {
             setAccessibilityRole(.button)
             setAccessibilityLabel("Click to see display")
             setAccessibilityHelp("Starts the selected display preview")

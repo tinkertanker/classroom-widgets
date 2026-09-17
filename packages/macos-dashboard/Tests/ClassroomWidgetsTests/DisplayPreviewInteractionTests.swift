@@ -98,6 +98,44 @@ final class DisplayPreviewInteractionTests: XCTestCase {
         }
     }
 
+    func testHeldStaleImageStopsAdvertisingLiveAndBlocksPointerActions() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let fixture = makeFixture()
+            var idleStarts = 0
+            var liveClicks = 0
+            fixture.view.onIdlePrimaryClick = { idleStarts += 1 }
+            fixture.view.onCompletedPrimaryClick = { _, _ in liveClicks += 1 }
+            fixture.view.setIdleStartEnabled(true)
+            fixture.view.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+            XCTAssertEqual(fixture.view.accessibilityLabel(), "Live image of the selected display")
+
+            click(fixture, at: NSPoint(x: 40, y: 20))
+            XCTAssertEqual(liveClicks, 1)
+
+            fixture.view.setImageStale(true)
+            XCTAssertEqual(fixture.view.accessibilityRole(), NSAccessibility.Role.image)
+            XCTAssertNotEqual(
+                fixture.view.accessibilityLabel(),
+                "Live image of the selected display",
+                "A held image must not keep claiming to be live"
+            )
+            XCTAssertNil(
+                fixture.view.fittedImageRectTopLeft(),
+                "Stale geometry must not accept pointer actions"
+            )
+            click(fixture, at: NSPoint(x: 40, y: 20))
+            XCTAssertEqual(liveClicks, 1, "Stale pointer actions must stay blocked")
+            XCTAssertEqual(idleStarts, 0)
+
+            fixture.view.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+            XCTAssertEqual(fixture.view.accessibilityLabel(), "Live image of the selected display")
+            click(fixture, at: NSPoint(x: 40, y: 20))
+            XCTAssertEqual(liveClicks, 2, "A usable new frame restores pointer interaction")
+            fixture.window.close()
+        }
+    }
+
     func testIdleAccessibilityPressUsesSameEnabledStartBoundary() async {
         await MainActor.run {
             _ = NSApplication.shared
