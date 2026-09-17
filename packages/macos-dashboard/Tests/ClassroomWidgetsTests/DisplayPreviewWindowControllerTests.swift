@@ -461,24 +461,49 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 XCTAssertLessThanOrEqual(panel.frame.height, visibleFrame.height + 0.5)
             }
 
-            // A programmatic setFrame bypasses the delegate callback, so the app can
-            // still place the window freely.
+            let delegate: NSWindowDelegate = controller
+
+            // A selected source owns all production sizing, including frames the app sets
+            // itself: the delegate callback does not cover setFrame, so the real
+            // windowDidResize path must return the viewport to the smaller-fit ratio
+            // without an unbounded correction loop.
+            XCTAssertGreaterThan(panel.backingScaleFactor, 0)
+            var frameCallbacks = 0
+            controller.onFrameChanged = { _ in frameCallbacks += 1 }
             panel.setFrame(
                 NSRect(origin: panel.frame.origin, size: NSSize(width: 600, height: 500)),
                 display: false
             )
-            XCTAssertEqual(controller.previewSize.width, 600, accuracy: 1)
-            XCTAssertNotEqual(
-                controller.previewSize.width / controller.previewSize.height,
-                16.0 / 9.0,
-                accuracy: 0.01,
-                "Programmatic frames are not intercepted; only user-driven resize is constrained"
+            delegate.windowDidResize?(Notification(name: NSWindow.didResizeNotification, object: panel))
+            panel.contentView?.layoutSubtreeIfNeeded()
+
+            let corrected = controller.previewSize
+            XCTAssertEqual(corrected.width, 600, accuracy: 1)
+            XCTAssertLessThanOrEqual(
+                abs(corrected.height - 600.0 / (16.0 / 9.0)) * panel.backingScaleFactor,
+                1 + 0.0001,
+                "The corrected viewport must land within the measured single backing pixel of the source aspect"
+            )
+            XCTAssertLessThanOrEqual(
+                frameCallbacks,
+                2,
+                "The programmatic correction must be bounded, not a resize loop"
             )
 
-            // User-driven resize is now aspect-matched: the callback must return a
+            // A settled size stays settled: another notification must not re-correct it.
+            let settledCallbacks = frameCallbacks
+            delegate.windowDidResize?(Notification(name: NSWindow.didResizeNotification, object: panel))
+            XCTAssertEqual(controller.previewSize.width, corrected.width, accuracy: 0.5)
+            XCTAssertEqual(controller.previewSize.height, corrected.height, accuracy: 0.5)
+            XCTAssertEqual(
+                frameCallbacks,
+                settledCallbacks,
+                "A settled size must not re-notify or re-correct"
+            )
+
+            // User-driven resize is aspect-matched too: the callback must return a
             // constrained frame size, and a height-limited drag must narrow the window
-            // too rather than only its height.
-            let delegate: NSWindowDelegate = controller
+            // rather than only its height.
             let heightLimited = NSSize(width: 700, height: 400)
             guard let constrained = delegate.windowWillResize?(panel, to: heightLimited) else {
                 return XCTFail("A user resize must be aspect-constrained while a source is selected")
@@ -495,9 +520,9 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             )
             XCTAssertLessThanOrEqual(constrained.height, heightLimited.height)
 
-            // ...until the menu action is used again. The 600 pt width asks for a
-            // 337.5 pt viewport, which the window server cannot land on: it snaps
-            // the outer height to the point grid. Measured on a 2x panel on
+            // The menu action stays a one-shot re-snap of the same contract. The 600 pt
+            // width asks for a 337.5 pt viewport, which the window server cannot land
+            // on: it snaps the outer height to the point grid. Measured on a 2x panel on
             // 2026-09-17: requested outer 600x379.5 settles at 600x380 /
             // content 600x348 / preview 600x338, i.e. exactly one backing pixel of
             // aspect error, identical for setFrame and setContentSize.
@@ -740,8 +765,10 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             let delegate: NSWindowDelegate = controller
             controller.setSources([landscape16x9], selectedID: landscape16x9.id)
 
-            // Below the native minimum the safety floor wins instead of a sub-minimum
-            // viewport, and the residual is letterboxed rather than cropped.
+            // An undersized drag expands uniformly until the native minimum is met, so
+            // the ratio survives and the proposal may be exceeded. Per-axis flooring
+            // would break the ratio here, and letterboxing is reserved for a genuine
+            // minimum-versus-physical-screen incompatibility.
             let tiny = NSSize(width: 200, height: 150)
             guard let floored = delegate.windowWillResize?(panel, to: tiny) else {
                 return XCTFail("A user resize with a selected source must be aspect-constrained")
@@ -751,6 +778,12 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(
                 flooredViewport.height,
                 panel.contentMinSize.height - WidgetPanelContentLayout.topGap - 0.5
+            )
+            XCTAssertEqual(
+                flooredViewport.width / flooredViewport.height,
+                16.0 / 9.0,
+                accuracy: 0.01,
+                "The native minimum must be met by uniform expansion, not per-axis flooring"
             )
 
             // Above the minimum the fit never grows either proposed dimension.
@@ -853,12 +886,13 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 "A source change must re-normalize the viewport aspect"
             )
 
-            // A resolution change on the same display is an aspect change too.
+            // A resolution change on the same display is an aspect change too, so the
+            // viewport must re-normalize even though the display ID is unchanged.
             let resizedSameDisplay = DisplayDescriptor(
-                id: landscape16x9.id,
-                uuid: landscape16x9.uuid,
-                name: landscape16x9.name,
-                bounds: CGRect(x: -212, y: -1080, width: 1600, height: 1200),
+                id: portrait9x16.id,
+                uuid: portrait9x16.uuid,
+                name: portrait9x16.name,
+                bounds: CGRect(x: 1512, y: -800, width: 1600, height: 1200),
                 isActive: true,
                 mirrorMasterID: nil
             )
@@ -903,8 +937,13 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             guard let twice = delegate.windowWillResize?(panel, to: once) else {
                 return XCTFail("A user resize with a selected source must be aspect-constrained")
             }
-            XCTAssertEqual(twice.width, once.width, accuracy: 1, "Re-constraining a settled size must not jitter")
-            XCTAssertEqual(twice.height, once.height, accuracy: 1)
+            XCTAssertEqual(
+                twice.width,
+                once.width,
+                accuracy: 0.001,
+                "The pure constraint must be numerically idempotent; no rasterization happens inside it"
+            )
+            XCTAssertEqual(twice.height, once.height, accuracy: 0.001)
             controller.close()
         }
     }
@@ -978,8 +1017,11 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         return NSSize(width: content.width, height: content.height - WidgetPanelContentLayout.topGap)
     }
 
-    /// Smaller-scale fit of a source aspect inside the proposed viewport, with the
-    /// documented fallback where the native minimum wins and the residual is letterboxed.
+    /// Smaller-scale fit of a source aspect inside the proposed viewport. When the fit
+    /// falls under the native minimum the minimum wins by uniform expansion, so the
+    /// ratio survives even though an undersized proposal is exceeded. Letterboxing is
+    /// reserved for the genuine minimum-versus-physical-screen incompatibility handled
+    /// by the one-shot geometry helper.
     @MainActor
     private func fittedPreviewViewport(
         proposingFrameSize size: NSSize,
@@ -987,16 +1029,17 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         aspect: CGFloat
     ) -> NSSize {
         let proposed = previewViewport(forFrameSize: size, in: panel)
-        let scale = min(proposed.width / aspect, proposed.height)
-        var width = aspect * scale
-        var height = scale
         let minimum = NSSize(
             width: panel.contentMinSize.width,
             height: panel.contentMinSize.height - WidgetPanelContentLayout.topGap
         )
+        let scale = min(proposed.width / aspect, proposed.height)
+        var width = aspect * scale
+        var height = scale
         if width < minimum.width || height < minimum.height {
-            width = max(minimum.width, min(width, proposed.width))
-            height = max(minimum.height, min(height, proposed.height))
+            let minimumScale = max(minimum.width / aspect, minimum.height)
+            width = aspect * minimumScale
+            height = minimumScale
         }
         return NSSize(width: width, height: height)
     }
