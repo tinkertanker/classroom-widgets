@@ -651,6 +651,116 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertEqual(order.latestHoldSequence, 0)
     }
 
+    func testTerminalDominatesANewerCoalescedFrame() {
+        var order = DisplayPreviewCaptureOrder()
+        XCTAssertTrue(
+            order.acceptsFrame(sequence: 3),
+            "A coalesced post-terminal frame can be applied before the terminal notification"
+        )
+        XCTAssertTrue(
+            order.acceptsTerminalEvent(sequence: 2),
+            "A terminal status must stop capture even when a newer frame was already applied"
+        )
+        XCTAssertEqual(order.terminalSequence, 2)
+        XCTAssertFalse(order.acceptsFrame(sequence: 4), "No frame may revive a terminal session")
+        XCTAssertFalse(order.acceptsHoldEvent(sequence: 5), "No gap may be reported after a terminal")
+        XCTAssertFalse(order.acceptsTerminalEvent(sequence: 6), "Duplicate terminals are coalesced")
+    }
+
+    func testCaptureOrderResetClearsTerminalDominanceForTheNextStream() {
+        var order = DisplayPreviewCaptureOrder()
+        XCTAssertTrue(order.acceptsTerminalEvent(sequence: 1))
+        order.reset()
+        XCTAssertNil(order.terminalSequence)
+        XCTAssertTrue(order.acceptsFrame(sequence: 1))
+        XCTAssertTrue(order.acceptsHoldEvent(sequence: 2))
+    }
+
+    func testDeliberateLaunchDuringAnOwnedStopStartsOnceAfterMatchingCleanup() {
+        var state = DisplayPreviewAutoResumeState()
+        // close/power-off began the stop; the reopen arrived before it completed.
+        state.requestRestart(sourceUUID: "source-a")
+        XCTAssertTrue(state.hasPendingRestart)
+
+        XCTAssertTrue(
+            state.stopCompleted(currentSourceUUID: "source-a", terminating: false),
+            "The matching owned cleanup starts the retained launch"
+        )
+        XCTAssertFalse(
+            state.stopCompleted(currentSourceUUID: "source-a", terminating: false),
+            "Cleanup must start the deferred launch exactly once"
+        )
+    }
+
+    func testExplicitOffBeforeCleanupCancelsADeferredLaunch() {
+        var state = DisplayPreviewAutoResumeState()
+        state.requestRestart(sourceUUID: "source-a")
+
+        state.pauseRequested(preservingDeferredRestart: false)
+
+        XCTAssertFalse(state.hasPendingRestart, "An explicit off must overwrite the deferred launch")
+        XCTAssertFalse(state.stopCompleted(currentSourceUUID: "source-a", terminating: false))
+    }
+
+    func testDeferredLaunchIsCancelledBySourceChangeOrTermination() {
+        var sourceChanged = DisplayPreviewAutoResumeState()
+        sourceChanged.requestRestart(sourceUUID: "source-a")
+        XCTAssertFalse(sourceChanged.stopCompleted(currentSourceUUID: "source-b", terminating: false))
+        XCTAssertFalse(sourceChanged.hasPendingRestart)
+
+        var terminating = DisplayPreviewAutoResumeState()
+        terminating.requestRestart(sourceUUID: "source-a")
+        XCTAssertFalse(terminating.stopCompleted(currentSourceUUID: "source-a", terminating: true))
+        XCTAssertFalse(terminating.hasPendingRestart)
+    }
+
+    func testDeferredLaunchWaitsForOverlapBlockerToClear() {
+        var state = DisplayPreviewAutoResumeState()
+        state.requestRestart(sourceUUID: "source-a")
+        XCTAssertEqual(
+            state.placementChanged(
+                overlapsSource: true, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+            ),
+            .none
+        )
+        XCTAssertFalse(
+            state.stopCompleted(currentSourceUUID: "source-a", terminating: false),
+            "A retained launch must not start while the overlap blocker stands"
+        )
+        XCTAssertTrue(state.hasPendingRestart)
+        XCTAssertEqual(
+            state.placementChanged(
+                overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
+            ),
+            .startNow,
+            "Clearing the blocker starts the retained launch"
+        )
+    }
+
+    func testOnlyADeliberateLaunchDefersDuringAnOwnedStop() {
+        XCTAssertTrue(DisplayPreviewDeferredStartPolicy.shouldDefer(
+            trigger: .launch, isStopping: true, isTerminating: false
+        ))
+        XCTAssertFalse(
+            DisplayPreviewDeferredStartPolicy.shouldDefer(
+                trigger: .explicit, isStopping: true, isTerminating: false
+            ),
+            "A direct power click keeps its explicit permission flow instead of deferring"
+        )
+        XCTAssertFalse(DisplayPreviewDeferredStartPolicy.shouldDefer(
+            trigger: .visibilityResume, isStopping: true, isTerminating: false
+        ))
+        XCTAssertFalse(
+            DisplayPreviewDeferredStartPolicy.shouldDefer(
+                trigger: .launch, isStopping: true, isTerminating: true
+            ),
+            "Termination cancels deferred starts"
+        )
+        XCTAssertFalse(DisplayPreviewDeferredStartPolicy.shouldDefer(
+            trigger: .launch, isStopping: false, isTerminating: false
+        ))
+    }
+
     func testCaptureOrderResetsForEachStreamGeneration() {
         var order = DisplayPreviewCaptureOrder()
         XCTAssertTrue(order.acceptsHoldEvent(sequence: 7))

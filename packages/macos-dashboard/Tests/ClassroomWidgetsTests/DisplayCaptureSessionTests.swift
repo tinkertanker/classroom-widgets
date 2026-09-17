@@ -145,6 +145,54 @@ final class DisplayCaptureSessionTests: XCTestCase {
     }
 
     @MainActor
+    func testQueuedBurstKeepsTerminalDominanceOverPostTerminalFrames() async throws {
+        let session = DisplayCaptureSession(sourceID: 2)
+        var events: [(String, UInt64)] = []
+        session.onFrame = { _, _, sequence in events.append(("frame", sequence)) }
+        session.onTransientGap = { _, sequence in events.append(("gap", sequence)) }
+        session.onUnavailable = { _, sequence in events.append(("terminal", sequence)) }
+        let frame = try XCTUnwrap(makeFrameSampleBuffer(), "Fixture: expected a synthetic frame sample buffer")
+
+        // Main queue held for the whole burst: complete(1) -> stopped(2) -> complete(3),
+        // then a duplicate terminal and a later gap.
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        session.handleFrameStatus(.stopped, sampleBuffer: nil)
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        session.handleFrameStatus(.stopped, sampleBuffer: nil)
+        session.handleFrameStatus(.blank, sampleBuffer: nil)
+        await drainMainQueue()
+
+        XCTAssertEqual(
+            events.map { $0.0 },
+            ["frame", "terminal"],
+            "A post-terminal complete buffer must never be delivered"
+        )
+        XCTAssertEqual(
+            events.map { $0.1 },
+            [1, 2],
+            "The surviving terminal is the one that stops capture"
+        )
+    }
+
+    @MainActor
+    func testStatusesAfterAnOwnedStopAreIgnored() async throws {
+        let session = DisplayCaptureSession(sourceID: 2)
+        var events: [String] = []
+        session.onFrame = { _, _, _ in events.append("frame") }
+        session.onTransientGap = { _, _ in events.append("gap") }
+        session.onUnavailable = { _, _ in events.append("terminal") }
+        session.onFrameActivity = { events.append("activity") }
+        let frame = try XCTUnwrap(makeFrameSampleBuffer(), "Fixture: expected a synthetic frame sample buffer")
+
+        try await session.stop()
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        session.handleFrameStatus(.stopped, sampleBuffer: nil)
+        await drainMainQueue()
+
+        XCTAssertEqual(events, [], "An intentionally stopped session must not report further statuses")
+    }
+
+    @MainActor
     private func drainMainQueue() async {
         for _ in 0..<5 {
             await Task.yield()

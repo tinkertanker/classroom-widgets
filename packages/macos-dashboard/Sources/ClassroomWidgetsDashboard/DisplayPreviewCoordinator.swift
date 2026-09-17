@@ -279,8 +279,31 @@ final class DisplayPreviewCoordinator: NSObject {
               let controller = windowController, let window = controller.window,
               !sourceOverlapsPreview(source)
         else {
-            if stopLifecycle.isBlocked { controllerStatus("The previous stream could not stop. Quit Classroom Widgets to recover.", enabled: false) }
-            else if selectedSource != nil { controllerStatus("Move the preview to a different display before starting.", enabled: true) }
+            if stopLifecycle.isBlocked {
+                controllerStatus("The previous stream could not stop. Quit Classroom Widgets to recover.", enabled: false)
+            } else if let source = selectedSource,
+                      DisplayPreviewDeferredStartPolicy.shouldDefer(
+                        trigger: trigger,
+                        isStopping: stopLifecycle.isStopping,
+                        isTerminating: stopLifecycle.terminating
+                      ),
+                      !sourceOverlapsPreview(source) {
+                // A deliberate launch arrived while the owned stop is still in
+                // flight, and nothing else blocks it. Retain it for this source;
+                // the matching cleanup consumes it and starts preflight-only, so
+                // no permission dialog appears.
+                autoResume.requestRestart(sourceUUID: source.uuid)
+                logDisplayTransition(
+                    .deferredRestart,
+                    trigger: "launchDuringOwnedStop",
+                    source: source,
+                    intent: false,
+                    enabled: true
+                )
+                controllerStatus("Starting when the previous preview finishes stopping…", enabled: true)
+            } else if selectedSource != nil {
+                controllerStatus("Move the preview to a different display before starting.", enabled: true)
+            }
             return
         }
         let preflightGranted = CGPreflightScreenCaptureAccess()
@@ -452,7 +475,7 @@ final class DisplayPreviewCoordinator: NSObject {
                     ownsSession: self.session === capture,
                     acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
                   ),
-                  self.captureOrder.acceptsHoldEvent(sequence: sequence)
+                  self.captureOrder.acceptsTerminalEvent(sequence: sequence)
             else { return }
             self.cancelFrameRecovery()
             self.cancelDeferredRestarts()
@@ -941,7 +964,10 @@ final class DisplayPreviewCoordinator: NSObject {
         fields += " topology=\(catalog.topologyRevision)"
         if let generation { fields += " generation=\(generation)" }
         if let extra { fields += " \(extra)" }
-        DashboardLog.windowing.info("Display Preview \(fields, privacy: .public)")
+        // `notice` maps to OS_LOG_TYPE_DEFAULT, which is persisted for later
+        // inspection; these transitions are deduplicated and low frequency, and
+        // per-frame statuses never reach this funnel.
+        DashboardLog.windowing.notice("Display Preview \(fields, privacy: .public)")
     }
 
     /// Non-reversible identifier so logs never carry a raw display UUID.

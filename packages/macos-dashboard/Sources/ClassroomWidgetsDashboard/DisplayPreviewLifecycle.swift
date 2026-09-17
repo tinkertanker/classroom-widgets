@@ -237,21 +237,34 @@ struct DisplayPreviewFrameRecovery {
 
 /// Keeps the newest capture event authoritative when delivery order and capture
 /// order disagree: a coalesced frame drain can apply a post-gap frame before the
-/// gap notification, and a pending pre-gap frame can drain after it.
+/// gap notification, and a pending pre-gap frame can drain after it. A terminal
+/// event is not a recoverable gap: it dominates everything and ends the session.
 struct DisplayPreviewCaptureOrder {
     private(set) var latestHoldSequence: UInt64 = 0
     private(set) var latestFrameSequence: UInt64 = 0
+    private(set) var terminalSequence: UInt64?
 
     /// Returns false when this frame was captured before the hold event already applied.
     mutating func acceptsFrame(sequence: UInt64) -> Bool {
+        guard terminalSequence == nil else { return false }
         guard sequence >= latestHoldSequence else { return false }
         latestFrameSequence = max(latestFrameSequence, sequence)
         return true
     }
 
-    /// Returns false when this gap/terminal predates a frame already applied.
+    /// Returns false when this gap predates a frame already applied.
     mutating func acceptsHoldEvent(sequence: UInt64) -> Bool {
+        guard terminalSequence == nil else { return false }
         guard sequence >= latestFrameSequence else { return false }
+        latestHoldSequence = max(latestHoldSequence, sequence)
+        return true
+    }
+
+    /// A terminal status always dominates, even when a newer coalesced frame was
+    /// already applied, and no later frame or gap may be accepted afterwards.
+    mutating func acceptsTerminalEvent(sequence: UInt64) -> Bool {
+        guard terminalSequence == nil else { return false }
+        terminalSequence = sequence
         latestHoldSequence = max(latestHoldSequence, sequence)
         return true
     }
@@ -259,6 +272,7 @@ struct DisplayPreviewCaptureOrder {
     mutating func reset() {
         latestHoldSequence = 0
         latestFrameSequence = 0
+        terminalSequence = nil
     }
 }
 
@@ -444,6 +458,27 @@ struct DisplayPreviewStopLifecycle {
     }
 }
 
+/// A deliberate launch that cannot begin because an owned stop is still in flight
+/// is retained by the shared deferred-start state and started once, preflight-only,
+/// when the matching owned cleanup completes with no blockers.
+enum DisplayPreviewDeferredStartPolicy {
+    static func shouldDefer(
+        trigger: DisplayPreviewStartTrigger,
+        isStopping: Bool,
+        isTerminating: Bool
+    ) -> Bool {
+        switch trigger {
+        case .launch: return isStopping && !isTerminating
+        case .explicit, .visibilityResume: return false
+        }
+    }
+}
+
+/// Deferred start intent for one source: a resume after a hidden/overlap
+/// suspension, a reload restart, or a deliberate launch that arrived while an
+/// owned stop was still in flight. It starts the same source at most once, only
+/// after the matching owned cleanup completes with no blockers, and is cancelled
+/// by explicit off/close/source change/termination.
 struct DisplayPreviewAutoResumeState {
     enum Action: Equatable {
         case none

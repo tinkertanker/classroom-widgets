@@ -133,11 +133,18 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     /// `stream(_:didOutputSampleBuffer:of:)`; a missing buffer is the real
     /// "complete status without pixels" case. Every event carries a sequence
     /// assigned in capture order so a coalesced delivery cannot reorder effects.
+    ///
+    /// Terminal dominance is enforced here rather than only downstream: once a
+    /// terminal status has been reported, no later frame, gap, duplicate terminal,
+    /// or activity report is accepted for this one-shot session.
     func handleFrameStatus(_ status: SCFrameStatus, sampleBuffer: CMSampleBuffer?) {
+        guard !isCancelled else { return }
         let sequence = nextSequence()
         let hasImageBuffer = sampleBuffer?.imageBuffer != nil
+        let disposition = Self.disposition(for: status, hasImageBuffer: hasImageBuffer)
+        if disposition != .stopped, hasReportedTerminal { return }
         noteFrameActivity()
-        switch Self.disposition(for: status, hasImageBuffer: hasImageBuffer) {
+        switch disposition {
         case .ignore:
             return
         case .hold:
@@ -155,7 +162,7 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
             break
         }
         guard let sampleBuffer, let imageBuffer = sampleBuffer.imageBuffer else { return }
-        endGapReport()
+        guard acceptDelivery() else { return }
         delivery.offer(
             sampleBuffer,
             size: CGSize(width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer)),
@@ -210,6 +217,24 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         notifyMainActor { [weak self] in self?.onFrameActivity?() }
     }
 
+    private var isCancelled: Bool {
+        stateLock.withLock { cancelled }
+    }
+
+    private var hasReportedTerminal: Bool {
+        stateLock.withLock { terminalReported }
+    }
+
+    /// Clears the gap latch for a delivered frame. Returns false once this session
+    /// has reported a terminal status, so no buffer can revive a stopped stream.
+    private func acceptDelivery() -> Bool {
+        stateLock.withLock {
+            guard !terminalReported else { return false }
+            gapReported = false
+            return true
+        }
+    }
+
     /// Coalesces a run of gap frames into one transition so a blank or suspended
     /// display cannot churn the coordinator at frame rate.
     private func beginGapReport() -> Bool {
@@ -229,10 +254,6 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
             gapReported = true
             return true
         }
-    }
-
-    private func endGapReport() {
-        stateLock.withLock { gapReported = false }
     }
 
     private func resetEventReporting() {
