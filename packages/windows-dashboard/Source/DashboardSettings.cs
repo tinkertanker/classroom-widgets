@@ -39,6 +39,7 @@ public sealed class DashboardSettings
     public Dictionary<string, PanelFrame> PanelFrames { get; set; } = new();
     public bool WidgetShortcutsInitialized { get; set; }
     public Dictionary<int, string?> WidgetShortcuts { get; set; } = new();
+    public Dictionary<int, string?> WidgetDismissShortcuts { get; set; } = new();
     public Dictionary<int, string> WidgetShortcutDefaults { get; set; } = new();
 
     /// <summary>Shortening service used by Link Shortener and QR Code widgets.</summary>
@@ -64,6 +65,7 @@ public sealed class DashboardSettings
                 {
                     loaded.BackgroundOpacity = Math.Clamp(loaded.BackgroundOpacity, 0, 1);
                     loaded.WidgetShortcuts ??= new();
+                    loaded.WidgetDismissShortcuts ??= new();
                     loaded.WidgetShortcutDefaults ??= new();
                     settings = loaded;
                 }
@@ -118,17 +120,50 @@ public sealed class DashboardSettings
 
     public bool InitializeWidgetShortcuts(IReadOnlyList<CompactWidgetOption> options)
     {
-        if (WidgetShortcutsInitialized || options.Count == 0) return false;
+        var changed = ApplyWidgetShortcutDefaults(options);
+        if (changed) NotifyChanged();
+        return changed;
+    }
 
-        WidgetShortcutsInitialized = true;
-        foreach (var (option, index) in options.Take(9).Select((option, index) => (option, index)))
+    internal bool ApplyWidgetShortcutDefaults(IReadOnlyList<CompactWidgetOption> options)
+    {
+        if (options.Count == 0) return false;
+
+        var changed = !WidgetShortcutsInitialized;
+        var numberedDefaults = Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
+        var reserved = new HashSet<string>(
+            WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>(),
+            StringComparer.OrdinalIgnoreCase);
+        var plannedDefaults = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var option in options.Take(9))
         {
-            var shortcut = $"Ctrl+Alt+Shift+{index + 1}";
-            WidgetShortcuts[option.WidgetType] = shortcut;
+            WidgetShortcutDefaults.TryGetValue(option.WidgetType, out var storedDefault);
+            WidgetShortcuts.TryGetValue(option.WidgetType, out var existing);
+            var existingNumberedDefault = numberedDefaults.FirstOrDefault(shortcut =>
+                string.Equals(shortcut, storedDefault, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(shortcut, existing, StringComparison.OrdinalIgnoreCase));
+            var shortcut = existingNumberedDefault
+                ?? numberedDefaults.FirstOrDefault(candidate => !reserved.Contains(candidate) && !plannedDefaults.Contains(candidate));
+            if (shortcut is null) continue;
+            plannedDefaults.Add(shortcut);
+            if (!WidgetShortcuts.ContainsKey(option.WidgetType))
+            {
+                WidgetShortcuts[option.WidgetType] = shortcut;
+                reserved.Add(shortcut);
+                changed = true;
+            }
             WidgetShortcutDefaults[option.WidgetType] = shortcut;
         }
-        NotifyChanged();
-        return true;
+        foreach (var option in options)
+        {
+            if (!WidgetDismissShortcuts.ContainsKey(option.WidgetType) && WidgetShortcuts.TryGetValue(option.WidgetType, out var shortcut))
+            {
+                WidgetDismissShortcuts[option.WidgetType] = shortcut;
+                changed = true;
+            }
+        }
+        WidgetShortcutsInitialized = true;
+        return changed;
     }
 
     public static bool LaunchAtLoginEnabled

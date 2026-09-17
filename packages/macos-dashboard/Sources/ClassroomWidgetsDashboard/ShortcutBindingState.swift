@@ -2,6 +2,16 @@ struct ShortcutBindingState {
     enum Owner: Hashable {
         case settings
         case widget(Int)
+        case widgetDismiss(Int)
+
+        func canShareShortcut(with other: Owner) -> Bool {
+            switch (self, other) {
+            case let (.widget(left), .widgetDismiss(right)), let (.widgetDismiss(left), .widget(right)):
+                return left == right
+            default:
+                return false
+            }
+        }
     }
 
     enum StageResult: Equatable {
@@ -31,14 +41,19 @@ struct ShortcutBindingState {
         return recorderCount == 0
     }
 
-    mutating func replaceWidgets(with bindings: [Int: DashboardShortcut], discardPending: Bool = false) {
+    mutating func replaceWidgets(with bindings: [Int: WidgetShortcutBinding], discardPending: Bool = false) {
         accepted = accepted.filter { if case .settings = $0.key { true } else { false } }
-        for (widgetType, shortcut) in bindings {
-            accepted[.widget(widgetType)] = shortcut.normalized
+        for (widgetType, binding) in bindings {
+            accepted[.widget(widgetType)] = binding.show.normalized
+            accepted[.widgetDismiss(widgetType)] = binding.dismiss.normalized
         }
         pending = pending.filter { owner, _ in
-            if case let .widget(widgetType) = owner { return !discardPending && bindings[widgetType] != nil }
-            return true
+            switch owner {
+            case let .widget(widgetType), let .widgetDismiss(widgetType):
+                return !discardPending && bindings[widgetType] != nil
+            case .settings:
+                return true
+            }
         }
     }
 
@@ -49,8 +64,8 @@ struct ShortcutBindingState {
             return .unchanged
         }
         if shortcut.isAssigned,
-           let duplicate = accepted.first(where: { $0.key != owner && $0.value == shortcut })?.key
-            ?? pending.first(where: { $0.key != owner && $0.value == shortcut })?.key {
+           let duplicate = accepted.first(where: { $0.key != owner && !owner.canShareShortcut(with: $0.key) && $0.value == shortcut })?.key
+            ?? pending.first(where: { $0.key != owner && !owner.canShareShortcut(with: $0.key) && $0.value == shortcut })?.key {
             pending[owner] = nil
             return .duplicate(duplicate)
         }

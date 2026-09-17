@@ -21,6 +21,7 @@ export interface DashboardSettingsData {
   linkShortener: ShortenerSettings;
   widgetShortcutsInitialized: boolean;
   widgetShortcuts: Record<string, string | null>;
+  widgetDismissShortcuts: Record<string, string | null>;
 }
 
 /**
@@ -36,6 +37,7 @@ export class DashboardSettings extends EventEmitter {
   linkShortener = readShortenerSettings();
   widgetShortcutsInitialized = false;
   widgetShortcuts: Record<string, string | null> = {};
+  widgetDismissShortcuts: Record<string, string | null> = {};
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -56,6 +58,13 @@ export class DashboardSettings extends EventEmitter {
           for (const [widgetType, shortcut] of Object.entries(raw.widgetShortcuts)) {
             if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
               settings.widgetShortcuts[widgetType] = shortcut;
+            }
+          }
+        }
+        if (raw.widgetDismissShortcuts && typeof raw.widgetDismissShortcuts === 'object') {
+          for (const [widgetType, shortcut] of Object.entries(raw.widgetDismissShortcuts)) {
+            if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
+              settings.widgetDismissShortcuts[widgetType] = shortcut;
             }
           }
         }
@@ -99,6 +108,7 @@ export class DashboardSettings extends EventEmitter {
         linkShortener: this.linkShortener,
         widgetShortcutsInitialized: this.widgetShortcutsInitialized,
         widgetShortcuts: this.widgetShortcuts,
+        widgetDismissShortcuts: this.widgetDismissShortcuts,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {

@@ -47,13 +47,13 @@ enum DashboardDefaults {
 @MainActor
 final class DashboardSettingsContext: ObservableObject {
     @Published private(set) var widgetOptions: [CompactWidgetOption] = []
-    @Published private(set) var widgetShortcuts: [Int: DashboardShortcut] = [:]
-    @Published private(set) var widgetShortcutStatuses: [Int: String] = [:]
+    @Published private(set) var widgetShortcuts: [Int: WidgetShortcutBinding] = [:]
+    @Published private(set) var widgetShortcutStatuses: [ShortcutBindingState.Owner: String] = [:]
     @Published private(set) var shortcutStatus: String?
     private let launchAtLoginManager: LaunchAtLoginManager
     private let onShortcutChanged: @MainActor (DashboardShortcut) -> Void
     private let onWidgetSettingsChanged: @MainActor () -> Void
-    private let onWidgetShortcutChanged: @MainActor (Int, DashboardShortcut) -> Void
+    private let onWidgetShortcutChanged: @MainActor (Int, WidgetShortcutAction, DashboardShortcut) -> Void
     private let onResetWidgetShortcuts: @MainActor () -> Void
     private let onShortcutRecordingChanged: @MainActor (Bool) -> Void
 
@@ -61,7 +61,7 @@ final class DashboardSettingsContext: ObservableObject {
         launchAtLoginManager: LaunchAtLoginManager,
         onShortcutChanged: @escaping @MainActor (DashboardShortcut) -> Void,
         onWidgetSettingsChanged: @escaping @MainActor () -> Void,
-        onWidgetShortcutChanged: @escaping @MainActor (Int, DashboardShortcut) -> Void,
+        onWidgetShortcutChanged: @escaping @MainActor (Int, WidgetShortcutAction, DashboardShortcut) -> Void,
         onResetWidgetShortcuts: @escaping @MainActor () -> Void,
         onShortcutRecordingChanged: @escaping @MainActor (Bool) -> Void
     ) {
@@ -80,15 +80,15 @@ final class DashboardSettingsContext: ObservableObject {
     }
     func setSettingsShortcut(_ shortcut: DashboardShortcut) { onShortcutChanged(shortcut) }
     func widgetSettingsChanged() { onWidgetSettingsChanged() }
-    func setWidgetShortcut(_ shortcut: DashboardShortcut, for widgetType: Int) {
-        onWidgetShortcutChanged(widgetType, shortcut)
+    func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
+        onWidgetShortcutChanged(widgetType, action, shortcut)
     }
     func resetWidgetShortcuts() { onResetWidgetShortcuts() }
     func shortcutRecordingChanged(_ isRecording: Bool) { onShortcutRecordingChanged(isRecording) }
     func updateWidgetShortcuts(
         options: [CompactWidgetOption],
-        shortcuts: [Int: DashboardShortcut],
-        widgetStatuses: [Int: String],
+        shortcuts: [Int: WidgetShortcutBinding],
+        widgetStatuses: [ShortcutBindingState.Owner: String],
         status: String?
     ) {
         widgetOptions = options
@@ -189,28 +189,29 @@ struct DashboardShortcutSettingsView: View {
                     Text("Widget shortcuts will appear when the widget inventory is available.")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(context.widgetOptions, id: \.widgetType) { option in
-                        VStack(alignment: .leading, spacing: 3) {
-                            LabeledContent(option.title) {
-                                KeyboardShortcutRecorder(
-                                    keyCode: widgetKeyCodeBinding(for: option.widgetType),
-                                    modifiers: widgetModifiersBinding(for: option.widgetType),
-                                    placeholder: "None",
-                                    accessibilityLabel: "\(option.title) keyboard shortcut",
-                                    onShortcutChanged: { keyCode, modifiers in
-                                        context.setWidgetShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers), for: option.widgetType)
-                                    },
-                                    onRecordingChanged: context.shortcutRecordingChanged
-                                )
-                                .frame(width: 210, alignment: .trailing)
+                    Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                        GridRow {
+                            Text("Widget").foregroundStyle(.secondary)
+                            Text("Show").foregroundStyle(.secondary)
+                            Text("Dismiss").foregroundStyle(.secondary)
+                        }
+                        ForEach(context.widgetOptions, id: \.widgetType) { option in
+                            GridRow {
+                                Text(option.title).frame(maxWidth: .infinity, alignment: .leading)
+                                widgetShortcutRecorder(option: option, action: .show)
+                                widgetShortcutRecorder(option: option, action: .dismiss)
                             }
-                            if let status = context.widgetShortcutStatuses[option.widgetType] {
-                                Text(status).font(.caption).foregroundStyle(.red)
+                            if let status = context.widgetShortcutStatuses[.widget(option.widgetType)]
+                                ?? context.widgetShortcutStatuses[.widgetDismiss(option.widgetType)] {
+                                GridRow {
+                                    Text("")
+                                    Text(status).font(.caption).foregroundStyle(.red).gridCellColumns(2)
+                                }
                             }
                         }
                     }
                 }
-                Text("These shortcuts work across macOS while Classroom Widgets is running.")
+                Text("When Show and Dismiss match, the shortcut toggles the widget. Make them different to let Show create additional widgets.")
                     .font(.caption).foregroundStyle(.secondary)
                 if let status = context.shortcutStatus {
                     Text(status).font(.caption).foregroundStyle(.red)
@@ -230,17 +231,37 @@ struct DashboardShortcutSettingsView: View {
         .formStyle(.grouped)
     }
 
-    private func widgetKeyCodeBinding(for widgetType: Int) -> Binding<Int> {
+    @ViewBuilder
+    private func widgetShortcutRecorder(option: CompactWidgetOption, action: WidgetShortcutAction) -> some View {
+        KeyboardShortcutRecorder(
+            keyCode: widgetKeyCodeBinding(for: option.widgetType, action: action),
+            modifiers: widgetModifiersBinding(for: option.widgetType, action: action),
+            placeholder: "None",
+            accessibilityLabel: "\(action == .show ? "Show" : "Dismiss") \(option.title) keyboard shortcut",
+            onShortcutChanged: { keyCode, modifiers in
+                context.setWidgetShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers), action: action, for: option.widgetType)
+            },
+            onRecordingChanged: context.shortcutRecordingChanged
+        )
+        .frame(width: 190)
+    }
+
+    private func shortcut(for widgetType: Int, action: WidgetShortcutAction) -> DashboardShortcut? {
+        guard let binding = context.widgetShortcuts[widgetType] else { return nil }
+        return action == .show ? binding.show : binding.dismiss
+    }
+
+    private func widgetKeyCodeBinding(for widgetType: Int, action: WidgetShortcutAction) -> Binding<Int> {
         Binding(
-            get: { context.widgetShortcuts[widgetType]?.keyCode ?? -1 },
-            set: { context.setWidgetShortcut(DashboardShortcut(keyCode: $0, modifiers: context.widgetShortcuts[widgetType]?.modifiers ?? 0), for: widgetType) }
+            get: { shortcut(for: widgetType, action: action)?.keyCode ?? -1 },
+            set: { context.setWidgetShortcut(DashboardShortcut(keyCode: $0, modifiers: shortcut(for: widgetType, action: action)?.modifiers ?? 0), action: action, for: widgetType) }
         )
     }
 
-    private func widgetModifiersBinding(for widgetType: Int) -> Binding<Int> {
+    private func widgetModifiersBinding(for widgetType: Int, action: WidgetShortcutAction) -> Binding<Int> {
         Binding(
-            get: { context.widgetShortcuts[widgetType]?.modifiers ?? 0 },
-            set: { context.setWidgetShortcut(DashboardShortcut(keyCode: context.widgetShortcuts[widgetType]?.keyCode ?? -1, modifiers: $0), for: widgetType) }
+            get: { shortcut(for: widgetType, action: action)?.modifiers ?? 0 },
+            set: { context.setWidgetShortcut(DashboardShortcut(keyCode: shortcut(for: widgetType, action: action)?.keyCode ?? -1, modifiers: $0), action: action, for: widgetType) }
         )
     }
 }
@@ -254,7 +275,7 @@ struct DashboardSettingsView: View {
             DashboardShortcutSettingsView(context: context).tabItem { Text("Shortcuts") }
         }
         .dashboardTabBarStyle()
-        .frame(width: 600, height: 640)
+        .frame(width: 760, height: 640)
         .navigationTitle("Classroom Widgets Settings")
     }
 }

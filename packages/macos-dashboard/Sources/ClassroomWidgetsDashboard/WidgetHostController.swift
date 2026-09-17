@@ -90,6 +90,27 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    func dismissWidget(_ widgetType: Int) {
+        callWidgetHostFunction("dismissWidget", widgetType: widgetType)
+    }
+
+    func toggleWidget(_ widgetType: Int) {
+        callWidgetHostFunction("toggleWidget", widgetType: widgetType)
+    }
+
+    private func callWidgetHostFunction(_ methodName: String, widgetType: Int) {
+        webView.callAsyncJavaScript(
+            "return window.classroomPanelHost?.[methodName]?.(widgetType) ?? false;",
+            arguments: ["methodName": methodName, "widgetType": widgetType],
+            in: nil,
+            in: .page
+        ) { result in
+            if case let .failure(error) = result {
+                DashboardLog.web.error("Unable to call widget host: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
     func reloadWidgets() {
         guard !reloadInProgress else { return }
         reloadInProgress = true

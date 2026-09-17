@@ -45,18 +45,16 @@
   var capturingRow = null;
   var rowError = null;
 
-  function stopCapture(entry) {
-    entry.capture.classList.remove('capturing');
-    entry.capture.textContent = entry.shortcut.accelerator || 'Set shortcut';
+  function stopCapture(entry, field) {
+    field.capture.classList.remove('capturing');
+    field.capture.textContent = entry.shortcut[field.acceleratorKey] || 'Set shortcut';
     capturingRow = null;
     window.classroomSettings.setCapturing(false);
   }
 
-  function buildRow(shortcut) {
-    var row = document.createElement('div');
-    row.className = 'shortcut-row';
-    var name = document.createElement('span');
-    name.className = 'shortcut-name';
+  function buildShortcutField(entry, action) {
+    var field = document.createElement('div');
+    field.className = 'shortcut-field';
     var capture = document.createElement('button');
     capture.className = 'shortcut-capture';
     var clear = document.createElement('button');
@@ -64,46 +62,66 @@
     clear.textContent = 'Clear';
     var status = document.createElement('span');
     status.setAttribute('role', 'status');
-    var entry = { row: row, name: name, capture: capture, clear: clear, status: status, shortcut: shortcut };
+    var shortcutField = {
+      action: action,
+      acceleratorKey: action === 'show' ? 'accelerator' : 'dismissAccelerator',
+      stateKey: action === 'show' ? 'state' : 'dismissState',
+      detailKey: action === 'show' ? 'detail' : 'dismissDetail',
+      capture: capture,
+      clear: clear,
+      status: status
+    };
 
     capture.addEventListener('click', function () {
-      if (rowError && rowError.widgetType === entry.shortcut.widgetType) rowError = null;
-      capturingRow = entry.shortcut.widgetType;
+      if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
+      capturingRow = entry.shortcut.widgetType + ':' + action;
       capture.textContent = 'Press shortcut…';
       capture.classList.add('capturing');
       window.classroomSettings.setCapturing(true);
     });
     capture.addEventListener('blur', function () {
-      if (capture.classList.contains('capturing')) stopCapture(entry);
+      if (capture.classList.contains('capturing')) stopCapture(entry, shortcutField);
     });
     capture.addEventListener('keydown', function (event) {
       if (!capture.classList.contains('capturing')) return;
       if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        stopCapture(entry);
+        stopCapture(entry, shortcutField);
         return;
       }
       event.preventDefault();
       event.stopPropagation();
       if (event.key === 'Escape') {
-        stopCapture(entry);
+        stopCapture(entry, shortcutField);
         return;
       }
       var accelerator = acceleratorFromEvent(event);
       if (!accelerator) return;
-      window.classroomSettings.setShortcut(entry.shortcut.widgetType, accelerator).then(function (result) {
+      window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator).then(function (result) {
         if (result.ok) {
-          if (rowError && rowError.widgetType === entry.shortcut.widgetType) rowError = null;
+          if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
         } else {
-          rowError = { widgetType: entry.shortcut.widgetType, message: result.error };
+          rowError = { widgetType: entry.shortcut.widgetType, action: action, message: result.error };
         }
-        stopCapture(entry);
+        stopCapture(entry, shortcutField);
       });
     });
     clear.addEventListener('click', function () {
-      if (rowError && rowError.widgetType === entry.shortcut.widgetType) rowError = null;
-      window.classroomSettings.setShortcut(entry.shortcut.widgetType, null);
+      if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
+      window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, null);
     });
-    row.append(name, capture, clear, status);
+    field.append(capture, clear, status);
+    return shortcutField;
+  }
+
+  function buildRow(shortcut) {
+    var row = document.createElement('div');
+    row.className = 'shortcut-row';
+    var name = document.createElement('span');
+    name.className = 'shortcut-name';
+    var entry = { row: row, name: name, shortcut: shortcut };
+    entry.show = buildShortcutField(entry, 'show');
+    entry.dismiss = buildShortcutField(entry, 'dismiss');
+    row.append(name, entry.show.capture.parentNode, entry.dismiss.capture.parentNode);
     shortcutList.appendChild(row);
     return entry;
   }
@@ -135,22 +153,26 @@
       var entry = rows[String(shortcut.widgetType)];
       entry.shortcut = shortcut;
       entry.name.textContent = shortcut.title;
-      entry.clear.disabled = !shortcut.accelerator;
-      entry.clear.setAttribute('aria-label', 'Clear shortcut for ' + shortcut.title);
-      entry.capture.setAttribute('aria-label', 'Shortcut for ' + shortcut.title + ': ' + (shortcut.accelerator || 'not assigned'));
-      if (capturingRow === shortcut.widgetType) {
-        entry.capture.textContent = 'Press shortcut…';
-        entry.capture.classList.add('capturing');
-      } else {
-        entry.capture.textContent = shortcut.accelerator || 'Set shortcut';
-      }
-      if (rowError && rowError.widgetType === shortcut.widgetType) {
-        entry.status.className = 'shortcut-status conflict';
-        entry.status.textContent = rowError.message;
-      } else {
-        entry.status.className = 'shortcut-status ' + shortcut.state;
-        entry.status.textContent = shortcut.detail;
-      }
+      ['show', 'dismiss'].forEach(function (action) {
+        var field = entry[action];
+        var accelerator = shortcut[field.acceleratorKey];
+        field.clear.disabled = !accelerator;
+        field.clear.setAttribute('aria-label', 'Clear ' + action + ' shortcut for ' + shortcut.title);
+        field.capture.setAttribute('aria-label', action + ' shortcut for ' + shortcut.title + ': ' + (accelerator || 'not assigned'));
+        if (capturingRow === shortcut.widgetType + ':' + action) {
+          field.capture.textContent = 'Press shortcut…';
+          field.capture.classList.add('capturing');
+        } else {
+          field.capture.textContent = accelerator || 'Set shortcut';
+        }
+        if (rowError && rowError.widgetType === shortcut.widgetType && rowError.action === action) {
+          field.status.className = 'shortcut-status conflict';
+          field.status.textContent = rowError.message;
+        } else {
+          field.status.className = 'shortcut-status ' + shortcut[field.stateKey];
+          field.status.textContent = shortcut[field.detailKey];
+        }
+      });
     });
   }
 

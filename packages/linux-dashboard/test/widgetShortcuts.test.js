@@ -7,6 +7,7 @@ function harness(settingsOverrides = {}, refused = []) {
   const settings = Object.assign({
     widgetShortcutsInitialized: false,
     widgetShortcuts: {},
+    widgetDismissShortcuts: {},
     notifyChanged() { this.changed = (this.changed || 0) + 1; },
   }, settingsOverrides);
   const registrar = {
@@ -18,7 +19,18 @@ function harness(settingsOverrides = {}, refused = []) {
     unregisterAll() { callbacks.clear(); },
   };
   const launched = [];
-  return { settings, callbacks, launched, controller: new WidgetShortcutController(settings, registrar, (type) => launched.push(type)) };
+  const dismissed = [];
+  const toggled = [];
+  return {
+    settings, callbacks, launched, dismissed, toggled,
+    controller: new WidgetShortcutController(
+      settings,
+      registrar,
+      (type) => launched.push(type),
+      (type) => dismissed.push(type),
+      (type) => toggled.push(type),
+    ),
+  };
 }
 
 test('normalizes aliases and rejects bare or multiple keys', () => {
@@ -27,17 +39,35 @@ test('normalizes aliases and rejects bare or multiple keys', () => {
   assert.equal(normalizeAccelerator('Ctrl+A+B'), null);
 });
 
-test('assigns defaults once by widgetType and does not assign later types', () => {
+test('backfills defaults for widget types that arrive after the first inventory', () => {
   const h = harness();
-  h.controller.updateOptions([{ widgetType: 40, title: 'Forty' }, { widgetType: 7, title: 'Seven' }]);
+  h.controller.updateOptions([{ widgetType: 40, title: 'Display' }]);
+  h.controller.updateOptions([{ widgetType: 40, title: 'Display' }, { widgetType: 7, title: 'Timer' }]);
   assert.deepEqual(h.settings.widgetShortcuts, { '7': 'Ctrl+Alt+Shift+2', '40': 'Ctrl+Alt+Shift+1' });
-  h.controller.updateOptions([{ widgetType: 7, title: 'Renamed' }, { widgetType: 40, title: 'Forty' }, { widgetType: 9, title: 'New' }]);
-  assert.equal(h.settings.widgetShortcuts['7'], 'Ctrl+Alt+Shift+2');
-  assert.equal(h.settings.widgetShortcuts['9'], undefined);
+  assert.deepEqual(h.settings.widgetDismissShortcuts, { '7': 'Ctrl+Alt+Shift+2', '40': 'Ctrl+Alt+Shift+1' });
+});
+
+test('backfills an unused default without taking an existing shortcut from another widget', () => {
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '7': 'Ctrl+Alt+Shift+1' },
+    widgetDismissShortcuts: { '7': 'Ctrl+Alt+Shift+1' },
+  });
+
+  h.controller.updateOptions([{ widgetType: 40, title: 'Randomiser' }, { widgetType: 7, title: 'Timer' }]);
+
+  assert.equal(h.settings.widgetShortcuts['7'], 'Ctrl+Alt+Shift+1');
+  assert.equal(h.settings.widgetShortcuts['40'], 'Ctrl+Alt+Shift+2');
+  assert.equal(h.settings.widgetDismissShortcuts['40'], 'Ctrl+Alt+Shift+2');
+  assert.deepEqual(h.controller.getStatuses().map((item) => item.state), ['active', 'active']);
 });
 
 test('preserves explicit clears and intended assignments when registration fails', () => {
-  const h = harness({ widgetShortcutsInitialized: true, widgetShortcuts: { '1': null, '2': 'Ctrl+Alt+K' } }, ['Ctrl+Alt+K']);
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '1': null, '2': 'Ctrl+Alt+K' },
+    widgetDismissShortcuts: { '1': null, '2': 'Ctrl+Alt+K' },
+  }, ['Ctrl+Alt+K']);
   h.controller.updateOptions([{ widgetType: 1, title: 'One' }, { widgetType: 2, title: 'Two' }]);
   assert.deepEqual(h.settings.widgetShortcuts, { '1': null, '2': 'Ctrl+Alt+K' });
   assert.deepEqual(h.controller.getStatuses().map((item) => item.state), ['inactive', 'conflict']);
@@ -63,12 +93,33 @@ test('setCapturing unregisters shortcuts and restores them', () => {
 });
 
 test('rejects duplicates and never launches while the host is unavailable', () => {
-  const h = harness({ widgetShortcutsInitialized: true, widgetShortcuts: { '1': 'Ctrl+Alt+A', '2': null } });
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '1': 'Ctrl+Alt+A', '2': null },
+    widgetDismissShortcuts: { '1': 'Ctrl+Alt+A', '2': null },
+  });
   h.controller.updateOptions([{ widgetType: 1, title: 'One' }, { widgetType: 2, title: 'Two' }], false);
   assert.deepEqual(h.controller.setShortcut(2, 'Alt+Ctrl+A'), { ok: false, error: 'Already assigned to another widget.' });
   assert.equal(h.callbacks.has('Ctrl+Alt+A'), false);
   assert.deepEqual(h.launched, []);
   h.controller.setHostAvailable(true);
   h.callbacks.get('Ctrl+Alt+A')();
-  assert.deepEqual(h.launched, [1]);
+  assert.deepEqual(h.toggled, [1]);
+});
+
+test('distinct show and dismiss shortcuts always launch and dismiss separately', () => {
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '1': 'Ctrl+Alt+1' },
+    widgetDismissShortcuts: { '1': 'Ctrl+Alt+Shift+1' },
+  });
+  h.controller.updateOptions([{ widgetType: 1, title: 'Timer' }]);
+
+  h.callbacks.get('Ctrl+Alt+1')();
+  h.callbacks.get('Ctrl+Alt+1')();
+  h.callbacks.get('Ctrl+Alt+Shift+1')();
+
+  assert.deepEqual(h.launched, [1, 1]);
+  assert.deepEqual(h.dismissed, [1]);
+  assert.deepEqual(h.toggled, []);
 });

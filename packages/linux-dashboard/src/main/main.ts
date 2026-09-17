@@ -121,7 +121,13 @@ function bootstrap(): void {
         void host.addWidget(widgetType);
       }
     });
-    shortcuts = new WidgetShortcutController(settings, globalShortcut, (widgetType) => void host?.addWidget(widgetType));
+    shortcuts = new WidgetShortcutController(
+      settings,
+      globalShortcut,
+      (widgetType) => void host?.addWidget(widgetType),
+      (widgetType) => void host?.dismissWidget(widgetType),
+      (widgetType) => void host?.toggleWidget(widgetType),
+    );
     host.on('openSettingsRequested', () => openSettingsWindow(settings!, shortcuts!, version));
     host.on('widgetOptionsChanged', () => {
       shortcuts?.updateOptions(host?.widgetOptions ?? []);

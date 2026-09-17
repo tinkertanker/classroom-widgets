@@ -51,12 +51,38 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
   }>());
   const hostInstanceIdRef = useRef(createHostInstanceId());
   const lastPostedFingerprintRef = useRef<string | null>(null);
+  const widgetCreationOrderRef = useRef(new Map<string, number>());
+  const nextWidgetCreationOrderRef = useRef(0);
   const workspace = useWorkspaceStore(useShallow((state) => ({
     currentWorkspaceId: state.currentWorkspaceId,
     widgets: state.widgets,
     widgetStates: state.widgetStates,
     randomiserLists: state.savedCollections.randomiserLists
   })));
+  const syncWidgetCreationOrder = (widgets: typeof workspace.widgets) => {
+    const currentWidgetIds = new Set(widgets.map((widget) => widget.id));
+    for (const widget of widgets) {
+      if (!widgetCreationOrderRef.current.has(widget.id)) {
+        widgetCreationOrderRef.current.set(widget.id, nextWidgetCreationOrderRef.current++);
+      }
+    }
+    for (const widgetId of widgetCreationOrderRef.current.keys()) {
+      if (!currentWidgetIds.has(widgetId)) widgetCreationOrderRef.current.delete(widgetId);
+    }
+  };
+  syncWidgetCreationOrder(workspace.widgets);
+
+  const newestWidgetOfType = (widgetType: number) => {
+    const widgets = useWorkspaceStore.getState().widgets;
+    syncWidgetCreationOrder(widgets);
+    return widgets.reduce<typeof workspace.widgets[number] | undefined>((newest, candidate) => {
+      if (candidate.type !== widgetType) return newest;
+      if (!newest) return candidate;
+      const candidateOrder = widgetCreationOrderRef.current.get(candidate.id) ?? -1;
+      const newestOrder = widgetCreationOrderRef.current.get(newest.id) ?? -1;
+      return candidateOrder > newestOrder ? candidate : newest;
+    }, undefined);
+  };
 
   const compactWidgetOptions = useMemo<CompactWidgetOption[]>(() => (
     widgetRegistry.getAll().flatMap((config) => (
@@ -205,6 +231,24 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         const config = widgetRegistry.get(widgetType);
         if (!config?.compactPanel?.supported) return false;
         useWorkspaceStore.getState().addWidget(widgetType);
+        return true;
+      },
+      dismissWidget: (widgetType) => {
+        const widget = newestWidgetOfType(widgetType);
+        if (!widget) return false;
+        useWorkspaceStore.getState().removeWidget(widget.id);
+        return true;
+      },
+      toggleWidget: (widgetType) => {
+        const state = useWorkspaceStore.getState();
+        const widget = newestWidgetOfType(widgetType);
+        if (widget) {
+          state.removeWidget(widget.id);
+          return true;
+        }
+        const config = widgetRegistry.get(widgetType);
+        if (!config?.compactPanel?.supported) return false;
+        state.addWidget(widgetType);
         return true;
       },
       removeWidget: (widgetId: string) => {

@@ -7,7 +7,7 @@ contextBridge.exposeInMainWorld('classroomSettings', {
   get: () => ipcRenderer.invoke('settings:get'),
   set: (update: Record<string, unknown>) => ipcRenderer.send('settings:set', update),
   resetPositions: () => ipcRenderer.send('settings:reset-positions'),
-  setShortcut: (widgetType: number, accelerator: string | null) => ipcRenderer.invoke('settings:set-shortcut', widgetType, accelerator),
+  setShortcut: (widgetType: number, action: 'show' | 'dismiss', accelerator: string | null) => ipcRenderer.invoke('settings:set-shortcut', widgetType, action, accelerator),
   resetShortcuts: () => ipcRenderer.send('settings:reset-shortcuts'),
   setCapturing: (active: boolean) => ipcRenderer.send('settings:capturing', active),
   onShortcutsChanged: (callback: (shortcuts: unknown) => void) => ipcRenderer.on('settings:shortcuts-changed', (_event, shortcuts) => callback(shortcuts)),

@@ -67,6 +67,16 @@ section {
 }
 
 .shortcut-list {
+  margin-top: 2px;
+}
+
+.shortcut-header {
+  color: #6B7280;
+  display: grid;
+  font-size: 11px;
+  font-weight: 600;
+  gap: 8px;
+  grid-template-columns: minmax(90px, 1fr) minmax(145px, auto) minmax(145px, auto);
   margin-top: 10px;
 }
 
@@ -74,7 +84,7 @@ section {
   align-items: center;
   display: grid;
   gap: 5px 8px;
-  grid-template-columns: minmax(90px, 1fr) minmax(145px, auto) auto;
+  grid-template-columns: minmax(90px, 1fr) minmax(145px, auto) minmax(145px, auto);
   padding: 7px 0;
 }
 
@@ -85,7 +95,7 @@ section {
 .shortcut-capture {
   font-family: ui-monospace, "Cascadia Mono", monospace;
   margin: 0;
-  min-width: 145px;
+  min-width: 110px;
 }
 
 .shortcut-capture.capturing {
@@ -94,7 +104,17 @@ section {
 
 .shortcut-status {
   font-size: 11px;
-  grid-column: 2 / 4;
+}
+
+.shortcut-field {
+  align-items: center;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.shortcut-field .shortcut-status {
+  grid-column: 1 / 3;
 }
 
 .shortcut-status.active { color: #047857; }
