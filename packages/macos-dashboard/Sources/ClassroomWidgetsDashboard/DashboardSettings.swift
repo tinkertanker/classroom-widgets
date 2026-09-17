@@ -201,8 +201,7 @@ struct DashboardShortcutSettingsView: View {
                                 widgetShortcutRecorder(option: option, action: .show)
                                 widgetShortcutRecorder(option: option, action: .dismiss)
                             }
-                            if let status = context.widgetShortcutStatuses[.widget(option.widgetType)]
-                                ?? context.widgetShortcutStatuses[.widgetDismiss(option.widgetType)] {
+                            ForEach(statuses(for: option.widgetType), id: \.self) { status in
                                 GridRow {
                                     Text("")
                                     Text(status).font(.caption).foregroundStyle(.red).gridCellColumns(2)
@@ -244,6 +243,12 @@ struct DashboardShortcutSettingsView: View {
             onRecordingChanged: context.shortcutRecordingChanged
         )
         .frame(width: 190)
+    }
+
+    private func statuses(for widgetType: Int) -> [String] {
+        let show = context.widgetShortcutStatuses[.widget(widgetType)]
+        let dismiss = context.widgetShortcutStatuses[.widgetDismiss(widgetType)]
+        return show == dismiss ? [show].compactMap { $0 } : [show, dismiss].compactMap { $0 }
     }
 
     private func shortcut(for widgetType: Int, action: WidgetShortcutAction) -> DashboardShortcut? {

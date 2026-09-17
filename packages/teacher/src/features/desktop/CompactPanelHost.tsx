@@ -72,12 +72,22 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
   };
   syncWidgetCreationOrder(workspace.widgets);
 
+  // Widget ids are `${Date.now()}-${random}`, so the prefix is the creation time and
+  // survives restores/remounts; the in-session ordinal only breaks same-millisecond ties.
+  const widgetCreatedAt = (widgetId: string) => {
+    const createdAt = Number(widgetId.split('-')[0]);
+    return Number.isFinite(createdAt) ? createdAt : -1;
+  };
+
   const newestWidgetOfType = (widgetType: number) => {
     const widgets = useWorkspaceStore.getState().widgets;
     syncWidgetCreationOrder(widgets);
     return widgets.reduce<typeof workspace.widgets[number] | undefined>((newest, candidate) => {
       if (candidate.type !== widgetType) return newest;
       if (!newest) return candidate;
+      const candidateCreatedAt = widgetCreatedAt(candidate.id);
+      const newestCreatedAt = widgetCreatedAt(newest.id);
+      if (candidateCreatedAt !== newestCreatedAt) return candidateCreatedAt > newestCreatedAt ? candidate : newest;
       const candidateOrder = widgetCreationOrderRef.current.get(candidate.id) ?? -1;
       const newestOrder = widgetCreationOrderRef.current.get(newest.id) ?? -1;
       return candidateOrder > newestOrder ? candidate : newest;
@@ -234,20 +244,22 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         return true;
       },
       dismissWidget: (widgetType) => {
+        const config = widgetRegistry.get(widgetType);
+        if (!config?.compactPanel?.supported) return false;
         const widget = newestWidgetOfType(widgetType);
         if (!widget) return false;
         useWorkspaceStore.getState().removeWidget(widget.id);
         return true;
       },
       toggleWidget: (widgetType) => {
+        const config = widgetRegistry.get(widgetType);
+        if (!config?.compactPanel?.supported) return false;
         const state = useWorkspaceStore.getState();
         const widget = newestWidgetOfType(widgetType);
         if (widget) {
           state.removeWidget(widget.id);
           return true;
         }
-        const config = widgetRegistry.get(widgetType);
-        if (!config?.compactPanel?.supported) return false;
         state.addWidget(widgetType);
         return true;
       },
