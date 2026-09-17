@@ -20,6 +20,8 @@ final class DisplayPreviewCoordinator: NSObject {
     private var pendingStopPresentation = DisplayPreviewPendingStopPresentation()
     private var autoResume = DisplayPreviewAutoResumeState()
     private var frameRecovery = DisplayPreviewFrameRecovery()
+    private var captureOrder = DisplayPreviewCaptureOrder()
+    private var recoveryTask: Task<Void, Never>?
     private var deliveredFrameGeneration: UInt64?
     private var streamActivityGeneration: UInt64?
     private var pendingOpeningAspect = false
@@ -116,7 +118,7 @@ final class DisplayPreviewCoordinator: NSObject {
     func prepareForTermination() async -> Bool {
         stopLifecycle.beginTermination()
         cancelDeferredRestarts()
-        frameRecovery.cancel()
+        cancelFrameRecovery()
         intent.pause()
         clearFrame(status: "Paused while Classroom Widgets quits.")
         logDisplayTransition(
@@ -136,6 +138,14 @@ final class DisplayPreviewCoordinator: NSObject {
         } else if !stopLifecycle.isStopping {
             guard stopLifecycle.beginStop(of: session) else { return false }
         }
+        logDisplayTransition(
+            .stop,
+            trigger: "termination",
+            reason: "prepareForTermination",
+            source: selectedSource,
+            intent: false,
+            enabled: true
+        )
         let stopped = await stopWithTimeout(session, retryFailed: true)
         if stopped {
             let reconciled = reconcileConfirmedStop(of: session)
@@ -173,11 +183,8 @@ final class DisplayPreviewCoordinator: NSObject {
     private func refreshSources(preselect: Bool) {
         let hostID = DisplayCatalog.displayID(for: windowController?.window?.screen)
         let candidates = catalog.eligibleSources(hostDisplayID: hostID)
-        if preselect, selectedSource == nil {
-            let saved = UserDefaults.standard.string(forKey: Keys.sourceUUID)
-            selectedSource = saved.flatMap { catalog.matchSavedUUID($0, among: candidates) }
-                ?? (candidates.count == 1 ? candidates[0] : nil)
-            intent.select(sourceID: selectedSource?.id)
+        if preselect {
+            selectPreselectedSource(from: candidates)
         }
         windowController?.setSources(candidates, selectedID: selectedSource?.id)
         if candidates.isEmpty {
@@ -194,6 +201,17 @@ final class DisplayPreviewCoordinator: NSObject {
             )
         }
         normalizeOpeningAspectIfNeeded()
+    }
+
+    /// Re-resolves the source on a fresh launch. The in-memory descriptor and the
+    /// saved UUID are both validated against the fresh candidate list, so a source
+    /// that was unplugged and replugged with a new `CGDirectDisplayID` is matched by
+    /// UUID instead of being captured by a stale identifier.
+    private func selectPreselectedSource(from candidates: [DisplayDescriptor]) {
+        let savedUUID = UserDefaults.standard.string(forKey: Keys.sourceUUID)
+        let remembered = [selectedSource?.uuid, savedUUID].compactMap { $0 }
+        selectedSource = catalog.resolveSource(rememberedUUIDs: remembered, among: candidates)
+        intent.select(sourceID: selectedSource?.id)
     }
 
     /// A fresh deliberate launch sizes the preview viewport to the source display
@@ -218,7 +236,7 @@ final class DisplayPreviewCoordinator: NSObject {
         let source = catalog.eligibleSources(hostDisplayID: hostID).first { $0.id == id }
         guard source != selectedSource else { return }
         cancelDeferredRestarts()
-        frameRecovery.cancel()
+        cancelFrameRecovery()
         intent.select(sourceID: source?.id)
         selectedSource = source
         presentedGeometry = nil
@@ -295,7 +313,8 @@ final class DisplayPreviewCoordinator: NSObject {
         guard let generation = intent.start() else { return }
         deliveredFrameGeneration = nil
         streamActivityGeneration = nil
-        frameRecovery.cancel()
+        captureOrder.reset()
+        cancelFrameRecovery()
         logDisplayTransition(
             .start,
             trigger: trigger.logLabel,
@@ -308,15 +327,25 @@ final class DisplayPreviewCoordinator: NSObject {
         let capture = DisplayCaptureSession(sourceID: source.id)
         session = capture
         stopLifecycle.adopt(capture)
-        capture.onFrame = { [weak self, weak capture] buffer, size in
+        capture.onFrameActivity = { [weak self, weak capture] in
+            guard let self, let capture, self.session === capture,
+                  self.intent.accepts(generation: generation, sourceID: source.id)
+            else { return }
+            // Static `.idle`/`.started` statuses prove the stream is alive even
+            // though they never deliver an image.
+            self.streamActivityGeneration = generation
+        }
+        capture.onFrame = { [weak self, weak capture] buffer, size, sequence in
             guard let self, let capture, self.session === capture,
                   self.intent.accepts(generation: generation, sourceID: source.id),
-                  self.catalog.currentMatching(source) != nil
+                  self.catalog.currentMatching(source) != nil,
+                  self.captureOrder.acceptsFrame(sequence: sequence)
             else { return }
             let isFirstDeliveredFrame = self.deliveredFrameGeneration != generation
             self.deliveredFrameGeneration = generation
             self.streamActivityGeneration = generation
             if self.frameRecovery.frameRestored(generation: generation) == .restored {
+                self.cancelRecoveryTask()
                 self.logDisplayTransition(
                     .recovered,
                     trigger: "frame",
@@ -350,14 +379,14 @@ final class DisplayPreviewCoordinator: NSObject {
                 )
             }
         }
-        capture.onTransientGap = { [weak self, weak capture] reason in
+        capture.onTransientGap = { [weak self, weak capture] reason, sequence in
             guard let self, let capture,
                   DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
                     ownsSession: self.session === capture,
                     acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
-                  )
+                  ),
+                  self.captureOrder.acceptsHoldEvent(sequence: sequence)
             else { return }
-            self.streamActivityGeneration = generation
             self.holdForFrameGap(
                 generation: generation,
                 source: source,
@@ -373,7 +402,18 @@ final class DisplayPreviewCoordinator: NSObject {
                 acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
             )
             guard self.reconcileTerminalStop(of: capture) else { return }
+            // Domain and code only: a localized description can carry window titles.
+            let stopReason = "delegateTerminal:\((error as NSError).domain)/\((error as NSError).code)"
             if mayChangeIntent {
+                self.logDisplayTransition(
+                    .stop,
+                    trigger: "delegateTerminal",
+                    reason: stopReason,
+                    source: source,
+                    intent: false,
+                    enabled: true,
+                    generation: generation
+                )
                 self.pendingStopPresentation.clear()
                 self.cancelDeferredRestarts()
                 self.intent.pause()
@@ -382,20 +422,39 @@ final class DisplayPreviewCoordinator: NSObject {
                 currentSourceUUID: self.selectedSource?.uuid,
                 terminating: self.stopLifecycle.terminating
             ) {
+                self.logDisplayTransition(
+                    .stop,
+                    trigger: "deferredRestartStopCompleted",
+                    reason: stopReason,
+                    source: source,
+                    intent: false,
+                    enabled: true,
+                    generation: generation
+                )
                 self.pendingStopPresentation.clear()
                 self.start(trigger: .visibilityResume)
             } else {
+                self.logDisplayTransition(
+                    .stop,
+                    trigger: "ownedStopCompleted",
+                    reason: stopReason,
+                    source: source,
+                    intent: self.intent.wantsCapture,
+                    enabled: true,
+                    generation: generation
+                )
                 self.publishPendingStopPresentation()
             }
         }
-        capture.onUnavailable = { [weak self, weak capture] reason in
+        capture.onUnavailable = { [weak self, weak capture] reason, sequence in
             guard let self, let capture,
                   DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
                     ownsSession: self.session === capture,
                     acceptsGeneration: self.intent.accepts(generation: generation, sourceID: source.id)
-                  )
+                  ),
+                  self.captureOrder.acceptsHoldEvent(sequence: sequence)
             else { return }
-            self.frameRecovery.cancel()
+            self.cancelFrameRecovery()
             self.cancelDeferredRestarts()
             let message = DisplayPreviewStatus.unavailable(sourceName: source.name)
             self.logDisplayTransition(
@@ -476,7 +535,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private func pause(message: String, preservingDeferredRestart: Bool = false) {
         autoResume.pauseRequested(preservingDeferredRestart: preservingDeferredRestart)
         intent.pause()
-        frameRecovery.cancel()
+        cancelFrameRecovery()
         clearFrame(status: message)
         stopCurrent(message: message)
     }
@@ -498,6 +557,14 @@ final class DisplayPreviewCoordinator: NSObject {
         guard stopLifecycle.beginStop(of: capture) else {
             return
         }
+        logDisplayTransition(
+            .stop,
+            trigger: "appRequested",
+            reason: completionPresentation == nil ? "pause" : "sourceChange",
+            source: selectedSource,
+            intent: intent.wantsCapture,
+            enabled: true
+        )
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
             if await self.stopWithTimeout(capture) {
@@ -513,6 +580,14 @@ final class DisplayPreviewCoordinator: NSObject {
                 }
             } else {
                 if self.stopLifecycle.stopDidNotComplete(for: capture) {
+                    self.logDisplayTransition(
+                        .stop,
+                        trigger: "stopTimeout",
+                        reason: "stopDidNotComplete",
+                        source: self.selectedSource,
+                        intent: false,
+                        enabled: false
+                    )
                     self.autoResume.cancel()
                     self.pendingStopPresentation.clear()
                     self.controllerStatus("Capture could not stop. Quit Classroom Widgets to recover safely.", enabled: false)
@@ -523,7 +598,7 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func close() {
         cancelDeferredRestarts()
-        frameRecovery.cancel()
+        cancelFrameRecovery()
         intent.close()
         clearFrame(status: "Closed.")
         logDisplayTransition(
@@ -559,7 +634,7 @@ final class DisplayPreviewCoordinator: NSObject {
         let hostID = DisplayCatalog.displayID(for: controller.window?.screen)
         let candidates = catalog.eligibleSources(hostDisplayID: hostID)
         let match = selectedSource.flatMap { catalog.currentMatching($0) }
-        let isStillEligible = match.map { current in
+        let isHostCandidate = match.map { current in
             candidates.contains { $0.uuid == current.uuid }
         } ?? false
 
@@ -567,7 +642,7 @@ final class DisplayPreviewCoordinator: NSObject {
             hasWindow: true,
             selectedSourceID: selectedSource?.id,
             currentMatchID: match?.id,
-            isStillEligible: isStillEligible
+            isHostCandidate: isHostCandidate
         ) {
         case .ignore:
             controller.setSources(candidates, selectedID: selectedSource?.id)
@@ -575,7 +650,12 @@ final class DisplayPreviewCoordinator: NSObject {
         case .preserveSource:
             guard let current = match else { return }
             selectedSource = current
-            controller.setSources(candidates, selectedID: current.id)
+            if isHostCandidate {
+                controller.setSources(candidates, selectedID: current.id)
+            }
+            // Host-filtered candidacy is a placement fact: while the preview
+            // overlaps its own source the menu keeps its selection and the
+            // existing overlap/hidden auto-resume intent stays intact.
             if topologyChanged, let geometry = presentedGeometry {
                 // Same source and bounds: keep pointer mapping usable by adopting
                 // the new revision instead of discarding it.
@@ -589,18 +669,21 @@ final class DisplayPreviewCoordinator: NSObject {
             logDisplayTransition(
                 .topologyPreserved,
                 trigger: "didChangeScreenParameters",
-                reason: "sourceStillValid",
+                reason: isHostCandidate ? "sourceStillValid" : "sourceStillValidHostOverlap",
                 source: current,
                 intent: intent.wantsCapture,
                 enabled: true
             )
+            if topologyChanged {
+                validateWindowPlacement()
+            }
             return
         case .reset:
             break
         }
 
         cancelDeferredRestarts()
-        frameRecovery.cancel()
+        cancelFrameRecovery()
         presentedGeometry = nil
         logDisplayTransition(
             .topologyReset,
@@ -677,6 +760,7 @@ final class DisplayPreviewCoordinator: NSObject {
     ) {
         switch frameRecovery.gapDetected(generation: generation) {
         case .holdBegan:
+            guard let episode = frameRecovery.activeEpisode else { return }
             presentedGeometry = nil
             windowController?.previewView.discardPendingClick()
             windowController?.previewView.setImageStale(true)
@@ -695,54 +779,111 @@ final class DisplayPreviewCoordinator: NSObject {
                 enabled: true,
                 generation: generation
             )
-            scheduleRecoveryWindow(generation: generation, source: source, capture: capture)
+            startRecoveryWindow(
+                generation: generation,
+                episode: episode,
+                source: source,
+                capture: capture
+            )
         case .holdExtended, .ignored, .restored, .exhausted:
             break
         }
     }
 
-    private func scheduleRecoveryWindow(
+    /// Owns exactly one recovery timer for the current hold episode. The episode
+    /// check makes a timer from an earlier gap a no-op instead of consuming a later
+    /// gap's window, and cancelling the owned task stops it from doing any work.
+    private func startRecoveryWindow(
         generation: UInt64,
+        episode: UInt64,
         source: DisplayDescriptor,
         capture: DisplayCaptureSession
     ) {
+        cancelRecoveryTask()
+        recoveryTask = makeRecoveryTask(
+            generation: generation,
+            episode: episode,
+            source: source,
+            capture: capture
+        )
+    }
+
+    private func makeRecoveryTask(
+        generation: UInt64,
+        episode: UInt64,
+        source: DisplayDescriptor,
+        capture: DisplayCaptureSession
+    ) -> Task<Void, Never> {
         Task { @MainActor [weak self, weak capture] in
             try? await Task.sleep(nanoseconds: DisplayPreviewFrameRecovery.holdWindowNanoseconds)
-            guard let self, let capture, self.session === capture,
-                  self.intent.accepts(generation: generation, sourceID: source.id)
-            else { return }
-            guard CGPreflightScreenCaptureAccess() else {
-                // Permission was revoked while holding: stop recovery immediately
-                // rather than waiting out the remaining hold window.
-                self.frameRecovery.cancel()
-                self.logDisplayTransition(
-                    .recoveryExhausted,
-                    trigger: "permissionRevoked",
-                    source: source,
-                    intent: false,
-                    enabled: true,
-                    generation: generation
-                )
-                self.pause(message: DisplayPreviewStatus.unavailable(sourceName: source.name))
-                return
-            }
-            switch self.frameRecovery.windowExpired(generation: generation) {
-            case .holdExtended:
-                self.scheduleRecoveryWindow(generation: generation, source: source, capture: capture)
-            case .exhausted:
-                self.logDisplayTransition(
-                    .recoveryExhausted,
-                    trigger: "holdWindowExpired",
-                    source: source,
-                    intent: false,
-                    enabled: true,
-                    generation: generation
-                )
-                self.pause(message: DisplayPreviewStatus.unavailable(sourceName: source.name))
-            case .holdBegan, .restored, .ignored:
-                break
-            }
+            guard !Task.isCancelled, let self, let capture else { return }
+            self.recoveryWindowElapsed(
+                generation: generation,
+                episode: episode,
+                source: source,
+                capture: capture
+            )
         }
+    }
+
+    private func recoveryWindowElapsed(
+        generation: UInt64,
+        episode: UInt64,
+        source: DisplayDescriptor,
+        capture: DisplayCaptureSession
+    ) {
+        guard session === capture, intent.accepts(generation: generation, sourceID: source.id) else { return }
+        guard frameRecovery.isActive(generation: generation, episode: episode) else { return }
+        guard CGPreflightScreenCaptureAccess() else {
+            // Permission was revoked while holding: stop recovery immediately
+            // rather than waiting out the remaining hold window.
+            cancelFrameRecovery()
+            logDisplayTransition(
+                .recoveryExhausted,
+                trigger: "permissionRevoked",
+                source: source,
+                intent: false,
+                enabled: true,
+                generation: generation
+            )
+            pause(message: DisplayPreviewStatus.unavailable(sourceName: source.name))
+            return
+        }
+        switch frameRecovery.windowExpired(generation: generation, episode: episode) {
+        case .holdExtended:
+            recoveryTask = makeRecoveryTask(
+                generation: generation,
+                episode: episode,
+                source: source,
+                capture: capture
+            )
+        case .exhausted:
+            cancelFrameRecovery()
+            logDisplayTransition(
+                .recoveryExhausted,
+                trigger: "holdWindowExpired",
+                source: source,
+                intent: false,
+                enabled: true,
+                generation: generation
+            )
+            pause(message: DisplayPreviewStatus.unavailable(sourceName: source.name))
+        case .holdBegan, .restored, .ignored:
+            break
+        }
+    }
+
+    private func cancelRecoveryTask() {
+        recoveryTask?.cancel()
+        recoveryTask = nil
+    }
+
+    /// Cancels both the hold state and the timer that owns it. Every explicit
+    /// off/close/source/termination/sleep/lock path uses this so no recovery work
+    /// can outlive the intent that authorized it.
+    private func cancelFrameRecovery() {
+        cancelRecoveryTask()
+        frameRecovery.cancel()
     }
 
     private func beginFirstFrameTimeout(generation: UInt64, sourceID: CGDirectDisplayID, capture: DisplayCaptureSession) {

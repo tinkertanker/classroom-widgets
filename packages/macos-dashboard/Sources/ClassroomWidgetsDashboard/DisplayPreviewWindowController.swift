@@ -2,7 +2,7 @@ import AppKit
 import CoreMedia
 
 @MainActor
-final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate {
+final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate, NSMenuItemValidation {
     static let powerToggleIdentifier = NSUserInterfaceItemIdentifier("displayPreviewPowerToggle")
 
     let previewView = DisplayPreviewView(frame: .zero)
@@ -336,6 +336,18 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     @objc private func toggleCapture() { onToggleCapture?() }
     @objc private func moveToCenter() { onMoveToCenter?() }
     @objc private func matchDisplayAspectRatio() { matchCurrentSourceAspect(animated: true) }
+
+    /// Authoritative enablement: NSMenu's automatic validation would otherwise
+    /// re-enable an item merely because its target responds to the action.
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(matchDisplayAspectRatio) {
+            return currentSourceAspect != nil
+        }
+        if menuItem.action == #selector(moveToCenter) {
+            return centerEnabled
+        }
+        return true
+    }
 
     private func updateMenuAccessibility() {
         let source = sources.first(where: { $0.id == selectedSourceID })?.name ?? "No source selected"

@@ -147,26 +147,35 @@ final class DisplayPreviewGeometryTests: XCTestCase {
     }
 
     func testAspectNormalizedWindowSizeRejectsInvalidAspect() {
-        XCTAssertEqual(
-            DisplayPreviewGeometry.aspectNormalizedWindowSize(
-                matchingAspect: 0,
-                preservingPreviewSize: CGSize(width: 480, height: 322),
-                chromeHeight: 38,
-                minimumPreviewSize: CGSize(width: 320, height: 230),
-                maximumSize: CGSize(width: 2000, height: 2000)
-            ),
-            CGSize(width: 480, height: 360)
+        let current = CGSize(width: 480, height: 322)
+        let invalidAspects: [CGFloat] = [0, -1.5, .nan, .infinity, -.infinity]
+        for aspect in invalidAspects {
+            XCTAssertEqual(
+                DisplayPreviewGeometry.aspectNormalizedWindowSize(
+                    matchingAspect: aspect,
+                    preservingPreviewSize: current,
+                    chromeHeight: 38,
+                    minimumPreviewSize: CGSize(width: 320, height: 230),
+                    maximumSize: CGSize(width: 2000, height: 2000)
+                ),
+                CGSize(width: 480, height: 360),
+                "A non-finite or non-positive scalar aspect must fall back to the current size"
+            )
+        }
+    }
+
+    func testAspectNormalizedWindowSizeKeepsNativeMinimumOnAShortScreen() {
+        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
+            matchingAspect: 900.0 / 1600.0,
+            preservingPreviewSize: CGSize(width: 480, height: 322),
+            chromeHeight: 38,
+            minimumPreviewSize: CGSize(width: 320, height: 230),
+            maximumSize: CGSize(width: 700, height: 400)
         )
-        XCTAssertEqual(
-            DisplayPreviewGeometry.aspectNormalizedWindowSize(
-                matchingAspect: .nan,
-                preservingPreviewSize: CGSize(width: 480, height: 322),
-                chromeHeight: 38,
-                minimumPreviewSize: CGSize(width: 320, height: 230),
-                maximumSize: CGSize(width: 2000, height: 2000)
-            ),
-            CGSize(width: 480, height: 360)
-        )
+        XCTAssertGreaterThanOrEqual(size.width, 320 - 0.001, "The native minimum preview must survive a short screen")
+        XCTAssertGreaterThanOrEqual(size.height - 38, 230 - 0.001)
+        XCTAssertLessThanOrEqual(size.height, 400 + 0.01, "The frame must still fit the available screen")
+        XCTAssertLessThanOrEqual(size.width, 700 + 0.01)
     }
 
     private func target(_ x: CGFloat, _ y: CGFloat) -> CGPoint? {

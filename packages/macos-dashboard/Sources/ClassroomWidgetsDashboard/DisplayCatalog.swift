@@ -86,6 +86,20 @@ final class DisplayCatalog {
         return matches.count == 1 ? matches[0] : nil
     }
 
+    /// Resolves the source to preview on a fresh launch. Remembered UUIDs are
+    /// re-validated against the fresh candidate list, so an unplug/replug that
+    /// changed the `CGDirectDisplayID` cannot leave a stale source behind. With
+    /// nothing remembered, only a sole candidate is auto-selected.
+    func resolveSource(
+        rememberedUUIDs: [String],
+        among candidates: [DisplayDescriptor]
+    ) -> DisplayDescriptor? {
+        for uuid in rememberedUUIDs {
+            if let match = matchSavedUUID(uuid, among: candidates) { return match }
+        }
+        return candidates.count == 1 ? candidates[0] : nil
+    }
+
     static func displayID(for screen: NSScreen?) -> CGDirectDisplayID? {
         (screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }

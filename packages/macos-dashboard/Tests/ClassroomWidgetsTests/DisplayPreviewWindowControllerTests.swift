@@ -375,9 +375,13 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             controller.setSources([], selectedID: nil)
             XCTAssertNil(controller.currentSourceAspect)
             let disabledMenu = controller.makeControlsMenu()
+            // NSMenu auto-validation would re-enable an item merely because its
+            // target responds, so update() must leave it disabled.
+            disabledMenu.update()
             guard let disabledItem = disabledMenu.items.first(where: { $0.title == "Match Display Aspect Ratio" })
             else { return XCTFail("Expected Match Display Aspect Ratio menu item") }
             XCTAssertFalse(disabledItem.isEnabled)
+            XCTAssertTrue(disabledItem.target === controller)
             XCTAssertFalse(controller.matchCurrentSourceAspect(animated: false))
 
             let source = DisplayDescriptor(
@@ -390,10 +394,16 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             )
             controller.setSources([source], selectedID: source.id)
             let enabledMenu = controller.makeControlsMenu()
+            enabledMenu.update()
             guard let enabledItem = enabledMenu.items.first(where: { $0.title == "Match Display Aspect Ratio" })
             else { return XCTFail("Expected Match Display Aspect Ratio menu item") }
             XCTAssertTrue(enabledItem.isEnabled)
             XCTAssertEqual(controller.currentSourceAspect ?? 0, 1920.0 / 1080.0, accuracy: 0.0001)
+
+            // Losing the source disables it again, even though the target still responds.
+            controller.setSources([], selectedID: nil)
+            enabledMenu.update()
+            XCTAssertFalse(enabledItem.isEnabled)
             controller.close()
         }
     }
@@ -436,6 +446,14 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 WidgetPanelContentLayout.topGap,
                 accuracy: 0.5
             )
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(
+                controller.previewView.bounds.width,
+                snapped.width,
+                accuracy: 0.5,
+                "The laid-out preview view must be the aspect-matched viewport"
+            )
+            XCTAssertEqual(controller.previewView.bounds.height, snapped.height, accuracy: 0.5)
             let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame
             if let visibleFrame {
                 XCTAssertGreaterThanOrEqual(snapped.width, panel.contentMinSize.width - 0.5)
@@ -499,6 +517,9 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 accuracy: 0.002,
                 "Portrait sources must not be transposed"
             )
+            panel.contentView?.layoutSubtreeIfNeeded()
+            XCTAssertEqual(controller.previewView.bounds.width, preview.width, accuracy: 0.5)
+            XCTAssertEqual(controller.previewView.bounds.height, preview.height, accuracy: 0.5)
             let visibleFrame = (panel.screen ?? NSScreen.main)?.visibleFrame ?? panel.frame
             let maximumPreviewHeight = visibleFrame.height - controller.previewChromeHeight
             if maximumPreviewHeight >= panel.contentMinSize.height - WidgetPanelContentLayout.topGap {

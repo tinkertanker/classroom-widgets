@@ -84,6 +84,7 @@ enum DisplayPreviewTransition: String {
     case topologyReset
     case sourceSelected
     case pause
+    case stop
     case close
     case overlapSuspend
     case overlapResume
@@ -107,14 +108,18 @@ enum DisplayPreviewTopologyPolicy {
     /// A screen-parameter notice is only relevant when it changes the source that
     /// is actually being previewed. Notices also fire for menu bar, Dock, colour,
     /// and unrelated display changes, so they must not reset a live preview.
+    ///
+    /// `isHostCandidate` is deliberately ignored: host-filtered candidacy is a
+    /// temporary placement fact (the preview can overlap its own source), not a
+    /// statement about whether the source still exists and is authorized.
     static func outcome(
         hasWindow: Bool,
         selectedSourceID: CGDirectDisplayID?,
         currentMatchID: CGDirectDisplayID?,
-        isStillEligible: Bool
+        isHostCandidate: Bool
     ) -> DisplayPreviewTopologyOutcome {
         guard hasWindow, let selectedSourceID else { return .ignore }
-        guard isStillEligible, currentMatchID == selectedSourceID else { return .reset }
+        guard currentMatchID == selectedSourceID else { return .reset }
         return .preserveSource
     }
 }
@@ -166,6 +171,8 @@ enum DisplayPreviewLaunchPolicy {
 /// Bounded hold state for temporary frame gaps on an already-authorized source.
 /// It never restarts the stream; it only keeps the last good image and enabled
 /// intent while the same source reports `.blank`/`.suspended`/missing-image frames.
+/// Each hold is a unique episode so a timer owned by an earlier gap can never
+/// consume a later gap's window inside the same stream generation.
 struct DisplayPreviewFrameRecovery {
     enum Decision: Equatable {
         case ignored
@@ -179,30 +186,42 @@ struct DisplayPreviewFrameRecovery {
     static let maximumHoldWindows = 2
     static let holdWindowNanoseconds: UInt64 = 6_000_000_000
 
-    private(set) var generation: UInt64?
-    private(set) var holdWindows = 0
+    struct Hold: Equatable {
+        let generation: UInt64
+        let episode: UInt64
+    }
 
-    var isHolding: Bool { generation != nil }
+    private(set) var activeHold: Hold?
+    private(set) var holdWindows = 0
+    private var nextEpisode: UInt64 = 0
+
+    var isHolding: Bool { activeHold != nil }
+    var activeEpisode: UInt64? { activeHold?.episode }
+
+    func isActive(generation: UInt64, episode: UInt64) -> Bool {
+        activeHold == Hold(generation: generation, episode: episode)
+    }
 
     mutating func gapDetected(generation: UInt64) -> Decision {
-        if self.generation == generation { return .holdExtended }
-        guard self.generation == nil else { return .ignored }
-        self.generation = generation
+        if let hold = activeHold, hold.generation == generation { return .holdExtended }
+        guard activeHold == nil else { return .ignored }
+        nextEpisode &+= 1
+        activeHold = Hold(generation: generation, episode: nextEpisode)
         holdWindows = 1
         return .holdBegan
     }
 
     mutating func frameRestored(generation: UInt64) -> Decision {
-        guard self.generation == generation else { return .ignored }
-        self.generation = nil
+        guard let hold = activeHold, hold.generation == generation else { return .ignored }
+        activeHold = nil
         holdWindows = 0
         return .restored
     }
 
-    mutating func windowExpired(generation: UInt64) -> Decision {
-        guard self.generation == generation else { return .ignored }
+    mutating func windowExpired(generation: UInt64, episode: UInt64) -> Decision {
+        guard isActive(generation: generation, episode: episode) else { return .ignored }
         guard holdWindows < Self.maximumHoldWindows else {
-            self.generation = nil
+            activeHold = nil
             holdWindows = 0
             return .exhausted
         }
@@ -211,8 +230,35 @@ struct DisplayPreviewFrameRecovery {
     }
 
     mutating func cancel() {
-        generation = nil
+        activeHold = nil
         holdWindows = 0
+    }
+}
+
+/// Keeps the newest capture event authoritative when delivery order and capture
+/// order disagree: a coalesced frame drain can apply a post-gap frame before the
+/// gap notification, and a pending pre-gap frame can drain after it.
+struct DisplayPreviewCaptureOrder {
+    private(set) var latestHoldSequence: UInt64 = 0
+    private(set) var latestFrameSequence: UInt64 = 0
+
+    /// Returns false when this frame was captured before the hold event already applied.
+    mutating func acceptsFrame(sequence: UInt64) -> Bool {
+        guard sequence >= latestHoldSequence else { return false }
+        latestFrameSequence = max(latestFrameSequence, sequence)
+        return true
+    }
+
+    /// Returns false when this gap/terminal predates a frame already applied.
+    mutating func acceptsHoldEvent(sequence: UInt64) -> Bool {
+        guard sequence >= latestFrameSequence else { return false }
+        latestHoldSequence = max(latestHoldSequence, sequence)
+        return true
+    }
+
+    mutating func reset() {
+        latestHoldSequence = 0
+        latestFrameSequence = 0
     }
 }
 

@@ -1,3 +1,5 @@
+import CoreMedia
+import CoreVideo
 import ScreenCaptureKit
 import XCTest
 @testable import ClassroomWidgets
@@ -56,5 +58,131 @@ final class DisplayCaptureSessionTests: XCTestCase {
             XCTFail("Expected CancellationError, got \(error)")
         }
         XCTAssertFalse(discoveryCalled.withLock { didCallDiscovery })
+    }
+
+    @MainActor
+    func testIdleAndStartedStatusesReportActivityWithoutBeginningAHold() async {
+        let session = DisplayCaptureSession(sourceID: 2)
+        var activity = 0
+        var gaps: [DisplayCaptureGapReason] = []
+        session.onFrameActivity = { activity += 1 }
+        session.onTransientGap = { reason, _ in gaps.append(reason) }
+
+        session.handleFrameStatus(.started, sampleBuffer: nil)
+        session.handleFrameStatus(.idle, sampleBuffer: nil)
+        session.handleFrameStatus(.idle, sampleBuffer: nil)
+        await drainMainQueue()
+
+        XCTAssertEqual(activity, 1, "Static .idle must prove the stream is alive")
+        XCTAssertEqual(gaps, [], "Static .idle must never begin a hold")
+    }
+
+    @MainActor
+    func testTerminalStatusWinsDuringAReportedGapAndDuplicatesStayCoalesced() async {
+        let session = DisplayCaptureSession(sourceID: 2)
+        var events: [String] = []
+        session.onTransientGap = { reason, _ in events.append("gap:\(reason.rawValue)") }
+        session.onUnavailable = { reason, _ in events.append("terminal:\(reason.rawValue)") }
+
+        session.handleFrameStatus(.suspended, sampleBuffer: nil)
+        session.handleFrameStatus(.stopped, sampleBuffer: nil)
+        session.handleFrameStatus(.stopped, sampleBuffer: nil)
+        session.handleFrameStatus(.blank, sampleBuffer: nil)
+        await drainMainQueue()
+
+        XCTAssertEqual(
+            events,
+            ["gap:suspended", "terminal:stopped"],
+            "A terminal status must win during a reported gap, duplicates stay coalesced, and later gaps stay suppressed"
+        )
+    }
+
+    @MainActor
+    func testInterleavedFrameGapAndTerminalEventsCarryCaptureOrderSequences() async throws {
+        let session = DisplayCaptureSession(sourceID: 2)
+        var events: [(String, UInt64)] = []
+        session.onFrame = { _, _, sequence in events.append(("frame", sequence)) }
+        session.onTransientGap = { _, sequence in events.append(("gap", sequence)) }
+        session.onUnavailable = { _, sequence in events.append(("terminal", sequence)) }
+        let frame = try XCTUnwrap(makeFrameSampleBuffer(), "Fixture: expected a synthetic frame sample buffer")
+
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        await drainMainQueue()
+        session.handleFrameStatus(.blank, sampleBuffer: nil)
+        await drainMainQueue()
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        await drainMainQueue()
+
+        XCTAssertEqual(events.map { $0.0 }, ["frame", "gap", "frame"])
+        XCTAssertEqual(
+            events.map { $0.1 },
+            [1, 2, 3],
+            "Sequences must follow capture order, not delivery order"
+        )
+    }
+
+    @MainActor
+    func testCoalescedDrainCanDeliverAPostGapFrameBeforeTheGapNotification() async throws {
+        let session = DisplayCaptureSession(sourceID: 2)
+        var events: [(String, UInt64)] = []
+        session.onFrame = { _, _, sequence in events.append(("frame", sequence)) }
+        session.onTransientGap = { _, sequence in events.append(("gap", sequence)) }
+        let frame = try XCTUnwrap(makeFrameSampleBuffer(), "Fixture: expected a synthetic frame sample buffer")
+
+        // The main queue is held for the whole burst, so the pending drain coalesces
+        // the two complete statuses and runs before the queued gap notification.
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        session.handleFrameStatus(.blank, sampleBuffer: nil)
+        session.handleFrameStatus(.complete, sampleBuffer: frame)
+        await drainMainQueue()
+
+        XCTAssertEqual(events.map { $0.0 }, ["frame", "gap"])
+        XCTAssertGreaterThan(
+            events[0].1,
+            events[1].1,
+            "The delivered frame is newer than the gap, so the coordinator must keep the frame"
+        )
+    }
+
+    @MainActor
+    private func drainMainQueue() async {
+        for _ in 0..<5 {
+            await Task.yield()
+            try? await Task.sleep(nanoseconds: 1_000_000)
+        }
+    }
+
+    private func makeFrameSampleBuffer(width: Int = 4, height: Int = 4) -> CMSampleBuffer? {
+        var pixelBuffer: CVPixelBuffer?
+        guard CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width,
+            height,
+            kCVPixelFormatType_32BGRA,
+            nil,
+            &pixelBuffer
+        ) == kCVReturnSuccess, let pixelBuffer else { return nil }
+
+        var formatDescription: CMVideoFormatDescription?
+        guard CMVideoFormatDescriptionCreateForImageBuffer(
+            allocator: kCFAllocatorDefault,
+            imageBuffer: pixelBuffer,
+            formatDescriptionOut: &formatDescription
+        ) == noErr, let formatDescription else { return nil }
+
+        var timing = CMSampleTimingInfo(
+            duration: CMTime(value: 1, timescale: 30),
+            presentationTimeStamp: .zero,
+            decodeTimeStamp: .invalid
+        )
+        var sampleBuffer: CMSampleBuffer?
+        guard CMSampleBufferCreateReadyWithImageBuffer(
+            allocator: kCFAllocatorDefault,
+            imageBuffer: pixelBuffer,
+            formatDescription: formatDescription,
+            sampleTiming: &timing,
+            sampleBufferOut: &sampleBuffer
+        ) == noErr, let sampleBuffer else { return nil }
+        return sampleBuffer
     }
 }

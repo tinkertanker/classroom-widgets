@@ -42,11 +42,17 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     private var startInProgress = false
     private var cancelled = false
     private var gapReported = false
-    var onFrame: (@MainActor (CMSampleBuffer, CGSize) -> Void)?
+    private var terminalReported = false
+    private var activityReported = false
+    private var nextEventSequence: UInt64 = 0
+    var onFrame: (@MainActor (CMSampleBuffer, CGSize, UInt64) -> Void)?
+    /// Any recognized frame status, including static `.idle`/`.started`, proves the
+    /// stream is alive. Reported once per session so a static display cannot churn.
+    var onFrameActivity: (@MainActor () -> Void)?
     /// Temporary frame gap on an otherwise live stream: hold the last image.
-    var onTransientGap: (@MainActor (DisplayCaptureGapReason) -> Void)?
+    var onTransientGap: (@MainActor (DisplayCaptureGapReason, UInt64) -> Void)?
     /// Terminal stream status: the display stopped sending frames.
-    var onUnavailable: (@MainActor (DisplayCaptureGapReason) -> Void)?
+    var onUnavailable: (@MainActor (DisplayCaptureGapReason, UInt64) -> Void)?
     var onStop: (@MainActor (Error) -> Void)?
 
     init(
@@ -106,7 +112,7 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         guard let stream else { delivery.clear(); return }
         try await stream.stopCapture()
         stateLock.withLock { self.stream = nil }
-        endGapReport()
+        resetEventReporting()
         delivery.clear()
     }
 
@@ -120,26 +126,41 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
               let statusNumber = attachments.first?[.status] as? NSNumber,
               let status = SCFrameStatus(rawValue: statusNumber.intValue)
         else { return }
-        let hasImageBuffer = sampleBuffer.imageBuffer != nil
+        handleFrameStatus(status, sampleBuffer: sampleBuffer)
+    }
+
+    /// Ordered funnel for one decoded frame status. Production reaches this from
+    /// `stream(_:didOutputSampleBuffer:of:)`; a missing buffer is the real
+    /// "complete status without pixels" case. Every event carries a sequence
+    /// assigned in capture order so a coalesced delivery cannot reorder effects.
+    func handleFrameStatus(_ status: SCFrameStatus, sampleBuffer: CMSampleBuffer?) {
+        let sequence = nextSequence()
+        let hasImageBuffer = sampleBuffer?.imageBuffer != nil
+        noteFrameActivity()
         switch Self.disposition(for: status, hasImageBuffer: hasImageBuffer) {
         case .ignore:
             return
         case .hold:
             let reason = Self.gapReason(for: status, hasImageBuffer: hasImageBuffer)
             guard beginGapReport() else { return }
-            Task { @MainActor [weak self] in self?.onTransientGap?(reason) }
+            notifyMainActor { [weak self] in self?.onTransientGap?(reason, sequence) }
             return
         case .stopped:
             let reason = Self.gapReason(for: status, hasImageBuffer: hasImageBuffer)
-            guard beginGapReport() else { return }
-            Task { @MainActor [weak self] in self?.onUnavailable?(reason) }
+            // A terminal status must win even while a gap is already reported.
+            guard beginTerminalReport() else { return }
+            notifyMainActor { [weak self] in self?.onUnavailable?(reason, sequence) }
             return
         case .deliver:
             break
         }
-        guard let imageBuffer = sampleBuffer.imageBuffer else { return }
+        guard let sampleBuffer, let imageBuffer = sampleBuffer.imageBuffer else { return }
         endGapReport()
-        delivery.offer(sampleBuffer, size: CGSize(width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer)))
+        delivery.offer(
+            sampleBuffer,
+            size: CGSize(width: CVPixelBufferGetWidth(imageBuffer), height: CVPixelBufferGetHeight(imageBuffer)),
+            sequence: sequence
+        )
     }
 
     static func disposition(
@@ -164,11 +185,47 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         return hasImageBuffer ? .blank : .missingImageBuffer
     }
 
+    private func nextSequence() -> UInt64 {
+        stateLock.withLock {
+            nextEventSequence &+= 1
+            return nextEventSequence
+        }
+    }
+
+    /// All session events reach the main actor through one FIFO channel so a gap
+    /// notification cannot overtake an earlier delivered frame.
+    private func notifyMainActor(_ action: @escaping @MainActor () -> Void) {
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { action() }
+        }
+    }
+
+    private func noteFrameActivity() {
+        let shouldReport = stateLock.withLock { () -> Bool in
+            guard !activityReported else { return false }
+            activityReported = true
+            return true
+        }
+        guard shouldReport else { return }
+        notifyMainActor { [weak self] in self?.onFrameActivity?() }
+    }
+
     /// Coalesces a run of gap frames into one transition so a blank or suspended
     /// display cannot churn the coordinator at frame rate.
     private func beginGapReport() -> Bool {
         stateLock.withLock {
-            guard !gapReported else { return false }
+            guard !gapReported, !terminalReported else { return false }
+            gapReported = true
+            return true
+        }
+    }
+
+    /// Terminal reporting has its own latch so a suspended -> stopped sequence is
+    /// never suppressed by the gap latch, while duplicate terminals stay coalesced.
+    private func beginTerminalReport() -> Bool {
+        stateLock.withLock {
+            guard !terminalReported else { return false }
+            terminalReported = true
             gapReported = true
             return true
         }
@@ -176,6 +233,14 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
 
     private func endGapReport() {
         stateLock.withLock { gapReported = false }
+    }
+
+    private func resetEventReporting() {
+        stateLock.withLock {
+            gapReported = false
+            terminalReported = false
+            activityReported = false
+        }
     }
 
     private var isStartInProgress: Bool {
@@ -190,12 +255,12 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
 private final class FrameDelivery {
     weak var owner: DisplayCaptureSession?
     private let lock = NSLock()
-    private var latest: (CMSampleBuffer, CGSize)?
+    private var latest: (CMSampleBuffer, CGSize, UInt64)?
     private var scheduled = false
 
-    func offer(_ frame: CMSampleBuffer, size: CGSize) {
+    func offer(_ frame: CMSampleBuffer, size: CGSize, sequence: UInt64) {
         lock.lock()
-        latest = (frame, size)
+        latest = (frame, size, sequence)
         let shouldSchedule = !scheduled
         scheduled = true
         lock.unlock()
@@ -214,6 +279,6 @@ private final class FrameDelivery {
         scheduled = false
         lock.unlock()
         guard let frame, let owner else { return }
-        MainActor.assumeIsolated { owner.onFrame?(frame.0, frame.1) }
+        MainActor.assumeIsolated { owner.onFrame?(frame.0, frame.1, frame.2) }
     }
 }

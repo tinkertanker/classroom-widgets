@@ -53,9 +53,10 @@ enum DisplayPreviewGeometry {
     ///
     /// `previewSize` is the preview viewport only: the content area minus the
     /// shared 10 pt titlebar gap. `chromeHeight` carries the native titlebar plus
-    /// that gap, so callers never mix viewport and window coordinates. The
-    /// preview minimum wins over the maximum; the maximum keeps the frame on the
-    /// physical screen.
+    /// that gap, so callers never mix viewport and window coordinates. The native
+    /// preview minimum wins: when an exact ratio cannot satisfy both the minimum
+    /// and the physical screen, the frame keeps the minimum and fits the screen,
+    /// leaving residual letterbox bars to the video layer.
     static func aspectNormalizedWindowSize(
         matchingAspect aspect: CGFloat,
         preservingPreviewSize previewSize: CGSize,
@@ -65,7 +66,7 @@ enum DisplayPreviewGeometry {
     ) -> CGSize {
         let chrome = chromeHeight.isFinite ? max(chromeHeight, 0) : 0
         let fallback = CGSize(width: previewSize.width, height: previewSize.height + chrome)
-        guard aspect.isFinitePositive, previewSize.isFinitePositive else { return fallback }
+        guard aspect.isFinite, aspect > 0, previewSize.isFinitePositive else { return fallback }
 
         let minimum = CGSize(
             width: max(minimumPreviewSize.width, 1),
@@ -85,8 +86,18 @@ enum DisplayPreviewGeometry {
             let maximumPreviewHeight = max(maximumSize.height - chrome, 1)
             let scale = min(1, min(maximumSize.width / width, maximumPreviewHeight / height))
             if scale < 1 {
-                width *= scale
-                height *= scale
+                let scaledWidth = width * scale
+                let scaledHeight = height * scale
+                if scaledWidth >= minimum.width, scaledHeight >= minimum.height {
+                    width = scaledWidth
+                    height = scaledHeight
+                } else {
+                    // The exact ratio cannot satisfy both the native minimum and the
+                    // screen. Honour the minimum, fit the screen where possible, and
+                    // let the video layer supply the residual bars.
+                    width = max(minimum.width, min(width, maximumSize.width))
+                    height = max(minimum.height, min(height, maximumPreviewHeight))
+                }
             }
         }
         return CGSize(width: width, height: height + chrome)
