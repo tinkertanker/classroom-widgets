@@ -45,6 +45,13 @@
   var capturingRow = null;
   var rowError = null;
 
+  function clearRowError(entry, field) {
+    if (!rowError || rowError.widgetType !== entry.shortcut.widgetType || rowError.action !== field.action) return;
+    rowError = null;
+    field.status.className = 'shortcut-status ' + entry.shortcut[field.stateKey];
+    field.status.textContent = entry.shortcut[field.detailKey];
+  }
+
   function stopCapture(entry, field) {
     field.capture.classList.remove('capturing');
     field.capture.textContent = entry.shortcut[field.acceleratorKey] || 'Set shortcut';
@@ -73,7 +80,7 @@
     };
 
     capture.addEventListener('click', function () {
-      if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
+      clearRowError(entry, shortcutField);
       capturingRow = entry.shortcut.widgetType + ':' + action;
       capture.textContent = 'Press shortcut…';
       capture.classList.add('capturing');
@@ -98,7 +105,7 @@
       if (!accelerator) return;
       window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator).then(function (result) {
         if (result.ok) {
-          if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
+          clearRowError(entry, shortcutField);
         } else {
           rowError = { widgetType: entry.shortcut.widgetType, action: action, message: result.error };
           status.className = 'shortcut-status conflict';
@@ -108,7 +115,7 @@
       });
     });
     clear.addEventListener('click', function () {
-      if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
+      clearRowError(entry, shortcutField);
       window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, null);
     });
     field.append(capture, clear, status);
