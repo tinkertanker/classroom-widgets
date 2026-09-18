@@ -40,11 +40,11 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     settings.panelFrames = {};
     settings.notifyChanged();
   });
-  ipcMain.handle('settings:set-shortcut', (_event, widgetType: unknown, accelerator: unknown) => {
-    if (typeof widgetType !== 'number' || (typeof accelerator !== 'string' && accelerator !== null)) {
+  ipcMain.handle('settings:set-shortcut', (_event, widgetType: unknown, action: unknown, accelerator: unknown) => {
+    if (typeof widgetType !== 'number' || (action !== 'show' && action !== 'dismiss') || (typeof accelerator !== 'string' && accelerator !== null)) {
       return { ok: false, error: 'Invalid shortcut.' };
     }
-    return shortcuts.setShortcut(widgetType, accelerator);
+    return shortcuts.setShortcut(widgetType, accelerator, action);
   });
   ipcMain.on('settings:reset-shortcuts', () => shortcuts.reset());
   ipcMain.on('settings:capturing', (_event, active: unknown) => shortcuts.setCapturing(active === true));
@@ -63,9 +63,9 @@ export function openSettingsWindow(settings: DashboardSettings, shortcuts: Widge
     return;
   }
   const win = new BrowserWindow({
-    width: 460,
+    width: 650,
     height: 700,
-    minWidth: 420,
+    minWidth: 600,
     minHeight: 480,
     resizable: true,
     title: 'Classroom Widgets Settings',

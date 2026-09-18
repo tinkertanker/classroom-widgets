@@ -67,6 +67,8 @@ export interface CompactPanelHostBridge {
   applyStateChange: (change: CompactPanelStateChange) => boolean;
   applyRandomiserListChange: (change: CompactRandomiserListChange) => boolean;
   addWidget: (widgetType: WidgetType) => boolean;
+  dismissWidget: (widgetType: WidgetType) => boolean;
+  toggleWidget: (widgetType: WidgetType) => boolean;
   removeWidget: (widgetId: string) => boolean;
 }
 

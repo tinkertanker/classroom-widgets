@@ -14,7 +14,7 @@ public partial class SettingsWindow : Window
     private readonly WidgetHostController _host;
     private readonly WidgetShortcutManager _shortcuts;
     private readonly DispatcherTimer _opacityCommit;
-    private readonly Dictionary<int, (TextBox Capture, TextBlock Status)> _shortcutControls = new();
+    private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), (TextBox Capture, TextBlock Status)> _shortcutControls = new();
     private bool _loading = true;
 
     public SettingsWindow(DashboardSettings settings, WidgetHostController host, WidgetShortcutManager shortcuts)
@@ -156,58 +156,92 @@ public partial class SettingsWindow : Window
         ShortcutRows.Children.Clear();
         _shortcutControls.Clear();
         ShortcutLoadingLabel.Visibility = _host.WidgetOptions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (_host.WidgetOptions.Count > 0)
+        {
+            var header = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var widgetHeader = new TextBlock { Text = "Widget", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+            var showHeader = new TextBlock { Text = "Show", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+            var dismissHeader = new TextBlock { Text = "Dismiss", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+            Grid.SetColumn(widgetHeader, 0);
+            Grid.SetColumn(showHeader, 1);
+            Grid.SetColumn(dismissHeader, 2);
+            header.Children.Add(widgetHeader);
+            header.Children.Add(showHeader);
+            header.Children.Add(dismissHeader);
+            ShortcutRows.Children.Add(header);
+        }
         foreach (var option in _host.WidgetOptions)
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 12) };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var title = new TextBlock { Text = option.Title, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 10, 0) };
-            var capture = new TextBox
+            var show = CreateShortcutField(option, WidgetShortcutAction.Show);
+            var dismiss = CreateShortcutField(option, WidgetShortcutAction.Dismiss);
+            var reset = new Button { Content = "Reset", Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(6, 0, 0, 0), IsEnabled = _settings.WidgetShortcutDefaults.ContainsKey(option.WidgetType) };
+            AutomationProperties.SetName(reset, $"Reset shortcuts for {option.Title}");
+            reset.Click += (_, _) =>
             {
-                Text = _settings.WidgetShortcuts.GetValueOrDefault(option.WidgetType) ?? "",
-                IsReadOnly = true,
-                Padding = new Thickness(7, 5, 7, 5),
-                VerticalContentAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 6, 0)
+                var shortcut = _settings.WidgetShortcutDefaults.GetValueOrDefault(option.WidgetType);
+                SetShortcut(option.WidgetType, WidgetShortcutAction.Show, shortcut);
+                SetShortcut(option.WidgetType, WidgetShortcutAction.Dismiss, shortcut);
             };
-            AutomationProperties.SetName(capture, $"Launch shortcut for {option.Title}");
-            capture.GotKeyboardFocus += (_, _) =>
-            {
-                _shortcuts.Suspend();
-                capture.Text = "Press shortcut…";
-                capture.SelectAll();
-            };
-            capture.LostKeyboardFocus += (_, _) =>
-            {
-                capture.Text = _settings.WidgetShortcuts.GetValueOrDefault(option.WidgetType) ?? "";
-                _shortcuts.Resume();
-            };
-            capture.PreviewKeyDown += (_, args) => CaptureShortcut(option.WidgetType, capture, args);
 
-            var clear = new Button { Content = "Clear", Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(0, 0, 6, 0) };
-            AutomationProperties.SetName(clear, $"Clear shortcut for {option.Title}");
-            clear.Click += (_, _) => SetShortcut(option.WidgetType, null);
-            var reset = new Button { Content = "Reset", Padding = new Thickness(8, 4, 8, 4), IsEnabled = _settings.WidgetShortcutDefaults.ContainsKey(option.WidgetType) };
-            AutomationProperties.SetName(reset, $"Reset shortcut for {option.Title}");
-            reset.Click += (_, _) => SetShortcut(option.WidgetType, _settings.WidgetShortcutDefaults.GetValueOrDefault(option.WidgetType));
-
-            Grid.SetColumn(title, 0); Grid.SetColumn(capture, 1); Grid.SetColumn(clear, 2); Grid.SetColumn(reset, 3);
-            row.Children.Add(title); row.Children.Add(capture); row.Children.Add(clear); row.Children.Add(reset);
-            var status = new TextBlock { FontSize = 11, Margin = new Thickness(160, 3, 0, 0) };
-            Grid.SetColumn(status, 0); Grid.SetColumnSpan(status, 4); Grid.SetRow(status, 1);
-            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            row.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            row.Children.Add(status);
+            Grid.SetColumn(title, 0); Grid.SetColumn(show, 1); Grid.SetColumn(dismiss, 2); Grid.SetColumn(reset, 3);
+            row.Children.Add(title); row.Children.Add(show); row.Children.Add(dismiss); row.Children.Add(reset);
             ShortcutRows.Children.Add(row);
-            _shortcutControls[option.WidgetType] = (capture, status);
         }
         UpdateShortcutStatuses();
     }
 
-    private void CaptureShortcut(int widgetType, TextBox capture, KeyEventArgs args)
+    private FrameworkElement CreateShortcutField(CompactWidgetOption option, WidgetShortcutAction action)
+    {
+        var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
+        var controls = new Grid();
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var capture = new TextBox
+        {
+            Text = bindings.GetValueOrDefault(option.WidgetType) ?? "",
+            IsReadOnly = true,
+            Padding = new Thickness(7, 5, 7, 5),
+            VerticalContentAlignment = VerticalAlignment.Center
+        };
+        AutomationProperties.SetName(capture, $"{action} shortcut for {option.Title}");
+        capture.GotKeyboardFocus += (_, _) =>
+        {
+            _shortcuts.Suspend();
+            capture.Text = "Press shortcut…";
+            capture.SelectAll();
+        };
+        capture.LostKeyboardFocus += (_, _) =>
+        {
+            capture.Text = bindings.GetValueOrDefault(option.WidgetType) ?? "";
+            _shortcuts.Resume();
+        };
+        capture.PreviewKeyDown += (_, args) => CaptureShortcut(option.WidgetType, action, capture, args);
+        var clear = new Button { Content = "Clear", Padding = new Thickness(6, 4, 6, 4), Margin = new Thickness(4, 0, 0, 0) };
+        AutomationProperties.SetName(clear, $"Clear {action.ToString().ToLowerInvariant()} shortcut for {option.Title}");
+        clear.Click += (_, _) => SetShortcut(option.WidgetType, action, null);
+        Grid.SetColumn(clear, 1);
+        controls.Children.Add(capture);
+        controls.Children.Add(clear);
+        var status = new TextBlock { FontSize = 11, Margin = new Thickness(0, 3, 0, 0) };
+        panel.Children.Add(controls);
+        panel.Children.Add(status);
+        _shortcutControls[(option.WidgetType, action)] = (capture, status);
+        return panel;
+    }
+
+    private void CaptureShortcut(int widgetType, WidgetShortcutAction action, TextBox capture, KeyEventArgs args)
     {
         var key = args.Key == Key.System ? args.SystemKey : args.Key;
         var modifiers = Keyboard.Modifiers;
@@ -222,35 +256,36 @@ public partial class SettingsWindow : Window
         if (!WidgetShortcutGesture.TryFromKey(key, modifiers, out var gesture)) return;
         if (_shortcuts.IsDuplicate(widgetType, gesture.Display))
         {
-            var status = _shortcutControls[widgetType].Status;
+            var status = _shortcutControls[(widgetType, action)].Status;
             status.Text = "Conflict — already assigned to another widget";
             status.Foreground = Brushes.Firebrick;
             return;
         }
-        SetShortcut(widgetType, gesture.Display);
+        SetShortcut(widgetType, action, gesture.Display);
         capture.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
     }
 
-    private void SetShortcut(int widgetType, string? shortcut)
+    private void SetShortcut(int widgetType, WidgetShortcutAction action, string? shortcut)
     {
         if (shortcut is not null && _shortcuts.IsDuplicate(widgetType, shortcut))
         {
-            var status = _shortcutControls[widgetType].Status;
+            var status = _shortcutControls[(widgetType, action)].Status;
             status.Text = "Conflict — already assigned to another widget";
             status.Foreground = Brushes.Firebrick;
             return;
         }
-        _settings.WidgetShortcuts[widgetType] = shortcut;
+        var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
+        bindings[widgetType] = shortcut;
         _settings.NotifyChanged();
-        if (_shortcutControls.TryGetValue(widgetType, out var controls)) controls.Capture.Text = shortcut ?? "";
+        if (_shortcutControls.TryGetValue((widgetType, action), out var controls)) controls.Capture.Text = shortcut ?? "";
         UpdateShortcutStatuses();
     }
 
     private void UpdateShortcutStatuses()
     {
-        foreach (var (widgetType, controls) in _shortcutControls)
+        foreach (var (key, controls) in _shortcutControls)
         {
-            var registration = _shortcuts.StatusFor(widgetType);
+            var registration = _shortcuts.StatusFor(key.WidgetType, key.Action);
             controls.Status.Text = registration.Status switch
             {
                 WidgetShortcutStatus.Active => "Active",

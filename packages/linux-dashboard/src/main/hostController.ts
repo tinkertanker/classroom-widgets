@@ -115,6 +115,22 @@ export class WidgetHostController extends EventEmitter {
     if (!applied) log.warn(`Host refused to add widget type ${widgetType}`);
   }
 
+  async dismissWidget(widgetType: number): Promise<void> {
+    if (!this.initialized) return;
+    await evaluateBool(
+      this.window.webContents,
+      `(() => { const host = window.classroomPanelHost; return host?.dismissWidget ? host.dismissWidget(${JSON.stringify(widgetType)}) : false; })()`,
+    );
+  }
+
+  async toggleWidget(widgetType: number): Promise<void> {
+    if (!this.initialized) return;
+    await evaluateBool(
+      this.window.webContents,
+      `(() => { const host = window.classroomPanelHost; return host?.toggleWidget ? host.toggleWidget(${JSON.stringify(widgetType)}) : false; })()`,
+    );
+  }
+
   async reloadWidgets(): Promise<void> {
     if (this.reloadInProgress || !this.initialized) return;
     this.reloadInProgress = true;

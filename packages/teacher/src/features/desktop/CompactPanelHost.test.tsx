@@ -363,4 +363,123 @@ describe('CompactPanelHost', () => {
       expect.objectContaining({ id: 'timer-1' })
     ]));
   });
+
+  it('dismisses the newest widget of a requested type', () => {
+    useWorkspaceStore.setState({
+      widgets: [
+        ...useWorkspaceStore.getState().widgets,
+        {
+          id: 'timer-2',
+          type: WidgetType.TIMER,
+          position: { x: 20, y: 20 },
+          size: { width: 350, height: 415 },
+          zIndex: 1
+        }
+      ]
+    });
+    render(<CompactPanelHost />);
+
+    act(() => {
+      expect(window.classroomPanelHost?.dismissWidget(WidgetType.TIMER)).toBe(true);
+    });
+
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).toContain('timer-1');
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
+  });
+
+  it('toggles an existing widget off before adding a new one', () => {
+    render(<CompactPanelHost />);
+
+    act(() => {
+      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
+    });
+    expect(useWorkspaceStore.getState().widgets.some((widget) => widget.type === WidgetType.TIMER)).toBe(false);
+
+    act(() => {
+      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
+    });
+    expect(useWorkspaceStore.getState().widgets.some((widget) => widget.type === WidgetType.TIMER)).toBe(true);
+  });
+
+  it('dismisses the newest-created widget after an older widget is brought to front', () => {
+    useWorkspaceStore.setState({
+      widgets: [
+        ...useWorkspaceStore.getState().widgets,
+        {
+          id: 'timer-2',
+          type: WidgetType.TIMER,
+          position: { x: 20, y: 20 },
+          size: { width: 350, height: 415 },
+          zIndex: 1
+        }
+      ]
+    });
+    render(<CompactPanelHost />);
+
+    act(() => useWorkspaceStore.getState().bringToFront('timer-1'));
+    act(() => expect(window.classroomPanelHost?.dismissWidget(WidgetType.TIMER)).toBe(true));
+
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).toContain('timer-1');
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
+  });
+
+  it('toggles off the newest-created widget after an older widget is brought to front', () => {
+    useWorkspaceStore.setState({
+      widgets: [
+        ...useWorkspaceStore.getState().widgets,
+        {
+          id: 'timer-2',
+          type: WidgetType.TIMER,
+          position: { x: 20, y: 20 },
+          size: { width: 350, height: 415 },
+          zIndex: 1
+        }
+      ]
+    });
+    render(<CompactPanelHost />);
+
+    act(() => useWorkspaceStore.getState().bringToFront('timer-1'));
+    act(() => expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true));
+
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).toContain('timer-1');
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
+  });
+
+  it('dismisses the newest-created widget in a restored workspace where an older widget is frontmost', () => {
+    const widget = (id: string, zIndex: number) => ({
+      id,
+      type: WidgetType.TIMER,
+      position: { x: 20, y: 20 },
+      size: { width: 350, height: 415 },
+      zIndex
+    });
+    useWorkspaceStore.setState({
+      widgets: [widget('1700000002000-newer', 0), widget('1700000001000-older', 1)]
+    });
+    render(<CompactPanelHost />);
+
+    act(() => expect(window.classroomPanelHost?.dismissWidget(WidgetType.TIMER)).toBe(true));
+
+    expect(useWorkspaceStore.getState().widgets.map((w) => w.id)).toEqual(['1700000001000-older']);
+  });
+
+  it('rejects dismiss and toggle for widget types without compact panel support', () => {
+    useWorkspaceStore.setState({
+      widgets: [{
+        id: 'poll-1',
+        type: WidgetType.POLL,
+        position: { x: 20, y: 20 },
+        size: { width: 350, height: 415 },
+        zIndex: 0
+      }]
+    });
+    render(<CompactPanelHost />);
+
+    act(() => {
+      expect(window.classroomPanelHost?.dismissWidget(WidgetType.POLL)).toBe(false);
+      expect(window.classroomPanelHost?.toggleWidget(WidgetType.POLL)).toBe(false);
+    });
+
+    expect(useWorkspaceStore.getState().widgets.map((w) => w.id)).toEqual(['poll-1']);
+  });
 });

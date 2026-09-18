@@ -22,8 +22,9 @@
         <h2 id="shortcutsHeading">Launch shortcuts</h2>
         <button id="resetShortcuts" class="secondary">Reset</button>
       </div>
-      <p class="hint">These shortcuts work globally while Classroom Widgets is running. Select a shortcut, then press a modifier and key.</p>
+      <p class="hint">When Show and Dismiss match, the shortcut toggles the widget. Make them different to let Show create additional widgets.</p>
       <p class="hint warning" id="waylandWarning" hidden>Wayland may prevent global shortcuts unless your desktop compositor supports Electron shortcut registration. Conflicts are shown below.</p>
+      <div class="shortcut-header" aria-hidden="true"><span>Widget</span><span>Show</span><span>Dismiss</span></div>
       <div id="shortcuts" class="shortcut-list" aria-live="polite"></div>
     </section>
 

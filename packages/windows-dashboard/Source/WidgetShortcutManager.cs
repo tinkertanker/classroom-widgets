@@ -14,6 +14,13 @@ public enum WidgetShortcutStatus
 
 public sealed record WidgetShortcutRegistration(WidgetShortcutStatus Status, string? Detail = null);
 
+public enum WidgetShortcutAction
+{
+    Show,
+    Dismiss,
+    Toggle
+}
+
 public readonly record struct WidgetShortcutGesture(uint Modifiers, uint VirtualKey, string Display)
 {
     private const uint Alt = 0x0001;
@@ -80,8 +87,8 @@ public sealed class WidgetShortcutManager : IDisposable
     private readonly DashboardSettings _settings;
     private readonly WidgetHostController _host;
     private readonly HwndSource _source;
-    private readonly Dictionary<int, int> _registeredIds = new();
-    private readonly Dictionary<int, WidgetShortcutRegistration> _statuses = new();
+    private readonly Dictionary<int, (int WidgetType, WidgetShortcutAction Action)> _registeredIds = new();
+    private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), WidgetShortcutRegistration> _statuses = new();
     private bool _suspended;
 
     public event Action? StatusChanged;
@@ -101,8 +108,8 @@ public sealed class WidgetShortcutManager : IDisposable
         Refresh();
     }
 
-    public WidgetShortcutRegistration StatusFor(int widgetType) => _statuses.GetValueOrDefault(
-        widgetType, new WidgetShortcutRegistration(WidgetShortcutStatus.Inactive));
+    public WidgetShortcutRegistration StatusFor(int widgetType, WidgetShortcutAction action) => _statuses.GetValueOrDefault(
+        (widgetType, action), new WidgetShortcutRegistration(WidgetShortcutStatus.Inactive));
 
     public void Suspend()
     {
@@ -120,8 +127,9 @@ public sealed class WidgetShortcutManager : IDisposable
 
     public bool IsDuplicate(int widgetType, string shortcut) =>
         WidgetShortcutGesture.TryParse(shortcut, out var candidate) &&
-        _settings.WidgetShortcuts.Any(entry => entry.Key != widgetType &&
-            WidgetShortcutGesture.TryParse(entry.Value, out var existing) && existing == candidate);
+        new[] { _settings.WidgetShortcuts, _settings.WidgetDismissShortcuts }.Any(bindings =>
+            bindings.Any(entry => entry.Key != widgetType &&
+                WidgetShortcutGesture.TryParse(entry.Value, out var existing) && existing == candidate));
 
     public void Refresh()
     {
@@ -129,23 +137,44 @@ public sealed class WidgetShortcutManager : IDisposable
         UnregisterAll(clearStatuses: true);
         var optionTypes = _host.WidgetOptions.Select(option => option.WidgetType).ToHashSet();
         var id = 1;
-        foreach (var (widgetType, shortcut) in _settings.WidgetShortcuts)
+        var seen = new HashSet<WidgetShortcutGesture>();
+        foreach (var widgetType in optionTypes)
         {
-            if (!optionTypes.Contains(widgetType) || !WidgetShortcutGesture.TryParse(shortcut, out var gesture)) continue;
-            if (RegisterHotKey(_source.Handle, id, gesture.Modifiers | NoRepeat, gesture.VirtualKey))
+            var hasShow = WidgetShortcutGesture.TryParse(_settings.WidgetShortcuts.GetValueOrDefault(widgetType), out var show);
+            var hasDismiss = WidgetShortcutGesture.TryParse(_settings.WidgetDismissShortcuts.GetValueOrDefault(widgetType), out var dismiss);
+            if (hasShow && hasDismiss && show == dismiss)
             {
-                _registeredIds[id] = widgetType;
-                _statuses[widgetType] = new WidgetShortcutRegistration(WidgetShortcutStatus.Active);
+                Register(id++, widgetType, WidgetShortcutAction.Toggle, show, seen);
+                var status = _statuses[(widgetType, WidgetShortcutAction.Toggle)];
+                _statuses[(widgetType, WidgetShortcutAction.Show)] = status;
+                _statuses[(widgetType, WidgetShortcutAction.Dismiss)] = status;
             }
             else
             {
-                var error = new Win32Exception(Marshal.GetLastWin32Error());
-                _statuses[widgetType] = new WidgetShortcutRegistration(WidgetShortcutStatus.Conflict, error.Message);
-                DashboardLog.Warn($"Unable to register widget shortcut {gesture.Display} for type {widgetType}: {error.Message}");
+                if (hasShow) Register(id++, widgetType, WidgetShortcutAction.Show, show, seen);
+                if (hasDismiss) Register(id++, widgetType, WidgetShortcutAction.Dismiss, dismiss, seen);
             }
-            id++;
         }
         StatusChanged?.Invoke();
+    }
+
+    private void Register(int id, int widgetType, WidgetShortcutAction action, WidgetShortcutGesture gesture, HashSet<WidgetShortcutGesture> seen)
+    {
+        var key = (widgetType, action);
+        if (!seen.Add(gesture))
+        {
+            _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Conflict, "Duplicate assignment");
+            return;
+        }
+        if (RegisterHotKey(_source.Handle, id, gesture.Modifiers | NoRepeat, gesture.VirtualKey))
+        {
+            _registeredIds[id] = key;
+            _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Active);
+            return;
+        }
+        var error = new Win32Exception(Marshal.GetLastWin32Error());
+        _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Conflict, error.Message);
+        DashboardLog.Warn($"Unable to register {action.ToString().ToLowerInvariant()} shortcut {gesture.Display} for type {widgetType}: {error.Message}");
     }
 
     private void OnWidgetOptionsChanged()
@@ -155,9 +184,15 @@ public sealed class WidgetShortcutManager : IDisposable
 
     private nint WndProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
-        if (message != WmHotKey || !_registeredIds.TryGetValue(wParam.ToInt32(), out var widgetType)) return 0;
+        if (message != WmHotKey || !_registeredIds.TryGetValue(wParam.ToInt32(), out var registration)) return 0;
         handled = true;
-        if (_host.IsAvailable) _ = _host.AddWidgetAsync(widgetType);
+        if (!_host.IsAvailable) return 0;
+        _ = registration.Action switch
+        {
+            WidgetShortcutAction.Show => _host.AddWidgetAsync(registration.WidgetType),
+            WidgetShortcutAction.Dismiss => _host.DismissWidgetAsync(registration.WidgetType),
+            _ => _host.ToggleWidgetAsync(registration.WidgetType)
+        };
         return 0;
     }
 
