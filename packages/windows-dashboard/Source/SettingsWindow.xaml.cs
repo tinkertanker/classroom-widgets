@@ -163,10 +163,13 @@ public partial class SettingsWindow : Window
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var widgetHeader = new TextBlock { Text = "Widget", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
             var showHeader = new TextBlock { Text = "Show", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
             var dismissHeader = new TextBlock { Text = "Dismiss", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+            Grid.SetColumn(widgetHeader, 0);
             Grid.SetColumn(showHeader, 1);
             Grid.SetColumn(dismissHeader, 2);
+            header.Children.Add(widgetHeader);
             header.Children.Add(showHeader);
             header.Children.Add(dismissHeader);
             ShortcutRows.Children.Add(header);
