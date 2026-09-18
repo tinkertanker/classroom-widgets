@@ -248,7 +248,8 @@ struct DashboardShortcutSettingsView: View {
     private func statuses(for widgetType: Int) -> [String] {
         let show = context.widgetShortcutStatuses[.widget(widgetType)]
         let dismiss = context.widgetShortcutStatuses[.widgetDismiss(widgetType)]
-        return show == dismiss ? [show].compactMap { $0 } : [show, dismiss].compactMap { $0 }
+        if show == dismiss { return [show].compactMap { $0 } }
+        return [show.map { "Show: \($0)" }, dismiss.map { "Dismiss: \($0)" }].compactMap { $0 }
     }
 
     private func shortcut(for widgetType: Int, action: WidgetShortcutAction) -> DashboardShortcut? {

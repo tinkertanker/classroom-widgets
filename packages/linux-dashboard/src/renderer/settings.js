@@ -101,6 +101,8 @@
           if (rowError && rowError.widgetType === entry.shortcut.widgetType && rowError.action === action) rowError = null;
         } else {
           rowError = { widgetType: entry.shortcut.widgetType, action: action, message: result.error };
+          status.className = 'shortcut-status conflict';
+          status.textContent = result.error;
         }
         stopCapture(entry, shortcutField);
       });
