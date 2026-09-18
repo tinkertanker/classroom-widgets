@@ -109,7 +109,12 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
 
         store.reset(options: options, reserving: [reserved])
 
-        XCTAssertEqual(store.bindings(for: options)[42], DashboardShortcut(keyCode: -1, modifiers: 0))
+        let nextAvailable = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_2),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        XCTAssertEqual(store.bindings(for: options)[42]?.show, nextAvailable)
+        XCTAssertEqual(store.bindings(for: options)[42]?.dismiss, nextAvailable)
     }
 
     func testSuspendedWidgetCaptureRejectsAnotherWidgetsAcceptedBinding() {
@@ -261,7 +266,10 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
 
         defaults.removePersistentDomain(forName: suiteName)
         settingsState = ShortcutBindingState(settings: DashboardShortcut(keyCode: 40, modifiers: preferred.modifiers))
-        settingsState.replaceWidgets(with: [7: preferred])
+        settingsState.replaceWidgets(with: [7: WidgetShortcutBinding(
+            show: preferred,
+            dismiss: DashboardShortcut(keyCode: -1, modifiers: 0)
+        )])
         XCTAssertEqual(
             WidgetLaunchShortcutStore(defaults: defaults).initializeDisplayBinding(
                 reserving: settingsState.assignedShortcuts(excluding: .display)
@@ -285,12 +293,18 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         let settings = DashboardShortcut(keyCode: 1, modifiers: command)
         let display = DashboardShortcut(keyCode: 2, modifiers: command)
         let widget = DashboardShortcut(keyCode: 3, modifiers: command)
+        let dismiss = DashboardShortcut(keyCode: 4, modifiers: command)
         var state = ShortcutBindingState(settings: settings, display: display)
-        state.replaceWidgets(with: [42: widget])
+        state.replaceWidgets(with: [42: WidgetShortcutBinding(show: widget, dismiss: dismiss)])
 
         XCTAssertEqual(state.stage(display, for: .widget(42)), .duplicate(.display))
+        XCTAssertEqual(state.stage(display, for: .widgetDismiss(42)), .duplicate(.display))
         XCTAssertEqual(state.stage(widget, for: .display), .duplicate(.widget(42)))
-        state.replaceWidgets(with: [99: DashboardShortcut(keyCode: 4, modifiers: command)])
+        XCTAssertEqual(state.stage(dismiss, for: .display), .duplicate(.widgetDismiss(42)))
+        state.replaceWidgets(with: [99: WidgetShortcutBinding(
+            show: DashboardShortcut(keyCode: 5, modifiers: command),
+            dismiss: DashboardShortcut(keyCode: -1, modifiers: 0)
+        )])
 
         XCTAssertEqual(state.shortcut(for: .display), display)
         XCTAssertTrue(state.recorderStarted())
@@ -304,11 +318,29 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
             keyCode: Int(kVK_ANSI_D),
             modifiers: WidgetLaunchShortcutStore.defaultModifiers
         )
-        WidgetLaunchShortcutStore(defaults: defaults).set(widgetShortcut, for: 42)
+        WidgetLaunchShortcutStore(defaults: defaults).set(widgetShortcut, action: .show, for: 42)
         let delegate = AppDelegate(defaults: defaults)
         var state = delegate.initialShortcutBindingState()
 
         XCTAssertEqual(state.stage(widgetShortcut, for: .display), .duplicate(.widget(42)))
+    }
+
+    @MainActor
+    func testStartupStateReservesSavedDismissBindingBeforeDisplayCanBeEdited() {
+        let preferred = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_0),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        let store = WidgetLaunchShortcutStore(defaults: defaults)
+        store.set(preferred, action: .dismiss, for: 42)
+        let delegate = AppDelegate(defaults: defaults)
+        var state = delegate.initialShortcutBindingState()
+
+        XCTAssertEqual(state.stage(preferred, for: .display), .duplicate(.widgetDismiss(42)))
+        XCTAssertEqual(
+            store.initializeDisplayBinding(reserving: state.assignedShortcuts(excluding: .display)),
+            DashboardShortcut(keyCode: -1, modifiers: 0)
+        )
     }
 
     @MainActor
@@ -341,7 +373,10 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertNil(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding())
 
         let resolution = gate.mergeWidgetBindings(
-            [42: DashboardShortcut(keyCode: Int(kVK_ANSI_1), modifiers: candidate.modifiers)],
+            [42: WidgetShortcutBinding(
+                show: DashboardShortcut(keyCode: Int(kVK_ANSI_1), modifiers: candidate.modifiers),
+                dismiss: DashboardShortcut(keyCode: Int(kVK_ANSI_2), modifiers: candidate.modifiers)
+            )],
             inventoryIsReady: true,
             into: &state
         )
@@ -384,7 +419,11 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertEqual(state.stage(candidate, for: .display), .staged)
 
         XCTAssertEqual(
-            gate.mergeWidgetBindings([42: candidate], inventoryIsReady: true, into: &state),
+            gate.mergeWidgetBindings(
+                [42: WidgetShortcutBinding(show: candidate, dismiss: DashboardShortcut(keyCode: -1, modifiers: 0))],
+                inventoryIsReady: true,
+                into: &state
+            ),
             .rejectedDuplicate(.widget(42))
         )
         delegate.preserveUnassignedDisplayChoiceIfNeeded(in: &state)
@@ -396,6 +435,34 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
             WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(),
             DashboardShortcut(keyCode: -1, modifiers: 0)
         )
+    }
+
+    @MainActor
+    func testFirstInventoryRejectsDeferredDisplayChoiceThatConflictsOnlyWithDismiss() {
+        let delegate = AppDelegate(defaults: defaults)
+        var gate = DisplayShortcutStartupGate()
+        var state = delegate.initialShortcutBindingState()
+        let candidate = DashboardShortcut(
+            keyCode: Int(kVK_ANSI_2),
+            modifiers: WidgetLaunchShortcutStore.defaultModifiers
+        )
+        let show = DashboardShortcut(keyCode: Int(kVK_ANSI_1), modifiers: candidate.modifiers)
+        XCTAssertEqual(state.stage(candidate, for: .display), .staged)
+
+        XCTAssertEqual(
+            gate.mergeWidgetBindings(
+                [42: WidgetShortcutBinding(show: show, dismiss: candidate)],
+                inventoryIsReady: true,
+                into: &state
+            ),
+            .rejectedDuplicate(.widgetDismiss(42))
+        )
+        delegate.preserveUnassignedDisplayChoiceIfNeeded(in: &state)
+
+        XCTAssertNil(state.candidate(for: .display))
+        XCTAssertEqual(state.shortcut(for: .widget(42)), show)
+        XCTAssertEqual(state.shortcut(for: .widgetDismiss(42)), candidate)
+        XCTAssertEqual(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(), DashboardShortcut(keyCode: -1, modifiers: 0))
     }
 
     @MainActor
@@ -415,7 +482,11 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertEqual(state.stage(conflicting, for: .display), .staged)
 
         XCTAssertEqual(
-            gate.mergeWidgetBindings([42: conflicting], inventoryIsReady: true, into: &state),
+            gate.mergeWidgetBindings(
+                [42: WidgetShortcutBinding(show: conflicting, dismiss: DashboardShortcut(keyCode: -1, modifiers: 0))],
+                inventoryIsReady: true,
+                into: &state
+            ),
             .rejectedDuplicate(.widget(42))
         )
         delegate.preserveUnassignedDisplayChoiceIfNeeded(in: &state)
