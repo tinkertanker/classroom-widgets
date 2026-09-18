@@ -223,7 +223,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard var state = shortcutState else { return }
         switch state.stage(candidate, for: .settings) {
         case .duplicate:
-            shortcutStatus = "That shortcut is already assigned to a widget."
+            shortcutStatus = Self.settingsDuplicateStatus
         case .unchanged:
             shortcutStatus = nil
         case .staged:
@@ -320,7 +320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let owner = shortcutOwner(widgetType: widgetType, action: action)
         switch state.stage(shortcut, for: owner) {
         case .duplicate:
-            widgetShortcutStatuses[owner] = "Already assigned in Classroom Widgets."
+            widgetShortcutStatuses[owner] = Self.widgetDuplicateStatus
         case .unchanged:
             widgetShortcutStatuses[owner] = nil
         case .staged:
@@ -341,8 +341,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         guard shortcutState?.recorderEnded() == true else { return }
+        let duplicateSettingsStatus = shortcutStatus == Self.settingsDuplicateStatus ? shortcutStatus : nil
+        let duplicateWidgetStatuses = widgetShortcutStatuses.filter { $0.value == Self.widgetDuplicateStatus }
         registerAcceptedSettingsHotKey()
         for option in controller?.widgetOptions ?? [] { registerAcceptedWidgetShortcuts(for: option.widgetType) }
+        if let duplicateSettingsStatus { shortcutStatus = duplicateSettingsStatus }
+        widgetShortcutStatuses.merge(duplicateWidgetStatuses) { _, duplicate in duplicate }
         if shortcutState?.candidate(for: .settings) != nil { applyPendingSettingsShortcut() }
         for option in controller?.widgetOptions ?? [] {
             if shortcutState?.candidate(for: .widget(option.widgetType)) != nil {
@@ -435,6 +439,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         refreshShortcutContext()
     }
+
+    private static let settingsDuplicateStatus = "That shortcut is already assigned to a widget."
+    private static let widgetDuplicateStatus = "Already assigned in Classroom Widgets."
 
     private func shortcutOwner(widgetType: Int, action: WidgetShortcutAction) -> ShortcutBindingState.Owner {
         action == .show ? .widget(widgetType) : .widgetDismiss(widgetType)
