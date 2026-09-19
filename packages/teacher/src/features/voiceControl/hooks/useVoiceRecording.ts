@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { UseVoiceRecordingReturn, TranscriptionResult, VoiceRecordingState } from '../types/voiceControl';
+import { UseVoiceRecordingReturn, VoiceRecordingState } from '../types/voiceControl';
 import { getBrowserInfo } from '../utils/browserCompatibility';
 import { debug } from '@shared/utils/debug';
 
