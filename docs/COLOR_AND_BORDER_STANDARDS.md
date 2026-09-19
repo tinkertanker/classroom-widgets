@@ -149,13 +149,6 @@ import { widgetContainer } from '../../../shared/utils/styles';
   {/* Widget content */}
 </div>
 
-// Alternative explicit import for clarity
-import { widgetBorderStandard } from '../../../shared/utils/styles';
-
-<div className={widgetBorderStandard}>
-  {/* Widget content */}
-</div>
-
 // Manual implementation (if needed)
 <div className="bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col">
   {/* Widget content */}
@@ -458,9 +451,7 @@ The complete widget inventory was determined by:
 3. Verifying each widget uses the standardized border pattern
 4. Updating any widgets not conforming to the standard
 
-### Available Widget Container Utilities
-
-The styles utility provides several widget container options:
+### Widget Container Utility
 
 #### `widgetContainer` (Current Standard)
 ```tsx
@@ -469,31 +460,7 @@ import { widgetContainer } from '../../../shared/utils/styles';
 - Uses the standardized border pattern with `/90` opacity
 - Top-only rounded corners (`rounded-t-lg`)
 - Consistent warm-gray borders
-- Recommended for all new widgets
-
-#### `widgetBorderStandard` (Explicit Alternative)
-```tsx
-import { widgetBorderStandard } from '../../../shared/utils/styles';
-```
-- Identical to `widgetContainer` but with a more explicit name
-- Useful for code clarity where the purpose might not be obvious
-- Same standardized border pattern
-
-#### `widgetContainerLegacy` (Deprecated)
-```tsx
-import { widgetContainerLegacy } from '../../../shared/utils/styles';
-```
-- Previous version without `/90` opacity and with `rounded-lg`
-- Maintained for backward compatibility
-- Should not be used for new widgets
-
-#### `widgetContainerWithShadow` (Legacy)
-```tsx
-import { widgetContainerWithShadow } from '../../../shared/utils/styles';
-```
-- Legacy version with shadow effects
-- Uses `rounded-lg` instead of `rounded-t-lg`
-- Maintained for backward compatibility
+- Recommended for all widgets
 
 ### Migration Notes
 
