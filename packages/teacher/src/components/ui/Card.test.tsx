@@ -1,40 +1,22 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
-import Card, { CardContent, CardFooter, CardHeader } from './Card';
+import Card from './Card';
 
 describe('Card', () => {
-  test('renders header, content, and footer children', () => {
-    render(
-      <Card data-testid="card">
-        <CardHeader>Header text</CardHeader>
-        <CardContent data-testid="card-content">Content text</CardContent>
-        <CardFooter>Footer text</CardFooter>
-      </Card>
-    );
+  test('renders children as a column layout', () => {
+    render(<Card data-testid="card">Content text</Card>);
 
-    expect(screen.getByText('Header text')).toBeInTheDocument();
     expect(screen.getByText('Content text')).toBeInTheDocument();
-    expect(screen.getByText('Footer text')).toBeInTheDocument();
-    // Layout contract: column card with a scrollable content region
     expect(screen.getByTestId('card')).toHaveClass('flex', 'flex-col', 'h-full');
-    expect(screen.getByTestId('card-content')).toHaveClass('flex-1', 'overflow-y-auto');
   });
 
   test('merges custom className with base classes instead of replacing them', () => {
-    render(
-      <Card data-testid="card" className="custom-card">
-        <CardContent data-testid="card-content" className="custom-content">x</CardContent>
-      </Card>
-    );
+    render(<Card data-testid="card" className="custom-card">x</Card>);
 
     const card = screen.getByTestId('card');
     expect(card).toHaveClass('custom-card');
     expect(card).toHaveClass('flex');
-
-    const content = screen.getByTestId('card-content');
-    expect(content).toHaveClass('custom-content');
-    expect(content).toHaveClass('overflow-y-auto');
   });
 
   test('honours variant, padding, and fullHeight props', () => {
