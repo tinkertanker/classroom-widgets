@@ -53,13 +53,6 @@ class Room {
   }
 
   /**
-   * Check if the room is expired based on age
-   */
-  isExpired(maxAge = 12 * 60 * 60 * 1000) {
-    return Date.now() - this.createdAt > maxAge;
-  }
-
-  /**
    * Check if the room is inactive
    */
   isInactive(inactivityTimeout = 2 * 60 * 60 * 1000) {
