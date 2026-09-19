@@ -3,6 +3,7 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
 import { BackgroundType, WidgetType } from '../types';
 import { isNativeDesktop } from '../utils/nativeBridge';
 import { createDefaultShortenerSettings, type ShortenerSettings } from '../utils/urlShortener';
@@ -81,10 +82,10 @@ export function useBottomBar() {
 
 // Server connection hook
 export function useServerConnection() {
-  const connected = useWorkspaceStore((state) => state.serverStatus.connected);
-  const url = useWorkspaceStore((state) => state.serverStatus.url);
-  const error = useWorkspaceStore((state) => state.serverStatus.error);
-  const setServerStatus = useWorkspaceStore((state) => state.setServerStatus);
+  const connected = useWorkspaceUiStore((state) => state.serverStatus.connected);
+  const url = useWorkspaceUiStore((state) => state.serverStatus.url);
+  const error = useWorkspaceUiStore((state) => state.serverStatus.error);
+  const setServerStatus = useWorkspaceUiStore((state) => state.setServerStatus);
 
   const connect = useCallback(() => setServerStatus({ connected: true }), [setServerStatus]);
   const disconnect = useCallback(() => setServerStatus({ connected: false }), [setServerStatus]);
@@ -105,8 +106,8 @@ export function useServerConnection() {
 
 // Drag and drop hook
 export function useDragAndDrop() {
-  const dragState = useWorkspaceStore(useShallow((state) => state.dragState));
-  const setDropTarget = useWorkspaceStore((state) => state.setDropTarget);
+  const dragState = useWorkspaceUiStore(useShallow((state) => state.dragState));
+  const setDropTarget = useWorkspaceUiStore((state) => state.setDropTarget);
   
   const { isDragging, draggedWidgetId, dropTarget } = dragState;
 

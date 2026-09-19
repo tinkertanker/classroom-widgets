@@ -2,7 +2,7 @@ import React, { useCallback, memo } from 'react';
 import { FaXmark } from 'react-icons/fa6';
 import { useWidget } from '@shared/hooks/useWidget';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { useHoverDelay } from './useHoverDelay';
 import { WidgetActions } from './WidgetActions';
@@ -15,9 +15,9 @@ interface ColumnWidgetWrapperProps {
 
 const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children, dashboardVisible = true }) => {
   const { widget, remove } = useWidget(widgetId);
-  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const setFocusedWidget = useWorkspaceUiStore((state) => state.setFocusedWidget);
   // Use a boolean selector to avoid re-rendering all widgets on every focus change
-  const isFocused = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
+  const isFocused = useWorkspaceUiStore((state) => state.focusedWidgetId === widgetId);
   // Match the canvas and native panel chrome timeout.
   const { visible: showDelete, onMouseEnter, onMouseLeave } = useHoverDelay(2000);
 

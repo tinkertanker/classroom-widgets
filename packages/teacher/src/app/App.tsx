@@ -9,6 +9,7 @@ import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../store/workspaceUiStore';
 import Board from '../features/board/components';
 import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
@@ -39,7 +40,7 @@ function App() {
   const addWidget = useWorkspaceStore((state) => state.addWidget);
   const updateWidgetState = useWorkspaceStore((state) => state.updateWidgetState);
   const resizeWidget = useWorkspaceStore((state) => state.resizeWidget);
-  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const setFocusedWidget = useWorkspaceUiStore((state) => state.setFocusedWidget);
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
   const setLayoutFormat = useWorkspaceStore((state) => state.setLayoutFormat);
   const voiceControlEnabled = useWorkspaceStore((state) => state.bottomBar.voiceControlEnabled ?? false);
@@ -284,7 +285,7 @@ function App() {
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       // Don't handle if typing in input field or if any widget is focused
-      const currentFocusedWidgetId = useWorkspaceStore.getState().focusedWidgetId;
+      const currentFocusedWidgetId = useWorkspaceUiStore.getState().focusedWidgetId;
       if (e.target instanceof HTMLInputElement ||
           e.target instanceof HTMLTextAreaElement ||
           currentFocusedWidgetId !== null) {
@@ -435,8 +436,8 @@ function App() {
 
       // 🚀 OPTIMIZATION: Read current state on demand instead of dependencies
       const currentWidgets = useWorkspaceStore.getState().widgets;
-      const currentFocusedId = useWorkspaceStore.getState().focusedWidgetId;
-      const setFocusedWidget = useWorkspaceStore.getState().setFocusedWidget;
+      const currentFocusedId = useWorkspaceUiStore.getState().focusedWidgetId;
+      const setFocusedWidget = useWorkspaceUiStore.getState().setFocusedWidget;
 
       // Get current widget context
       const context = {

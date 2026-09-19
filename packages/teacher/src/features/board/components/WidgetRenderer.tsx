@@ -9,7 +9,7 @@ import WidgetWrapper from '../../widgets/shared/WidgetWrapper';
 import ColumnWidgetWrapper from '../../widgets/shared/ColumnWidgetWrapper';
 import ErrorBoundary from '@shared/components/ErrorBoundary';
 import { Card } from '../../../components/ui';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
 export interface WidgetWrapperComponentProps {
   widgetId: string;
@@ -41,7 +41,7 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId, dashboardVisi
   const { widget, state, setState } = useWidget(widgetId);
   // Subscribe only to whether THIS widget is focused, not the focusedWidgetId value
   // This prevents all widgets from re-rendering when focus changes
-  const isActive = useWorkspaceStore((state) => state.focusedWidgetId === widgetId);
+  const isActive = useWorkspaceUiStore((state) => state.focusedWidgetId === widgetId);
 
   if (!widget) return null;
 

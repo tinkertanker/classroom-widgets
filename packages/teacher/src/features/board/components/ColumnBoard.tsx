@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import Background from './Background';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
 interface ColumnBoardProps {
   children: React.ReactNode;
@@ -9,7 +9,7 @@ interface ColumnBoardProps {
 
 const ColumnBoard: React.FC<ColumnBoardProps> = ({ children }) => {
   const { background } = useWorkspace();
-  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const setFocusedWidget = useWorkspaceUiStore((state) => state.setFocusedWidget);
 
   return (
     <div

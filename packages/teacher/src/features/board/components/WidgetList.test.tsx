@@ -38,8 +38,7 @@ describe('WidgetList layouts', () => {
         { id: 'timer-1', type: WidgetType.TIMER, position: { x: 0, y: 0 }, size: { width: 350, height: 415 }, zIndex: 0 },
         { id: 'stamp-1', type: WidgetType.STAMP, position: { x: 10, y: 10 }, size: { width: 60, height: 60 }, zIndex: 1 }
       ],
-      widgetStates: new Map(),
-      focusedWidgetId: null
+      widgetStates: new Map()
     });
   });
 

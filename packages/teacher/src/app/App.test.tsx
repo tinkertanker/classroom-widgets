@@ -107,8 +107,7 @@ describe('App narrow layout', () => {
     useWorkspaceStore.setState({
       layoutFormat: 'canvas',
       widgets: [],
-      widgetStates: new Map(),
-      focusedWidgetId: null
+      widgetStates: new Map()
     });
   });
 
@@ -237,8 +236,7 @@ describe('App image paste sizing', () => {
     useWorkspaceStore.setState({
       layoutFormat: 'canvas',
       widgets: [],
-      widgetStates: new Map(),
-      focusedWidgetId: null
+      widgetStates: new Map()
     });
     vi.mocked(widgetRegistry.get).mockReturnValue({
       type: WidgetType.IMAGE_DISPLAY,
@@ -308,7 +306,6 @@ describe('App double-Cmd-press voice activation', () => {
       layoutFormat: 'canvas',
       widgets: [],
       widgetStates: new Map(),
-      focusedWidgetId: null,
       bottomBar: { ...useWorkspaceStore.getState().bottomBar, voiceControlEnabled: true }
     });
   });

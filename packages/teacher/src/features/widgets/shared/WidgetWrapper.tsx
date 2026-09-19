@@ -10,7 +10,7 @@ import { widgetRegistry } from '../../../services/WidgetRegistry';
 import { Position, Size } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 import { useHoverDelay } from './useHoverDelay';
 import { classifyDrop, useWidgetInteractionState } from './useWidgetInteractionState';
 import { WidgetActions } from './WidgetActions';
@@ -40,7 +40,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   } = useWidgetInteractionState();
   // Only subscribe to setFocusedWidget action, not the focusedWidgetId value
   // This prevents re-renders when other widgets get focused
-  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const setFocusedWidget = useWorkspaceUiStore((state) => state.setFocusedWidget);
   const config = widget ? widgetRegistry.get(widget.type) : undefined;
   
   const handleDragStart = useCallback(() => {
@@ -56,7 +56,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   const handleDragStop = useCallback((e: any, d: any) => {
     // Read dropTarget directly from store to avoid subscribing to it
     // This prevents re-renders when dropTarget changes during drag
-    const currentDropTarget = useWorkspaceStore.getState().dragState.dropTarget;
+    const currentDropTarget = useWorkspaceUiStore.getState().dragState.dropTarget;
     if (classifyDrop(currentDropTarget) === 'trash') {
       debug('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
       // Play trash sound

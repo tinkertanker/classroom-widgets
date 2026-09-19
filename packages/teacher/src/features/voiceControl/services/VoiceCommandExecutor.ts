@@ -1,6 +1,7 @@
 import { VoiceCommandResponse, ExecutionResult } from '../types/voiceControl';
 import { WidgetType } from '@shared/types';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 import { debug } from '@shared/utils/debug';
 import { VOICE_WIDGET_TARGET_MAP } from '@shared/constants/voiceCommandDefinitions';
 import { widgetRegistry } from '../../../services/WidgetRegistry';
@@ -44,9 +45,10 @@ const getViewportCenterPosition = (widgetType: WidgetType): { x: number; y: numb
 // Generic widget finder
 const findWidgetByType = (type: WidgetType, preferFocused = true) => {
   const store = useWorkspaceStore.getState();
+  const focusedWidgetId = useWorkspaceUiStore.getState().focusedWidgetId;
 
-  if (preferFocused && store.focusedWidgetId) {
-    const focusedWidget = store.widgets.find(w => w.id === store.focusedWidgetId);
+  if (preferFocused && focusedWidgetId) {
+    const focusedWidget = store.widgets.find(w => w.id === focusedWidgetId);
     if (focusedWidget?.type === type) return focusedWidget;
   }
 

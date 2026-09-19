@@ -28,6 +28,12 @@ vi.mock('../store/workspaceStore.simple', () => {
   return { useWorkspaceStore };
 });
 
+vi.mock('../store/workspaceUiStore', () => {
+  const useWorkspaceUiStore = (selector: (state: any) => any) => selector(storeState.current);
+  useWorkspaceUiStore.getState = () => storeState.current;
+  return { useWorkspaceUiStore };
+});
+
 vi.mock('../hooks/useSocket', () => ({
   useSocket: () => ({ socket: socketState.current })
 }));

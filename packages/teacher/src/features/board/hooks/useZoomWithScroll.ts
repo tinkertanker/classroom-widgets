@@ -69,6 +69,7 @@ export const useZoomWithScroll = (
       }
 
       scrollRaf.current = requestAnimationFrame(() => {
+        setScale(currentScaleRef.current);
         container.scrollLeft = scrollX;
         container.scrollTop = scrollY;
         scrollRaf.current = null;
@@ -80,7 +81,6 @@ export const useZoomWithScroll = (
       if (!origin) return;
 
       currentScaleRef.current = newScale;
-      setScale(newScale);
       scheduleScroll(
         origin.x * newScale - zoomCenter.current.x,
         origin.y * newScale - zoomCenter.current.y
@@ -225,6 +225,8 @@ export const useZoomWithScroll = (
       }
       if (scrollRaf.current !== null) {
         cancelAnimationFrame(scrollRaf.current);
+        // The cancelled frame owned the pending scale commit — don't lose it
+        setScale(currentScaleRef.current);
       }
     };
   }, [containerRef, scaleRef, maxScale, minScale, scaleSensitivity, setDebugMarker, setScale, setViewportRect]);
