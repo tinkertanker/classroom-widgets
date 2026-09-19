@@ -41,8 +41,8 @@ async function startStream({ sourceId, width, height }) {
       video: { mandatory: {
         chromeMediaSource: 'desktop',
         chromeMediaSourceId: sourceId,
-        minWidth: width, maxWidth: width,
-        minHeight: height, maxHeight: height,
+        maxWidth: width,
+        maxHeight: height,
       } },
     });
     stream.getTracks().forEach((track) => track.addEventListener('ended', () => send('display-preview:stream-error', { message: 'The capture stream ended.' })));

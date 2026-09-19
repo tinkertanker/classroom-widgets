@@ -31,13 +31,28 @@ interface DesktopCapturerLike {
 export interface DisplayPreviewDeps {
   desktopCapturer: DesktopCapturerLike;
   screen: ScreenLike;
+  createWindow?: (bounds: Rect) => DisplayPreviewWindowLike;
+}
+
+export interface DisplayPreviewWindowLike extends EventEmitter {
+  getBounds(): Rect;
+  setBounds(bounds: Rect): void;
+  setSize(size: { width: number; height: number }): void;
+  getContentSize(): { width: number; height: number };
+  show(): void;
+  focus(): void;
+  close(): void;
+  setState(state: DisplayPreviewState): void;
+  startStream(sourceId: string, size: { width: number; height: number }): void;
+  stopStream(): void;
+  popupMenu(template: MenuItemConstructorOptions[]): void;
 }
 
 const MINIMUM_PREVIEW_SIZE = { width: 320, height: 180 };
 const FRAME_INSET = 12;
 
 export class DisplayPreviewCoordinator extends EventEmitter {
-  private window: DisplayPreviewWindow | null = null;
+  private window: DisplayPreviewWindowLike | null = null;
   private candidates: DisplayDescriptor[] = [];
   private selectedSource: DisplayDescriptor | null = null;
   private wantsCapture = false;
@@ -65,7 +80,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       return;
     }
     const bounds = this.initialBounds();
-    const window = new DisplayPreviewWindow(bounds);
+    const window = this.deps.createWindow?.(bounds) ?? new DisplayPreviewWindow(bounds);
     this.window = window;
     this.attachWindow(window);
     this.deps.screen.on('display-added', this.displayChanged);
@@ -93,7 +108,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     this.window = null;
   }
 
-  private attachWindow(window: DisplayPreviewWindow): void {
+  private attachWindow(window: DisplayPreviewWindowLike): void {
     window.on('powerToggle', () => {
       if (this.wantsCapture) this.stop();
       else void this.start();
@@ -206,8 +221,9 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   }
 
   private async start(): Promise<void> {
-    if (!this.window || !this.selectedSource || this.suspendedForOverlap) return;
+    if (!this.window || !this.selectedSource) return;
     if (rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {
+      this.wantsCapture = true;
       this.suspendedForOverlap = true;
       this.publish('Preview suspended while it overlaps the source display. Move it fully clear to resume.');
       return;
