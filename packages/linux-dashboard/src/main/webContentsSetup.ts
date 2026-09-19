@@ -3,6 +3,7 @@ import { isAllowed, ORIGIN } from './appProtocol';
 import { log } from './log';
 
 const configuredSessions = new WeakSet<Electron.Session>();
+const mediaCaptureContents = new WeakSet<WebContents>();
 
 function openExternally(url: string): void {
   let parsed: URL;
@@ -24,9 +25,16 @@ function configureSession(contents: WebContents): void {
   session.setPermissionRequestHandler((webContents, permission, callback) => {
     const url = webContents.getURL();
     const ours = url.startsWith(`${ORIGIN}/`) || url === ORIGIN;
-    const allowed = ours && (permission === 'media' || permission === 'clipboard-read' || permission === 'fullscreen');
+    const allowed = (ours && (permission === 'media' || permission === 'clipboard-read' || permission === 'fullscreen'))
+      || (permission === 'media' && mediaCaptureContents.has(webContents));
     callback(allowed);
   });
+}
+
+/** Lets a local (non app://) renderer request screen capture through getUserMedia. */
+export function allowMediaCapture(contents: WebContents): void {
+  configureSession(contents);
+  mediaCaptureContents.add(contents);
 }
 
 /**

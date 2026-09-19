@@ -191,6 +191,9 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       }
     } else if (!selectedCurrent) {
       this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
+      if (this.selectedSource && this.selectedSource.id !== this.settings.getDisplayPreviewSourceId()) {
+        this.settings.setDisplayPreviewSourceId(this.selectedSource.id);
+      }
     }
     if (this.selectedSource && !this.catalog.currentMatching(this.selectedSource)) {
       this.stopCapture();

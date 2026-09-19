@@ -162,3 +162,30 @@ test('stale starts do not stream a source selected before capture resolves', asy
 
   assert.equal(window.streams.length, 0);
 });
+
+test('auto-selecting the sole candidate remembers it as the source', () => {
+  const displays = [display(1, 0, 1000), display(2, 1000, 1000)];
+  const fakeScreen = {
+    getAllDisplays: () => displays,
+    getDisplayMatching: () => displays[0],
+    getCursorScreenPoint: () => ({ x: 100, y: 100 }),
+    on() {},
+    removeListener() {},
+  };
+  let rememberedId = null;
+  let window;
+  const coordinator = new DisplayPreviewCoordinator(
+    {
+      getDisplayPreviewFrame: () => undefined,
+      getDisplayPreviewSourceId: () => rememberedId,
+      setDisplayPreviewSourceId(id) { rememberedId = id; },
+      setDisplayPreviewFrame() {},
+    },
+    new DisplayCatalog(fakeScreen),
+    { screen: fakeScreen, desktopCapturer: { async getSources() { return []; } }, createWindow: (bounds) => (window = new FakeWindow(bounds)) },
+  );
+  coordinator.open();
+  assert.equal(rememberedId, 2);
+  assert.equal(window.states.at(-1).sourceId, 2);
+  assert.equal(window.states.at(-1).statusMessage, 'Click to see display');
+});

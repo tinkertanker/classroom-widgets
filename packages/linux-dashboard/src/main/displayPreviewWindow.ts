@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 import { Rect, Size } from './displayGeometry';
 import { log } from './log';
+import { allowMediaCapture } from './webContentsSetup';
 
 export interface DisplayPreviewState {
   statusMessage: string;
@@ -51,6 +52,7 @@ export class DisplayPreviewWindow extends EventEmitter {
       frame: true,
       resizable: true,
       alwaysOnTop: true,
+      autoHideMenuBar: true,
       minimizable: true,
       minWidth: 320,
       minHeight: 240 + CHROME_HEIGHT,
@@ -61,12 +63,14 @@ export class DisplayPreviewWindow extends EventEmitter {
         nodeIntegration: false,
       },
     });
-    windows.set(this.win.webContents.id, this);
-    this.win.webContents.once('destroyed', () => windows.delete(this.win.webContents.id));
+    const contentsId = this.win.webContents.id;
+    windows.set(contentsId, this);
+    allowMediaCapture(this.win.webContents);
+    this.win.webContents.once('destroyed', () => windows.delete(contentsId));
     this.win.on('move', () => this.emit('moved'));
     this.win.on('resize', () => this.emit('resized'));
     this.win.once('closed', () => {
-      windows.delete(this.win.webContents.id);
+      windows.delete(contentsId);
       this.emit('closed');
     });
     this.win.webContents.once('did-finish-load', () => {
