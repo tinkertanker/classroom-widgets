@@ -170,6 +170,12 @@ export class UpdateController {
 
   private async openReleaseFallback(pageUrl: string, detail: string, message = 'Update available'): Promise<void> {
     const answer = await this.dependencies.showMessageBox({ type: 'info', buttons: ['Open Downloads', 'Cancel'], defaultId: 0, cancelId: 1, message, detail });
-    if (answer.response === 0) await this.dependencies.openExternal(pageUrl);
+    if (answer.response === 0) {
+      try {
+        await this.dependencies.openExternal(pageUrl);
+      } catch (error) {
+        log.warn(`Unable to open the release page: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
   }
 }

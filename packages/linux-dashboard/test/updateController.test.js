@@ -23,7 +23,7 @@ function releaseResponse(kind = 'deb') {
   };
 }
 
-function harness({ responses = [], fetch, download, installAppImage, installDeb, useDefaultInstallDeb = false, execFile, openPath } = {}) {
+function harness({ responses = [], fetch, download, installAppImage, installDeb, useDefaultInstallDeb = false, execFile, openPath, openExternal } = {}) {
   const dialogs = [];
   const downloads = [];
   const appImageInstalls = [];
@@ -41,7 +41,10 @@ function harness({ responses = [], fetch, download, installAppImage, installDeb,
       dialogs.push(options);
       return { response: queue.shift() ?? 1 };
     },
-    async openExternal(url) { opened.push(url); },
+    async openExternal(url) {
+      opened.push(url);
+      if (openExternal) return openExternal(url);
+    },
     async openPath(path) {
       openedPaths.push(path);
       return openPath ? openPath(path) : '';
@@ -93,6 +96,50 @@ test('automatic approved download failure is visible and offers Downloads', asyn
   assert.deepEqual(h.dialogs[1].buttons, ['Open Downloads', 'Cancel']);
   assert.deepEqual(h.opened, [releasePage]);
   assert.deepEqual(h.debInstalls, []);
+});
+
+test('manual Downloads launch failure preserves installation feedback and permits another check', async () => {
+  delete process.env.APPIMAGE;
+  const h = harness({
+    responses: [0, 0, 1],
+    download: async () => { throw new Error('Update download returned 503'); },
+    openExternal: async () => { throw new Error('No default browser is configured'); },
+  });
+
+  await h.controller.check(true);
+
+  assert.deepEqual(h.dialogs.map((dialog) => dialog.message), [
+    'Classroom Widgets 2.0.0 is available.',
+    'Unable to install update.',
+  ]);
+  assert.match(h.dialogs[1].detail, /Update download returned 503/);
+  assert.deepEqual(h.opened, [releasePage]);
+
+  await h.controller.check(true);
+
+  assert.equal(h.dialogs.length, 3);
+  assert.equal(h.dialogs[2].message, 'Classroom Widgets 2.0.0 is available.');
+  assert.equal(h.downloads.length, 1, 'Later on the second check must not retry the download');
+});
+
+test('manual Downloads launch failure for a missing package is not an update-check failure', async () => {
+  delete process.env.APPIMAGE;
+  const h = harness({
+    responses: [0],
+    fetch: async () => {
+      const release = await releaseResponse().json();
+      return { ok: true, async json() { return { ...release, assets: [] }; } };
+    },
+    openExternal: async () => { throw new Error('Desktop browser portal unavailable'); },
+  });
+
+  await h.controller.check(true);
+
+  assert.equal(h.dialogs.length, 1);
+  assert.equal(h.dialogs[0].message, 'Update available');
+  assert.match(h.dialogs[0].detail, /Linux package is not attached yet/);
+  assert.deepEqual(h.opened, [releasePage]);
+  assert.deepEqual(h.downloads, []);
 });
 
 test('manual check failure explains how to retry and checking resets', async () => {
