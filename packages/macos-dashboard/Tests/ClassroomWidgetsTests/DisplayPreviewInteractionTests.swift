@@ -1,8 +1,73 @@
 import AppKit
+import CoreMedia
+import CoreVideo
 import XCTest
 @testable import ClassroomWidgets
 
 final class DisplayPreviewInteractionTests: XCTestCase {
+    func testStaticFrameKeepsCurrentPointerGeometryAfterWindowResize() async throws {
+        try await MainActor.run {
+            _ = NSApplication.shared
+            let controller = try makePresentedFrameFixture()
+            defer { controller.close() }
+            let window = try XCTUnwrap(controller.window)
+            let fixture = (window: window, view: controller.previewView)
+            var targets: [CGPoint] = []
+            fixture.view.onCompletedPrimaryClick = { [weak controller] point, _ in
+                guard let geometry = controller?.presentedGeometry,
+                      let target = DisplayPreviewGeometry.target(
+                        topLeftPoint: point, geometry: geometry, currentTopologyRevision: 11
+                      ) else { return }
+                targets.append(target)
+            }
+
+            mouseDown(fixture, at: NSPoint(x: 40, y: 40))
+            window.setContentSize(NSSize(width: 800, height: 460))
+            window.contentView?.layoutSubtreeIfNeeded()
+            mouseUp(fixture, at: NSPoint(x: 40, y: 40))
+            XCTAssertTrue(targets.isEmpty, "A gesture spanning layout must still be cancelled")
+
+            // No second frame arrives: an unchanged display can stay idle indefinitely.
+            let geometry = try XCTUnwrap(controller.presentedGeometry)
+            XCTAssertEqual(geometry.imageRect, CGRect(x: 0, y: 0, width: 800, height: 450))
+            XCTAssertEqual(geometry.sourceID, 42)
+            XCTAssertEqual(geometry.topologyRevision, 11)
+            XCTAssertEqual(geometry.sourceBounds, CGRect(x: -1920, y: 120, width: 1920, height: 1080))
+            click(fixture, at: NSPoint(x: 200, y: 112.5))
+            XCTAssertEqual(targets, [CGPoint(x: -1440, y: 930)])
+            XCTAssertEqual(
+                DisplayPreviewGeometry.target(
+                    topLeftPoint: CGPoint(x: 400, y: 225), geometry: geometry, currentTopologyRevision: 11
+                ),
+                CGPoint(x: -960, y: 660),
+                "The same retained source geometry must remain available for moving to center"
+            )
+            XCTAssertNil(DisplayPreviewGeometry.target(
+                topLeftPoint: CGPoint(x: 400, y: 225), geometry: geometry, currentTopologyRevision: 12
+            ), "Layout must not grant authority to a different topology")
+        }
+    }
+
+    func testLayoutNeverRestoresStaleClearedOrInvalidatedFrameGeometry() async throws {
+        try await MainActor.run {
+            _ = NSApplication.shared
+            for invalidation in ["stale", "cleared", "sourceChanged", "unauthorized"] {
+                let controller = try makePresentedFrameFixture()
+                defer { controller.close() }
+                switch invalidation {
+                case "stale": controller.previewView.setImageStale(true)
+                case "cleared": controller.clearFrame()
+                case "sourceChanged":
+                    controller.previewView.prepareForLiveInteraction(sourceSize: CGSize(width: 90, height: 160))
+                default: controller.presentedGeometry = nil
+                }
+                controller.window?.setContentSize(NSSize(width: 800, height: 460))
+                controller.window?.contentView?.layoutSubtreeIfNeeded()
+                XCTAssertNil(controller.presentedGeometry, "Layout must not restore \(invalidation) geometry")
+            }
+        }
+    }
+
     func testIdlePrimaryClickStartsButDragModifiedAndDisabledClicksDoNot() async {
         await MainActor.run {
             _ = NSApplication.shared
@@ -167,6 +232,43 @@ final class DisplayPreviewInteractionTests: XCTestCase {
             XCTAssertFalse(view.accessibilityPerformPress())
             XCTAssertEqual(starts, 1)
         }
+    }
+
+    @MainActor
+    private func makePresentedFrameFixture() throws -> DisplayPreviewWindowController {
+        let controller = DisplayPreviewWindowController(
+            frame: NSRect(x: 0, y: 0, width: 480, height: 320),
+            backgroundOpacity: 1,
+            keepOnAllSpaces: true
+        )
+        let window = try XCTUnwrap(controller.window)
+        window.setContentSize(NSSize(width: 480, height: 280))
+        window.contentView?.layoutSubtreeIfNeeded()
+        var pixelBuffer: CVPixelBuffer?
+        XCTAssertEqual(CVPixelBufferCreate(
+            kCFAllocatorDefault, 160, 90, kCVPixelFormatType_32BGRA, nil, &pixelBuffer
+        ), kCVReturnSuccess)
+        let image = try XCTUnwrap(pixelBuffer, "Fixture: expected a synthetic pixel buffer")
+        var format: CMVideoFormatDescription?
+        XCTAssertEqual(CMVideoFormatDescriptionCreateForImageBuffer(
+            allocator: kCFAllocatorDefault, imageBuffer: image, formatDescriptionOut: &format
+        ), noErr)
+        var timing = CMSampleTimingInfo(
+            duration: CMTime(value: 1, timescale: 30), presentationTimeStamp: .zero, decodeTimeStamp: .invalid
+        )
+        var sample: CMSampleBuffer?
+        XCTAssertEqual(CMSampleBufferCreateReadyWithImageBuffer(
+            allocator: kCFAllocatorDefault, imageBuffer: image,
+            formatDescription: try XCTUnwrap(format), sampleTiming: &timing, sampleBufferOut: &sample
+        ), noErr)
+        XCTAssertTrue(controller.showFrame(try XCTUnwrap(sample), size: CGSize(width: 160, height: 90)))
+        controller.presentedGeometry = DisplayPreviewFrameGeometry(
+            imageRect: try XCTUnwrap(controller.previewView.fittedImageRectTopLeft()),
+            sourceBounds: CGRect(x: -1920, y: 120, width: 1920, height: 1080),
+            sourceID: 42,
+            topologyRevision: 11
+        )
+        return controller
     }
 
     @MainActor

@@ -7,16 +7,36 @@ final class UpdateController {
     private static let latestReleaseURL = URL(string: "https://api.github.com/repos/tinkertanker/classroom-widgets/releases/latest")!
     private let prepareForTermination: () async -> Bool
     private let cancelTermination: () -> Void
+    private let applicationBundle: Bundle
+    private let loadRelease: @MainActor (URLRequest) async throws -> (Data, URLResponse)
+    private let presentAlert: @MainActor (NSAlert) -> NSApplication.ModalResponse
+    private let openDownloads: @MainActor (URL) -> Void
+    private let installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)?
     private var checking = false
 
-    init(prepareForTermination: @escaping () async -> Bool, cancelTermination: @escaping () -> Void) {
+    init(
+        prepareForTermination: @escaping () async -> Bool,
+        cancelTermination: @escaping () -> Void,
+        applicationBundle: Bundle = .main,
+        loadRelease: @escaping @MainActor (URLRequest) async throws -> (Data, URLResponse) = {
+            try await URLSession.shared.data(for: $0)
+        },
+        presentAlert: @escaping @MainActor (NSAlert) -> NSApplication.ModalResponse = { $0.runModal() },
+        openDownloads: @escaping @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) },
+        installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)? = nil
+    ) {
         self.prepareForTermination = prepareForTermination
         self.cancelTermination = cancelTermination
+        self.applicationBundle = applicationBundle
+        self.loadRelease = loadRelease
+        self.presentAlert = presentAlert
+        self.openDownloads = openDownloads
+        self.installUpdate = installUpdate
     }
 
     func check(manual: Bool = false) async {
         guard !checking else { return }
-        guard Bundle.main.bundleURL.pathExtension == "app" else { return }
+        guard applicationBundle.bundleURL.pathExtension == "app" else { return }
         checking = true
         defer { checking = false }
 
@@ -24,7 +44,7 @@ final class UpdateController {
             var request = URLRequest(url: Self.latestReleaseURL)
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("ClassroomWidgets/\(currentVersion)", forHTTPHeaderField: "User-Agent")
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await loadRelease(request)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 throw UpdateError.invalidResponse
             }
@@ -47,8 +67,12 @@ final class UpdateController {
             alert.addButton(withTitle: "Install and Restart")
             alert.addButton(withTitle: "Later")
             NSApp.activate(ignoringOtherApps: true)
-            guard alert.runModal() == .alertFirstButtonReturn else { return }
-            try await downloadAndInstall(asset: asset, version: availableVersion)
+            guard presentAlert(alert) == .alertFirstButtonReturn else { return }
+            if let installUpdate {
+                try await installUpdate(asset, availableVersion)
+            } else {
+                try await downloadAndInstall(asset: asset, version: availableVersion)
+            }
         } catch {
             DashboardLog.app.error("Update check failed: \(error.localizedDescription, privacy: .public)")
             if manual { showMessage(title: "Unable to check for updates", detail: "Check your connection and try again.") }
@@ -61,7 +85,7 @@ final class UpdateController {
     }
 
     private var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+        applicationBundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
     }
 
     private func downloadAndInstall(asset: GitHubAsset, version: String) async throws {
@@ -84,17 +108,17 @@ final class UpdateController {
 
         let replacement = staging.appendingPathComponent("Classroom Widgets Dashboard.app", isDirectory: true)
         guard let replacementBundle = Bundle(url: replacement),
-              replacementBundle.bundleIdentifier == Bundle.main.bundleIdentifier,
+              replacementBundle.bundleIdentifier == applicationBundle.bundleIdentifier,
               replacementBundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String == version else {
             throw UpdateError.invalidApplication
         }
         try run("/usr/bin/codesign", arguments: ["--verify", "--deep", "--strict", replacement.path])
-        if let installedTeam = try signingTeam(at: Bundle.main.bundleURL),
+        if let installedTeam = try signingTeam(at: applicationBundle.bundleURL),
            try signingTeam(at: replacement) != installedTeam {
             throw UpdateError.invalidApplication
         }
 
-        let target = Bundle.main.bundleURL
+        let target = applicationBundle.bundleURL
         guard target.pathExtension == "app", fileManager.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
             throw UpdateError.readOnlyApplication
         }
@@ -121,14 +145,14 @@ final class UpdateController {
         alert.informativeText = detail
         alert.addButton(withTitle: "Open Downloads")
         alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn { NSWorkspace.shared.open(url) }
+        if presentAlert(alert) == .alertFirstButtonReturn { openDownloads(url) }
     }
 
     private func showMessage(title: String, detail: String) {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = detail
-        alert.runModal()
+        _ = presentAlert(alert)
     }
 
     private func run(_ executable: String, arguments: [String]) throws {
@@ -193,7 +217,7 @@ private struct GitHubRelease: Decodable {
     }
 }
 
-private struct GitHubAsset: Decodable {
+struct GitHubAsset: Decodable {
     let name: String
     let downloadURL: URL
     let digest: String?
@@ -205,7 +229,7 @@ private struct GitHubAsset: Decodable {
     }
 }
 
-private enum UpdateError: LocalizedError {
+enum UpdateError: LocalizedError {
     case invalidResponse
     case invalidApplication
     case readOnlyApplication

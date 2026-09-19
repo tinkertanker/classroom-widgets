@@ -6,6 +6,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     static let powerToggleIdentifier = NSUserInterfaceItemIdentifier("displayPreviewPowerToggle")
 
     let previewView = DisplayPreviewView(frame: .zero)
+    var presentedGeometry: DisplayPreviewFrameGeometry?
     var onSourceSelected: ((CGDirectDisplayID?) -> Void)?
     var onToggleCapture: (() -> Void)?
     var onMoveToCenter: (() -> Void)?
@@ -61,6 +62,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         // `frame` is a window frame, matching the value persisted from `window.frame`.
         panel.setFrame(frame, display: false)
         previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
+        previewView.onGeometryInvalidated = { [weak self] in self?.presentedGeometry = nil }
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
         applyPresentationSettings(backgroundOpacity: backgroundOpacity, keepOnAllSpaces: keepOnAllSpaces)

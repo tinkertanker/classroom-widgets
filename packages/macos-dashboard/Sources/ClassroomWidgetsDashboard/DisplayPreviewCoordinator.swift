@@ -14,7 +14,10 @@ final class DisplayPreviewCoordinator: NSObject {
     private var windowController: DisplayPreviewWindowController?
     private var selectedSource: DisplayDescriptor?
     private var session: DisplayCaptureSession?
-    private var presentedGeometry: DisplayPreviewFrameGeometry?
+    private var presentedGeometry: DisplayPreviewFrameGeometry? {
+        get { windowController?.presentedGeometry }
+        set { windowController?.presentedGeometry = newValue }
+    }
     private var stopLifecycle = DisplayPreviewStopLifecycle()
     private var stopOperation: DisplayPreviewStopOperation?
     private var pendingStopPresentation = DisplayPreviewPendingStopPresentation()
@@ -176,7 +179,6 @@ final class DisplayPreviewCoordinator: NSObject {
             self?.validateWindowPlacement()
         }
         controller.onVisibilityChanged = { [weak self] visible in self?.visibilityChanged(visible) }
-        controller.previewView.onGeometryInvalidated = { [weak self] in self?.presentedGeometry = nil }
         controller.previewView.onCompletedPrimaryClick = { [weak self] point, _ in self?.warp(from: point) }
     }
 
