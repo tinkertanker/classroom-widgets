@@ -12,6 +12,7 @@ final class DisplayPreviewView: NSView {
     var onIdlePrimaryClick: (() -> Void)?
     var onCompletedPrimaryClick: ((CGPoint, UInt64) -> Void)?
     var onGeometryInvalidated: (() -> Void)?
+    var onLayoutChanged: (() -> Void)?
     private let videoLayer = AVSampleBufferDisplayLayer()
     private var sourceSize: CGSize?
     private var pendingClick: PendingClick?
@@ -37,7 +38,7 @@ final class DisplayPreviewView: NSView {
         videoLayer.frame = bounds
         geometryToken &+= 1
         discardPendingClick()
-        onGeometryInvalidated?()
+        onLayoutChanged?()
     }
 
     override func resetCursorRects() { addCursorRect(bounds, cursor: .crosshair) }
@@ -72,7 +73,10 @@ final class DisplayPreviewView: NSView {
     func setImageStale(_ stale: Bool) {
         guard isStale != stale else { return }
         isStale = stale
-        if stale { discardPendingClick() }
+        if stale {
+            discardPendingClick()
+            onGeometryInvalidated?()
+        }
         updateAccessibility()
     }
 
@@ -87,6 +91,7 @@ final class DisplayPreviewView: NSView {
         isStale = false
         geometryToken &+= 1
         discardPendingClick()
+        onGeometryInvalidated?()
         videoLayer.flushAndRemoveImage()
         updateAccessibility()
     }

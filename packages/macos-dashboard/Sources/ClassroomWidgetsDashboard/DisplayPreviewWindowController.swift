@@ -63,6 +63,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         panel.setFrame(frame, display: false)
         previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
         previewView.onGeometryInvalidated = { [weak self] in self?.presentedGeometry = nil }
+        previewView.onLayoutChanged = { [weak self] in self?.refreshPresentedGeometry() }
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
         applyPresentationSettings(backgroundOpacity: backgroundOpacity, keepOnAllSpaces: keepOnAllSpaces)
@@ -266,6 +267,22 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     }
 
     func clearFrame() { previewView.clear() }
+
+    private func refreshPresentedGeometry() {
+        guard let geometry = presentedGeometry else { return }
+        guard let imageRect = previewView.fittedImageRectTopLeft() else {
+            presentedGeometry = nil
+            return
+        }
+        // A static display may not send another frame after layout. Refit the
+        // accepted image without granting authority to a new source or topology.
+        presentedGeometry = DisplayPreviewFrameGeometry(
+            imageRect: imageRect,
+            sourceBounds: geometry.sourceBounds,
+            sourceID: geometry.sourceID,
+            topologyRevision: geometry.topologyRevision
+        )
+    }
 
     private func configureContent(in panel: NSPanel) {
         previewView.translatesAutoresizingMaskIntoConstraints = false

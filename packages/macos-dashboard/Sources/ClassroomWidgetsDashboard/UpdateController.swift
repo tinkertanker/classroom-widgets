@@ -68,10 +68,17 @@ final class UpdateController {
             alert.addButton(withTitle: "Later")
             NSApp.activate(ignoringOtherApps: true)
             guard presentAlert(alert) == .alertFirstButtonReturn else { return }
-            if let installUpdate {
-                try await installUpdate(asset, availableVersion)
-            } else {
-                try await downloadAndInstall(asset: asset, version: availableVersion)
+            do {
+                if let installUpdate {
+                    try await installUpdate(asset, availableVersion)
+                } else {
+                    try await downloadAndInstall(asset: asset, version: availableVersion)
+                }
+            } catch {
+                DashboardLog.app.error("Update installation failed: \(error.localizedDescription, privacy: .public)")
+                showReleaseFallback(
+                    release.htmlURL, detail: error.localizedDescription, title: "Unable to install update"
+                )
             }
         } catch {
             DashboardLog.app.error("Update check failed: \(error.localizedDescription, privacy: .public)")
@@ -139,9 +146,9 @@ final class UpdateController {
         NSApp.terminate(nil)
     }
 
-    private func showReleaseFallback(_ url: URL, detail: String) {
+    private func showReleaseFallback(_ url: URL, detail: String, title: String = "Update available") {
         let alert = NSAlert()
-        alert.messageText = "Update available"
+        alert.messageText = title
         alert.informativeText = detail
         alert.addButton(withTitle: "Open Downloads")
         alert.addButton(withTitle: "Cancel")
@@ -241,7 +248,8 @@ enum UpdateError: LocalizedError {
         switch self {
         case .invalidResponse: "The update server returned an invalid response."
         case .invalidApplication: "The downloaded application is not a valid Classroom Widgets update."
-        case .readOnlyApplication: "Classroom Widgets cannot replace itself from this location."
+        case .readOnlyApplication:
+            "Classroom Widgets cannot replace itself from this location. Move it to a writable Applications folder, then try again."
         case .checksumMismatch: "The downloaded update did not match its published checksum."
         case .unableToQuit: "Classroom Widgets could not save its state, so the update was cancelled."
         case .commandFailed(let command): "The update command failed: \(command)"
