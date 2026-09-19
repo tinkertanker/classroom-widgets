@@ -167,7 +167,19 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _candidates = _catalog.EligibleSources(host?.Id);
         var previous = _selected;
         var current = _selected is null ? null : _catalog.CurrentMatching(_selected);
-        _selected = current ?? _catalog.ResolveSource(_settings.DisplayPreviewSourceId, _candidates);
+        if (previous is not null && current is null)
+        {
+            StopCapture();
+            _wantsCapture = false;
+            _suspendedForOverlap = false;
+            _settings.DisplayPreviewSourceId = null;
+            _settings.Save();
+            _selected = _catalog.ResolveSource(null, _candidates);
+        }
+        else
+        {
+            _selected = current ?? _catalog.ResolveSource(_settings.DisplayPreviewSourceId, _candidates);
+        }
         if (_selected is null && _wantsCapture)
         {
             _wantsCapture = false;

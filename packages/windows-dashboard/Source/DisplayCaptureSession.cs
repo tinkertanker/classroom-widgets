@@ -15,6 +15,8 @@ public sealed class DisplayCaptureSession : IDisposable
     private readonly DispatcherTimer _timer;
     private readonly EventHandler _tickHandler;
     private WriteableBitmap? _bitmap;
+    private byte[]? _pixels;
+    private NativeMethods.BITMAPINFO _bitmapInfo;
     private bool _failed;
 
     public ImageSource? Image => _bitmap;
@@ -64,24 +66,39 @@ public sealed class DisplayCaptureSession : IDisposable
                 throw new InvalidOperationException("Unable to copy the source display.");
             }
 
-            var pixels = new byte[width * height * 4];
-            var info = new NativeMethods.BITMAPINFO
+            var pixels = _pixels;
+            if (pixels is null || pixels.Length != width * height * 4)
             {
-                Header = new NativeMethods.BITMAPINFOHEADER
+                pixels = new byte[width * height * 4];
+                _pixels = pixels;
+            }
+            if (_bitmapInfo.Colors is null
+                || _bitmapInfo.Header.Width != width
+                || _bitmapInfo.Header.Height != -height)
+            {
+                _bitmapInfo = new NativeMethods.BITMAPINFO
                 {
-                    Size = (uint)Marshal.SizeOf<NativeMethods.BITMAPINFOHEADER>(),
-                    Width = width,
-                    Height = -height,
-                    Planes = 1,
-                    BitCount = 32,
-                    Compression = 0
-                },
-                Colors = new NativeMethods.RGBQUAD[1]
-            };
+                    Header = new NativeMethods.BITMAPINFOHEADER
+                    {
+                        Size = (uint)Marshal.SizeOf<NativeMethods.BITMAPINFOHEADER>(),
+                        Width = width,
+                        Height = -height,
+                        Planes = 1,
+                        BitCount = 32,
+                        Compression = 0
+                    },
+                    Colors = new NativeMethods.RGBQUAD[1]
+                };
+            }
+            if (oldObject != IntPtr.Zero)
+            {
+                NativeMethods.SelectObject(memoryDc, oldObject);
+                oldObject = IntPtr.Zero;
+            }
             var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
             try
             {
-                if (NativeMethods.GetDIBits(screenDc, bitmap, 0, (uint)height, handle.AddrOfPinnedObject(), ref info, 0) == 0)
+                if (NativeMethods.GetDIBits(screenDc, bitmap, 0, (uint)height, handle.AddrOfPinnedObject(), ref _bitmapInfo, 0) == 0)
                 {
                     throw new InvalidOperationException("Unable to read the capture bitmap.");
                 }
