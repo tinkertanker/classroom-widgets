@@ -1,4 +1,4 @@
-import { app, dialog, net, shell } from 'electron';
+import { app, dialog, MessageBoxOptions, MessageBoxReturnValue, net, shell } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
@@ -14,23 +14,45 @@ import { isNewerVersion, parseUpdateRelease, ReleaseAsset } from './updateReleas
 const LATEST_RELEASE_API = 'https://api.github.com/repos/tinkertanker/classroom-widgets/releases/latest';
 const execFileAsync = promisify(execFile);
 
+interface UpdateControllerDependencies {
+  isPackaged: () => boolean;
+  fetch: typeof net.fetch;
+  showMessageBox: (options: MessageBoxOptions) => Promise<MessageBoxReturnValue>;
+  openExternal: typeof shell.openExternal;
+  download: (asset: ReleaseAsset) => Promise<string>;
+  installAppImage: (download: string) => Promise<void>;
+  installDeb: (download: string, releasePage: string) => Promise<void>;
+}
+
 export class UpdateController {
   private checking = false;
+  private readonly dependencies: UpdateControllerDependencies;
 
-  constructor(private readonly currentVersion: string, private readonly onQuit: () => void) {}
+  constructor(private readonly currentVersion: string, private readonly onQuit: () => void, dependencies: Partial<UpdateControllerDependencies> = {}) {
+    this.dependencies = {
+      isPackaged: () => app.isPackaged,
+      fetch: (...args) => net.fetch(...args),
+      showMessageBox: (options) => dialog.showMessageBox(options),
+      openExternal: (...args) => shell.openExternal(...args),
+      download: (asset) => this.download(asset),
+      installAppImage: (download) => this.installAppImage(download),
+      installDeb: (download, releasePage) => this.installDeb(download, releasePage),
+      ...dependencies,
+    };
+  }
 
   async check(manual = false): Promise<void> {
-    if (this.checking || !app.isPackaged) return;
+    if (this.checking || !this.dependencies.isPackaged()) return;
     this.checking = true;
     try {
-      const response = await net.fetch(LATEST_RELEASE_API, {
+      const response = await this.dependencies.fetch(LATEST_RELEASE_API, {
         headers: { Accept: 'application/vnd.github+json', 'User-Agent': `ClassroomWidgets/${this.currentVersion}` },
       });
       if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
       const release = parseUpdateRelease(await response.json());
       if (!release) throw new Error('GitHub returned an invalid release');
       if (!isNewerVersion(release.version, this.currentVersion)) {
-        if (manual) await dialog.showMessageBox({ type: 'info', message: 'Classroom Widgets is up to date.', detail: `Version ${this.currentVersion} is the latest version.` });
+        if (manual) await this.dependencies.showMessageBox({ type: 'info', message: 'Classroom Widgets is up to date.', detail: `Version ${this.currentVersion} is the latest version.` });
         return;
       }
 
@@ -42,7 +64,7 @@ export class UpdateController {
         return;
       }
 
-      const answer = await dialog.showMessageBox({
+      const answer = await this.dependencies.showMessageBox({
         type: 'info',
         buttons: ['Install and Restart', 'Later'],
         defaultId: 0,
@@ -52,12 +74,21 @@ export class UpdateController {
       });
       if (answer.response !== 0) return;
 
-      const packagePath = await this.download(asset);
-      if (appImage) await this.installAppImage(packagePath);
-      else await this.installDeb(packagePath, release.pageUrl);
+      try {
+        const packagePath = await this.dependencies.download(asset);
+        if (appImage) await this.dependencies.installAppImage(packagePath);
+        else await this.dependencies.installDeb(packagePath, release.pageUrl);
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        log.warn(`Update installation failed: ${reason}`);
+        const recovery = appImage
+          ? `Make sure the AppImage location (${process.env.APPIMAGE ?? 'unknown'}) is writable, or download the update manually.`
+          : 'Download the update manually and install it with your package manager.';
+        await this.openReleaseFallback(release.pageUrl, `${reason}\n\n${recovery}`, 'Unable to install update.');
+      }
     } catch (error) {
       log.warn(`Update check failed: ${error instanceof Error ? error.message : String(error)}`);
-      if (manual) await dialog.showMessageBox({ type: 'warning', message: 'Unable to check for updates.', detail: 'Check your connection and try again.' });
+      if (manual) await this.dependencies.showMessageBox({ type: 'warning', message: 'Unable to check for updates.', detail: 'Check your connection and try again.' });
     } finally {
       this.checking = false;
     }
@@ -123,8 +154,8 @@ export class UpdateController {
     }
   }
 
-  private async openReleaseFallback(pageUrl: string, detail: string): Promise<void> {
-    const answer = await dialog.showMessageBox({ type: 'info', buttons: ['Open Downloads', 'Cancel'], defaultId: 0, cancelId: 1, message: 'Update available', detail });
-    if (answer.response === 0) await shell.openExternal(pageUrl);
+  private async openReleaseFallback(pageUrl: string, detail: string, message = 'Update available'): Promise<void> {
+    const answer = await this.dependencies.showMessageBox({ type: 'info', buttons: ['Open Downloads', 'Cancel'], defaultId: 0, cancelId: 1, message, detail });
+    if (answer.response === 0) await this.dependencies.openExternal(pageUrl);
   }
 }
