@@ -208,22 +208,26 @@ class Session {
   }
 
   /**
+   * Get active room entries as { roomType, widgetId, room } without serializing
+   */
+  getActiveRoomEntries() {
+    const entries = [];
+    this.activeRooms.forEach((room, roomId) => {
+      const { roomType, widgetId } = this._parseRoomKey(roomId);
+      entries.push({ roomType, widgetId, room });
+    });
+    return entries;
+  }
+
+  /**
    * Get all active rooms
    */
   getActiveRooms() {
-    const rooms = [];
-    this.activeRooms.forEach((room, roomId) => {
-      // Split on the first ':' only - widget IDs may themselves contain ':'
-      const separatorIndex = roomId.indexOf(':');
-      const roomType = separatorIndex === -1 ? roomId : roomId.slice(0, separatorIndex);
-      const widgetId = separatorIndex === -1 ? undefined : roomId.slice(separatorIndex + 1);
-      rooms.push({
-        roomType,
-        widgetId,
-        room: room.toJSON()
-      });
-    });
-    return rooms;
+    return this.getActiveRoomEntries().map(({ roomType, widgetId, room }) => ({
+      roomType,
+      widgetId,
+      room: room.toJSON()
+    }));
   }
 
   /**
