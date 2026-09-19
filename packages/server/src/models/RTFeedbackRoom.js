@@ -7,6 +7,8 @@ class RTFeedbackRoom extends Room {
   constructor(code, widgetId = null) {
     super(code, widgetId);
     this.feedbackData = new Map(); // Map of studentId -> feedback value (1-5)
+    this.understanding = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // 9 buckets for 0.5 increments
+    this.totalResponses = 0;
     this.isActive = false; // RTFeedback starts paused by default
   }
 
@@ -20,7 +22,9 @@ class RTFeedbackRoom extends Room {
   updateFeedback(studentId, value) {
     // Clamp value between 1 and 5
     const clampedValue = Math.max(1, Math.min(5, value));
-    
+
+    this.removeFromHistogram(this.feedbackData.get(studentId));
+    this.addToHistogram(clampedValue);
     this.feedbackData.set(studentId, {
       value: clampedValue,
       timestamp: Date.now()
@@ -33,8 +37,10 @@ class RTFeedbackRoom extends Room {
    * Remove feedback for a student
    */
   removeFeedback(studentId) {
+    const existing = this.feedbackData.get(studentId);
     const removed = this.feedbackData.delete(studentId);
     if (removed) {
+      this.removeFromHistogram(existing);
       this.updateActivity();
     }
     return removed;
@@ -45,7 +51,36 @@ class RTFeedbackRoom extends Room {
    */
   clearAllFeedback() {
     this.feedbackData.clear();
+    this.understanding.fill(0);
+    this.totalResponses = 0;
     this.updateActivity();
+  }
+
+  /**
+   * Bucket index for a value (1->0, 1.5->1, ..., 5->8), or -1 if out of range
+   */
+  static bucketIndex(value) {
+    if (!(value >= 1 && value <= 5)) return -1;
+    // Round to nearest 0.5: 1.2->1, 1.3->1.5, 1.7->1.5, 1.8->2, etc.
+    const index = (Math.round(value * 2) / 2 - 1) * 2;
+    return index >= 0 && index < 9 ? index : -1;
+  }
+
+  addToHistogram(value) {
+    const index = RTFeedbackRoom.bucketIndex(value);
+    if (index !== -1) {
+      this.understanding[index]++;
+      this.totalResponses++;
+    }
+  }
+
+  removeFromHistogram(data) {
+    if (!data) return;
+    const index = RTFeedbackRoom.bucketIndex(data.value);
+    if (index !== -1) {
+      this.understanding[index]--;
+      this.totalResponses--;
+    }
   }
 
   /**
@@ -53,27 +88,9 @@ class RTFeedbackRoom extends Room {
    * Returns count of students at each understanding level
    */
   getAggregatedFeedback() {
-    // Count how many students are at each level (1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5)
-    const understanding = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // 9 buckets for 0.5 increments
-    let totalResponses = 0;
-    
-    this.feedbackData.forEach((data) => {
-      const value = data.value;
-      if (value >= 1 && value <= 5) {
-        // Round to nearest 0.5: 1.2->1, 1.3->1.5, 1.7->1.5, 1.8->2, etc.
-        const roundedValue = Math.round(value * 2) / 2;
-        // Convert to index: 1->0, 1.5->1, 2->2, etc.
-        const index = (roundedValue - 1) * 2;
-        if (index >= 0 && index < 9) {
-          understanding[index]++;
-          totalResponses++;
-        }
-      }
-    });
-    
     return {
-      understanding,
-      totalResponses
+      understanding: [...this.understanding],
+      totalResponses: this.totalResponses
     };
   }
 
