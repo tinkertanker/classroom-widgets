@@ -56,10 +56,6 @@ export const getSecondsUntilClockTime = (
   return Math.max(1, Math.ceil((targetTime.getTime() - now.getTime()) / 1000));
 };
 
-export const formatClockSelection = (selection: ClockTimeSelection): string => {
-  return `${selection.hour}:${selection.minute.toString().padStart(2, '0')} ${selection.period}`;
-};
-
 export interface TimeSegments {
   hours: number;
   minutes: number;
