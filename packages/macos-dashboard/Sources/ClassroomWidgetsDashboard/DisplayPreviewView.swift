@@ -9,6 +9,9 @@ final class DisplayPreviewView: NSView {
         case live(CGPoint, UInt64)
     }
 
+    // Caps Lock is a typing state, not a modified mouse gesture.
+    private static let clickModifierMask = NSEvent.ModifierFlags.deviceIndependentFlagsMask.subtracting(.capsLock)
+
     var onIdlePrimaryClick: (() -> Void)?
     var onCompletedPrimaryClick: ((CGPoint, UInt64) -> Void)?
     var onGeometryInvalidated: (() -> Void)?
@@ -111,7 +114,7 @@ final class DisplayPreviewView: NSView {
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         guard event.buttonNumber == 0,
-              event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty
+              event.modifierFlags.intersection(Self.clickModifierMask).isEmpty
         else { return }
         if !isStale,
            let topLeft = DisplayPreviewGeometry.topLeftPoint(appKitPoint: point, viewBounds: bounds),
@@ -126,7 +129,7 @@ final class DisplayPreviewView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         guard event.buttonNumber == 0,
-              event.modifierFlags.intersection(.deviceIndependentFlagsMask).isEmpty,
+              event.modifierFlags.intersection(Self.clickModifierMask).isEmpty,
               let pendingClick
         else { discardPendingClick(); return }
         let up = convert(event.locationInWindow, from: nil)
