@@ -1,4 +1,11 @@
-import { WidgetPosition, WidgetPositionsMap } from '../types/app.types';
+export interface WidgetPosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type WidgetPositionsMap = Map<string, WidgetPosition>;
 
 // Simple position type for function returns (just x, y coordinates)
 type Point = { x: number; y: number };
