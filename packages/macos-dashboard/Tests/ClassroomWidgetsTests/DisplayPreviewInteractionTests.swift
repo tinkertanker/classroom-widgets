@@ -125,6 +125,77 @@ final class DisplayPreviewInteractionTests: XCTestCase {
         }
     }
 
+    func testCapsLockDoesNotBlockIdlePrimaryClick() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let fixture = makeFixture()
+            defer { fixture.window.close() }
+            var idleStarts = 0
+            var liveClicks = 0
+            fixture.view.onIdlePrimaryClick = { idleStarts += 1 }
+            fixture.view.onCompletedPrimaryClick = { _, _ in liveClicks += 1 }
+            fixture.view.setIdleStartEnabled(true)
+
+            click(fixture, at: NSPoint(x: 80, y: 40), modifiers: .capsLock)
+
+            XCTAssertEqual(idleStarts, 1, "Caps Lock is a typing state, not a modified click")
+            XCTAssertEqual(liveClicks, 0)
+        }
+    }
+
+    func testCapsLockDoesNotBlockLivePrimaryClick() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let fixture = makeFixture()
+            defer { fixture.window.close() }
+            var idleStarts = 0
+            var completed: [(CGPoint, UInt64)] = []
+            fixture.view.onIdlePrimaryClick = { idleStarts += 1 }
+            fixture.view.onCompletedPrimaryClick = { completed.append(($0, $1)) }
+            fixture.view.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+
+            click(fixture, at: NSPoint(x: 40, y: 20), modifiers: .capsLock)
+
+            XCTAssertEqual(idleStarts, 0)
+            XCTAssertEqual(completed.count, 1)
+            XCTAssertEqual(completed.first?.0, CGPoint(x: 40, y: 70))
+            XCTAssertEqual(completed.first?.1, fixture.view.geometryToken)
+        }
+    }
+
+    func testClickModifiersStillBlockIdleAndLiveClicksWithCapsLock() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let modifiers: [NSEvent.ModifierFlags] = [.command, .option, .control, .shift, .function]
+            for live in [false, true] {
+                let fixture = makeFixture()
+                defer { fixture.window.close() }
+                var idleStarts = 0
+                var liveClicks = 0
+                fixture.view.onIdlePrimaryClick = { idleStarts += 1 }
+                fixture.view.onCompletedPrimaryClick = { _, _ in liveClicks += 1 }
+                if live {
+                    fixture.view.prepareForLiveInteraction(sourceSize: CGSize(width: 160, height: 90))
+                } else {
+                    fixture.view.setIdleStartEnabled(true)
+                }
+
+                for modifier in modifiers {
+                    let flags = modifier.union(.capsLock)
+                    let point = NSPoint(x: 40, y: 20)
+                    click(fixture, at: point, modifiers: flags)
+                    mouseDown(fixture, at: point, modifiers: .capsLock)
+                    mouseUp(fixture, at: point, modifiers: flags)
+                    mouseDown(fixture, at: point, modifiers: flags)
+                    mouseUp(fixture, at: point, modifiers: .capsLock)
+
+                    XCTAssertEqual(idleStarts, 0, "A click modifier at either edge must block idle activation")
+                    XCTAssertEqual(liveClicks, 0, "A click modifier at either edge must block pointer movement")
+                }
+            }
+        }
+    }
+
     func testGeometryAndModeTransitionsInvalidatePendingClicks() async {
         await MainActor.run {
             _ = NSApplication.shared
