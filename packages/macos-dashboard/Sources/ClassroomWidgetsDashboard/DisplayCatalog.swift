@@ -26,6 +26,11 @@ struct DisplayDescriptor: Equatable {
 final class DisplayCatalog {
     private(set) var topologyRevision: UInt64 = 1
     private var topologySignature: String?
+    private let enumerateDisplays: @MainActor () -> [DisplayDescriptor]
+
+    init(displays: (@MainActor () -> [DisplayDescriptor])? = nil) {
+        enumerateDisplays = displays ?? Self.systemDisplays
+    }
 
     /// Returns true only when the connected-display set actually changed.
     /// `didChangeScreenParameters` also fires for menu bar, Dock, colour, and
@@ -49,6 +54,10 @@ final class DisplayCatalog {
     }
 
     func displays() -> [DisplayDescriptor] {
+        enumerateDisplays()
+    }
+
+    private static func systemDisplays() -> [DisplayDescriptor] {
         NSScreen.screens.compactMap { screen in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
                 return nil
@@ -69,14 +78,14 @@ final class DisplayCatalog {
 
     func eligibleSources(hostDisplayID: CGDirectDisplayID?) -> [DisplayDescriptor] {
         displays().filter { display in
-            display.isActive && display.id != hostDisplayID && CGDisplayIsInMirrorSet(display.id) == 0
+            display.isActive && display.id != hostDisplayID && display.mirrorMasterID == nil
         }
     }
 
     func currentMatching(_ expected: DisplayDescriptor) -> DisplayDescriptor? {
         let matches = displays().filter { $0.uuid == expected.uuid }
         guard matches.count == 1, let match = matches.first, match.isActive,
-              CGDisplayIsInMirrorSet(match.id) == 0, match.bounds == expected.bounds
+              match.mirrorMasterID == nil, match.bounds == expected.bounds
         else { return nil }
         return match
     }

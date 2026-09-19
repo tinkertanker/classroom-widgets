@@ -1,0 +1,205 @@
+import AppKit
+import XCTest
+@testable import ClassroomWidgets
+
+final class DisplayPreviewCoordinatorTests: XCTestCase {
+    func testMovingHostRefreshesChoicesWithoutLosingTheSuspendedSelection() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.open()
+            let controller = try XCTUnwrap(fixture.coordinator.windowController)
+            let initialStatus = controller.makeControlsMenu().items.first?.title
+
+            fixture.hostID = CoordinatorFixture.displayB.id
+            controller.windowDidMove(Notification(name: NSWindow.didMoveNotification))
+            let menu = controller.makeControlsMenu()
+            menu.update()
+
+            XCTAssertEqual(menu.items.first?.title, initialStatus, "Menu refresh must not publish ready/off status")
+            let sourceA = try XCTUnwrap(fixture.sourceItem(CoordinatorFixture.displayA.id, in: menu))
+            let sourceB = try XCTUnwrap(fixture.sourceItem(CoordinatorFixture.displayB.id, in: menu))
+            XCTAssertTrue(sourceA.isEnabled, "The former host is now a source choice")
+            XCTAssertEqual(sourceB.state, .on, "Retain the selected source while it overlaps the host")
+            XCTAssertFalse(sourceB.isEnabled, "The overlapping source is retained, not offered as a new choice")
+            XCTAssertEqual(controller.currentSourceAspect, 16.0 / 9.0)
+
+            XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(sourceA.action), to: sourceA.target, from: sourceA))
+            XCTAssertEqual(
+                fixture.sourceItem(CoordinatorFixture.displayA.id, in: controller.makeControlsMenu())?.state, .on
+            )
+            controller.onToggleCapture?()
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayA.id])
+        }
+    }
+
+    func testStaleSourceMenuActionCannotCancelOverlapResume() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.preflightGranted = true
+            fixture.coordinator.open()
+            let controller = try XCTUnwrap(fixture.coordinator.windowController)
+            let capture = try XCTUnwrap(fixture.coordinator.session)
+            let staleItem = try XCTUnwrap(fixture.sourceItem(
+                CoordinatorFixture.displayB.id, in: controller.makeControlsMenu()
+            ))
+
+            fixture.hostID = CoordinatorFixture.displayB.id
+            controller.windowDidMove(Notification(name: NSWindow.didMoveNotification))
+            fixture.postScreenNotice()
+            // A menu was opened before the move. Validate again even if its action
+            // arrives after the host changed, rather than clearing source/intent.
+            XCTAssertTrue(NSApp.sendAction(try XCTUnwrap(staleItem.action), to: staleItem.target, from: staleItem))
+            XCTAssertEqual(
+                fixture.sourceItem(CoordinatorFixture.displayB.id, in: controller.makeControlsMenu())?.state, .on
+            )
+            capture.onStop?(CancellationError())
+            XCTAssertNil(fixture.coordinator.session, "Owned cleanup completed while overlap still blocks restart")
+
+            fixture.hostID = CoordinatorFixture.displayA.id
+            controller.windowDidMove(Notification(name: NSWindow.didMoveNotification))
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id, CoordinatorFixture.displayB.id])
+            XCTAssertNotNil(fixture.coordinator.session, "Moving clear must consume the retained restart exactly once")
+            controller.windowDidMove(Notification(name: NSWindow.didMoveNotification))
+            XCTAssertEqual(fixture.createdSources.count, 2)
+        }
+    }
+
+    func testChangedSourceDuringPermissionConsentCannotAdoptCapture() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.open()
+            let controller = try XCTUnwrap(fixture.coordinator.windowController)
+            fixture.duringConsent = { [unowned fixture] in
+                fixture.displays[1] = DisplayDescriptor(
+                    id: CoordinatorFixture.displayB.id, uuid: CoordinatorFixture.displayB.uuid,
+                    name: "Display B", bounds: CGRect(x: 1512, y: -120, width: 900, height: 1600),
+                    isActive: true, mirrorMasterID: nil
+                )
+                fixture.postScreenNotice()
+            }
+
+            controller.onToggleCapture?()
+
+            XCTAssertEqual(fixture.permissionRequests, 1)
+            XCTAssertTrue(fixture.createdSources.isEmpty, "Consent cannot revive a start invalidated by topology")
+            XCTAssertNil(fixture.coordinator.session)
+            XCTAssertEqual(controller.currentSourceAspect, 900.0 / 1600.0)
+        }
+    }
+
+    func testReopenedWindowDuringPermissionConsentCannotAdoptTheOldStart() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.open()
+            let oldController = try XCTUnwrap(fixture.coordinator.windowController)
+            fixture.duringConsent = { [unowned fixture] in
+                fixture.coordinator.windowController?.close()
+                fixture.coordinator.open()
+            }
+
+            oldController.onToggleCapture?()
+
+            XCTAssertFalse(fixture.coordinator.windowController === oldController)
+            XCTAssertTrue(fixture.createdSources.isEmpty, "The old dialog must not authorize the replacement window")
+            XCTAssertNil(fixture.coordinator.session)
+        }
+    }
+
+    func testSessionInterruptionDuringPermissionConsentCannotAdoptCapture() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.open()
+            fixture.duringConsent = {
+                // Local notification delivery only; this does not switch or lock
+                // the Mac's user session or touch TCC.
+                NSWorkspace.shared.notificationCenter.post(
+                    name: NSWorkspace.sessionDidResignActiveNotification, object: nil
+                )
+            }
+
+            fixture.coordinator.windowController?.onToggleCapture?()
+
+            XCTAssertTrue(fixture.createdSources.isEmpty, "An interruption revokes even an otherwise identical source")
+            XCTAssertNil(fixture.coordinator.session)
+        }
+    }
+
+    func testUnchangedConsentAndUnrelatedNoticeStillStartExactlyOnce() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.open()
+            fixture.duringConsent = { [unowned fixture] in fixture.postScreenNotice() }
+
+            fixture.coordinator.windowController?.onToggleCapture?()
+
+            XCTAssertEqual(fixture.permissionRequests, 1)
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id])
+            XCTAssertEqual(fixture.coordinator.session?.sourceID, CoordinatorFixture.displayB.id)
+        }
+    }
+}
+
+@MainActor
+private final class CoordinatorFixture {
+    static let displayA = DisplayDescriptor(
+        id: 101, uuid: "fixture-a", name: "Display A",
+        bounds: CGRect(x: 0, y: 0, width: 1512, height: 982), isActive: true, mirrorMasterID: nil
+    )
+    static let displayB = DisplayDescriptor(
+        id: 202, uuid: "fixture-b", name: "Display B",
+        bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
+    )
+    var displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB]
+    var hostID = CoordinatorFixture.displayA.id
+    var preflightGranted = false
+    var permissionRequests = 0
+    var duringConsent: (() -> Void)?
+    var createdSources: [CGDirectDisplayID] = []
+    private let suiteName = "DisplayPreviewCoordinatorTests.\(UUID().uuidString)"
+    private let defaults: UserDefaults
+
+    lazy var coordinator = DisplayPreviewCoordinator(
+        catalog: DisplayCatalog(displays: { [weak self] in self?.displays ?? [] }),
+        defaults: defaults,
+        hostDisplayID: { [weak self] _ in self?.hostID },
+        overlapsSource: { [weak self] source, _ in source.id == self?.hostID },
+        preflightCaptureAccess: { [weak self] in self?.preflightGranted ?? false },
+        requestPermission: { [weak self] in
+            guard let self else { return false }
+            self.permissionRequests += 1
+            self.duringConsent?()
+            return true
+        },
+        makeCaptureSession: { [weak self] id in
+            self?.createdSources.append(id)
+            // No shareable-content discovery, stream, permission, or capture IO.
+            return DisplayCaptureSession(sourceID: id, contentDiscovery: { throw CancellationError() })
+        }
+    )
+
+    init() throws {
+        _ = NSApplication.shared
+        defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName), "Fixture: isolated preferences")
+    }
+
+    func sourceItem(_ id: CGDirectDisplayID, in menu: NSMenu) -> NSMenuItem? {
+        menu.items.first { ($0.representedObject as? NSNumber)?.uint32Value == id }
+    }
+
+    func postScreenNotice() {
+        NotificationCenter.default.post(name: NSApplication.didChangeScreenParametersNotification, object: nil)
+    }
+
+    func close() {
+        duringConsent = nil
+        coordinator.windowController?.close()
+        coordinator.flushPersistedState()
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+}

@@ -8,12 +8,18 @@ final class DisplayPreviewCoordinator: NSObject {
         static let frame = "displayPreviewWindowFrameV1"
     }
 
-    private let catalog = DisplayCatalog()
-    private let defaultsWriter = DebouncedDefaultsWriter()
+    private let catalog: DisplayCatalog
+    private let defaults: UserDefaults
+    private let defaultsWriter: DebouncedDefaultsWriter
+    private let hostDisplayID: @MainActor (NSWindow?) -> CGDirectDisplayID?
+    private let overlapsSource: (@MainActor (DisplayDescriptor, NSWindow?) -> Bool)?
+    private let preflightCaptureAccess: @MainActor () -> Bool
+    private let requestPermission: (@MainActor () -> Bool)?
+    private let makeCaptureSession: @MainActor (CGDirectDisplayID) -> DisplayCaptureSession
     private var intent = DisplayPreviewIntent()
-    private var windowController: DisplayPreviewWindowController?
+    private(set) var windowController: DisplayPreviewWindowController?
     private var selectedSource: DisplayDescriptor?
-    private var session: DisplayCaptureSession?
+    private(set) var session: DisplayCaptureSession?
     private var presentedGeometry: DisplayPreviewFrameGeometry? {
         get { windowController?.presentedGeometry }
         set { windowController?.presentedGeometry = newValue }
@@ -32,7 +38,27 @@ final class DisplayPreviewCoordinator: NSObject {
     private var keepOnAllSpaces = true
     private var observers: [NSObjectProtocol] = []
 
-    override init() {
+    init(
+        catalog: DisplayCatalog? = nil,
+        defaults: UserDefaults = .standard,
+        hostDisplayID: @escaping @MainActor (NSWindow?) -> CGDirectDisplayID? = {
+            DisplayCatalog.displayID(for: $0?.screen)
+        },
+        overlapsSource: (@MainActor (DisplayDescriptor, NSWindow?) -> Bool)? = nil,
+        preflightCaptureAccess: @escaping @MainActor () -> Bool = { CGPreflightScreenCaptureAccess() },
+        requestPermission: (@MainActor () -> Bool)? = nil,
+        makeCaptureSession: @escaping @MainActor (CGDirectDisplayID) -> DisplayCaptureSession = {
+            DisplayCaptureSession(sourceID: $0)
+        }
+    ) {
+        self.catalog = catalog ?? DisplayCatalog()
+        self.defaults = defaults
+        defaultsWriter = DebouncedDefaultsWriter(defaults: defaults)
+        self.hostDisplayID = hostDisplayID
+        self.overlapsSource = overlapsSource
+        self.preflightCaptureAccess = preflightCaptureAccess
+        self.requestPermission = requestPermission
+        self.makeCaptureSession = makeCaptureSession
         super.init()
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -183,7 +209,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func refreshSources(preselect: Bool) {
-        let hostID = DisplayCatalog.displayID(for: windowController?.window?.screen)
+        let hostID = hostDisplayID(windowController?.window)
         let candidates = catalog.eligibleSources(hostDisplayID: hostID)
         if preselect {
             selectPreselectedSource(from: candidates)
@@ -210,7 +236,7 @@ final class DisplayPreviewCoordinator: NSObject {
     /// that was unplugged and replugged with a new `CGDirectDisplayID` is matched by
     /// UUID instead of being captured by a stale identifier.
     private func selectPreselectedSource(from candidates: [DisplayDescriptor]) {
-        let savedUUID = UserDefaults.standard.string(forKey: Keys.sourceUUID)
+        let savedUUID = defaults.string(forKey: Keys.sourceUUID)
         let remembered = [selectedSource?.uuid, savedUUID].compactMap { $0 }
         selectedSource = catalog.resolveSource(rememberedUUIDs: remembered, among: candidates)
         intent.select(sourceID: selectedSource?.id)
@@ -235,7 +261,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func selectSource(_ id: CGDirectDisplayID?) {
-        let hostID = DisplayCatalog.displayID(for: windowController?.window?.screen)
+        let hostID = hostDisplayID(windowController?.window)
         let source = catalog.eligibleSources(hostDisplayID: hostID).first { $0.id == id }
         guard source != selectedSource else { return }
         cancelDeferredRestarts()
@@ -309,7 +335,7 @@ final class DisplayPreviewCoordinator: NSObject {
             }
             return
         }
-        let preflightGranted = CGPreflightScreenCaptureAccess()
+        let preflightGranted = preflightCaptureAccess()
         guard DisplayPreviewPermissionPolicy.canStart(
             for: trigger,
             preflightGranted: preflightGranted
@@ -350,7 +376,7 @@ final class DisplayPreviewCoordinator: NSObject {
             generation: generation
         )
         controller.showStatus("Starting…", powerState: .on, powerEnabled: true, centerEnabled: false)
-        let capture = DisplayCaptureSession(sourceID: source.id)
+        let capture = makeCaptureSession(source.id)
         session = capture
         stopLifecycle.adopt(capture)
         capture.onFrameActivity = { [weak self, weak capture] in
@@ -533,6 +559,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func requestCapturePermission() -> Bool {
+        if let requestPermission { return requestPermission() }
         let alert = NSAlert()
         alert.messageText = "Allow Screen Recording"
         alert.informativeText = "Display Preview needs Screen Recording access to show the selected display. Capture stays on this Mac and stops when you pause or close the preview."
@@ -657,7 +684,7 @@ final class DisplayPreviewCoordinator: NSObject {
         )
         guard let controller = windowController else { return }
         controller.previewView.discardPendingClick()
-        let hostID = DisplayCatalog.displayID(for: controller.window?.screen)
+        let hostID = hostDisplayID(controller.window)
         let candidates = catalog.eligibleSources(hostDisplayID: hostID)
         let match = selectedSource.flatMap { catalog.currentMatching($0) }
         let isHostCandidate = match.map { current in
@@ -860,7 +887,7 @@ final class DisplayPreviewCoordinator: NSObject {
     ) {
         guard session === capture, intent.accepts(generation: generation, sourceID: source.id) else { return }
         guard frameRecovery.isActive(generation: generation, episode: episode) else { return }
-        guard CGPreflightScreenCaptureAccess() else {
+        guard preflightCaptureAccess() else {
             // Permission was revoked while holding: stop recovery immediately
             // rather than waiting out the remaining hold window.
             cancelFrameRecovery()
@@ -1026,6 +1053,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func sourceOverlapsPreview(_ source: DisplayDescriptor) -> Bool {
+        if let overlapsSource { return overlapsSource(source, windowController?.window) }
         guard let windowFrame = windowController?.window?.frame,
               let sourceScreen = NSScreen.screens.first(where: { DisplayCatalog.displayID(for: $0) == source.id })
         else { return true }
@@ -1146,7 +1174,7 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     private func restoredFrame() -> NSRect? {
-        guard let value = UserDefaults.standard.string(forKey: Keys.frame) else { return nil }
+        guard let value = defaults.string(forKey: Keys.frame) else { return nil }
         let frame = NSRectFromString(value)
         guard frame.width >= 320, frame.height >= 240,
               let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area }),
