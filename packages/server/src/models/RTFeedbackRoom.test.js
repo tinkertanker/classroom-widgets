@@ -57,6 +57,26 @@ describe('RTFeedbackRoom', () => {
       assert.equal(totalResponses, 0);
       assert.ok(understanding.every(count => count === 0));
     });
+
+    it('stays consistent across overwrites, removals and clears', () => {
+      room.updateFeedback('s1', 2);
+      room.updateFeedback('s1', 4);
+      room.updateFeedback('s2', 4);
+      room.updateFeedback('s3', 1);
+      room.removeFeedback('s3');
+      room.removeFeedback('missing');
+      let { understanding, totalResponses } = room.getAggregatedFeedback();
+      assert.deepEqual(understanding, [0, 0, 0, 0, 0, 0, 2, 0, 0]);
+      assert.equal(totalResponses, 2);
+
+      understanding[6] = 99;
+      assert.equal(room.getAggregatedFeedback().understanding[6], 2);
+
+      room.clearAllFeedback();
+      ({ understanding, totalResponses } = room.getAggregatedFeedback());
+      assert.deepEqual(understanding, [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+      assert.equal(totalResponses, 0);
+    });
   });
 
   describe('getAverageUnderstanding', () => {
