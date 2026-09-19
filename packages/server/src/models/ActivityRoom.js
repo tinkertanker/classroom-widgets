@@ -111,10 +111,24 @@ class ActivityRoom extends Room {
     const incorrect = [];
     const isCodeActivity = this.activity.type === 'code-fill-blank';
 
+    // Index once so each target is a constant-time lookup; first match wins.
+    const placementByTarget = new Map();
+    for (const p of placements) {
+      if (p != null && !placementByTarget.has(p.targetId)) {
+        placementByTarget.set(p.targetId, p);
+      }
+    }
+    const itemById = new Map();
+    for (const item of items) {
+      if (item != null && !itemById.has(item.id)) {
+        itemById.set(item.id, item);
+      }
+    }
+
     // Evaluate drag-drop placements
     for (const target of targets) {
       const accepts = Array.isArray(target.accepts) ? target.accepts : [];
-      const placement = placements.find(p => p != null && p.targetId === target.id);
+      const placement = placementByTarget.get(target.id);
       const textInput = Object.prototype.hasOwnProperty.call(textInputs, target.id)
         ? textInputs[target.id]
         : undefined;
@@ -129,10 +143,7 @@ class ActivityRoom extends Room {
       } else if (typeof textInput === 'string' && textInput !== '') {
         // Check text input
         const userInput = textInput;
-        const correctItems = accepts.map(itemId => {
-          const item = items.find(i => i.id === itemId);
-          return item?.content || '';
-        });
+        const correctItems = accepts.map(itemId => itemById.get(itemId)?.content || '');
 
         // Use evaluation mode if specified, otherwise default based on activity type
         const evalMode = target.evaluationMode || (isCodeActivity ? 'whitespace-flexible' : 'exact');
