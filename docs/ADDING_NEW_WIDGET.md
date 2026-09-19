@@ -19,15 +19,6 @@ export enum WidgetType {
 }
 ```
 
-Also add it to the legacy constants in `/src/shared/constants/widgetTypes.ts` for backward compatibility:
-
-```typescript
-export const WIDGET_TYPES = {
-  // ... existing widgets ...
-  MY_NEW_WIDGET: 18
-};
-```
-
 ### 2. Add Widget Definition to Registry
 
 Add your widget definition to the `WidgetRegistry` class in `/src/services/WidgetRegistry.ts`:
@@ -116,7 +107,7 @@ For widgets that require real-time communication with students:
 ### 1. Define as Networked in Registry
 
 ```typescript
-[WIDGET_TYPES.MY_NETWORKED_WIDGET]: {
+[WidgetType.MY_NETWORKED_WIDGET]: {
   // ... basic configuration ...
   category: WidgetCategory.NETWORKED,
   networked: {
