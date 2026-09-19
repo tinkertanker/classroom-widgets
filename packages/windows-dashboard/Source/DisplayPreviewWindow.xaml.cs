@@ -30,6 +30,7 @@ public partial class DisplayPreviewWindow : Window
     {
         StatusText.Text = status;
         PowerButton.IsEnabled = powerEnabled;
+        PowerButton.Foreground = powerOn ? Brushes.LimeGreen : Brushes.White;
         PowerButton.Content = powerOn ? "⏻" : "⏻";
         PowerButton.ToolTip = powerOn ? "Turn preview off" : "Turn preview on";
     }
@@ -65,12 +66,17 @@ public partial class DisplayPreviewWindow : Window
 
     private void PreviewImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs args)
     {
-        var point = args.GetPosition(PreviewImage);
+        var point = args.GetPosition(PreviewSurface);
         var source = PreviewImage.Source;
-        if (source is null || source.Width <= 0 || source.Height <= 0) return;
+        if (source is null)
+        {
+            PreviewClicked?.Invoke(point, Rect.Empty);
+            return;
+        }
+        if (source.Width <= 0 || source.Height <= 0) return;
         var imageRect = DisplayGeometry.AspectFit(
             new Size(source.Width, source.Height),
-            new Rect(0, 0, PreviewImage.ActualWidth, PreviewImage.ActualHeight));
+            new Rect(0, 0, PreviewSurface.ActualWidth, PreviewSurface.ActualHeight));
         if (imageRect is { } rect) PreviewClicked?.Invoke(point, rect);
     }
 

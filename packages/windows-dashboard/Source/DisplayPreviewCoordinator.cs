@@ -188,7 +188,8 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             _ = StartAsync();
             return;
         }
-        if (_wantsCapture && DisplayGeometry.Intersects(_window.GetPhysicalBounds(), _selected.Bounds))
+        if (_wantsCapture && !_suspendedForOverlap
+            && DisplayGeometry.Intersects(_window.GetPhysicalBounds(), _selected.Bounds))
         {
             StopForOverlap();
         }
@@ -270,7 +271,13 @@ public sealed class DisplayPreviewCoordinator : IDisposable
 
     private void PreviewClicked(Point point, Rect imageRect)
     {
-        if (!_wantsCapture || _selected is null) return;
+        if (_selected is null) return;
+        if (!_wantsCapture)
+        {
+            _ = StartAsync();
+            return;
+        }
+        if (imageRect.IsEmpty) return;
         var target = DisplayGeometry.MapPreviewPointToSource(point, imageRect, _selected.Bounds);
         if (target is null || !NativeMethods.SetCursorPos((int)target.Value.X, (int)target.Value.Y))
         {

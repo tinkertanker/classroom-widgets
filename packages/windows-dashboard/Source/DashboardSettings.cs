@@ -148,7 +148,6 @@ public sealed class DashboardSettings
         }
         if (options.Count == 0)
         {
-            WidgetShortcutsInitialized = true;
             return changed;
         }
         var plannedDefaults = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

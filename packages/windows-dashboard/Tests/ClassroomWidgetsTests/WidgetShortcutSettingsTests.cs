@@ -67,6 +67,30 @@ public sealed class WidgetShortcutSettingsTests
     }
 
     [Fact]
+    public void EmptyInventoryDoesNotPreventLaterWidgetDefaults()
+    {
+        var settings = new DashboardSettings();
+
+        settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>());
+
+        Assert.Equal(DisplayShortcutLogic.DefaultShortcut, settings.DisplayPreviewShortcut);
+        Assert.False(settings.WidgetShortcutsInitialized);
+
+        var options = Enumerable.Range(1, 9)
+            .Select(index => new CompactWidgetOption(index, $"Widget {index}"))
+            .ToArray();
+        settings.ApplyWidgetShortcutDefaults(options);
+
+        Assert.Equal(9, settings.WidgetShortcuts.Count);
+        for (var index = 1; index <= 9; index++)
+        {
+            Assert.Equal($"Ctrl+Alt+Shift+{index}", settings.WidgetShortcuts[index]);
+        }
+        Assert.DoesNotContain(DisplayShortcutLogic.DefaultShortcut, settings.WidgetShortcuts.Values);
+        Assert.True(settings.WidgetShortcutsInitialized);
+    }
+
+    [Fact]
     public void DisplayPreviewSettingsRoundTripThroughJson()
     {
         var settings = new DashboardSettings

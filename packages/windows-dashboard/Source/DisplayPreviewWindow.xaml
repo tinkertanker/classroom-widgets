@@ -13,12 +13,15 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="42" />
         </Grid.RowDefinitions>
-        <Image x:Name="PreviewImage"
-               Grid.Row="0"
-               Stretch="Uniform"
-               SnapsToDevicePixels="True"
-               MouseLeftButtonDown="PreviewImage_MouseLeftButtonDown"
-               Cursor="Cross" />
+        <Grid x:Name="PreviewSurface"
+              Grid.Row="0"
+              Background="Transparent"
+              MouseLeftButtonDown="PreviewImage_MouseLeftButtonDown"
+              Cursor="Cross">
+            <Image x:Name="PreviewImage"
+                   Stretch="Uniform"
+                   SnapsToDevicePixels="True" />
+        </Grid>
         <Border Grid.Row="1" Background="#DD202020">
             <Grid>
                 <Grid.ColumnDefinitions>
