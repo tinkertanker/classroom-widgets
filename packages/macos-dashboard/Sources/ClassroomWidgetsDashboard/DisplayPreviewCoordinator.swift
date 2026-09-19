@@ -197,6 +197,7 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func wire(_ controller: DisplayPreviewWindowController) {
         controller.onSourceSelected = { [weak self] id in self?.selectSource(id) }
+        controller.onPrepareSourceMenu = { [weak self] in self?.refreshSourceMenu() }
         controller.onToggleCapture = { [weak self] in self?.toggleCapture() }
         controller.onMoveToCenter = { [weak self] in self?.movePointerToCenter() }
         controller.onClose = { [weak self] in self?.close() }
@@ -231,6 +232,19 @@ final class DisplayPreviewCoordinator: NSObject {
         normalizeOpeningAspectIfNeeded()
     }
 
+    /// Host eligibility changes when the window moves, not just when displays
+    /// reconnect. Refresh at menu opening without resetting capture or status.
+    private func refreshSourceMenu() {
+        let candidates = catalog.eligibleSources(hostDisplayID: hostDisplayID(windowController?.window))
+        let current = selectedSource.flatMap { source -> DisplayDescriptor? in
+            guard let match = catalog.currentMatching(source), match.id == source.id else { return nil }
+            return match
+        }
+        windowController?.setSources(
+            candidates, selectedID: current?.id, retainingSelectedSource: current
+        )
+    }
+
     /// Re-resolves the source on a fresh launch. The in-memory descriptor and the
     /// saved UUID are both validated against the fresh candidate list, so a source
     /// that was unplugged and replugged with a new `CGDirectDisplayID` is matched by
@@ -262,25 +276,31 @@ final class DisplayPreviewCoordinator: NSObject {
 
     private func selectSource(_ id: CGDirectDisplayID?) {
         let hostID = hostDisplayID(windowController?.window)
-        let source = catalog.eligibleSources(hostDisplayID: hostID).first { $0.id == id }
-        guard source != selectedSource else { return }
+        let candidates = catalog.eligibleSources(hostDisplayID: hostID)
+        guard let source = candidates.first(where: { $0.id == id }), source != selectedSource else {
+            // A menu action can outlive its host/topology snapshot. Restore the
+            // accepted selection rather than cancelling its overlap-resume intent.
+            refreshSourceMenu()
+            return
+        }
         cancelDeferredRestarts()
         cancelFrameRecovery()
-        intent.select(sourceID: source?.id)
+        intent.select(sourceID: source.id)
         selectedSource = source
         presentedGeometry = nil
         windowController?.clearFrame()
-        if let source { defaultsWriter.set(source.uuid, forKey: Keys.sourceUUID) }
+        windowController?.setSources(candidates, selectedID: source.id)
+        defaultsWriter.set(source.uuid, forKey: Keys.sourceUUID)
         logDisplayTransition(
             .sourceSelected,
             trigger: "sourceMenu",
             source: source,
             intent: intent.wantsCapture,
-            enabled: source != nil
+            enabled: true
         )
-        let readyPresentation = source.map { DisplayPreviewPresentation.ready(sourceName: $0.name) }
+        let readyPresentation = DisplayPreviewPresentation.ready(sourceName: source.name)
         stopCurrent(
-            message: readyPresentation?.message ?? "Choose a source display.",
+            message: readyPresentation.message,
             completionPresentation: readyPresentation
         )
         normalizeOpeningAspectIfNeeded()
@@ -335,6 +355,7 @@ final class DisplayPreviewCoordinator: NSObject {
             }
             return
         }
+        let requestedGeneration = intent.generation
         let preflightGranted = preflightCaptureAccess()
         guard DisplayPreviewPermissionPolicy.canStart(
             for: trigger,
@@ -361,6 +382,19 @@ final class DisplayPreviewCoordinator: NSObject {
             preflightGranted: preflightGranted
         ) {
             guard requestCapturePermission() else { return }
+        }
+        // Permission dialogs run a nested event loop. Consent is not authority to
+        // revive a request invalidated by topology, close/reopen, or interruption.
+        guard intent.generation == requestedGeneration, !intent.isClosed,
+              selectedSource == source, windowController === controller, controller.window === window,
+              stopLifecycle.canStart, session == nil,
+              catalog.currentMatching(source)?.id == source.id, !sourceOverlapsPreview(source)
+        else {
+            logDisplayTransition(
+                .startFailed, trigger: trigger.logLabel, reason: "startRequestInvalidated",
+                source: selectedSource, intent: intent.wantsCapture, enabled: selectedSource != nil
+            )
+            return
         }
         guard let generation = intent.start() else { return }
         deliveredFrameGeneration = nil
@@ -703,9 +737,7 @@ final class DisplayPreviewCoordinator: NSObject {
         case .preserveSource:
             guard let current = match else { return }
             selectedSource = current
-            if isHostCandidate {
-                controller.setSources(candidates, selectedID: current.id)
-            }
+            controller.setSources(candidates, selectedID: current.id, retainingSelectedSource: current)
             // Host-filtered candidacy is a placement fact: while the preview
             // overlaps its own source the menu keeps its selection and the
             // existing overlap/hidden auto-resume intent stays intact.

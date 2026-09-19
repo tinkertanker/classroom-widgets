@@ -8,6 +8,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     let previewView = DisplayPreviewView(frame: .zero)
     var presentedGeometry: DisplayPreviewFrameGeometry?
     var onSourceSelected: ((CGDirectDisplayID?) -> Void)?
+    var onPrepareSourceMenu: (() -> Void)?
     var onToggleCapture: (() -> Void)?
     var onMoveToCenter: (() -> Void)?
     var onClose: (() -> Void)?
@@ -27,6 +28,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     private var chromeVisible = false
     private var sources: [DisplayDescriptor] = []
     private var selectedSourceID: CGDirectDisplayID?
+    private var unavailableSourceID: CGDirectDisplayID?
     private var lastNormalizedSourceAspect: CGFloat?
     private var isNormalizingAspect = false
     private var statusText = "Choose a display to preview."
@@ -83,10 +85,22 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         window.collectionBehavior = behavior
     }
 
-    func setSources(_ sources: [DisplayDescriptor], selectedID: CGDirectDisplayID?) {
+    func setSources(
+        _ sources: [DisplayDescriptor],
+        selectedID: CGDirectDisplayID?,
+        retainingSelectedSource: DisplayDescriptor? = nil
+    ) {
         self.sources = sources
-        selectedSourceID = sources.contains(where: { $0.id == selectedID }) ? selectedID : nil
-        menuButton.isEnabled = !sources.isEmpty
+        unavailableSourceID = nil
+        if let retained = retainingSelectedSource, retained.id == selectedID,
+           !sources.contains(where: { $0.id == retained.id }) {
+            // An overlapping source remains selected for aspect and auto-resume,
+            // but must not be offered as an eligible new source.
+            self.sources.append(retained)
+            unavailableSourceID = retained.id
+        }
+        selectedSourceID = self.sources.contains(where: { $0.id == selectedID }) ? selectedID : nil
+        menuButton.isEnabled = !self.sources.isEmpty
         updateMenuAccessibility()
         normalizeSelectedSourceAspectIfNeeded()
     }
@@ -384,6 +398,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
 
     /// Exposed for tests so the menu contract is checked without popping it up.
     func makeControlsMenu() -> NSMenu {
+        onPrepareSourceMenu?()
         let menu = NSMenu(title: "Display")
         let status = NSMenuItem(title: statusText, action: nil, keyEquivalent: "")
         status.isEnabled = false
@@ -399,6 +414,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
                 item.target = self
                 item.representedObject = NSNumber(value: source.id)
                 item.state = source.id == selectedSourceID ? .on : .off
+                item.isEnabled = source.id != unavailableSourceID
                 menu.addItem(item)
             }
         }
@@ -447,6 +463,10 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     /// Authoritative enablement: NSMenu's automatic validation would otherwise
     /// re-enable an item merely because its target responds to the action.
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(sourceChanged(_:)) {
+            guard let id = (menuItem.representedObject as? NSNumber)?.uint32Value else { return false }
+            return id != unavailableSourceID && sources.contains { $0.id == id }
+        }
         if menuItem.action == #selector(matchDisplayAspectRatio) {
             return currentSourceAspect != nil
         }
