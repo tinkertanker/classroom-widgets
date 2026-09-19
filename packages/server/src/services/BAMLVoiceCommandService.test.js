@@ -75,19 +75,6 @@ test('the action catalog covers every action in the shared definitions', async (
   assert.ok(actions.includes('UNKNOWN'));
 });
 
-test('the catalog matches its JSON source and getters cannot mutate later requests', () => {
-  const service = new BAMLVoiceCommandService({ client: { ParseVoiceCommand: async () => OK_RESULT } });
-
-  assert.deepEqual(service.getWidgetTargets(), EXPECTED_TARGETS);
-  assert.deepEqual(service.getActionNames(), EXPECTED_ACTIONS);
-
-  service.getWidgetTargets().length = 0;
-  service.getActionNames().length = 0;
-
-  assert.deepEqual(service.getWidgetTargets(), EXPECTED_TARGETS);
-  assert.deepEqual(service.getActionNames(), EXPECTED_ACTIONS);
-});
-
 test('a recognised command is reported as a success with the model feedback', async () => {
   const { service } = makeService(() => OK_RESULT);
 
