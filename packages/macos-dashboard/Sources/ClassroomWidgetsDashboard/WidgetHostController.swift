@@ -6,6 +6,7 @@ import WebKit
 /// Only WidgetPanelCoordinator is allowed to create visible widget windows.
 @MainActor
 final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
+    var onDisplayPreviewRequested: (@MainActor () -> Void)?
     private let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private let widgetPanelCoordinator: WidgetPanelCoordinator
@@ -56,6 +57,9 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         widgetPanelCoordinator.onWidgetCreationRequested = { [weak self] widgetType in
             self?.addWidget(widgetType)
+        }
+        widgetPanelCoordinator.onDisplayPreviewRequested = { [weak self] in
+            self?.onDisplayPreviewRequested?()
         }
         widgetPanelCoordinator.onWidgetRemovalRequested = { [weak self] widgetID in
             self?.removeWidget(widgetID)

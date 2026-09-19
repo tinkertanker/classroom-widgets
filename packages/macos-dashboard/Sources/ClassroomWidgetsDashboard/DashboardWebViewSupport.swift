@@ -18,9 +18,11 @@ final class DebouncedDefaultsWriter {
     private var pending: [String: String] = [:]
     private var generation = 0
     private let delayNanoseconds: UInt64
+    private let defaults: UserDefaults
 
-    init(delayNanoseconds: UInt64 = 300_000_000) {
+    init(delayNanoseconds: UInt64 = 300_000_000, defaults: UserDefaults = .standard) {
         self.delayNanoseconds = delayNanoseconds
+        self.defaults = defaults
     }
 
     func set(_ value: String, forKey key: String) {
@@ -40,7 +42,6 @@ final class DebouncedDefaultsWriter {
         guard !pending.isEmpty else { return }
         let values = pending
         pending.removeAll()
-        let defaults = UserDefaults.standard
         values.forEach { defaults.set($0.value, forKey: $0.key) }
     }
 }

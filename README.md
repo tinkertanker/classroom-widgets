@@ -41,6 +41,10 @@ For platform-specific installation and usage, see the [macOS](./docs/MACOS_DISTR
 - [Deployment](./docs/DEPLOYMENT.md)
 - [Desktop releases](./docs/RELEASING.md)
 
+The macOS app also includes **Display** for showing an already-connected extended display in a floating window. Open it from New Floating Widget or its editable keyboard shortcut: when Screen Recording is already granted it immediately shows the remembered display, or the only other eligible one, and the power control requests permission if it is not; with several displays and none remembered, pick the source from its **…** menu. Capture stays local to the Mac and continues while you switch apps; it temporarily suspends if the preview overlaps its source display, and a brief frame gap on the same display holds the last image while it reconnects, with pointer clicks disabled until a fresh frame arrives. The preview viewport always keeps the source display's aspect ratio, fitted to whichever side of a resize is smaller, and its **…** menu re-snaps the same fit on demand with **Match Display Aspect Ratio**; the native minimum size and the on-screen bounds still win if an exact ratio cannot satisfy both. Turn the power control off or close the window to stop it. Clicking its live image moves the pointer to the corresponding point without clicking the destination.
+
+Display was inspired by [BetterDisplay by waydabber](https://betterdisplay.com/). Classroom Widgets implements it independently with public Apple APIs; no BetterDisplay source code or assets are included.
+
 ## Contributing
 
 Contributions are welcome. See the [contributing guide](./docs/CONTRIBUTING.md) to get started.

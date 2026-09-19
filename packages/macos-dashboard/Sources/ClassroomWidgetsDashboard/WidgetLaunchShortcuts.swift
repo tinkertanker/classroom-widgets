@@ -43,6 +43,9 @@ struct WidgetLaunchShortcutStore {
     static let defaultKeyCodes = [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_5,
                                   kVK_ANSI_6, kVK_ANSI_7, kVK_ANSI_8, kVK_ANSI_9].map { Int($0) }
     static let defaultModifiers = Int(NSEvent.ModifierFlags([.command, .option, .control]).rawValue)
+    static let displayKeyCodeKey = "displayPreviewShortcutKeyCode"
+    static let displayModifiersKey = "displayPreviewShortcutModifiers"
+    static let displayInitializedKey = "displayPreviewShortcutInitialized"
 
     private let defaults: UserDefaults
 
@@ -81,6 +84,8 @@ struct WidgetLaunchShortcutStore {
         return bindings
     }
 
+    func storedBindings() -> [Int: WidgetShortcutBinding] { load() }
+
     func set(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
         var bindings = load()
         let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
@@ -91,6 +96,34 @@ struct WidgetLaunchShortcutStore {
         }
         bindings[widgetType] = binding
         save(bindings)
+    }
+
+    func storedDisplayBinding() -> DashboardShortcut? {
+        guard defaults.bool(forKey: Self.displayInitializedKey) else { return nil }
+        return DashboardShortcut(
+            keyCode: defaults.integer(forKey: Self.displayKeyCodeKey),
+            modifiers: defaults.integer(forKey: Self.displayModifiersKey)
+        ).normalized
+    }
+
+    func proposedDisplayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
+        if let stored = storedDisplayBinding() { return stored }
+        let preferred = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: Self.defaultModifiers)
+        return reserved.contains(preferred) ? DashboardShortcut(keyCode: -1, modifiers: 0) : preferred
+    }
+
+    func initializeDisplayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
+        if let stored = storedDisplayBinding() { return stored }
+        let proposed = proposedDisplayBinding(reserving: reserved)
+        setDisplay(proposed)
+        return proposed
+    }
+
+    func setDisplay(_ shortcut: DashboardShortcut) {
+        let shortcut = shortcut.normalized
+        defaults.set(shortcut.keyCode, forKey: Self.displayKeyCodeKey)
+        defaults.set(shortcut.modifiers, forKey: Self.displayModifiersKey)
+        defaults.set(true, forKey: Self.displayInitializedKey)
     }
 
     func reset(options: [CompactWidgetOption], reserving additionalShortcuts: [DashboardShortcut] = []) {

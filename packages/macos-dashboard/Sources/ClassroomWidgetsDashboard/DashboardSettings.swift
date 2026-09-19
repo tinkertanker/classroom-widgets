@@ -47,12 +47,15 @@ enum DashboardDefaults {
 @MainActor
 final class DashboardSettingsContext: ObservableObject {
     @Published private(set) var widgetOptions: [CompactWidgetOption] = []
+    @Published private(set) var displayShortcut: DashboardShortcut?
     @Published private(set) var widgetShortcuts: [Int: WidgetShortcutBinding] = [:]
+    @Published private(set) var displayShortcutStatus: String?
     @Published private(set) var widgetShortcutStatuses: [ShortcutBindingState.Owner: String] = [:]
     @Published private(set) var shortcutStatus: String?
     private let launchAtLoginManager: LaunchAtLoginManager
     private let onShortcutChanged: @MainActor (DashboardShortcut) -> Void
     private let onWidgetSettingsChanged: @MainActor () -> Void
+    private let onDisplayShortcutChanged: @MainActor (DashboardShortcut) -> Void
     private let onWidgetShortcutChanged: @MainActor (Int, WidgetShortcutAction, DashboardShortcut) -> Void
     private let onResetWidgetShortcuts: @MainActor () -> Void
     private let onShortcutRecordingChanged: @MainActor (Bool) -> Void
@@ -61,6 +64,7 @@ final class DashboardSettingsContext: ObservableObject {
         launchAtLoginManager: LaunchAtLoginManager,
         onShortcutChanged: @escaping @MainActor (DashboardShortcut) -> Void,
         onWidgetSettingsChanged: @escaping @MainActor () -> Void,
+        onDisplayShortcutChanged: @escaping @MainActor (DashboardShortcut) -> Void,
         onWidgetShortcutChanged: @escaping @MainActor (Int, WidgetShortcutAction, DashboardShortcut) -> Void,
         onResetWidgetShortcuts: @escaping @MainActor () -> Void,
         onShortcutRecordingChanged: @escaping @MainActor (Bool) -> Void
@@ -68,6 +72,7 @@ final class DashboardSettingsContext: ObservableObject {
         self.launchAtLoginManager = launchAtLoginManager
         self.onShortcutChanged = onShortcutChanged
         self.onWidgetSettingsChanged = onWidgetSettingsChanged
+        self.onDisplayShortcutChanged = onDisplayShortcutChanged
         self.onWidgetShortcutChanged = onWidgetShortcutChanged
         self.onResetWidgetShortcuts = onResetWidgetShortcuts
         self.onShortcutRecordingChanged = onShortcutRecordingChanged
@@ -80,6 +85,7 @@ final class DashboardSettingsContext: ObservableObject {
     }
     func setSettingsShortcut(_ shortcut: DashboardShortcut) { onShortcutChanged(shortcut) }
     func widgetSettingsChanged() { onWidgetSettingsChanged() }
+    func setDisplayShortcut(_ shortcut: DashboardShortcut) { onDisplayShortcutChanged(shortcut) }
     func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
         onWidgetShortcutChanged(widgetType, action, shortcut)
     }
@@ -87,12 +93,16 @@ final class DashboardSettingsContext: ObservableObject {
     func shortcutRecordingChanged(_ isRecording: Bool) { onShortcutRecordingChanged(isRecording) }
     func updateWidgetShortcuts(
         options: [CompactWidgetOption],
+        displayShortcut: DashboardShortcut?,
         shortcuts: [Int: WidgetShortcutBinding],
+        displayStatus: String?,
         widgetStatuses: [ShortcutBindingState.Owner: String],
         status: String?
     ) {
         widgetOptions = options
+        self.displayShortcut = displayShortcut
         widgetShortcuts = shortcuts
+        displayShortcutStatus = displayStatus
         widgetShortcutStatuses = widgetStatuses
         shortcutStatus = status
     }
@@ -185,6 +195,24 @@ struct DashboardShortcutSettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Launch Widgets") {
+                VStack(alignment: .leading, spacing: 3) {
+                    LabeledContent("Display") {
+                        KeyboardShortcutRecorder(
+                            keyCode: displayKeyCodeBinding,
+                            modifiers: displayModifiersBinding,
+                            placeholder: "None",
+                            accessibilityLabel: "Display keyboard shortcut",
+                            onShortcutChanged: { keyCode, modifiers in
+                                context.setDisplayShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers))
+                            },
+                            onRecordingChanged: context.shortcutRecordingChanged
+                        )
+                        .frame(width: 210, alignment: .trailing)
+                    }
+                    if let status = context.displayShortcutStatus {
+                        Text(status).font(.caption).foregroundStyle(.red)
+                    }
+                }
                 if context.widgetOptions.isEmpty {
                     Text("Widget shortcuts will appear when the widget inventory is available.")
                         .foregroundStyle(.secondary)
@@ -261,6 +289,20 @@ struct DashboardShortcutSettingsView: View {
         Binding(
             get: { shortcut(for: widgetType, action: action)?.keyCode ?? -1 },
             set: { context.setWidgetShortcut(DashboardShortcut(keyCode: $0, modifiers: shortcut(for: widgetType, action: action)?.modifiers ?? 0), action: action, for: widgetType) }
+        )
+    }
+
+    private var displayKeyCodeBinding: Binding<Int> {
+        Binding(
+            get: { context.displayShortcut?.keyCode ?? -1 },
+            set: { context.setDisplayShortcut(DashboardShortcut(keyCode: $0, modifiers: context.displayShortcut?.modifiers ?? 0)) }
+        )
+    }
+
+    private var displayModifiersBinding: Binding<Int> {
+        Binding(
+            get: { context.displayShortcut?.modifiers ?? 0 },
+            set: { context.setDisplayShortcut(DashboardShortcut(keyCode: context.displayShortcut?.keyCode ?? -1, modifiers: $0)) }
         )
     }
 

@@ -84,6 +84,7 @@ final class WidgetPanelCoordinator: NSObject {
     var onPanelStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
+    var onDisplayPreviewRequested: (@MainActor () -> Void)?
     var onWidgetRemovalRequested: (@MainActor (String) -> Void)?
 
     private let webViewFactory = WidgetPanelWebViewFactory()
@@ -304,6 +305,9 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onWidgetCreationRequested = { [weak self] widgetType in
             self?.onWidgetCreationRequested?(widgetType)
         }
+        controller.onDisplayPreviewRequested = { [weak self] in
+            self?.onDisplayPreviewRequested?()
+        }
         controller.onLayoutRequested = { [weak self, weak controller] layout in
             self?.arrange(layout, on: controller?.window?.screen)
         }
@@ -394,6 +398,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onRemovalRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
+    var onDisplayPreviewRequested: (@MainActor () -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
     var onFrameChanged: (@MainActor (String, NSRect) -> Void)?
 
@@ -918,24 +923,20 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
-        let menu = NSMenu(title: "Add Widget")
-        for option in widgetCreationOptions {
-            let item = NSMenuItem(title: option.title, action: #selector(requestWidgetCreation(_:)), keyEquivalent: "")
-            item.target = self
-            item.tag = option.widgetType
-            menu.addItem(item)
-        }
-        if menu.items.isEmpty {
-            let item = NSMenuItem(title: "No compact widgets available", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            menu.addItem(item)
-        }
+        let menu = DisplayPreviewMenu.makePanelMenu(
+            options: widgetCreationOptions,
+            target: self,
+            displayAction: #selector(requestDisplayPreview),
+            widgetAction: #selector(requestWidgetCreation(_:))
+        )
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
     }
 
     @objc private func requestWidgetCreation(_ sender: NSMenuItem) {
         onWidgetCreationRequested?(sender.tag)
     }
+
+    @objc private func requestDisplayPreview() { onDisplayPreviewRequested?() }
 
     @objc private func showArrangeWidgetsMenu(_ sender: NSButton) {
         let menu = NSMenu(title: "Arrange Widgets")
