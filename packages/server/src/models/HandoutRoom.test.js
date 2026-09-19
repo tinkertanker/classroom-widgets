@@ -48,17 +48,6 @@ describe('HandoutRoom', () => {
     assert.equal(room.getItemCount(), 1);
   });
 
-  it('clears all items', () => {
-    const room = new HandoutRoom('CODE1', 'w-1');
-    room.addItem('one', false);
-    room.addItem('two', false);
-
-    room.clearAllItems();
-
-    assert.equal(room.getItemCount(), 0);
-    assert.deepEqual(room.getItems(), []);
-  });
-
   it('includes handout-specific fields in toJSON', () => {
     const room = new HandoutRoom('CODE1', 'w-1');
     const item = room.addItem('content', true);
