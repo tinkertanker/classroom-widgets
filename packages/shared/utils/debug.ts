@@ -59,6 +59,3 @@ const createDebugLogger = (): DebugLogger => {
 
 // Debug logger function
 export const debug = createDebugLogger();
-
-// Export a flag to check debug status
-export const isDebug = isDebugEnabled;
