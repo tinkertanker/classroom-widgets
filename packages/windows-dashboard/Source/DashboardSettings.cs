@@ -41,6 +41,9 @@ public sealed class DashboardSettings
     public Dictionary<int, string?> WidgetShortcuts { get; set; } = new();
     public Dictionary<int, string?> WidgetDismissShortcuts { get; set; } = new();
     public Dictionary<int, string> WidgetShortcutDefaults { get; set; } = new();
+    public PanelFrame? DisplayPreviewFrame { get; set; }
+    public string? DisplayPreviewSourceId { get; set; }
+    public string? DisplayPreviewShortcut { get; set; }
 
     /// <summary>Shortening service used by Link Shortener and QR Code widgets.</summary>
     public string LinkShortenerProvider { get; set; } = DashboardShortenerSettings.DefaultProvider;
@@ -127,13 +130,27 @@ public sealed class DashboardSettings
 
     internal bool ApplyWidgetShortcutDefaults(IReadOnlyList<CompactWidgetOption> options)
     {
-        if (options.Count == 0) return false;
-
         var changed = !WidgetShortcutsInitialized;
         var numberedDefaults = Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
         var reserved = new HashSet<string>(
-            WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>(),
+            WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>()
+                .Concat(DisplayPreviewShortcut is null ? Array.Empty<string>() : [DisplayPreviewShortcut]),
             StringComparer.OrdinalIgnoreCase);
+        if (DisplayPreviewShortcut is null)
+        {
+            var displayDefault = DisplayShortcutLogic.DefaultShortcut;
+            if (!reserved.Contains(displayDefault))
+            {
+                DisplayPreviewShortcut = displayDefault;
+                reserved.Add(displayDefault);
+                changed = true;
+            }
+        }
+        if (options.Count == 0)
+        {
+            WidgetShortcutsInitialized = true;
+            return changed;
+        }
         var plannedDefaults = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var option in options.Take(9))
         {

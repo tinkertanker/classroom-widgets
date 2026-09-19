@@ -56,4 +56,41 @@ public sealed class WidgetShortcutSettingsTests
         Assert.Equal("Ctrl+Alt+Shift+2", settings.WidgetShortcuts[40]);
         Assert.Equal("Ctrl+Alt+Shift+2", settings.WidgetDismissShortcuts[40]);
     }
+
+    [Fact]
+    public void DisplayPreviewGetsTheZeroShortcutAndReservesIt()
+    {
+        var settings = new DashboardSettings();
+        settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(40, "Display")]);
+        Assert.Equal("Ctrl+Alt+Shift+0", settings.DisplayPreviewShortcut);
+        Assert.DoesNotContain("Ctrl+Alt+Shift+0", settings.WidgetShortcuts.Values);
+    }
+
+    [Fact]
+    public void DisplayPreviewSettingsRoundTripThroughJson()
+    {
+        var settings = new DashboardSettings
+        {
+            DisplayPreviewFrame = new PanelFrame { Left = 1, Top = 2, Width = 480, Height = 402 },
+            DisplayPreviewSourceId = @"\\.\DISPLAY2",
+            DisplayPreviewShortcut = "Ctrl+Alt+Shift+0"
+        };
+        var options = new System.Text.Json.JsonSerializerOptions();
+        var reloaded = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            System.Text.Json.JsonSerializer.Serialize(settings, options), options);
+        Assert.Equal(settings.DisplayPreviewFrame?.Width, reloaded?.DisplayPreviewFrame?.Width);
+        Assert.Equal(settings.DisplayPreviewSourceId, reloaded?.DisplayPreviewSourceId);
+        Assert.Equal(settings.DisplayPreviewShortcut, reloaded?.DisplayPreviewShortcut);
+    }
+
+    [Fact]
+    public void DisplayPreviewDuplicateDetectionMatchesWidgetAssignments()
+    {
+        Assert.True(DisplayShortcutLogic.IsDuplicate(
+            DisplayShortcutLogic.DefaultShortcut,
+            ["Ctrl+Alt+Shift+1", DisplayShortcutLogic.DefaultShortcut]));
+        Assert.False(DisplayShortcutLogic.IsDuplicate(
+            DisplayShortcutLogic.DefaultShortcut,
+            ["Ctrl+Alt+Shift+1"]));
+    }
 }

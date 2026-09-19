@@ -16,6 +16,7 @@ public sealed class TrayController : IDisposable
     private readonly WidgetShortcutManager _shortcuts;
     private readonly UpdateController _updates;
     private readonly Action _openLauncher;
+    private readonly Action _openDisplayPreview;
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu = new();
     private readonly ToolStripMenuItem _addMenu = new("Add Widget");
@@ -23,13 +24,14 @@ public sealed class TrayController : IDisposable
     private readonly ToolStripMenuItem _launchAtLogin = new("Launch at Login") { CheckOnClick = true };
     private SettingsWindow? _settingsWindow;
 
-    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts, UpdateController updates, Action openLauncher)
+    public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts, UpdateController updates, Action openLauncher, Action openDisplayPreview)
     {
         _host = host;
         _settings = settings;
         _shortcuts = shortcuts;
         _updates = updates;
         _openLauncher = openLauncher;
+        _openDisplayPreview = openDisplayPreview;
 
         _icon = new NotifyIcon
         {
@@ -114,7 +116,6 @@ public sealed class TrayController : IDisposable
         if (options.Count == 0)
         {
             _addMenu.DropDownItems.Add(new ToolStripMenuItem("Loading…") { Enabled = false });
-            return;
         }
         foreach (var option in options)
         {
@@ -122,6 +123,10 @@ public sealed class TrayController : IDisposable
             item.Click += (_, _) => _ = _host.AddWidgetAsync(option.WidgetType);
             _addMenu.DropDownItems.Add(item);
         }
+        _addMenu.DropDownItems.Add(new ToolStripSeparator());
+        var display = new ToolStripMenuItem("Display");
+        display.Click += (_, _) => _openDisplayPreview();
+        _addMenu.DropDownItems.Add(display);
     }
 
     private void RebuildArrangeMenu()

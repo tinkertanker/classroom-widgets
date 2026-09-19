@@ -1,11 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +24,9 @@
     <Compile Include="..\..\Source\DashboardLog.cs" Link="DashboardLog.cs" />
     <Compile Include="..\..\Source\UpdateVersion.cs" Link="UpdateVersion.cs" />
     <Compile Include="..\..\Source\WindowsInstallation.cs" Link="WindowsInstallation.cs" />
+    <Compile Include="..\..\Source\DisplayGeometry.cs" Link="DisplayGeometry.cs" />
+    <Compile Include="..\..\Source\DisplayCatalog.cs" Link="DisplayCatalog.cs" />
+    <Compile Include="..\..\Source\DisplayShortcutLogic.cs" Link="DisplayShortcutLogic.cs" />
   </ItemGroup>
 
 </Project>
