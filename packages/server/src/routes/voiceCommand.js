@@ -613,9 +613,6 @@ if (USE_BAML) {
 
 const patternService = new PatternMatchingService();
 const bamlService = USE_BAML && BAMLVoiceCommandService ? new BAMLVoiceCommandService() : null;
-// Ollama path is currently unused; the health endpoint references it so keep a
-// nullable handle to avoid a ReferenceError on GET /api/voice-command/health.
-const ollamaService = null;
 
 // Determine active mode
 const aiServiceName = bamlService
@@ -761,7 +758,7 @@ router.get('/health', async (req, res) => {
       active: aiServiceName,
       patternMatchingAvailable: true,
       bamlAvailable: !!bamlService,
-      ollamaAvailable: !!ollamaService,
+      ollamaAvailable: false,
       confidenceThreshold: CONFIDENCE_THRESHOLD
     }
   };
@@ -773,19 +770,6 @@ router.get('/health', async (req, res) => {
       health.llmService.baml = bamlHealth;
     } catch (error) {
       health.llmService.baml = {
-        status: 'unhealthy',
-        error: error.message
-      };
-    }
-  }
-
-  // Check Ollama health if enabled
-  if (ollamaService && ollamaService.healthCheck) {
-    try {
-      const ollamaHealth = await ollamaService.healthCheck();
-      health.llmService.ollama = ollamaHealth;
-    } catch (error) {
-      health.llmService.ollama = {
         status: 'unhealthy',
         error: error.message
       };
