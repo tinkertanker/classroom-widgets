@@ -202,8 +202,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Notify host of participant count
       if (session.hostSocketId) {
         io.to(session.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-          count: session.getParticipantCount(),
-          participants: session.getParticipants()
+          count: session.getParticipantCount()
         });
       }
     } catch (error) {
