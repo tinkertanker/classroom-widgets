@@ -175,6 +175,11 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             _settings.DisplayPreviewSourceId = null;
             _settings.Save();
             _selected = _catalog.ResolveSource(null, _candidates);
+            if (_selected is null)
+            {
+                Publish(_candidates.Count == 0 ? NoDisplays : SourceLost);
+                return;
+            }
         }
         else
         {
