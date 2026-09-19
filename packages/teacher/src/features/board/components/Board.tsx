@@ -3,7 +3,7 @@ import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { useZoomWithScroll } from '../hooks/useZoomWithScroll';
 import Background from './Background';
 import { BackgroundType } from '@shared/types';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
 interface BoardProps {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export interface BoardRef {
 
 const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, stickerMode }, ref) => {
   const { scale, background } = useWorkspace();
-  const setFocusedWidget = useWorkspaceStore((state) => state.setFocusedWidget);
+  const setFocusedWidget = useWorkspaceUiStore((state) => state.setFocusedWidget);
   
   
   const boardContainerRef = useRef<HTMLDivElement>(null);

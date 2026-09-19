@@ -5,6 +5,7 @@ import { BackgroundType, WidgetType } from '@shared/types';
 import { LayoutFormat } from '@shared/types/storage';
 import { createDefaultShortenerSettings, type ShortenerSettings } from '@shared/utils/urlShortener';
 import { WorkspaceStore } from './workspaceStore';
+import { useWorkspaceUiStore } from './workspaceUiStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { debug } from '@shared/utils/debug';
 import {
@@ -122,7 +123,6 @@ function applyWorkspaceSnapshot(
   | 'scrollPosition'
   | 'layoutFormat'
   | 'widgetStates'
-  | 'focusedWidgetId'
 > {
   return {
     currentWorkspaceId: workspaceId,
@@ -132,8 +132,7 @@ function applyWorkspaceSnapshot(
     scale: workspace.scale,
     scrollPosition: workspace.scrollPosition,
     layoutFormat: (workspace.layoutFormat || 'canvas') as LayoutFormat,
-    widgetStates: new Map(workspace.widgetStates),
-    focusedWidgetId: null
+    widgetStates: new Map(workspace.widgetStates)
   };
 }
 
@@ -304,8 +303,13 @@ const workspaceStorage: StateStorage = {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
     lastPersistedZustandValue = null;
+    lastWrittenV2 = null;
   }
 };
+
+// The last V2 blob this module wrote, kept so the debounced persist flush can
+// skip re-parsing localStorage when nothing else touched it since.
+let lastWrittenV2: { raw: string; data: StorageFormatV2 } | null = null;
 
 function writeStorageValue(value: string, capturedWorkspaceId?: string | null): void {
     if (value === lastPersistedZustandValue) {
@@ -320,7 +324,9 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
       let v2Data: StorageFormatV2;
       const existingRaw = localStorage.getItem(STORAGE_KEY);
 
-      if (existingRaw) {
+      if (existingRaw && lastWrittenV2 && existingRaw === lastWrittenV2.raw) {
+        v2Data = lastWrittenV2.data;
+      } else if (existingRaw) {
         const existing = JSON.parse(existingRaw);
         if (isStorageV2(existing)) {
           v2Data = existing;
@@ -371,7 +377,9 @@ function writeStorageValue(value: string, capturedWorkspaceId?: string | null): 
       };
 
       // Save V2 format
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(v2Data));
+      const raw = JSON.stringify(v2Data);
+      localStorage.setItem(STORAGE_KEY, raw);
+      lastWrittenV2 = { raw, data: v2Data };
       lastPersistedZustandValue = value;
 
     } catch (error) {
@@ -495,19 +503,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   scrollPosition: { x: 0, y: 0 },
   sessionCode: null,
   sessionCreatedAt: null,
-  dragState: {
-    isDragging: false,
-    draggedWidgetId: null,
-    dropTarget: null
-  },
   bottomBar: defaultBottomBar,
-  serverStatus: {
-    connected: false,
-    url: import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
-  },
   widgetStates: new Map(),
   eventListeners: new Map(),
-  focusedWidgetId: null,
   classEndTime: null,
   linkShortener: defaultLinkShortener(),
   layoutFormat: 'canvas' as LayoutFormat,
@@ -533,9 +531,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   setTheme: (theme) => set({ theme }),
   setScale: (scale) => set({ scale }),
   setScrollPosition: (position) => set({ scrollPosition: position }),
-  setServerStatus: (status) => set((state) => ({ 
-    serverStatus: { ...state.serverStatus, ...status } 
-  })),
   
   // Widget methods
   addWidget: (type, position) => {
@@ -594,32 +589,32 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     }));
   },
   bringToFront: (widgetId) => {
-    set((state) => {
-      const widgetIndex = state.widgets.findIndex(w => w.id === widgetId);
-      if (widgetIndex === -1) {
-        return { focusedWidgetId: widgetId };
-      }
-      // Already on top: skip the reorder — this runs on every click inside a
-      // widget. "Last in array" alone isn't enough: persisted workspaces (and
-      // historical addWidget behavior) can hold gapped or out-of-order
-      // zIndexes, so require fully normalized values before skipping
-      if (
-        widgetIndex === state.widgets.length - 1 &&
-        state.widgets.every((w, i) => w.zIndex === i)
-      ) {
-        return state.focusedWidgetId === widgetId ? state : { focusedWidgetId: widgetId };
-      }
-      const reordered = [...state.widgets];
-      const [moved] = reordered.splice(widgetIndex, 1);
-      reordered.push(moved);
-      // Replace only the widgets whose zIndex actually changed; mutating them
-      // in place would leave subscribers with stale references
-      const widgets = reordered.map((w, i) => (w.zIndex === i ? w : { ...w, zIndex: i }));
-      return { widgets, focusedWidgetId: widgetId };
-    });
-  },
-  setFocusedWidget: (widgetId) => {
-    set({ focusedWidgetId: widgetId });
+    const setFocusedWidget = useWorkspaceUiStore.getState().setFocusedWidget;
+    const state = get();
+    const widgetIndex = state.widgets.findIndex(w => w.id === widgetId);
+    if (widgetIndex === -1) {
+      setFocusedWidget(widgetId);
+      return;
+    }
+    // Already on top: skip the reorder — this runs on every click inside a
+    // widget. "Last in array" alone isn't enough: persisted workspaces (and
+    // historical addWidget behavior) can hold gapped or out-of-order
+    // zIndexes, so require fully normalized values before skipping
+    if (
+      widgetIndex === state.widgets.length - 1 &&
+      state.widgets.every((w, i) => w.zIndex === i)
+    ) {
+      setFocusedWidget(widgetId);
+      return;
+    }
+    const reordered = [...state.widgets];
+    const [moved] = reordered.splice(widgetIndex, 1);
+    reordered.push(moved);
+    // Replace only the widgets whose zIndex actually changed; mutating them
+    // in place would leave subscribers with stale references
+    const widgets = reordered.map((w, i) => (w.zIndex === i ? w : { ...w, zIndex: i }));
+    set({ widgets });
+    setFocusedWidget(widgetId);
   },
   setClassEndTime: (time) => {
     set({ classEndTime: time });
@@ -646,21 +641,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   toggleWidgetVisibility: () => {},
   pinWidget: () => {},
   unpinWidget: () => {},
-  startDragging: (widgetId) => {
-    set((state) => ({
-      dragState: { ...state.dragState, isDragging: true, draggedWidgetId: widgetId }
-    }));
-  },
-  stopDragging: () => {
-    set((state) => ({
-      dragState: { ...state.dragState, isDragging: false, draggedWidgetId: null, dropTarget: null }
-    }));
-  },
-  setDropTarget: (target) => {
-    set((state) => ({
-      dragState: { ...state.dragState, dropTarget: target }
-    }));
-  },
   updateWidgetState: (widgetId, state) => {
     const previous = get().widgetStates.get(widgetId);
     if (widgetStateEqual(previous, state)) {
@@ -698,6 +678,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     const { list } = getWorkspaceListFromStorage();
 
     set(applyWorkspaceSnapshot(workspace, workspaceId, list));
+    useWorkspaceUiStore.getState().setFocusedWidget(null);
   },
 
   createWorkspace: (name?: string) => {
@@ -719,6 +700,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     const { list } = getWorkspaceListFromStorage();
 
     set(applyWorkspaceSnapshot(workspace, workspaceId, list));
+    useWorkspaceUiStore.getState().setFocusedWidget(null);
 
     return workspaceId;
   },
@@ -749,6 +731,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         updatedStorage.currentWorkspaceId,
         list
       ));
+      useWorkspaceUiStore.getState().setFocusedWidget(null);
     } else {
       set({ workspaceList: list });
     }

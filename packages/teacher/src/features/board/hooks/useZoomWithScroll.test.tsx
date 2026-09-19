@@ -102,13 +102,16 @@ describe('useZoomWithScroll', () => {
       clientY: 60
     });
     board.dispatchEvent(secondPinchEvent);
-    expect(workspaceMock.setScale.mock.calls[0][0]).toBeCloseTo(Math.exp(0.1));
-    expect(workspaceMock.setScale.mock.calls[1][0]).toBeCloseTo(Math.exp(0.2));
+    // Scale commits are coalesced into the animation frame: two wheel events
+    // produce a single setScale call with the final value
+    expect(workspaceMock.setScale).not.toHaveBeenCalled();
     const wheelAnimationFrame = animationFrames.get(1);
     if (!wheelAnimationFrame) {
       throw new Error('Expected ctrl-wheel magnification to schedule a scroll update');
     }
     wheelAnimationFrame(0);
+    expect(workspaceMock.setScale).toHaveBeenCalledTimes(1);
+    expect(workspaceMock.setScale).toHaveBeenLastCalledWith(expect.closeTo(Math.exp(0.2)));
     expect(board.scrollLeft).toBeCloseTo(60 * Math.exp(0.2) - 40);
     expect(board.scrollTop).toBeCloseTo(90 * Math.exp(0.2) - 60);
     vi.advanceTimersByTime(100);
@@ -135,13 +138,13 @@ describe('useZoomWithScroll', () => {
     const gestureChange = createGestureEvent('gesturechange', 1.5);
     getGestureHandler('gesturechange')(gestureChange);
     expect(gestureChange.defaultPrevented).toBe(true);
-    expect(workspaceMock.setScale).toHaveBeenCalledWith(expect.closeTo(Math.exp(0.2) * 1.5));
 
     const scheduledAnimationFrame = animationFrames.get(1);
     if (!scheduledAnimationFrame) {
       throw new Error('Expected magnification to schedule a scroll update');
     }
     scheduledAnimationFrame(0);
+    expect(workspaceMock.setScale).toHaveBeenLastCalledWith(expect.closeTo(Math.exp(0.2) * 1.5));
     expect(board.scrollLeft).toBeCloseTo(60 * Math.exp(0.2) * 1.5 - 40);
     expect(board.scrollTop).toBeCloseTo(90 * Math.exp(0.2) * 1.5 - 60);
 
@@ -243,7 +246,7 @@ describe('useZoomWithScroll', () => {
     const board = screen.getByTestId('board');
     const addEventListener = vi.spyOn(board, 'addEventListener');
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      void callback;
+      callback(0);
       return 1;
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
