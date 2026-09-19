@@ -23,8 +23,9 @@ export class TrayController {
   private readonly onOpenLauncher: () => void;
   private readonly onCheckForUpdates: () => void;
   private readonly onQuit: () => void;
+  private readonly onDisplayPreview: () => void;
 
-  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onOpenLauncher: () => void, onCheckForUpdates: () => void, onQuit: () => void) {
+  constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onOpenLauncher: () => void, onCheckForUpdates: () => void, onQuit: () => void, onDisplayPreview: () => void = () => {}) {
     this.host = host;
     this.settings = settings;
     this.shortcuts = shortcuts;
@@ -32,6 +33,7 @@ export class TrayController {
     this.onOpenLauncher = onOpenLauncher;
     this.onCheckForUpdates = onCheckForUpdates;
     this.onQuit = onQuit;
+    this.onDisplayPreview = onDisplayPreview;
 
     const iconPath = join(app.getAppPath(), 'assets', 'tray-icon.png');
     this.tray = new Tray(nativeImage.createFromPath(iconPath));
@@ -47,12 +49,16 @@ export class TrayController {
     const coordinator = this.host.panelCoordinator;
     const options = this.host.widgetOptions;
 
-    const addSubmenu: MenuItemConstructorOptions[] = options.length === 0
-      ? [{ label: 'Loading…', enabled: false }]
-      : options.map((option) => ({
-        label: option.title,
-        click: () => void this.host.addWidget(option.widgetType),
-      }));
+    const addSubmenu: MenuItemConstructorOptions[] = [
+      ...(options.length === 0
+        ? [{ label: 'Loading…', enabled: false } as MenuItemConstructorOptions]
+        : options.map((option) => ({
+          label: option.title,
+          click: () => void this.host.addWidget(option.widgetType),
+        }))),
+      { type: 'separator' },
+      { label: 'Display', click: () => this.onDisplayPreview() },
+    ];
 
     const layoutItem = (label: string, layout: WidgetPanelLayout): MenuItemConstructorOptions => ({
       label,
