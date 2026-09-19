@@ -19,6 +19,9 @@ interface UpdateControllerDependencies {
   fetch: typeof net.fetch;
   showMessageBox: (options: MessageBoxOptions) => Promise<MessageBoxReturnValue>;
   openExternal: typeof shell.openExternal;
+  openPath: (path: string) => Promise<string>;
+  execFile: (file: string, args: string[]) => Promise<unknown>;
+  relaunch: () => void;
   download: (asset: ReleaseAsset) => Promise<string>;
   installAppImage: (download: string) => Promise<void>;
   installDeb: (download: string, releasePage: string) => Promise<void>;
@@ -34,6 +37,9 @@ export class UpdateController {
       fetch: (...args) => net.fetch(...args),
       showMessageBox: (options) => dialog.showMessageBox(options),
       openExternal: (...args) => shell.openExternal(...args),
+      openPath: (path) => shell.openPath(path),
+      execFile: (file, args) => execFileAsync(file, args),
+      relaunch: () => app.relaunch(),
       download: (asset) => this.download(asset),
       installAppImage: (download) => this.installAppImage(download),
       installDeb: (download, releasePage) => this.installDeb(download, releasePage),
@@ -142,15 +148,23 @@ export class UpdateController {
     return hash.digest('hex');
   }
 
-  private async installDeb(download: string, releasePage: string): Promise<void> {
+  private async installDeb(download: string, _releasePage: string): Promise<void> {
     try {
-      await execFileAsync('pkexec', ['apt-get', 'install', '-y', download]);
-      app.relaunch();
+      await this.dependencies.execFile('pkexec', ['apt-get', 'install', '-y', download]);
+      this.dependencies.relaunch();
       this.onQuit();
     } catch (error) {
-      log.warn(`Package-manager update failed: ${error instanceof Error ? error.message : String(error)}`);
-      const opened = await shell.openPath(download);
-      if (opened) await this.openReleaseFallback(releasePage, 'The package manager could not install the update automatically.');
+      const installReason = error instanceof Error ? error.message : String(error);
+      log.warn(`Package-manager update failed: ${installReason}`);
+      let openReason: string;
+      try {
+        const opened = await this.dependencies.openPath(download);
+        if (!opened) return;
+        openReason = opened;
+      } catch (openError) {
+        openReason = openError instanceof Error ? openError.message : String(openError);
+      }
+      throw new Error(`Package manager failed: ${installReason}\nOpening the downloaded package failed: ${openReason}`);
     }
   }
 
