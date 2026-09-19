@@ -67,7 +67,10 @@ function harness({ responses = [], fetch, download, installAppImage, installDeb,
       if (installDeb) return installDeb(path, pageUrl);
     };
   }
-  const controller = new UpdateController('1.0.0', () => { quits += 1; }, dependencies);
+  const controller = new UpdateController('1.0.0', () => {
+    if (!useDefaultInstallDeb) assert.fail('must not quit in controller tests');
+    quits += 1;
+  }, dependencies);
   return {
     controller, dialogs, downloads, appImageInstalls, debInstalls, opened, execFiles, openedPaths,
     get relaunches() { return relaunches; },
