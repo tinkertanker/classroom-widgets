@@ -13,7 +13,11 @@ public partial class DisplayPreviewWindow : Window
     public event Action<Point, Rect>? PreviewClicked;
     public event Action? FrameChanged;
 
-    public double ChromeHeightDip => Math.Max(42, ActualHeight - PreviewImage.ActualHeight);
+    public double ChromeHeightDip => Math.Max(42, ActualHeight - PreviewSurface.ActualHeight);
+
+    public double ChromeWidthDip => Math.Max(0, ActualWidth - PreviewSurface.ActualWidth);
+
+    public Size PreviewSizeDip => new(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight);
 
     public DisplayPreviewWindow(Rect initialBounds)
     {
@@ -31,7 +35,6 @@ public partial class DisplayPreviewWindow : Window
         StatusText.Text = status;
         PowerButton.IsEnabled = powerEnabled;
         PowerButton.Foreground = powerOn ? Brushes.LimeGreen : Brushes.White;
-        PowerButton.Content = powerOn ? "⏻" : "⏻";
         PowerButton.ToolTip = powerOn ? "Turn preview off" : "Turn preview on";
     }
 

@@ -29,7 +29,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="42" />
                 </Grid.ColumnDefinitions>
-                <Button x:Name="PowerButton" Grid.Column="0" Content="⏻" FontSize="20"
+                <Button x:Name="PowerButton" Grid.Column="0" Content="&#xE7E8;" FontFamily="Segoe MDL2 Assets" FontSize="18"
                         Background="Transparent" Foreground="White" BorderThickness="0"
                         Click="PowerButton_Click" />
                 <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center"

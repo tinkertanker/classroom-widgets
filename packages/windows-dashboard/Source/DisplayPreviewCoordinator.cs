@@ -276,15 +276,15 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         if (_window is null || _selected is null) return;
         var host = HostDisplay();
         if (host is null) return;
-        var content = new Size(_window.ActualWidth, Math.Max(1, _window.ActualHeight - _window.ChromeHeightDip));
+        var chromeWidth = _window.ChromeWidthDip;
         var maximum = ToDip(host.WorkingArea, _window);
         var size = DisplayGeometry.AspectNormalizedWindowSize(
             _selected.Bounds.Width / _selected.Bounds.Height,
-            content,
+            _window.PreviewSizeDip,
             _window.ChromeHeightDip,
             new Size(320, 180),
-            maximum.Size);
-        _window.SetClientSize(size);
+            new Size(Math.Max(1, maximum.Width - chromeWidth), maximum.Height));
+        _window.SetClientSize(new Size(size.Width + chromeWidth, size.Height));
     }
 
     private void PreviewClicked(Point point, Rect imageRect)
