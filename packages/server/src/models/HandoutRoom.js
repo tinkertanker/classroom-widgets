@@ -40,14 +40,6 @@ class HandoutRoom extends Room {
   }
 
   /**
-   * Clear all items
-   */
-  clearAllItems() {
-    this.items = [];
-    this.updateActivity();
-  }
-
-  /**
    * Get all items
    * @returns {Array} All items in the handout
    */
