@@ -58,7 +58,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   private wantsCapture = false;
   private suspendedForOverlap = false;
   private frameTimer: NodeJS.Timeout | null = null;
-  private restarting = false;
+  private startGeneration = 0;
   private readonly displayChanged = (): void => void this.refreshSources();
 
   constructor(
@@ -132,8 +132,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     });
     window.on('streamError', (message: string) => {
       if (!this.selectedSource) return;
-      this.wantsCapture = false;
-      window.stopStream();
+      this.stopCapture();
       this.publish(`Could not capture ${this.selectedSource.name}: ${message}`);
     });
     window.on('moved', () => this.noteFrameChange());
@@ -170,7 +169,15 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     this.candidates = this.catalog.eligibleSources(host.id);
     const previousSource = this.selectedSource;
     const selectedCurrent = this.selectedSource && this.catalog.currentMatching(this.selectedSource);
-    if (selectedCurrent && selectedCurrent.id !== host.id) {
+    if (previousSource && !selectedCurrent) {
+      this.stopCapture();
+      this.settings.setDisplayPreviewSourceId(null);
+      this.selectedSource = this.catalog.resolveSource(null, this.candidates);
+      if (!this.selectedSource) {
+        this.publish('The selected display is no longer available.');
+        return;
+      }
+    } else if (selectedCurrent && selectedCurrent.id !== host.id) {
       const sourceChanged = this.selectedSource !== null
         && (this.selectedSource.bounds.x !== selectedCurrent.bounds.x
           || this.selectedSource.bounds.y !== selectedCurrent.bounds.y
@@ -179,17 +186,11 @@ export class DisplayPreviewCoordinator extends EventEmitter {
           || this.selectedSource.scaleFactor !== selectedCurrent.scaleFactor);
       this.selectedSource = selectedCurrent;
       if (sourceChanged && this.wantsCapture) {
-        this.window.stopStream();
+        this.stopCapture();
         void this.start();
       }
     } else if (!selectedCurrent) {
       this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
-      if (previousSource && !this.selectedSource) {
-        this.stopCapture();
-        this.settings.setDisplayPreviewSourceId(null);
-        this.publish('The selected display is no longer available.');
-        return;
-      }
     }
     if (this.selectedSource && !this.catalog.currentMatching(this.selectedSource)) {
       this.stopCapture();
@@ -221,6 +222,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   }
 
   private async start(): Promise<void> {
+    const generation = ++this.startGeneration;
     if (!this.window || !this.selectedSource) return;
     if (rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {
       this.wantsCapture = true;
@@ -228,14 +230,13 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       this.publish('Preview suspended while it overlaps the source display. Move it fully clear to resume.');
       return;
     }
-    if (this.restarting) return;
-    this.restarting = true;
     const source = this.selectedSource;
     try {
       const sources = await this.deps.desktopCapturer.getSources({
         types: ['screen'],
         thumbnailSize: { width: 0, height: 0 },
       });
+      if (generation !== this.startGeneration || !this.window || this.selectedSource !== source) return;
       const capture = sources.find((candidate) => candidate.display_id === String(source.id))
         ?? (sources.length === 1 && this.candidates.length === 1 ? sources[0] : null);
       if (!capture) {
@@ -250,14 +251,14 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       });
       this.publish(`Live: ${source.name}`);
     } catch (error) {
+      if (generation !== this.startGeneration || !this.window || this.selectedSource !== source) return;
       this.wantsCapture = false;
       this.publish(`Could not capture ${source.name}: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      this.restarting = false;
     }
   }
 
   private stopCapture(): void {
+    this.startGeneration += 1;
     this.wantsCapture = false;
     this.suspendedForOverlap = false;
     this.window?.stopStream();

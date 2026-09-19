@@ -14,6 +14,26 @@ export interface DisplayPreviewState {
 
 const CHROME_HEIGHT = 42;
 const windows = new Map<number, DisplayPreviewWindow>();
+let ipcRegistered = false;
+
+function registerIpcHandlers(): void {
+  if (ipcRegistered || !ipcMain) return;
+  ipcRegistered = true;
+  ipcMain.on('display-preview:action', (event, message: unknown) => {
+    windows.get(event.sender.id)?.handleAction(message);
+  });
+  ipcMain.on('display-preview:click', (event, message: unknown) => {
+    windows.get(event.sender.id)?.handleClick(message);
+  });
+  ipcMain.on('display-preview:stream-live', (event) => {
+    windows.get(event.sender.id)?.handleStreamLive();
+  });
+  ipcMain.on('display-preview:stream-error', (event, message: unknown) => {
+    windows.get(event.sender.id)?.handleStreamError(message);
+  });
+}
+
+registerIpcHandlers();
 
 export class DisplayPreviewWindow extends EventEmitter {
   private readonly win: BrowserWindow;
@@ -43,28 +63,6 @@ export class DisplayPreviewWindow extends EventEmitter {
     });
     windows.set(this.win.webContents.id, this);
     this.win.webContents.once('destroyed', () => windows.delete(this.win.webContents.id));
-    ipcMain.on('display-preview:action', (event, message: unknown) => {
-      if (windows.get(event.sender.id) !== this || !message || typeof message !== 'object') return;
-      const action = (message as { action?: unknown }).action;
-      if (action === 'toggle-power') this.emit('powerToggle');
-      if (action === 'open-menu') this.emit('menuRequested');
-    });
-    ipcMain.on('display-preview:click', (event, message: unknown) => {
-      if (windows.get(event.sender.id) !== this || !message || typeof message !== 'object') return;
-      const value = message as { x?: unknown; y?: unknown; imageRect?: unknown };
-      if (typeof value.x !== 'number' || typeof value.y !== 'number' || !value.imageRect) return;
-      this.emit('previewClick', { x: value.x, y: value.y, imageRect: value.imageRect });
-    });
-    ipcMain.on('display-preview:stream-live', (event) => {
-      if (windows.get(event.sender.id) === this) this.emit('streamLive');
-    });
-    ipcMain.on('display-preview:stream-error', (event, message: unknown) => {
-      if (windows.get(event.sender.id) !== this) return;
-      const text = message && typeof message === 'object' && typeof (message as { message?: unknown }).message === 'string'
-        ? (message as { message: string }).message
-        : String(message ?? 'Unknown error');
-      this.emit('streamError', text);
-    });
     this.win.on('move', () => this.emit('moved'));
     this.win.on('resize', () => this.emit('resized'));
     this.win.once('closed', () => {
@@ -81,6 +79,31 @@ export class DisplayPreviewWindow extends EventEmitter {
       this.pendingStop = false;
     });
     void this.win.loadFile(join(app.getAppPath(), 'src', 'renderer', 'display-preview.html'));
+  }
+
+  handleAction(message: unknown): void {
+    if (!message || typeof message !== 'object') return;
+    const action = (message as { action?: unknown }).action;
+    if (action === 'toggle-power') this.emit('powerToggle');
+    if (action === 'open-menu') this.emit('menuRequested');
+  }
+
+  handleClick(message: unknown): void {
+    if (!message || typeof message !== 'object') return;
+    const value = message as { x?: unknown; y?: unknown; imageRect?: unknown };
+    if (typeof value.x !== 'number' || typeof value.y !== 'number' || !value.imageRect) return;
+    this.emit('previewClick', { x: value.x, y: value.y, imageRect: value.imageRect });
+  }
+
+  handleStreamLive(): void {
+    this.emit('streamLive');
+  }
+
+  handleStreamError(message: unknown): void {
+    const text = message && typeof message === 'object' && typeof (message as { message?: unknown }).message === 'string'
+      ? (message as { message: string }).message
+      : String(message ?? 'Unknown error');
+    this.emit('streamError', text);
   }
 
   getBounds(): Rect {
