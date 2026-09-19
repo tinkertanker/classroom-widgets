@@ -36,23 +36,23 @@ module.exports = function adminHandler(io, socket, sessionManager) {
             name: p.name,
             joinedAt: p.joinedAt
           })),
-          activeRooms: session.getActiveRooms().map(room => ({
-            roomType: room.roomType,
-            widgetId: room.widgetId,
-            isActive: room.room?.isActive || false,
+          activeRooms: session.getActiveRoomEntries().map(({ roomType, widgetId, room }) => ({
+            roomType,
+            widgetId,
+            isActive: room.isActive || false,
             // Include type-specific data summaries
-            ...(room.roomType === 'poll' && room.room?.pollData ? {
-              pollQuestion: room.room.pollData.question,
-              totalVotes: room.room.results?.totalVotes || 0
+            ...(roomType === 'poll' && room.pollData ? {
+              pollQuestion: room.pollData.question,
+              totalVotes: room.getTotalVotes() || 0
             } : {}),
-            ...(room.roomType === 'questions' ? {
-              questionCount: room.room?.questions?.length || 0
+            ...(roomType === 'questions' ? {
+              questionCount: room.getQuestionCount() || 0
             } : {}),
-            ...(room.roomType === 'linkShare' ? {
-              submissionCount: room.room?.submissions?.length || 0
+            ...(roomType === 'linkShare' ? {
+              submissionCount: room.getSubmissionCount() || 0
             } : {}),
-            ...(room.roomType === 'rtfeedback' ? {
-              responseCount: Object.keys(room.room?.responses || {}).length
+            ...(roomType === 'rtfeedback' ? {
+              responseCount: room.getResponseCount() || 0
             } : {})
           }))
         };
