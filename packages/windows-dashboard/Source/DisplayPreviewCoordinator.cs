@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 using Microsoft.Win32;
@@ -369,7 +370,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     {
         var source = PresentationSource.FromVisual(visual);
         return source?.CompositionTarget is { } target
-            ? target.TransformFromDevice.TransformBounds(physical)
+            ? Rect.Transform(physical, target.TransformFromDevice)
             : physical;
     }
 

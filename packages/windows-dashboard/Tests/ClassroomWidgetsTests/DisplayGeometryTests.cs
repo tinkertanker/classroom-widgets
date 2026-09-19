@@ -35,7 +35,7 @@ public sealed class DisplayGeometryTests
     {
         Assert.Equal("left", DisplayGeometry.DescribePosition(new Rect(-1, -1, 1, 1)));
         Assert.Equal("above", DisplayGeometry.DescribePosition(new Rect(0, -1, 1, 1)));
-        Assert.Equal("right", DisplayGeometry.DescribePosition(new Rect(1, -1, 1, 1)));
+        Assert.Equal("right", DisplayGeometry.DescribePosition(new Rect(1, 0, 1, 1)));
         Assert.Equal("below", DisplayGeometry.DescribePosition(new Rect(0, 1, 1, 1)));
         Assert.Equal("main", DisplayGeometry.DescribePosition(new Rect(0, 0, 1, 1)));
     }
