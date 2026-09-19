@@ -15,22 +15,9 @@ class AppError extends Error {
   }
 }
 
-class ValidationError extends AppError {
-  constructor(message, errors = {}) {
-    super(message, 400, 'VALIDATION_ERROR');
-    this.errors = errors;
-  }
-}
-
 class AuthorizationError extends AppError {
   constructor(message = 'Not authorized') {
     super(message, 403, 'FORBIDDEN');
-  }
-}
-
-class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(message, 404, 'NOT_FOUND');
   }
 }
 
@@ -120,9 +107,7 @@ const asyncHandler = (fn) => {
 module.exports = {
   // Error classes
   AppError,
-  ValidationError,
   AuthorizationError,
-  NotFoundError,
 
   // Handlers
   expressErrorHandler,
