@@ -4,24 +4,13 @@ import XCTest
 
 final class UpdateControllerTests: XCTestCase {
     @MainActor
-    func testApprovedUpdateFailureIsVisibleForAutomaticAndManualChecks() async throws {
-        for manual in [false, true] {
-            let fixture = try UpdateFixture()
-            defer { fixture.remove() }
-            fixture.installError = URLError(.timedOut)
-            fixture.responses = [.alertFirstButtonReturn, .alertFirstButtonReturn]
-            let controller = fixture.makeController()
+    func testApprovedAutomaticUpdateFailureIsVisible() async throws {
+        try await assertApprovedUpdateFailureIsVisible(manual: false)
+    }
 
-            await controller.check(manual: manual)
-
-            XCTAssertEqual(fixture.installAttempts, 1)
-            XCTAssertEqual(fixture.alerts.count, 2)
-            let failure = try XCTUnwrap(fixture.alerts.dropFirst().first)
-            XCTAssertEqual(failure.messageText, "Unable to install update")
-            XCTAssertTrue(failure.informativeText.contains(URLError(.timedOut).localizedDescription))
-            XCTAssertEqual(failure.buttons.map(\.title), ["Open Downloads", "Cancel"])
-            XCTAssertEqual(fixture.openedURLs, [UpdateFixture.releaseURL])
-        }
+    @MainActor
+    func testApprovedManualUpdateFailureIsVisible() async throws {
+        try await assertApprovedUpdateFailureIsVisible(manual: true)
     }
 
     @MainActor
@@ -82,6 +71,25 @@ final class UpdateControllerTests: XCTestCase {
         XCTAssertFalse(UpdateController.isNewerVersion("0.11.2", than: "0.11.2"))
         XCTAssertFalse(UpdateController.isNewerVersion("0.10.99", than: "0.11.0"))
         XCTAssertFalse(UpdateController.isNewerVersion("nightly", than: "0.11.0"))
+    }
+
+    @MainActor
+    private func assertApprovedUpdateFailureIsVisible(manual: Bool) async throws {
+        let fixture = try UpdateFixture()
+        defer { fixture.remove() }
+        fixture.installError = URLError(.timedOut)
+        fixture.responses = [.alertFirstButtonReturn, .alertFirstButtonReturn]
+        let controller = fixture.makeController()
+
+        await controller.check(manual: manual)
+
+        XCTAssertEqual(fixture.installAttempts, 1)
+        XCTAssertEqual(fixture.alerts.count, 2)
+        let failure = try XCTUnwrap(fixture.alerts.dropFirst().first)
+        XCTAssertEqual(failure.messageText, "Unable to install update")
+        XCTAssertTrue(failure.informativeText.contains(URLError(.timedOut).localizedDescription))
+        XCTAssertEqual(failure.buttons.map(\.title), ["Open Downloads", "Cancel"])
+        XCTAssertEqual(fixture.openedURLs, [UpdateFixture.releaseURL])
     }
 }
 
