@@ -145,39 +145,3 @@ export function useTheme() {
     isDark: theme === 'dark'
   };
 }
-
-// Zoom hook
-export function useZoom() {
-  const scale = useWorkspaceStore((state) => state.scale);
-  const setScale = useWorkspaceStore((state) => state.setScale);
-
-  const zoom = useCallback((delta: number) => {
-    useWorkspaceStore.getState().setScale(useWorkspaceStore.getState().scale + delta);
-  }, []);
-
-  const zoomIn = useCallback(() => zoom(0.1), [zoom]);
-  const zoomOut = useCallback(() => zoom(-0.1), [zoom]);
-  const resetZoom = useCallback(() => setScale(1), [setScale]);
-
-  return {
-    scale,
-    setScale,
-    zoom,
-    zoomIn,
-    zoomOut,
-    resetZoom,
-    canZoomIn: scale < 2,
-    canZoomOut: scale > 0.5
-  };
-}
-
-// Performance metrics hook
-export function usePerformanceMetrics() {
-  const widgetCount = useWorkspaceStore((state) => state.widgets.length);
-  
-  return {
-    widgetCount,
-    isHighLoad: widgetCount > 50,
-    performanceWarning: widgetCount > 100
-  };
-}
