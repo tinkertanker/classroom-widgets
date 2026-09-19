@@ -141,13 +141,12 @@ describe('sessionHandler: student join', () => {
     assert.equal(response.error, 'SESSION_FULL');
   });
 
-  it('notifies the host with updated participant list', async () => {
+  it('notifies the host with the participant count only', async () => {
     await join({ code: SESSION_CODE, name: 'Ada' });
 
     const update = io._emitFn.calls.findLast(c => c[0] === EVENTS.SESSION.PARTICIPANT_UPDATE);
     assert.ok(update, 'host should receive participant update');
-    assert.equal(update[1].count, 1);
-    assert.equal(update[1].participants[0].name, 'Ada');
+    assert.deepEqual(update[1], { count: 1 });
   });
 
   it('joins the student into all active widget rooms', async () => {

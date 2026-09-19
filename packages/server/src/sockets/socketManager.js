@@ -78,8 +78,7 @@ function setupSocketHandlers(io, sessionManager) {
             // Notify host of participant disconnect
             if (session.hostSocketId) {
               io.to(session.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-                count: session.getParticipantCount(),
-                participants: session.getParticipants()
+                count: session.getParticipantCount()
               });
             }
             
