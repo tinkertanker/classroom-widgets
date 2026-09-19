@@ -64,43 +64,10 @@ class Session {
   }
 
   /**
-   * Set the host socket, clearing any pending disconnect state
-   */
-  setHost(socketId) {
-    this.hostSocketId = socketId;
-    this.hostDisconnectedAt = null;
-  }
-
-  /**
-   * Mark the host as disconnected
-   */
-  markHostDisconnected() {
-    this.hostDisconnectedAt = Date.now();
-  }
-
-  /**
-   * Clear the host's disconnected state
-   */
-  clearHostDisconnected() {
-    this.hostDisconnectedAt = null;
-  }
-
-  /**
    * Build the internal room key from a room type and optional widget ID
    */
   _roomKey(roomType, widgetId) {
     return widgetId ? `${roomType}:${widgetId}` : roomType;
-  }
-
-  /**
-   * Parse an internal room key back into its room type and widget ID.
-   * Splits on the first ':' only - widget IDs may themselves contain ':'
-   */
-  _parseRoomKey(key) {
-    const separatorIndex = key.indexOf(':');
-    const roomType = separatorIndex === -1 ? key : key.slice(0, separatorIndex);
-    const widgetId = separatorIndex === -1 ? undefined : key.slice(separatorIndex + 1);
-    return { roomType, widgetId };
   }
 
   /**
@@ -203,13 +170,6 @@ class Session {
   }
 
   /**
-   * Check if session has any active rooms
-   */
-  hasActiveRooms() {
-    return this.activeRooms.size > 0;
-  }
-
-  /**
    * Get participant count
    */
   getParticipantCount() {
@@ -221,13 +181,6 @@ class Session {
    */
   getParticipants() {
     return Array.from(this.participants.values());
-  }
-
-  /**
-   * Get active room types/IDs
-   */
-  getActiveRoomTypes() {
-    return Array.from(this.activeRooms.keys());
   }
 
   /**
@@ -247,13 +200,6 @@ class Session {
       });
     });
     return rooms;
-  }
-
-  /**
-   * Check if the session is expired
-   */
-  isExpired(maxAge = 12 * 60 * 60 * 1000) {
-    return Date.now() - this.createdAt > maxAge;
   }
 
   /**
