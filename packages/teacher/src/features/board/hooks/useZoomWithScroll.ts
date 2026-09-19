@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 
 interface ZoomOptions {
@@ -69,7 +70,8 @@ export const useZoomWithScroll = (
       }
 
       scrollRaf.current = requestAnimationFrame(() => {
-        setScale(currentScaleRef.current);
+        // Scroll clamps against the wrapper size, so the new scale must be laid out first
+        flushSync(() => setScale(currentScaleRef.current));
         container.scrollLeft = scrollX;
         container.scrollTop = scrollY;
         scrollRaf.current = null;
