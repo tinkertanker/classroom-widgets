@@ -113,9 +113,15 @@ class AppServer {
       allowedHeaders: serverConfig.CORS.ALLOWED_HEADERS
     }));
 
-    // The voice command transcript is capped at a small length, so this
-    // endpoint only needs a small body — the teacher client sends a tiny
-    // context and BAML ignores the context anyway.
+    // Production runs behind one or more docker nginx hops on private
+    // addresses; trusting private ranges makes req.ip the real client
+    // regardless of hop count while a public client's own X-Forwarded-For is
+    // ignored.
+    this.app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+
+    // The voice command transcript is capped at a small length and the client
+    // only sends widget ids/types in context, so this endpoint needs a small
+    // body.
     this.app.use('/api/voice-command', express.json({ limit: '64kb' }));
 
     // Body parsing. Typical poll/activity payloads are tiny; tight limits

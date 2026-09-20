@@ -35,7 +35,6 @@ export interface VoiceContext {
   activeWidgets: Array<{
     id: string;
     type: string | number;  // Can be WidgetType enum or string
-    state?: any;
     isFocused: boolean;
   }>;
   availableWidgets: string[];

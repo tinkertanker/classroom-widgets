@@ -443,7 +443,6 @@ function App() {
         activeWidgets: currentWidgets.map(widget => ({
           id: widget.id,
           type: widget.type,
-          state: widget.state,
           isFocused: widget.id === currentFocusedId
         })),
         availableWidgets: ['timer', 'list', 'poll', 'randomiser', 'questions', 'image'],

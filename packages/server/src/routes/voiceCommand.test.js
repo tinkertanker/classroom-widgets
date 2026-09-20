@@ -102,3 +102,51 @@ describe('createIpRateLimiter', () => {
     assert.match(body.error, /too many/i);
   });
 });
+
+describe('voice-command per-client rate limiting', () => {
+  let server;
+  let baseUrl;
+
+  const postTranscript = (ip) => fetch(`${baseUrl}/api/voice-command`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': ip },
+    body: JSON.stringify({ transcript: 'create a timer' })
+  });
+
+  before(async () => {
+    // Mirror production: trust private proxy hops so X-Forwarded-For from
+    // loopback/linklocal resolves req.ip to the real client.
+    const app = express();
+    app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+    app.use(express.json({ limit: '64kb' }));
+    const limitedRouter = express.Router();
+    limitedRouter.post('/', createIpRateLimiter({ windowMs: 60_000, max: 2 }), (req, res) => {
+      res.json({ ok: true });
+    });
+    limitedRouter.get('/health', (req, res) => res.json({ status: 'healthy' }));
+    app.use('/api/voice-command', limitedRouter);
+    server = await startServer(app);
+    baseUrl = `http://127.0.0.1:${server.address().port}`;
+  });
+
+  after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    stopRateLimiterCleanup();
+  });
+
+  it('limits each forwarded client IP independently', async () => {
+    assert.equal((await postTranscript('203.0.113.5')).status, 200);
+    assert.equal((await postTranscript('203.0.113.5')).status, 200);
+    assert.equal((await postTranscript('203.0.113.6')).status, 200);
+    const limited = await postTranscript('203.0.113.5');
+    assert.equal(limited.status, 429);
+  });
+
+  it('keeps /health unlimited after the POST bucket is exhausted', async () => {
+    assert.equal((await postTranscript('198.51.100.7')).status, 200);
+    assert.equal((await postTranscript('198.51.100.7')).status, 200);
+    assert.equal((await postTranscript('198.51.100.7')).status, 429);
+    const res = await fetch(`${baseUrl}/api/voice-command/health`);
+    assert.equal(res.status, 200);
+  });
+});
