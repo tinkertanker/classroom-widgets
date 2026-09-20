@@ -41,6 +41,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         {
             _frameTimer.Stop();
             NoteFrameChange();
+            if (!_closing && _window is not null) RefreshSources();
         };
     }
 
@@ -315,7 +316,6 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         if (_closing || _window is null) return;
         _frameTimer.Stop();
         _frameTimer.Start();
-        RefreshSources();
     }
 
     private void NoteFrameChange()

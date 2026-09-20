@@ -135,6 +135,15 @@ test('assigns the display preview default and registers it', () => {
   assert.deepEqual(h.displayed, [true]);
 });
 
+test('keeps the display preview shortcut registered while the widget host is unavailable', () => {
+  const h = harness({ widgetShortcutsInitialized: true, displayPreviewShortcut: 'Ctrl+Alt+Shift+0' });
+  h.controller.updateOptions([{ widgetType: 1, title: 'Timer' }], false);
+  assert.equal(h.callbacks.has('Ctrl+Alt+Shift+0'), true);
+  h.controller.setHostAvailable(true);
+  h.controller.setHostAvailable(false);
+  assert.equal(h.callbacks.has('Ctrl+Alt+Shift+0'), true);
+});
+
 test('rejects a widget shortcut duplicated by the display preview shortcut', () => {
   const h = harness({
     widgetShortcutsInitialized: true,

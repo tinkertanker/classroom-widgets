@@ -217,7 +217,7 @@ export class WidgetShortcutController extends EventEmitter {
       };
     });
     const displayShortcut = normalizeAccelerator(this.settings.displayPreviewShortcut ?? '');
-    if (this.hostAvailable && !this.capturing && displayShortcut && !seen.has(displayShortcut)) {
+    if (!this.capturing && displayShortcut && !seen.has(displayShortcut)) {
       this.registrar.register(displayShortcut, this.onDisplayPreview);
       seen.add(displayShortcut);
     }

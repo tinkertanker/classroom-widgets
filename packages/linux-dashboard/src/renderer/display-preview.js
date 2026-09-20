@@ -4,6 +4,7 @@ const menu = document.getElementById('menu');
 const status = document.getElementById('status');
 let state = { powerState: 'off', powerEnabled: false, idleStartEnabled: false };
 let stream = null;
+let startToken = 0;
 
 function send(channel, payload) {
   window.displayPreview.send(channel, payload);
@@ -28,6 +29,7 @@ function imageRect() {
 }
 
 async function stopStream() {
+  startToken += 1;
   if (stream) stream.getTracks().forEach((track) => track.stop());
   stream = null;
   video.srcObject = null;
@@ -35,8 +37,9 @@ async function stopStream() {
 
 async function startStream({ sourceId, width, height }) {
   await stopStream();
+  const token = ++startToken;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
+    const next = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: { mandatory: {
         chromeMediaSource: 'desktop',
@@ -45,10 +48,16 @@ async function startStream({ sourceId, width, height }) {
         maxHeight: height,
       } },
     });
+    if (token !== startToken) {
+      next.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    stream = next;
     stream.getTracks().forEach((track) => track.addEventListener('ended', () => send('display-preview:stream-error', { message: 'The capture stream ended.' })));
     video.srcObject = stream;
     await video.play();
   } catch (error) {
+    if (token !== startToken) return;
     send('display-preview:stream-error', { message: error instanceof Error ? error.message : String(error) });
   }
 }
