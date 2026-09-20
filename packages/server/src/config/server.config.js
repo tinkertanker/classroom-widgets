@@ -18,8 +18,8 @@ module.exports = {
 
   // Per-IP limits for unauthenticated HTTP endpoints
   HTTP_RATE_LIMITS: {
-    // Session existence probe - covers a classroom joining behind one NAT
-    // while making code enumeration impractical.
+    // Session existence probe: max *misses* per IP per window. Hits are free,
+    // so a classroom behind one NAT is unaffected while guessing is capped.
     SESSION_EXISTS: { windowMs: 60_000, max: 60 }
   },
 

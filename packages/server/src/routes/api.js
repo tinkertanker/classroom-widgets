@@ -1,7 +1,7 @@
 const express = require('express');
 const { isValidSessionCode } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
-const { ipRateLimit } = require('../middleware/rateLimit');
+const { ipMissRateLimit } = require('../middleware/rateLimit');
 const serverConfig = require('../config/server.config');
 const voiceCommandRoutes = require('./voiceCommand');
 
@@ -23,20 +23,17 @@ module.exports = (sessionManager) => {
   });
 
   /**
-   * Check if session code exists. Per-IP limited: this is an unauthenticated
-   * oracle that would otherwise allow enumerating live session codes.
+   * Check if session code exists. This is an unauthenticated oracle, so
+   * misses are limited per IP to make enumerating live codes impractical;
+   * hits are not counted so a classroom behind one NAT can all join.
    */
-  router.get('/sessions/:code/exists', ipRateLimit(serverConfig.HTTP_RATE_LIMITS.SESSION_EXISTS), (req, res) => {
+  router.get('/sessions/:code/exists', ipMissRateLimit(serverConfig.HTTP_RATE_LIMITS.SESSION_EXISTS), (req, res) => {
     const { code } = req.params;
 
-    if (!isValidSessionCode(code)) {
-      return res.json({
-        success: true,
-        exists: false
-      });
+    const exists = isValidSessionCode(code) && sessionManager.getSession(code) !== undefined;
+    if (!exists) {
+      req.rateLimitMiss();
     }
-
-    const exists = sessionManager.getSession(code) !== undefined;
     res.json({
       success: true,
       exists

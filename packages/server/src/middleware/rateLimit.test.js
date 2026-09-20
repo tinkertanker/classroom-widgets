@@ -1,7 +1,7 @@
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const serverConfig = require('../config/server.config');
-const { getClientIp, ipRateLimit, stopRateLimiterCleanup } = require('./rateLimit');
+const { getClientIp, ipRateLimit, ipMissRateLimit, stopRateLimiterCleanup } = require('./rateLimit');
 
 function fakeRes() {
   return {
@@ -60,5 +60,35 @@ describe('ipRateLimit', () => {
     // A different IP is unaffected
     middleware(fakeReq('10.0.0.2'), fakeRes(), next);
     assert.equal(nextCalls, 3);
+  });
+});
+
+describe('ipMissRateLimit', () => {
+  afterEach(() => stopRateLimiterCleanup());
+
+  it('only counts requests the handler marks as misses', () => {
+    const middleware = ipMissRateLimit({ windowMs: 60_000, max: 2 });
+    const run = (ip, miss) => {
+      const req = fakeReq(ip);
+      const res = fakeRes();
+      let passed = false;
+      middleware(req, res, () => {
+        passed = true;
+        if (miss) req.rateLimitMiss();
+      });
+      return { passed, res };
+    };
+
+    // Hits never consume the budget
+    for (let i = 0; i < 20; i++) assert.equal(run('10.0.0.1', false).passed, true);
+
+    assert.equal(run('10.0.0.1', true).passed, true);
+    assert.equal(run('10.0.0.1', true).passed, true);
+
+    const blocked = run('10.0.0.1', false);
+    assert.equal(blocked.passed, false);
+    assert.equal(blocked.res.statusCode, 429);
+
+    assert.equal(run('10.0.0.2', true).passed, true);
   });
 });
