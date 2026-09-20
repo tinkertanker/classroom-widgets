@@ -4,6 +4,7 @@ const menu = document.getElementById('menu');
 const status = document.getElementById('status');
 let state = { powerState: 'off', powerEnabled: false, idleStartEnabled: false };
 let stream = null;
+let streamId = null;
 let startToken = 0;
 
 function send(channel, payload) {
@@ -13,6 +14,7 @@ function send(channel, payload) {
 function applyState(next) {
   state = { ...state, ...next };
   status.textContent = state.statusMessage || '';
+  status.title = status.textContent;
   power.textContent = state.powerState === 'on' ? 'Turn preview off' : 'Turn preview on';
   power.disabled = !state.powerEnabled;
 }
@@ -28,16 +30,18 @@ function imageRect() {
   return { x: (bounds.width - imageWidth) / 2, y: (bounds.height - imageHeight) / 2, width: imageWidth, height: imageHeight };
 }
 
-async function stopStream() {
+function stopStream() {
   startToken += 1;
+  streamId = null;
   if (stream) stream.getTracks().forEach((track) => track.stop());
   stream = null;
   video.srcObject = null;
 }
 
-async function startStream({ sourceId, width, height }) {
-  await stopStream();
+async function startStream({ streamId: id, sourceId, width, height }) {
+  stopStream();
   const token = ++startToken;
+  streamId = id;
   try {
     const next = await navigator.mediaDevices.getUserMedia({
       audio: false,
@@ -53,24 +57,31 @@ async function startStream({ sourceId, width, height }) {
       return;
     }
     stream = next;
-    stream.getTracks().forEach((track) => track.addEventListener('ended', () => send('display-preview:stream-error', { message: 'The capture stream ended.' })));
+    stream.getTracks().forEach((track) => track.addEventListener('ended', () => {
+      if (token === startToken) send('display-preview:stream-error', { streamId: id, message: 'The capture stream ended.' });
+    }));
     video.srcObject = stream;
     await video.play();
+    if (token !== startToken) return;
+    send('display-preview:stream-live', { streamId: id });
   } catch (error) {
     if (token !== startToken) return;
-    send('display-preview:stream-error', { message: error instanceof Error ? error.message : String(error) });
+    send('display-preview:stream-error', { streamId: id, message: error instanceof Error ? error.message : String(error) });
   }
 }
 
 window.displayPreview.on('display-preview:state', applyState);
 window.displayPreview.on('display-preview:start-stream', startStream);
 window.displayPreview.on('display-preview:stop-stream', stopStream);
-video.addEventListener('loadedmetadata', () => send('display-preview:stream-live', { videoWidth: video.videoWidth, videoHeight: video.videoHeight }));
-video.addEventListener('error', () => send('display-preview:stream-error', { message: 'The preview video failed.' }));
+video.addEventListener('error', () => {
+  if (stream && video.srcObject === stream && video.error) {
+    send('display-preview:stream-error', { streamId, message: 'The preview video failed.' });
+  }
+});
 power.addEventListener('click', () => send('display-preview:action', { action: 'toggle-power' }));
 menu.addEventListener('click', () => send('display-preview:action', { action: 'open-menu' }));
 video.addEventListener('click', (event) => {
   const bounds = video.getBoundingClientRect();
-  send('display-preview:click', { x: event.clientX - bounds.left, y: event.clientY - bounds.top, imageRect: imageRect() });
+  send('display-preview:click', { streamId, x: event.clientX - bounds.left, y: event.clientY - bounds.top, imageRect: imageRect() });
 });
 applyState(state);
