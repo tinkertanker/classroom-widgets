@@ -205,7 +205,7 @@ const About: React.FC = () => {
             Meet the Widgets
           </h3>
           <p className="text-center text-warm-gray-500 dark:text-warm-gray-400 mb-12 max-w-2xl mx-auto">
-            Student interaction widgets let your class join from any device with a 5-character code. No app download, no account.
+            Student interaction widgets let your class join from any device with a 6-character code. No app download, no account.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[
@@ -342,7 +342,7 @@ const About: React.FC = () => {
                 Students Join the Party
               </h4>
               <p className="text-warm-gray-600 dark:text-warm-gray-400">
-                Want student vibes? They punch in 5 characters and boom - 
+                Want student vibes? They punch in 6 characters and boom - 
                 widgets on their screens waiting for their response. It's like magic but with more WiFi issues.
               </p>
             </div>

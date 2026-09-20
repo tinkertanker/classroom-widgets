@@ -1,0 +1,43 @@
+<Window x:Class="ClassroomWidgets.DisplayPreviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Display"
+        Topmost="True"
+        ResizeMode="CanResize"
+        ShowInTaskbar="True"
+        Background="Black"
+        MinWidth="320"
+        MinHeight="282">
+    <Grid Background="Black">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="42" />
+        </Grid.RowDefinitions>
+        <Grid x:Name="PreviewSurface"
+              Grid.Row="0"
+              Background="Transparent"
+              MouseLeftButtonDown="PreviewImage_MouseLeftButtonDown"
+              Cursor="Cross">
+            <Image x:Name="PreviewImage"
+                   Stretch="Uniform"
+                   SnapsToDevicePixels="True" />
+        </Grid>
+        <Border Grid.Row="1" Background="#DD202020">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="42" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="42" />
+                </Grid.ColumnDefinitions>
+                <Button x:Name="PowerButton" Grid.Column="0" Content="&#xE7E8;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                        Background="Transparent" Foreground="White" BorderThickness="0"
+                        Click="PowerButton_Click" />
+                <TextBlock x:Name="StatusText" Grid.Column="1" VerticalAlignment="Center"
+                           Foreground="White" TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="2" Content="⋯" FontSize="20"
+                        Background="Transparent" Foreground="White" BorderThickness="0"
+                        Click="MenuButton_Click" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

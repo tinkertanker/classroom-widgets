@@ -8,6 +8,7 @@ function harness(settingsOverrides = {}, refused = []) {
     widgetShortcutsInitialized: false,
     widgetShortcuts: {},
     widgetDismissShortcuts: {},
+    displayPreviewShortcut: null,
     notifyChanged() { this.changed = (this.changed || 0) + 1; },
   }, settingsOverrides);
   const registrar = {
@@ -21,14 +22,16 @@ function harness(settingsOverrides = {}, refused = []) {
   const launched = [];
   const dismissed = [];
   const toggled = [];
+  const displayed = [];
   return {
-    settings, callbacks, launched, dismissed, toggled,
+    settings, callbacks, launched, dismissed, toggled, displayed,
     controller: new WidgetShortcutController(
       settings,
       registrar,
       (type) => launched.push(type),
       (type) => dismissed.push(type),
       (type) => toggled.push(type),
+      () => displayed.push(true),
     ),
   };
 }
@@ -122,4 +125,32 @@ test('distinct show and dismiss shortcuts always launch and dismiss separately',
   assert.deepEqual(h.launched, [1, 1]);
   assert.deepEqual(h.dismissed, [1]);
   assert.deepEqual(h.toggled, []);
+});
+
+test('assigns the display preview default and registers it', () => {
+  const h = harness();
+  h.controller.updateOptions([{ widgetType: 1, title: 'Timer' }]);
+  assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
+  h.callbacks.get('Ctrl+Alt+Shift+0')();
+  assert.deepEqual(h.displayed, [true]);
+});
+
+test('keeps the display preview shortcut registered while the widget host is unavailable', () => {
+  const h = harness({ widgetShortcutsInitialized: true, displayPreviewShortcut: 'Ctrl+Alt+Shift+0' });
+  h.controller.updateOptions([{ widgetType: 1, title: 'Timer' }], false);
+  assert.equal(h.callbacks.has('Ctrl+Alt+Shift+0'), true);
+  h.controller.setHostAvailable(true);
+  h.controller.setHostAvailable(false);
+  assert.equal(h.callbacks.has('Ctrl+Alt+Shift+0'), true);
+});
+
+test('rejects a widget shortcut duplicated by the display preview shortcut', () => {
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    displayPreviewShortcut: 'Ctrl+Alt+Shift+0',
+    widgetShortcuts: { '1': null },
+    widgetDismissShortcuts: { '1': null },
+  });
+  h.controller.updateOptions([{ widgetType: 1, title: 'Timer' }]);
+  assert.deepEqual(h.controller.setShortcut(1, 'Alt+Ctrl+Shift+0'), { ok: false, error: 'Already assigned to another widget.' });
 });

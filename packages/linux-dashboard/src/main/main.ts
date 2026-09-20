@@ -1,4 +1,4 @@
-import { app, globalShortcut, session } from 'electron';
+import { app, globalShortcut, screen, session, desktopCapturer } from 'electron';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
@@ -6,6 +6,8 @@ import { WidgetHostController } from './hostController';
 import { LauncherWindow } from './launcherWindow';
 import { log } from './log';
 import { DashboardSettings } from './settings';
+import { DisplayCatalog } from './displayCatalog';
+import { DisplayPreviewCoordinator } from './displayPreview';
 import { isBackgroundLaunch } from './startup';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
@@ -54,6 +56,7 @@ function bootstrap(): void {
   let tray: TrayController | null = null;
   let updates: UpdateController | null = null;
   let shortcuts: WidgetShortcutController | null = null;
+  let displayPreview: DisplayPreviewCoordinator | null = null;
   let shuttingDown = false;
   let terminationPrepared = false;
   let launcherRequested = !isBackgroundLaunch(process.argv);
@@ -75,6 +78,7 @@ function bootstrap(): void {
   const requestQuit = async (): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
+    displayPreview?.shutdown();
     host?.markShuttingDown();
     if (host && !terminationPrepared) {
       terminationPrepared = await host.prepareForTermination();
@@ -103,6 +107,7 @@ function bootstrap(): void {
 
   app.on('before-quit', () => {
     shuttingDown = true;
+    displayPreview?.shutdown();
     host?.markShuttingDown();
     host?.panelCoordinator.flushPersistedFrames();
     // Panels must not preventDefault the close events that quit triggers.
@@ -115,6 +120,8 @@ function bootstrap(): void {
     log.info(`Classroom Widgets ${version} starting`);
 
     settings = DashboardSettings.load();
+    const displayCatalog = new DisplayCatalog(screen);
+    displayPreview = new DisplayPreviewCoordinator(settings, displayCatalog, { desktopCapturer, screen });
     host = new WidgetHostController(settings, version);
     launcher = new LauncherWindow(version, (widgetType) => {
       if (host?.widgetOptions.some((option) => option.widgetType === widgetType)) {
@@ -127,7 +134,9 @@ function bootstrap(): void {
       (widgetType) => void host?.addWidget(widgetType),
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
+      () => displayPreview?.open(),
     );
+    host.panelCoordinator.on('displayPreviewRequested', () => displayPreview?.open());
     host.on('openSettingsRequested', () => openSettingsWindow(settings!, shortcuts!, version));
     host.on('widgetOptionsChanged', () => {
       shortcuts?.updateOptions(host?.widgetOptions ?? []);
@@ -138,7 +147,7 @@ function bootstrap(): void {
     host.applySettings();
 
     updates = new UpdateController(version, () => void requestQuit());
-    tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit());
+    tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit(), () => displayPreview?.open());
     void host.start();
     setTimeout(() => void updates?.check(), 10_000);
   });

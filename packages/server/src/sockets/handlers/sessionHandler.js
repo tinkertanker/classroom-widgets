@@ -3,9 +3,11 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
+const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 
 const SESSION_DEBUG = process.env.SESSION_DEBUG === 'true';
+const JOIN_MISS_EVENT = 'session:join:miss';
 
 /**
  * Get the server origin from socket handshake or use default
@@ -38,9 +40,20 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         callback = data;
         data = {};
       }
-      
-      const { existingCode, hostToken } = data;
 
+      const rateLimitResult = eventRateLimiter(socket, EVENTS.SESSION.CREATE);
+      if (!rateLimitResult.allowed) {
+        logger.warn('session:create', 'Rate limited', { clientIP: socket.clientIP });
+        callback({
+          success: false,
+          error: 'Too many session requests. Please try again later.',
+          retryAfter: rateLimitResult.retryAfter
+        });
+        return;
+      }
+
+      const { existingCode, hostToken } = data;
+      
       // Check if host already has a session
       let existingSession = sessionManager.findSessionByHost(socket.id);
 
@@ -128,10 +141,23 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
     
     try {
+      const rateLimitResult =
+        [eventRateLimiter(socket, EVENTS.SESSION.JOIN), eventRateLimiter(socket, JOIN_MISS_EVENT, { consume: false })]
+          .find(result => !result.allowed);
+      if (rateLimitResult) {
+        socket.emit('session:joined', {
+          success: false,
+          error: 'Too many join attempts. Please wait a moment and try again.',
+          retryAfter: rateLimitResult.retryAfter
+        });
+        return;
+      }
+
       const { code, studentId } = data;
       let { name } = data;
 
       if (!code || !name || typeof code !== 'string' || typeof name !== 'string') {
+        eventRateLimiter(socket, JOIN_MISS_EVENT);
         socket.emit('session:joined', {
           success: false,
           error: 'Code and name are required'
@@ -156,6 +182,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         if (SESSION_DEBUG) {
           logger.info('[sessionHandler] Session not found:', code);
         }
+        eventRateLimiter(socket, JOIN_MISS_EVENT);
         socket.emit('session:joined', {
           success: false,
           error: 'Session not found'

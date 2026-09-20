@@ -49,6 +49,7 @@ public partial class WidgetPanelWindow : Window
     public event Action<JsonElement>? RandomiserListChanged;
     public event Action<string>? RemovalRequested;
     public event Action<int>? WidgetCreationRequested;
+    public event Action? DisplayPreviewRequested;
     public event Action<WidgetPanelLayout>? LayoutRequested;
     public event Action<string, Rect>? FrameChanged;
     public event Action? OpenSettingsRequested;
@@ -153,13 +154,17 @@ public partial class WidgetPanelWindow : Window
     {
         _options = options;
         AddMenu.Items.Clear();
+        var display = new MenuItem { Header = "Display" };
+        display.Click += (_, _) => DisplayPreviewRequested?.Invoke();
+        AddMenu.Items.Add(display);
+        AddMenu.Items.Add(new Separator());
         foreach (var option in options)
         {
             var item = new MenuItem { Header = option.Title, Tag = option.WidgetType };
             item.Click += (_, _) => WidgetCreationRequested?.Invoke(option.WidgetType);
             AddMenu.Items.Add(item);
         }
-        AddButton.IsEnabled = options.Count > 0;
+        AddButton.IsEnabled = true;
     }
 
     public void SetFrame(Rect frame, bool initializing = false)

@@ -24,6 +24,7 @@ public sealed class WidgetPanelCoordinator
     public event Action<WidgetPanelStateChange>? PanelStateChanged;
     public event Action<JsonElement>? RandomiserListChanged;
     public event Action<int>? WidgetCreationRequested;
+    public event Action? DisplayPreviewRequested;
     public event Action<string>? WidgetRemovalRequested;
     public event Action? OpenSettingsRequested;
 
@@ -185,6 +186,7 @@ public sealed class WidgetPanelCoordinator
         panel.RandomiserListChanged += change => RandomiserListChanged?.Invoke(change);
         panel.RemovalRequested += widgetId => WidgetRemovalRequested?.Invoke(widgetId);
         panel.WidgetCreationRequested += widgetType => WidgetCreationRequested?.Invoke(widgetType);
+        panel.DisplayPreviewRequested += () => DisplayPreviewRequested?.Invoke();
         panel.OpenSettingsRequested += () => OpenSettingsRequested?.Invoke();
         panel.LayoutRequested += Arrange;
         panel.FrameChanged += (widgetId, frame) =>

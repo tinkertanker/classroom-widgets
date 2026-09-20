@@ -13,7 +13,8 @@ const path = require('path');
 const serverConfig = require('./config/server.config');
 
 // Import middleware
-const { socketAuth, stopRateLimiterCleanup } = require('./middleware/socketAuth');
+const { socketAuth } = require('./middleware/socketAuth');
+const { stopRateLimiterCleanup } = require('./middleware/rateLimit');
 const { AuthorizationError, expressErrorHandler, setupGlobalErrorHandlers } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 
