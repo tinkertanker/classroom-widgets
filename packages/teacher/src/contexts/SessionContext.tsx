@@ -53,6 +53,7 @@ interface SessionContextValue {
   isRecovering: boolean;
   isSessionReady: boolean;
   // Call-time guard for editors/actions that may outlive a render or session.
+  isCurrentSession: () => boolean;
   canEditSession: () => boolean;
   serverUrl: string;
   studentAppUrl: string | null;  // URL where students should connect
@@ -97,6 +98,7 @@ export const useSession = () => {
         isConnected: false,
         isRecovering: false,
         isSessionReady: false,
+        isCurrentSession: () => true,
         canEditSession: () => true,
         serverUrl: '',
         studentAppUrl: null,
@@ -175,13 +177,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const recoveryPromiseRef = useRef<Promise<boolean> | null>(null);
   const recoveryResolveRef = useRef<((success: boolean) => void) | null>(null);
 
+  // Editors can retry an unreclaimed session, but never a replaced identity.
+  const isCurrentSession = useCallback(() => (
+    socketRef.current === socket && sessionCodeRef.current === sessionCode
+  ), [sessionCode, socket]);
+
   // No classroom means local editing is allowed, even offline. Otherwise the
   // current socket must have reclaimed this identity. Read phase at call time:
   // modal content retains callbacks from before disconnect/recovery.
   const canEditSession = useCallback(() => (
-    socketRef.current === socket && sessionCodeRef.current === sessionCode &&
+    isCurrentSession() &&
     (!sessionCode || (Boolean(socket?.connected) && connectionPhaseRef.current === 'recovered'))
-  ), [sessionCode, socket]);
+  ), [sessionCode, socket, isCurrentSession]);
 
   // Constants
   const TWO_HOURS = 2 * 60 * 60 * 1000;
@@ -890,6 +897,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     isConnected,
     isRecovering,
     isSessionReady,
+    isCurrentSession,
     canEditSession,
     serverUrl,
     studentAppUrl,
@@ -920,6 +928,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     isConnected,
     isRecovering,
     isSessionReady,
+    isCurrentSession,
     canEditSession,
     serverUrl,
     studentAppUrl,

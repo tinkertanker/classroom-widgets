@@ -63,6 +63,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     error,
     handleStart,
     canEdit,
+    editorScope,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -170,14 +171,14 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     showModal({
       title: 'Poll Settings',
       content: <PollSettings
+        editorScope={editorScope}
         initialData={{
           question: pollData.question,
           options: pollData.options
         }}
         onSave={(data) => {
-          if (!canEdit()) return;
+          if (!canEdit()) return false;
           updatePoll(data);
-          hideModal();
 
           // Auto-resize if number of options changed
           if (data.options.length !== pollData.options.length && widget && resize) {
@@ -190,12 +191,13 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
             debug(`[Poll] Auto-resizing after settings change to height: ${calculatedHeight} for ${data.options.length} options`);
             resize({ width: widget.size.width, height: calculatedHeight });
           }
+          return true;
         }}
         onClose={hideModal}
       />,
       onClose: hideModal
     });
-  }, [showModal, hideModal, updatePoll, pollData, canEdit]);
+  }, [showModal, hideModal, updatePoll, pollData, canEdit, editorScope]);
 
   const resetVotes = useCallback(() => {
     if (!hasRoom || !canEdit()) return;

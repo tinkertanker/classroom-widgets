@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession, isRecoverySettled } from '../../../contexts/SessionContext';
 import { debug } from '@shared/utils/debug';
+import type { SessionEditorScope } from './useSessionEditor';
 
 export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout' | 'activity';
 
@@ -21,6 +22,7 @@ interface UseNetworkedWidgetResult {
   handleStart: () => Promise<void>;
   handleStop: () => void;
   canEdit: () => boolean;
+  editorScope: SessionEditorScope;
   
   // Session info
   session: {
@@ -213,6 +215,7 @@ export function useNetworkedWidget({
     handleStart,
     handleStop,
     canEdit: session.canEditSession,
+    editorScope: session,
     session: {
       socket: session.socket,
       sessionCode: session.sessionCode,

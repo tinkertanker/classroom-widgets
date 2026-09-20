@@ -22,7 +22,7 @@ import PollSettings from '../features/widgets/poll/PollSettings';
 const transport = vi.hoisted(() => ({ socket: null as any }));
 vi.mock('../hooks/useSocket', () => ({ useSocket: () => ({ socket: transport.socket }) }));
 
-// The only mock is transport. Provider, store/persistence, widget hooks,
+// Only transport and clipboard I/O are mocked. Provider, store/persistence, widget hooks,
 // controls, modal/editor, session/IP limiter and host handlers are real.
 process.env.LOG_LEVEL = 'error';
 const require = createRequire(import.meta.url);
@@ -372,6 +372,129 @@ describe('session recovery consumer invariants (#157)', () => {
     expect(server.sent).toHaveLength(sent);
     expect(save).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Links + Text' })).toBeDisabled();
+  });
+
+  describe.each([
+    ['Poll', Poll, 'poll', 'poll-1', 'Choose a number', 'A retained poll draft', 'Save Changes'],
+    ['Fill Blank', FillBlank, 'activity', 'activity-1', 'Use {{care}}', 'Use {{patience}}', 'Save Activity'],
+    ['Code Fill Blank', CodeFillBlank, 'activity', 'activity-1', 'Use {{care}}', 'Use {{patience}}', 'Save Activity']
+  ] as const)('%s open editor', (_name, Component, roomType, widgetId, initialValue, draft, saveLabel) => {
+    const openEditor = async () => {
+      if (roomType === 'activity') server.session.createRoom(roomType, widgetId).isActive = true;
+      const save = vi.fn((state: any) => useWorkspaceStore.getState().updateWidgetState(widgetId, state));
+      const savedState = { activityData: { template: 'Use {{care}}', answers: ['care'], distractors: ['rush'], language: 'python' } };
+      mount(<Component widgetId={widgetId} savedState={savedState} onStateChange={save} />);
+      await connect();
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+      const dialog = screen.getByRole('dialog');
+      fireEvent.change(within(dialog).getByDisplayValue(initialValue), { target: { value: draft } });
+      return { dialog, save };
+    };
+
+    it('recovers from inside the same modal and saves the retained draft', async () => {
+      const createdAt = Date.now();
+      const { dialog, save } = await openEditor();
+      await defer();
+      expect(server.client.connected).toBe(true);
+      expect(within(dialog).getByRole('button', { name: saveLabel })).toBeDisabled();
+      const token = localStorage.getItem(TOKEN);
+      const saved = useWorkspaceStore.getState().widgetStates.get(widgetId);
+      await advance(60_001);
+      const retry = within(dialog).getByRole('button', { name: 'Retry session recovery from editor' });
+      // Both events arrive before a render. Only one recovery run may start.
+      act(() => { fireEvent.click(retry); fireEvent.click(retry); });
+      expect(server.creates()).toHaveLength(5);
+      expect(retry).toBeDisabled();
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      expect(within(dialog).getByDisplayValue(draft)).toBeInTheDocument();
+      expect(useWorkspaceStore.getState().widgetStates.get(widgetId)).toEqual(saved);
+      await respond();
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      expect(within(dialog).queryByRole('button', { name: 'Retry session recovery from editor' })).not.toBeInTheDocument();
+      expect(within(dialog).getByRole('button', { name: saveLabel })).toBeEnabled();
+      expect(session.sessionCreatedAt).toBe(createdAt);
+      expect(persistedAge()).toBe(createdAt);
+      expect(localStorage.getItem(TOKEN)).not.toBe(token);
+      expect(server.manager.getSession(CODE)).toBe(server.session);
+      expect(server.session.getParticipants().map((student: any) => student.name)).toEqual(['Ada', 'Bo']);
+      save.mockClear();
+      fireEvent.click(within(dialog).getByRole('button', { name: saveLabel }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      const state = save.mock.lastCall![0];
+      expect(roomType === 'poll' ? state.pollData.question : state.activityData.template).toBe(draft);
+      if (roomType === 'poll') expect(server.poll.pollData.question).toBe(draft);
+    });
+
+    it('keeps the old draft disabled and copyable when the real handler replaces the classroom', async () => {
+      const { dialog, save } = await openEditor();
+      const clipboard = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: clipboard } });
+      // A different host consumed the reclaim credential. The real handler
+      // refuses this client's stale token and creates a new classroom.
+      server.session.rotateHostToken();
+      act(() => server.disconnect());
+      await connect();
+      expect(session.sessionCode).not.toBe(CODE);
+      expect(session.isSessionReady).toBe(true);
+      expect(server.manager.getSession(CODE)).toBe(server.session);
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      expect(within(dialog).getByDisplayValue(draft)).toBeInTheDocument();
+      const saveButton = within(dialog).getByRole('button', { name: saveLabel });
+      expect(saveButton).toBeDisabled();
+      expect(within(dialog).getByText(/classroom or connection changed/i)).toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: 'Retry session recovery from editor' })).not.toBeInTheDocument();
+      const sent = server.sent.length;
+      save.mockClear();
+      fireEvent.click(saveButton);
+      expect(save).not.toHaveBeenCalled();
+      expect(server.sent).toHaveLength(sent);
+      expect(screen.getByRole('dialog')).toBe(dialog);
+      await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Copy draft' })); });
+      const copied = JSON.parse(clipboard.mock.calls[0][0]);
+      expect(roomType === 'poll' ? copied.question : copied.template).toBe(draft);
+      expect(screen.getByRole('dialog')).toBe(dialog);
+    });
+  });
+
+  it('keeps a poll editor open through another bounded deferred run and later success', async () => {
+    const createdAt = Date.now();
+    mount(<Poll widgetId="poll-1" savedState={{}} onStateChange={savePoll} />);
+    await connect();
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(within(dialog).getByDisplayValue('Choose a number'), { target: { value: 'Keep this draft' } });
+    await defer();
+    const retry = within(dialog).getByRole('button', { name: 'Retry session recovery from editor' });
+    fireEvent.click(retry);
+    await respond();
+    for (let attempt = 2; attempt <= 3; attempt++) {
+      await advance(60_001);
+      await server.spendBudget(30);
+      await respond();
+    }
+    expect(server.creates()).toHaveLength(7);
+    expect(screen.getByRole('dialog')).toBe(dialog);
+    expect(within(dialog).getByDisplayValue('Keep this draft')).toBeInTheDocument();
+    expect(retry).toBeEnabled();
+    expect(persistedAge()).toBe(createdAt);
+    expect(server.poll.pollData.question).toBe('Choose a number');
+    await advance(60_001);
+    fireEvent.click(retry);
+    await respond();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save Changes' }));
+    expect(server.poll.pollData.question).toBe('Keep this draft');
+    expect(server.creates()).toHaveLength(8);
+  });
+
+  it('does not close a local Poll editor when its owner declines the save', () => {
+    useWorkspaceStore.setState({ sessionCode: null, sessionCreatedAt: null });
+    const close = vi.fn();
+    const save = vi.fn(() => false);
+    mount(<PollSettings onClose={close} onSave={save} initialData={{ question: 'Local draft', options: ['A', 'B'] }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    expect(save).toHaveBeenCalledOnce();
+    expect(close).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('Local draft')).toBeInTheDocument();
   });
 
   it('allows standalone offline editor saves without a classroom session', () => {

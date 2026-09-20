@@ -49,6 +49,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     error,
     handleStart,
     canEdit,
+    editorScope,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -156,6 +157,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
       title: 'Fill in the Blanks Editor',
       content: (
         <FillBlankEditor
+          editorScope={editorScope}
           initialData={activityData}
           onSave={(data) => {
             if (!canEdit()) return;
@@ -167,7 +169,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
       ),
       onClose: hideModal
     });
-  }, [showModal, hideModal, activityData, canEdit]);
+  }, [showModal, hideModal, activityData, canEdit, editorScope]);
 
   // Save state
   useEffect(() => {
