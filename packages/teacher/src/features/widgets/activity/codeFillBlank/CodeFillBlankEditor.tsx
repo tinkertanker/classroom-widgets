@@ -2,8 +2,11 @@ import React, { useState, useCallback } from 'react';
 import { FaPlus, FaXmark } from 'react-icons/fa6';
 import { buttons } from '@shared/utils/styles';
 import { parseAnswers } from '../shared/activityBuilders';
+import { useSessionEditor, type SessionEditorScope } from '../../../session/hooks/useSessionEditor';
+import { SessionEditorRecovery } from '../../shared/components/SessionEditorRecovery';
 
 interface CodeFillBlankEditorProps {
+  editorScope?: SessionEditorScope;
   initialData?: {
     template: string;
     answers: string[];
@@ -28,7 +31,8 @@ interface CodeFillBlankEditorProps {
  * Teacher enters code with blanks marked using ___answer___ syntax.
  * Example: "def ___greet___(name):\n    return ___\"Hello, \"___ + name"
  */
-export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBlankEditorProps) {
+export function CodeFillBlankEditor({ initialData, onSave, onClose, editorScope }: CodeFillBlankEditorProps) {
+  const editor = useSessionEditor(editorScope);
   const [template, setTemplate] = useState(initialData?.template || '');
   const [language, setLanguage] = useState<'python' | 'javascript' | 'text'>(initialData?.language || 'python');
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
@@ -49,6 +53,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
   };
 
   const handleSave = () => {
+    if (!editor.canSave()) return;
     if (answers.length === 0) {
       alert('Please add at least one blank using {{answer}} syntax');
       return;
@@ -200,6 +205,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
         <strong>Note:</strong> Answers are matched with flexible whitespace (extra spaces are ignored).
       </div>
 
+      <SessionEditorRecovery editor={editor} draft={JSON.stringify({ template, distractors, language }, null, 2)} />
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700">
         <button
@@ -210,7 +216,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
         </button>
         <button
           onClick={handleSave}
-          disabled={answers.length === 0}
+          disabled={answers.length === 0 || !editor.canSave()}
           className={`${buttons.primary} px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           Save Activity

@@ -26,8 +26,8 @@ function registerIpcHandlers(): void {
   ipcMain.on('display-preview:click', (event, message: unknown) => {
     windows.get(event.sender.id)?.handleClick(message);
   });
-  ipcMain.on('display-preview:stream-live', (event) => {
-    windows.get(event.sender.id)?.handleStreamLive();
+  ipcMain.on('display-preview:stream-live', (event, message: unknown) => {
+    windows.get(event.sender.id)?.handleStreamLive(message);
   });
   ipcMain.on('display-preview:stream-error', (event, message: unknown) => {
     windows.get(event.sender.id)?.handleStreamError(message);
@@ -40,8 +40,10 @@ export class DisplayPreviewWindow extends EventEmitter {
   private readonly win: BrowserWindow;
   private ready = false;
   private pendingState: DisplayPreviewState | null = null;
-  private pendingStart: { sourceId: string; width: number; height: number } | null = null;
+  private pendingStart: { streamId: number; sourceId: string; width: number; height: number } | null = null;
   private pendingStop = false;
+  private nextStreamId = 0;
+  private streamId: number | null = null;
 
   constructor(bounds: Rect) {
     super();
@@ -94,16 +96,24 @@ export class DisplayPreviewWindow extends EventEmitter {
 
   handleClick(message: unknown): void {
     if (!message || typeof message !== 'object') return;
-    const value = message as { x?: unknown; y?: unknown; imageRect?: unknown };
+    const value = message as { x?: unknown; y?: unknown; imageRect?: unknown; streamId?: unknown };
+    if (value.streamId !== this.streamId) return;
     if (typeof value.x !== 'number' || typeof value.y !== 'number' || !value.imageRect) return;
     this.emit('previewClick', { x: value.x, y: value.y, imageRect: value.imageRect });
   }
 
-  handleStreamLive(): void {
+  private matchesStream(message: unknown): boolean {
+    return this.streamId !== null && !!message && typeof message === 'object'
+      && (message as { streamId?: unknown }).streamId === this.streamId;
+  }
+
+  handleStreamLive(message: unknown): void {
+    if (!this.matchesStream(message)) return;
     this.emit('streamLive');
   }
 
   handleStreamError(message: unknown): void {
+    if (!this.matchesStream(message)) return;
     const text = message && typeof message === 'object' && typeof (message as { message?: unknown }).message === 'string'
       ? (message as { message: string }).message
       : String(message ?? 'Unknown error');
@@ -154,7 +164,8 @@ export class DisplayPreviewWindow extends EventEmitter {
 
   startStream(sourceId: string, size: Size): void {
     if (this.win.isDestroyed()) return;
-    const start = { sourceId, width: size.width, height: size.height };
+    this.streamId = ++this.nextStreamId;
+    const start = { streamId: this.streamId, sourceId, width: size.width, height: size.height };
     if (!this.ready) {
       this.pendingStart = start;
       this.pendingStop = false;
@@ -164,6 +175,7 @@ export class DisplayPreviewWindow extends EventEmitter {
   }
 
   stopStream(): void {
+    this.streamId = null;
     if (this.win.isDestroyed()) return;
     if (!this.ready) {
       this.pendingStart = null;

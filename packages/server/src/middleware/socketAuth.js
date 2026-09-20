@@ -3,6 +3,7 @@ const { logger } = require('../utils/logger');
 const {
   createWindowCounter,
   getClientIp,
+  pendingCleanupHandles,
   stopRateLimiterCleanup
 } = require('./rateLimit');
 
