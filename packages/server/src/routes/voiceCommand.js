@@ -632,7 +632,9 @@ if (VOICE_COMMAND_DEBUG) {
 }
 
 // Rate limit this unauthenticated endpoint (covers both POST and /health GET).
-router.use(createIpRateLimiter({ windowMs: 10_000, max: 30 }));
+// Without `trust proxy`, req.ip is the reverse proxy's address in production,
+// so the window is generous enough for many teachers sharing one bucket.
+router.use(createIpRateLimiter({ windowMs: 10_000, max: 60 }));
 
 // POST /api/voice-command
 router.post('/', async (req, res) => {
