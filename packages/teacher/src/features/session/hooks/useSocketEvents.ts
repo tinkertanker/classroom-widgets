@@ -24,7 +24,7 @@ export function useSocketEvents({
   events,
   isActive = true
 }: UseSocketEventsProps): UseSocketEventsReturn {
-  const { socket, isConnected } = useSession();
+  const { socket, sessionCode, canEditSession } = useSession();
   const eventsRef = useRef(events);
 
   // Update events ref to avoid stale closures
@@ -69,19 +69,19 @@ export function useSocketEvents({
   
   // Emit function with type safety
   const emit = useCallback(<T extends ClientEventName>(event: T, data: ClientEventData<T>) => {
-    if (!socket || !isConnected) {
-      console.warn(`[SocketEvents] Cannot emit ${event} - not connected`);
+    if (!socket?.connected || !sessionCode || !canEditSession()) {
+      console.warn(`[SocketEvents] Cannot emit ${event} - session not ready`);
       return;
     }
 
     socket.emit(event, data);
-  }, [socket, isConnected]);
+  }, [socket, sessionCode, canEditSession]);
 
   // Emit with acknowledgment and type safety
   const emitWithAck = useCallback(async <T extends ClientEventName>(event: T, data: ClientEventData<T>): Promise<any> => {
-    if (!socket || !isConnected) {
-      console.warn(`[SocketEvents] Cannot emit ${event} - not connected`);
-      throw new Error('Not connected to server');
+    if (!socket?.connected || !sessionCode || !canEditSession()) {
+      console.warn(`[SocketEvents] Cannot emit ${event} - session not ready`);
+      throw new Error('Session not ready');
     }
 
     return new Promise((resolve, reject) => {
@@ -98,7 +98,7 @@ export function useSocketEvents({
         }
       });
     });
-  }, [socket, isConnected]);
+  }, [socket, sessionCode, canEditSession]);
   
   return { emit, emitWithAck };
 }

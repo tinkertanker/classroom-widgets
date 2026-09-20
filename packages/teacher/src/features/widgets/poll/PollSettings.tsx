@@ -3,18 +3,23 @@ import { WidgetInput } from '@shared/components/WidgetInput';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
 import { SavedPollQuestion } from '@shared/types/storage';
+import { useSessionEditor, type SessionEditorScope } from '../../session/hooks/useSessionEditor';
+import { SessionEditorRecovery } from '../shared/components/SessionEditorRecovery';
 
 interface PollSettingsProps {
   onClose: () => void;
-  onSave?: (data: { question: string; options: string[] }) => void;
+  onSave?: (data: { question: string; options: string[] }) => boolean | void;
   initialData?: { question: string; options: string[] };
+  editorScope?: SessionEditorScope;
 }
 
 const PollSettings: React.FC<PollSettingsProps> = ({
   onClose,
   onSave,
-  initialData
+  initialData,
+  editorScope
 }) => {
+  const editor = useSessionEditor(editorScope);
   const pollData = initialData || { question: '', options: ['', ''] };
   const updatePoll = onSave;
   
@@ -117,15 +122,18 @@ const PollSettings: React.FC<PollSettingsProps> = ({
           </p>
         </div>
       </div>
+      <div className="px-6 pb-3">
+        <SessionEditorRecovery editor={editor} draft={JSON.stringify({ question, options }, null, 2)} />
+      </div>
       <div className="px-6 pb-4 flex justify-center">
         <button
           onClick={() => {
-            if (updatePoll) {
-              updatePoll({ question, options });
-            }
+            if (!editor.canSave()) return;
+            if (updatePoll?.({ question, options }) === false) return;
             onClose();
           }}
-          className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
+          disabled={!editor.canSave()}
+          className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save Changes
         </button>

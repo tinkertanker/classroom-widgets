@@ -50,11 +50,14 @@ export interface DisplayPreviewWindowLike extends EventEmitter {
 
 const MINIMUM_PREVIEW_SIZE = { width: 320, height: 180 };
 const FRAME_INSET = 12;
+const OVERLAP_MESSAGE = 'Preview suspended while it overlaps the source display. Move it fully clear to resume.';
 
 export class DisplayPreviewCoordinator extends EventEmitter {
   private window: DisplayPreviewWindowLike | null = null;
   private candidates: DisplayDescriptor[] = [];
   private selectedSource: DisplayDescriptor | null = null;
+  private captureSource: DisplayDescriptor | null = null;
+  private streamLive = false;
   private wantsCapture = false;
   private suspendedForOverlap = false;
   private frameTimer: NodeJS.Timeout | null = null;
@@ -115,30 +118,42 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     });
     window.on('menuRequested', () => this.showMenu());
     window.on('previewClick', (value: { x: number; y: number; imageRect: Rect }) => {
+      const wasCapturing = this.wantsCapture;
+      const source = this.captureSource;
+      this.refreshSources();
       if (!this.selectedSource) return;
-      if (!this.wantsCapture) {
+      if (!wasCapturing) {
         void this.start();
         return;
       }
+      if (!this.streamLive || !source || this.captureSource !== source) return;
       const point = mapPreviewPointToSource(
         { x: value.x, y: value.y },
         value.imageRect,
-        this.selectedSource.bounds,
+        source.bounds,
       );
-      if (point) void this.moveTo(point, this.selectedSource);
+      if (point) void this.moveTo(point, source);
     });
     window.on('streamLive', () => {
-      if (this.wantsCapture && this.selectedSource) this.publish(`Live: ${this.selectedSource.name}`);
+      const source = this.captureSource;
+      this.refreshSources();
+      if (source && this.captureSource === source) {
+        this.streamLive = true;
+        this.publish(`Live: ${source.name}`);
+      }
     });
     window.on('streamError', (message: string) => {
-      if (!this.selectedSource) return;
+      const source = this.captureSource;
+      if (!source) return;
       this.stopCapture();
-      this.publish(`Could not capture ${this.selectedSource.name}: ${message}`);
+      this.publish(`Could not capture ${source.name}: ${message}`);
     });
     window.on('moved', () => this.noteFrameChange());
     window.on('resized', () => this.noteFrameChange());
     window.on('closed', () => {
       this.stopCapture();
+      if (this.frameTimer) clearTimeout(this.frameTimer);
+      this.frameTimer = null;
       this.window = null;
       this.deps.screen.removeListener?.('display-added', this.displayChanged);
       this.deps.screen.removeListener?.('display-removed', this.displayChanged);
@@ -169,6 +184,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     this.candidates = this.catalog.eligibleSources(host.id);
     const previousSource = this.selectedSource;
     const selectedCurrent = this.selectedSource && this.catalog.currentMatching(this.selectedSource);
+    let sourceChanged = false;
     if (previousSource && !selectedCurrent) {
       this.stopCapture();
       this.settings.setDisplayPreviewSourceId(null);
@@ -177,44 +193,35 @@ export class DisplayPreviewCoordinator extends EventEmitter {
         this.publish('The selected display is no longer available.');
         return;
       }
-    } else if (selectedCurrent && selectedCurrent.id !== host.id) {
-      const sourceChanged = this.selectedSource !== null
-        && (this.selectedSource.bounds.x !== selectedCurrent.bounds.x
-          || this.selectedSource.bounds.y !== selectedCurrent.bounds.y
-          || this.selectedSource.bounds.width !== selectedCurrent.bounds.width
-          || this.selectedSource.bounds.height !== selectedCurrent.bounds.height
-          || this.selectedSource.scaleFactor !== selectedCurrent.scaleFactor);
+    } else if (selectedCurrent) {
+      sourceChanged = previousSource !== null
+        && (previousSource.bounds.x !== selectedCurrent.bounds.x
+          || previousSource.bounds.y !== selectedCurrent.bounds.y
+          || previousSource.bounds.width !== selectedCurrent.bounds.width
+          || previousSource.bounds.height !== selectedCurrent.bounds.height
+          || previousSource.scaleFactor !== selectedCurrent.scaleFactor);
+      // Always refresh geometry, including when the selected display becomes host.
       this.selectedSource = selectedCurrent;
-      if (sourceChanged && this.wantsCapture) {
-        this.stopCapture();
-        void this.start();
-      }
-    } else if (!selectedCurrent) {
+    } else {
       this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
       if (this.selectedSource && this.selectedSource.id !== this.settings.getDisplayPreviewSourceId()) {
         this.settings.setDisplayPreviewSourceId(this.selectedSource.id);
       }
     }
-    if (this.selectedSource && !this.catalog.currentMatching(this.selectedSource)) {
-      this.stopCapture();
-      this.wantsCapture = false;
-      this.selectedSource = null;
-      this.settings.setDisplayPreviewSourceId(null);
-      this.publish('The selected display is no longer available.');
-      return;
-    }
-    if (this.wantsCapture && this.selectedSource && rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {
-      if (!this.suspendedForOverlap) {
-        this.suspendedForOverlap = true;
-        this.window.stopStream();
-        this.publish('Preview suspended while it overlaps the source display. Move it fully clear to resume.');
+    if (this.wantsCapture && this.selectedSource) {
+      if (rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {
+        this.suspendCapture();
+        return;
       }
-    } else if (this.suspendedForOverlap && this.wantsCapture) {
-      this.suspendedForOverlap = false;
-      void this.start();
+      if (sourceChanged || this.suspendedForOverlap) {
+        this.invalidateStream();
+        this.suspendedForOverlap = false;
+        void this.start();
+        return;
+      }
     }
     if (this.selectedSource && !this.candidates.some((candidate) => candidate.id === this.selectedSource?.id)) {
-      this.publish('Preview suspended while it overlaps the source display. Move it fully clear to resume.');
+      this.publish('Preview is on the source display. Move it fully clear, then turn the preview on.');
     } else if (!this.candidates.length) {
       this.publish('Connect another display or use an extended desktop.');
     } else if (!this.selectedSource) {
@@ -225,51 +232,74 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   }
 
   private async start(): Promise<void> {
-    const generation = ++this.startGeneration;
     if (!this.window || !this.selectedSource) return;
-    if (rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {
-      this.wantsCapture = true;
-      this.suspendedForOverlap = true;
-      this.publish('Preview suspended while it overlaps the source display. Move it fully clear to resume.');
+    const window = this.window;
+    const source = this.catalog.currentMatching(this.selectedSource);
+    if (!source) {
+      this.refreshSources();
       return;
     }
-    const source = this.selectedSource;
+    const generation = ++this.startGeneration;
+    this.selectedSource = source;
+    this.wantsCapture = true;
+    if (rectsIntersect(window.getBounds(), source.bounds)) {
+      this.suspendCapture();
+      return;
+    }
+    this.publish(`Starting: ${source.name}`);
     try {
       const sources = await this.deps.desktopCapturer.getSources({
         types: ['screen'],
         thumbnailSize: { width: 0, height: 0 },
       });
-      if (generation !== this.startGeneration || !this.window || this.selectedSource !== source) return;
-      const capture = sources.find((candidate) => candidate.display_id === String(source.id))
-        ?? (sources.length === 1 && this.candidates.length === 1 ? sources[0] : null);
+      if (generation !== this.startGeneration || this.window !== window) return;
+      // A display/window event may still be queued. Reconcile fresh geometry
+      // before handing ownership to the renderer, not just the original object.
+      this.refreshSources();
+      if (generation !== this.startGeneration || this.selectedSource?.id !== source.id) return;
+      const capture = sources.find((candidate) => candidate.display_id === String(source.id));
       if (!capture) {
-        this.wantsCapture = false;
-        this.publish(`Could not capture ${source.name}: source unavailable.`);
+        this.stopCapture();
+        this.publish(`Display identity unavailable: ${source.name}. Select another display or try an X11 session.`);
         return;
       }
-      this.wantsCapture = true;
-      this.window.startStream(capture.id, {
+      this.captureSource = this.selectedSource;
+      this.streamLive = false;
+      window.startStream(capture.id, {
         width: Math.round(source.bounds.width * source.scaleFactor),
         height: Math.round(source.bounds.height * source.scaleFactor),
       });
-      this.publish(`Live: ${source.name}`);
     } catch (error) {
-      if (generation !== this.startGeneration || !this.window || this.selectedSource !== source) return;
-      this.wantsCapture = false;
+      if (generation !== this.startGeneration || this.window !== window) return;
+      this.refreshSources();
+      if (generation !== this.startGeneration || this.selectedSource?.id !== source.id) return;
+      this.stopCapture();
       this.publish(`Could not capture ${source.name}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
-  private stopCapture(): void {
+  private invalidateStream(): void {
     this.startGeneration += 1;
+    this.captureSource = null;
+    this.streamLive = false;
+    this.window?.stopStream();
+  }
+
+  private suspendCapture(): void {
+    if (!this.suspendedForOverlap) this.invalidateStream();
+    this.suspendedForOverlap = true;
+    this.publish(OVERLAP_MESSAGE);
+  }
+
+  private stopCapture(): void {
+    this.invalidateStream();
     this.wantsCapture = false;
     this.suspendedForOverlap = false;
-    this.window?.stopStream();
   }
 
   private publish(statusMessage: string): void {
     if (!this.window) return;
-    const powerEnabled = this.candidates.length > 0 && this.selectedSource !== null;
+    const powerEnabled = this.wantsCapture || (this.candidates.length > 0 && this.selectedSource !== null);
     const state: DisplayPreviewState = {
       statusMessage,
       powerState: this.wantsCapture ? 'on' : 'off',
@@ -283,7 +313,8 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   private showMenu(): void {
     if (!this.window) return;
     const status = this.selectedSource
-      ? (this.wantsCapture ? `Live: ${this.selectedSource.name}` : 'Click to see display')
+      ? (this.suspendedForOverlap ? OVERLAP_MESSAGE
+        : this.wantsCapture ? `${this.streamLive ? 'Live' : 'Starting'}: ${this.selectedSource.name}` : 'Click to see display')
       : (this.candidates.length ? 'Choose a source display, then turn the preview on.' : 'Connect another display or use an extended desktop.');
     const template: MenuItemConstructorOptions[] = [
       { label: status, enabled: false },
@@ -297,10 +328,11 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       { type: 'separator' },
       { label: 'Match Display Aspect Ratio', enabled: this.selectedSource !== null, click: () => this.snapAspect() },
       { label: 'Move Pointer to Source Center', enabled: this.selectedSource !== null, click: () => {
-        if (this.selectedSource) void this.moveTo({
-          x: this.selectedSource.bounds.x + this.selectedSource.bounds.width / 2,
-          y: this.selectedSource.bounds.y + this.selectedSource.bounds.height / 2,
-        }, this.selectedSource);
+        const source = this.selectedSource && this.catalog.currentMatching(this.selectedSource);
+        if (source) void this.moveTo({
+          x: source.bounds.x + source.bounds.width / 2,
+          y: source.bounds.y + source.bounds.height / 2,
+        }, source);
       } },
       { type: 'separator' },
       { label: 'Click the preview to move the pointer there.', enabled: false },
@@ -333,13 +365,15 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   }
 
   private async moveTo(point: { x: number; y: number }, source: DisplayDescriptor): Promise<void> {
-    if (!(await movePointer(point.x * source.scaleFactor, point.y * source.scaleFactor))) {
+    const generation = this.startGeneration;
+    if (!(await movePointer(point.x * source.scaleFactor, point.y * source.scaleFactor)) && generation === this.startGeneration) {
       this.publish('Could not move the pointer. Preview remains live.');
     }
   }
 
   private noteFrameChange(): void {
     if (!this.window) return;
+    this.refreshSources();
     if (this.frameTimer) clearTimeout(this.frameTimer);
     this.frameTimer = setTimeout(() => {
       this.frameTimer = null;
@@ -347,7 +381,6 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       const frame = this.window.getBounds();
       const saved: PanelFrame = { left: frame.x, top: frame.y, width: frame.width, height: frame.height };
       this.settings.setDisplayPreviewFrame(saved);
-      this.refreshSources();
     }, 150);
   }
 }

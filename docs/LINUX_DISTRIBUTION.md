@@ -27,6 +27,23 @@ Launch at login starts quietly without opening the launcher.
 
 Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
 
+### Display preview safety
+
+The display preview opens idle. Capture starts only after an explicit click or
+power-button action. Moving the preview onto any part of its selected display,
+including by rearranging displays, stops capture and clears the image. Moving
+fully clear resumes it unless you turned it off or closed it in the meantime.
+Pointer clicks map only a live image whose captured display geometry is current.
+
+Capture requires Electron to identify a source with a `display_id` matching the
+selected display. A sole source with an empty, missing, or different ID is not
+proof of identity; the preview refuses it and reports that the source is
+unavailable or display identity is unsupported. Reconnect/select an available
+display, or use an X11 desktop that exposes matching display IDs. There is no
+fallback that guesses which display a Wayland/PipeWire portal returned. Native
+Wayland/PipeWire capture still needs separate validation; passing X11 tests does
+not establish support for it.
+
 ### Where things live
 
 | Item | Location |

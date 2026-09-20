@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaWifi, FaXmark } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useSession } from '../../../../contexts/SessionContext';
-import { zIndex } from '@shared/utils/styles';
+import { hudContainer, zIndex } from '@shared/utils/styles';
 
 interface SessionBannerProps {
   className?: string;
@@ -14,8 +14,10 @@ interface SessionBannerProps {
 interface ActiveSessionBannerProps {
   className: string;
   connected: boolean;
+  connectionPhase: ReturnType<typeof useSession>['connectionPhase'];
   displayUrl?: string;
   onClose: () => void;
+  onRetry: ReturnType<typeof useSession>['recoverSession'];
   sessionCode: string;
   socket: ReturnType<typeof useSession>['socket'];
 }
@@ -23,8 +25,10 @@ interface ActiveSessionBannerProps {
 const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
   className,
   connected,
+  connectionPhase,
   displayUrl,
   onClose,
+  onRetry,
   sessionCode,
   socket
 }) => {
@@ -32,6 +36,22 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
   const [isReconnecting, setIsReconnecting] = useState(false);
   const sessionIslandRef = useRef<HTMLDivElement>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryInFlightRef = useRef(false);
+  const recovering = connectionPhase === 'recovering';
+  const deferred = connectionPhase === 'recovery-deferred';
+  const recoveryPending = recovering || deferred;
+
+  // The socket is already online in the deferred phase. Retry session reclaim,
+  // not socket.connect(), and guard same-render double clicks as well as the UI.
+  const handleRetryRecovery = async () => {
+    if (!deferred || retryInFlightRef.current) return;
+    retryInFlightRef.current = true;
+    try {
+      await onRetry(sessionCode);
+    } finally {
+      retryInFlightRef.current = false;
+    }
+  };
 
   // Auto-expand when disconnected to show status
   useEffect(() => {
@@ -117,13 +137,15 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
           "relative",
           zIndex.hud
         )}
-        title={!connected ? "Click to reconnect" : connected ? "Connected to server" : "Disconnected from server"}
+        title={recovering ? 'Reconnecting to session' : deferred ? 'Session recovery paused' : !connected ? 'Click to reconnect' : 'Connected to server'}
       >
         <div className="flex items-center justify-center h-full">
           {/* WiFi Icon - Shows connection status */}
           <div className={clsx(
             'transition-colors duration-200',
-            connected
+            recoveryPending
+              ? 'text-amber-600 dark:text-amber-400'
+              : connected
               ? 'text-sage-600 dark:text-sage-400 animate-pulse'
               : isReconnecting
               ? 'text-amber-600 dark:text-amber-400 animate-pulse'
@@ -198,6 +220,40 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
           )}
         </div>
       )}
+
+      {/* Recovery status is not collapsible with the session code. Keep the
+          narrow warning inside the viewport, below the expanded code row. */}
+      {recoveryPending && (
+        <div
+          role="status"
+          aria-atomic="true"
+          className={clsx(
+            hudContainer.base,
+            'absolute top-full right-0 mt-2 w-80 p-3 pointer-events-auto',
+            'max-[540px]:fixed max-[540px]:top-28 max-[540px]:inset-x-2 max-[540px]:mt-0 max-[540px]:w-auto',
+            'border-amber-400/70 dark:border-amber-600/70',
+            zIndex.hudDropdown
+          )}
+        >
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+            {recovering ? 'Reconnecting to session…' : 'Session recovery paused'}
+          </p>
+          <p className="mt-1 text-xs text-warm-gray-700 dark:text-warm-gray-200">
+            {recovering
+              ? 'Please wait before using classroom activities.'
+              : 'Your session is not ready. Session details are saved; retry to reconnect.'}
+          </p>
+          <button
+            type="button"
+            aria-label="Retry session recovery"
+            disabled={recovering}
+            onClick={handleRetryRecovery}
+            className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 disabled:cursor-wait disabled:opacity-60 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/60"
+          >
+            {recovering ? 'Reconnecting…' : 'Retry recovery'}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
@@ -217,8 +273,10 @@ const SessionBanner: React.FC<SessionBannerProps> = ({
       key={sessionCode}
       className={className}
       connected={connected}
+      connectionPhase={session.connectionPhase}
       displayUrl={displayUrl}
       onClose={onClose}
+      onRetry={session.recoverSession}
       sessionCode={sessionCode}
       socket={session.socket}
     />
