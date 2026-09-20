@@ -2,6 +2,7 @@ const express = require('express');
 const { isValidSessionCode } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 const voiceCommandRoutes = require('./voiceCommand');
+const shortenRoutes = require('./shorten');
 
 /**
  * API routes for RESTful endpoints
@@ -69,6 +70,7 @@ module.exports = (sessionManager) => {
    * Voice command processing endpoint
    */
   router.use('/voice-command', voiceCommandRoutes);
+  router.use('/shorten', shortenRoutes);
 
   return router;
 };

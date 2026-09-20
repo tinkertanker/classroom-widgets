@@ -54,11 +54,11 @@ Create `.env` files from examples only when you need optional API keys or non-de
 ```bash
 # Teacher app (optional for Vite development)
 cp packages/teacher/.env.example packages/teacher/.env
-# Edit to add VITE_SHORTIO_API_KEY if using Link Shortener widget
+# Set VITE_LINK_SHORTENER_ENABLED=true to show the web Link Shortener widget
 
 # Server (optional for development)
 cp packages/server/.env.example packages/server/.env
-# Defaults work fine for local development if this file is absent
+# Set SHORTIO_API_KEY and SHORTIO_DOMAIN there to enable shortening
 ```
 
 ## Development

@@ -311,7 +311,7 @@ export class WidgetRegistry {
       },
       columnSizing: 'aspect-ratio',
       features: {
-        hidden: !isDesktopDashboardMode() && !isNativeDesktop() && !import.meta.env.VITE_SHORTIO_API_KEY,
+        hidden: !isDesktopDashboardMode() && !isNativeDesktop() && import.meta.env.VITE_LINK_SHORTENER_ENABLED !== 'true',
         isResizable: true
       }
     });
