@@ -20,6 +20,7 @@ interface UseNetworkedWidgetResult {
   // Actions
   handleStart: () => Promise<void>;
   handleStop: () => void;
+  canEdit: () => boolean;
   
   // Session info
   session: {
@@ -28,6 +29,8 @@ interface UseNetworkedWidgetResult {
     participantCount: number;
     isConnected: boolean;
     isRecovering: boolean;
+    isRecoveryDeferred: boolean;
+    isReady: boolean;
   };
   
   // Recovery data
@@ -107,6 +110,7 @@ export function useNetworkedWidget({
   
   // Handle start
   const handleStart = useCallback(async () => {
+    if (!session.canEditSession()) return;
     if (!widgetId) {
       setLocalError('Widget ID is required');
       return;
@@ -208,12 +212,16 @@ export function useNetworkedWidget({
     error: localError || session.error,
     handleStart,
     handleStop,
+    canEdit: session.canEditSession,
     session: {
       socket: session.socket,
       sessionCode: session.sessionCode,
       participantCount,
       isConnected: session.isConnected,
-      isRecovering: session.isRecovering
+      isRecovering: session.isRecovering,
+      isRecoveryDeferred: session.connectionPhase === 'recovery-deferred',
+      // No session is a valid start state; an existing one must be reclaimed.
+      isReady: session.isConnected && (!session.sessionCode || session.isSessionReady)
     },
     recoveryData
   };

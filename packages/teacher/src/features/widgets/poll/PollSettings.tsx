@@ -3,6 +3,7 @@ import { WidgetInput } from '@shared/components/WidgetInput';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
 import { SavedPollQuestion } from '@shared/types/storage';
+import { useSession } from '../../../contexts/SessionContext';
 
 interface PollSettingsProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ const PollSettings: React.FC<PollSettingsProps> = ({
   onSave,
   initialData
 }) => {
+  const { canEditSession } = useSession();
   const pollData = initialData || { question: '', options: ['', ''] };
   const updatePoll = onSave;
   
@@ -117,15 +119,20 @@ const PollSettings: React.FC<PollSettingsProps> = ({
           </p>
         </div>
       </div>
+      {!canEditSession() && (
+        <p className="px-6 pb-3 text-sm text-amber-700 dark:text-amber-400">Session not ready. Your draft is kept here; recover the session before saving.</p>
+      )}
       <div className="px-6 pb-4 flex justify-center">
         <button
           onClick={() => {
+            if (!canEditSession()) return;
             if (updatePoll) {
               updatePoll({ question, options });
             }
             onClose();
           }}
-          className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200"
+          disabled={!canEditSession()}
+          className="px-3 py-1.5 bg-sage-500 hover:bg-sage-600 text-white text-sm rounded transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Save Changes
         </button>

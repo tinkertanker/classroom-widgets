@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { FaPlus, FaXmark } from 'react-icons/fa6';
 import { buttons } from '@shared/utils/styles';
 import { parseAnswers } from '../shared/activityBuilders';
+import { useSession } from '../../../../contexts/SessionContext';
 
 interface CodeFillBlankEditorProps {
   initialData?: {
@@ -29,6 +30,7 @@ interface CodeFillBlankEditorProps {
  * Example: "def ___greet___(name):\n    return ___\"Hello, \"___ + name"
  */
 export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBlankEditorProps) {
+  const { canEditSession } = useSession();
   const [template, setTemplate] = useState(initialData?.template || '');
   const [language, setLanguage] = useState<'python' | 'javascript' | 'text'>(initialData?.language || 'python');
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
@@ -49,6 +51,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
   };
 
   const handleSave = () => {
+    if (!canEditSession()) return;
     if (answers.length === 0) {
       alert('Please add at least one blank using {{answer}} syntax');
       return;
@@ -200,6 +203,9 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
         <strong>Note:</strong> Answers are matched with flexible whitespace (extra spaces are ignored).
       </div>
 
+      {!canEditSession() && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">Session not ready. Your draft is kept here; recover the session before saving.</p>
+      )}
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700">
         <button
@@ -210,7 +216,7 @@ export function CodeFillBlankEditor({ initialData, onSave, onClose }: CodeFillBl
         </button>
         <button
           onClick={handleSave}
-          disabled={answers.length === 0}
+          disabled={answers.length === 0 || !canEditSession()}
           className={`${buttons.primary} px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           Save Activity

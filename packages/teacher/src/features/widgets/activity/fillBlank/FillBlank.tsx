@@ -48,6 +48,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     isStarting,
     error,
     handleStart,
+    canEdit,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -123,7 +124,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Toggle reveal answers
   const toggleRevealAnswers = useCallback(() => {
-    if (!hasRoom || !session.sessionCode || !widgetId) return;
+    if (!hasRoom || !session.sessionCode || !widgetId || !canEdit()) return;
 
     const newRevealed = !answersRevealed;
     setAnswersRevealed(newRevealed);
@@ -133,11 +134,11 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
       widgetId,
       reveal: newRevealed
     });
-  }, [hasRoom, session.sessionCode, widgetId, answersRevealed, emit]);
+  }, [hasRoom, session.sessionCode, widgetId, answersRevealed, emit, canEdit]);
 
   // Reset responses
   const resetActivity = useCallback(() => {
-    if (!hasRoom || !session.sessionCode || !widgetId) return;
+    if (!hasRoom || !session.sessionCode || !widgetId || !canEdit()) return;
 
     emit('session:activity:reset', {
       sessionCode: session.sessionCode,
@@ -147,7 +148,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     setResponseCount(0);
     setResponses([]);
     setAnswersRevealed(false);
-  }, [hasRoom, session.sessionCode, widgetId, emit]);
+  }, [hasRoom, session.sessionCode, widgetId, emit, canEdit]);
 
   // Open settings modal
   const openSettings = useCallback(() => {
@@ -157,6 +158,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
         <FillBlankEditor
           initialData={activityData}
           onSave={(data) => {
+            if (!canEdit()) return;
             setActivityData(data);
             hideModal();
           }}
@@ -165,7 +167,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
       ),
       onClose: hideModal
     });
-  }, [showModal, hideModal, activityData]);
+  }, [showModal, hideModal, activityData, canEdit]);
 
   // Save state
   useEffect(() => {
@@ -206,13 +208,15 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
+          isReady: session.isReady,
           defaultText: "Create Activity"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
           isStarting,
           isRecovering: session.isRecovering,
-          isConnected: session.isConnected
+          isConnected: session.isConnected,
+          isReady: session.isReady
         })}
         error={error || undefined}
       />
@@ -250,6 +254,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
             isActive={isWidgetActive}
             isConnected={session.isConnected}
             isRecovering={session.isRecovering}
+            isRecoveryDeferred={session.isRecoveryDeferred}
             pausedMessage="Activity is paused"
           />
 
@@ -331,7 +336,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
       {/* Control bar */}
       <NetworkedWidgetControlBar
         isActive={isWidgetActive}
-        isConnected={session.isConnected}
+        isReady={session.isReady}
         onToggleActive={toggleActive}
         onSettings={openSettings}
         onClear={resetActivity}
@@ -344,7 +349,7 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
         rightContent={
           <button
             onClick={toggleRevealAnswers}
-            disabled={!session.isConnected}
+            disabled={!session.isReady}
             className={`p-2 rounded-lg transition-colors ${
               answersRevealed
                 ? 'bg-sage-500 text-white'

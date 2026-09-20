@@ -6,6 +6,7 @@ export interface GetEmptyStateButtonTextOptions {
   isStarting: boolean;
   isRecovering: boolean;
   isConnected: boolean;
+  isReady?: boolean;
   defaultText: string;
 }
 
@@ -16,11 +17,13 @@ export function getEmptyStateButtonText({
   isStarting,
   isRecovering,
   isConnected,
+  isReady = true,
   defaultText
 }: GetEmptyStateButtonTextOptions): string {
   if (isStarting) return "Starting...";
   if (isRecovering) return "Reconnecting...";
   if (!isConnected) return "Connecting...";
+  if (!isReady) return "Recover session first";
   return defaultText;
 }
 
@@ -28,6 +31,7 @@ export interface GetEmptyStateDisabledOptions {
   isStarting: boolean;
   isRecovering: boolean;
   isConnected: boolean;
+  isReady?: boolean;
 }
 
 /**
@@ -36,7 +40,8 @@ export interface GetEmptyStateDisabledOptions {
 export function getEmptyStateDisabled({
   isStarting,
   isRecovering,
-  isConnected
+  isConnected,
+  isReady = true
 }: GetEmptyStateDisabledOptions): boolean {
-  return isStarting || !isConnected || isRecovering;
+  return isStarting || !isConnected || isRecovering || !isReady;
 }

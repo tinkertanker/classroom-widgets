@@ -117,13 +117,15 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
+          isReady: session.isReady,
           defaultText: "Start RT Feedback"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
           isStarting,
           isRecovering: session.isRecovering,
-          isConnected: session.isConnected
+          isConnected: session.isConnected,
+          isReady: session.isReady
         })}
         error={error || undefined}
       />
@@ -145,6 +147,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
             isActive={isWidgetActive}
             isConnected={session.isConnected}
             isRecovering={session.isRecovering}
+            isRecoveryDeferred={session.isRecoveryDeferred}
             pausedMessage="Feedback is paused"
           />
 
@@ -180,7 +183,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
       {/* Control bar */}
       <NetworkedWidgetControlBar
         isActive={isWidgetActive}
-        isConnected={session.isConnected}
+        isReady={session.isReady}
         onToggleActive={handleToggleActive}
         onClear={handleReset}
         clearCount={feedbackData.totalResponses}

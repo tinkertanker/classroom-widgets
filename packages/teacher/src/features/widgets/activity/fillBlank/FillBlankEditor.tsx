@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { FaPlus, FaXmark } from 'react-icons/fa6';
 import { buttons } from '@shared/utils/styles';
 import { parseAnswers } from '../shared/activityBuilders';
+import { useSession } from '../../../../contexts/SessionContext';
 
 interface FillBlankEditorProps {
   initialData?: {
@@ -27,6 +28,7 @@ interface FillBlankEditorProps {
  * Example: "The ___mitochondria___ is the powerhouse of the ___cell___."
  */
 export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEditorProps) {
+  const { canEditSession } = useSession();
   const [template, setTemplate] = useState(initialData?.template || '');
   const [distractors, setDistractors] = useState<string[]>(initialData?.distractors || []);
   const [newDistractor, setNewDistractor] = useState('');
@@ -46,6 +48,7 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
   };
 
   const handleSave = () => {
+    if (!canEditSession()) return;
     if (answers.length === 0) {
       alert('Please add at least one blank using {{answer}} syntax');
       return;
@@ -172,6 +175,9 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
         )}
       </div>
 
+      {!canEditSession() && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">Session not ready. Your draft is kept here; recover the session before saving.</p>
+      )}
       {/* Actions */}
       <div className="flex justify-end gap-2 pt-4 border-t border-warm-gray-200 dark:border-warm-gray-700">
         <button
@@ -182,7 +188,7 @@ export function FillBlankEditor({ initialData, onSave, onClose }: FillBlankEdito
         </button>
         <button
           onClick={handleSave}
-          disabled={answers.length === 0}
+          disabled={answers.length === 0 || !canEditSession()}
           className={`${buttons.primary} px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           Save Activity

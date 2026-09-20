@@ -6,7 +6,7 @@ import { WidgetControlBar } from './WidgetControlBar';
 
 interface NetworkedWidgetControlBarProps {
   isActive: boolean;
-  isConnected: boolean;
+  isReady: boolean;
   onToggleActive: () => void;
   onSettings?: () => void;
   onClear?: () => void;
@@ -31,7 +31,7 @@ interface NetworkedWidgetControlBarProps {
  */
 export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps> = ({
   isActive,
-  isConnected,
+  isReady,
   onToggleActive,
   onSettings,
   onClear,
@@ -54,7 +54,7 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
         <PlayPauseButton
           isActive={isActive}
           onToggle={onToggleActive}
-          disabled={disabled || !isConnected}
+          disabled={disabled || !isReady}
           activeLabel={activeLabel}
           inactiveLabel={inactiveLabel}
           showText={false}
@@ -65,7 +65,7 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
             onClear={onClear}
             count={clearCount}
             label={clearLabel}
-            disabled={disabled || !isConnected}
+            disabled={disabled || !isReady}
             variant={clearVariant}
             requireConfirmation={requireClearConfirmation}
             confirmationMessage={clearConfirmationMessage}
@@ -79,7 +79,7 @@ export const NetworkedWidgetControlBar: React.FC<NetworkedWidgetControlBarProps>
         {showSettings && onSettings && (
           <SettingsButton
             onClick={onSettings}
-            disabled={disabled || !isConnected}
+            disabled={disabled || !isReady}
           />
         )}
       </div>

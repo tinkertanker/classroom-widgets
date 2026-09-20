@@ -51,6 +51,9 @@ interface SessionContextValue {
   // Derived from connectionPhase - kept for consumers that only care about one axis
   isConnected: boolean;
   isRecovering: boolean;
+  isSessionReady: boolean;
+  // Call-time guard for editors/actions that may outlive a render or session.
+  canEditSession: () => boolean;
   serverUrl: string;
   studentAppUrl: string | null;  // URL where students should connect
 
@@ -93,6 +96,8 @@ export const useSession = () => {
         connectionPhase: 'disconnected',
         isConnected: false,
         isRecovering: false,
+        isSessionReady: false,
+        canEditSession: () => true,
         serverUrl: '',
         studentAppUrl: null,
         activeRooms: new Map(),
@@ -126,7 +131,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   
   // Local state
   const [sessionCode, setSessionCode] = useState<string | null>(storeSessionCode);
-  const [sessionCreatedAt, setSessionCreatedAt] = useState<number | null>(storeSessionCreatedAt);
+  const [sessionCreatedAt, setSessionCreatedAtState] = useState<number | null>(storeSessionCreatedAt);
   const [studentAppUrl, setStudentAppUrl] = useState<string | null>(null);
   const [connectionPhase, setConnectionPhaseState] = useState<ConnectionPhase>('disconnected');
   const [activeRooms, setActiveRooms] = useState<Map<string, ActiveRoom>>(new Map());
@@ -136,6 +141,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Derived connection state - never stored separately, so the two can never disagree
   const isConnected = connectionPhase !== 'disconnected';
   const isRecovering = connectionPhase === 'recovering';
+  const isSessionReady = connectionPhase === 'recovered' && Boolean(sessionCode);
 
   // Refs
   // Mirror of connectionPhase for the socket callbacks and the recovery routine:
@@ -159,8 +165,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, []);
   const isCreatingSession = useRef(false);
   const sessionCodeRef = useRef(sessionCode);
+  const sessionCreatedAtRef = useRef(sessionCreatedAt);
+  const setSessionCreatedAt = useCallback((createdAt: number | null) => {
+    sessionCreatedAtRef.current = createdAt;
+    setSessionCreatedAtState(createdAt);
+  }, []);
+  const socketRef = useRef(socket);
+  socketRef.current = socket;
   const recoveryPromiseRef = useRef<Promise<boolean> | null>(null);
   const recoveryResolveRef = useRef<((success: boolean) => void) | null>(null);
+
+  // No classroom means local editing is allowed, even offline. Otherwise the
+  // current socket must have reclaimed this identity. Read phase at call time:
+  // modal content retains callbacks from before disconnect/recovery.
+  const canEditSession = useCallback(() => (
+    socketRef.current === socket && sessionCodeRef.current === sessionCode &&
+    (!sessionCode || (Boolean(socket?.connected) && connectionPhaseRef.current === 'recovered'))
+  ), [sessionCode, socket]);
 
   // Constants
   const TWO_HOURS = 2 * 60 * 60 * 1000;
@@ -709,16 +730,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     if (!socket?.connected) return false;
 
     cancelSessionWork();
-    if (sessionCodeRef.current !== code) {
+    const sameSession = sessionCodeRef.current === code;
+    const createdAt = sameSession ? sessionCreatedAtRef.current : Date.now();
+    if (!sameSession) {
       setActiveRooms(new Map());
       setRecoveryData(new Map());
       setStudentAppUrl(null);
+      sessionCodeRef.current = code;
+      setSessionCode(code);
+      setSessionCreatedAt(createdAt);
+      setStoreSessionCode(code);
     }
-    const createdAt = Date.now();
-    sessionCodeRef.current = code;
-    setSessionCode(code);
-    setSessionCreatedAt(createdAt);
-    setStoreSessionCode(code);
+    // Retrying the same identity must not renew its local/persisted age.
     // Back to "connected, not attempted" so recovery may run for the new code
     setConnectionPhase('connected');
 
@@ -825,7 +848,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   
   // Close room
   const closeRoom = useCallback((roomType: string, widgetId: string) => {
-    if (!socket || !sessionCode) return;
+    if (!socket || !sessionCode || !canEditSession()) return;
 
     // Debug: log call stack to trace where closeRoom is being called from
     console.log('[UnifiedSession] Closing room:', widgetId, 'roomType:', roomType);
@@ -835,11 +858,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       roomType,
       widgetId
     });
-  }, [socket, sessionCode]);
+  }, [socket, sessionCode, canEditSession]);
   
   // Update room state
   const updateRoomState = useCallback((roomType: string, widgetId: string, isActive: boolean) => {
-    if (!socket || !sessionCode) return;
+    if (!socket || !sessionCode || !canEditSession()) return;
     
     socket.emit('session:updateWidgetState', {
       sessionCode,
@@ -847,7 +870,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       widgetId,
       isActive
     });
-  }, [socket, sessionCode]);
+  }, [socket, sessionCode, canEditSession]);
   
   // Get widget recovery data
   const getWidgetRecoveryData = useCallback((widgetId: string): ActiveRoom | null => {
@@ -866,6 +889,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     connectionPhase,
     isConnected,
     isRecovering,
+    isSessionReady,
+    canEditSession,
     serverUrl,
     studentAppUrl,
 
@@ -894,6 +919,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     connectionPhase,
     isConnected,
     isRecovering,
+    isSessionReady,
+    canEditSession,
     serverUrl,
     studentAppUrl,
     activeRooms,

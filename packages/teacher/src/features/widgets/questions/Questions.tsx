@@ -176,13 +176,15 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
+          isReady: session.isReady,
           defaultText: "Start Questions"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
           isStarting,
           isRecovering: session.isRecovering,
-          isConnected: session.isConnected
+          isConnected: session.isConnected,
+          isReady: session.isReady
         })}
         error={error || undefined}
       />
@@ -206,6 +208,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
           isActive={isWidgetActive}
           isConnected={session.isConnected}
           isRecovering={session.isRecovering}
+          isRecoveryDeferred={session.isRecoveryDeferred}
           pausedMessage="Questions are paused"
         />
 
@@ -248,6 +251,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
                         {!question.answered && (
                           <button
                             onClick={() => handleMarkAnswered(question.id)}
+                            disabled={!session.isReady}
                             className="p-1 text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 transition-colors"
                             title="Mark as answered"
                           >
@@ -256,6 +260,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
                         )}
                         <button
                           onClick={() => handleDeleteQuestion(question.id)}
+                          disabled={!session.isReady}
                           className="p-1 text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors"
                           title="Delete question"
                         >
@@ -274,7 +279,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
       {/* Control bar */}
       <NetworkedWidgetControlBar
         isActive={isWidgetActive}
-        isConnected={session.isConnected}
+        isReady={session.isReady}
         onToggleActive={handleToggleActive}
         onClear={handleClearAll}
         clearCount={questions.length}
