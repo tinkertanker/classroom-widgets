@@ -67,6 +67,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
       } else {
         if (response.error === 'Unauthorized') {
           sessionStorage.removeItem('adminToken');
+          setAdminToken('');
+          setSessions([]);
+          setStats(null);
+          setLastRefresh(null);
         }
         setError(response.error || 'Failed to fetch sessions');
       }
