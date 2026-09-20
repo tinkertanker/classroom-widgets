@@ -1,10 +1,10 @@
-const { LIMITS } = require('../config/constants');
+const { LIMITS, SAFE_CHARACTERS } = require('../config/constants');
 
 /**
  * Input validation middleware
  */
 
-const SESSION_CODE_PATTERN = new RegExp(`^[A-Z0-9]{${LIMITS.ROOM_CODE_LENGTH}}$`);
+const SESSION_CODE_PATTERN = new RegExp(`^[${SAFE_CHARACTERS}]{${LIMITS.ROOM_CODE_LENGTH}}$`);
 
 /**
  * Validate session code format

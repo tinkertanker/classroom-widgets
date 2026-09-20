@@ -1,11 +1,20 @@
 // Validation utilities for the student app
+import sessionCode from '../constants/sessionCode.json';
+
+export const SESSION_CODE_ALPHABET: string = sessionCode.alphabet;
+export const SESSION_CODE_LENGTH: number = sessionCode.length;
+
+/** Regex source matching exactly one session code, for use in HTML `pattern` attributes. */
+export const SESSION_CODE_PATTERN_SOURCE = `[${SESSION_CODE_ALPHABET}]{${SESSION_CODE_LENGTH}}`;
+
+const SESSION_CODE_REGEX = new RegExp(`^${SESSION_CODE_PATTERN_SOURCE}$`, 'i');
 
 /**
  * Validates a session code format
- * Valid codes are 6 characters using specific letters/numbers to avoid confusion
+ * Valid codes use the server's safe-character alphabet (no 0/O, 1/I/l, etc.)
  */
 export const isValidSessionCode = (code: string): boolean => {
-  return /^[23456789ACDEFHJKMNPQRTUWXY]{6}$/i.test(code);
+  return SESSION_CODE_REGEX.test(code);
 };
 
 /**

@@ -12,8 +12,10 @@ module.exports = {
   // Number of trusted reverse-proxy hops (X-Forwarded-For entries) in front
   // of the server. 0 disables forwarded-header parsing for client IPs.
   TRUST_PROXY: (() => {
-    const parsed = Number.parseInt(process.env.TRUST_PROXY || '0', 10);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+    const raw = (process.env.TRUST_PROXY || '0').trim();
+    if (!/^\d+$/.test(raw)) return 0;
+    const parsed = Number(raw);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : 0;
   })(),
 
   // Per-IP limits for unauthenticated HTTP endpoints

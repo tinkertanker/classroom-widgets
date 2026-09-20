@@ -51,6 +51,10 @@ const EVENT_RATE_LIMITS = {
   // Session join - 10 per 10 seconds per connection (slows code guessing)
   'session:join': { windowMs: 10_000, max: 10 },
 
+  // Failed joins (unknown code) - 60 per minute per IP, so reconnecting does
+  // not reset the guessing budget. Successful joins never consume it.
+  'session:join:miss': { windowMs: 60_000, max: 60, scope: 'ip' },
+
   // Poll voting - 2 requests per second (prevent rapid vote changes)
   'session:poll:vote': { windowMs: 1000, max: 2 },
 
@@ -95,9 +99,10 @@ const createEventRateLimiter = (limits = EVENT_RATE_LIMITS) => {
    * Check if a request should be rate limited
    * @param {Socket} socket - The socket making the request
    * @param {string} eventName - The event name being requested
+   * @param {{ consume?: boolean }} [options] - `consume: false` only inspects the window
    * @returns {{ allowed: boolean, retryAfter?: number }} - Whether request is allowed
    */
-  return (socket, eventName) => {
+  return (socket, eventName, options) => {
     const limit = limits[eventName];
     if (!limit) {
       if (!warnedEvents.has(eventName)) {
@@ -111,7 +116,7 @@ const createEventRateLimiter = (limits = EVENT_RATE_LIMITS) => {
       ? `ip:${socket.clientIP}`
       : `${socket.clientIP}-${socket.id}`;
 
-    return counterFor(eventName, limit)(clientKey);
+    return counterFor(eventName, limit)(clientKey, options);
   };
 };
 
