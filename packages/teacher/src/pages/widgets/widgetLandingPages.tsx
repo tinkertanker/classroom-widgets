@@ -242,7 +242,7 @@ export const widgetLandingPages = {
       heading: 'How to collect real-time feedback',
       items: [
         { step: 1, title: 'Launch RT Feedback', body: 'Click RT Feedback in the toolbar. The widget opens showing an empty histogram.' },
-        { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 5-character session code. Works on any device.' },
+        { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code. Works on any device.' },
         { step: 3, title: 'Start feedback collection', body: 'Click "Start feedback". Students immediately see the slider on their device.' },
         { step: 4, title: 'Read the histogram', body: 'As students adjust their sliders, a bar chart updates in real-time on your screen showing the distribution across 5 levels: Too Easy → Too Hard.' },
         { step: 5, title: 'Adjust your teaching', body: 'If the bars cluster on the right, slow down. If they\'re all on the left, push forward. Clear and repeat any time.' },
@@ -288,7 +288,7 @@ export const widgetLandingPages = {
       heading: 'How to share a handout',
       items: [
         { step: 1, title: 'Launch the Handout widget', body: 'Click Handout in the toolbar. The widget opens with an input field ready to go.' },
-        { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 5-character session code. Works on any device with a browser.' },
+        { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code. Works on any device with a browser.' },
         { step: 3, title: 'Type or paste your content', body: 'Enter a URL, a link, or any text in the input field. The widget auto-detects URLs and formats them as clickable links.' },
         { step: 4, title: 'Send it', body: 'Press Enter or click "+". The item appears instantly on every connected student device.' },
         { step: 5, title: 'Add more, remove old ones', body: 'Keep adding items throughout the lesson. Delete individual items or clear all when done.' },
@@ -378,7 +378,7 @@ export const widgetLandingPages = {
       items: [
         { step: 1, title: 'Launch the Poll widget', body: 'Click Poll in the toolbar. The widget opens on your teacher screen ready to configure.' },
         { step: 2, title: 'Set your question and options', body: 'Click the Settings gear and type your question. Add between 2 and 6 answer options. You can save polls to reuse later.' },
-        { step: 3, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 5-character session code shown in the bottom bar. No app, no account.' },
+        { step: 3, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code shown in the bottom bar. No app, no account.' },
         { step: 4, title: 'Start the poll', body: 'Hit "Start poll". Students see the question and options on their device and tap to vote.' },
         { step: 5, title: 'Watch results live', body: 'Vote counts and percentages update instantly on your screen. Pause voting at any time, or reset votes and run it again.' },
       ],
@@ -467,7 +467,7 @@ export const widgetLandingPages = {
       heading: 'How to run a Q&A session',
       items: [
         { step: 1, title: 'Launch the Q&A widget', body: 'Click Q&A in the toolbar. The widget opens showing an empty question queue.' },
-        { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 5-character session code. No app download, no account needed.' },
+        { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code. No app download, no account needed.' },
         { step: 3, title: 'Start accepting questions', body: 'Click "Start accepting questions". Students can now type and submit questions from their devices.' },
         { step: 4, title: 'Manage the queue', body: 'Questions appear in real-time. Tick the checkmark to mark a question as answered (it moves to the bottom), or delete it. Unanswered questions always float to the top.' },
         { step: 5, title: 'Pause or clear when done', body: 'Pause to stop new submissions while you work through the queue. Clear all when you\'re ready for the next round.' },

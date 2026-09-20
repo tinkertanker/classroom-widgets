@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { FaSun, FaMoon, FaTriangleExclamation } from 'react-icons/fa6';
-import { isValidSessionCode, sanitizeStudentName } from '@shared/utils/validation';
+import {
+  isValidSessionCode,
+  sanitizeStudentName,
+  SESSION_CODE_ALPHABET,
+  SESSION_CODE_LENGTH,
+  SESSION_CODE_PATTERN_SOURCE
+} from '@shared/utils/validation';
+
+const UNSAFE_CHARACTERS = new RegExp(`[^${SESSION_CODE_ALPHABET}]`, 'g');
 
 interface JoinFormProps {
   onJoin: (code: string, name: string) => Promise<void>;
@@ -40,7 +48,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
     
     // Otherwise, join a new session
     if (!isValidSessionCode(code)) {
-      setError('Please enter a valid 5-character session code');
+      setError(`Please enter a valid ${SESSION_CODE_LENGTH}-character session code`);
       return;
     }
 
@@ -72,7 +80,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
       setCode(rawValue);
     } else {
       // Only allow safe characters for normal codes
-      const value = rawValue.replace(/[^23456789ACDEFHJKMNPQRTUWXY]/g, '');
+      const value = rawValue.replace(UNSAFE_CHARACTERS, '');
       setCode(value);
     }
     // Clear error when user starts typing
@@ -162,9 +170,9 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               type="text"
               id="code"
               className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${currentSessionCode ? 'bg-warm-gray-100 dark:bg-warm-gray-600 cursor-not-allowed' : 'bg-[#fafafa] dark:bg-warm-gray-700'} ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
-              maxLength={5}
-              pattern="(ADMIN|[23456789ACDEFHJKMNPQRTUWXY]{5})"
-              placeholder={currentSessionCode ? currentSessionCode : "123AB"}
+              maxLength={SESSION_CODE_LENGTH}
+              pattern={`(ADMIN|${SESSION_CODE_PATTERN_SOURCE})`}
+              placeholder={currentSessionCode ? currentSessionCode : "123ABC"}
               value={currentSessionCode || code}
               onChange={handleCodeChange}
               required={!currentSessionCode}

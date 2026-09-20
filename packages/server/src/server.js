@@ -13,7 +13,8 @@ const path = require('path');
 const serverConfig = require('./config/server.config');
 
 // Import middleware
-const { socketAuth, stopRateLimiterCleanup } = require('./middleware/socketAuth');
+const { socketAuth } = require('./middleware/socketAuth');
+const { stopRateLimiterCleanup } = require('./middleware/rateLimit');
 const { AuthorizationError, expressErrorHandler, setupGlobalErrorHandlers } = require('./middleware/errorHandler');
 const { logger } = require('./utils/logger');
 
@@ -50,9 +51,6 @@ const isLocalDevelopmentOrigin = (origin) => {
 class AppServer {
   constructor() {
     this.app = express();
-    if (process.env.TRUST_PROXY) {
-      this.app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : process.env.TRUST_PROXY);
-    }
     this.server = http.createServer(this.app);
     this.io = null;
     this.sessionManager = new SessionManager();

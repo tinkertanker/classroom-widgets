@@ -64,6 +64,7 @@ export class WidgetShortcutController extends EventEmitter {
     private readonly launch: (widgetType: number) => void,
     private readonly dismiss: (widgetType: number) => void,
     private readonly toggle: (widgetType: number) => void,
+    private readonly onDisplayPreview: () => void = () => {},
   ) {
     super();
   }
@@ -80,6 +81,11 @@ export class WidgetShortcutController extends EventEmitter {
           return normalized ? [normalized] : [];
         })
     );
+    const displayShortcut = this.settings.getDisplayPreviewShortcut?.() ?? this.settings.displayPreviewShortcut ?? null;
+    if (displayShortcut) {
+      const normalized = normalizeAccelerator(displayShortcut);
+      if (normalized) reserved.add(normalized);
+    }
     const defaults = Array.from({ length: 9 }, (_, index) => `Ctrl+Alt+Shift+${index + 1}`);
     options.slice(0, 9).forEach((option) => {
       const type = String(option.widgetType);
@@ -97,6 +103,13 @@ export class WidgetShortcutController extends EventEmitter {
         changed = true;
       }
     });
+    if (!this.settings.displayPreviewShortcut) {
+      const defaultDisplayShortcut = 'Ctrl+Alt+Shift+0';
+      if (!reserved.has(defaultDisplayShortcut)) {
+        this.settings.displayPreviewShortcut = defaultDisplayShortcut;
+        changed = true;
+      }
+    }
     if (options.length > 0 && (!this.settings.widgetShortcutsInitialized || changed)) {
       this.settings.widgetShortcutsInitialized = true;
       this.settings.notifyChanged();
@@ -125,13 +138,14 @@ export class WidgetShortcutController extends EventEmitter {
         Object.entries(bindings).some(([type, shortcut]) => {
           if (!shortcut || normalizeAccelerator(shortcut) !== normalized) return false;
           return type !== String(widgetType);
-        }));
+        }))
+        || normalizeAccelerator(this.settings.displayPreviewShortcut ?? '') === normalized;
       if (duplicate) return { ok: false, error: 'Already assigned to another widget.' };
     }
     const bindings = action === 'show' ? this.settings.widgetShortcuts : this.settings.widgetDismissShortcuts;
     bindings[String(widgetType)] = normalized;
     this.settings.widgetShortcutsInitialized = true;
-    this.settings.notifyChanged();
+      this.settings.notifyChanged();
     this.refresh();
     return { ok: true };
   }
@@ -202,6 +216,11 @@ export class WidgetShortcutController extends EventEmitter {
         dismissDetail: dismissStatus.detail,
       };
     });
+    const displayShortcut = normalizeAccelerator(this.settings.displayPreviewShortcut ?? '');
+    if (!this.capturing && displayShortcut && !seen.has(displayShortcut)) {
+      this.registrar.register(displayShortcut, this.onDisplayPreview);
+      seen.add(displayShortcut);
+    }
     this.emit('changed');
   }
 }

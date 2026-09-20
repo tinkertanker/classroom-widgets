@@ -511,13 +511,17 @@ export class WidgetPanelWindow extends EventEmitter {
         this.emit('removalRequested', this.widgetId);
         break;
       case 'add': {
-        const items = this.options.map((option) => ({
+        const items = [
+          { label: 'Display', click: () => this.emit('displayPreviewRequested') },
+          { type: 'separator' as const },
+          ...this.options.map((option) => ({
           label: option.title,
           click: () => this.emit('widgetCreationRequested', option.widgetType),
-        }));
-        const menu = Menu.buildFromTemplate(items.length > 0
+          })),
+        ];
+        const menu = Menu.buildFromTemplate(items.length > 2
           ? items
-          : [{ label: 'Loading…', enabled: false }]);
+          : [{ label: 'Display', click: () => this.emit('displayPreviewRequested') }]);
         this.trackMenu(menu);
         const bounds = this.win.getBounds();
         menu.popup({ window: this.win, x: Math.max(0, bounds.width - 48), y: CHROME_HEIGHT });

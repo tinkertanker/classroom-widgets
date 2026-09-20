@@ -9,6 +9,13 @@ import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 interface ShortenLinkProps {
 }
 
+interface ShortenResponse {
+  success?: boolean;
+  shortUrl?: string;
+  error?: unknown;
+  message?: unknown;
+}
+
 const ShortenLink: React.FC<ShortenLinkProps> = () => {
   const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
   const [link, setLink] = useState<string>('');
@@ -36,7 +43,7 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: link })
       });
-      let data: { success?: boolean; shortUrl?: string; error?: unknown } = {};
+      let data: ShortenResponse = {};
       try {
         data = await response.json();
       } catch {
@@ -48,6 +55,8 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
         setError(null);
       } else if (response.status === 503) {
         setError('Link shortening is not configured on this server.');
+      } else if (typeof data.message === 'string') {
+        setError(data.message);
       } else if (typeof data.error === 'string') {
         setError(data.error);
       } else {

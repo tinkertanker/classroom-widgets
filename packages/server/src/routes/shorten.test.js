@@ -1,14 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const express = require('express');
-const shortenRoutes = require('./shorten');
+const createShortenRouter = require('./shorten');
+const { stopRateLimiterCleanup } = require('../middleware/rateLimit');
 
 const realFetch = globalThis.fetch;
 
-async function withServer(callback) {
+async function withServer(t, callback) {
   const app = express();
   app.use(express.json());
-  app.use('/api/shorten', shortenRoutes);
+  app.use('/api/shorten', createShortenRouter());
+  t.after(() => stopRateLimiterCleanup());
   const server = await new Promise((resolve) => {
     const instance = app.listen(0, () => resolve(instance));
   });
@@ -60,9 +62,8 @@ test('returns not configured before validation or upstream requests', async (t) 
     throw new Error('upstream should not be called');
   };
   stubUpstream(t, upstream);
-  shortenRoutes._resetRateLimit();
 
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     const response = await realFetch(`${baseUrl}/api/shorten`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -86,9 +87,8 @@ test('rejects invalid URLs without calling upstream', async (t) => {
     upstreamCalled = true;
     throw new Error('upstream should not be called');
   });
-  shortenRoutes._resetRateLimit();
 
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     const response = await realFetch(`${baseUrl}/api/shorten`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -115,9 +115,8 @@ test('invalid payloads do not consume the rate limit', async (t) => {
       }
     };
   });
-  shortenRoutes._resetRateLimit();
 
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     for (let index = 0; index < 31; index += 1) {
       const response = await realFetch(`${baseUrl}/api/shorten`, {
         method: 'POST',
@@ -153,9 +152,8 @@ test('forwards configured requests and returns the secure short URL', async (t) 
       }
     };
   });
-  shortenRoutes._resetRateLimit();
 
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     const response = await realFetch(`${baseUrl}/api/shorten`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -187,9 +185,8 @@ test('maps upstream conflicts to a safe client error', async (t) => {
       return { error: 'conflict details' };
     }
   }));
-  shortenRoutes._resetRateLimit();
 
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     const response = await realFetch(`${baseUrl}/api/shorten`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -214,9 +211,8 @@ test('does not expose upstream error details', async (t) => {
       return { error: 'secret-upstream-detail' };
     }
   }));
-  shortenRoutes._resetRateLimit();
 
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     const response = await realFetch(`${baseUrl}/api/shorten`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -231,7 +227,7 @@ test('status reflects whether Short.io is configured', async (t) => {
   restoreEnv(t);
   delete process.env.SHORTIO_API_KEY;
   delete process.env.SHORTIO_DOMAIN;
-  await withServer(async (baseUrl) => {
+  await withServer(t, async (baseUrl) => {
     let response = await realFetch(`${baseUrl}/api/shorten/status`);
     assert.deepEqual(await response.json(), { success: true, configured: false });
 

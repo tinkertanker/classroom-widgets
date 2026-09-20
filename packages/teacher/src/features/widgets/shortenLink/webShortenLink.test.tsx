@@ -60,6 +60,24 @@ test('shows the server not-configured error', async () => {
   expect(await screen.findByText('Link shortening is not configured on this server.')).toBeInTheDocument();
 });
 
+test('shows the server message before its error code', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: false,
+    status: 429,
+    json: async () => ({
+      success: false,
+      error: 'RATE_LIMITED',
+      message: 'Too many requests. Please try again later.'
+    })
+  }));
+  render(<ShortenLink />);
+
+  await submit('https://example.com');
+
+  expect(await screen.findByText('Too many requests. Please try again later.')).toBeInTheDocument();
+  expect(screen.queryByText('RATE_LIMITED')).not.toBeInTheDocument();
+});
+
 test('does not fetch when client-side URL validation fails', async () => {
   const fetchMock = vi.fn();
   vi.stubGlobal('fetch', fetchMock);

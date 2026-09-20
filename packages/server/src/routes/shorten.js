@@ -1,11 +1,9 @@
 const express = require('express');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { ipRateLimit } = require('../middleware/rateLimit');
 const { logger } = require('../utils/logger');
 
 const DEFAULT_BASE_URL = 'https://api.short.io/links/public';
-const RATE_LIMIT = 30;
-const RATE_WINDOW_MS = 60 * 1000;
-const rateLimitByIp = new Map();
 
 function getConfig() {
   const apiKey = (process.env.SHORTIO_API_KEY || '').trim();
@@ -55,50 +53,27 @@ function validatePayload(body) {
   return null;
 }
 
-function isRateLimited(ip) {
-  const now = Date.now();
-  const current = rateLimitByIp.get(ip);
-
-  if (!current || now - current.windowStart >= RATE_WINDOW_MS) {
-    rateLimitByIp.set(ip, { count: 1, windowStart: now });
-    return false;
+function requireConfigured(req, res, next) {
+  if (getConfig().configured) {
+    return next();
   }
-
-  current.count += 1;
-  return current.count > RATE_LIMIT;
+  return res.status(503).json({
+    success: false,
+    code: 'NOT_CONFIGURED',
+    error: 'Link shortening is not configured on this server.'
+  });
 }
 
-const router = express.Router();
-
-router.get('/status', (req, res) => {
-  res.json({
-    success: true,
-    configured: getConfig().configured
-  });
-});
-
-router.post('/', asyncHandler(async (req, res) => {
-  const { apiKey, domain, baseUrl, configured } = getConfig();
-
-  if (!configured) {
-    return res.status(503).json({
-      success: false,
-      code: 'NOT_CONFIGURED',
-      error: 'Link shortening is not configured on this server.'
-    });
-  }
-
+function validateBody(req, res, next) {
   const validationMessage = validatePayload(req.body);
   if (validationMessage) {
     return res.status(400).json(validationError(validationMessage));
   }
+  next();
+}
 
-  if (isRateLimited(req.ip)) {
-    return res.status(429).json({
-      success: false,
-      error: 'Too many requests. Please try again shortly.'
-    });
-  }
+async function handleShorten(req, res) {
+  const { apiKey, domain, baseUrl } = getConfig();
 
   const { url, alias, title } = req.body;
   const originalURL = /^[a-z][a-z\d+.-]*:\/\//i.test(url) ? url : `https://${url}`;
@@ -159,10 +134,28 @@ router.post('/', asyncHandler(async (req, res) => {
     success: false,
     error: 'Could not shorten that link. Please try again.'
   });
-}));
+}
 
-router._resetRateLimit = () => {
-  rateLimitByIp.clear();
-};
+function createShortenRouter() {
+  const router = express.Router();
 
-module.exports = router;
+  router.get('/status', (req, res) => {
+    res.json({
+      success: true,
+      configured: getConfig().configured
+    });
+  });
+
+  router.post(
+    '/',
+    requireConfigured,
+    validateBody,
+    ipRateLimit({ windowMs: 60 * 1000, max: 30 }),
+    asyncHandler(handleShorten)
+  );
+
+  return router;
+}
+
+module.exports = createShortenRouter;
+module.exports.createShortenRouter = createShortenRouter;
