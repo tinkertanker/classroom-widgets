@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { WidgetType } from '@shared/types';
@@ -142,6 +142,16 @@ const throttleReconnect = async () => {
     retryAfter: 60_000
   });
 };
+const deferRecovery = async () => {
+  await throttleReconnect();
+  for (let attempt = 2; attempt <= 3; attempt++) {
+    await advance(60_001);
+    await spendBudget(30);
+    expect((await respond()).retryAfter).toBe(60_000);
+  }
+  expect(context.connectionPhase).toBe('recovery-deferred');
+  expect(socket.requests()).toHaveLength(4);
+};
 const expectPreserved = () => {
   expect(context.sessionCode).toBe(CODE);
   expect(context.activeRooms.get('poll-1')?.participantCount).toBe(2);
@@ -246,6 +256,112 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     disconnect();
     await recoverOnce();
     expectPreserved();
+  });
+
+  it('offers a visible retry while transport stays connected and recovers the same classroom through the banner', async () => {
+    mount();
+    connect();
+    expect(screen.getByRole('status')).toHaveTextContent('Reconnecting to session');
+    expect(screen.queryByTitle('Connected to server')).not.toBeInTheDocument();
+    await respond();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByTitle('Connected to server')).toBeInTheDocument();
+    disconnect();
+    // Start a separate run with the same real per-IP budget, now already used once.
+    await spendBudget(29);
+    connect();
+    await respond();
+    for (let attempt = 2; attempt <= 3; attempt++) {
+      await advance(60_001);
+      await spendBudget(30);
+      await respond();
+    }
+    expect(screen.getByRole('status')).toHaveTextContent('Session recovery paused');
+    const retry = screen.getByRole('button', { name: 'Retry session recovery' });
+    expect(retry).toBeEnabled();
+    expect(context.isConnected).toBe(true);
+    expect(socket.connected).toBe(true);
+    expect(screen.queryByTitle('Connected to server')).not.toBeInTheDocument();
+    expectPreserved();
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    await advance(60_001);
+    expect(socket.requests()).toHaveLength(4); // No unrequested fourth retry.
+
+    // Two clicks in one render must not restart the run or consume two slots.
+    act(() => { fireEvent.click(retry); fireEvent.click(retry); });
+    expect(socket.requests()).toHaveLength(5);
+    expect(socket.request().data).toEqual({ existingCode: CODE, hostToken: savedToken });
+    expect(screen.getByRole('status')).toHaveTextContent('Reconnecting to session');
+    expect(screen.getByRole('button', { name: 'Retry session recovery' })).toBeDisabled();
+    expect(screen.queryByTitle('Connected to server')).not.toBeInTheDocument();
+    const roomResult = vi.fn();
+    void context.createRoom('poll', 'poll-1').then(roomResult);
+    expect(socket.emitted.some(call => call.event === 'session:createRoom')).toBe(false);
+    expect(roomResult).not.toHaveBeenCalled();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe(savedToken);
+
+    expect((await respond()).isExisting).toBe(true);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry session recovery' })).not.toBeInTheDocument();
+    expect(screen.getByTitle('Connected to server')).toBeInTheDocument();
+    expect(socket.connected).toBe(true);
+    expect(server.manager.getSession(CODE)).toBe(server.session);
+    expect(server.session.getRoom('poll', 'poll-1')).toBe(server.room);
+    expect(server.session.getParticipants().map((student: any) => student.name)).toEqual(['Ada', 'Bo']);
+    expect(server.room.getParticipantCount()).toBe(2);
+    expect(localStorage.getItem(TOKEN_KEY)).not.toBe(savedToken);
+    expectPreserved();
+    const roomRequest = socket.emitted.find(call => call.event === 'session:createRoom')!;
+    expect(roomRequest.data.sessionCode).toBe(CODE);
+    await acknowledge(await peer.createRoom(roomRequest.data), roomRequest);
+    expect(roomResult).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps the warning persistent and re-enables the banner retry after another bounded failure', async () => {
+    mount();
+    await deferRecovery();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry session recovery' }));
+    expect((await respond()).retryAfter).toBe(60_000);
+    for (let attempt = 2; attempt <= 3; attempt++) {
+      expect(screen.getByRole('button', { name: 'Retry session recovery' })).toBeDisabled();
+      await advance(60_001);
+      await spendBudget(30);
+      expect((await respond()).retryAfter).toBe(60_000);
+    }
+    expect(socket.requests()).toHaveLength(7);
+    expect(screen.getByRole('status')).toHaveTextContent('Session recovery paused');
+    expect(screen.getByRole('button', { name: 'Retry session recovery' })).toBeEnabled();
+    // Collapsing the session code must not dismiss the recovery warning/action.
+    fireEvent.click(screen.getByTitle('Session recovery paused'));
+    await advance(180_000);
+    expect(screen.getByRole('status')).toHaveTextContent('Session recovery paused');
+    expect(screen.getByRole('button', { name: 'Retry session recovery' })).toBeEnabled();
+    expect(socket.requests()).toHaveLength(7);
+    expect(context.sessionCode).toBe(CODE);
+    expect(localStorage.getItem(TOKEN_KEY)).toBe(server.session.hostToken);
+    expect(socket.emitted.some(call => call.event === 'session:createRoom')).toBe(false);
+  });
+
+  it('removes the recovery warning on close and ignores an outstanding banner retry response', async () => {
+    mount();
+    await deferRecovery();
+    await advance(60_001);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry session recovery' }));
+    const response = await peer.create(socket.request().data);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    try {
+      fireEvent.click(screen.getAllByRole('button', { name: 'Close session' })[0]);
+    } finally {
+      confirm.mockRestore();
+    }
+    await acknowledge(response);
+    await advance(180_000);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retry session recovery' })).not.toBeInTheDocument();
+    expect(context.sessionCode).toBeNull();
+    expect(context.activeRooms.size).toBe(0);
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+    expect(socket.requests()).toHaveLength(5);
   });
 
   it('preserves recoverable state after three transport timeouts and ignores a timed-out acknowledgement', async () => {

@@ -19,9 +19,10 @@ interface TopControlsProps {
 const TopControls: React.FC<TopControlsProps> = ({ onSwitchToCompact }) => {
   const { scale, setScale } = useWorkspace();
   const { connected } = useServerConnection();
-  const { sessionCode } = useSession();
+  const { sessionCode, connectionPhase } = useSession();
   const { showClock } = useBottomBar();
   const layoutFormat = useWorkspaceStore((state) => state.layoutFormat);
+  const recoveryPending = connectionPhase === 'recovering' || connectionPhase === 'recovery-deferred';
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isNear, registerHudElement } = useHudProximityContext();
@@ -127,7 +128,8 @@ const TopControls: React.FC<TopControlsProps> = ({ onSwitchToCompact }) => {
         ref={topRightRef}
         className={clsx(
           'flex flex-wrap items-start justify-end gap-2 max-w-full self-end',
-          hudProximity.wrapper(isNear.topRight)
+          // Recovery needs attention even when the pointer is away from the HUD.
+          hudProximity.wrapper(isNear.topRight || recoveryPending)
         )}
       >
         <div className="flex shrink-0 items-start gap-2">
