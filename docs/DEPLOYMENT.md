@@ -169,6 +169,8 @@ CORS_ORIGINS=https://teacher-app.com,https://student-app.com
 STUDENT_APP_URL=https://student-app.com/student
 
 # Optional: Short.io proxy configuration (key remains server-side)
+# Rotate any key previously assigned to VITE_SHORTIO_API_KEY before deployment:
+# older frontend builds shipped it in the public bundle.
 SHORTIO_API_KEY=your_api_key
 SHORTIO_DOMAIN=go.example.edu
 # SHORTIO_BASE_URL=https://api.short.io/links/public

@@ -29,6 +29,9 @@ function restoreEnv(t) {
     domain: process.env.SHORTIO_DOMAIN,
     baseUrl: process.env.SHORTIO_BASE_URL
   };
+  delete process.env.SHORTIO_API_KEY;
+  delete process.env.SHORTIO_DOMAIN;
+  delete process.env.SHORTIO_BASE_URL;
   t.after(() => {
     for (const [name, value] of Object.entries({
       SHORTIO_API_KEY: previous.apiKey,
