@@ -158,6 +158,37 @@ describe('Session', () => {
     });
   });
 
+  describe('hostToken', () => {
+    it('generates a unique token per session', () => {
+      const other = new Session('FGHIJ');
+      assert.equal(typeof session.hostToken, 'string');
+      assert.ok(session.hostToken.length > 0);
+      assert.notEqual(session.hostToken, other.hostToken);
+    });
+
+    it('isValidHostToken accepts only the session\'s own token', () => {
+      assert.equal(session.isValidHostToken(undefined), false);
+      assert.equal(session.isValidHostToken(null), false);
+      assert.equal(session.isValidHostToken(42), false);
+      assert.equal(session.isValidHostToken('short'), false);
+      assert.equal(session.isValidHostToken(session.hostToken + 'x'), false);
+      assert.equal(session.isValidHostToken('a'.repeat(session.hostToken.length)), false);
+      assert.equal(session.isValidHostToken(new Session('FGHIJ').hostToken), false);
+      assert.equal(session.isValidHostToken(session.hostToken), true);
+    });
+
+    it('rotateHostToken issues a new token and invalidates the old one', () => {
+      const oldToken = session.hostToken;
+
+      const rotated = session.rotateHostToken();
+
+      assert.equal(rotated, session.hostToken);
+      assert.notEqual(rotated, oldToken);
+      assert.equal(session.isValidHostToken(oldToken), false);
+      assert.equal(session.isValidHostToken(rotated), true);
+    });
+  });
+
   describe('expiry and inactivity', () => {
     it('is not expired or inactive when fresh', () => {
       assert.equal(session.isExpired(), false);

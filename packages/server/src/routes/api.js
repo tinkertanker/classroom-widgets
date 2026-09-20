@@ -4,6 +4,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { ipMissRateLimit } = require('../middleware/rateLimit');
 const serverConfig = require('../config/server.config');
 const voiceCommandRoutes = require('./voiceCommand');
+const { isValidAdminToken } = require('../utils/adminToken');
 
 /**
  * API routes for RESTful endpoints
@@ -47,8 +48,10 @@ module.exports = (sessionManager) => {
    */
   router.post('/admin/cleanup', asyncHandler(async (req, res) => {
     const authHeader = req.headers.authorization;
-    const adminToken = process.env.ADMIN_TOKEN;
-    if (!adminToken || adminToken.trim() === '' || authHeader !== `Bearer ${adminToken}`) {
+    const bearer = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+      ? authHeader.slice('Bearer '.length)
+      : undefined;
+    if (!isValidAdminToken(bearer)) {
       return res.status(401).json({
         success: false,
         error: 'Unauthorized'

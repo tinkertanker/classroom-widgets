@@ -12,13 +12,18 @@
 // ============================================================================
 
 export interface SessionCreateData {
-  // No data required - server generates session code
+  // Optional: reclaim an existing session as host (requires hostToken)
+  existingCode?: string;
+  // Secret issued in the SessionCreatedResponse; required to reclaim a session
+  hostToken?: string;
 }
 
 export interface SessionCreatedResponse {
   success: boolean;
   code: string;
   isExisting?: boolean;
+  // Secret token the host must present to reclaim this session
+  hostToken?: string;
   activeRooms?: Array<{
     type: RoomType;
     widgetId: string;
