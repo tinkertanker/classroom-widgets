@@ -2,10 +2,10 @@
 
 /**
  * Validates a session code format
- * Valid codes are 5 characters using specific letters/numbers to avoid confusion
+ * Valid codes are 6 characters using specific letters/numbers to avoid confusion
  */
 export const isValidSessionCode = (code: string): boolean => {
-  return /^[23456789ACDEFHJKMNPQRTUWXY]{5}$/i.test(code);
+  return /^[23456789ACDEFHJKMNPQRTUWXY]{6}$/i.test(code);
 };
 
 /**

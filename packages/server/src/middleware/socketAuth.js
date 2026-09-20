@@ -1,18 +1,10 @@
 const { LIMITS } = require('../config/constants');
-
-// Tracks every setInterval created by rate limiters so server.js can clear
-// them during graceful shutdown (prevents the event loop staying alive).
-const pendingCleanupHandles = [];
-
-/**
- * Cancel all rate-limiter cleanup timers. Called from graceful shutdown.
- */
-const stopRateLimiterCleanup = () => {
-  while (pendingCleanupHandles.length) {
-    const handle = pendingCleanupHandles.pop();
-    clearInterval(handle);
-  }
-};
+const { logger } = require('../utils/logger');
+const {
+  createWindowCounter,
+  getClientIp,
+  stopRateLimiterCleanup
+} = require('./rateLimit');
 
 /**
  * Socket authentication middleware
@@ -22,9 +14,7 @@ const socketAuth = (sessionManager) => {
     // Add session manager reference to socket
     socket.sessionManager = sessionManager;
 
-    // Check for rate limiting info
-    const clientIP = socket.handshake.address;
-    socket.clientIP = clientIP;
+    socket.clientIP = getClientIp(socket.handshake.headers, socket.handshake.address);
 
     // Initialize socket metadata
     socket.metadata = {
@@ -46,9 +36,21 @@ const socketAuth = (sessionManager) => {
 
 /**
  * Event-specific rate limits
- * Defines limits per event type to prevent abuse
+ * Defines limits per event type to prevent abuse.
+ *
+ * `scope: 'ip'` counts across every connection from the same client IP so a
+ * client cannot escape the limit by reconnecting; the default scope is the
+ * individual socket connection.
  */
 const EVENT_RATE_LIMITS = {
+  // Session creation / host reclaim - 30 per minute per IP. Legitimate hosts
+  // create one session (plus the odd reconnect); this stops a single client
+  // from filling MAX_SESSIONS with orphan sessions.
+  'session:create': { windowMs: 60_000, max: 30, scope: 'ip' },
+
+  // Session join - 10 per 10 seconds per connection (slows code guessing)
+  'session:join': { windowMs: 10_000, max: 10 },
+
   // Poll voting - 2 requests per second (prevent rapid vote changes)
   'session:poll:vote': { windowMs: 1000, max: 2 },
 
@@ -59,35 +61,35 @@ const EVENT_RATE_LIMITS = {
   'session:rtfeedback:submit': { windowMs: 500, max: 5 },
 
   // Question submissions - 2 requests per 3 seconds
-  'session:questions:submit': { windowMs: 3000, max: 2 }
+  'session:questions:submit': { windowMs: 3000, max: 2 },
+
+  // Activity answers - 3 per 2 seconds (each submit evaluates the payload)
+  'session:activity:submit': { windowMs: 2000, max: 3 },
+
+  // Activity retry - 2 per 2 seconds
+  'session:activity:retry': { windowMs: 2000, max: 2 },
+
+  // Activity state refresh - 5 per second
+  'activity:requestState': { windowMs: 1000, max: 5 }
 };
 
 /**
  * Rate limiting middleware factory
- * Creates a per-event rate limiter that tracks requests per client
+ * Creates a per-event rate limiter that tracks requests per client.
+ *
+ * Fails closed: an event with no entry in EVENT_RATE_LIMITS is rejected (and
+ * logged once) so a typo or missing config can never silently disable a limit.
  */
-const createEventRateLimiter = () => {
-  // Map of clientKey -> Map of eventName -> { count, windowStart }
-  const eventRequests = new Map();
+const createEventRateLimiter = (limits = EVENT_RATE_LIMITS) => {
+  const counters = new Map();
+  const warnedEvents = new Set();
 
-  // Cleanup old entries every 5 minutes. Track handle so graceful shutdown can cancel it.
-  const cleanupHandle = setInterval(() => {
-    const now = Date.now();
-    eventRequests.forEach((events, clientKey) => {
-      events.forEach((data, eventName) => {
-        const limit = EVENT_RATE_LIMITS[eventName];
-        if (limit && now - data.windowStart > limit.windowMs * 2) {
-          events.delete(eventName);
-        }
-      });
-      if (events.size === 0) {
-        eventRequests.delete(clientKey);
-      }
-    });
-  }, 5 * 60 * 1000);
-  if (cleanupHandle.unref) cleanupHandle.unref();
-  // Expose stop() so server.js can clear during shutdown.
-  pendingCleanupHandles.push(cleanupHandle);
+  const counterFor = (eventName, limit) => {
+    if (!counters.has(eventName)) {
+      counters.set(eventName, createWindowCounter(limit));
+    }
+    return counters.get(eventName);
+  };
 
   /**
    * Check if a request should be rate limited
@@ -96,46 +98,20 @@ const createEventRateLimiter = () => {
    * @returns {{ allowed: boolean, retryAfter?: number }} - Whether request is allowed
    */
   return (socket, eventName) => {
-    // Get rate limit config for this event
-    const limit = EVENT_RATE_LIMITS[eventName];
+    const limit = limits[eventName];
     if (!limit) {
-      // No rate limit defined for this event
-      return { allowed: true };
+      if (!warnedEvents.has(eventName)) {
+        warnedEvents.add(eventName);
+        logger.error('eventRateLimiter', `No rate limit configured for event "${eventName}"; rejecting`);
+      }
+      return { allowed: false, retryAfter: 1000 };
     }
 
-    const now = Date.now();
-    const clientKey = `${socket.clientIP}-${socket.id}`;
+    const clientKey = limit.scope === 'ip'
+      ? `ip:${socket.clientIP}`
+      : `${socket.clientIP}-${socket.id}`;
 
-    // Initialize client's event map if needed
-    if (!eventRequests.has(clientKey)) {
-      eventRequests.set(clientKey, new Map());
-    }
-
-    const clientEvents = eventRequests.get(clientKey);
-
-    // Initialize event tracking if needed
-    if (!clientEvents.has(eventName)) {
-      clientEvents.set(eventName, { count: 1, windowStart: now });
-      return { allowed: true };
-    }
-
-    const eventData = clientEvents.get(eventName);
-
-    // Reset window if expired
-    if (now - eventData.windowStart > limit.windowMs) {
-      eventData.count = 1;
-      eventData.windowStart = now;
-      return { allowed: true };
-    }
-
-    // Check rate limit
-    eventData.count++;
-    if (eventData.count > limit.max) {
-      const retryAfter = limit.windowMs - (now - eventData.windowStart);
-      return { allowed: false, retryAfter };
-    }
-
-    return { allowed: true };
+    return counterFor(eventName, limit)(clientKey);
   };
 };
 
@@ -145,6 +121,7 @@ const eventRateLimiter = createEventRateLimiter();
 module.exports = {
   socketAuth,
   eventRateLimiter,
+  createEventRateLimiter,
   EVENT_RATE_LIMITS,
   stopRateLimiterCleanup
 };

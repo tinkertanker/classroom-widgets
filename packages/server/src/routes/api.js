@@ -1,6 +1,8 @@
 const express = require('express');
 const { isValidSessionCode } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { ipRateLimit } = require('../middleware/rateLimit');
+const serverConfig = require('../config/server.config');
 const voiceCommandRoutes = require('./voiceCommand');
 
 /**
@@ -21,9 +23,10 @@ module.exports = (sessionManager) => {
   });
 
   /**
-   * Check if session code exists
+   * Check if session code exists. Per-IP limited: this is an unauthenticated
+   * oracle that would otherwise allow enumerating live session codes.
    */
-  router.get('/sessions/:code/exists', (req, res) => {
+  router.get('/sessions/:code/exists', ipRateLimit(serverConfig.HTTP_RATE_LIMITS.SESSION_EXISTS), (req, res) => {
     const { code } = req.params;
 
     if (!isValidSessionCode(code)) {

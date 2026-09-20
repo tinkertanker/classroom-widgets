@@ -18,7 +18,7 @@ module.exports = {
     MAX_TOTAL_PARTICIPANTS: 50000,      // Server-wide participant limit
     MAX_SUBMISSIONS_PER_ROOM: 1000,
     MAX_QUESTIONS_PER_ROOM: 500,
-    ROOM_CODE_LENGTH: 5,
+    ROOM_CODE_LENGTH: 6,
     MAX_QUESTION_LENGTH: 500,           // Reduced from 1000 for better UX
     MAX_LINK_LENGTH: 2000,
     MAX_POLL_QUESTION_LENGTH: 500,

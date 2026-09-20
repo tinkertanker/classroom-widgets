@@ -24,10 +24,14 @@ function mockFn() {
   return fn;
 }
 
+let socketCounter = 0;
+
 function createMockSocket(id) {
   const handlers = {};
   return {
     id,
+    // Unique per test so the per-connection rate limiter never carries over
+    clientIP: `10.0.0.${++socketCounter}`,
     on: (event, handler) => {
       handlers[event] = handler;
     },
@@ -71,7 +75,7 @@ describe('Activity Socket Handler Integration', () => {
   let sessionManager;
   let session;
 
-  const SESSION_CODE = 'TEST1';
+  const SESSION_CODE = 'TEST12';
   const WIDGET_ID = 'widget-123';
   const HOST_SOCKET_ID = 'host-socket-id';
   const STUDENT_SOCKET_ID = 'student-socket-id';
@@ -515,6 +519,9 @@ describe('Activity Socket Handler Integration', () => {
       setupActivity();
 
       for (const answers of [null, 'string', 42, [], { placements: 'x' }, { textInputs: { 'blank-0': 123 } }]) {
+        // Six rapid submits exceed the per-connection submit limit; this test
+        // targets payload handling, so give each iteration a fresh client key.
+        studentSocket.clientIP = `10.1.0.${++socketCounter}`;
         const callback = mockFn();
         studentSocket.trigger(EVENTS.ACTIVITY.SUBMIT, {
           sessionCode: SESSION_CODE,

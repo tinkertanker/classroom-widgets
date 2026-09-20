@@ -9,6 +9,20 @@ module.exports = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   IS_PRODUCTION: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging',
 
+  // Number of trusted reverse-proxy hops (X-Forwarded-For entries) in front
+  // of the server. 0 disables forwarded-header parsing for client IPs.
+  TRUST_PROXY: (() => {
+    const parsed = Number.parseInt(process.env.TRUST_PROXY || '0', 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+  })(),
+
+  // Per-IP limits for unauthenticated HTTP endpoints
+  HTTP_RATE_LIMITS: {
+    // Session existence probe - covers a classroom joining behind one NAT
+    // while making code enumeration impractical.
+    SESSION_EXISTS: { windowMs: 60_000, max: 60 }
+  },
+
   // CORS configuration
   CORS: {
     // Allowed origins - can be set via environment variable.

@@ -40,7 +40,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
     
     // Otherwise, join a new session
     if (!isValidSessionCode(code)) {
-      setError('Please enter a valid 5-character session code');
+      setError('Please enter a valid 6-character session code');
       return;
     }
 
@@ -162,9 +162,9 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               type="text"
               id="code"
               className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${currentSessionCode ? 'bg-warm-gray-100 dark:bg-warm-gray-600 cursor-not-allowed' : 'bg-[#fafafa] dark:bg-warm-gray-700'} ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
-              maxLength={5}
-              pattern="(ADMIN|[23456789ACDEFHJKMNPQRTUWXY]{5})"
-              placeholder={currentSessionCode ? currentSessionCode : "123AB"}
+              maxLength={6}
+              pattern="(ADMIN|[23456789ACDEFHJKMNPQRTUWXY]{6})"
+              placeholder={currentSessionCode ? currentSessionCode : "123ABC"}
               value={currentSessionCode || code}
               onChange={handleCodeChange}
               required={!currentSessionCode}

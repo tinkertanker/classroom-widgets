@@ -3,6 +3,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
+const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 
 const SESSION_DEBUG = process.env.SESSION_DEBUG === 'true';
@@ -38,7 +39,18 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         callback = data;
         data = {};
       }
-      
+
+      const rateLimitResult = eventRateLimiter(socket, EVENTS.SESSION.CREATE);
+      if (!rateLimitResult.allowed) {
+        logger.warn('session:create', 'Rate limited', { clientIP: socket.clientIP });
+        callback({
+          success: false,
+          error: 'Too many session requests. Please try again later.',
+          retryAfter: rateLimitResult.retryAfter
+        });
+        return;
+      }
+
       const { existingCode } = data;
       
       // Check if host already has a session
@@ -116,6 +128,16 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
     
     try {
+      const rateLimitResult = eventRateLimiter(socket, EVENTS.SESSION.JOIN);
+      if (!rateLimitResult.allowed) {
+        socket.emit('session:joined', {
+          success: false,
+          error: 'Too many join attempts. Please wait a moment and try again.',
+          retryAfter: rateLimitResult.retryAfter
+        });
+        return;
+      }
+
       const { code, studentId } = data;
       let { name } = data;
 
