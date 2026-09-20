@@ -4,6 +4,7 @@ import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
+import { isSafeHttpUrl } from '@shared/utils/validation';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
@@ -226,7 +227,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
                       <p className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
                         {submission.studentName || 'Anonymous'}
                       </p>
-                      {submission.isLink ? (
+                      {submission.isLink && isSafeHttpUrl(submission.content) ? (
                         <a
                           href={submission.content}
                           target="_blank"

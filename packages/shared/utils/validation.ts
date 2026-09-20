@@ -1,5 +1,16 @@
 // Validation utilities for the student app
 
+const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
+
+/** True only for absolute http(s) URLs — safe to bind to an anchor href. */
+export const isSafeHttpUrl = (url: string): boolean => {
+  try {
+    return SAFE_URL_PROTOCOLS.has(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Validates a session code format
  * Valid codes are 5 characters using specific letters/numbers to avoid confusion

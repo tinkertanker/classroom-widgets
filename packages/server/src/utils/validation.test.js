@@ -51,6 +51,17 @@ describe('validators.link', () => {
     assert.equal(validators.link('not a url').valid, false);
     assert.equal(validators.link('http//missing-colon.com').valid, false);
   });
+
+  it('rejects unsafe URL protocols', () => {
+    for (const url of ['javascript:alert(1)', 'data:text/html,x', 'file:///etc/passwd', 'vbscript:x']) {
+      assert.equal(validators.link(url).valid, false, url);
+      assert.equal(validators.link(url).error, 'Only http and https links are allowed', url);
+    }
+  });
+
+  it('accepts http URLs', () => {
+    assert.equal(validators.link('http://example.com').valid, true);
+  });
 });
 
 describe('validators.normalizeUrl', () => {
@@ -100,6 +111,32 @@ describe('validators.isLink', () => {
     assert.equal(validators.isLink(''), false);
     assert.equal(validators.isLink(null), false);
     assert.equal(validators.isLink(12), false);
+  });
+
+  it('rejects unsafe URL protocols', () => {
+    assert.equal(validators.isLink('javascript:alert(1)'), false);
+    assert.equal(validators.isLink('data:text/html,x'), false);
+  });
+
+  it('accepts bare domains and safe URLs', () => {
+    assert.equal(validators.isLink('example.com'), true);
+    assert.equal(validators.isLink('https://example.com'), true);
+  });
+});
+
+describe('validators.hasSafeProtocol', () => {
+  it('accepts only http and https URLs', () => {
+    assert.equal(validators.hasSafeProtocol('http://example.com'), true);
+    assert.equal(validators.hasSafeProtocol('https://example.com'), true);
+    assert.equal(validators.hasSafeProtocol('javascript:alert(1)'), false);
+    assert.equal(validators.hasSafeProtocol('data:text/html,x'), false);
+    assert.equal(validators.hasSafeProtocol('file:///etc/passwd'), false);
+    assert.equal(validators.hasSafeProtocol('vbscript:x'), false);
+  });
+
+  it('rejects malformed URLs', () => {
+    assert.equal(validators.hasSafeProtocol('not a url'), false);
+    assert.equal(validators.hasSafeProtocol(''), false);
   });
 });
 
