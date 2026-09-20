@@ -18,18 +18,24 @@ export interface SessionCreateData {
   hostToken?: string;
 }
 
-export interface SessionCreatedResponse {
-  success: boolean;
+export type SessionCreatedResponse = {
+  success: true;
   code: string;
   isExisting?: boolean;
   // Secret token the host must present to reclaim this session
   hostToken?: string;
+  studentAppUrl?: string;
   activeRooms?: Array<{
-    type: RoomType;
-    widgetId: string;
-    isActive: boolean;
+    roomType: RoomType;
+    widgetId?: string;
+    room: any; // Widget-specific room snapshot from Session.getActiveRooms()
   }>;
-}
+} | {
+  success: false;
+  error: string;
+  // Temporary rejection; milliseconds until the session:create budget resets
+  retryAfter?: number;
+};
 
 export interface SessionJoinData {
   code: string;
