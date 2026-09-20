@@ -162,3 +162,72 @@ describe('sessionHandler: student join', () => {
     assert.ok(joinedRooms.includes(`${SESSION_CODE}:questions:w-2`));
   });
 });
+
+describe('sessionHandler: host session:create', () => {
+  const CODE = 'TEST1';
+  let io;
+  let socket;
+  let session;
+  let sessionManager;
+
+  beforeEach(() => {
+    io = createMockIO();
+    socket = createMockSocket('new-host');
+    session = new Session(CODE);
+    session.hostSocketId = 'host-1';
+    sessionManager = {
+      findSessionByHost: () => undefined,
+      getSession: (code) => (code === CODE ? session : undefined),
+      createSession: () => new Session('NEW01')
+    };
+    sessionHandler(io, socket, sessionManager, () => null);
+  });
+
+  async function create(data) {
+    let response;
+    socket.trigger(EVENTS.SESSION.CREATE, data, (r) => { response = r; });
+    await new Promise(resolve => setImmediate(resolve));
+    return response;
+  }
+
+  it('refuses to reclaim an existing session without a token', async () => {
+    const response = await create({ existingCode: CODE });
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, false);
+    assert.equal(response.code, 'NEW01');
+    assert.equal(session.hostSocketId, 'host-1');
+    assert.equal(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED), undefined);
+  });
+
+  it('refuses to reclaim an existing session with a wrong token', async () => {
+    const response = await create({ existingCode: CODE, hostToken: 'not-the-token' });
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, false);
+    assert.equal(response.code, 'NEW01');
+    assert.equal(session.hostSocketId, 'host-1');
+    assert.equal(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED), undefined);
+  });
+
+  it('reclaims the session when the host token matches', async () => {
+    const response = await create({ existingCode: CODE, hostToken: session.hostToken });
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, true);
+    assert.equal(response.code, CODE);
+    assert.equal(response.hostToken, session.hostToken);
+    assert.equal(session.hostSocketId, socket.id);
+    assert.ok(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED));
+  });
+
+  it('creates a new session with a fresh host token', async () => {
+    const response = await create({});
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, false);
+    assert.equal(response.code, 'NEW01');
+    assert.equal(typeof response.hostToken, 'string');
+    assert.ok(response.hostToken.length > 0);
+  });
+});

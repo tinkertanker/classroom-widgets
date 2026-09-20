@@ -73,6 +73,8 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+const HOST_TOKEN_STORAGE_KEY = 'classroom-widgets:hostToken';
+
 export const useSession = () => {
   const context = useContext(SessionContext);
   if (!context) {
@@ -137,6 +139,17 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // they run outside the render cycle and would otherwise read a stale phase
   // (handleConnect in particular has to reset the phase and immediately act on it).
   const connectionPhaseRef = useRef<ConnectionPhase>('disconnected');
+  const hostTokenRef = useRef<string | null>(localStorage.getItem(HOST_TOKEN_STORAGE_KEY));
+
+  // Persist the host reconnect token issued by session:create responses
+  const storeHostToken = useCallback((token: string | null) => {
+    hostTokenRef.current = token;
+    if (token) {
+      localStorage.setItem(HOST_TOKEN_STORAGE_KEY, token);
+    } else {
+      localStorage.removeItem(HOST_TOKEN_STORAGE_KEY);
+    }
+  }, []);
   const setConnectionPhase = useCallback((phase: ConnectionPhase) => {
     connectionPhaseRef.current = phase;
     setConnectionPhaseState(phase);
@@ -303,7 +316,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setStoreSessionCode(null);
     setActiveRooms(new Map());
     setRecoveryData(new Map());
-  }, [setStoreSessionCode]);
+    storeHostToken(null);
+  }, [setStoreSessionCode, storeHostToken]);
 
   // Record a room we know exists from a createRoom acknowledgement.
   // The server only broadcasts session:roomCreated for genuinely new rooms, so
@@ -400,7 +414,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             signal.addEventListener('abort', abortHandler, { once: true });
 
             // Attempt to rejoin session
-            socket.emit('session:create', { existingCode: sessionCode }, (result: any) => {
+            socket.emit('session:create', { existingCode: sessionCode, hostToken: hostTokenRef.current }, (result: any) => {
               clearTimeout(timeoutId);
               signal.removeEventListener('abort', abortHandler);
 
@@ -418,6 +432,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             // Update studentAppUrl from server response
             if (response.studentAppUrl) {
               setStudentAppUrl(response.studentAppUrl);
+            }
+            if (response.hostToken) {
+              storeHostToken(response.hostToken);
             }
 
             // Check if this is actually recovery of existing session
@@ -612,6 +629,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
           if (response.success) {
             debug('[UnifiedSession] Session created:', response.code);
+            if (response.hostToken) {
+              storeHostToken(response.hostToken);
+            }
             setSessionCode(response.code);
             setSessionCreatedAt(Date.now());
             setStoreSessionCode(response.code);
