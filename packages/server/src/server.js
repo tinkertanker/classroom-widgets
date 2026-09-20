@@ -113,9 +113,10 @@ class AppServer {
       allowedHeaders: serverConfig.CORS.ALLOWED_HEADERS
     }));
 
-    // Voice command context can contain legacy image widget data URLs. Keep
-    // that endpoint on the old larger limit while tightening the rest.
-    this.app.use('/api/voice-command', express.json({ limit: '10mb' }));
+    // The voice command transcript is capped at a small length, so this
+    // endpoint only needs a small body — the teacher client sends a tiny
+    // context and BAML ignores the context anyway.
+    this.app.use('/api/voice-command', express.json({ limit: '64kb' }));
 
     // Body parsing. Typical poll/activity payloads are tiny; tight limits
     // prevent trivial memory-DoS from oversized POSTs.
