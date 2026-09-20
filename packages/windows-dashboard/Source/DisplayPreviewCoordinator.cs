@@ -31,6 +31,8 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     private bool _systemEventsSubscribed;
 
     public bool IsOpen => _window is { IsVisible: true };
+    internal DisplayPreviewWindow? Window => _window;
+    internal DisplayCaptureSession? Capture => _capture;
 
     public DisplayPreviewCoordinator(DashboardSettings settings, DisplayCatalog catalog)
     {
@@ -119,8 +121,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         if (DisplayGeometry.Intersects(_window.GetPhysicalBounds(), _selected.Bounds))
         {
             _wantsCapture = true;
-            _suspendedForOverlap = true;
-            Publish(Overlap);
+            StopForOverlap();
             return;
         }
 

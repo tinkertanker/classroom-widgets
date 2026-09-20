@@ -108,11 +108,7 @@ public sealed class DisplayCaptureSession : IDisposable
                 handle.Free();
             }
 
-            if (_bitmap is null || _bitmap.PixelWidth != width || _bitmap.PixelHeight != height)
-            {
-                _bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
-            }
-            _bitmap.WritePixels(new Int32Rect(0, 0, width, height), pixels, width * 4, 0);
+            _bitmap = PresentFrame(_bitmap, pixels, width, height);
             FrameReady?.Invoke();
         }
         catch (Exception error)
@@ -128,6 +124,17 @@ public sealed class DisplayCaptureSession : IDisposable
             if (memoryDc != IntPtr.Zero) NativeMethods.DeleteDC(memoryDc);
             if (screenDc != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
         }
+    }
+
+    /// <summary>Writes a top-down 32-bit BI_RGB GDI frame (B, G, R, unused) into a WPF bitmap.</summary>
+    internal static WriteableBitmap PresentFrame(WriteableBitmap? bitmap, byte[] pixels, int width, int height)
+    {
+        if (bitmap is null || bitmap.PixelWidth != width || bitmap.PixelHeight != height)
+        {
+            bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr32, null);
+        }
+        bitmap.WritePixels(new Int32Rect(0, 0, width, height), pixels, width * 4, 0);
+        return bitmap;
     }
 
     public void Dispose()
