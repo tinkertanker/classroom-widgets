@@ -202,7 +202,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         decisionHandler(.cancel)
         if navigationAction.navigationType == .linkActivated {
-            NSWorkspace.shared.open(url)
+            ExternalLinkOpener.open(url)
         }
     }
 
@@ -213,7 +213,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if let url = navigationAction.request.url, url.scheme != dashboardURLScheme {
-            NSWorkspace.shared.open(url)
+            ExternalLinkOpener.open(url)
         }
         return nil
     }

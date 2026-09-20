@@ -1,5 +1,25 @@
+import AppKit
 import Foundation
 import WebKit
+
+enum ExternalLinkOpener {
+    static let allowedSchemes: Set<String> = ["http", "https", "mailto"]
+
+    static func isAllowed(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased() else { return false }
+        return allowedSchemes.contains(scheme)
+    }
+
+    @discardableResult
+    static func open(_ url: URL, using open: (URL) -> Void = { NSWorkspace.shared.open($0) }) -> Bool {
+        guard isAllowed(url) else {
+            DashboardLog.web.error("Blocked external link with disallowed scheme: \(url.scheme ?? "nil", privacy: .public)")
+            return false
+        }
+        open(url)
+        return true
+    }
+}
 
 enum DashboardWebKitShared {
     static let schemeHandler = StaticFileSchemeHandler(webRoot: WebRootResolver.resolve())
