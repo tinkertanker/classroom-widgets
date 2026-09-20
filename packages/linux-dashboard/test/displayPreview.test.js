@@ -236,6 +236,27 @@ test('opening stays idle; an explicit matching singleton starts capture', async 
   assert.equal(window.activeStream, 'screen:2:0');
 });
 
+test('moving an idle preview onto its source requires turning it on after moving clear', async t => {
+  let requests = 0;
+  const { window } = harness(t, async () => {
+    requests += 1;
+    return [{ id: 'screen:2:0', display_id: '2' }];
+  });
+  window.setBounds({ x: 1100, y: 80, width: 480, height: 360 });
+  window.emit('moved');
+  assert.equal(window.states.at(-1).powerState, 'off');
+  assert.equal(window.states.at(-1).statusMessage, 'Preview is on the source display. Move it fully clear, then turn the preview on.');
+  assert.equal(requests, 0);
+
+  window.setBounds({ x: 100, y: 80, width: 480, height: 360 });
+  window.emit('moved');
+  await settle();
+  assert.equal(window.states.at(-1).powerState, 'off');
+  assert.equal(window.states.at(-1).statusMessage, 'Click to see display');
+  assert.equal(requests, 0, 'moving clear must not create capture intent');
+  assert.equal(window.activeStream, null);
+});
+
 for (const displayId of ['1', '', undefined]) {
   test(`rejects a singleton with unverified display_id ${JSON.stringify(displayId)}`, async t => {
     const { window } = harness(t, async () => [{ id: 'screen:wrong:0', display_id: displayId }]);

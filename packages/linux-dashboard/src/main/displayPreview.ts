@@ -221,7 +221,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       }
     }
     if (this.selectedSource && !this.candidates.some((candidate) => candidate.id === this.selectedSource?.id)) {
-      this.publish(OVERLAP_MESSAGE);
+      this.publish('Preview is on the source display. Move it fully clear, then turn the preview on.');
     } else if (!this.candidates.length) {
       this.publish('Connect another display or use an extended desktop.');
     } else if (!this.selectedSource) {
