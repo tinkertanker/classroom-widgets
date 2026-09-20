@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; media-src blob:;">
+  <link rel="stylesheet" href="display-preview.css">
+</head>
+<body>
+  <main id="preview">
+    <video id="video" autoplay playsinline></video>
+    <div id="bar">
+      <button id="power" type="button">Turn preview on</button>
+      <span id="status"></span>
+      <button id="menu" type="button" aria-label="Menu">⋯</button>
+    </div>
+  </main>
+  <script src="display-preview.js"></script>
+</body>
+</html>

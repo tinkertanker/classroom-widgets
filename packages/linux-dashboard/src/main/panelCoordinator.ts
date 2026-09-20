@@ -289,6 +289,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     panel.on('randomiserListChanged', (change: unknown) => this.emit('randomiserListChanged', change));
     panel.on('removalRequested', (widgetId: string) => this.emit('widgetRemovalRequested', widgetId));
     panel.on('widgetCreationRequested', (widgetType: number) => this.emit('widgetCreationRequested', widgetType));
+    panel.on('displayPreviewRequested', () => this.emit('displayPreviewRequested'));
     panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
     panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout));
     panel.on('frameChanged', (widgetId: string, frame: RectFrame) => {
