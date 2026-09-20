@@ -3,6 +3,7 @@
  */
 
 const { LIMITS } = require('../config/constants');
+const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 
 /**
  * Validation result type
@@ -12,6 +13,19 @@ const { LIMITS } = require('../config/constants');
  */
 
 const validators = {
+  /**
+   * Check whether a URL uses a safe protocol
+   * @param {string} url - URL to check
+   * @returns {boolean}
+   */
+  hasSafeProtocol: (url) => {
+    try {
+      return SAFE_URL_PROTOCOLS.has(new URL(url).protocol);
+    } catch {
+      return false;
+    }
+  },
+
   /**
    * Validate session code format
    * @param {string} code - Session code to validate
@@ -55,7 +69,10 @@ const validators = {
       return { valid: false, error: `Link must be less than ${LIMITS.MAX_LINK_LENGTH} characters` };
     }
     try {
-      new URL(url);
+      const parsedUrl = new URL(url);
+      if (!SAFE_URL_PROTOCOLS.has(parsedUrl.protocol)) {
+        return { valid: false, error: 'Only http and https links are allowed' };
+      }
       return { valid: true };
     } catch {
       return { valid: false, error: 'Invalid URL format' };
@@ -122,12 +139,7 @@ const validators = {
     if (!text || typeof text !== 'string') return false;
     // Normalize first to catch domains without protocol
     const normalized = validators.normalizeUrl(text);
-    try {
-      new URL(normalized);
-      return true;
-    } catch {
-      return false;
-    }
+    return validators.hasSafeProtocol(normalized);
   },
 
   /**

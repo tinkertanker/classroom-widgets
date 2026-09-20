@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const PollRoom = require('./PollRoom');
 const LinkShareRoom = require('./LinkShareRoom');
 const RTFeedbackRoom = require('./RTFeedbackRoom');
@@ -15,6 +16,7 @@ class Session {
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
     this.hostDisconnectedAt = null; // Timestamp when host disconnected
+    this.hostToken = this.rotateHostToken(); // Secret token for host reclaim
     this.activeRooms = new Map(); // roomType -> room instance
     this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
   }
@@ -31,6 +33,27 @@ class Session {
    */
   updateActivity() {
     this.lastActivity = Date.now();
+  }
+
+  /**
+   * Issue a fresh host token, replacing any previous one.
+   */
+  rotateHostToken() {
+    this.hostToken = crypto.randomBytes(24).toString('base64url');
+    return this.hostToken;
+  }
+
+  /**
+   * Check whether a presented token allows reclaiming the host role.
+   * Constant-time comparison; never leaks this.hostToken.
+   */
+  isValidHostToken(token) {
+    if (typeof token !== 'string') {
+      return false;
+    }
+    const expected = Buffer.from(this.hostToken);
+    const candidate = Buffer.from(token);
+    return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
   }
 
   /**

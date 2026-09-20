@@ -52,15 +52,18 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
 
-      const { existingCode } = data;
+      const { existingCode, hostToken } = data;
       
       // Check if host already has a session
       let existingSession = sessionManager.findSessionByHost(socket.id);
-      
+
       // If no session found by socket.id but existingCode provided, check that
       if (!existingSession && existingCode) {
-        existingSession = sessionManager.getSession(existingCode);
-        if (existingSession) {
+        const candidate = sessionManager.getSession(existingCode);
+        if (candidate && candidate.isValidHostToken(hostToken)) {
+          existingSession = candidate;
+          // Rotate the reclaim token so the presented one can't be replayed
+          existingSession.rotateHostToken();
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
 
@@ -72,6 +75,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
 
           // Notify students that host has reconnected
           io.to(`session:${existingSession.code}`).emit(EVENTS.SESSION.HOST_RECONNECTED);
+        } else if (candidate) {
+          // Session exists but the token is missing/invalid: refuse the
+          // reclaim and fall through to creating a brand-new session.
+          logger.warn('session:create', 'rejected host reclaim with invalid token', {
+            code: existingCode,
+            socketId: socket.id
+          });
         }
       }
       
@@ -93,7 +103,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
           code: existingSession.code,
           isExisting: true,
           activeRooms: existingSession.getActiveRooms(),
-          studentAppUrl
+          studentAppUrl,
+          hostToken: existingSession.hostToken
         });
       } else {
         // Create new session
@@ -105,7 +116,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
           success: true,
           code: session.code,
           isExisting: false,
-          studentAppUrl
+          studentAppUrl,
+          hostToken: session.hostToken
         });
       }
     } catch (error) {

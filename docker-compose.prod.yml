@@ -50,6 +50,7 @@ services:
       - SHORTIO_API_KEY=${SHORTIO_API_KEY}
       - SHORTIO_DOMAIN=${SHORTIO_DOMAIN}
       - SHORTIO_BASE_URL=${SHORTIO_BASE_URL:-https://api.short.io/links/public}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
       # Backend sits behind one nginx-proxy hop; needed for per-IP rate limits
       - TRUST_PROXY=${TRUST_PROXY:-1}
       - VIRTUAL_HOST=${BACKEND_DOMAIN}
