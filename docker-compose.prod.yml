@@ -49,6 +49,8 @@ services:
       - STUDENT_APP_URL=${STUDENT_APP_URL}
       - SHORTIO_API_KEY=${SHORTIO_API_KEY}
       - SHORTIO_DOMAIN=${SHORTIO_DOMAIN}
+      - SHORTIO_BASE_URL=${SHORTIO_BASE_URL:-https://api.short.io/links/public}
+      - TRUST_PROXY=true
       - VIRTUAL_HOST=${BACKEND_DOMAIN}
       - VIRTUAL_PORT=3001
     networks:

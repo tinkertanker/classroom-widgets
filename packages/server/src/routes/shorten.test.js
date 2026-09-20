@@ -100,6 +100,44 @@ test('rejects invalid URLs without calling upstream', async (t) => {
   });
 });
 
+test('invalid payloads do not consume the rate limit', async (t) => {
+  restoreEnv(t);
+  process.env.SHORTIO_API_KEY = 'test-key';
+  process.env.SHORTIO_DOMAIN = 'go.example.edu';
+  let upstreamCalled = 0;
+  stubUpstream(t, async () => {
+    upstreamCalled += 1;
+    return {
+      ok: true,
+      status: 201,
+      async json() {
+        return { secureShortURL: 'https://go.example.edu/abc' };
+      }
+    };
+  });
+  shortenRoutes._resetRateLimit();
+
+  await withServer(async (baseUrl) => {
+    for (let index = 0; index < 31; index += 1) {
+      const response = await realFetch(`${baseUrl}/api/shorten`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: 'not a url' })
+      });
+      assert.equal(response.status, 400);
+    }
+
+    const validResponse = await realFetch(`${baseUrl}/api/shorten`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: 'https://example.com' })
+    });
+    assert.equal(validResponse.status, 200);
+  });
+
+  assert.equal(upstreamCalled, 1);
+});
+
 test('forwards configured requests and returns the secure short URL', async (t) => {
   restoreEnv(t);
   process.env.SHORTIO_API_KEY = 'test-key';

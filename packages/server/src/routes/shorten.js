@@ -88,16 +88,16 @@ router.post('/', asyncHandler(async (req, res) => {
     });
   }
 
+  const validationMessage = validatePayload(req.body);
+  if (validationMessage) {
+    return res.status(400).json(validationError(validationMessage));
+  }
+
   if (isRateLimited(req.ip)) {
     return res.status(429).json({
       success: false,
       error: 'Too many requests. Please try again shortly.'
     });
-  }
-
-  const validationMessage = validatePayload(req.body);
-  if (validationMessage) {
-    return res.status(400).json(validationError(validationMessage));
   }
 
   const { url, alias, title } = req.body;
