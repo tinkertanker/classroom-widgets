@@ -14,10 +14,14 @@ function mockFn() {
   return fn;
 }
 
+let socketCounter = 0;
+
 function createMockSocket(id) {
   const handlers = {};
   return {
     id,
+    // Unique per test so the per-connection rate limiter never carries over
+    clientIP: `10.0.0.${++socketCounter}`,
     handshake: { headers: {}, secure: false },
     on: (event, handler) => {
       handlers[event] = handler;
@@ -44,7 +48,7 @@ function joinedResponse(socket) {
 }
 
 describe('sessionHandler: student join', () => {
-  const SESSION_CODE = 'TEST1';
+  const SESSION_CODE = 'TEST12';
   let io;
   let socket;
   let session;

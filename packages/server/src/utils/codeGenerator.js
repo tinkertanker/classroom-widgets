@@ -1,7 +1,8 @@
+const { randomInt } = require('crypto');
 const { SAFE_CHARACTERS, LIMITS } = require('../config/constants');
 
 /**
- * Generate a random code using safe characters
+ * Generate a random code using safe characters and a CSPRNG
  * @param {number} length - Length of the code to generate
  * @param {Set} existingCodes - Set of existing codes to avoid duplicates
  * @returns {string} Generated code
@@ -14,7 +15,7 @@ function generateCode(length = LIMITS.ROOM_CODE_LENGTH, existingCodes = new Set(
   do {
     code = '';
     for (let i = 0; i < length; i++) {
-      code += SAFE_CHARACTERS[Math.floor(Math.random() * SAFE_CHARACTERS.length)];
+      code += SAFE_CHARACTERS[randomInt(SAFE_CHARACTERS.length)];
     }
     attempts++;
     

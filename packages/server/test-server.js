@@ -98,7 +98,7 @@ async function runTests() {
     
     assert(result.success === true, 'Session creation should succeed');
     assert(result.code, 'Should return session code');
-    assert(result.code.length === 5, 'Session code should be 5 characters');
+    assert(result.code.length === 6, 'Session code should be 6 characters');
     
     socket.disconnect();
   });

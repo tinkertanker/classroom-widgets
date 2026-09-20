@@ -1,3 +1,5 @@
+const sessionCode = require('@classroom-widgets/shared/constants/sessionCode.json');
+
 /**
  * Application constants
  */
@@ -18,7 +20,7 @@ module.exports = {
     MAX_TOTAL_PARTICIPANTS: 50000,      // Server-wide participant limit
     MAX_SUBMISSIONS_PER_ROOM: 1000,
     MAX_QUESTIONS_PER_ROOM: 500,
-    ROOM_CODE_LENGTH: 5,
+    ROOM_CODE_LENGTH: sessionCode.length,
     MAX_QUESTION_LENGTH: 500,           // Reduced from 1000 for better UX
     MAX_LINK_LENGTH: 2000,
     MAX_POLL_QUESTION_LENGTH: 500,
@@ -30,8 +32,9 @@ module.exports = {
     FEEDBACK_MAX_VALUE: 5
   },
 
-  // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U)
-  SAFE_CHARACTERS: '23456789ACDEFHJKNPQRTUWY',
+  // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U).
+  // Canonical alphabet lives in packages/shared so client validators match.
+  SAFE_CHARACTERS: sessionCode.alphabet,
 
   // Room types
   ROOM_TYPES: {
