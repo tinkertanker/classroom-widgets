@@ -9,6 +9,17 @@ export const SESSION_CODE_PATTERN_SOURCE = `[${SESSION_CODE_ALPHABET}]{${SESSION
 
 const SESSION_CODE_REGEX = new RegExp(`^${SESSION_CODE_PATTERN_SOURCE}$`, 'i');
 
+const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
+
+/** True only for absolute http(s) URLs — safe to bind to an anchor href. */
+export const isSafeHttpUrl = (url: string): boolean => {
+  try {
+    return SAFE_URL_PROTOCOLS.has(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Validates a session code format
  * Valid codes use the server's safe-character alphabet (no 0/O, 1/I/l, etc.)

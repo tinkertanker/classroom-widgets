@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { FaFileLines, FaCopy, FaArrowUpRightFromSquare, FaCheck } from 'react-icons/fa6';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
+import { isSafeHttpUrl } from '@shared/utils/validation';
 
 interface HandoutItem {
   id: string;
@@ -124,59 +125,62 @@ const HandoutActivity: React.FC<HandoutActivityProps> = ({
             </div>
           ) : (
             <div className="space-y-2">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-warm-gray-50 dark:bg-warm-gray-700/50 rounded-lg p-3 border border-warm-gray-200 dark:border-warm-gray-600"
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      {item.isLink ? (
-                        <a
-                          href={item.content}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-slate-blue-600 hover:text-slate-blue-700 dark:text-slate-blue-400 dark:hover:text-slate-blue-300 break-all"
-                        >
-                          {item.content}
-                        </a>
-                      ) : (
-                        <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300 whitespace-pre-wrap break-words">
-                          {item.content}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => handleCopy(item)}
-                        className={`p-1.5 rounded transition-colors ${
-                          copiedId === item.id
-                            ? 'bg-sage-100 dark:bg-sage-900/30 text-sage-600 dark:text-sage-400'
-                            : 'text-warm-gray-400 hover:text-slate-blue-600 dark:hover:text-slate-blue-400 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
-                        }`}
-                        title={copiedId === item.id ? 'Copied!' : 'Copy to clipboard'}
-                      >
-                        {copiedId === item.id ? (
-                          <FaCheck className="text-xs" />
+              {items.map((item) => {
+                const linkable = item.isLink && isSafeHttpUrl(item.content);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-warm-gray-50 dark:bg-warm-gray-700/50 rounded-lg p-3 border border-warm-gray-200 dark:border-warm-gray-600"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="flex-1 min-w-0">
+                        {linkable ? (
+                          <a
+                            href={item.content}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-slate-blue-600 hover:text-slate-blue-700 dark:text-slate-blue-400 dark:hover:text-slate-blue-300 break-all"
+                          >
+                            {item.content}
+                          </a>
                         ) : (
-                          <FaCopy className="text-xs" />
+                          <p className="text-sm text-warm-gray-700 dark:text-warm-gray-300 whitespace-pre-wrap break-words">
+                            {item.content}
+                          </p>
                         )}
-                      </button>
-                      {item.isLink && (
-                        <a
-                          href={item.content}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded text-warm-gray-400 hover:text-slate-blue-600 dark:hover:text-slate-blue-400 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 transition-colors"
-                          title="Open link"
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleCopy(item)}
+                          className={`p-1.5 rounded transition-colors ${
+                            copiedId === item.id
+                              ? 'bg-sage-100 dark:bg-sage-900/30 text-sage-600 dark:text-sage-400'
+                              : 'text-warm-gray-400 hover:text-slate-blue-600 dark:hover:text-slate-blue-400 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600'
+                          }`}
+                          title={copiedId === item.id ? 'Copied!' : 'Copy to clipboard'}
                         >
-                          <FaArrowUpRightFromSquare className="text-xs" />
-                        </a>
-                      )}
+                          {copiedId === item.id ? (
+                            <FaCheck className="text-xs" />
+                          ) : (
+                            <FaCopy className="text-xs" />
+                          )}
+                        </button>
+                        {linkable && (
+                          <a
+                            href={item.content}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1.5 rounded text-warm-gray-400 hover:text-slate-blue-600 dark:hover:text-slate-blue-400 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 transition-colors"
+                            title="Open link"
+                          >
+                            <FaArrowUpRightFromSquare className="text-xs" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
