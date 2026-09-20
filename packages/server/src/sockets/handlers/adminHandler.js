@@ -1,14 +1,24 @@
 const { logger } = require('../../utils/logger');
+const { isValidAdminToken } = require('../../utils/adminToken');
 
 /**
  * Handle admin related socket events
  * Admin interface is accessed via the student app with code "ADMIN"
- * READ-ONLY: No destructive actions allowed (weak auth)
+ * READ-ONLY: No destructive actions allowed. Requires the ADMIN_TOKEN
+ * environment variable to be configured and presented as `data.token`.
  */
 module.exports = function adminHandler(io, socket, sessionManager) {
 
   // Admin requests all sessions data (read-only)
   socket.on('admin:getSessions', (data, callback) => {
+    if (!isValidAdminToken(data?.token)) {
+      logger.warn('admin:getSessions', 'Rejected unauthorized sessions list request', { socketId: socket.id });
+      if (typeof callback === 'function') {
+        callback({ success: false, error: 'Unauthorized' });
+      }
+      return;
+    }
+
     logger.info('admin:getSessions', 'Admin requested sessions list');
 
     try {

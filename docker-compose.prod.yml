@@ -49,6 +49,9 @@ services:
       - PORT=3001
       - CORS_ORIGINS=${CORS_ORIGINS}
       - STUDENT_APP_URL=${STUDENT_APP_URL}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      # Backend sits behind one nginx-proxy hop; needed for per-IP rate limits
+      - TRUST_PROXY=${TRUST_PROXY:-1}
       - VIRTUAL_HOST=${BACKEND_DOMAIN}
       - VIRTUAL_PORT=3001
     networks:

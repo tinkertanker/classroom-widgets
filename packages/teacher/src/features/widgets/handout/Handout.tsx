@@ -4,6 +4,7 @@ import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
+import { isSafeHttpUrl } from '@shared/utils/validation';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, WidgetControlBar, PlayPauseButton, ClearButton } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
@@ -231,7 +232,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      {item.isLink ? (
+                      {item.isLink && isSafeHttpUrl(item.content) ? (
                         <a
                           href={item.content}
                           target="_blank"

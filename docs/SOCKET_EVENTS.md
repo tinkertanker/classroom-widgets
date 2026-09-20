@@ -22,8 +22,10 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 
 **Teacher Creates Session**
 
-*   `Teacher → Server`: `session:create`
-*   `Server → Teacher`: `session:created` with `{ success, code, isExisting?, activeRooms? }`
+*   `Teacher → Server`: `session:create` with `{ existingCode?, hostToken? }`
+*   `Server → Teacher`: `session:created` with `{ success, code, isExisting?, activeRooms?, hostToken? }`
+
+The server issues a per-session `hostToken` in the response; the teacher must present it (with `existingCode`) to reclaim the host role after a reconnect. The token is rotated on every successful reclaim — always use the latest one returned.
 
 **Student Joins Session**
 
@@ -223,11 +225,11 @@ For Poll widgets specifically:
 
 The admin interface is accessed via the student app by entering "ADMIN" as the session code.
 
-**Note**: Admin access is protected only by knowledge of the "ADMIN" code. All admin operations are read-only by design.
+**Note**: Admin operations are read-only by design. `admin:getSessions` additionally requires the `ADMIN_TOKEN` environment variable to be configured on the server and presented as `token` in the request payload.
 
 ### Get Sessions Data
 
-*   `Admin → Server`: `admin:getSessions` with `{}`
+*   `Admin → Server`: `admin:getSessions` with `{ token }` (must match the server's `ADMIN_TOKEN`)
 *   `Server → Admin`: (callback) with:
 ```typescript
 {

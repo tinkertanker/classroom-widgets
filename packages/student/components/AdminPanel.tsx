@@ -46,25 +46,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
   const [error, setError] = useState('');
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [adminToken, setAdminToken] = useState('');
+  const [tokenInput, setTokenInput] = useState('');
 
   const fetchSessions = useCallback(() => {
+    if (!adminToken) {
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
-    socket.emit('admin:getSessions', {}, (response: { success: boolean; sessions?: SessionInfo[]; stats?: Stats; error?: string }) => {
+    socket.emit('admin:getSessions', { token: adminToken }, (response: { success: boolean; sessions?: SessionInfo[]; stats?: Stats; error?: string }) => {
       setIsLoading(false);
       if (response.success && response.sessions) {
         setSessions(response.sessions);
         setStats(response.stats || null);
         setLastRefresh(new Date());
       } else {
+        if (response.error === 'Unauthorized') {
+          setAdminToken('');
+          setSessions([]);
+          setStats(null);
+          setLastRefresh(null);
+        }
         setError(response.error || 'Failed to fetch sessions');
       }
     });
-  }, [socket]);
+  }, [socket, adminToken]);
+
+  const handleTokenSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = tokenInput.trim();
+    if (!token) return;
+    setAdminToken(token);
+    setTokenInput('');
+  };
 
   useEffect(() => {
     fetchSessions();
+
+    if (!adminToken) return;
 
     // Auto-refresh every 10 seconds
     const interval = setInterval(fetchSessions, 10000);
@@ -72,7 +95,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
     return () => {
       clearInterval(interval);
     };
-  }, [socket, fetchSessions]);
+  }, [socket, fetchSessions, adminToken]);
 
   const toggleExpanded = (code: string) => {
     setExpandedSessions(prev => {
@@ -157,6 +180,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
             </div>
           </div>
         </div>
+
+        {/* Admin token form */}
+        <form
+          onSubmit={handleTokenSubmit}
+          className="bg-soft-white dark:bg-warm-gray-800 rounded-lg shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 p-4 mb-4 flex items-center gap-2"
+        >
+          <input
+            type="password"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            placeholder="Admin token"
+            className="flex-1 px-3 py-2 rounded-md border border-warm-gray-200 dark:border-warm-gray-700 bg-warm-gray-50 dark:bg-warm-gray-900 text-warm-gray-800 dark:text-warm-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-sage-400"
+          />
+          <button
+            type="submit"
+            className="px-4 py-2 rounded-md bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 hover:bg-sage-200 dark:hover:bg-sage-900/50 transition-colors text-sm font-medium"
+          >
+            Unlock
+          </button>
+        </form>
 
         {/* Stats */}
         {stats && (

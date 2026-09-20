@@ -265,6 +265,9 @@ const App: React.FC = () => {
 
       // Check if session exists
       const response = await fetch(`/api/sessions/${code}/exists`);
+      if (response.status === 429) {
+        throw new Error('Too many attempts. Please wait a moment and try again.');
+      }
       const data = await response.json();
 
       if (!data.exists) {

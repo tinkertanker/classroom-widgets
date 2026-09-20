@@ -738,7 +738,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         guard url.scheme == dashboardURLScheme || url.scheme == "about" else {
             decisionHandler(.cancel)
             if navigationAction.navigationType == .linkActivated {
-                NSWorkspace.shared.open(url)
+                ExternalLinkOpener.open(url)
             }
             return
         }
@@ -752,7 +752,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if let url = navigationAction.request.url, url.scheme != dashboardURLScheme {
-            NSWorkspace.shared.open(url)
+            ExternalLinkOpener.open(url)
         }
         return nil
     }

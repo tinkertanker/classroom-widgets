@@ -171,6 +171,10 @@ STUDENT_APP_URL=https://student-app.com/student
 # Optional: Logging level (error|warn|info|debug)
 LOG_LEVEL=info
 
+# Recommended behind nginx: number of trusted reverse-proxy hops so per-IP
+# rate limits use the real client IP from X-Forwarded-For (0 = ignore header)
+TRUST_PROXY=1
+
 # Optional: Room cleanup settings
 MAX_ROOM_AGE=43200000      # 12 hours in milliseconds
 CLEANUP_INTERVAL=3600000   # 1 hour in milliseconds

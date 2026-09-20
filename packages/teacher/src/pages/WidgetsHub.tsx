@@ -77,7 +77,7 @@ const WidgetsHub: React.FC = () => {
           <div className="mb-10">
             <h3 className="text-2xl font-bold text-warm-gray-900 dark:text-warm-gray-100 mb-2">Student Interaction</h3>
             <p className="text-warm-gray-600 dark:text-warm-gray-400">
-              Students join with a 5-character code — no app download, no account needed.
+              Students join with a 6-character code — no app download, no account needed.
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-6">

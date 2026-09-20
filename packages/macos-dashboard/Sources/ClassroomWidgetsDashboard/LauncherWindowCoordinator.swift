@@ -84,7 +84,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         }
         decisionHandler(.cancel)
         if navigationAction.navigationType == .linkActivated {
-            NSWorkspace.shared.open(url)
+            ExternalLinkOpener.open(url)
         }
     }
 
@@ -95,7 +95,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if let url = navigationAction.request.url, url.scheme != dashboardURLScheme {
-            NSWorkspace.shared.open(url)
+            ExternalLinkOpener.open(url)
         }
         return nil
     }

@@ -56,59 +56,58 @@ function setupSocketHandlers(io, sessionManager) {
         logger.info(`Socket disconnected: ${socket.id}`);
       }
 
-      // Handle session disconnect
-      if (currentSessionCode) {
-        const session = sessionManager.getSession(currentSessionCode);
-        if (session) {
-          if (session.hostSocketId === socket.id) {
-            logger.info(`Host disconnected from session ${currentSessionCode}`);
+      // Hosts never emit session:join, so currentSessionCode is only set for
+      // participants; fall back to the session this socket hosts so that
+      // create-only connections are reaped too.
+      const session = (currentSessionCode && sessionManager.getSession(currentSessionCode))
+        || sessionManager.findSessionByHost(socket.id);
 
-            // Mark host as disconnected
-            session.hostDisconnectedAt = Date.now();
+      if (session) {
+        if (session.hostSocketId === socket.id) {
+          logger.info(`Host disconnected from session ${session.code}`);
 
-            // Notify all students that the teacher has disconnected
-            io.to(`session:${currentSessionCode}`).emit(EVENTS.SESSION.HOST_DISCONNECTED);
+          // Mark host as disconnected
+          session.hostDisconnectedAt = Date.now();
 
-            // Start timeout to close session if host doesn't reconnect
-            startHostDisconnectTimeout(io, sessionManager, currentSessionCode);
-          } else {
-            // Remove participant from session
-            session.removeParticipant(socket.id);
-            
-            // Notify host of participant disconnect
-            if (session.hostSocketId) {
-              io.to(session.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-                count: session.getParticipantCount()
-              });
-            }
-            
-            // Remove participant from all rooms they're in.
-            // Snapshot first - room.removeParticipant may trigger cleanup that
-            // mutates session.activeRooms during iteration on some code paths.
-            const roomEntries = Array.from(session.activeRooms.entries());
-            for (const [roomId, room] of roomEntries) {
-              if (room.participants && room.participants.has(socket.id)) {
-                room.removeParticipant(socket.id);
+          // Notify all students that the teacher has disconnected
+          io.to(`session:${session.code}`).emit(EVENTS.SESSION.HOST_DISCONNECTED);
 
-                // Parse room type from roomId
-                const [roomType] = roomId.split(':');
+          // Start timeout to close session if host doesn't reconnect
+          startHostDisconnectTimeout(io, sessionManager, session.code);
+        } else {
+          // Remove participant from session
+          session.removeParticipant(socket.id);
+          
+          // Notify host of participant disconnect
+          if (session.hostSocketId) {
+            io.to(session.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
+              count: session.getParticipantCount()
+            });
+          }
+          
+          // Remove participant from all rooms they're in.
+          // Snapshot first - room.removeParticipant may trigger cleanup that
+          // mutates session.activeRooms during iteration on some code paths.
+          const roomEntries = Array.from(session.activeRooms.entries());
+          for (const [roomId, room] of roomEntries) {
+            if (room.participants && room.participants.has(socket.id)) {
+              room.removeParticipant(socket.id);
 
-                // Notify host of room participant count update
-                if (room.hostSocketId) {
-                  io.to(room.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
-                    count: room.getParticipantCount(),
-                    roomType: roomType,
-                    widgetId: room.widgetId
-                  });
-                }
+              // Parse room type from roomId
+              const [roomType] = roomId.split(':');
+
+              // Notify host of room participant count update
+              if (room.hostSocketId) {
+                io.to(room.hostSocketId).emit(EVENTS.SESSION.PARTICIPANT_UPDATE, {
+                  count: room.getParticipantCount(),
+                  roomType: roomType,
+                  widgetId: room.widgetId
+                });
               }
             }
           }
         }
       }
-      
-      // Legacy room handling is no longer needed since we moved to session-based architecture
-      // All room management is now handled through sessions
     });
   });
 }
