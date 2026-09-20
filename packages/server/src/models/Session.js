@@ -16,7 +16,7 @@ class Session {
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
     this.hostDisconnectedAt = null; // Timestamp when host disconnected
-    this.hostToken = crypto.randomBytes(24).toString('base64url'); // Secret token for host reclaim
+    this.hostToken = this.rotateHostToken(); // Secret token for host reclaim
     this.activeRooms = new Map(); // roomType -> room instance
     this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
   }
@@ -33,6 +33,14 @@ class Session {
    */
   updateActivity() {
     this.lastActivity = Date.now();
+  }
+
+  /**
+   * Issue a fresh host token, replacing any previous one.
+   */
+  rotateHostToken() {
+    this.hostToken = crypto.randomBytes(24).toString('base64url');
+    return this.hostToken;
   }
 
   /**

@@ -176,6 +176,17 @@ describe('Session', () => {
       assert.equal(session.isValidHostToken(new Session('FGHIJ').hostToken), false);
       assert.equal(session.isValidHostToken(session.hostToken), true);
     });
+
+    it('rotateHostToken issues a new token and invalidates the old one', () => {
+      const oldToken = session.hostToken;
+
+      const rotated = session.rotateHostToken();
+
+      assert.equal(rotated, session.hostToken);
+      assert.notEqual(rotated, oldToken);
+      assert.equal(session.isValidHostToken(oldToken), false);
+      assert.equal(session.isValidHostToken(rotated), true);
+    });
   });
 
   describe('expiry and inactivity', () => {

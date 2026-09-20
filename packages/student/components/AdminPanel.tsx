@@ -46,7 +46,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
   const [error, setError] = useState('');
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem('adminToken') || '');
+  const [adminToken, setAdminToken] = useState('');
   const [tokenInput, setTokenInput] = useState('');
 
   const fetchSessions = useCallback(() => {
@@ -66,7 +66,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
         setLastRefresh(new Date());
       } else {
         if (response.error === 'Unauthorized') {
-          sessionStorage.removeItem('adminToken');
           setAdminToken('');
           setSessions([]);
           setStats(null);
@@ -81,7 +80,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ socket, onClose }) => {
     e.preventDefault();
     const token = tokenInput.trim();
     if (!token) return;
-    sessionStorage.setItem('adminToken', token);
     setAdminToken(token);
     setTokenInput('');
   };

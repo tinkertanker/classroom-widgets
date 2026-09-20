@@ -49,6 +49,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         const candidate = sessionManager.getSession(existingCode);
         if (candidate && candidate.isValidHostToken(hostToken)) {
           existingSession = candidate;
+          // Rotate the reclaim token so the presented one can't be replayed
+          existingSession.rotateHostToken();
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
 

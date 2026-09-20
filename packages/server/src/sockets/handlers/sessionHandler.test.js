@@ -211,14 +211,47 @@ describe('sessionHandler: host session:create', () => {
   });
 
   it('reclaims the session when the host token matches', async () => {
-    const response = await create({ existingCode: CODE, hostToken: session.hostToken });
+    const originalToken = session.hostToken;
+    const response = await create({ existingCode: CODE, hostToken: originalToken });
 
     assert.equal(response.success, true);
     assert.equal(response.isExisting, true);
     assert.equal(response.code, CODE);
-    assert.equal(response.hostToken, session.hostToken);
     assert.equal(session.hostSocketId, socket.id);
     assert.ok(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED));
+
+    // The reclaim rotates the token: the response carries the fresh one
+    assert.notEqual(response.hostToken, originalToken);
+    assert.equal(response.hostToken, session.hostToken);
+  });
+
+  it('rejects replay of the pre-rotation token but accepts the rotated one', async () => {
+    const originalToken = session.hostToken;
+    const first = await create({ existingCode: CODE, hostToken: originalToken });
+    const rotatedToken = first.hostToken;
+
+    // Another socket replaying the consumed token gets a fresh session instead
+    const attacker = createMockSocket('attacker');
+    sessionHandler(io, attacker, sessionManager, () => null);
+    let replayed;
+    attacker.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken: originalToken }, (r) => { replayed = r; });
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(replayed.success, true);
+    assert.equal(replayed.isExisting, false);
+    assert.equal(replayed.code, 'NEW01');
+    assert.equal(session.hostSocketId, socket.id);
+
+    // The rotated token still reclaims the session
+    const reclaim = createMockSocket('reclaimer');
+    sessionHandler(io, reclaim, sessionManager, () => null);
+    let reclaimed;
+    reclaim.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken: rotatedToken }, (r) => { reclaimed = r; });
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(reclaimed.success, true);
+    assert.equal(reclaimed.isExisting, true);
+    assert.equal(session.hostSocketId, reclaim.id);
   });
 
   it('creates a new session with a fresh host token', async () => {
