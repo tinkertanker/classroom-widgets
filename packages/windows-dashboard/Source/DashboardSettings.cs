@@ -23,11 +23,14 @@ public sealed class DashboardSettings
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "ClassroomWidgets";
 
-    public static string DataDirectory { get; } = Path.Combine(
+    public static string DataDirectory { get; private set; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "ClassroomWidgets");
 
-    private static readonly string SettingsPath = Path.Combine(DataDirectory, "settings.json");
+    private static string SettingsPath => Path.Combine(DataDirectory, "settings.json");
+
+    internal static void UseDataDirectory(string directory) => DataDirectory = directory;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,

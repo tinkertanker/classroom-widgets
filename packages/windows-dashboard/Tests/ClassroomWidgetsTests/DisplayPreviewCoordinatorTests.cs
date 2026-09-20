@@ -22,30 +22,31 @@ public sealed class DisplayPreviewCoordinatorTests
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan Settle = TimeSpan.FromMilliseconds(600);
     private static readonly Rect ClearSourceBounds = new(0, 0, 400, 300);
-    private static readonly Rect OverlappingSourceBounds = new(0, 0, 1280, 720);
     private static readonly PanelFrame PreviewFrame = new() { Left = 700, Top = 340, Width = 480, Height = 330 };
 
-    // The coordinator persists the preview frame through DashboardSettings.Save, so the
-    // user's real settings file is preserved around the test.
+    // The coordinator persists the preview frame through DashboardSettings.Save, so settings
+    // are redirected to a throwaway directory for the duration of the test.
     [Fact]
     public void SourceBoundsChangeIntoOverlapStopsOldCaptureAndResumesCleanly()
     {
-        var settingsPath = Path.Combine(DashboardSettings.DataDirectory, "settings.json");
-        var savedSettings = File.Exists(settingsPath) ? File.ReadAllBytes(settingsPath) : null;
+        var realDataDirectory = DashboardSettings.DataDirectory;
+        var testDataDirectory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
+        DashboardSettings.UseDataDirectory(testDataDirectory);
         try
         {
             WpfTestHost.Run(RunScenario);
         }
         finally
         {
-            if (savedSettings is null) File.Delete(settingsPath);
-            else File.WriteAllBytes(settingsPath, savedSettings);
+            DashboardSettings.UseDataDirectory(realDataDirectory);
+            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
         }
     }
 
     private static void RunScenario()
     {
         var host = HostDescriptor();
+        var overlappingSourceBounds = host.Bounds;
         var sourceBounds = ClearSourceBounds;
         var catalog = new DisplayCatalog(() => new[]
         {
@@ -70,7 +71,7 @@ public sealed class DisplayPreviewCoordinatorTests
             WpfTestHost.SaveEvidence("156-1-live.png", Snapshot(window));
 
             // Live source-bounds change: the selected display now covers the preview window.
-            sourceBounds = OverlappingSourceBounds;
+            sourceBounds = overlappingSourceBounds;
             Nudge(window);
             WpfTestHost.PumpUntil(() => window.StatusText.Text.StartsWith("Preview suspended", StringComparison.Ordinal), Timeout, "overlap suspension");
             var staleFrames = 0;
@@ -107,7 +108,7 @@ public sealed class DisplayPreviewCoordinatorTests
             Assert.Null(coordinator.Capture);
             Assert.Null(window.PreviewImage.Source);
             Assert.Equal("Paused.", window.StatusText.Text);
-            sourceBounds = OverlappingSourceBounds;
+            sourceBounds = overlappingSourceBounds;
             Nudge(window);
             WpfTestHost.PumpFor(Settle);
             sourceBounds = ClearSourceBounds;

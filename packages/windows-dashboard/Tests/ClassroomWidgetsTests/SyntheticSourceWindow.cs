@@ -6,7 +6,8 @@ namespace ClassroomWidgetsTests;
 
 /// <summary>
 /// Borderless, topmost window filled with four asymmetric solid colours, used as
-/// non-sensitive desktop content for real GDI capture tests.
+/// non-sensitive desktop content for real GDI capture tests. <paramref name="bounds"/> is in
+/// physical pixels (the capture rectangle) and is converted to WPF units once the HWND exists.
 /// </summary>
 internal sealed class SyntheticSourceWindow : Window
 {
@@ -27,6 +28,16 @@ internal sealed class SyntheticSourceWindow : Window
         Top = bounds.Top;
         Width = bounds.Width;
         Height = bounds.Height;
+        SourceInitialized += (_, _) =>
+        {
+            var fromDevice = PresentationSource.FromVisual(this)!.CompositionTarget!.TransformFromDevice;
+            var origin = fromDevice.Transform(bounds.TopLeft);
+            var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
+            Left = origin.X;
+            Top = origin.Y;
+            Width = size.X;
+            Height = size.Y;
+        };
         var grid = new Grid();
         grid.RowDefinitions.Add(new RowDefinition());
         grid.RowDefinitions.Add(new RowDefinition());
