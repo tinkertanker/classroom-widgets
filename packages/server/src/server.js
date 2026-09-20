@@ -114,9 +114,16 @@ class AppServer {
       allowedHeaders: serverConfig.CORS.ALLOWED_HEADERS
     }));
 
-    // Voice command context can contain legacy image widget data URLs. Keep
-    // that endpoint on the old larger limit while tightening the rest.
-    this.app.use('/api/voice-command', express.json({ limit: '10mb' }));
+    // Production runs behind one or more docker nginx hops on private
+    // addresses; trusting private ranges makes req.ip the real client
+    // regardless of hop count while a public client's own X-Forwarded-For is
+    // ignored.
+    this.app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+
+    // The voice command transcript is capped at a small length and the client
+    // only sends widget ids/types in context, so this endpoint needs a small
+    // body.
+    this.app.use('/api/voice-command', express.json({ limit: '64kb' }));
 
     // Body parsing. Typical poll/activity payloads are tiny; tight limits
     // prevent trivial memory-DoS from oversized POSTs.

@@ -123,10 +123,53 @@ const createEventRateLimiter = (limits = EVENT_RATE_LIMITS) => {
 // Create singleton rate limiter instance
 const eventRateLimiter = createEventRateLimiter();
 
+/**
+ * HTTP rate limiter factory (fixed window, keyed on req.ip).
+ * Returns an Express middleware for unauthenticated endpoints.
+ */
+const createIpRateLimiter = ({ windowMs, max }) => {
+  // Map of ip -> { count, windowStart }
+  const requests = new Map();
+
+  // Cleanup stale entries every 5 minutes. Track handle so graceful shutdown can cancel it.
+  const cleanupHandle = setInterval(() => {
+    const now = Date.now();
+    requests.forEach((data, ip) => {
+      if (now - data.windowStart > windowMs * 2) {
+        requests.delete(ip);
+      }
+    });
+  }, 5 * 60 * 1000);
+  if (cleanupHandle.unref) cleanupHandle.unref();
+  pendingCleanupHandles.push(cleanupHandle);
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const ip = req.ip;
+
+    let data = requests.get(ip);
+    if (!data || now - data.windowStart > windowMs) {
+      data = { count: 1, windowStart: now };
+      requests.set(ip, data);
+      return next();
+    }
+
+    data.count++;
+    if (data.count > max) {
+      const retryAfterMs = windowMs - (now - data.windowStart);
+      res.set('Retry-After', Math.ceil(retryAfterMs / 1000));
+      return res.status(429).json({ error: 'Too many voice command requests. Please slow down.' });
+    }
+
+    next();
+  };
+};
+
 module.exports = {
   socketAuth,
   eventRateLimiter,
   createEventRateLimiter,
   EVENT_RATE_LIMITS,
+  createIpRateLimiter,
   stopRateLimiterCleanup
 };
