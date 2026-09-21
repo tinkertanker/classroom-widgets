@@ -441,7 +441,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
             origin: .zero,
             size: WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
         )
-        let styleMask: NSWindow.StyleMask = [.titled, .closable, .resizable]
+        let styleMask: NSWindow.StyleMask = [.titled, .closable, .resizable, .nonactivatingPanel]
         let panel = WidgetPanel(
             contentRect: initialContentRect,
             styleMask: styleMask,
