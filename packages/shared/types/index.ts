@@ -109,15 +109,6 @@ export enum WidgetCategory {
   NETWORKED = 'networked'
 }
 
-// Workspace Types
-export interface WorkspaceState {
-  widgets: WidgetInstance[];
-  background: BackgroundType;
-  theme: 'light' | 'dark';
-  scale: number;
-  scrollPosition: { x: number; y: number };
-}
-
 export enum BackgroundType {
   GEOMETRIC = 'geometric',
   GRADIENT = 'gradient',
@@ -127,111 +118,12 @@ export enum BackgroundType {
   SEAWAVE = 'seawave'
 }
 
-// Bottom Bar Types
-export interface BottomBarConfig {
-  visibleWidgets: WidgetType[];
-  pinnedWidgets: WidgetType[];
-  showClock: boolean;
-  showConnectionStatus: boolean;
-  voiceControlEnabled?: boolean;  // Alpha feature - optional for backwards compatibility
-  recentWidgets?: WidgetType[];  // Recently launched widget types (most recent first)
-  recentWidgetsLimit?: number;  // Max number of recent widgets to show (default: 5)
-}
-
-// Event Types
-export interface WidgetEvent {
-  type: 'add' | 'remove' | 'update' | 'move' | 'resize';
-  widgetId: string;
-  data?: any;
-}
-
-// Modal Types
-export interface ModalConfig {
-  title: string;
-  content: React.ReactNode;
-  className?: string;
-  onClose?: () => void;
-}
-
-// Server Connection Types
-export interface ServerStatus {
-  connected: boolean;
-  url: string;
-  error?: string;
-}
-
-// Widget Props Base
-export interface BaseWidgetProps {
-  widgetId: string;
-  savedState?: any;
-  onStateChange?: (state: any) => void;
-}
-
-// Networked Widget Props
-export interface NetworkedWidgetProps extends BaseWidgetProps {
-  sessionCode?: string;
-  socket?: any; // Will be properly typed later
-}
-
-// Widget State Types (examples for specific widgets)
-export interface PollState {
-  question: string;
-  options: string[];
-  isActive: boolean;
-  results: {
-    votes: Record<number, number>;
-    totalVotes: number;
-    participantCount: number;
-  };
-}
-
-export interface TimerState {
-  duration: number;
-  remaining: number;
-  isRunning: boolean;
-  mode: 'countdown' | 'stopwatch';
-}
-
-export interface ListState {
-  items: Array<{
-    id: string;
-    text: string;
-    completed: boolean;
-  }>;
-  title: string;
-}
-
-// Generic Widget State Type
-export type WidgetState<T = any> = T;
-
-// Drag and Drop Types
-export interface DragState {
-  isDragging: boolean;
-  draggedWidgetId: string | null;
-  dropTarget: 'trash' | null;
-}
-
-// Persistence Types
-export interface SavedWorkspace {
-  version: number;
-  timestamp: number;
-  state: WorkspaceState;
-  bottomBar: BottomBarConfig;
-}
-
 // Error Types
 export interface AppError {
   code: string;
   message: string;
   details?: any;
   timestamp: number;
-}
-
-// Performance Types
-export interface PerformanceMetrics {
-  widgetCount: number;
-  renderTime: number;
-  memoryUsage?: number;
 }
 
 // Export socket event types
