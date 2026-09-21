@@ -12,7 +12,7 @@ describe.each([['canvas', WidgetWrapper], ['column', ColumnWidgetWrapper]] as co
     useWorkspaceStore.setState({
       widgets: [{ id: 'first', type: WidgetType.TEXT_BANNER,
         position: { x: 0, y: 0 }, size: { width: 400, height: 300 }, zIndex: 0 }],
-      widgetStates: new Map(), focusedWidgetId: null
+      widgetStates: new Map()
     });
   });
 

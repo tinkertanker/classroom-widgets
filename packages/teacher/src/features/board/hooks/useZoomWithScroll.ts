@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 
 interface ZoomOptions {
@@ -69,6 +70,8 @@ export const useZoomWithScroll = (
       }
 
       scrollRaf.current = requestAnimationFrame(() => {
+        // Scroll clamps against the wrapper size, so the new scale must be laid out first
+        flushSync(() => setScale(currentScaleRef.current));
         container.scrollLeft = scrollX;
         container.scrollTop = scrollY;
         scrollRaf.current = null;
@@ -80,7 +83,6 @@ export const useZoomWithScroll = (
       if (!origin) return;
 
       currentScaleRef.current = newScale;
-      setScale(newScale);
       scheduleScroll(
         origin.x * newScale - zoomCenter.current.x,
         origin.y * newScale - zoomCenter.current.y
@@ -225,6 +227,8 @@ export const useZoomWithScroll = (
       }
       if (scrollRaf.current !== null) {
         cancelAnimationFrame(scrollRaf.current);
+        // The cancelled frame owned the pending scale commit — don't lose it
+        setScale(currentScaleRef.current);
       }
     };
   }, [containerRef, scaleRef, maxScale, minScale, scaleSensitivity, setDebugMarker, setScale, setViewportRect]);

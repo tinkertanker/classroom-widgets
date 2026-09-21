@@ -12,6 +12,7 @@ import {
 } from '@shared/types/storage';
 import { loadStorage, saveStorage } from '@shared/utils/storageMigration';
 import { useWorkspaceStore } from './workspaceStore.simple';
+import { useWorkspaceUiStore } from './workspaceUiStore';
 
 // -----------------------------------------------------------------------------
 // Fixtures
@@ -89,6 +90,10 @@ const store = () => useWorkspaceStore.getState();
 
 beforeEach(() => {
   localStorage.clear();
+  useWorkspaceUiStore.setState({
+    focusedWidgetId: null,
+    dragState: { isDragging: false, draggedWidgetId: null, dropTarget: null }
+  });
 });
 
 afterEach(() => {
@@ -123,7 +128,7 @@ describe('workspace snapshot', () => {
       }
     });
 
-    store().setFocusedWidget('something-from-workspace-a');
+    useWorkspaceUiStore.getState().setFocusedWidget('something-from-workspace-a');
     store().switchWorkspace(idB);
 
     const state = store();
@@ -137,7 +142,7 @@ describe('workspace snapshot', () => {
     expect(state.layoutFormat).toBe('column');
     expect(state.widgetStates).toBeInstanceOf(Map);
     expect(state.widgetStates.get('w-b')).toEqual({ seconds: 90 });
-    expect(state.focusedWidgetId).toBeNull();
+    expect(useWorkspaceUiStore.getState().focusedWidgetId).toBeNull();
   });
 
   it('defaults layoutFormat to canvas when the stored workspace predates the field', async () => {
@@ -189,7 +194,7 @@ describe('workspace snapshot', () => {
     expect(store().scale).toBe(1);
     expect(store().layoutFormat).toBe('canvas');
     expect(store().widgetStates.size).toBe(0);
-    expect(store().focusedWidgetId).toBeNull();
+    expect(useWorkspaceUiStore.getState().focusedWidgetId).toBeNull();
     expect(store().workspaceList).toHaveLength(3);
 
     // Give workspace C its own distinctive state
@@ -215,7 +220,7 @@ describe('workspace snapshot', () => {
     expect(store().workspaceList.map(w => w.id)).not.toContain(idC);
     expect(store().currentWorkspaceId).not.toBe(idC);
     expect(store().widgets.map(w => w.id)).not.toContain(listId);
-    expect(store().focusedWidgetId).toBeNull();
+    expect(useWorkspaceUiStore.getState().focusedWidgetId).toBeNull();
   });
 
   it('only refreshes the list when deleting a workspace that is not current', async () => {
@@ -457,6 +462,30 @@ describe('storage: no v1 population', () => {
     window.dispatchEvent(new Event('pagehide'));
 
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('transient UI state', () => {
+  it('never notifies persisted-store subscribers for focus or no-op bringToFront', async () => {
+    await seedStorage();
+
+    const listener = vi.fn();
+    const unsubscribe = useWorkspaceStore.subscribe(listener);
+    try {
+      useWorkspaceUiStore.getState().setFocusedWidget('x');
+      expect(listener).not.toHaveBeenCalled();
+
+      const widgetId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
+      listener.mockClear();
+
+      // The only widget is already normalized on top: bringToFront must focus
+      // it through the UI store without touching the persisted store at all
+      store().bringToFront(widgetId);
+      expect(listener).not.toHaveBeenCalled();
+      expect(useWorkspaceUiStore.getState().focusedWidgetId).toBe(widgetId);
+    } finally {
+      unsubscribe();
+    }
   });
 });
 

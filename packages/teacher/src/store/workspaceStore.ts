@@ -40,11 +40,8 @@ export interface WorkspaceStore {
   scrollPosition: Position;
   sessionCode: string | null;
   sessionCreatedAt: number | null;
-  dragState: DragState;
   bottomBar: BottomBarConfig;
-  serverStatus: ServerStatus;
   widgetStates: Map<string, any>;
-  focusedWidgetId: string | null;
   classEndTime: number | null;  // Timestamp for class end time
   layoutFormat: LayoutFormat;
   linkShortener: ShortenerSettings;  // Shared by the QR Code and Link Shortener widgets
@@ -64,7 +61,6 @@ export interface WorkspaceStore {
   setScale: (scale: number) => void;
   setScrollPosition: (position: Position) => void;
   setLayoutFormat: (format: LayoutFormat) => void;
-  setServerStatus: (status: Partial<ServerStatus>) => void;
   
   // Widget actions
   addWidget: (type: WidgetType, position?: Position) => string;
@@ -73,7 +69,6 @@ export interface WorkspaceStore {
   moveWidget: (widgetId: string, position: Position) => void;
   resizeWidget: (widgetId: string, size: Size) => void;
   bringToFront: (widgetId: string) => void;
-  setFocusedWidget: (widgetId: string | null) => void;
   setClassEndTime: (time: number | null) => void;
   resetWorkspace: () => void;
   
@@ -85,11 +80,6 @@ export interface WorkspaceStore {
   toggleWidgetVisibility: (widgetType: WidgetType) => void;
   pinWidget: (widgetType: WidgetType) => void;
   unpinWidget: (widgetType: WidgetType) => void;
-  
-  // Drag actions
-  startDragging: (widgetId: string) => void;
-  stopDragging: () => void;
-  setDropTarget: (target: string | null) => void;
   
   // Widget state management
   updateWidgetState: (widgetId: string, state: any) => void;

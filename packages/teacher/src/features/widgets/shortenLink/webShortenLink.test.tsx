@@ -3,8 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import ShortenLink from './shortenLink';
 
-vi.mock('../../../store/workspaceStore.simple', () => ({
-  useWorkspaceStore: (selector: (state: { serverStatus: { url: string } }) => unknown) =>
+vi.mock('../../../store/workspaceUiStore', () => ({
+  useWorkspaceUiStore: (selector: (state: { serverStatus: { url: string } }) => unknown) =>
     selector({ serverStatus: { url: 'http://server.test' } })
 }));
 

@@ -4,7 +4,7 @@ import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 import { validateTargetUrl } from '@shared/utils/urlShortener';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
 interface ShortenLinkProps {
 }
@@ -17,7 +17,7 @@ interface ShortenResponse {
 }
 
 const ShortenLink: React.FC<ShortenLinkProps> = () => {
-  const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
+  const serverUrl = useWorkspaceUiStore((state) => state.serverStatus.url);
   const [link, setLink] = useState<string>('');
   const [shortenedLink, setShortenedLink] = useState<string>('');
   const [error, setError] = useState<string | null>(null);

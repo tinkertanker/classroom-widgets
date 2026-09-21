@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
 import { WidgetInstance, Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { widgetRegistry } from '@/services/WidgetRegistry';
@@ -44,12 +45,12 @@ export function useWidget(widgetId: string) {
 export function useWidgetDrag(widgetId: string) {
   // Subscribe only to whether THIS widget is being dragged
   // This prevents all widgets from re-rendering when any widget starts/stops dragging
-  const isBeingDragged = useWorkspaceStore(
+  const isBeingDragged = useWorkspaceUiStore(
     (state) => state.dragState.isDragging && state.dragState.draggedWidgetId === widgetId
   );
 
-  const startDragging = useWorkspaceStore((state) => state.startDragging);
-  const stopDragging = useWorkspaceStore((state) => state.stopDragging);
+  const startDragging = useWorkspaceUiStore((state) => state.startDragging);
+  const stopDragging = useWorkspaceUiStore((state) => state.stopDragging);
 
   return {
     isBeingDragged,

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSocket } from '../hooks/useSocket';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceUiStore } from '../store/workspaceUiStore';
 import { debug } from '@shared/utils/debug';
 import { WidgetType } from '@shared/types';
 import type { SessionCreatedResponse } from '@shared/types/socket.types';
@@ -129,7 +130,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const storeSessionCode = useWorkspaceStore((state) => state.sessionCode);
   const storeSessionCreatedAt = useWorkspaceStore((state) => state.sessionCreatedAt);
   const setStoreSessionCode = useWorkspaceStore((state) => state.setSessionCode);
-  const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
+  const serverUrl = useWorkspaceUiStore((state) => state.serverStatus.url);
   
   // Local state
   const [sessionCode, setSessionCode] = useState<string | null>(storeSessionCode);
