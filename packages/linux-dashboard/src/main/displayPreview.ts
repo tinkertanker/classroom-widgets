@@ -97,6 +97,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   close(): void {
     if (!this.window) return;
     this.stopCapture();
+    this.persistFrame();
     this.window.close();
   }
 
@@ -377,11 +378,15 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     if (this.frameTimer) clearTimeout(this.frameTimer);
     this.frameTimer = setTimeout(() => {
       this.frameTimer = null;
-      if (!this.window) return;
-      const frame = this.window.getBounds();
-      const saved: PanelFrame = { left: frame.x, top: frame.y, width: frame.width, height: frame.height };
-      this.settings.setDisplayPreviewFrame(saved);
+      this.persistFrame();
     }, 150);
+  }
+
+  private persistFrame(): void {
+    if (!this.window) return;
+    const frame = this.window.getBounds();
+    const saved: PanelFrame = { left: frame.x, top: frame.y, width: frame.width, height: frame.height };
+    this.settings.setDisplayPreviewFrame(saved);
   }
 }
 

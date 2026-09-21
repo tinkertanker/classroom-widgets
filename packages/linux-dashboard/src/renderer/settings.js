@@ -45,6 +45,11 @@
   var capturingRow = null;
   var rowError = null;
 
+  function setShortcut(entry, action, accelerator) {
+    if (entry.shortcut.widgetType === 'display') return window.classroomSettings.setDisplayShortcut(action, accelerator);
+    return window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator);
+  }
+
   function clearRowError(entry, field) {
     if (!rowError || rowError.widgetType !== entry.shortcut.widgetType || rowError.action !== field.action) return;
     rowError = null;
@@ -103,7 +108,7 @@
       }
       var accelerator = acceleratorFromEvent(event);
       if (!accelerator) return;
-      window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator).then(function (result) {
+      setShortcut(entry, action, accelerator).then(function (result) {
         if (result.ok) {
           clearRowError(entry, shortcutField);
         } else {
@@ -116,7 +121,7 @@
     });
     clear.addEventListener('click', function () {
       clearRowError(entry, shortcutField);
-      window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, null);
+      setShortcut(entry, action, null);
     });
     field.append(capture, clear, status);
     return shortcutField;
@@ -135,7 +140,8 @@
     return entry;
   }
 
-  function renderShortcuts(shortcuts) {
+  function renderShortcuts(shortcuts, displayShortcut) {
+    if (displayShortcut) shortcuts = [Object.assign({ widgetType: 'display' }, displayShortcut)].concat(shortcuts);
     document.getElementById('resetShortcuts').disabled = !shortcuts.length;
     if (!shortcuts.length) {
       rows = {};
@@ -198,7 +204,7 @@
     domain.value = state.linkShortener.shortioDomain;
     shortioFields.hidden = provider.value !== 'shortio';
     updateLabel();
-    renderShortcuts(state.shortcuts || []);
+    renderShortcuts(state.shortcuts || [], state.displayShortcut);
     document.getElementById('waylandWarning').hidden = state.wayland !== true;
   });
   window.classroomSettings.onShortcutsChanged(renderShortcuts);

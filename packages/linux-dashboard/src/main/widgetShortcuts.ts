@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { DisplayPreviewCoordinator } from './displayPreview';
 import type { CompactWidgetOption } from './models';
 import type { DashboardSettings } from './settings';
 
@@ -7,8 +8,7 @@ export interface ShortcutRegistrar {
   unregisterAll(): void;
 }
 
-export interface WidgetShortcutStatus {
-  widgetType: number;
+export interface ShortcutStatus {
   title: string;
   accelerator: string | null;
   dismissAccelerator: string | null;
@@ -18,9 +18,14 @@ export interface WidgetShortcutStatus {
   dismissDetail: string;
 }
 
+export interface WidgetShortcutStatus extends ShortcutStatus {
+  widgetType: number;
+}
+
 export type WidgetShortcutAction = 'show' | 'dismiss';
 type ShortcutRegistrationState = Pick<WidgetShortcutStatus, 'state' | 'detail'>;
 
+const DISPLAY_DEFAULT = 'Ctrl+Alt+Shift+0';
 const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Super'] as const;
 const MODIFIER_ALIASES: Record<string, typeof MODIFIER_ORDER[number]> = {
   control: 'Ctrl', ctrl: 'Ctrl', alt: 'Alt', option: 'Alt', shift: 'Shift',
@@ -57,6 +62,7 @@ export class WidgetShortcutController extends EventEmitter {
   private hostAvailable = false;
   private capturing = false;
   private statuses: WidgetShortcutStatus[] = [];
+  private displayStatus?: ShortcutStatus;
 
   constructor(
     private readonly settings: DashboardSettings,
@@ -64,7 +70,7 @@ export class WidgetShortcutController extends EventEmitter {
     private readonly launch: (widgetType: number) => void,
     private readonly dismiss: (widgetType: number) => void,
     private readonly toggle: (widgetType: number) => void,
-    private readonly onDisplayPreview: () => void = () => {},
+    private readonly displayPreview: Pick<DisplayPreviewCoordinator, 'open' | 'close' | 'isOpen'>,
   ) {
     super();
   }
@@ -73,17 +79,17 @@ export class WidgetShortcutController extends EventEmitter {
     this.options = options;
     this.hostAvailable = hostAvailable;
     let changed = false;
-    const reserved = new Set(
-      [this.settings.widgetShortcuts, this.settings.widgetDismissShortcuts]
-        .flatMap((bindings) => Object.values(bindings))
-        .flatMap((shortcut) => {
-          const normalized = shortcut ? normalizeAccelerator(shortcut) : null;
-          return normalized ? [normalized] : [];
-        })
-    );
-    const displayShortcut = this.settings.getDisplayPreviewShortcut?.() ?? this.settings.displayPreviewShortcut ?? null;
-    if (displayShortcut) {
-      const normalized = normalizeAccelerator(displayShortcut);
+    const reserved = this.widgetReservations();
+    if (this.settings.displayPreviewShortcut === undefined) {
+      this.settings.displayPreviewShortcut = reserved.has(DISPLAY_DEFAULT) ? null : DISPLAY_DEFAULT;
+      changed = true;
+    }
+    if (this.settings.displayPreviewDismissShortcut === undefined) {
+      this.settings.displayPreviewDismissShortcut = this.settings.displayPreviewShortcut;
+      changed = true;
+    }
+    for (const shortcut of [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut]) {
+      const normalized = normalizeAccelerator(shortcut ?? '');
       if (normalized) reserved.add(normalized);
     }
     const defaults = Array.from({ length: 9 }, (_, index) => `Ctrl+Alt+Shift+${index + 1}`);
@@ -103,17 +109,11 @@ export class WidgetShortcutController extends EventEmitter {
         changed = true;
       }
     });
-    if (!this.settings.displayPreviewShortcut) {
-      const defaultDisplayShortcut = 'Ctrl+Alt+Shift+0';
-      if (!reserved.has(defaultDisplayShortcut)) {
-        this.settings.displayPreviewShortcut = defaultDisplayShortcut;
-        changed = true;
-      }
-    }
-    if (options.length > 0 && (!this.settings.widgetShortcutsInitialized || changed)) {
+    if (options.length > 0 && !this.settings.widgetShortcutsInitialized) {
       this.settings.widgetShortcutsInitialized = true;
-      this.settings.notifyChanged();
+      changed = true;
     }
+    if (changed) this.settings.notifyChanged();
     this.refresh();
   }
 
@@ -139,19 +139,37 @@ export class WidgetShortcutController extends EventEmitter {
           if (!shortcut || normalizeAccelerator(shortcut) !== normalized) return false;
           return type !== String(widgetType);
         }))
-        || normalizeAccelerator(this.settings.displayPreviewShortcut ?? '') === normalized;
+        || [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut]
+          .some((shortcut) => normalizeAccelerator(shortcut ?? '') === normalized);
       if (duplicate) return { ok: false, error: 'Already assigned to another widget.' };
     }
     const bindings = action === 'show' ? this.settings.widgetShortcuts : this.settings.widgetDismissShortcuts;
     bindings[String(widgetType)] = normalized;
     this.settings.widgetShortcutsInitialized = true;
-      this.settings.notifyChanged();
+    this.settings.notifyChanged();
+    this.refresh();
+    return { ok: true };
+  }
+
+  setDisplayShortcut(value: string | null, action: WidgetShortcutAction = 'show'): { ok: boolean; error?: string } {
+    const normalized = value === null ? null : normalizeAccelerator(value);
+    if (value !== null && !normalized) return { ok: false, error: 'Use one or more modifiers and a supported key.' };
+    if (normalized && this.widgetReservations().has(normalized)) return { ok: false, error: 'Already assigned to another widget.' };
+    if (action === 'show') this.settings.displayPreviewShortcut = normalized;
+    else this.settings.displayPreviewDismissShortcut = normalized;
+    this.settings.notifyChanged();
     this.refresh();
     return { ok: true };
   }
 
   reset(): void {
-    if (this.options.length === 0) return;
+    this.settings.displayPreviewShortcut = DISPLAY_DEFAULT;
+    this.settings.displayPreviewDismissShortcut = DISPLAY_DEFAULT;
+    if (this.options.length === 0) {
+      this.settings.notifyChanged();
+      this.refresh();
+      return;
+    }
     this.settings.widgetShortcuts = Object.fromEntries(this.options.map((option) => [String(option.widgetType), null]));
     this.settings.widgetDismissShortcuts = Object.fromEntries(this.options.map((option) => [String(option.widgetType), null]));
     this.options.slice(0, 9).forEach((option, index) => {
@@ -169,45 +187,46 @@ export class WidgetShortcutController extends EventEmitter {
     return this.statuses;
   }
 
+  getDisplayStatus(): ShortcutStatus | undefined {
+    return this.displayStatus;
+  }
+
   unregisterAll(): void {
     this.registrar.unregisterAll();
+  }
+
+  private widgetReservations(): Set<string> {
+    return new Set([this.settings.widgetShortcuts, this.settings.widgetDismissShortcuts]
+      .flatMap((bindings) => Object.values(bindings))
+      .flatMap((shortcut) => {
+        const normalized = normalizeAccelerator(shortcut ?? '');
+        return normalized ? [normalized] : [];
+      }));
   }
 
   private refresh(): void {
     this.registrar.unregisterAll();
     const seen = new Set<string>();
-    this.statuses = this.options.map((option) => {
-      const type = String(option.widgetType);
-      const accelerator = normalizeAccelerator(this.settings.widgetShortcuts[type] ?? '');
-      const dismissAccelerator = normalizeAccelerator(this.settings.widgetDismissShortcuts[type] ?? '');
-      const unavailableDetail = this.capturing ? 'Paused while recording' : 'Widgets are unavailable';
-      const inactive = (assigned: string | null): ShortcutRegistrationState => ({
-        state: 'inactive',
-        detail: assigned ? unavailableDetail : 'Not assigned',
-      });
-      let showStatus = inactive(accelerator);
-      let dismissStatus = inactive(dismissAccelerator);
-
-      if (this.hostAvailable && !this.capturing && accelerator && accelerator === dismissAccelerator) {
-        const registered = !seen.has(accelerator) && this.registrar.register(accelerator, () => this.toggle(option.widgetType));
-        seen.add(accelerator);
-        showStatus = dismissStatus = registered
-          ? { state: 'active', detail: 'Active — toggles this widget' }
+    const registerPair = (
+      accelerator: string | null,
+      dismissAccelerator: string | null,
+      actions: Record<WidgetShortcutAction | 'toggle', () => void>,
+      unavailableDetail: string | null,
+      reserved = new Set<string>(),
+    ) => {
+      const register = (assigned: string | null, callback: () => void, toggles = false): ShortcutRegistrationState => {
+        if (!assigned) return { state: 'inactive', detail: 'Not assigned' };
+        if (unavailableDetail) return { state: 'inactive', detail: unavailableDetail };
+        const registered = !seen.has(assigned) && !reserved.has(assigned) && this.registrar.register(assigned, callback);
+        seen.add(assigned);
+        return registered
+          ? { state: 'active', detail: toggles ? 'Active — toggles this widget' : 'Active' }
           : { state: 'conflict', detail: 'Unavailable or reserved by another application' };
-      } else if (this.hostAvailable && !this.capturing) {
-        if (accelerator) {
-          const registered = !seen.has(accelerator) && this.registrar.register(accelerator, () => this.launch(option.widgetType));
-          seen.add(accelerator);
-          showStatus = registered ? { state: 'active', detail: 'Active' } : { state: 'conflict', detail: 'Unavailable or reserved by another application' };
-        }
-        if (dismissAccelerator) {
-          const registered = !seen.has(dismissAccelerator) && this.registrar.register(dismissAccelerator, () => this.dismiss(option.widgetType));
-          seen.add(dismissAccelerator);
-          dismissStatus = registered ? { state: 'active', detail: 'Active' } : { state: 'conflict', detail: 'Unavailable or reserved by another application' };
-        }
-      }
+      };
+      const same = accelerator !== null && accelerator === dismissAccelerator;
+      const showStatus = register(accelerator, same ? actions.toggle : actions.show, same);
+      const dismissStatus = same ? showStatus : register(dismissAccelerator, actions.dismiss);
       return {
-        ...option,
         accelerator,
         dismissAccelerator,
         state: showStatus.state,
@@ -215,12 +234,33 @@ export class WidgetShortcutController extends EventEmitter {
         dismissState: dismissStatus.state,
         dismissDetail: dismissStatus.detail,
       };
+    };
+    this.statuses = this.options.map((option) => {
+      const type = String(option.widgetType);
+      return {
+        ...option,
+        ...registerPair(
+          normalizeAccelerator(this.settings.widgetShortcuts[type] ?? ''),
+          normalizeAccelerator(this.settings.widgetDismissShortcuts[type] ?? ''),
+          { show: () => this.launch(option.widgetType), dismiss: () => this.dismiss(option.widgetType), toggle: () => this.toggle(option.widgetType) },
+          this.capturing ? 'Paused while recording' : this.hostAvailable ? null : 'Widgets are unavailable',
+        ),
+      };
     });
-    const displayShortcut = normalizeAccelerator(this.settings.displayPreviewShortcut ?? '');
-    if (!this.capturing && displayShortcut && !seen.has(displayShortcut)) {
-      this.registrar.register(displayShortcut, this.onDisplayPreview);
-      seen.add(displayShortcut);
-    }
+    this.displayStatus = {
+      title: 'Display',
+      ...registerPair(
+        normalizeAccelerator(this.settings.displayPreviewShortcut ?? ''),
+        normalizeAccelerator(this.settings.displayPreviewDismissShortcut ?? ''),
+        {
+          show: () => this.displayPreview.open(),
+          dismiss: () => this.displayPreview.close(),
+          toggle: () => this.displayPreview.isOpen ? this.displayPreview.close() : this.displayPreview.open(),
+        },
+        this.capturing ? 'Paused while recording' : null,
+        this.widgetReservations(),
+      ),
+    };
     this.emit('changed');
   }
 }

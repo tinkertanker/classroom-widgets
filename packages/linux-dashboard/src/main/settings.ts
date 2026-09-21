@@ -24,7 +24,8 @@ export interface DashboardSettingsData {
   widgetDismissShortcuts: Record<string, string | null>;
   displayPreviewFrame?: PanelFrame;
   displayPreviewSourceId?: number;
-  displayPreviewShortcut?: string;
+  displayPreviewShortcut?: string | null;
+  displayPreviewDismissShortcut?: string | null;
 }
 
 /**
@@ -43,7 +44,8 @@ export class DashboardSettings extends EventEmitter {
   widgetDismissShortcuts: Record<string, string | null> = {};
   displayPreviewFrame?: PanelFrame;
   displayPreviewSourceId?: number;
-  displayPreviewShortcut?: string;
+  displayPreviewShortcut?: string | null;
+  displayPreviewDismissShortcut?: string | null;
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -95,7 +97,8 @@ export class DashboardSettings extends EventEmitter {
         if (typeof raw.displayPreviewSourceId === 'number' && Number.isFinite(raw.displayPreviewSourceId)) {
           settings.displayPreviewSourceId = raw.displayPreviewSourceId;
         }
-        if (typeof raw.displayPreviewShortcut === 'string') settings.displayPreviewShortcut = raw.displayPreviewShortcut;
+        if (typeof raw.displayPreviewShortcut === 'string' || raw.displayPreviewShortcut === null) settings.displayPreviewShortcut = raw.displayPreviewShortcut;
+        if (typeof raw.displayPreviewDismissShortcut === 'string' || raw.displayPreviewDismissShortcut === null) settings.displayPreviewDismissShortcut = raw.displayPreviewDismissShortcut;
       }
     } catch (error) {
       log.warn(`Unable to read settings: ${error instanceof Error ? error.message : String(error)}`);
@@ -129,6 +132,7 @@ export class DashboardSettings extends EventEmitter {
         displayPreviewFrame: this.displayPreviewFrame,
         displayPreviewSourceId: this.displayPreviewSourceId,
         displayPreviewShortcut: this.displayPreviewShortcut,
+        displayPreviewDismissShortcut: this.displayPreviewDismissShortcut,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {
@@ -164,7 +168,12 @@ export class DashboardSettings extends EventEmitter {
   }
 
   setDisplayPreviewShortcut(shortcut: string | null): void {
-    this.displayPreviewShortcut = shortcut ?? undefined;
+    this.displayPreviewShortcut = shortcut;
+    this.save();
+  }
+
+  setDisplayPreviewDismissShortcut(shortcut: string | null): void {
+    this.displayPreviewDismissShortcut = shortcut;
     this.save();
   }
 
