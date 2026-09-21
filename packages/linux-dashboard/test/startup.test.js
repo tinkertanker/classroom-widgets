@@ -24,13 +24,18 @@ test('Wayland sessions use XWayland when Electron has no explicit backend', () =
 test('only an explicit ozone-platform argument overrides the launch policy', () => {
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--background']), false);
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11']), true);
-  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'wayland']), true);
+  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '-ozone-platform=wayland']), true);
+  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--OZONE-PLATFORM=wayland']), false);
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=wayland']), false);
 });
 
-test('effective X11 detection ignores positional arguments after the terminator', () => {
+test('effective X11 detection follows Chromium equals and last-switch semantics', () => {
   assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11']), true);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'x11']), true);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '-ozone-platform=x11']), true);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'x11']), false);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--OZONE-PLATFORM=x11']), false);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11', '--ozone-platform=wayland']), false);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=wayland', '-ozone-platform=x11']), true);
   assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=x11']), false);
 });
 

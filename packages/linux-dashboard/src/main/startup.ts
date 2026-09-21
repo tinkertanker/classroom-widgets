@@ -5,20 +5,25 @@ export function isBackgroundLaunch(arguments_: readonly string[]): boolean {
 }
 
 function chromiumArguments(arguments_: readonly string[]): readonly string[] {
-  const terminator = arguments_.indexOf('--');
+  const terminator = arguments_.findIndex((argument) => argument.trim() === '--');
   return terminator === -1 ? arguments_ : arguments_.slice(0, terminator);
 }
 
+function ozonePlatform(arguments_: readonly string[]): string | undefined {
+  let value: string | undefined;
+  for (const argument of chromiumArguments(arguments_)) {
+    const match = /^-{1,2}ozone-platform(?:=(.*))?$/.exec(argument.trim());
+    if (match) value = match[1] ?? '';
+  }
+  return value;
+}
+
 export function hasExplicitOzonePlatform(arguments_: readonly string[]): boolean {
-  return chromiumArguments(arguments_).some((argument) => /^--ozone-platform(?:=|$)/i.test(argument));
+  return ozonePlatform(arguments_) !== undefined;
 }
 
 export function usesX11OzonePlatform(arguments_: readonly string[]): boolean {
-  const switches = chromiumArguments(arguments_);
-  return switches.some((argument, index) => (
-    /^--ozone-platform=x11$/i.test(argument)
-    || (argument.toLowerCase() === '--ozone-platform' && switches[index + 1]?.toLowerCase() === 'x11')
-  ));
+  return ozonePlatform(arguments_) === 'x11';
 }
 
 export function shouldForceX11(
@@ -40,7 +45,7 @@ export function x11RelaunchArguments(
 ): string[] | null {
   if (!shouldForceX11(platform, environment, hasExplicitOzonePlatform(arguments_))) return null;
   const relaunchArguments = [...arguments_.slice(1)];
-  const terminator = relaunchArguments.indexOf('--');
+  const terminator = relaunchArguments.findIndex((argument) => argument.trim() === '--');
   relaunchArguments.splice(terminator === -1 ? relaunchArguments.length : terminator, 0, '--ozone-platform=x11');
   return relaunchArguments;
 }
