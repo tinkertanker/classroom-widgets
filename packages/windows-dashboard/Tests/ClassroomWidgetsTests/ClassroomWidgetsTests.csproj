@@ -23,19 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="..\..\Source\DashboardSettings.cs" Link="DashboardSettings.cs" />
-    <Compile Include="..\..\Source\WidgetPanelModels.cs" Link="WidgetPanelModels.cs" />
-    <Compile Include="..\..\Source\DashboardShortenerSettings.cs" Link="DashboardShortenerSettings.cs" />
-    <Compile Include="..\..\Source\DashboardLog.cs" Link="DashboardLog.cs" />
-    <Compile Include="..\..\Source\UpdateVersion.cs" Link="UpdateVersion.cs" />
-    <Compile Include="..\..\Source\WindowsInstallation.cs" Link="WindowsInstallation.cs" />
-    <Compile Include="..\..\Source\DisplayGeometry.cs" Link="DisplayGeometry.cs" />
-    <Compile Include="..\..\Source\DisplayCatalog.cs" Link="DisplayCatalog.cs" />
-    <Compile Include="..\..\Source\DisplayShortcutLogic.cs" Link="DisplayShortcutLogic.cs" />
-    <Compile Include="..\..\Source\DisplayCaptureSession.cs" Link="DisplayCaptureSession.cs" />
-    <Compile Include="..\..\Source\DisplayPreviewCoordinator.cs" Link="DisplayPreviewCoordinator.cs" />
-    <Compile Include="..\..\Source\DisplayPreviewWindow.xaml.cs" Link="DisplayPreviewWindow.xaml.cs" DependentUpon="DisplayPreviewWindow.xaml" />
-    <Page Include="..\..\Source\DisplayPreviewWindow.xaml" Link="DisplayPreviewWindow.xaml" />
+    <ProjectReference Include="..\..\ClassroomWidgets.csproj" />
   </ItemGroup>
 
 </Project>

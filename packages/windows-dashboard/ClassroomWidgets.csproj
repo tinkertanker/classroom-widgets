@@ -26,6 +26,7 @@
   <ItemGroup>
     <Using Remove="System.Drawing" />
     <Using Remove="System.Windows.Forms" />
+    <InternalsVisibleTo Include="ClassroomWidgetsTests" />
   </ItemGroup>
 
   <!-- The xUnit tests live in their own project below this directory. -->

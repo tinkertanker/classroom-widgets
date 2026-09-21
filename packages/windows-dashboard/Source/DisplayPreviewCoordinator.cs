@@ -90,6 +90,19 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _window.Close();
     }
 
+    public void PerformShortcut(WidgetShortcutAction action)
+    {
+        switch (action)
+        {
+            case WidgetShortcutAction.Show: Open(); break;
+            case WidgetShortcutAction.Dismiss: Close(); break;
+            case WidgetShortcutAction.Toggle:
+                if (_window is null) Open();
+                else Close();
+                break;
+        }
+    }
+
     public void Stop()
     {
         _wantsCapture = false;

@@ -86,7 +86,7 @@ public sealed class WidgetShortcutManager : IDisposable
 
     private readonly DashboardSettings _settings;
     private readonly WidgetHostController _host;
-    private readonly Action _onDisplayPreview;
+    private readonly Action<WidgetShortcutAction> _onDisplayPreview;
     private readonly HwndSource _source;
     private readonly Dictionary<int, (int WidgetType, WidgetShortcutAction Action)> _registeredIds = new();
     private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), WidgetShortcutRegistration> _statuses = new();
@@ -94,11 +94,12 @@ public sealed class WidgetShortcutManager : IDisposable
 
     public event Action? StatusChanged;
 
-    public WidgetShortcutManager(DashboardSettings settings, WidgetHostController host, Action? onDisplayPreview = null)
+    public WidgetShortcutManager(DashboardSettings settings, WidgetHostController host, Action<WidgetShortcutAction> onDisplayPreview)
     {
         _settings = settings;
         _host = host;
-        _onDisplayPreview = onDisplayPreview ?? (() => { });
+        _onDisplayPreview = onDisplayPreview;
+        _settings.InitializeWidgetShortcuts(_host.WidgetOptions);
         _source = new HwndSource(new HwndSourceParameters("ClassroomWidgets.Shortcuts")
         {
             ParentWindow = MessageOnlyWindow,
@@ -129,12 +130,13 @@ public sealed class WidgetShortcutManager : IDisposable
 
     public bool IsDuplicate(int widgetType, string shortcut)
     {
+        if (widgetType == DisplayShortcutLogic.WidgetType) return IsDisplayShortcutDuplicate(shortcut);
         if (!WidgetShortcutGesture.TryParse(shortcut, out var candidate)) return false;
         var widgetDuplicate = new[] { _settings.WidgetShortcuts, _settings.WidgetDismissShortcuts }.Any(bindings =>
             bindings.Any(entry => entry.Key != widgetType &&
                 WidgetShortcutGesture.TryParse(entry.Value, out var existing) && existing == candidate));
-        var displayDuplicate = WidgetShortcutGesture.TryParse(_settings.DisplayPreviewShortcut, out var display)
-            && display == candidate;
+        var displayDuplicate = new[] { _settings.DisplayPreviewShortcut, _settings.DisplayPreviewDismissShortcut }.Any(shortcut =>
+            WidgetShortcutGesture.TryParse(shortcut, out var display) && display == candidate);
         return widgetDuplicate || displayDuplicate;
     }
 
@@ -154,26 +156,31 @@ public sealed class WidgetShortcutManager : IDisposable
         var seen = new HashSet<WidgetShortcutGesture>();
         foreach (var widgetType in optionTypes)
         {
-            var hasShow = WidgetShortcutGesture.TryParse(_settings.WidgetShortcuts.GetValueOrDefault(widgetType), out var show);
-            var hasDismiss = WidgetShortcutGesture.TryParse(_settings.WidgetDismissShortcuts.GetValueOrDefault(widgetType), out var dismiss);
-            if (hasShow && hasDismiss && show == dismiss)
-            {
-                Register(id++, widgetType, WidgetShortcutAction.Toggle, show, seen);
-                var status = _statuses[(widgetType, WidgetShortcutAction.Toggle)];
-                _statuses[(widgetType, WidgetShortcutAction.Show)] = status;
-                _statuses[(widgetType, WidgetShortcutAction.Dismiss)] = status;
-            }
-            else
-            {
-                if (hasShow) Register(id++, widgetType, WidgetShortcutAction.Show, show, seen);
-                if (hasDismiss) Register(id++, widgetType, WidgetShortcutAction.Dismiss, dismiss, seen);
-            }
+            id = RegisterPair(id, widgetType, _settings.WidgetShortcuts.GetValueOrDefault(widgetType),
+                _settings.WidgetDismissShortcuts.GetValueOrDefault(widgetType), seen);
         }
-        if (WidgetShortcutGesture.TryParse(_settings.DisplayPreviewShortcut, out var display))
-        {
-            Register(id, int.MinValue, WidgetShortcutAction.Show, display, seen);
-        }
+        RegisterPair(id, DisplayShortcutLogic.WidgetType, _settings.DisplayPreviewShortcut,
+            _settings.DisplayPreviewDismissShortcut, seen);
         StatusChanged?.Invoke();
+    }
+
+    private int RegisterPair(int id, int widgetType, string? showShortcut, string? dismissShortcut, HashSet<WidgetShortcutGesture> seen)
+    {
+        var hasShow = WidgetShortcutGesture.TryParse(showShortcut, out var show);
+        var hasDismiss = WidgetShortcutGesture.TryParse(dismissShortcut, out var dismiss);
+        if (hasShow && hasDismiss && show == dismiss)
+        {
+            Register(id++, widgetType, WidgetShortcutAction.Toggle, show, seen);
+            var status = _statuses[(widgetType, WidgetShortcutAction.Toggle)];
+            _statuses[(widgetType, WidgetShortcutAction.Show)] = status;
+            _statuses[(widgetType, WidgetShortcutAction.Dismiss)] = status;
+        }
+        else
+        {
+            if (hasShow) Register(id++, widgetType, WidgetShortcutAction.Show, show, seen);
+            if (hasDismiss) Register(id++, widgetType, WidgetShortcutAction.Dismiss, dismiss, seen);
+        }
+        return id;
     }
 
     private void Register(int id, int widgetType, WidgetShortcutAction action, WidgetShortcutGesture gesture, HashSet<WidgetShortcutGesture> seen)
@@ -187,7 +194,8 @@ public sealed class WidgetShortcutManager : IDisposable
         if (RegisterHotKey(_source.Handle, id, gesture.Modifiers | NoRepeat, gesture.VirtualKey))
         {
             _registeredIds[id] = key;
-            _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Active);
+            _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Active,
+                action == WidgetShortcutAction.Toggle ? "Toggles this widget" : null);
             return;
         }
         var error = new Win32Exception(Marshal.GetLastWin32Error());
@@ -204,9 +212,9 @@ public sealed class WidgetShortcutManager : IDisposable
     {
         if (message != WmHotKey || !_registeredIds.TryGetValue(wParam.ToInt32(), out var registration)) return 0;
         handled = true;
-        if (registration.WidgetType == int.MinValue)
+        if (registration.WidgetType == DisplayShortcutLogic.WidgetType)
         {
-            _onDisplayPreview();
+            _onDisplayPreview(registration.Action);
             return 0;
         }
         if (!_host.IsAvailable) return 0;
