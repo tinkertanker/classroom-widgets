@@ -39,6 +39,20 @@ test('effective X11 detection follows Chromium equals and last-switch semantics'
   assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=x11']), false);
 });
 
+test('ozone parsing trims only Chromium ASCII whitespace and preserves value characters', () => {
+  const asciiWhitespace = '\t\n\v\f\r ';
+  assert.equal(hasExplicitOzonePlatform(['/app', `${asciiWhitespace}--ozone-platform=x11${asciiWhitespace}`]), true);
+  assert.equal(usesX11OzonePlatform(['/app', `${asciiWhitespace}--ozone-platform=x11${asciiWhitespace}`]), true);
+  assert.equal(hasExplicitOzonePlatform(['/app', '\u00a0--ozone-platform=x11']), false);
+  assert.equal(
+    usesX11OzonePlatform(['/app', '--ozone-platform=x11', '\u00a0--ozone-platform=wayland']),
+    true,
+  );
+  assert.equal(hasExplicitOzonePlatform(['/app', '--ozone-platform=x11\nwayland']), true);
+  assert.equal(usesX11OzonePlatform(['/app', '--ozone-platform=x11\nwayland']), false);
+  assert.equal(usesX11OzonePlatform(['/app', '--ozone-platform=x11=wayland']), false);
+});
+
 test('Wayland relaunch preserves application arguments and adds the X11 process flag', () => {
   const arguments_ = ['/opt/classroom-widgets', '--background', '--disable-gpu'];
   assert.deepEqual(
@@ -61,6 +75,14 @@ test('Wayland relaunch inserts X11 before the Chromium argument terminator', () 
   assert.equal(
     x11RelaunchArguments('linux', { XDG_SESSION_TYPE: 'wayland' }, ['/opt/classroom-widgets', ...first]),
     null,
+  );
+  assert.deepEqual(
+    x11RelaunchArguments('linux', { XDG_SESSION_TYPE: 'wayland' }, ['/app', ' \t--\r\n', '--background']),
+    ['--ozone-platform=x11', ' \t--\r\n', '--background'],
+  );
+  assert.deepEqual(
+    x11RelaunchArguments('linux', { XDG_SESSION_TYPE: 'wayland' }, ['/app', '\u00a0--', '--background']),
+    ['\u00a0--', '--background', '--ozone-platform=x11'],
   );
 });
 

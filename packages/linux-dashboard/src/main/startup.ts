@@ -4,16 +4,25 @@ export function isBackgroundLaunch(arguments_: readonly string[]): boolean {
   return arguments_.includes('--background');
 }
 
+function trimAsciiWhitespace(value: string): string {
+  return value.replace(/^[\t\n\v\f\r ]+|[\t\n\v\f\r ]+$/g, '');
+}
+
 function chromiumArguments(arguments_: readonly string[]): readonly string[] {
-  const terminator = arguments_.findIndex((argument) => argument.trim() === '--');
+  const terminator = arguments_.findIndex((argument) => trimAsciiWhitespace(argument) === '--');
   return terminator === -1 ? arguments_ : arguments_.slice(0, terminator);
 }
 
 function ozonePlatform(arguments_: readonly string[]): string | undefined {
   let value: string | undefined;
   for (const argument of chromiumArguments(arguments_)) {
-    const match = /^-{1,2}ozone-platform(?:=(.*))?$/.exec(argument.trim());
-    if (match) value = match[1] ?? '';
+    const trimmed = trimAsciiWhitespace(argument);
+    const prefixLength = trimmed.startsWith('--') ? 2 : (trimmed.startsWith('-') ? 1 : 0);
+    if (prefixLength === 0 || prefixLength === trimmed.length) continue;
+    const separator = trimmed.indexOf('=');
+    const nameEnd = separator === -1 ? trimmed.length : separator;
+    if (trimmed.slice(prefixLength, nameEnd) !== 'ozone-platform') continue;
+    value = separator === -1 ? '' : trimmed.slice(separator + 1);
   }
   return value;
 }
@@ -45,7 +54,7 @@ export function x11RelaunchArguments(
 ): string[] | null {
   if (!shouldForceX11(platform, environment, hasExplicitOzonePlatform(arguments_))) return null;
   const relaunchArguments = [...arguments_.slice(1)];
-  const terminator = relaunchArguments.findIndex((argument) => argument.trim() === '--');
+  const terminator = relaunchArguments.findIndex((argument) => trimAsciiWhitespace(argument) === '--');
   relaunchArguments.splice(terminator === -1 ? relaunchArguments.length : terminator, 0, '--ozone-platform=x11');
   return relaunchArguments;
 }
