@@ -54,16 +54,6 @@ describe('LinkShareRoom', () => {
     assert.equal(room.getSubmissionCount(), 1);
   });
 
-  it('clears all submissions', () => {
-    const room = new LinkShareRoom('CODE1', 'w-1');
-    room.addSubmission('Ada', 'https://example.com/1', true);
-    room.addSubmission('Ada', 'https://example.com/2', true);
-
-    room.clearAllSubmissions();
-
-    assert.equal(room.getSubmissionCount(), 0);
-  });
-
   it('includes link-share-specific fields in toJSON', () => {
     const room = new LinkShareRoom('CODE1', 'w-1');
     const submission = room.addSubmission('Ada', 'https://example.com', true);

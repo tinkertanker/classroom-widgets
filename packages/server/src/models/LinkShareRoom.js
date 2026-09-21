@@ -51,14 +51,6 @@ class LinkShareRoom extends Room {
   }
 
   /**
-   * Clear all submissions
-   */
-  clearAllSubmissions() {
-    this.submissions = [];
-    this.updateActivity();
-  }
-
-  /**
    * Get submission count
    */
   getSubmissionCount() {
