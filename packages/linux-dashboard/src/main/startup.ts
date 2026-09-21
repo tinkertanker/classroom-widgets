@@ -31,8 +31,10 @@ export function hasExplicitOzonePlatform(arguments_: readonly string[]): boolean
   return ozonePlatform(arguments_) !== undefined;
 }
 
-export function usesX11OzonePlatform(arguments_: readonly string[]): boolean {
-  return ozonePlatform(arguments_) === 'x11';
+export function effectiveOzonePlatformArgument(arguments_: readonly string[]): string {
+  const value = ozonePlatform(arguments_);
+  if (value === undefined) return '';
+  return value ? `--ozone-platform=${value}` : '--ozone-platform';
 }
 
 export function shouldForceX11(

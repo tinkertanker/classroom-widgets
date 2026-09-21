@@ -209,7 +209,7 @@ test('approved AppImage staging error identifies the unwritable location and rec
   }
 });
 
-test('AppImage updater keeps the effective X11 backend for replacement and rollback launches', () => {
+test('AppImage updater keeps the effective Ozone backend for replacement and rollback launches', () => {
   const script = appImageUpdateScript();
   assert.equal(script.match(/"\$3" "\$6" >\/dev\/null 2>&1 &/g)?.length, 2);
   assert.equal(script.match(/"\$3" >\/dev\/null 2>&1 &/g)?.length, 2);

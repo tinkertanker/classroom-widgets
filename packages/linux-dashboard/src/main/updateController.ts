@@ -9,7 +9,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import { log } from './log';
-import { usesX11OzonePlatform } from './startup';
+import { effectiveOzonePlatformArgument } from './startup';
 import { isNewerVersion, parseUpdateRelease, ReleaseAsset } from './updateRelease';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/tinkertanker/classroom-widgets/releases/latest';
@@ -133,7 +133,7 @@ export class UpdateController {
 
     const script = join(tmpdir(), `classroom-widgets-update-${token}.sh`);
     await writeFile(script, appImageUpdateScript());
-    const ozonePlatform = usesX11OzonePlatform(process.argv) ? '--ozone-platform=x11' : '';
+    const ozonePlatform = effectiveOzonePlatformArgument(process.argv);
     const child = spawn('/bin/sh', [script, String(process.pid), staged, current, backup, script, ozonePlatform], { detached: true, stdio: 'ignore' });
     try {
       await new Promise<void>((resolve, reject) => {

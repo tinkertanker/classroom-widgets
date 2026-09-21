@@ -2,12 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   appImageUpdateRelaunchDelay,
+  effectiveOzonePlatformArgument,
   hasExplicitOzonePlatform,
   isBackgroundLaunch,
   migrateAutostartDesktopEntry,
   relaunchExecutable,
   shouldForceX11,
-  usesX11OzonePlatform,
   x11RelaunchArguments,
 } = require('../out/main/startup.js');
 
@@ -29,28 +29,39 @@ test('only an explicit ozone-platform argument overrides the launch policy', () 
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=wayland']), false);
 });
 
-test('effective X11 detection follows Chromium equals and last-switch semantics', () => {
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11']), true);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '-ozone-platform=x11']), true);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'x11']), false);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--OZONE-PLATFORM=x11']), false);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11', '--ozone-platform=wayland']), false);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=wayland', '-ozone-platform=x11']), true);
-  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=x11']), false);
+test('effective Ozone detection follows Chromium equals and last-switch semantics', () => {
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--ozone-platform=x11']), '--ozone-platform=x11');
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '-ozone-platform=x11']), '--ozone-platform=x11');
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--ozone-platform', 'x11']), '--ozone-platform');
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--OZONE-PLATFORM=x11']), '');
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--ozone-platform=x11', '--ozone-platform=wayland']), '--ozone-platform=wayland');
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--ozone-platform=wayland', '-ozone-platform=x11']), '--ozone-platform=x11');
+  assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--', '--ozone-platform=x11']), '');
+});
+
+test('effective Ozone argument preserves explicit backends across AppImage updates', () => {
+  assert.equal(effectiveOzonePlatformArgument(['/app']), '');
+  assert.equal(effectiveOzonePlatformArgument(['/app', '-ozone-platform=wayland']), '--ozone-platform=wayland');
+  assert.equal(effectiveOzonePlatformArgument(['/app', '--ozone-platform']), '--ozone-platform');
+  assert.equal(
+    effectiveOzonePlatformArgument(['/app', '--ozone-platform=x11', '--ozone-platform=wayland']),
+    '--ozone-platform=wayland',
+  );
+  assert.equal(effectiveOzonePlatformArgument(['/app', '--', '--ozone-platform=wayland']), '');
 });
 
 test('ozone parsing trims only Chromium ASCII whitespace and preserves value characters', () => {
   const asciiWhitespace = '\t\n\v\f\r ';
   assert.equal(hasExplicitOzonePlatform(['/app', `${asciiWhitespace}--ozone-platform=x11${asciiWhitespace}`]), true);
-  assert.equal(usesX11OzonePlatform(['/app', `${asciiWhitespace}--ozone-platform=x11${asciiWhitespace}`]), true);
+  assert.equal(effectiveOzonePlatformArgument(['/app', `${asciiWhitespace}--ozone-platform=x11${asciiWhitespace}`]), '--ozone-platform=x11');
   assert.equal(hasExplicitOzonePlatform(['/app', '\u00a0--ozone-platform=x11']), false);
   assert.equal(
-    usesX11OzonePlatform(['/app', '--ozone-platform=x11', '\u00a0--ozone-platform=wayland']),
-    true,
+    effectiveOzonePlatformArgument(['/app', '--ozone-platform=x11', '\u00a0--ozone-platform=wayland']),
+    '--ozone-platform=x11',
   );
   assert.equal(hasExplicitOzonePlatform(['/app', '--ozone-platform=x11\nwayland']), true);
-  assert.equal(usesX11OzonePlatform(['/app', '--ozone-platform=x11\nwayland']), false);
-  assert.equal(usesX11OzonePlatform(['/app', '--ozone-platform=x11=wayland']), false);
+  assert.equal(effectiveOzonePlatformArgument(['/app', '--ozone-platform=x11\nwayland']), '--ozone-platform=x11\nwayland');
+  assert.equal(effectiveOzonePlatformArgument(['/app', '--ozone-platform=x11=wayland']), '--ozone-platform=x11=wayland');
 });
 
 test('Wayland relaunch preserves application arguments and adds the X11 process flag', () => {
