@@ -69,7 +69,7 @@ public sealed class WidgetShortcutSettingsTests
     [Fact]
     public void LegacyDisplayShowBecomesMatchingDismissEvenWithoutWidgetInventory()
     {
-        var settings = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+        var settings = DashboardSettings.DeserializeSettings(
             """{"DisplayPreviewShortcut":"Ctrl+Alt+D"}""")!;
 
         settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>());
@@ -78,6 +78,20 @@ public sealed class WidgetShortcutSettingsTests
         Assert.True(saved.TryGetProperty("DisplayPreviewDismissShortcut", out var dismiss));
         Assert.Equal("Ctrl+Alt+D", dismiss.GetString());
         Assert.Equal("Ctrl+Alt+D", settings.DisplayPreviewShortcut);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"DisplayPreviewShortcut":null}""")]
+    public void LegacyMissingOrNullDisplayShowStaysUnassigned(string json)
+    {
+        var settings = DashboardSettings.DeserializeSettings(json)!;
+
+        settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>());
+
+        Assert.Null(settings.DisplayPreviewShortcut);
+        Assert.Null(settings.DisplayPreviewDismissShortcut);
+        Assert.True(settings.DisplayPreviewShortcutsInitialized);
     }
 
     [Fact]
