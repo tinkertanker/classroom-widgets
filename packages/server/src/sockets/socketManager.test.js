@@ -108,7 +108,7 @@ describe('session:join rate limiting', () => {
     }
     await new Promise(resolve => setImmediate(resolve));
 
-    const responses = emitted.filter(a => a[0] === EVENTS.SESSION.JOINED).map(a => a[1]);
+    const responses = emitted.filter(a => a[0] === 'session:joined').map(a => a[1]);
     assert.equal(responses.length, max + 1);
     assert.match(responses[max].error, /Too many join attempts/);
     assert.equal(eventRateLimiter(socket, EVENTS.SESSION.JOIN).allowed, false);
@@ -130,7 +130,7 @@ describe('session:join rate limiting', () => {
       io.connect(socket);
       socket.trigger(EVENTS.SESSION.JOIN, { code, name: 'Student' });
       await new Promise(resolve => setImmediate(resolve));
-      return emitted.find(a => a[0] === EVENTS.SESSION.JOINED)[1];
+      return emitted.find(a => a[0] === 'session:joined')[1];
     };
 
     // Valid joins never consume the miss budget
@@ -155,6 +155,6 @@ describe('session:join rate limiting', () => {
     io.connect(other);
     other.trigger(EVENTS.SESSION.JOIN, { code: 'ZZZZZZ', name: 'Student' });
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(emitted.find(a => a[0] === EVENTS.SESSION.JOINED)[1].error, 'Session not found');
+    assert.equal(emitted.find(a => a[0] === 'session:joined')[1].error, 'Session not found');
   });
 });
