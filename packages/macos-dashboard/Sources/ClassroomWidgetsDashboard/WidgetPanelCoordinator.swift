@@ -1013,10 +1013,7 @@ enum WidgetPanelContentLayout {
     }
 }
 
-private final class WidgetPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-}
+private final class WidgetPanel: FloatingPanel {}
 
 private final class NonInteractiveVisualEffectView: NSVisualEffectView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
