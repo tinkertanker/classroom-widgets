@@ -1,10 +1,52 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isBackgroundLaunch, migrateAutostartDesktopEntry } = require('../out/main/startup.js');
+const {
+  hasExplicitOzonePlatform,
+  isBackgroundLaunch,
+  migrateAutostartDesktopEntry,
+  relaunchExecutable,
+  shouldForceX11,
+  x11RelaunchArguments,
+} = require('../out/main/startup.js');
 
 test('background launch arguments suppress the launcher', () => {
   assert.equal(isBackgroundLaunch(['/opt/classroom-widgets']), false);
   assert.equal(isBackgroundLaunch(['/opt/classroom-widgets', '--background']), true);
+});
+
+test('Wayland sessions use XWayland when Electron has no explicit backend', () => {
+  assert.equal(shouldForceX11('linux', { XDG_SESSION_TYPE: 'wayland', DISPLAY: ':0' }, false), true);
+  assert.equal(shouldForceX11('linux', { WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0' }, false), true);
+});
+
+test('only an explicit ozone-platform argument overrides the launch policy', () => {
+  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--background']), false);
+  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11']), true);
+  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'wayland']), true);
+});
+
+test('Wayland relaunch preserves application arguments and adds the X11 process flag', () => {
+  const arguments_ = ['/opt/classroom-widgets', '--background', '--disable-gpu'];
+  assert.deepEqual(
+    x11RelaunchArguments('linux', { XDG_SESSION_TYPE: 'wayland' }, arguments_),
+    ['--background', '--disable-gpu', '--ozone-platform=x11'],
+  );
+  assert.equal(
+    x11RelaunchArguments('linux', { XDG_SESSION_TYPE: 'wayland' }, [...arguments_, '--ozone-platform=wayland']),
+    null,
+  );
+});
+
+test('Wayland relaunch uses the stable AppImage path when packaged', () => {
+  assert.equal(relaunchExecutable({ APPIMAGE: '/apps/ClassroomWidgets.AppImage' }, '/tmp/.mount/app'), '/apps/ClassroomWidgets.AppImage');
+  assert.equal(relaunchExecutable({}, '/opt/Classroom Widgets/classroom-widgets'), '/opt/Classroom Widgets/classroom-widgets');
+});
+
+test('display backend policy preserves X11, other platforms, and explicit Electron flags', () => {
+  assert.equal(shouldForceX11('linux', { XDG_SESSION_TYPE: 'x11' }, false), false);
+  assert.equal(shouldForceX11('linux', { XDG_SESSION_TYPE: 'x11', WAYLAND_DISPLAY: 'wayland-0' }, false), false);
+  assert.equal(shouldForceX11('darwin', { XDG_SESSION_TYPE: 'wayland' }, false), false);
+  assert.equal(shouldForceX11('linux', { XDG_SESSION_TYPE: 'wayland' }, true), false);
 });
 
 test('autostart migration changes only Exec in the Desktop Entry section', () => {

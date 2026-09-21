@@ -8,20 +8,30 @@ import { log } from './log';
 import { DashboardSettings } from './settings';
 import { DisplayCatalog } from './displayCatalog';
 import { DisplayPreviewCoordinator } from './displayPreview';
-import { isBackgroundLaunch } from './startup';
+import { isBackgroundLaunch, relaunchExecutable, x11RelaunchArguments } from './startup';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
 import { UpdateController } from './updateController';
 import { WidgetShortcutController } from './widgetShortcuts';
 
-app.setName('ClassroomWidgets');
-
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  process.stderr.write('Another instance is already running; exiting\n');
-  app.quit();
+const relaunchArguments = x11RelaunchArguments(process.platform, process.env, process.argv);
+if (relaunchArguments) {
+  app.relaunch({ args: relaunchArguments, execPath: relaunchExecutable(process.env, process.execPath) });
+  app.exit(0);
 } else {
-  bootstrap();
+  launch();
+}
+
+function launch(): void {
+  app.setName('ClassroomWidgets');
+
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    process.stderr.write('Another instance is already running; exiting\n');
+    app.quit();
+  } else {
+    bootstrap();
+  }
 }
 
 // Packaged builds get the version via electron-builder extraMetadata; dev runs read the repo-root version.json.
