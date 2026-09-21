@@ -29,6 +29,8 @@ public sealed class DashboardSettings
 
     private static string SettingsPath => Path.Combine(DataDirectory, "settings.json");
 
+    private bool? _loadedDisplayPreviewShortcutWasPresent;
+
     internal static void UseDataDirectory(string directory) => DataDirectory = directory;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -69,7 +71,7 @@ public sealed class DashboardSettings
         {
             if (File.Exists(SettingsPath))
             {
-                var loaded = JsonSerializer.Deserialize<DashboardSettings>(File.ReadAllText(SettingsPath), JsonOptions);
+                var loaded = DeserializeSettings(File.ReadAllText(SettingsPath));
                 if (loaded is not null)
                 {
                     loaded.BackgroundOpacity = Math.Clamp(loaded.BackgroundOpacity, 0, 1);
@@ -86,6 +88,19 @@ public sealed class DashboardSettings
         }
         MigrateLaunchAtLoginCommand();
         return settings;
+    }
+
+    internal static DashboardSettings? DeserializeSettings(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var loaded = JsonSerializer.Deserialize<DashboardSettings>(json, JsonOptions);
+        if (loaded is not null && !loaded.DisplayPreviewShortcutsInitialized)
+        {
+            loaded._loadedDisplayPreviewShortcutWasPresent =
+                document.RootElement.TryGetProperty(nameof(DisplayPreviewShortcut), out var shortcut)
+                && shortcut.ValueKind != JsonValueKind.Null;
+        }
+        return loaded;
     }
 
     private static void MigrateLaunchAtLoginCommand()
@@ -137,6 +152,20 @@ public sealed class DashboardSettings
     internal bool ApplyWidgetShortcutDefaults(IReadOnlyList<CompactWidgetOption> options)
     {
         var changed = options.Count > 0 && !WidgetShortcutsInitialized;
+        if (!DisplayPreviewShortcutsInitialized && _loadedDisplayPreviewShortcutWasPresent is bool wasPresent)
+        {
+            if (wasPresent)
+            {
+                DisplayPreviewDismissShortcut = DisplayPreviewShortcut;
+            }
+            else
+            {
+                DisplayPreviewShortcut = null;
+                DisplayPreviewDismissShortcut = null;
+            }
+            DisplayPreviewShortcutsInitialized = true;
+            changed = true;
+        }
         var numberedDefaults = Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
         var reserved = new HashSet<string>(
             WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>()
