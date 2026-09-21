@@ -56,11 +56,8 @@ export interface SessionJoinedResponse {
 
 export interface SessionParticipantUpdateData {
   count: number;
-  participants: Array<{
-    id: string;
-    name: string;
-    joinedAt: number;
-  }>;
+  roomType?: string;
+  widgetId?: string;
 }
 
 export interface SessionCloseData {
