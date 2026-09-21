@@ -1,6 +1,5 @@
 // Error Service - Centralized error handling and reporting
 
-import { useCallback } from 'react';
 import { AppError } from '@shared/types';
 
 export enum ErrorCode {
@@ -203,22 +202,4 @@ export class ErrorService {
 
 // Export singleton instance
 export const errorService = ErrorService.getInstance();
-
-// React hook for using error service
-export function useErrorHandler() {
-  const handleError = useCallback((error: Error, context?: string) => {
-    errorService.handleError(error, context);
-  }, []);
-  
-  const handleWidgetError = useCallback((widgetId: string, widgetType: string, error: Error) => {
-    errorService.handleWidgetError(widgetId, widgetType, error);
-  }, []);
-  
-  return {
-    handleError,
-    handleWidgetError,
-    logError: errorService.logError.bind(errorService),
-    getRecentErrors: errorService.getRecentErrors.bind(errorService)
-  };
-}
 
