@@ -90,7 +90,7 @@ The suite references the real application assembly and serializes desktop tests.
 It exercises registered hotkeys, Settings controls, and GDI capture of a synthetic
 window, not a physical second monitor. Set `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`
 to save rendered Settings and capture screenshots. The Desktop tests workflow
-runs this suite before landing desktop PRs and retains its evidence artifact.
+runs this suite for matching desktop pull requests and retains its evidence artifact.
 
 ## Publishing a release
 

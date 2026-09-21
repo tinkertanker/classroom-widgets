@@ -90,6 +90,102 @@ test('reset preserves regular widget bindings before options load', () => {
   assert.deepEqual(h.settings.widgetShortcuts, {});
 });
 
+for (const action of ['show', 'dismiss']) {
+  test(`reset waits for inventory when a retained widget ${action} reserves Display's default`, () => {
+    const h = harness({
+      widgetShortcutsInitialized: true,
+      widgetShortcuts: { '7': action === 'show' ? 'Shift+Alt+Ctrl+0' : 'Ctrl+Alt+T' },
+      widgetDismissShortcuts: { '7': action === 'dismiss' ? 'Shift+Alt+Ctrl+0' : 'Ctrl+Alt+Y' },
+      displayPreviewShortcut: 'Ctrl+Alt+S',
+      displayPreviewDismissShortcut: 'Ctrl+Alt+D',
+    });
+    const before = JSON.stringify(h.settings);
+    h.controller.updateOptions([], false);
+    h.controller.reset();
+    h.controller.updateOptions([], true);
+    h.controller.reset();
+    h.controller.updateOptions([], false);
+    assert.equal(JSON.stringify(h.settings), before, 'waiting does not persist a conflicting partial reset');
+    assert.equal(h.controller.getDisplayStatus().state, 'active');
+    assert.equal(h.controller.getDisplayStatus().dismissState, 'active');
+    assert.equal(h.callbacks.has('Ctrl+Alt+Shift+0'), false);
+
+    h.controller.setCapturing(true);
+    const inventory = [{ widgetType: 40, title: 'Randomiser' }, { widgetType: 7, title: 'Timer' }];
+    h.controller.updateOptions(inventory, true);
+    assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
+    assert.equal(h.settings.displayPreviewDismissShortcut, 'Ctrl+Alt+Shift+0');
+    assert.deepEqual(h.settings.widgetShortcuts, { '40': 'Ctrl+Alt+Shift+1', '7': 'Ctrl+Alt+Shift+2' });
+    assert.deepEqual(h.settings.widgetDismissShortcuts, h.settings.widgetShortcuts);
+    assert.equal(h.settings.changed, 1, 'the deferred reset persists once');
+    assert.equal(h.callbacks.size, 0, 'inventory does not end recording');
+    h.controller.setCapturing(false);
+    h.callbacks.get('Ctrl+Alt+Shift+0')();
+    h.callbacks.get('Ctrl+Alt+Shift+0')();
+    assert.equal(h.displayed.length, 1);
+    assert.equal(h.preview.closed, 1);
+    h.callbacks.get('Ctrl+Alt+Shift+2')();
+    assert.deepEqual(h.toggled, [7]);
+    h.controller.updateOptions(inventory, true);
+    assert.equal(h.settings.changed, 1, 'later inventory must not reset again');
+
+    const reloaded = harness(JSON.parse(JSON.stringify(h.settings)));
+    reloaded.controller.updateOptions(inventory);
+    assert.equal(reloaded.controller.getDisplayStatus().state, 'active');
+    assert.equal(reloaded.controller.getDisplayStatus().dismissState, 'active');
+    assert.deepEqual(reloaded.settings.widgetShortcuts, h.settings.widgetShortcuts);
+  });
+
+  test(`an accepted Display ${action} edit or clear supersedes a waiting reset`, () => {
+    for (const value of ['Ctrl+Alt+E', null]) {
+      const h = harness({
+        widgetShortcutsInitialized: true,
+        widgetShortcuts: { '7': 'Ctrl+Alt+Shift+0' },
+        widgetDismissShortcuts: { '7': 'Ctrl+Alt+Shift+0' },
+        displayPreviewShortcut: 'Ctrl+Alt+S',
+        displayPreviewDismissShortcut: 'Ctrl+Alt+D',
+      });
+      h.controller.updateOptions([], false);
+      h.controller.reset();
+      h.controller.setCapturing(true);
+      assert.deepEqual(h.controller.setDisplayShortcut(value, action), { ok: true });
+      h.controller.setCapturing(false);
+      const inventory = [{ widgetType: 7, title: 'Timer' }];
+      h.controller.updateOptions(inventory);
+      assert.equal(h.settings.displayPreviewShortcut, action === 'show' ? value : 'Ctrl+Alt+S');
+      assert.equal(h.settings.displayPreviewDismissShortcut, action === 'dismiss' ? value : 'Ctrl+Alt+D');
+      assert.equal(h.settings.widgetShortcuts['7'], 'Ctrl+Alt+Shift+0');
+      h.callbacks.get('Ctrl+Alt+Shift+0')();
+      assert.deepEqual(h.toggled, [7]);
+      assert.deepEqual(h.displayed, []);
+      const reloaded = harness(JSON.parse(JSON.stringify(h.settings)));
+      reloaded.controller.updateOptions(inventory);
+      assert.equal(reloaded.settings.displayPreviewShortcut, h.settings.displayPreviewShortcut);
+      assert.equal(reloaded.settings.displayPreviewDismissShortcut, h.settings.displayPreviewDismissShortcut);
+    }
+  });
+}
+
+test('rejected Display edits do not cancel a waiting reset', () => {
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '7': 'Ctrl+Alt+Shift+0' },
+    widgetDismissShortcuts: { '7': 'Ctrl+Alt+Shift+0' },
+    displayPreviewShortcut: 'Ctrl+Alt+S',
+    displayPreviewDismissShortcut: 'Ctrl+Alt+D',
+  });
+  h.controller.updateOptions([], false);
+  h.controller.reset();
+  assert.equal(h.controller.setDisplayShortcut('Shift+Alt+Ctrl+0', 'dismiss').ok, false);
+  assert.equal(h.controller.setDisplayShortcut('S', 'show').ok, false);
+  h.controller.updateOptions([{ widgetType: 7, title: 'Timer' }]);
+  assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
+  assert.equal(h.settings.displayPreviewDismissShortcut, 'Ctrl+Alt+Shift+0');
+  assert.equal(h.settings.widgetShortcuts['7'], 'Ctrl+Alt+Shift+1');
+  assert.equal(h.controller.getDisplayStatus().state, 'active');
+  assert.equal(h.controller.getDisplayStatus().dismissState, 'active');
+});
+
 test('setCapturing unregisters shortcuts and restores them', () => {
   const h = harness({ widgetShortcutsInitialized: true, widgetShortcuts: { '1': 'Ctrl+Alt+A' } });
   h.controller.updateOptions([{ widgetType: 1, title: 'One' }]);

@@ -140,7 +140,8 @@ public sealed class DashboardSettings
         var numberedDefaults = Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
         var reserved = new HashSet<string>(
             WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>()
-                .Concat(new[] { DisplayPreviewShortcut, DisplayPreviewDismissShortcut }.OfType<string>()),
+                .Concat(new[] { DisplayPreviewShortcut, DisplayPreviewDismissShortcut }.OfType<string>())
+                .Select(shortcut => WidgetShortcutGesture.TryParse(shortcut, out var gesture) ? gesture.Display : shortcut),
             StringComparer.OrdinalIgnoreCase);
         if (!DisplayPreviewShortcutsInitialized)
         {

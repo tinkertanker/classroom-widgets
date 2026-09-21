@@ -136,6 +136,58 @@ public sealed class WidgetShortcutSettingsTests
         Assert.True(settings.DisplayPreviewShortcutsInitialized);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EquivalentWidgetAssignmentsReserveDisplayDefaultBeforeInventory(bool dismiss)
+    {
+        const string equivalent = " Shift + Alt + Ctrl + 0 ";
+        var settings = new DashboardSettings
+        {
+            WidgetShortcuts = new Dictionary<int, string?> { [7] = dismiss ? "Ctrl+Alt+T" : equivalent },
+            WidgetDismissShortcuts = new Dictionary<int, string?> { [7] = dismiss ? equivalent : "Ctrl+Alt+Y" }
+        };
+
+        settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>());
+
+        Assert.Null(settings.DisplayPreviewShortcut);
+        Assert.Null(settings.DisplayPreviewDismissShortcut);
+        var reloaded = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            System.Text.Json.JsonSerializer.Serialize(settings))!;
+        reloaded.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]);
+        Assert.Null(reloaded.DisplayPreviewShortcut);
+        Assert.Null(reloaded.DisplayPreviewDismissShortcut);
+        Assert.Equal(equivalent, dismiss ? reloaded.WidgetDismissShortcuts[7] : reloaded.WidgetShortcuts[7]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void EquivalentDisplayAssignmentsReserveNumberedWidgetDefaults(bool dismiss)
+    {
+        const string equivalent = " shift + ALT + ctrl + 1 ";
+        var settings = new DashboardSettings
+        {
+            DisplayPreviewShortcutsInitialized = true,
+            DisplayPreviewShortcut = dismiss ? "Ctrl+Alt+S" : equivalent,
+            DisplayPreviewDismissShortcut = dismiss ? equivalent : "Ctrl+Alt+D"
+        };
+
+        settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]);
+
+        Assert.Equal("Ctrl+Alt+Shift+2", settings.WidgetShortcuts[7]);
+        Assert.Equal("Ctrl+Alt+Shift+2", settings.WidgetDismissShortcuts[7]);
+        var reloaded = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            System.Text.Json.JsonSerializer.Serialize(settings))!;
+        reloaded.ApplyWidgetShortcutDefaults([
+            new CompactWidgetOption(40, "Randomiser"), new CompactWidgetOption(7, "Timer")
+        ]);
+        Assert.Equal("Ctrl+Alt+Shift+2", reloaded.WidgetShortcuts[7]);
+        Assert.Equal("Ctrl+Alt+Shift+3", reloaded.WidgetShortcuts[40]);
+        Assert.Equal("Ctrl+Alt+Shift+3", reloaded.WidgetDismissShortcuts[40]);
+        Assert.Equal(equivalent, dismiss ? reloaded.DisplayPreviewDismissShortcut : reloaded.DisplayPreviewShortcut);
+    }
+
     [Fact]
     public void EmptyInventoryDoesNotPreventLaterWidgetDefaults()
     {

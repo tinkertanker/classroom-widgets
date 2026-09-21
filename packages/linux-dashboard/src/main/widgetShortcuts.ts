@@ -61,6 +61,7 @@ export class WidgetShortcutController extends EventEmitter {
   private options: CompactWidgetOption[] = [];
   private hostAvailable = false;
   private capturing = false;
+  private resetPending = false;
   private statuses: WidgetShortcutStatus[] = [];
   private displayStatus?: ShortcutStatus;
 
@@ -78,6 +79,10 @@ export class WidgetShortcutController extends EventEmitter {
   updateOptions(options: CompactWidgetOption[], hostAvailable = true): void {
     this.options = options;
     this.hostAvailable = hostAvailable;
+    if (this.resetPending && options.length > 0) {
+      this.reset();
+      return;
+    }
     let changed = false;
     const reserved = this.widgetReservations();
     if (this.settings.displayPreviewShortcut === undefined) {
@@ -155,6 +160,7 @@ export class WidgetShortcutController extends EventEmitter {
     const normalized = value === null ? null : normalizeAccelerator(value);
     if (value !== null && !normalized) return { ok: false, error: 'Use one or more modifiers and a supported key.' };
     if (normalized && this.widgetReservations().has(normalized)) return { ok: false, error: 'Already assigned to another widget.' };
+    this.resetPending = false;
     if (action === 'show') this.settings.displayPreviewShortcut = normalized;
     else this.settings.displayPreviewDismissShortcut = normalized;
     this.settings.notifyChanged();
@@ -163,6 +169,12 @@ export class WidgetShortcutController extends EventEmitter {
   }
 
   reset(): void {
+    if (this.options.length === 0 && this.widgetReservations().has(DISPLAY_DEFAULT)) {
+      // Reset both owners together once inventory can release the retained widget key.
+      this.resetPending = true;
+      return;
+    }
+    this.resetPending = false;
     this.settings.displayPreviewShortcut = DISPLAY_DEFAULT;
     this.settings.displayPreviewDismissShortcut = DISPLAY_DEFAULT;
     if (this.options.length === 0) {
