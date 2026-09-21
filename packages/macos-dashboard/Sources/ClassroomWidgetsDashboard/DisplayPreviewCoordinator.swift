@@ -697,6 +697,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private func close() {
         cancelDeferredRestarts()
         cancelFrameRecovery()
+        session?.cancel()
         intent.close()
         clearFrame(status: "Closed.")
         logDisplayTransition(

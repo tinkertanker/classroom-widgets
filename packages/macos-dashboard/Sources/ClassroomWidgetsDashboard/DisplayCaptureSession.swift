@@ -105,8 +105,14 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         try checkCancellation()
     }
 
-    func stop() async throws {
+    /// Revoke pending start and frame delivery before yielding to stream teardown.
+    /// The owner must still call stop() to finish the asynchronous SCStream stop.
+    func cancel() {
         stateLock.withLock { cancelled = true }
+    }
+
+    func stop() async throws {
+        cancel()
         while isStartInProgress { try await Task.sleep(nanoseconds: 10_000_000) }
         let stream = stateLock.withLock { self.stream }
         guard let stream else { delivery.clear(); return }

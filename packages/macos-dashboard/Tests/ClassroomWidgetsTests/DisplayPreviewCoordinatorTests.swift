@@ -1,8 +1,86 @@
 import AppKit
+import ScreenCaptureKit
 import XCTest
 @testable import ClassroomWidgets
 
 final class DisplayPreviewCoordinatorTests: XCTestCase {
+    func testToggleUsesWindowPresenceRatherThanVisibility() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.toggle()
+            let controller = try XCTUnwrap(fixture.coordinator.windowController)
+            controller.window?.orderOut(nil)
+            fixture.coordinator.toggle()
+            XCTAssertNil(fixture.coordinator.windowController, "A hidden but present window must be dismissed, not reopened")
+            fixture.coordinator.toggle()
+            XCTAssertNotNil(fixture.coordinator.windowController)
+            XCTAssertFalse(fixture.coordinator.windowController === controller)
+            fixture.coordinator.toggle()
+            XCTAssertNil(fixture.coordinator.windowController)
+            XCTAssertEqual(fixture.permissionRequests, 0)
+        }
+    }
+
+    @MainActor
+    func testDismissWhileEnumerationIsPendingCannotResurrectCapture() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        let discovery = PendingDiscovery()
+        fixture.contentDiscovery = { try await discovery.wait() }
+        fixture.preflightGranted = true
+        fixture.coordinator.open()
+        await fulfillment(of: [discovery.started], timeout: 2)
+        XCTAssertNotNil(fixture.coordinator.session)
+
+        fixture.coordinator.dismiss()
+        discovery.finish()
+        for _ in 0..<100 {
+            if fixture.coordinator.session == nil { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertNil(fixture.coordinator.session)
+        XCTAssertNil(fixture.coordinator.windowController)
+        XCTAssertEqual(fixture.createdSources.count, 1)
+        XCTAssertEqual(fixture.permissionRequests, 0)
+    }
+
+    @MainActor
+    func testDismissRevokesSessionSynchronouslyBeforeAsyncStopCanRun() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        fixture.preflightGranted = true
+        fixture.coordinator.open()
+        let capture = try XCTUnwrap(fixture.coordinator.session)
+        var deliveredActivity = 0
+        capture.onFrameActivity = { deliveredActivity += 1 }
+
+        fixture.coordinator.dismiss()
+        capture.handleFrameStatus(.idle, sampleBuffer: nil)
+        await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
+
+        XCTAssertEqual(deliveredActivity, 0, "Dismiss revokes the session before yielding to the asynchronous stream stop")
+        XCTAssertNil(fixture.coordinator.windowController)
+        XCTAssertEqual(fixture.createdSources.count, 1)
+    }
+
+    func testDismissDuringPermissionConsentCannotStartOrReopenCapture() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.open()
+            fixture.duringConsent = { [unowned fixture] in fixture.coordinator.dismiss() }
+
+            fixture.coordinator.windowController?.onToggleCapture?()
+
+            XCTAssertEqual(fixture.permissionRequests, 1)
+            XCTAssertTrue(fixture.createdSources.isEmpty)
+            XCTAssertNil(fixture.coordinator.windowController)
+            XCTAssertNil(fixture.coordinator.session)
+        }
+    }
+
     func testDismissClosesActualWindowPreservesSourceAndFrameAndIsIdempotent() async throws {
         try await MainActor.run {
             let fixture = try CoordinatorFixture()
@@ -212,6 +290,7 @@ private final class CoordinatorFixture {
     var permissionRequests = 0
     var duringConsent: (() -> Void)?
     var createdSources: [CGDirectDisplayID] = []
+    var contentDiscovery: DisplayCaptureSession.ContentDiscovery = { throw CancellationError() }
     private let suiteName = "DisplayPreviewCoordinatorTests.\(UUID().uuidString)"
     private let defaults: UserDefaults
 
@@ -230,7 +309,7 @@ private final class CoordinatorFixture {
         makeCaptureSession: { [weak self] id in
             self?.createdSources.append(id)
             // No shareable-content discovery, stream, permission, or capture IO.
-            return DisplayCaptureSession(sourceID: id, contentDiscovery: { throw CancellationError() })
+            return DisplayCaptureSession(sourceID: id, contentDiscovery: self?.contentDiscovery ?? { throw CancellationError() })
         }
     )
 
@@ -252,5 +331,23 @@ private final class CoordinatorFixture {
         coordinator.windowController?.close()
         coordinator.flushPersistedState()
         defaults.removePersistentDomain(forName: suiteName)
+    }
+}
+
+@MainActor
+private final class PendingDiscovery {
+    let started = XCTestExpectation(description: "Synthetic enumeration entered")
+    private var continuation: CheckedContinuation<SCShareableContent, Error>?
+
+    func wait() async throws -> SCShareableContent {
+        try await withCheckedThrowingContinuation {
+            continuation = $0
+            started.fulfill()
+        }
+    }
+
+    func finish() {
+        continuation?.resume(throwing: CancellationError())
+        continuation = nil
     }
 }
