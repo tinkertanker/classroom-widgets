@@ -123,12 +123,33 @@ public sealed class DisplayPreviewCoordinatorTests
             ClickPower(window);
             WpfTestHost.PumpUntil(() => coordinator.Capture is not null, Timeout, "restart before close");
             var last = coordinator.Capture!;
-            coordinator.Close();
+            Nudge(window); // Leave a debounced source refresh pending when Dismiss arrives.
+            coordinator.PerformShortcut(WidgetShortcutAction.Dismiss);
             WpfTestHost.PumpFor(Settle);
             Assert.Null(coordinator.Window);
             Assert.Null(coordinator.Capture);
             Assert.Null(last.Image);
             Assert.False(coordinator.IsOpen);
+            Assert.Equal(SourceId, settings.DisplayPreviewSourceId);
+            Assert.NotNull(settings.DisplayPreviewFrame);
+            var savedFrame = settings.DisplayPreviewFrame;
+
+            coordinator.PerformShortcut(WidgetShortcutAction.Dismiss);
+            Assert.Null(coordinator.Window);
+            Assert.Same(savedFrame, settings.DisplayPreviewFrame);
+            coordinator.PerformShortcut(WidgetShortcutAction.Show);
+            WpfTestHost.PumpFor(Settle);
+            Assert.True(coordinator.IsOpen);
+            Assert.Null(coordinator.Capture);
+            Assert.Equal("Click to see display", coordinator.Window!.StatusText.Text);
+            ClickPower(coordinator.Window);
+            WpfTestHost.PumpUntil(() => coordinator.Capture is not null, Timeout, "capture before toggle-dismiss");
+            var toggledCapture = coordinator.Capture!;
+            coordinator.PerformShortcut(WidgetShortcutAction.Toggle);
+            WpfTestHost.PumpFor(Settle);
+            Assert.Null(coordinator.Window);
+            Assert.Null(coordinator.Capture);
+            Assert.Null(toggledCapture.Image);
         }
         finally
         {

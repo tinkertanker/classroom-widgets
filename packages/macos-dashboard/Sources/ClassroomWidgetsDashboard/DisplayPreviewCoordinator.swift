@@ -123,6 +123,17 @@ final class DisplayPreviewCoordinator: NSObject {
         }
     }
 
+    func dismiss() {
+        // Closing the native window invokes its delegate and the shared cleanup
+        // path, which revokes capture intent before asynchronous stops finish.
+        windowController?.close()
+    }
+
+    func toggle() {
+        if windowController == nil { open() }
+        else { dismiss() }
+    }
+
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
         self.backgroundOpacity = backgroundOpacity
         self.keepOnAllSpaces = keepOnAllSpaces
@@ -686,12 +697,14 @@ final class DisplayPreviewCoordinator: NSObject {
     private func close() {
         cancelDeferredRestarts()
         cancelFrameRecovery()
+        session?.cancel()
         intent.close()
         clearFrame(status: "Closed.")
         logDisplayTransition(
             .close, trigger: "closeButton", source: selectedSource, intent: false, enabled: false
         )
         persist(frame: windowController?.window?.frame ?? .zero)
+        defaultsWriter.flush()
         windowController = nil
         stopCurrent(message: "Closed.")
     }

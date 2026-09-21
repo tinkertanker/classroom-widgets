@@ -154,8 +154,9 @@ function bootstrap(): void {
       (widgetType) => void host?.addWidget(widgetType),
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
-      () => displayPreview?.open(),
+      displayPreview,
     );
+    shortcuts.updateOptions([], false);
     host.panelCoordinator.on('displayPreviewRequested', () => displayPreview?.open());
     host.on('openSettingsRequested', () => openSettingsWindow(settings!, shortcuts!, version));
     host.on('widgetOptionsChanged', () => {

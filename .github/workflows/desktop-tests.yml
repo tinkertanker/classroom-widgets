@@ -1,0 +1,57 @@
+name: Desktop tests
+
+on:
+  pull_request:
+    paths:
+      - 'packages/windows-dashboard/**'
+      - 'packages/macos-dashboard/**'
+      - 'packages/linux-dashboard/**'
+      - '.github/workflows/desktop-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows native tests
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Test application assembly and native controls
+        env:
+          CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/windows-test-evidence
+        run: dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests --configuration Release --logger "trx;LogFileName=windows.trx" --results-directory "${{ runner.temp }}/windows-test-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-native-test-evidence
+          path: ${{ runner.temp }}/windows-test-evidence
+
+  macos:
+    name: macOS native tests
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path packages/macos-dashboard --jobs 2
+
+  linux:
+    name: Linux unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/linux-dashboard/package-lock.json
+      - run: npm ci
+        working-directory: packages/linux-dashboard
+      - run: npm test
+        working-directory: packages/linux-dashboard

@@ -47,6 +47,9 @@ public sealed class DashboardSettings
     public PanelFrame? DisplayPreviewFrame { get; set; }
     public string? DisplayPreviewSourceId { get; set; }
     public string? DisplayPreviewShortcut { get; set; }
+    public string? DisplayPreviewDismissShortcut { get; set; }
+    // Null is an intentional unassignment once the legacy Show-only settings have migrated.
+    public bool DisplayPreviewShortcutsInitialized { get; set; }
 
     /// <summary>Shortening service used by Link Shortener and QR Code widgets.</summary>
     public string LinkShortenerProvider { get; set; } = DashboardShortenerSettings.DefaultProvider;
@@ -133,21 +136,24 @@ public sealed class DashboardSettings
 
     internal bool ApplyWidgetShortcutDefaults(IReadOnlyList<CompactWidgetOption> options)
     {
-        var changed = !WidgetShortcutsInitialized;
+        var changed = options.Count > 0 && !WidgetShortcutsInitialized;
         var numberedDefaults = Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
         var reserved = new HashSet<string>(
             WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>()
-                .Concat(DisplayPreviewShortcut is null ? Array.Empty<string>() : [DisplayPreviewShortcut]),
+                .Concat(new[] { DisplayPreviewShortcut, DisplayPreviewDismissShortcut }.OfType<string>())
+                .Select(shortcut => WidgetShortcutGesture.TryParse(shortcut, out var gesture) ? gesture.Display : shortcut),
             StringComparer.OrdinalIgnoreCase);
-        if (DisplayPreviewShortcut is null)
+        if (!DisplayPreviewShortcutsInitialized)
         {
             var displayDefault = DisplayShortcutLogic.DefaultShortcut;
-            if (!reserved.Contains(displayDefault))
+            if (DisplayPreviewShortcut is null && !reserved.Contains(displayDefault))
             {
                 DisplayPreviewShortcut = displayDefault;
                 reserved.Add(displayDefault);
-                changed = true;
             }
+            DisplayPreviewDismissShortcut ??= DisplayPreviewShortcut;
+            DisplayPreviewShortcutsInitialized = true;
+            changed = true;
         }
         if (options.Count == 0)
         {

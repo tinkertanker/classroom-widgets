@@ -17,6 +17,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     launchAtLogin: settings.launchAtLoginEnabled,
     linkShortener: settings.linkShortener,
     shortcuts: shortcuts.getStatuses(),
+    displayShortcut: shortcuts.getDisplayStatus(),
     wayland: process.platform === 'linux' && Boolean(process.env.WAYLAND_DISPLAY),
   }));
   ipcMain.on('settings:set', (_event, update: unknown) => {
@@ -46,11 +47,17 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     }
     return shortcuts.setShortcut(widgetType, accelerator, action);
   });
+  ipcMain.handle('settings:set-display-shortcut', (_event, action: unknown, accelerator: unknown) => {
+    if ((action !== 'show' && action !== 'dismiss') || (typeof accelerator !== 'string' && accelerator !== null)) {
+      return { ok: false, error: 'Invalid shortcut.' };
+    }
+    return shortcuts.setDisplayShortcut(accelerator, action);
+  });
   ipcMain.on('settings:reset-shortcuts', () => shortcuts.reset());
   ipcMain.on('settings:capturing', (_event, active: unknown) => shortcuts.setCapturing(active === true));
   shortcuts.on('changed', () => {
     if (settingsWindow && !settingsWindow.isDestroyed()) {
-      settingsWindow.webContents.send('settings:shortcuts-changed', shortcuts.getStatuses());
+      settingsWindow.webContents.send('settings:shortcuts-changed', shortcuts.getStatuses(), shortcuts.getDisplayStatus());
     }
   });
 }

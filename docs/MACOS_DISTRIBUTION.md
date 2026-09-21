@@ -36,6 +36,15 @@ Settings include:
 - A configurable global shortcut for opening Settings (default: Command-Option-Comma)
 - Configurable global shortcuts for launching each widget (the first nine default to Command-Option-Control-1 through 9)
 
+Display has separate **Show** and **Dismiss** shortcuts, both defaulting to
+**Command-Option-Control-0**. Matching shortcuts toggle the preview; different
+shortcuts act independently. Existing Display Show assignments are retained and
+initially copied to Dismiss. Clearing either assignment keeps it unassigned.
+Show opens or focuses the single preview window. Dismiss closes it and stops
+capture, including pending restarts, while preserving the saved source and
+position. Menu and launcher actions always show Display. Reopening keeps the
+existing macOS source-selection and screen-recording permission behavior.
+
 The **Link Shortener** settings tab stores the provider and optional Short.io public
 key/domain in this Mac's preferences. All floating Link Shortener and QR Code
 widgets share these settings, including newly opened widgets. Widget settings

@@ -30,6 +30,14 @@ Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (r
 
 The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each global shortcut. An assignment remains saved if Windows cannot register it, and Settings reports the conflict so it can be changed without losing the intended shortcut.
 
+Display has **Show** and **Dismiss** shortcuts in the same settings table, both
+defaulting to **Ctrl-Alt-Shift-0**. Matching shortcuts toggle the preview; different
+shortcuts act independently. Existing Display Show assignments are retained and
+initially copied to Dismiss. Clearing either assignment keeps it unassigned.
+Show opens or focuses the single preview window. Dismiss closes it and stops
+capture, including overlap resumption, while preserving the saved source and
+position. Reopening starts idle. Menu and launcher actions always show Display.
+
 ### Where things live
 
 | Item | Location |
@@ -71,6 +79,18 @@ packages\windows-dashboard\bin\Debug\net8.0-windows\ClassroomWidgets.exe
 ```
 
 The project copies `packages/teacher/build/**` into the output `Web` folder, so rebuild the teacher app whenever web code changes. Only one instance runs at a time (named mutex `Local\ClassroomWidgets.SingleInstance`).
+
+Run native tests on an interactive Windows desktop:
+
+```powershell
+dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests -c Release
+```
+
+The suite references the real application assembly and serializes desktop tests.
+It exercises registered hotkeys, Settings controls, and GDI capture of a synthetic
+window, not a physical second monitor. Set `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`
+to save rendered Settings and capture screenshots. The Desktop tests workflow
+runs this suite for matching desktop pull requests and retains its evidence artifact.
 
 ## Publishing a release
 

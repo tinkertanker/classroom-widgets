@@ -46,6 +46,9 @@ struct WidgetLaunchShortcutStore {
     static let displayKeyCodeKey = "displayPreviewShortcutKeyCode"
     static let displayModifiersKey = "displayPreviewShortcutModifiers"
     static let displayInitializedKey = "displayPreviewShortcutInitialized"
+    static let displayDismissKeyCodeKey = "displayPreviewDismissShortcutKeyCode"
+    static let displayDismissModifiersKey = "displayPreviewDismissShortcutModifiers"
+    static let defaultDisplayShortcut = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: defaultModifiers)
 
     private let defaults: UserDefaults
 
@@ -98,7 +101,13 @@ struct WidgetLaunchShortcutStore {
         save(bindings)
     }
 
-    func storedDisplayBinding() -> DashboardShortcut? {
+    func storedDisplayBinding(action: WidgetShortcutAction = .show) -> DashboardShortcut? {
+        if action == .dismiss, defaults.object(forKey: Self.displayDismissKeyCodeKey) != nil {
+            return DashboardShortcut(
+                keyCode: defaults.integer(forKey: Self.displayDismissKeyCodeKey),
+                modifiers: defaults.integer(forKey: Self.displayDismissModifiersKey)
+            ).normalized
+        }
         guard defaults.bool(forKey: Self.displayInitializedKey) else { return nil }
         return DashboardShortcut(
             keyCode: defaults.integer(forKey: Self.displayKeyCodeKey),
@@ -106,21 +115,31 @@ struct WidgetLaunchShortcutStore {
         ).normalized
     }
 
-    func proposedDisplayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
-        if let stored = storedDisplayBinding() { return stored }
-        let preferred = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: Self.defaultModifiers)
+    func proposedDisplayBinding(reserving reserved: Set<DashboardShortcut>, action: WidgetShortcutAction = .show) -> DashboardShortcut {
+        if let stored = storedDisplayBinding(action: action) { return stored }
+        let preferred = Self.defaultDisplayShortcut
         return reserved.contains(preferred) ? DashboardShortcut(keyCode: -1, modifiers: 0) : preferred
     }
 
-    func initializeDisplayBinding(reserving reserved: Set<DashboardShortcut>) -> DashboardShortcut {
-        if let stored = storedDisplayBinding() { return stored }
-        let proposed = proposedDisplayBinding(reserving: reserved)
-        setDisplay(proposed)
+    func initializeDisplayBinding(reserving reserved: Set<DashboardShortcut>, action: WidgetShortcutAction = .show) -> DashboardShortcut {
+        if let stored = storedDisplayBinding(action: action) { return stored }
+        let proposed = proposedDisplayBinding(reserving: reserved, action: action)
+        setDisplay(proposed, action: action)
         return proposed
     }
 
-    func setDisplay(_ shortcut: DashboardShortcut) {
+    func setDisplay(_ shortcut: DashboardShortcut, action: WidgetShortcutAction = .show) {
         let shortcut = shortcut.normalized
+        if action == .dismiss {
+            defaults.set(shortcut.keyCode, forKey: Self.displayDismissKeyCodeKey)
+            defaults.set(shortcut.modifiers, forKey: Self.displayDismissModifiersKey)
+            return
+        }
+        // Freeze a legacy Show's inherited Dismiss before editing Show. Explicit
+        // unassignment is a stored choice too, not a missing preference.
+        if defaults.object(forKey: Self.displayDismissKeyCodeKey) == nil {
+            setDisplay(storedDisplayBinding() ?? shortcut, action: .dismiss)
+        }
         defaults.set(shortcut.keyCode, forKey: Self.displayKeyCodeKey)
         defaults.set(shortcut.modifiers, forKey: Self.displayModifiersKey)
         defaults.set(true, forKey: Self.displayInitializedKey)

@@ -60,6 +60,27 @@ final class DisplayCaptureSessionTests: XCTestCase {
         XCTAssertFalse(discoveryCalled.withLock { didCallDiscovery })
     }
 
+    func testSynchronousCancellationRejectsStartBeforeAsynchronousStop() async throws {
+        let lock = NSLock()
+        var discoveryCalls = 0
+        let session = DisplayCaptureSession(sourceID: 101) {
+            lock.withLock { discoveryCalls += 1 }
+            throw TestError.unexpectedDiscovery
+        }
+        session.cancel()
+
+        do {
+            try await session.start(excludingWindowID: 1, outputSize: CGSize(width: 640, height: 480))
+            XCTFail("Dismissed capture must reject a late start even before stop() is scheduled")
+        } catch is CancellationError {
+            // No content discovery or SCStream creation is permitted after close.
+        } catch {
+            XCTFail("Expected CancellationError, got \(error)")
+        }
+        XCTAssertEqual(lock.withLock { discoveryCalls }, 0)
+        try await session.stop()
+    }
+
     @MainActor
     func testIdleAndStartedStatusesReportActivityWithoutBeginningAHold() async {
         let session = DisplayCaptureSession(sourceID: 2)
