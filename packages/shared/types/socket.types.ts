@@ -166,15 +166,6 @@ export interface PollVoteUpdateData {
   widgetId: string;
 }
 
-/**
- * Standardized request state data format
- * All widgets should use sessionCode (not code) for consistency
- */
-export interface RequestStateData {
-  sessionCode: string;
-  widgetId: string;
-}
-
 export interface PollRequestStateData {
   sessionCode: string; // Standardized from 'code'
   widgetId: string;
