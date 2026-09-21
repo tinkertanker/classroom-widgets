@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Socket } from 'socket.io-client';
 import { getStudentQuestionColor } from '@shared/constants/studentQuestionColors';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
@@ -157,9 +157,13 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   };
 
   // Sort questions by timestamp (newest first)
-  const sortedQuestions = [...questions].sort((a, b) => {
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
+  const sortedQuestions = useMemo(
+    () =>
+      [...questions].sort((a, b) => {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      }),
+    [questions]
+  );
 
   return (
     <div className="relative">
