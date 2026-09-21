@@ -13,7 +13,7 @@ function shortcut(widgetType, title, accelerator = 'Ctrl+Alt+K') {
   };
 }
 
-async function renderer(shortcuts = [], display = shortcut('display', 'Display')) {
+async function renderer(shortcuts = [], display = shortcut('display', 'Display'), save = async () => ({ ok: true })) {
   const document = { activeElement: null };
   // Model the relevant DOM distinction: detaching a focused descendant blurs it,
   // while moveBefore preserves focus. Real Chromium/native checks cover the DOM.
@@ -65,8 +65,8 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
     get: async () => ({ shortcuts, displayShortcut: display, linkShortener: {} }),
     onShortcutsChanged: callback => { changed = callback; },
     setCapturing: active => capturing.push(active),
-    setDisplayShortcut: async (...args) => { assignments.push(['display', ...args]); return { ok: true }; },
-    setShortcut: async (...args) => { assignments.push(args); return { ok: true }; },
+    setDisplayShortcut: async (...args) => { assignments.push(['display', ...args]); return save(); },
+    setShortcut: async (...args) => { assignments.push(args); return save(); },
   };
   runInNewContext(readFileSync(join(__dirname, '../src/renderer/settings.js'), 'utf8'), {
     document, window: { classroomSettings: api }, setTimeout, clearTimeout,
@@ -111,6 +111,56 @@ for (const action of ['show', 'dismiss']) {
     await settle();
     assert.deepEqual(h.assignments, [['display', action, 'Ctrl+Alt+E']]);
     assert.deepEqual(h.capturing, [true, false]);
+  });
+}
+
+for (const action of ['show', 'dismiss']) {
+  for (const restartSameField of [false, true]) {
+    for (const ok of [true, false]) {
+      const nextAction = restartSameField ? action : action === 'show' ? 'dismiss' : 'show';
+      test(`late ${action} save ${ok ? 'success' : 'rejection'} preserves ${restartSameField ? 'restarted' : 'new'} ${nextAction} recording`, async () => {
+        const pending = [];
+        const h = await renderer([], undefined, () => new Promise(resolve => pending.push(resolve)));
+        const first = h.begin('Display', action);
+        key(first, 'E', { ctrlKey: true, altKey: true });
+        if (restartSameField) key(first, 'Escape');
+        const current = h.begin('Display', nextAction);
+        assert.deepEqual(h.capturing, [true, false, true]);
+        assert.equal(pending.length, 1);
+
+        pending[0]({ ok, error: 'Old assignment rejected.' });
+        await settle();
+        assert.deepEqual(h.capturing, [true, false, true], 'old completion must not resume global shortcuts');
+        assert.equal(h.document.activeElement, current);
+        assert.equal(current.classList.contains('capturing'), true);
+        assert.equal(current.textContent, 'Press shortcut…');
+        assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
+
+        key(current, 'U', { ctrlKey: true, altKey: true });
+        assert.equal(pending.length, 2);
+        pending[1]({ ok: true });
+        await settle();
+        assert.deepEqual(h.assignments, [['display', action, 'Ctrl+Alt+E'], ['display', nextAction, 'Ctrl+Alt+U']]);
+        assert.deepEqual(h.capturing, [true, false, true, false]);
+        assert.equal(current.classList.contains('capturing'), false);
+      });
+    }
+  }
+
+  test(`a delayed rejection for the current ${action} session still reports the error and ends recording`, async () => {
+    let finish;
+    const h = await renderer([], undefined, () => new Promise(resolve => { finish = resolve; }));
+    const button = h.begin('Display', action);
+    key(button, 'E', { ctrlKey: true, altKey: true });
+    finish({ ok: false, error: 'Already assigned to another widget.' });
+    await settle();
+    assert.deepEqual(h.capturing, [true, false]);
+    assert.equal(button.classList.contains('capturing'), false);
+    assert.equal(h.field('Display', action).children[2].textContent, 'Already assigned to another widget.');
+    h.begin('Display', action);
+    assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
+    key(button, 'Escape');
+    assert.deepEqual(h.capturing, [true, false, true, false]);
   });
 }
 

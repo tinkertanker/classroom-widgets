@@ -41,7 +41,7 @@
   }
 
   var rows = {};
-  var capturingRow = null;
+  var captureSession = null;
   var rowError = null;
 
   function setShortcut(entry, action, accelerator) {
@@ -56,10 +56,13 @@
     field.status.textContent = entry.shortcut[field.detailKey];
   }
 
-  function stopCapture(entry, field) {
+  function stopCapture(session) {
+    if (!session || captureSession !== session) return;
+    var entry = session.entry;
+    var field = session.field;
     field.capture.classList.remove('capturing');
     field.capture.textContent = entry.shortcut[field.acceleratorKey] || 'Set shortcut';
-    capturingRow = null;
+    captureSession = null;
     window.classroomSettings.setCapturing(false);
   }
 
@@ -85,29 +88,32 @@
 
     capture.addEventListener('click', function () {
       clearRowError(entry, shortcutField);
-      capturingRow = entry.shortcut.widgetType + ':' + action;
+      captureSession = { entry: entry, field: shortcutField };
       capture.textContent = 'Press shortcut…';
       capture.classList.add('capturing');
       window.classroomSettings.setCapturing(true);
     });
     capture.addEventListener('blur', function () {
-      if (capture.classList.contains('capturing')) stopCapture(entry, shortcutField);
+      if (captureSession && captureSession.field === shortcutField) stopCapture(captureSession);
     });
     capture.addEventListener('keydown', function (event) {
-      if (!capture.classList.contains('capturing')) return;
+      var session = captureSession;
+      if (!session || session.field !== shortcutField) return;
       if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        stopCapture(entry, shortcutField);
+        stopCapture(session);
         return;
       }
       event.preventDefault();
       event.stopPropagation();
       if (event.key === 'Escape') {
-        stopCapture(entry, shortcutField);
+        stopCapture(session);
         return;
       }
       var accelerator = acceleratorFromEvent(event);
       if (!accelerator) return;
       setShortcut(entry, action, accelerator).then(function (result) {
+        // A save may finish after another recording starts, even on this field.
+        if (captureSession !== session) return;
         if (result.ok) {
           clearRowError(entry, shortcutField);
         } else {
@@ -115,7 +121,7 @@
           status.className = 'shortcut-status conflict';
           status.textContent = result.error;
         }
-        stopCapture(entry, shortcutField);
+        stopCapture(session);
       });
     });
     clear.addEventListener('click', function () {
@@ -173,7 +179,7 @@
         field.clear.disabled = !accelerator;
         field.clear.setAttribute('aria-label', 'Clear ' + action + ' shortcut for ' + shortcut.title);
         field.capture.setAttribute('aria-label', action + ' shortcut for ' + shortcut.title + ': ' + (accelerator || 'not assigned'));
-        if (capturingRow === shortcut.widgetType + ':' + action) {
+        if (captureSession && captureSession.field === field) {
           field.capture.textContent = 'Press shortcut…';
           field.capture.classList.add('capturing');
         } else {
