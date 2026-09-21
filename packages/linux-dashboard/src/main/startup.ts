@@ -1,9 +1,24 @@
+import { basename } from 'node:path';
+
 export function isBackgroundLaunch(arguments_: readonly string[]): boolean {
   return arguments_.includes('--background');
 }
 
+function chromiumArguments(arguments_: readonly string[]): readonly string[] {
+  const terminator = arguments_.indexOf('--');
+  return terminator === -1 ? arguments_ : arguments_.slice(0, terminator);
+}
+
 export function hasExplicitOzonePlatform(arguments_: readonly string[]): boolean {
-  return arguments_.some((argument) => /^--ozone-platform(?:=|$)/i.test(argument));
+  return chromiumArguments(arguments_).some((argument) => /^--ozone-platform(?:=|$)/i.test(argument));
+}
+
+export function usesX11OzonePlatform(arguments_: readonly string[]): boolean {
+  const switches = chromiumArguments(arguments_);
+  return switches.some((argument, index) => (
+    /^--ozone-platform=x11$/i.test(argument)
+    || (argument.toLowerCase() === '--ozone-platform' && switches[index + 1]?.toLowerCase() === 'x11')
+  ));
 }
 
 export function shouldForceX11(
@@ -24,11 +39,21 @@ export function x11RelaunchArguments(
   arguments_: readonly string[],
 ): string[] | null {
   if (!shouldForceX11(platform, environment, hasExplicitOzonePlatform(arguments_))) return null;
-  return [...arguments_.slice(1), '--ozone-platform=x11'];
+  const relaunchArguments = [...arguments_.slice(1)];
+  const terminator = relaunchArguments.indexOf('--');
+  relaunchArguments.splice(terminator === -1 ? relaunchArguments.length : terminator, 0, '--ozone-platform=x11');
+  return relaunchArguments;
 }
 
 export function relaunchExecutable(environment: NodeJS.ProcessEnv, executable: string): string {
   return environment.APPIMAGE?.trim() || executable;
+}
+
+export function appImageUpdateRelaunchDelay(environment: NodeJS.ProcessEnv, siblingNames: readonly string[]): number {
+  const appImage = environment.APPIMAGE?.trim();
+  if (!appImage) return 0;
+  const backupPrefix = `${basename(appImage)}.previous-`;
+  return siblingNames.some((name) => name.startsWith(backupPrefix)) ? 3000 : 0;
 }
 
 export function migrateAutostartDesktopEntry(contents: string): string {

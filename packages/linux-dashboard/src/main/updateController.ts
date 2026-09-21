@@ -9,10 +9,15 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
 import { log } from './log';
+import { usesX11OzonePlatform } from './startup';
 import { isNewerVersion, parseUpdateRelease, ReleaseAsset } from './updateRelease';
 
 const LATEST_RELEASE_API = 'https://api.github.com/repos/tinkertanker/classroom-widgets/releases/latest';
 const execFileAsync = promisify(execFile);
+
+export function appImageUpdateScript(): string {
+  return '#!/bin/sh\nwhile kill -0 "$1" 2>/dev/null; do sleep 1; done\nif ! mv "$3" "$4"; then rm -f "$2" "$5"; exit 1; fi\nif mv "$2" "$3" && chmod +x "$3"; then\n  if [ -n "$6" ]; then "$3" "$6" >/dev/null 2>&1 & else "$3" >/dev/null 2>&1 & fi\n  replacement_pid=$!\n  sleep 2\n  if kill -0 "$replacement_pid" 2>/dev/null; then rm -f "$4"; exit 0; fi\nfi\nrm -f "$3"\nmv "$4" "$3"\nif [ -n "$6" ]; then "$3" "$6" >/dev/null 2>&1 & else "$3" >/dev/null 2>&1 & fi\nrm -f "$5"\n';
+}
 
 interface UpdateControllerDependencies {
   isPackaged: () => boolean;
@@ -127,8 +132,9 @@ export class UpdateController {
     await unlink(download).catch(() => undefined);
 
     const script = join(tmpdir(), `classroom-widgets-update-${token}.sh`);
-    await writeFile(script, '#!/bin/sh\nwhile kill -0 "$1" 2>/dev/null; do sleep 1; done\nif ! mv "$3" "$4"; then rm -f "$2" "$5"; exit 1; fi\nif mv "$2" "$3" && chmod +x "$3"; then\n  "$3" >/dev/null 2>&1 &\n  replacement_pid=$!\n  sleep 2\n  if kill -0 "$replacement_pid" 2>/dev/null; then rm -f "$4"; exit 0; fi\nfi\nrm -f "$3"\nmv "$4" "$3"\n"$3" >/dev/null 2>&1 &\nrm -f "$5"\n');
-    const child = spawn('/bin/sh', [script, String(process.pid), staged, current, backup, script], { detached: true, stdio: 'ignore' });
+    await writeFile(script, appImageUpdateScript());
+    const ozonePlatform = usesX11OzonePlatform(process.argv) ? '--ozone-platform=x11' : '';
+    const child = spawn('/bin/sh', [script, String(process.pid), staged, current, backup, script, ozonePlatform], { detached: true, stdio: 'ignore' });
     try {
       await new Promise<void>((resolve, reject) => {
         child.once('spawn', resolve);

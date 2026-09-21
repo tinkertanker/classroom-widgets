@@ -1,6 +1,6 @@
 import { app, globalShortcut, screen, session, desktopCapturer } from 'electron';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
 import { WidgetHostController } from './hostController';
 import { LauncherWindow } from './launcherWindow';
@@ -8,7 +8,7 @@ import { log } from './log';
 import { DashboardSettings } from './settings';
 import { DisplayCatalog } from './displayCatalog';
 import { DisplayPreviewCoordinator } from './displayPreview';
-import { isBackgroundLaunch, relaunchExecutable, x11RelaunchArguments } from './startup';
+import { appImageUpdateRelaunchDelay, isBackgroundLaunch, relaunchExecutable, x11RelaunchArguments } from './startup';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
 import { UpdateController } from './updateController';
@@ -17,7 +17,17 @@ import { WidgetShortcutController } from './widgetShortcuts';
 const relaunchArguments = x11RelaunchArguments(process.platform, process.env, process.argv);
 if (relaunchArguments) {
   app.relaunch({ args: relaunchArguments, execPath: relaunchExecutable(process.env, process.execPath) });
-  app.exit(0);
+  const appImage = process.env.APPIMAGE?.trim();
+  let delay = 0;
+  if (appImage) {
+    try {
+      delay = appImageUpdateRelaunchDelay(process.env, readdirSync(dirname(appImage)));
+    } catch {
+      // The update backup is only a compatibility signal; relaunch normally if its directory is unavailable.
+    }
+  }
+  if (delay > 0) setTimeout(() => app.exit(0), delay);
+  else app.exit(0);
 } else {
   launch();
 }

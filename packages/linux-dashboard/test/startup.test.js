@@ -1,11 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+  appImageUpdateRelaunchDelay,
   hasExplicitOzonePlatform,
   isBackgroundLaunch,
   migrateAutostartDesktopEntry,
   relaunchExecutable,
   shouldForceX11,
+  usesX11OzonePlatform,
   x11RelaunchArguments,
 } = require('../out/main/startup.js');
 
@@ -23,6 +25,13 @@ test('only an explicit ozone-platform argument overrides the launch policy', () 
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--background']), false);
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11']), true);
   assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'wayland']), true);
+  assert.equal(hasExplicitOzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=wayland']), false);
+});
+
+test('effective X11 detection ignores positional arguments after the terminator', () => {
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform=x11']), true);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--ozone-platform', 'x11']), true);
+  assert.equal(usesX11OzonePlatform(['/opt/classroom-widgets', '--', '--ozone-platform=x11']), false);
 });
 
 test('Wayland relaunch preserves application arguments and adds the X11 process flag', () => {
@@ -37,9 +46,29 @@ test('Wayland relaunch preserves application arguments and adds the X11 process 
   );
 });
 
+test('Wayland relaunch inserts X11 before the Chromium argument terminator', () => {
+  const first = x11RelaunchArguments(
+    'linux',
+    { XDG_SESSION_TYPE: 'wayland' },
+    ['/opt/classroom-widgets', '/repo/app', '--', '--background'],
+  );
+  assert.deepEqual(first, ['/repo/app', '--ozone-platform=x11', '--', '--background']);
+  assert.equal(
+    x11RelaunchArguments('linux', { XDG_SESSION_TYPE: 'wayland' }, ['/opt/classroom-widgets', ...first]),
+    null,
+  );
+});
+
 test('Wayland relaunch uses the stable AppImage path when packaged', () => {
   assert.equal(relaunchExecutable({ APPIMAGE: '/apps/ClassroomWidgets.AppImage' }, '/tmp/.mount/app'), '/apps/ClassroomWidgets.AppImage');
   assert.equal(relaunchExecutable({}, '/opt/Classroom Widgets/classroom-widgets'), '/opt/Classroom Widgets/classroom-widgets');
+});
+
+test('an AppImage update backup keeps the relaunch trampoline alive past the updater health check', () => {
+  const environment = { APPIMAGE: '/apps/ClassroomWidgets.AppImage' };
+  assert.ok(appImageUpdateRelaunchDelay(environment, ['ClassroomWidgets.AppImage.previous-token']) > 2000);
+  assert.equal(appImageUpdateRelaunchDelay(environment, ['ClassroomWidgets.AppImage']), 0);
+  assert.equal(appImageUpdateRelaunchDelay({}, ['ClassroomWidgets.AppImage.previous-token']), 0);
 });
 
 test('display backend policy preserves X11, other platforms, and explicit Electron flags', () => {
