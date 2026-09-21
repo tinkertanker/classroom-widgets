@@ -3,7 +3,7 @@
 export { default as Button } from './Button';
 export type { ButtonProps } from './Button';
 
-export { default as Card, CardHeader, CardContent, CardFooter } from './Card';
+export { default as Card } from './Card';
 export type { CardProps } from './Card';
 
 export { default as MenuItem, MenuDivider, MenuSectionHeader } from './MenuItem';
