@@ -149,8 +149,6 @@ classroom-widgets/
 │   │   ├── types/                    # TypeScript types
 │   │   │   ├── index.ts
 │   │   │   └── widget.types.ts
-│   │   └── constants/                # Shared constants
-│   │       └── widgetTypes.ts
 │   │
 │   ├── store/                        # Global state (Zustand)
 │   │   ├── workspaceStore.simple.ts  # Main store

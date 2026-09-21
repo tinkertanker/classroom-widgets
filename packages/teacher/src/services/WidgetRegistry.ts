@@ -28,7 +28,6 @@ import {
 import { GiSnake } from 'react-icons/gi';
 
 import { WidgetType, WidgetConfig, WidgetCategory, WidgetFeatures, Size, ColumnSizing } from '@shared/types';
-import { WIDGET_TYPES } from '@shared/constants/widgetTypes';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { isNativeDesktop } from '@shared/utils/nativeBridge';
 
@@ -710,71 +709,6 @@ export class WidgetRegistry {
 
   getWidgetsByFeature(feature: keyof WidgetFeatures): WidgetConfig[] {
     return this.getAll().filter(widget => widget.features?.[feature]);
-  }
-
-  // Legacy compatibility - map old numeric types to new enum
-  fromLegacyType(legacyType: number): WidgetType | undefined {
-    const mapping: Record<number, WidgetType> = {
-      [WIDGET_TYPES.RANDOMISER]: WidgetType.RANDOMISER,
-      [WIDGET_TYPES.TIMER]: WidgetType.TIMER,
-      [WIDGET_TYPES.LIST]: WidgetType.LIST,
-      [WIDGET_TYPES.TASK_CUE]: WidgetType.TASK_CUE,
-      [WIDGET_TYPES.TRAFFIC_LIGHT]: WidgetType.TRAFFIC_LIGHT,
-      [WIDGET_TYPES.SOUND_MONITOR]: WidgetType.SOUND_MONITOR,
-      [WIDGET_TYPES.LINK_SHORTENER]: WidgetType.LINK_SHORTENER,
-      [WIDGET_TYPES.TEXT_BANNER]: WidgetType.TEXT_BANNER,
-      [WIDGET_TYPES.IMAGE_DISPLAY]: WidgetType.IMAGE_DISPLAY,
-      [WIDGET_TYPES.SOUND_EFFECTS]: WidgetType.SOUND_EFFECTS,
-      [WIDGET_TYPES.STAMP]: WidgetType.STAMP,
-      [WIDGET_TYPES.POLL]: WidgetType.POLL,
-      [WIDGET_TYPES.QRCODE]: WidgetType.QRCODE,
-      [WIDGET_TYPES.LINK_SHARE]: WidgetType.LINK_SHARE,
-      [WIDGET_TYPES.VISUALISER]: WidgetType.VISUALISER,
-      [WIDGET_TYPES.RT_FEEDBACK]: WidgetType.RT_FEEDBACK,
-      [WIDGET_TYPES.TIC_TAC_TOE]: WidgetType.TIC_TAC_TOE,
-      [WIDGET_TYPES.QUESTIONS]: WidgetType.QUESTIONS,
-      [WIDGET_TYPES.WORDLE]: WidgetType.WORDLE,
-      [WIDGET_TYPES.SNAKE]: WidgetType.SNAKE,
-      [WIDGET_TYPES.HANDOUT]: WidgetType.HANDOUT,
-      [WIDGET_TYPES.FILL_BLANK]: WidgetType.FILL_BLANK,
-      [WIDGET_TYPES.SORTING]: WidgetType.SORTING,
-      [WIDGET_TYPES.SEQUENCING]: WidgetType.SEQUENCING,
-      [WIDGET_TYPES.MATCHING]: WidgetType.MATCHING,
-      [WIDGET_TYPES.CODE_FILL_BLANK]: WidgetType.CODE_FILL_BLANK
-    };
-    return mapping[legacyType];
-  }
-
-  toLegacyType(type: WidgetType): number {
-    const mapping: Record<WidgetType, number> = {
-      [WidgetType.RANDOMISER]: WIDGET_TYPES.RANDOMISER,
-      [WidgetType.TIMER]: WIDGET_TYPES.TIMER,
-      [WidgetType.LIST]: WIDGET_TYPES.LIST,
-      [WidgetType.TASK_CUE]: WIDGET_TYPES.TASK_CUE,
-      [WidgetType.TRAFFIC_LIGHT]: WIDGET_TYPES.TRAFFIC_LIGHT,
-      [WidgetType.SOUND_MONITOR]: WIDGET_TYPES.SOUND_MONITOR,
-      [WidgetType.LINK_SHORTENER]: WIDGET_TYPES.LINK_SHORTENER,
-      [WidgetType.TEXT_BANNER]: WIDGET_TYPES.TEXT_BANNER,
-      [WidgetType.IMAGE_DISPLAY]: WIDGET_TYPES.IMAGE_DISPLAY,
-      [WidgetType.SOUND_EFFECTS]: WIDGET_TYPES.SOUND_EFFECTS,
-      [WidgetType.STAMP]: WIDGET_TYPES.STAMP,
-      [WidgetType.POLL]: WIDGET_TYPES.POLL,
-      [WidgetType.QRCODE]: WIDGET_TYPES.QRCODE,
-      [WidgetType.LINK_SHARE]: WIDGET_TYPES.LINK_SHARE,
-      [WidgetType.VISUALISER]: WIDGET_TYPES.VISUALISER,
-      [WidgetType.RT_FEEDBACK]: WIDGET_TYPES.RT_FEEDBACK,
-      [WidgetType.TIC_TAC_TOE]: WIDGET_TYPES.TIC_TAC_TOE,
-      [WidgetType.QUESTIONS]: WIDGET_TYPES.QUESTIONS,
-      [WidgetType.WORDLE]: WIDGET_TYPES.WORDLE,
-      [WidgetType.SNAKE]: WIDGET_TYPES.SNAKE,
-      [WidgetType.HANDOUT]: WIDGET_TYPES.HANDOUT,
-      [WidgetType.FILL_BLANK]: WIDGET_TYPES.FILL_BLANK,
-      [WidgetType.SORTING]: WIDGET_TYPES.SORTING,
-      [WidgetType.SEQUENCING]: WIDGET_TYPES.SEQUENCING,
-      [WidgetType.MATCHING]: WIDGET_TYPES.MATCHING,
-      [WidgetType.CODE_FILL_BLANK]: WIDGET_TYPES.CODE_FILL_BLANK
-    };
-    return mapping[type];
   }
 }
 
