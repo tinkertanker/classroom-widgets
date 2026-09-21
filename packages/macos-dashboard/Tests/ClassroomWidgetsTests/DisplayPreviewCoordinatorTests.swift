@@ -3,6 +3,57 @@ import XCTest
 @testable import ClassroomWidgets
 
 final class DisplayPreviewCoordinatorTests: XCTestCase {
+    func testDismissClosesActualWindowPreservesSourceAndFrameAndIsIdempotent() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.coordinator.dismiss()
+            XCTAssertNil(fixture.coordinator.windowController)
+            fixture.coordinator.open()
+            let controller = try XCTUnwrap(fixture.coordinator.windowController)
+            let window = try XCTUnwrap(controller.window)
+            window.setFrame(NSRect(x: 210, y: 240, width: 640, height: 410), display: true)
+            let frame = window.frame
+            fixture.coordinator.open()
+            XCTAssertTrue(fixture.coordinator.windowController === controller, "Show raises the singleton, never toggles it")
+
+            fixture.coordinator.dismiss()
+            XCTAssertFalse(window.isVisible, "Dismiss must close the native window, not merely release its controller")
+            XCTAssertNil(fixture.coordinator.windowController)
+            fixture.coordinator.dismiss()
+            fixture.coordinator.open()
+            let reopened = try XCTUnwrap(fixture.coordinator.windowController)
+            XCTAssertFalse(reopened === controller)
+            XCTAssertEqual(reopened.window?.frame, frame)
+            XCTAssertEqual(fixture.sourceItem(CoordinatorFixture.displayB.id, in: reopened.makeControlsMenu())?.state, .on)
+            XCTAssertEqual(fixture.permissionRequests, 0)
+        }
+    }
+
+    func testDismissCancelsOwnedCaptureAndDeferredRestartDespiteLateCallbacks() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.preflightGranted = true
+            fixture.coordinator.open()
+            let capture = try XCTUnwrap(fixture.coordinator.session)
+            let controller = try XCTUnwrap(fixture.coordinator.windowController)
+            capture.onFrameActivity?()
+            fixture.coordinator.restartIfRunning()
+            fixture.coordinator.open() // Deliberate Show during an owned stop may defer a restart.
+            fixture.coordinator.dismiss()
+            capture.onTransientGap?(.blank, 1)
+            capture.onStop?(CancellationError())
+            fixture.postScreenNotice()
+            controller.onVisibilityChanged?(true)
+
+            XCTAssertNil(fixture.coordinator.windowController)
+            XCTAssertNil(fixture.coordinator.session)
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id], "Dismiss revokes pending launch/reload/visibility capture intent")
+            XCTAssertEqual(fixture.permissionRequests, 0)
+        }
+    }
+
     func testMovingHostRefreshesChoicesWithoutLosingTheSuspendedSelection() async throws {
         try await MainActor.run {
             let fixture = try CoordinatorFixture()

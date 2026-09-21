@@ -9,15 +9,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var initialActivationPending = false
     private var terminationPending = false
     private var terminationApproved = false
-    private var settingsHotKey: (shortcut: DashboardShortcut, hotKey: DashboardHotKey)?
-    private var displayHotKey: (shortcut: DashboardShortcut, hotKey: DashboardHotKey)?
-    private var widgetHotKeys: [ShortcutBindingState.Owner: (shortcut: DashboardShortcut, hotKey: DashboardHotKey)] = [:]
+    private var settingsHotKey: (shortcut: DashboardShortcut, hotKey: AnyObject)?
+    private var widgetHotKeys: [ShortcutBindingState.Owner: (shortcut: DashboardShortcut, hotKey: AnyObject)] = [:]
     private var widgetShortcutStatuses: [ShortcutBindingState.Owner: String] = [:]
-    private var displayShortcutStatus: String?
+    private var displayShortcutStatuses: [ShortcutBindingState.Owner: String] = [:]
     private var nextHotKeyID: UInt32 = 100
     private let defaults: UserDefaults
     private let widgetShortcutStore: WidgetLaunchShortcutStore
-    private let displayShortcutAction: (@MainActor () -> Void)?
+    private let hotKeyRegistration: DisplayShortcutRegistration.Register?
+    private let displayShortcutAction: (@MainActor (WidgetShortcutAction?) -> Void)?
+    private lazy var displayHotKeys = DisplayShortcutRegistration(
+        register: { [unowned self] shortcut, handler in try self.makeHotKey(shortcut, handler: handler) },
+        perform: { [weak self] action in self?.performDisplayShortcut(action: action) }
+    )
     private lazy var updates = UpdateController(
         prepareForTermination: { [weak self] in
             guard let self, let controller = self.controller else { return false }
@@ -42,11 +46,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
     private let displayPreviewCoordinator = DisplayPreviewCoordinator()
-    private lazy var settingsContext = DashboardSettingsContext(
+    private(set) lazy var settingsContext = DashboardSettingsContext(
         launchAtLoginManager: launchAtLoginManager,
         onShortcutChanged: { [weak self] shortcut in self?.settingsShortcutChanged(shortcut) },
         onWidgetSettingsChanged: { [weak self] in self?.applyPresentationSettings() },
-        onDisplayShortcutChanged: { [weak self] shortcut in self?.setDisplayShortcut(shortcut) },
+        onDisplayShortcutChanged: { [weak self] action, shortcut in self?.setDisplayShortcut(shortcut, action: action) },
         onWidgetShortcutChanged: { [weak self] widgetType, action, shortcut in self?.setWidgetShortcut(shortcut, action: action, for: widgetType) },
         onResetWidgetShortcuts: { [weak self] in self?.resetWidgetShortcuts() },
         onShortcutRecordingChanged: { [weak self] isRecording in self?.shortcutRecordingChanged(isRecording) }
@@ -60,18 +64,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.controller?.addWidget(widgetType)
     }
 
-    override init() {
-        defaults = .standard
-        widgetShortcutStore = WidgetLaunchShortcutStore(defaults: .standard)
-        displayShortcutAction = nil
-        super.init()
+    override convenience init() {
+        self.init(defaults: .standard)
     }
 
-    init(defaults: UserDefaults, displayShortcutAction: (@MainActor () -> Void)? = nil) {
+    init(
+        defaults: UserDefaults,
+        registerHotKey: DisplayShortcutRegistration.Register? = nil,
+        displayShortcutAction: (@MainActor (WidgetShortcutAction?) -> Void)? = nil
+    ) {
         self.defaults = defaults
         widgetShortcutStore = WidgetLaunchShortcutStore(defaults: defaults)
+        hotKeyRegistration = registerHotKey
         self.displayShortcutAction = displayShortcutAction
         super.init()
+        shortcutState = initialShortcutBindingState()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -122,7 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         controller?.flushPersistedState()
         displayPreviewCoordinator.flushPersistedState()
         settingsHotKey = nil
-        displayHotKey = nil
+        displayHotKeys.suspend()
         widgetHotKeys.removeAll()
     }
 
@@ -293,15 +300,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func registerAcceptedSettingsHotKey() {
-        guard let shortcut = shortcutState?.shortcut(for: .settings), shortcut.isAssigned,
-              let modifiers = carbonModifiers(from: shortcut.modifiers) else {
+        guard let shortcut = shortcutState?.shortcut(for: .settings), shortcut.isAssigned else {
             settingsHotKey = nil
             return
         }
         if settingsHotKey?.shortcut == shortcut { return }
         do {
-            nextHotKeyID += 1
-            let replacement = try DashboardHotKey(id: nextHotKeyID, keyCode: UInt32(shortcut.keyCode), modifiers: modifiers) { [weak self] in
+            let replacement = try makeHotKey(shortcut) { [weak self] in
                 self?.showSettings()
             }
             settingsHotKey = (shortcut, replacement)
@@ -324,10 +329,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             refreshShortcutContext()
             return
         }
-        guard let modifiers = carbonModifiers(from: candidate.modifiers) else { return }
         do {
-            nextHotKeyID += 1
-            let replacement = try DashboardHotKey(id: nextHotKeyID, keyCode: UInt32(candidate.keyCode), modifiers: modifiers) { [weak self] in
+            let replacement = try makeHotKey(candidate) { [weak self] in
                 self?.showSettings()
             }
             state.complete(.settings, succeeded: true)
@@ -354,84 +357,87 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaults.set(shortcut.modifiers, forKey: DashboardSettingKeys.settingsShortcutModifiers)
     }
 
-    private func widgetOptionsChanged(_ options: [CompactWidgetOption]) {
+    func widgetOptionsChanged(_ options: [CompactWidgetOption]) {
         let available = Set(options.map(\.widgetType))
         widgetHotKeys = widgetHotKeys.filter { owner, _ in
             switch owner {
             case let .widget(widgetType), let .widgetDismiss(widgetType): return available.contains(widgetType)
-            case .settings, .display: return false
+            case .settings, .display, .displayDismiss: return false
             }
         }
         let bindings = widgetShortcutStore.bindings(for: options, reserving: acceptedNativeShortcuts)
-        var displayResolution = DisplayShortcutStartupGate.InventoryResolution.none
-        var hadPendingDisplay = false
         if var state = shortcutState {
-            hadPendingDisplay = state.candidate(for: .display) != nil
-            displayResolution = displayShortcutStartupGate.mergeWidgetBindings(
-                bindings,
-                inventoryIsReady: !options.isEmpty,
-                into: &state
-            )
-            if case .rejectedDuplicate = displayResolution {
-                displayShortcutStatus = "Already assigned in Classroom Widgets."
-                preserveUnassignedDisplayChoiceIfNeeded(in: &state)
-            }
-            if state.shortcut(for: .display) == nil, !options.isEmpty, !hadPendingDisplay {
-                let binding = widgetShortcutStore.initializeDisplayBinding(
-                    reserving: state.assignedShortcuts(excluding: .display)
+            for action: WidgetShortcutAction in [.show, .dismiss] {
+                let owner = ShortcutBindingState.Owner.displayOwner(for: action)
+                let hadPending = state.candidate(for: owner) != nil
+                let resolution = displayShortcutStartupGate.mergeWidgetBindings(
+                    bindings, inventoryIsReady: !options.isEmpty, into: &state, action: action
                 )
-                state.setInitialDisplay(binding)
-                if !binding.isAssigned {
-                    displayShortcutStatus = "The default shortcut is already assigned. Choose another shortcut."
+                if let stored = widgetShortcutStore.storedDisplayBinding(action: action) {
+                    state.setInitialDisplay(stored, action: action)
+                }
+                if case .rejectedDuplicate = resolution {
+                    displayShortcutStatuses[owner] = Self.widgetDuplicateStatus
+                    preserveUnassignedDisplayChoiceIfNeeded(in: &state, action: action)
+                }
+                if state.shortcut(for: owner) == nil, !options.isEmpty, !hadPending {
+                    let binding = widgetShortcutStore.initializeDisplayBinding(
+                        reserving: state.assignedShortcuts(excluding: owner), action: action
+                    )
+                    state.setInitialDisplay(binding, action: action)
+                    if !binding.isAssigned {
+                        displayShortcutStatuses[owner] = "The default shortcut is already assigned. Choose another shortcut."
+                    }
                 }
             }
             shortcutState = state
         }
         guard shortcutState?.registrationsSuspended != true else {
-            refreshShortcutContext()
+            refreshShortcutContext(options: options)
             return
         }
         registerAcceptedDisplayHotKey()
         for option in options { registerAcceptedWidgetShortcuts(for: option.widgetType) }
-        if displayResolution == .applyPending { applyPendingDisplayShortcut() }
-        refreshShortcutContext()
+        applyPendingDisplayShortcut()
+        refreshShortcutContext(options: options)
     }
 
-    private func setDisplayShortcut(_ shortcut: DashboardShortcut) {
+    private func setDisplayShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction) {
         guard var state = shortcutState else { return }
-        switch state.stage(shortcut, for: .display) {
+        let owner = ShortcutBindingState.Owner.displayOwner(for: action)
+        switch state.stage(shortcut, for: owner) {
         case .duplicate:
-            displayShortcutStatus = "Already assigned in Classroom Widgets."
-            preserveUnassignedDisplayChoiceIfNeeded(in: &state)
+            displayShortcutStatuses[owner] = Self.widgetDuplicateStatus
+            preserveUnassignedDisplayChoiceIfNeeded(in: &state, action: action)
         case .unchanged:
-            displayShortcutStatus = nil
+            displayShortcutStatuses[owner] = nil
         case .staged:
-            displayShortcutStatus = nil
+            displayShortcutStatuses[owner] = nil
         }
         shortcutState = state
         refreshShortcutContext()
-        guard shouldApplyPendingDisplayShortcut(in: state) else { return }
         applyPendingDisplayShortcut()
     }
 
     func initialShortcutBindingState() -> ShortcutBindingState {
         var state = ShortcutBindingState(
             settings: persistedSettingsShortcut(),
-            display: widgetShortcutStore.storedDisplayBinding()
+            display: widgetShortcutStore.storedDisplayBinding(),
+            displayDismiss: widgetShortcutStore.storedDisplayBinding(action: .dismiss)
         )
         state.replaceWidgets(with: widgetShortcutStore.storedBindings())
         return state
     }
 
     func shouldApplyPendingDisplayShortcut(in state: ShortcutBindingState) -> Bool {
-        displayShortcutStartupGate.shouldApplyPending(in: state)
+        [.show, .dismiss].contains { displayShortcutStartupGate.shouldApplyPending(in: state, action: $0) }
     }
 
-    func preserveUnassignedDisplayChoiceIfNeeded(in state: inout ShortcutBindingState) {
-        guard state.shortcut(for: .display) == nil else { return }
+    func preserveUnassignedDisplayChoiceIfNeeded(in state: inout ShortcutBindingState, action: WidgetShortcutAction = .show) {
+        guard state.shortcut(for: .displayOwner(for: action)) == nil else { return }
         let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
-        state.setInitialDisplay(unassigned)
-        widgetShortcutStore.setDisplay(unassigned)
+        state.setInitialDisplay(unassigned, action: action)
+        widgetShortcutStore.setDisplay(unassigned, action: action)
     }
 
     private func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
@@ -455,7 +461,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if isRecording {
             guard shortcutState?.recorderStarted() == true else { return }
             settingsHotKey = nil
-            displayHotKey = nil
+            displayHotKeys.suspend()
             widgetHotKeys.removeAll()
             return
         }
@@ -465,14 +471,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let duplicateWidgetStatuses = widgetShortcutStatuses.filter { $0.value == Self.widgetDuplicateStatus }
         registerAcceptedSettingsHotKey()
         registerAcceptedDisplayHotKey()
-        for option in controller?.widgetOptions ?? [] { registerAcceptedWidgetShortcuts(for: option.widgetType) }
+        for option in settingsContext.widgetOptions { registerAcceptedWidgetShortcuts(for: option.widgetType) }
         if let duplicateSettingsStatus { shortcutStatus = duplicateSettingsStatus }
         widgetShortcutStatuses.merge(duplicateWidgetStatuses) { _, duplicate in duplicate }
         if shortcutState?.candidate(for: .settings) != nil { applyPendingSettingsShortcut() }
         if let state = shortcutState, shouldApplyPendingDisplayShortcut(in: state) {
             applyPendingDisplayShortcut()
         }
-        for option in controller?.widgetOptions ?? [] {
+        for option in settingsContext.widgetOptions {
             if shortcutState?.candidate(for: .widget(option.widgetType)) != nil {
                 applyPendingWidgetShortcut(for: option.widgetType, action: .show)
             }
@@ -484,61 +490,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func registerAcceptedDisplayHotKey() {
-        guard let shortcut = shortcutState?.shortcut(for: .display), shortcut.isAssigned,
-              let modifiers = carbonModifiers(from: shortcut.modifiers) else {
-            displayHotKey = nil
-            return
-        }
-        if displayHotKey?.shortcut == shortcut { return }
-        do {
-            nextHotKeyID += 1
-            let replacement = try DashboardHotKey(
-                id: nextHotKeyID,
-                keyCode: UInt32(shortcut.keyCode),
-                modifiers: modifiers
-            ) { [weak self] in self?.performDisplayShortcut() }
-            displayHotKey = (shortcut, replacement)
-            displayShortcutStatus = nil
-        } catch {
-            displayShortcutStatus = displayHotKey == nil
-                ? "Inactive — macOS could not register this shortcut."
-                : "Unavailable — the previous shortcut remains active."
+        guard let state = shortcutState, !state.registrationsSuspended else { return }
+        let succeeded = displayHotKeys.replace(with: state.displayBinding())
+        for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
+            guard let shortcut = state.shortcut(for: owner), shortcut.isAssigned else { continue }
+            if !succeeded && !displayHotKeys.isActive(shortcut) {
+                displayShortcutStatuses[owner] = "Inactive — macOS could not register this shortcut."
+            } else if displayShortcutStatuses[owner] == "Inactive — macOS could not register this shortcut." {
+                displayShortcutStatuses[owner] = nil
+            }
         }
         refreshShortcutContext()
     }
 
     private func applyPendingDisplayShortcut() {
-        guard var state = shortcutState, let candidate = state.candidate(for: .display) else { return }
-        let previousRegistrationIsActive = displayHotKey != nil
-        if !candidate.isAssigned {
-            state.complete(.display, succeeded: true)
-            shortcutState = state
-            displayHotKey = nil
-            widgetShortcutStore.setDisplay(candidate)
-            displayShortcutStatus = nil
-            refreshShortcutContext()
-            return
+        guard var state = shortcutState else { return }
+        let actions: [WidgetShortcutAction] = [.show, .dismiss].filter {
+            displayShortcutStartupGate.shouldApplyPending(in: state, action: $0)
         }
-        guard let modifiers = carbonModifiers(from: candidate.modifiers) else { return }
-        do {
-            nextHotKeyID += 1
-            let replacement = try DashboardHotKey(
-                id: nextHotKeyID,
-                keyCode: UInt32(candidate.keyCode),
-                modifiers: modifiers
-            ) { [weak self] in self?.performDisplayShortcut() }
-            state.complete(.display, succeeded: true)
-            shortcutState = state
-            displayHotKey = (candidate, replacement)
-            widgetShortcutStore.setDisplay(candidate)
-            displayShortcutStatus = nil
-        } catch {
-            state.complete(.display, succeeded: false)
-            shortcutState = state
-            displayShortcutStatus = previousRegistrationIsActive
-                ? "Unavailable — the previous shortcut remains active."
-                : "Inactive — macOS could not register this shortcut."
+        guard !actions.isEmpty else { return }
+        var proposed = state.displayBinding()
+        for action in actions {
+            guard let candidate = state.candidate(for: .displayOwner(for: action)) else { continue }
+            if action == .show { proposed.show = candidate }
+            else { proposed.dismiss = candidate }
         }
+        let succeeded = displayHotKeys.replace(with: proposed)
+        for action in actions {
+            let owner = ShortcutBindingState.Owner.displayOwner(for: action)
+            guard let candidate = state.candidate(for: owner) else { continue }
+            state.complete(owner, succeeded: succeeded)
+            if succeeded {
+                widgetShortcutStore.setDisplay(candidate, action: action)
+                displayShortcutStatuses[owner] = nil
+            } else {
+                let previousIsActive = state.shortcut(for: owner).map { displayHotKeys.isActive($0) } ?? false
+                displayShortcutStatuses[owner] = previousIsActive
+                    ? "Unavailable — the previous shortcut remains active."
+                    : "Inactive — macOS could not register this shortcut."
+            }
+        }
+        shortcutState = state
         refreshShortcutContext()
     }
 
@@ -576,10 +568,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         widgetType: Int,
         action: WidgetShortcutAction?
     ) -> Bool {
-        guard let modifiers = carbonModifiers(from: shortcut.modifiers) else { return false }
         do {
-            nextHotKeyID += 1
-            let replacement = try DashboardHotKey(id: nextHotKeyID, keyCode: UInt32(shortcut.keyCode), modifiers: modifiers) { [weak self] in
+            let replacement = try makeHotKey(shortcut) { [weak self] in
                 guard let self, self.controller?.widgetOptions.contains(where: { $0.widgetType == widgetType }) == true else { return }
                 switch action {
                 case .show: self.controller?.addWidget(widgetType)
@@ -631,33 +621,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func resetWidgetShortcuts() {
-        guard let options = controller?.widgetOptions else { return }
+        let options = settingsContext.widgetOptions
         widgetHotKeys.removeAll()
         widgetShortcutStatuses.removeAll()
+        displayShortcutStatuses.removeAll()
         widgetShortcutStore.reset(options: options, reserving: acceptedNativeShortcuts)
-        shortcutState?.replaceWidgets(
-            with: widgetShortcutStore.bindings(for: options, reserving: acceptedNativeShortcuts),
-            discardPending: true
-        )
+        let bindings = widgetShortcutStore.bindings(for: options, reserving: acceptedNativeShortcuts)
+        shortcutState?.replaceWidgets(with: bindings, discardPending: true)
         widgetOptionsChanged(options)
+        guard var state = shortcutState else { return }
+        let preferred = WidgetLaunchShortcutStore.defaultDisplayShortcut
+        // Stage both defaults atomically. A saved Settings/non-inventory widget
+        // or pending candidate keeps its reservation; reset never overwrites it.
+        var proposed = state
+        for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
+            if case .duplicate = proposed.stage(preferred, for: owner) {
+                displayShortcutStatuses[owner] = "The default shortcut is already assigned. Choose another shortcut."
+                refreshShortcutContext()
+                return
+            }
+        }
+        state = proposed
+        shortcutState = state
+        applyPendingDisplayShortcut()
+        refreshShortcutContext()
     }
 
     private var acceptedNativeShortcuts: [DashboardShortcut] {
-        [ShortcutBindingState.Owner.settings, .display].compactMap { shortcutState?.shortcut(for: $0) }
+        guard let state = shortcutState else { return [] }
+        let owners: [ShortcutBindingState.Owner] = [.settings, .display, .displayDismiss]
+        let accepted = owners.compactMap { state.shortcut(for: $0) }
+        // Before the first inventory, new Display choices must be checked against
+        // the real widget defaults, not displace those defaults during backfill.
+        let pendingOwners: [ShortcutBindingState.Owner] = displayShortcutStartupGate.hasWidgetInventory ? owners : [.settings]
+        return accepted + pendingOwners.compactMap { state.candidate(for: $0) }
     }
 
-    private func refreshShortcutContext() {
-        let options = controller?.widgetOptions ?? []
+    private func refreshShortcutContext(options: [CompactWidgetOption]? = nil) {
+        let options = options ?? settingsContext.widgetOptions
         settingsContext.updateWidgetShortcuts(
             options: options,
-            displayShortcut: shortcutState?.candidate(for: .display)
-                ?? shortcutState?.shortcut(for: .display),
+            displayShortcuts: shortcutState?.displayBinding(includingPending: true),
             shortcuts: Dictionary(uniqueKeysWithValues: options.compactMap { option in
                 guard let show = shortcutState?.shortcut(for: .widget(option.widgetType)),
                       let dismiss = shortcutState?.shortcut(for: .widgetDismiss(option.widgetType)) else { return nil }
                 return (option.widgetType, WidgetShortcutBinding(show: show, dismiss: dismiss))
             }),
-            displayStatus: displayShortcutStatus,
+            displayStatuses: displayShortcutStatuses,
             widgetStatuses: widgetShortcutStatuses,
             status: shortcutStatus
         )
@@ -684,9 +694,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         displayPreviewCoordinator.restartIfRunning()
     }
     @objc private func showDisplayPreview() { displayPreviewCoordinator.open() }
-    func performDisplayShortcut() {
-        if let displayShortcutAction { displayShortcutAction() }
-        else { displayPreviewCoordinator.open() }
+    func performDisplayShortcut(action: WidgetShortcutAction? = .show) {
+        if let displayShortcutAction { displayShortcutAction(action); return }
+        switch action {
+        case .show: displayPreviewCoordinator.open()
+        case .dismiss: displayPreviewCoordinator.dismiss()
+        case nil: displayPreviewCoordinator.toggle()
+        }
     }
     @objc func showSettings() { settingsWindowCoordinator.show() }
     @objc private func checkForUpdates() { Task { await updates.check(manual: true) } }
@@ -742,6 +756,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return defaults.object(forKey: DashboardSettingKeys.settingsShortcutModifiers) == nil
             ? DashboardDefaults.shortcutModifiers
             : defaults.integer(forKey: DashboardSettingKeys.settingsShortcutModifiers)
+    }
+
+    private func makeHotKey(_ shortcut: DashboardShortcut, handler: @escaping @MainActor () -> Void) throws -> AnyObject {
+        if let hotKeyRegistration { return try hotKeyRegistration(shortcut, handler) }
+        guard shortcut.isAssigned, let modifiers = carbonModifiers(from: shortcut.modifiers) else {
+            throw DashboardHotKeyError.register(OSStatus(paramErr))
+        }
+        nextHotKeyID += 1
+        return try DashboardHotKey(id: nextHotKeyID, keyCode: UInt32(shortcut.keyCode), modifiers: modifiers, handler: handler)
     }
 
     private func carbonModifiers(from rawModifiers: Int) -> UInt32? {
