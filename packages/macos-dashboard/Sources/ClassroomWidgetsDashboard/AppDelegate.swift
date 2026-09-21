@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     )
     private var shortcutState: ShortcutBindingState?
     private var displayShortcutStartupGate = DisplayShortcutStartupGate()
+    private var widgetShortcutResetPending = false
     private var shortcutStatus: String?
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
@@ -396,6 +397,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             refreshShortcutContext(options: options)
             return
         }
+        refreshShortcutContext(options: options)
+        if applyPendingWidgetShortcutReset() { return }
         registerAcceptedDisplayHotKey()
         for option in options { registerAcceptedWidgetShortcuts(for: option.widgetType) }
         applyPendingDisplayShortcut()
@@ -487,14 +490,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         refreshShortcutContext()
+        applyPendingWidgetShortcutReset()
     }
 
     private func registerAcceptedDisplayHotKey() {
         guard let state = shortcutState, !state.registrationsSuspended else { return }
-        let succeeded = displayHotKeys.replace(with: state.displayBinding())
+        displayHotKeys.restoreAccepted(state.displayBinding())
         for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
             guard let shortcut = state.shortcut(for: owner), shortcut.isAssigned else { continue }
-            if !succeeded && !displayHotKeys.isActive(shortcut) {
+            if !displayHotKeys.isActive(shortcut) {
                 displayShortcutStatuses[owner] = "Inactive — macOS could not register this shortcut."
             } else if displayShortcutStatuses[owner] == "Inactive — macOS could not register this shortcut." {
                 displayShortcutStatuses[owner] = nil
@@ -621,30 +625,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func resetWidgetShortcuts() {
+        widgetShortcutResetPending = true
+        applyPendingWidgetShortcutReset()
+    }
+
+    @discardableResult
+    private func applyPendingWidgetShortcutReset() -> Bool {
+        // Defer the whole reset, rather than persist provisional widget defaults
+        // while Display replacement cannot yet succeed or fail.
+        guard widgetShortcutResetPending, displayShortcutStartupGate.hasWidgetInventory,
+              var state = shortcutState, !state.registrationsSuspended else { return false }
+        widgetShortcutResetPending = false
         let options = settingsContext.widgetOptions
+        let available = Set(options.map(\.widgetType))
         widgetHotKeys.removeAll()
         widgetShortcutStatuses.removeAll()
         displayShortcutStatuses.removeAll()
-        widgetShortcutStore.reset(options: options, reserving: acceptedNativeShortcuts)
-        let bindings = widgetShortcutStore.bindings(for: options, reserving: acceptedNativeShortcuts)
-        shortcutState?.replaceWidgets(with: bindings, discardPending: true)
-        widgetOptionsChanged(options)
-        guard var state = shortcutState else { return }
+        registerAcceptedDisplayHotKey()
+        // Current inventory choices are being reset. Saved and pending choices
+        // outside this inventory retain their reservations.
+        state.replaceWidgets(with: widgetShortcutStore.storedBindings().filter { !available.contains($0.key) })
+        state.complete(.display, succeeded: false)
+        state.complete(.displayDismiss, succeeded: false)
+        shortcutState = state
         let preferred = WidgetLaunchShortcutStore.defaultDisplayShortcut
         // Stage both defaults atomically. A saved Settings/non-inventory widget
         // or pending candidate keeps its reservation; reset never overwrites it.
         var proposed = state
+        var hasConflict = false
         for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
             if case .duplicate = proposed.stage(preferred, for: owner) {
                 displayShortcutStatuses[owner] = "The default shortcut is already assigned. Choose another shortcut."
-                refreshShortcutContext()
-                return
+                hasConflict = true
             }
         }
-        state = proposed
-        shortcutState = state
-        applyPendingDisplayShortcut()
+        if !hasConflict {
+            shortcutState = proposed
+            applyPendingDisplayShortcut()
+        }
+        // Registration has now accepted or rejected Display's default. Allocate
+        // once from that result, retaining old Display keys after a failed edit.
+        let reservations = acceptedNativeShortcuts + (shortcutState.map { Array($0.pending.values) } ?? [])
+        widgetShortcutStore.reset(options: options, reserving: reservations)
+        let bindings = widgetShortcutStore.bindings(for: options, reserving: reservations)
+        shortcutState?.replaceWidgets(with: bindings)
+        for option in options { registerAcceptedWidgetShortcuts(for: option.widgetType) }
         refreshShortcutContext()
+        return true
     }
 
     private var acceptedNativeShortcuts: [DashboardShortcut] {

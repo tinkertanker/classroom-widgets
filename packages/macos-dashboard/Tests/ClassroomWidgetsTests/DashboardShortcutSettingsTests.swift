@@ -58,6 +58,59 @@ final class DashboardShortcutSettingsTests: XCTestCase {
     }
 
     @MainActor
+    func testPartialRestoreStatusesAndOneResetRenderTheFinalNineWidgetBindings() async throws {
+        _ = NSApplication.shared
+        let suiteName = "DashboardShortcutSettingsTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let modifiers = WidgetLaunchShortcutStore.defaultModifiers
+        let show = DashboardShortcut(keyCode: Int(kVK_ANSI_1), modifiers: modifiers)
+        let dismiss = DashboardShortcut(keyCode: Int(kVK_ANSI_2), modifiers: modifiers)
+        let store = WidgetLaunchShortcutStore(defaults: defaults)
+        store.setDisplay(show)
+        store.setDisplay(dismiss, action: .dismiss)
+        var unavailable: DashboardShortcut? = dismiss
+        let delegate = AppDelegate(defaults: defaults, registerHotKey: { shortcut, _ in
+            if shortcut == unavailable { throw DashboardHotKeyError.register(-1) }
+            return NSObject()
+        })
+        delegate.widgetOptionsChanged((1...9).map { CompactWidgetOption(widgetType: $0, title: "Widget \($0)") })
+        let context = delegate.settingsContext
+        let view = NSHostingView(rootView: DashboardShortcutSettingsView(context: context).defaultAppStorage(defaults))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 920),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: .aqua)
+        window.contentView = view
+        window.orderFront(nil)
+        defer { window.close() }
+
+        try await render(view, name: "settings-restore-dismiss-unavailable")
+        XCTAssertNil(context.displayShortcutStatuses[.display])
+        XCTAssertEqual(context.displayShortcutStatuses[.displayDismiss], "Inactive — macOS could not register this shortcut.")
+        XCTAssertEqual(try recorder(in: view, label: "Show Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘1")
+        XCTAssertEqual(try recorder(in: view, label: "Dismiss Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘2")
+
+        context.shortcutRecordingChanged(true)
+        unavailable = show
+        context.shortcutRecordingChanged(false)
+        try await render(view, name: "settings-restore-show-unavailable")
+        XCTAssertEqual(context.displayShortcutStatuses[.display], "Inactive — macOS could not register this shortcut.")
+        XCTAssertNil(context.displayShortcutStatuses[.displayDismiss])
+
+        unavailable = nil
+        context.resetWidgetShortcuts()
+        try await render(view, name: "settings-reset-nine-widgets")
+        XCTAssertTrue(context.displayShortcutStatuses.isEmpty)
+        XCTAssertEqual(try recorder(in: view, label: "Show Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘0")
+        XCTAssertEqual(try recorder(in: view, label: "Dismiss Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘0")
+        for number in 1...9 {
+            XCTAssertEqual(try recorder(in: view, label: "Show Widget \(number) keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘\(number)")
+            XCTAssertEqual(try recorder(in: view, label: "Dismiss Widget \(number) keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘\(number)")
+        }
+    }
+
+    @MainActor
     private func recorder(in view: NSView, label: String) throws -> NSView {
         func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
         return try XCTUnwrap(descendants(view).first { $0.accessibilityLabel() == label }, "Expected native recorder: \(label)")

@@ -31,19 +31,35 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
         fixture.preflightGranted = true
         fixture.coordinator.open()
         await fulfillment(of: [discovery.started], timeout: 2)
-        XCTAssertNotNil(fixture.coordinator.session)
+        let capture = try XCTUnwrap(fixture.coordinator.session)
+        let controller = try XCTUnwrap(fixture.coordinator.windowController)
+        var lateActivity = 0
+        capture.onFrameActivity = { lateActivity += 1 }
+        print("PENDING-DISCOVERY entered: suspended=true ownedSessions=\(fixture.createdSources.count)")
 
         fixture.coordinator.dismiss()
+        capture.handleFrameStatus(.idle, sampleBuffer: nil)
+        XCTAssertNil(fixture.coordinator.windowController)
+        XCTAssertFalse(controller.window?.isVisible == true)
+        XCTAssertNil(controller.previewView.fittedImageRectTopLeft())
         discovery.finish()
+        await fulfillment(of: [discovery.finished], timeout: 2)
         for _ in 0..<100 {
             if fixture.coordinator.session == nil { break }
             try await Task.sleep(nanoseconds: 10_000_000)
         }
+        fixture.postScreenNotice()
+        controller.onVisibilityChanged?(true)
+        fixture.coordinator.restartIfRunning()
+        await withCheckedContinuation { continuation in DispatchQueue.main.async { continuation.resume() } }
 
         XCTAssertNil(fixture.coordinator.session)
         XCTAssertNil(fixture.coordinator.windowController)
         XCTAssertEqual(fixture.createdSources.count, 1)
+        XCTAssertEqual(lateActivity, 0)
+        XCTAssertNil(controller.previewView.fittedImageRectTopLeft())
         XCTAssertEqual(fixture.permissionRequests, 0)
+        print("PENDING-DISCOVERY released: result=CancellationError sessionAbsent=\(fixture.coordinator.session == nil) windowAbsent=\(fixture.coordinator.windowController == nil) ownedSessions=\(fixture.createdSources.count) lateActivity=\(lateActivity) frameAbsent=\(controller.previewView.fittedImageRectTopLeft() == nil) permissionRequests=\(fixture.permissionRequests)")
     }
 
     @MainActor
@@ -337,10 +353,12 @@ private final class CoordinatorFixture {
 @MainActor
 private final class PendingDiscovery {
     let started = XCTestExpectation(description: "Synthetic enumeration entered")
+    let finished = XCTestExpectation(description: "Synthetic enumeration resumed with cancellation")
     private var continuation: CheckedContinuation<SCShareableContent, Error>?
 
     func wait() async throws -> SCShareableContent {
-        try await withCheckedThrowingContinuation {
+        defer { finished.fulfill() }
+        return try await withCheckedThrowingContinuation {
             continuation = $0
             started.fulfill()
         }

@@ -19,6 +19,21 @@ final class DisplayShortcutRegistration {
         registrations[shortcut.normalized] != nil
     }
 
+    /// Saved assignments are independent: an unavailable partner must not disable
+    /// a working action during startup or recording resume. Never rewrite them.
+    func restoreAccepted(_ accepted: WidgetShortcutBinding) {
+        let accepted = WidgetShortcutBinding(show: accepted.show.normalized, dismiss: accepted.dismiss.normalized)
+        var restored: [DashboardShortcut: AnyObject] = [:]
+        var attempted = Set<DashboardShortcut>()
+        for shortcut in [accepted.show, accepted.dismiss] where shortcut.isAssigned && attempted.insert(shortcut).inserted {
+            restored[shortcut] = registrations[shortcut] ?? (try? register(shortcut) { [weak self] in
+                self?.dispatch(shortcut)
+            })
+        }
+        binding = accepted
+        registrations = restored
+    }
+
     /// Keep all previously working registrations until every replacement succeeds.
     /// Reusing tokens avoids trying to register an equal Show/Dismiss key twice.
     func replace(with proposed: WidgetShortcutBinding) -> Bool {
