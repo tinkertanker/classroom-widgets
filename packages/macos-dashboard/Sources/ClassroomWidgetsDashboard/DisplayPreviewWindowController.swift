@@ -44,7 +44,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
                     height: max(frame.height, minimumContentSize.height)
                 )
             ),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
