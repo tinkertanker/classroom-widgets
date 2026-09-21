@@ -34,13 +34,16 @@ final class DisplayShortcutRegistration {
         registrations = restored
     }
 
-    /// Keep all previously working registrations until every replacement succeeds.
-    /// Reusing tokens avoids trying to register an equal Show/Dismiss key twice.
-    func replace(with proposed: WidgetShortcutBinding) -> Bool {
+    /// Keep working tokens until every requested action's registration succeeds.
+    /// An unchanged inactive partner is not a prerequisite, but explicitly choosing
+    /// its key for a changed action still requires a successful registration.
+    func replace(with proposed: WidgetShortcutBinding, changing actions: [WidgetShortcutAction]) -> Bool {
         let proposed = WidgetShortcutBinding(show: proposed.show.normalized, dismiss: proposed.dismiss.normalized)
+        let requested = actions.map { $0 == .show ? proposed.show : proposed.dismiss }
         var replacements: [DashboardShortcut: AnyObject] = [:]
         do {
             for shortcut in [proposed.show, proposed.dismiss] where shortcut.isAssigned && replacements[shortcut] == nil {
+                guard registrations[shortcut] != nil || requested.contains(shortcut) else { continue }
                 replacements[shortcut] = try registrations[shortcut] ?? register(shortcut) { [weak self] in
                     self?.dispatch(shortcut)
                 }

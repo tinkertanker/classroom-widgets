@@ -496,6 +496,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func registerAcceptedDisplayHotKey() {
         guard let state = shortcutState, !state.registrationsSuspended else { return }
         displayHotKeys.restoreAccepted(state.displayBinding())
+        updateDisplayShortcutRegistrationStatuses(state)
+        refreshShortcutContext()
+    }
+
+    private func updateDisplayShortcutRegistrationStatuses(_ state: ShortcutBindingState) {
         for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
             guard let shortcut = state.shortcut(for: owner), shortcut.isAssigned else { continue }
             if !displayHotKeys.isActive(shortcut) {
@@ -504,7 +509,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 displayShortcutStatuses[owner] = nil
             }
         }
-        refreshShortcutContext()
     }
 
     private func applyPendingDisplayShortcut() {
@@ -519,7 +523,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if action == .show { proposed.show = candidate }
             else { proposed.dismiss = candidate }
         }
-        let succeeded = displayHotKeys.replace(with: proposed)
+        let succeeded = displayHotKeys.replace(with: proposed, changing: actions)
         for action in actions {
             let owner = ShortcutBindingState.Owner.displayOwner(for: action)
             guard let candidate = state.candidate(for: owner) else { continue }
@@ -535,6 +539,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         shortcutState = state
+        updateDisplayShortcutRegistrationStatuses(state)
         refreshShortcutContext()
     }
 

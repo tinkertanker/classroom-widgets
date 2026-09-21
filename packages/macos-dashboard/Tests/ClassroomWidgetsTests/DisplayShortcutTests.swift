@@ -67,11 +67,11 @@ final class DisplayShortcutTests: XCTestCase {
         let fixture = RegistrationFixture()
         let show = DashboardShortcut(keyCode: 2, modifiers: WidgetLaunchShortcutStore.defaultModifiers)
         let dismiss = DashboardShortcut(keyCode: 3, modifiers: show.modifiers)
-        XCTAssertTrue(fixture.registration.replace(with: WidgetShortcutBinding(show: show, dismiss: show)))
+        fixture.registration.restoreAccepted(WidgetShortcutBinding(show: show, dismiss: show))
         XCTAssertEqual(fixture.liveKeys, [show])
         fixture.handlers[show]?()
         XCTAssertEqual(fixture.events, [nil])
-        XCTAssertTrue(fixture.registration.replace(with: WidgetShortcutBinding(show: show, dismiss: dismiss)))
+        XCTAssertTrue(fixture.registration.replace(with: WidgetShortcutBinding(show: show, dismiss: dismiss), changing: [.dismiss]))
         fixture.handlers[dismiss]?()
         fixture.handlers[show]?()
         XCTAssertEqual(fixture.events, [nil, .dismiss, .show])
@@ -84,9 +84,10 @@ final class DisplayShortcutTests: XCTestCase {
         let original = DashboardShortcut(keyCode: 2, modifiers: WidgetLaunchShortcutStore.defaultModifiers)
         let next = DashboardShortcut(keyCode: 3, modifiers: original.modifiers)
         let unavailable = DashboardShortcut(keyCode: 4, modifiers: original.modifiers)
-        XCTAssertTrue(fixture.registration.replace(with: WidgetShortcutBinding(show: original, dismiss: original)))
+        fixture.registration.restoreAccepted(WidgetShortcutBinding(show: original, dismiss: original))
+        XCTAssertEqual(fixture.liveKeys, [original])
         fixture.fail = unavailable
-        XCTAssertFalse(fixture.registration.replace(with: WidgetShortcutBinding(show: next, dismiss: unavailable)))
+        XCTAssertFalse(fixture.registration.replace(with: WidgetShortcutBinding(show: next, dismiss: unavailable), changing: [.show, .dismiss]))
         XCTAssertEqual(fixture.liveKeys, [original], "A partial replacement is released; the old registration is never dropped")
         XCTAssertEqual(fixture.registration.binding, WidgetShortcutBinding(show: original, dismiss: original))
         fixture.handlers[next]?()
@@ -101,7 +102,8 @@ final class DisplayShortcutTests: XCTestCase {
         let dismiss = DashboardShortcut(keyCode: 3, modifiers: show.modifiers)
         let pair = WidgetShortcutBinding(show: show, dismiss: dismiss)
         var state = ShortcutBindingState(settings: DashboardShortcut(keyCode: 43, modifiers: show.modifiers))
-        XCTAssertTrue(fixture.registration.replace(with: pair))
+        fixture.registration.restoreAccepted(pair)
+        XCTAssertEqual(fixture.liveKeys, [show, dismiss])
         if state.recorderStarted() { fixture.registration.suspend() }
         XCTAssertFalse(state.recorderStarted())
         fixture.handlers[show]?()
@@ -110,7 +112,7 @@ final class DisplayShortcutTests: XCTestCase {
         XCTAssertTrue(fixture.liveKeys.isEmpty)
         XCTAssertFalse(state.recorderEnded())
         XCTAssertTrue(fixture.liveKeys.isEmpty)
-        if state.recorderEnded() { XCTAssertTrue(fixture.registration.replace(with: pair)) }
+        if state.recorderEnded() { fixture.registration.restoreAccepted(pair) }
         XCTAssertEqual(fixture.liveKeys, [show, dismiss])
         fixture.handlers[dismiss]?()
         XCTAssertEqual(fixture.events, [.dismiss])
@@ -178,6 +180,174 @@ final class DisplayShortcutTests: XCTestCase {
         XCTAssertTrue(delegate.settingsContext.displayShortcutStatuses.isEmpty)
         fixture.handlers[shortcut]?()
         XCTAssertEqual(fixture.events, [nil])
+    }
+
+    @MainActor
+    func testClearingAnActionPersistsAcrossReloadWithAnUnavailableUnchangedPartner() {
+        for recording in [false, true] {
+            for action: WidgetShortcutAction in [.show, .dismiss] {
+                verifyEditWithUnavailablePartner(action: action, edit: .clear, recording: recording)
+            }
+        }
+    }
+
+    @MainActor
+    func testFreeKeyEditPersistsAcrossReloadWithAnUnavailableUnchangedPartner() {
+        for recording in [false, true] {
+            for action: WidgetShortcutAction in [.show, .dismiss] {
+                verifyEditWithUnavailablePartner(action: action, edit: .freeKey, recording: recording)
+            }
+        }
+    }
+
+    @MainActor
+    func testExplicitAssignmentToUnavailablePartnerStillRejectsAndPreservesTheOldKey() {
+        for recording in [false, true] {
+            for action: WidgetShortcutAction in [.show, .dismiss] {
+                verifyEditWithUnavailablePartner(action: action, edit: .unavailablePartner, recording: recording)
+            }
+        }
+    }
+
+    @MainActor
+    func testFailedRequestedReplacementRollsBackWithAnUnavailableUnchangedPartner() {
+        for recording in [false, true] {
+            for action: WidgetShortcutAction in [.show, .dismiss] {
+                verifyEditWithUnavailablePartner(action: action, edit: .failedFreeKey, recording: recording)
+            }
+        }
+    }
+
+    @MainActor
+    func testClearBeforeAnyInventoryDoesNotAttemptTheUnchangedSavedPartner() {
+        for action: WidgetShortcutAction in [.show, .dismiss] {
+            defaults.removePersistentDomain(forName: suiteName)
+            let fixture = RegistrationFixture()
+            let store = WidgetLaunchShortcutStore(defaults: defaults)
+            let show = DashboardShortcut(keyCode: 2, modifiers: WidgetLaunchShortcutStore.defaultModifiers)
+            let dismiss = DashboardShortcut(keyCode: 3, modifiers: show.modifiers)
+            let partner = action == .show ? dismiss : show
+            let none = DashboardShortcut(keyCode: -1, modifiers: 0)
+            store.setDisplay(show)
+            store.setDisplay(dismiss, action: .dismiss)
+            fixture.fail = partner
+            let delegate = AppDelegate(defaults: defaults, registerHotKey: fixture.register)
+
+            delegate.settingsContext.setDisplayShortcut(none, action: action)
+
+            XCTAssertEqual(store.storedDisplayBinding(action: action), none)
+            XCTAssertTrue(fixture.attempts.isEmpty)
+            delegate.widgetOptionsChanged([])
+            XCTAssertEqual(fixture.attempts, [partner])
+            XCTAssertTrue(fixture.liveKeys.isEmpty)
+        }
+    }
+
+    @MainActor
+    func testChoosingAFormerlyInactivePartnerRegistersOnceAndClearsBothInactiveStatuses() {
+        for action: WidgetShortcutAction in [.show, .dismiss] {
+            defaults.removePersistentDomain(forName: suiteName)
+            let fixture = RegistrationFixture()
+            let store = WidgetLaunchShortcutStore(defaults: defaults)
+            let show = DashboardShortcut(keyCode: 2, modifiers: WidgetLaunchShortcutStore.defaultModifiers)
+            let dismiss = DashboardShortcut(keyCode: 3, modifiers: show.modifiers)
+            let partner = action == .show ? dismiss : show
+            store.setDisplay(show)
+            store.setDisplay(dismiss, action: .dismiss)
+            fixture.fail = partner
+            let delegate = AppDelegate(defaults: defaults, registerHotKey: fixture.register) { fixture.events.append($0) }
+            delegate.widgetOptionsChanged([CompactWidgetOption(widgetType: 7, title: "Timer")])
+            fixture.attempts.removeAll()
+            fixture.fail = nil
+
+            delegate.settingsContext.setDisplayShortcut(partner, action: action)
+
+            XCTAssertEqual(fixture.attempts, [partner])
+            XCTAssertTrue(delegate.settingsContext.displayShortcutStatuses.isEmpty, "The newly working shared key serves both actions")
+            XCTAssertEqual(delegate.settingsContext.displayShortcuts, WidgetShortcutBinding(show: partner, dismiss: partner))
+            fixture.handlers[partner]?()
+            XCTAssertEqual(fixture.events, [nil])
+        }
+    }
+
+    private enum UnavailablePartnerEdit { case clear, freeKey, unavailablePartner, failedFreeKey }
+
+    @MainActor
+    private func verifyEditWithUnavailablePartner(action: WidgetShortcutAction, edit: UnavailablePartnerEdit, recording: Bool) {
+        defaults.removePersistentDomain(forName: suiteName)
+        let fixture = RegistrationFixture()
+        let store = WidgetLaunchShortcutStore(defaults: defaults)
+        let modifiers = WidgetLaunchShortcutStore.defaultModifiers
+        let show = DashboardShortcut(keyCode: Int(kVK_ANSI_D), modifiers: modifiers)
+        let dismiss = DashboardShortcut(keyCode: Int(kVK_ANSI_F), modifiers: modifiers)
+        let original = action == .show ? show : dismiss
+        let partner = action == .show ? dismiss : show
+        let partnerAction: WidgetShortcutAction = action == .show ? .dismiss : .show
+        let proposed: DashboardShortcut
+        switch edit {
+        case .clear: proposed = DashboardShortcut(keyCode: -1, modifiers: 0)
+        case .freeKey, .failedFreeKey: proposed = DashboardShortcut(keyCode: Int(kVK_ANSI_G), modifiers: modifiers)
+        case .unavailablePartner: proposed = partner
+        }
+        let shouldSucceed = edit == .clear || edit == .freeKey
+        let expected = shouldSucceed ? proposed : original
+        let expectedBinding = action == .show
+            ? WidgetShortcutBinding(show: expected, dismiss: partner)
+            : WidgetShortcutBinding(show: partner, dismiss: expected)
+        store.setDisplay(show)
+        store.setDisplay(dismiss, action: .dismiss)
+        fixture.fail = partner
+        let delegate = AppDelegate(defaults: defaults, registerHotKey: { shortcut, handler in
+            if edit == .failedFreeKey && shortcut == proposed { throw DashboardHotKeyError.register(-1) }
+            return try fixture.register(shortcut, handler: handler)
+        }) { fixture.events.append($0) }
+        let options = [CompactWidgetOption(widgetType: 7, title: "Timer")]
+        delegate.widgetOptionsChanged(options)
+        XCTAssertTrue(fixture.liveKeys.contains(original), "Fixture: the edited action has an active accepted key")
+        XCTAssertFalse(fixture.liveKeys.contains(partner), "Fixture: only the unchanged partner is unavailable")
+        if recording { delegate.settingsContext.shortcutRecordingChanged(true) }
+        fixture.attempts.removeAll()
+
+        delegate.settingsContext.setDisplayShortcut(proposed, action: action)
+        if recording {
+            XCTAssertTrue(fixture.liveKeys.isEmpty)
+            delegate.settingsContext.shortcutRecordingChanged(false)
+        }
+
+        print("EDIT-UNAVAILABLE-PARTNER action=\(action) edit=\(edit) recording=\(recording) original=\(original.keyCode) partner=\(partner.keyCode) proposed=\(proposed.keyCode) stored=\(String(describing: store.storedDisplayBinding(action: action)?.keyCode)) originalActive=\(fixture.liveKeys.contains(original)) proposedActive=\(fixture.liveKeys.contains(proposed)) partnerActive=\(fixture.liveKeys.contains(partner)) attempts=\(fixture.attempts.map(\.keyCode)) status=\(String(describing: delegate.settingsContext.displayShortcutStatuses[.displayOwner(for: action)]))")
+        XCTAssertEqual(store.storedDisplayBinding(action: action), expected, "An unavailable unchanged partner must not veto a clear or a free-key edit")
+        XCTAssertEqual(store.storedDisplayBinding(action: partnerAction), partner)
+        XCTAssertEqual(delegate.settingsContext.displayShortcuts, expectedBinding)
+        XCTAssertEqual(fixture.liveKeys.contains(original), !shouldSucceed)
+        XCTAssertEqual(fixture.liveKeys.contains(proposed), shouldSucceed && proposed.isAssigned)
+        XCTAssertFalse(fixture.liveKeys.contains(partner))
+        XCTAssertEqual(delegate.settingsContext.displayShortcutStatuses[.displayOwner(for: action)],
+                       shouldSucceed ? nil : "Unavailable — the previous shortcut remains active.")
+        XCTAssertEqual(delegate.settingsContext.displayShortcutStatuses[.displayOwner(for: partnerAction)],
+                       "Inactive — macOS could not register this shortcut.")
+        fixture.handlers[original]?()
+        XCTAssertEqual(fixture.events, shouldSucceed ? [] : [action], "A successful edit must revoke the old key")
+        fixture.events.removeAll()
+        fixture.handlers[proposed]?()
+        XCTAssertEqual(fixture.events, shouldSucceed && proposed.isAssigned ? [action] : [])
+
+        // Reload through a new AppDelegate/store and registrar, not the settings
+        // view's accepted values. This is an in-process preferences reload.
+        let reloadedFixture = RegistrationFixture()
+        reloadedFixture.fail = partner
+        let reloaded = AppDelegate(defaults: defaults, registerHotKey: reloadedFixture.register) { reloadedFixture.events.append($0) }
+        reloaded.widgetOptionsChanged(options)
+        XCTAssertEqual(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(action: action), expected)
+        XCTAssertEqual(reloaded.settingsContext.displayShortcuts, expectedBinding)
+        XCTAssertEqual(reloadedFixture.liveKeys.contains(original), !shouldSucceed)
+        XCTAssertEqual(reloadedFixture.liveKeys.contains(proposed), shouldSucceed && proposed.isAssigned)
+        XCTAssertFalse(reloadedFixture.liveKeys.contains(partner))
+        reloadedFixture.handlers[original]?()
+        XCTAssertEqual(reloadedFixture.events, shouldSucceed ? [] : [action])
+        reloadedFixture.events.removeAll()
+        reloadedFixture.handlers[proposed]?()
+        XCTAssertEqual(reloadedFixture.events, shouldSucceed && proposed.isAssigned ? [action] : [])
+        print("EDIT-UNAVAILABLE-PARTNER reload action=\(action) edit=\(edit) recording=\(recording) stored=\(String(describing: WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(action: action)?.keyCode)) originalActive=\(reloadedFixture.liveKeys.contains(original)) proposedActive=\(reloadedFixture.liveKeys.contains(proposed)) partnerActive=\(reloadedFixture.liveKeys.contains(partner))")
     }
 
     @MainActor

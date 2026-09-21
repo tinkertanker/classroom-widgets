@@ -91,11 +91,52 @@ final class DashboardShortcutSettingsTests: XCTestCase {
         XCTAssertEqual(try recorder(in: view, label: "Show Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘1")
         XCTAssertEqual(try recorder(in: view, label: "Dismiss Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘2")
 
+        context.setDisplayShortcut(DashboardShortcut(keyCode: -1, modifiers: 0), action: .show)
+        try await render(view, name: "settings-clear-show-inactive-partner")
+        let showRecorder = try recorder(in: view, label: "Show Display keyboard shortcut")
+        XCTAssertEqual(showRecorder.accessibilityValue() as? String, "No shortcut")
+        XCTAssertEqual(store.storedDisplayBinding()?.keyCode, -1)
+        XCTAssertNil(context.displayShortcutStatuses[.display])
+        XCTAssertTrue(showRecorder.accessibilityPerformPress())
+        showRecorder.keyDown(with: try keyEvent(code: kVK_ANSI_G, character: "g", window: window))
+        try await render(view, name: "settings-edit-show-inactive-partner")
+        XCTAssertEqual(showRecorder.accessibilityValue() as? String, "⌃⌥⌘G")
+        XCTAssertEqual(store.storedDisplayBinding()?.keyCode, Int(kVK_ANSI_G))
+        XCTAssertNil(context.displayShortcutStatuses[.display])
+
+        XCTAssertTrue(showRecorder.accessibilityPerformPress())
+        showRecorder.keyDown(with: try keyEvent(code: kVK_ANSI_2, character: "2", window: window))
+        try await render(view, name: "settings-reject-inactive-partner")
+        XCTAssertEqual(showRecorder.accessibilityValue() as? String, "⌃⌥⌘G")
+        XCTAssertEqual(context.displayShortcutStatuses[.display], "Unavailable — the previous shortcut remains active.")
+        XCTAssertEqual(context.displayShortcutStatuses[.displayDismiss], "Inactive — macOS could not register this shortcut.")
+
+        unavailable = nil
+        context.setDisplayShortcut(dismiss, action: .show)
+        try await render(view, name: "settings-shared-partner-now-available")
+        XCTAssertTrue(context.displayShortcutStatuses.isEmpty)
+        XCTAssertEqual(showRecorder.accessibilityValue() as? String, "⌃⌥⌘2")
+        XCTAssertEqual(try recorder(in: view, label: "Dismiss Display keyboard shortcut").accessibilityValue() as? String, "⌃⌥⌘2")
+
+        context.setDisplayShortcut(show, action: .show)
         context.shortcutRecordingChanged(true)
         unavailable = show
         context.shortcutRecordingChanged(false)
         try await render(view, name: "settings-restore-show-unavailable")
         XCTAssertEqual(context.displayShortcutStatuses[.display], "Inactive — macOS could not register this shortcut.")
+        XCTAssertNil(context.displayShortcutStatuses[.displayDismiss])
+
+        context.setDisplayShortcut(DashboardShortcut(keyCode: -1, modifiers: 0), action: .dismiss)
+        try await render(view, name: "settings-clear-dismiss-inactive-partner")
+        let dismissRecorder = try recorder(in: view, label: "Dismiss Display keyboard shortcut")
+        XCTAssertEqual(dismissRecorder.accessibilityValue() as? String, "No shortcut")
+        XCTAssertEqual(store.storedDisplayBinding(action: .dismiss)?.keyCode, -1)
+        XCTAssertNil(context.displayShortcutStatuses[.displayDismiss])
+        XCTAssertTrue(dismissRecorder.accessibilityPerformPress())
+        dismissRecorder.keyDown(with: try keyEvent(code: kVK_ANSI_G, character: "g", window: window))
+        try await render(view, name: "settings-edit-dismiss-inactive-partner")
+        XCTAssertEqual(dismissRecorder.accessibilityValue() as? String, "⌃⌥⌘G")
+        XCTAssertEqual(store.storedDisplayBinding(action: .dismiss)?.keyCode, Int(kVK_ANSI_G))
         XCTAssertNil(context.displayShortcutStatuses[.displayDismiss])
 
         unavailable = nil
