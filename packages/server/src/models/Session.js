@@ -184,22 +184,29 @@ class Session {
   }
 
   /**
-   * Get all active rooms
+   * Get active room entries as { roomType, widgetId, room } without serializing
    */
-  getActiveRooms() {
-    const rooms = [];
+  getActiveRoomEntries() {
+    const entries = [];
     this.activeRooms.forEach((room, roomId) => {
       // Split on the first ':' only - widget IDs may themselves contain ':'
       const separatorIndex = roomId.indexOf(':');
       const roomType = separatorIndex === -1 ? roomId : roomId.slice(0, separatorIndex);
       const widgetId = separatorIndex === -1 ? undefined : roomId.slice(separatorIndex + 1);
-      rooms.push({
-        roomType,
-        widgetId,
-        room: room.toJSON()
-      });
+      entries.push({ roomType, widgetId, room });
     });
-    return rooms;
+    return entries;
+  }
+
+  /**
+   * Get all active rooms
+   */
+  getActiveRooms() {
+    return this.getActiveRoomEntries().map(({ roomType, widgetId, room }) => ({
+      roomType,
+      widgetId,
+      room: room.toJSON()
+    }));
   }
 
   /**

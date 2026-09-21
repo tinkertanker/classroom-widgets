@@ -95,6 +95,13 @@ class RTFeedbackRoom extends Room {
   }
 
   /**
+   * Get number of feedback responses
+   */
+  getResponseCount() {
+    return this.feedbackData.size;
+  }
+
+  /**
    * Get average understanding level
    */
   getAverageUnderstanding() {
@@ -127,7 +134,7 @@ class RTFeedbackRoom extends Room {
       ...super.toJSON(),
       feedbackData: this.getAggregatedFeedback(),
       averageUnderstanding: this.getAverageUnderstanding(),
-      responseCount: this.feedbackData.size
+      responseCount: this.getResponseCount()
     };
   }
 }
