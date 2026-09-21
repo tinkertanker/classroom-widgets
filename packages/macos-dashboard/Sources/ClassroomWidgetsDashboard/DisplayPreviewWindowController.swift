@@ -36,7 +36,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
 
     init(frame: NSRect, backgroundOpacity: Double, keepOnAllSpaces: Bool) {
         let minimumContentSize = NSSize(width: 320, height: 240)
-        let panel = NSPanel(
+        let panel = FloatingPanel(
             contentRect: NSRect(
                 origin: .zero,
                 size: NSSize(
