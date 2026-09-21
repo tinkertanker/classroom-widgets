@@ -56,6 +56,7 @@ public partial class WidgetPanelWindow : Window
 
     public string WidgetId => _descriptor.Id;
     public bool IsResizable => _descriptor.IsResizable;
+    public bool IsHidden => _descriptor.Hidden;
     public Rect CurrentFrame => new(Left, Top, ActualWidth > 0 ? ActualWidth : Width, ActualHeight > 0 ? ActualHeight : Height);
     public Size PreferredFrameSize
     {
@@ -99,7 +100,7 @@ public partial class WidgetPanelWindow : Window
 
     public void ShowPanel()
     {
-        if (_closingPermanently) return;
+        if (_closingPermanently || _descriptor.Hidden) return;
         if (!IsVisible) Show();
         _hoverTimer.Start();
     }

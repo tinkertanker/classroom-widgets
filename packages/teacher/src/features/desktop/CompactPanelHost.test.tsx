@@ -387,18 +387,102 @@ describe('CompactPanelHost', () => {
     expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
   });
 
-  it('toggles an existing widget off before adding a new one', () => {
+  it('hides an existing widget on toggle and restores it unchanged', async () => {
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
+    });
+    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'timer-1', hidden: true })
+    ]));
+    await waitFor(() => {
+      const latest = postMessage.mock.calls[postMessage.mock.calls.length - 1][0];
+      expect(latest.widgets).toEqual([
+        expect.objectContaining({ widgetId: 'timer-1', hidden: true })
+      ]);
+    });
+    expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 10 } });
+
+    act(() => {
+      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
+    });
+    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'timer-1', hidden: false })
+    ]));
+  });
+
+  it('adds a new widget when toggling a type with no existing widget', () => {
+    useWorkspaceStore.setState({ widgets: [], widgetStates: new Map() });
     render(<CompactPanelHost />);
 
     act(() => {
       expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
     });
-    expect(useWorkspaceStore.getState().widgets.some((widget) => widget.type === WidgetType.TIMER)).toBe(false);
+    const added = useWorkspaceStore.getState().widgets.find((widget) => widget.type === WidgetType.TIMER);
+    expect(added).toBeDefined();
+    expect(added?.hidden).not.toBe(true);
+  });
+
+  it('restores a hidden widget on show instead of adding a duplicate', () => {
+    useWorkspaceStore.setState({
+      widgets: [{
+        id: 'timer-1',
+        type: WidgetType.TIMER,
+        position: { x: 0, y: 0 },
+        size: { width: 350, height: 415 },
+        zIndex: 0,
+        hidden: true
+      }]
+    });
+    render(<CompactPanelHost />);
 
     act(() => {
-      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
+      expect(window.classroomPanelHost?.showWidget(WidgetType.TIMER)).toBe(true);
     });
-    expect(useWorkspaceStore.getState().widgets.some((widget) => widget.type === WidgetType.TIMER)).toBe(true);
+    const widgets = useWorkspaceStore.getState().widgets;
+    expect(widgets.filter((widget) => widget.type === WidgetType.TIMER)).toHaveLength(1);
+    expect(widgets[0]).toEqual(expect.objectContaining({ id: 'timer-1', hidden: false }));
+  });
+
+  it('adds a new widget on show when none of that type exists', () => {
+    render(<CompactPanelHost />);
+
+    act(() => {
+      expect(window.classroomPanelHost?.showWidget(WidgetType.LIST)).toBe(true);
+    });
+    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: WidgetType.LIST })
+    ]));
+  });
+
+  it('dismisses the visible widget before a hidden one of the same type', () => {
+    useWorkspaceStore.setState({
+      widgets: [
+        {
+          id: 'timer-1',
+          type: WidgetType.TIMER,
+          position: { x: 0, y: 0 },
+          size: { width: 350, height: 415 },
+          zIndex: 0
+        },
+        {
+          id: 'timer-2',
+          type: WidgetType.TIMER,
+          position: { x: 20, y: 20 },
+          size: { width: 350, height: 415 },
+          zIndex: 1,
+          hidden: true
+        }
+      ]
+    });
+    render(<CompactPanelHost />);
+
+    act(() => {
+      expect(window.classroomPanelHost?.dismissWidget(WidgetType.TIMER)).toBe(true);
+    });
+    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).toEqual(['timer-2']);
   });
 
   it('dismisses the newest-created widget after an older widget is brought to front', () => {
@@ -423,7 +507,7 @@ describe('CompactPanelHost', () => {
     expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
   });
 
-  it('toggles off the newest-created widget after an older widget is brought to front', () => {
+  it('hides the newest-created widget after an older widget is brought to front', () => {
     useWorkspaceStore.setState({
       widgets: [
         ...useWorkspaceStore.getState().widgets,
@@ -441,8 +525,12 @@ describe('CompactPanelHost', () => {
     act(() => useWorkspaceStore.getState().bringToFront('timer-1'));
     act(() => expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true));
 
-    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).toContain('timer-1');
-    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
+    const widgets = useWorkspaceStore.getState().widgets;
+    expect(widgets).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'timer-1' }),
+      expect.objectContaining({ id: 'timer-2', hidden: true })
+    ]));
+    expect(widgets.find((widget) => widget.id === 'timer-1')?.hidden).not.toBe(true);
   });
 
   it('dismisses the newest-created widget in a restored workspace where an older widget is frontmost', () => {

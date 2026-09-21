@@ -164,6 +164,31 @@ describe('workspace snapshot', () => {
     expect(store().widgetStates).toBe(firstStates);
   });
 
+  it('drops the widget state entry when a widget is removed', async () => {
+    await seedStorage();
+    const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
+    store().updateWidgetState(timerId, { seconds: 42 });
+
+    store().removeWidget(timerId);
+
+    expect(store().widgets).toEqual([]);
+    expect(store().widgetStates.has(timerId)).toBe(false);
+  });
+
+  it('round-trips a hidden widget flag through workspace switch', async () => {
+    const { idA } = await seedStorage();
+    const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
+    store().updateWidget(timerId, { hidden: true });
+    store().updateWidgetState(timerId, { seconds: 42 });
+    store().createWorkspace('Other');
+
+    store().switchWorkspace(idA);
+
+    const restored = store().widgets.find(w => w.id === timerId);
+    expect(restored?.hidden).toBe(true);
+    expect(store().widgetStates.get(timerId)).toEqual({ seconds: 42 });
+  });
+
   it('writes widget state when only a Date field changes', async () => {
     await seedStorage();
     const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });

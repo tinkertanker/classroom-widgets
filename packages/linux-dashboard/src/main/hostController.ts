@@ -115,6 +115,14 @@ export class WidgetHostController extends EventEmitter {
     if (!applied) log.warn(`Host refused to add widget type ${widgetType}`);
   }
 
+  async showWidget(widgetType: number): Promise<void> {
+    if (!this.initialized) return;
+    await evaluateBool(
+      this.window.webContents,
+      `(() => { const host = window.classroomPanelHost; return host?.showWidget ? host.showWidget(${JSON.stringify(widgetType)}) : false; })()`,
+    );
+  }
+
   async dismissWidget(widgetType: number): Promise<void> {
     if (!this.initialized) return;
     await evaluateBool(

@@ -151,7 +151,7 @@ function bootstrap(): void {
     shortcuts = new WidgetShortcutController(
       settings,
       globalShortcut,
-      (widgetType) => void host?.addWidget(widgetType),
+      (widgetType) => void host?.showWidget(widgetType),
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
       displayPreview,

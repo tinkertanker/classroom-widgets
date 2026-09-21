@@ -79,11 +79,12 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
     return Number.isFinite(createdAt) ? createdAt : -1;
   };
 
-  const newestWidgetOfType = (widgetType: number) => {
+  const newestWidgetOfType = (widgetType: number, predicate?: (widget: typeof workspace.widgets[number]) => boolean) => {
     const widgets = useWorkspaceStore.getState().widgets;
     syncWidgetCreationOrder(widgets);
     return widgets.reduce<typeof workspace.widgets[number] | undefined>((newest, candidate) => {
       if (candidate.type !== widgetType) return newest;
+      if (predicate && !predicate(candidate)) return newest;
       if (!newest) return candidate;
       const candidateCreatedAt = widgetCreatedAt(candidate.id);
       const newestCreatedAt = widgetCreatedAt(newest.id);
@@ -134,6 +135,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         maximumSize,
         isResizable: config.features?.isResizable !== false,
         maintainsAspectRatio: config.maintainAspectRatio === true,
+        hidden: widget.hidden === true,
         state: asJsonValue(workspace.widgetStates.get(widget.id)),
         theme: dashboardTheme,
         savedRandomiserLists: widget.type === WidgetType.RANDOMISER
@@ -161,6 +163,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         maximumSize: snapshot.maximumSize,
         isResizable: snapshot.isResizable,
         maintainsAspectRatio: snapshot.maintainsAspectRatio,
+        hidden: snapshot.hidden,
         theme: snapshot.theme,
         savedRandomiserLists: snapshot.savedRandomiserLists
       });
@@ -243,10 +246,22 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         useWorkspaceStore.getState().addWidget(widgetType);
         return true;
       },
+      showWidget: (widgetType) => {
+        const config = widgetRegistry.get(widgetType);
+        if (!config?.compactPanel?.supported) return false;
+        const hidden = newestWidgetOfType(widgetType, (widget) => widget.hidden === true);
+        if (hidden) {
+          useWorkspaceStore.getState().updateWidget(hidden.id, { hidden: false });
+          return true;
+        }
+        useWorkspaceStore.getState().addWidget(widgetType);
+        return true;
+      },
       dismissWidget: (widgetType) => {
         const config = widgetRegistry.get(widgetType);
         if (!config?.compactPanel?.supported) return false;
-        const widget = newestWidgetOfType(widgetType);
+        const widget = newestWidgetOfType(widgetType, (candidate) => candidate.hidden !== true)
+          ?? newestWidgetOfType(widgetType);
         if (!widget) return false;
         useWorkspaceStore.getState().removeWidget(widget.id);
         return true;
@@ -255,9 +270,14 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         const config = widgetRegistry.get(widgetType);
         if (!config?.compactPanel?.supported) return false;
         const state = useWorkspaceStore.getState();
-        const widget = newestWidgetOfType(widgetType);
-        if (widget) {
-          state.removeWidget(widget.id);
+        const visible = newestWidgetOfType(widgetType, (widget) => widget.hidden !== true);
+        if (visible) {
+          state.updateWidget(visible.id, { hidden: true });
+          return true;
+        }
+        const hidden = newestWidgetOfType(widgetType, (widget) => widget.hidden === true);
+        if (hidden) {
+          state.updateWidget(hidden.id, { hidden: false });
           return true;
         }
         state.addWidget(widgetType);

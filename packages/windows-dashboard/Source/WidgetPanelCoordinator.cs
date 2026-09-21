@@ -77,11 +77,16 @@ public sealed class WidgetPanelCoordinator
         }
 
         var created = false;
+        var visibilityChanged = false;
         foreach (var descriptor in inventory.Widgets)
         {
             if (_panels.TryGetValue(descriptor.Id, out var existing))
             {
+                var wasHidden = existing.IsHidden;
                 existing.Apply(descriptor);
+                if (descriptor.Hidden) existing.HidePanel();
+                else if (_active && wasHidden) existing.ShowPanel();
+                visibilityChanged |= wasHidden != descriptor.Hidden;
                 continue;
             }
             var panel = MakePanel(descriptor);
@@ -90,7 +95,7 @@ public sealed class WidgetPanelCoordinator
             if (_active) panel.ShowPanel();
         }
 
-        if (created && _layout != WidgetPanelLayout.Freeform) Arrange(_layout);
+        if ((created || visibilityChanged) && _layout != WidgetPanelLayout.Freeform) Arrange(_layout);
         return true;
     }
 
@@ -175,8 +180,8 @@ public sealed class WidgetPanelCoordinator
     }
 
     private List<WidgetPanelWindow> OrderedPanels => _lastInventory is null
-        ? _panels.Values.OrderBy(panel => panel.WidgetId, StringComparer.Ordinal).ToList()
-        : _lastInventory.Widgets.Select(widget => _panels.GetValueOrDefault(widget.Id)).Where(panel => panel is not null).Cast<WidgetPanelWindow>().ToList();
+        ? _panels.Values.Where(panel => !panel.IsHidden).OrderBy(panel => panel.WidgetId, StringComparer.Ordinal).ToList()
+        : _lastInventory.Widgets.Select(widget => _panels.GetValueOrDefault(widget.Id)).Where(panel => panel is not null && !panel.IsHidden).Cast<WidgetPanelWindow>().ToList();
 
     private WidgetPanelWindow MakePanel(WidgetPanelDescriptor descriptor)
     {
@@ -215,7 +220,7 @@ public sealed class WidgetPanelCoordinator
         var usable = ScreenGeometry.PrimaryWorkArea();
         usable.Inflate(-gap, -gap);
         var size = panel.PreferredFrameSize;
-        var existing = _panels.Values.Select(existingPanel => existingPanel.CurrentFrame).ToList();
+        var existing = _panels.Values.Where(existingPanel => !existingPanel.IsHidden).Select(existingPanel => existingPanel.CurrentFrame).ToList();
         var nextX = (existing.Count > 0 ? existing.Max(frame => frame.Right) : usable.Left - gap) + gap;
         if (nextX + size.Width <= usable.Right)
         {

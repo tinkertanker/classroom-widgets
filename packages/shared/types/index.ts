@@ -8,6 +8,7 @@ export interface WidgetInstance {
   size: Size;
   zIndex: number;
   state?: any; // Will be replaced with generic type
+  hidden?: boolean; // Compact dashboard panels hide instead of unloading
 }
 
 // Alias for backwards compatibility

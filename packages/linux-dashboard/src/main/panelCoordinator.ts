@@ -177,10 +177,15 @@ export class WidgetPanelCoordinator extends EventEmitter {
     }
 
     let created = false;
+    let visibilityChanged = false;
     for (const descriptor of inventory.widgets) {
       const existing = this.panels.get(descriptor.id);
       if (existing) {
+        const wasHidden = existing.isHidden;
         existing.apply(descriptor);
+        if (descriptor.hidden) existing.hidePanel();
+        else if (this.active && wasHidden) existing.showPanel();
+        visibilityChanged ||= wasHidden !== descriptor.hidden;
         continue;
       }
       const panel = this.makePanel(descriptor);
@@ -189,7 +194,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
       if (this.active) panel.showPanel();
     }
 
-    if (created && this.layout !== 'freeform') this.arrange(this.layout);
+    if ((created || visibilityChanged) && this.layout !== 'freeform') this.arrange(this.layout);
     this.emit('changed');
     return true;
   }
@@ -274,11 +279,12 @@ export class WidgetPanelCoordinator extends EventEmitter {
 
   private orderedPanels(): WidgetPanelWindow[] {
     if (!this.lastInventory) {
-      return [...this.panels.values()].sort((a, b) => a.widgetId.localeCompare(b.widgetId));
+      return [...this.panels.values()].filter((panel) => !panel.isHidden)
+        .sort((a, b) => a.widgetId.localeCompare(b.widgetId));
     }
     return this.lastInventory.widgets
       .map((widget) => this.panels.get(widget.id))
-      .filter((panel): panel is WidgetPanelWindow => panel !== undefined);
+      .filter((panel): panel is WidgetPanelWindow => panel !== undefined && !panel.isHidden);
   }
 
   private makePanel(descriptor: WidgetPanelDescriptor): WidgetPanelWindow {
@@ -317,7 +323,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     usable.width -= GAP * 2;
     usable.height -= GAP * 2;
     const size = panel.preferredFrameSize();
-    const existing = [...this.panels.values()].map((p) => p.currentFrame);
+    const existing = [...this.panels.values()].filter((p) => !p.isHidden).map((p) => p.currentFrame);
     const nextX = (existing.length > 0 ? Math.max(...existing.map((f) => f.x + f.width)) : usable.x - GAP) + GAP;
     if (nextX + size.width <= usable.x + usable.width) {
       return { x: nextX, y: usable.y, width: size.width, height: size.height };
