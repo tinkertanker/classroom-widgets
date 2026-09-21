@@ -41,7 +41,6 @@
   }
 
   var rows = {};
-  var renderedTypes = [];
   var capturingRow = null;
   var rowError = null;
 
@@ -145,7 +144,6 @@
     document.getElementById('resetShortcuts').disabled = !shortcuts.length;
     if (!shortcuts.length) {
       rows = {};
-      renderedTypes = [];
       shortcutList.replaceChildren();
       var loading = document.createElement('p');
       loading.className = 'hint';
@@ -154,18 +152,19 @@
       return;
     }
     var nextTypes = shortcuts.map(function (shortcut) { return String(shortcut.widgetType); });
-    var needsRebuild = nextTypes.length !== renderedTypes.length
-      || nextTypes.some(function (type, index) { return renderedTypes[index] !== type || !rows[type]; });
-    if (needsRebuild) {
-      rows = {};
-      renderedTypes = nextTypes;
-      shortcutList.replaceChildren();
-      shortcuts.forEach(function (shortcut) {
-        rows[String(shortcut.widgetType)] = buildRow(shortcut);
-      });
-    }
-    shortcuts.forEach(function (shortcut) {
-      var entry = rows[String(shortcut.widgetType)];
+    Object.keys(rows).forEach(function (type) {
+      if (nextTypes.indexOf(type) !== -1) return;
+      rows[type].row.remove();
+      delete rows[type];
+    });
+    if (!Object.keys(rows).length) shortcutList.replaceChildren();
+    shortcuts.forEach(function (shortcut, index) {
+      var type = String(shortcut.widgetType);
+      var entry = rows[type] || (rows[type] = buildRow(shortcut));
+      if (shortcutList.children[index] !== entry.row) {
+        // Unlike removal/reinsertion, moveBefore keeps the recorder focused.
+        shortcutList.moveBefore(entry.row, shortcutList.children[index]);
+      }
       entry.shortcut = shortcut;
       entry.name.textContent = shortcut.title;
       ['show', 'dismiss'].forEach(function (action) {
