@@ -148,8 +148,8 @@ All variables must be prefixed with `VITE_`:
 # Required: Backend server URL
 VITE_SERVER_URL=https://your-backend-domain.com
 
-# Optional: Link Shortener widget API key
-VITE_SHORTIO_API_KEY=your_api_key
+# Optional: show the web Link Shortener widget
+VITE_LINK_SHORTENER_ENABLED=true
 
 # Optional: Umami Analytics (see docs/ANALYTICS.md)
 VITE_UMAMI_SCRIPT_URL=https://your-umami-domain.com/script.js
@@ -168,8 +168,19 @@ CORS_ORIGINS=https://teacher-app.com,https://student-app.com
 # Required: URL shown to teachers for the student app
 STUDENT_APP_URL=https://student-app.com/student
 
+# Optional: Short.io proxy configuration (key remains server-side)
+# Rotate any key previously assigned to VITE_SHORTIO_API_KEY before deployment:
+# older frontend builds shipped it in the public bundle.
+SHORTIO_API_KEY=your_api_key
+SHORTIO_DOMAIN=go.example.edu
+# SHORTIO_BASE_URL=https://api.short.io/links/public
+
 # Optional: Logging level (error|warn|info|debug)
 LOG_LEVEL=info
+
+# Recommended behind nginx: number of trusted reverse-proxy hops so per-IP
+# rate limits use the real client IP from X-Forwarded-For (0 = ignore header)
+TRUST_PROXY=1
 
 # Optional: Room cleanup settings
 MAX_ROOM_AGE=43200000      # 12 hours in milliseconds

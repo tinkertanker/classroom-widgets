@@ -16,6 +16,13 @@ describe('generateCode', () => {
 
   it('defaults to the configured room code length', () => {
     assert.equal(generateCode().length, LIMITS.ROOM_CODE_LENGTH);
+    assert.ok(LIMITS.ROOM_CODE_LENGTH >= 6, 'session codes must be at least 6 characters');
+  });
+
+  it('does not use Math.random', (t) => {
+    const spy = t.mock.method(Math, 'random');
+    for (let i = 0; i < 100; i++) generateCode();
+    assert.equal(spy.mock.callCount(), 0);
   });
 
   it('avoids existing codes', () => {

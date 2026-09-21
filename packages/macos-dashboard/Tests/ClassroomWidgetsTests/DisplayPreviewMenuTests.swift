@@ -34,7 +34,10 @@ final class DisplayPreviewMenuTests: XCTestCase {
             let defaults = UserDefaults(suiteName: suiteName)!
             defer { defaults.removePersistentDomain(forName: suiteName) }
             var dispatchCount = 0
-            let delegate = AppDelegate(defaults: defaults) { dispatchCount += 1 }
+            let delegate = AppDelegate(defaults: defaults, displayShortcutAction: { action in
+                XCTAssertEqual(action, .show)
+                dispatchCount += 1
+            })
 
             delegate.performDisplayShortcut()
 

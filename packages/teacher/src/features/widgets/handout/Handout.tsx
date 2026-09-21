@@ -4,6 +4,7 @@ import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
+import { isSafeHttpUrl } from '@shared/utils/validation';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, WidgetControlBar, PlayPauseButton, ClearButton } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
@@ -27,6 +28,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
     isStarting,
     error,
     handleStart,
+    canEdit,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -72,7 +74,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Actions
   const handleAddItem = useCallback(() => {
-    if (!widgetId || !hasRoom || !inputValue.trim()) return;
+    if (!widgetId || !hasRoom || !inputValue.trim() || !canEdit()) return;
 
     emit('session:handout:add', {
       sessionCode: session.sessionCode!,
@@ -81,7 +83,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
     });
 
     setInputValue('');
-  }, [widgetId, hasRoom, inputValue, emit, session.sessionCode]);
+  }, [widgetId, hasRoom, inputValue, emit, session.sessionCode, canEdit]);
 
   const handleDeleteItem = useCallback((itemId: string) => {
     if (!widgetId || !hasRoom) return;
@@ -141,13 +143,15 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
+          isReady: session.isReady,
           defaultText: "Start Handout"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
           isStarting,
           isRecovering: session.isRecovering,
-          isConnected: session.isConnected
+          isConnected: session.isConnected,
+          isReady: session.isReady
         })}
         error={error || undefined}
       />
@@ -168,6 +172,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
           isActive={isWidgetActive}
           isConnected={session.isConnected}
           isRecovering={session.isRecovering}
+          isRecoveryDeferred={session.isRecoveryDeferred}
           pausedMessage="Handout is paused"
         />
 
@@ -181,12 +186,12 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Enter text or link..."
-              disabled={!session.isConnected}
+              disabled={!session.isReady}
               className="flex-1 px-3 py-2 text-sm border border-warm-gray-300 dark:border-warm-gray-600 rounded-lg bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 placeholder-warm-gray-400 dark:placeholder-warm-gray-500 focus:outline-none focus:ring-2 focus:ring-sage-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <button
               onClick={handleAddItem}
-              disabled={!session.isConnected || !inputValue.trim()}
+              disabled={!session.isReady || !inputValue.trim()}
               className="flex items-center gap-1.5 px-3 py-2 bg-sage-500 hover:bg-sage-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               title="Add item"
             >
@@ -231,7 +236,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      {item.isLink ? (
+                      {item.isLink && isSafeHttpUrl(item.content) ? (
                         <a
                           href={item.content}
                           target="_blank"
@@ -251,6 +256,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
                     {/* Delete */}
                     <button
                       onClick={() => handleDeleteItem(item.id)}
+                      disabled={!session.isReady}
                       className="flex-shrink-0 text-warm-gray-400 hover:text-dusty-rose-500 dark:text-warm-gray-500 dark:hover:text-dusty-rose-400 transition-colors p-1"
                       title="Delete item"
                     >
@@ -270,7 +276,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
           <PlayPauseButton
             isActive={isWidgetActive}
             onToggle={handleToggleActive}
-            disabled={!session.isConnected}
+            disabled={!session.isReady}
             activeLabel="Pause handout"
             inactiveLabel="Resume handout"
           />
@@ -280,7 +286,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
               onClear={handleClearAll}
               count={items.length}
               label="Clear all"
-              disabled={!session.isConnected}
+              disabled={!session.isReady}
               variant="clear"
               requireConfirmation={true}
               confirmationMessage="Are you sure you want to clear all items?"

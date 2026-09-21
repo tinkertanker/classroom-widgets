@@ -22,6 +22,7 @@ public partial class App : Application
     private WidgetHostController? _host;
     private LauncherWindow? _launcher;
     private WidgetShortcutManager? _shortcuts;
+    private DisplayPreviewCoordinator? _displayPreview;
     private TrayController? _tray;
     private UpdateController? _updates;
     private bool _terminationPrepared;
@@ -101,12 +102,15 @@ public partial class App : Application
         _settings.Changed += () => _host.ApplySettings();
         _host.ApplySettings();
 
-        _shortcuts = new WidgetShortcutManager(_settings, _host);
+        var displayCatalog = new DisplayCatalog();
+        _displayPreview = new DisplayPreviewCoordinator(_settings, displayCatalog);
+        _shortcuts = new WidgetShortcutManager(_settings, _host, _displayPreview.PerformShortcut);
         _updates = new UpdateController(RequestQuitAsync);
-        _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher);
+        _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => _displayPreview.Open());
         // The widget settings gear posts classroomWidgetPanel open-settings;
         // panels route it here so the same Settings window opens as from the tray.
         _host.OpenSettingsRequested += () => _tray.OpenSettings();
+        _host.Coordinator.DisplayPreviewRequested += () => _displayPreview.Open();
         _ = _host.StartAsync();
         _ = CheckForUpdatesAfterDelayAsync();
     }
@@ -137,6 +141,7 @@ public partial class App : Application
     {
         if (IsShuttingDown) return;
         IsShuttingDown = true;
+        _displayPreview?.Shutdown();
         if (_host is not null && !_terminationPrepared)
         {
             _terminationPrepared = await _host.PrepareForTerminationAsync();
@@ -149,6 +154,7 @@ public partial class App : Application
     protected override void OnSessionEnding(SessionEndingCancelEventArgs args)
     {
         IsShuttingDown = true;
+        _displayPreview?.Shutdown();
         _host?.Coordinator.FlushPersistedFrames();
         _settings?.Save();
         base.OnSessionEnding(args);
@@ -157,6 +163,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs args)
     {
         IsShuttingDown = true;
+        _displayPreview?.Shutdown();
         _tray?.Dispose();
         _shortcuts?.Dispose();
         _showLauncherRegistration?.Unregister(null);

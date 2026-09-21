@@ -121,29 +121,6 @@ export const widgetContainer = cn(
   "w-full h-full overflow-hidden flex flex-col"
 );
 
-// Widget container styles with shadow (legacy)
-export const widgetContainerWithShadow = cn(
-  backgrounds.card,
-  backgrounds.border,
-  "rounded-lg shadow-sm w-full h-full overflow-hidden flex flex-col"
-);
-
-// Legacy widget container (deprecated - use widgetContainer instead)
-export const widgetContainerLegacy = cn(
-  backgrounds.card,
-  borderStyles.widget,
-  "w-full h-full overflow-hidden flex flex-col"
-);
-
-// Standard widget border pattern (explicit export for clarity)
-export const widgetBorderStandard = cn(
-  "widget-container-surface",
-  "bg-soft-white/90 dark:bg-warm-gray-800/90",
-  "rounded-lg",
-  borders.primary,
-  "w-full h-full flex flex-col"
-);
-
 // Widget wrapper for full widget including controls
 export const widgetWrapper = cn(
   "w-full h-full flex flex-col relative"
@@ -196,25 +173,6 @@ export const iconSizes = {
   md: "w-5 h-5",
   lg: "w-6 h-6",
   xl: "w-8 h-8"
-} as const;
-
-// Responsive size classes
-export const responsiveSizes = {
-  text: {
-    small: "text-sm",
-    medium: "text-base",
-    large: "text-2xl"
-  },
-  padding: {
-    small: "p-1.5",
-    medium: "p-2",
-    large: "p-3"
-  },
-  spacing: {
-    small: "space-y-1",
-    medium: "space-y-2",
-    large: "space-y-3"
-  }
 } as const;
 
 // Helper to get status color classes
@@ -328,22 +286,3 @@ export const menuItem = {
 // HUD button inner elements
 export const hudButtonIcon = "w-4 h-4 text-warm-gray-600 dark:text-warm-gray-300" as const;
 export const hudButtonIconSmall = "w-3 h-3 text-warm-gray-600 dark:text-warm-gray-300" as const;
-
-// Toolbar-specific button styles
-export const toolbarButton = {
-  base: cn(
-    "px-3 py-2 rounded-lg",
-    "flex flex-col items-center gap-1 min-w-[80px]",
-    "transition-all duration-200"
-  ),
-  default: cn(
-    "text-warm-gray-700 dark:text-warm-gray-300",
-    "bg-white/50 dark:bg-warm-gray-700/50",
-    "hover:bg-white/70 dark:hover:bg-warm-gray-600/70"
-  ),
-  active: cn(
-    "bg-terracotta-500 text-white",
-    "hover:bg-terracotta-600"
-  ),
-  label: "text-xs text-center leading-tight"
-} as const;

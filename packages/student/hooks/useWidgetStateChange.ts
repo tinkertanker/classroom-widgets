@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 
 interface UseWidgetStateChangeParams {
@@ -18,17 +18,22 @@ export const useWidgetStateChange = ({
   initialIsActive,
   onStateChange
 }: UseWidgetStateChangeParams) => {
+  const onStateChangeRef = useRef(onStateChange);
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+  }, [onStateChange]);
+
   useEffect(() => {
     const handleWidgetStateChanged = (data: { roomType: string; widgetId?: string; isActive: boolean }) => {
       // Only handle state changes for this specific widget type and instance
       if (data.roomType === roomType && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        onStateChange(data.isActive, data);
+        onStateChangeRef.current(data.isActive, data);
       }
     };
 
     const handleStateUpdate = (data: { isActive?: boolean; widgetId?: string; [key: string]: any }) => {
       if (typeof data.isActive === 'boolean' && (data.widgetId === widgetId || (!data.widgetId && !widgetId))) {
-        onStateChange(data.isActive, data);
+        onStateChangeRef.current(data.isActive, data);
       }
     };
 
@@ -48,5 +53,5 @@ export const useWidgetStateChange = ({
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off(`${roomType}:stateUpdate`, handleStateUpdate);
     };
-  }, [socket, roomCode, roomType, widgetId, initialIsActive, onStateChange]);
+  }, [socket, roomCode, roomType, widgetId, initialIsActive]);
 };

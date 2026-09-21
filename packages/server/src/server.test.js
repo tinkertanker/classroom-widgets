@@ -17,7 +17,7 @@ test('CORS origin matching allows non-browser requests and rejects malformed ori
   assert.equal(AppServer.isOriginAllowed('not a url'), false);
 });
 
-test('voice command requests keep the larger JSON body limit', async () => {
+test('voice command requests use a tighter JSON body limit', async () => {
   const server = new AppServer();
   server.configureMiddleware();
   server.app.post('/api/voice-command/test', (req, res) => {
@@ -35,14 +35,15 @@ test('voice command requests keep the larger JSON body limit', async () => {
   try {
     const { port } = server.server.address();
     const url = `http://127.0.0.1:${port}`;
-    const body = JSON.stringify({ transcript: 'x'.repeat(300 * 1024) });
+    // 100KB exceeds the 64kb voice-command limit but fits the 256kb default.
+    const body = JSON.stringify({ transcript: 'x'.repeat(100 * 1024) });
     const headers = { 'content-type': 'application/json' };
 
     const voiceResponse = await fetch(`${url}/api/voice-command/test`, { method: 'POST', headers, body });
-    assert.equal(voiceResponse.status, 200);
+    assert.equal(voiceResponse.status, 413);
 
     const otherResponse = await fetch(`${url}/api/other-test`, { method: 'POST', headers, body });
-    assert.equal(otherResponse.status, 413);
+    assert.equal(otherResponse.status, 200);
   } finally {
     await new Promise((resolve) => server.server.close(resolve));
     server.sessionManager.stopCleanupInterval();

@@ -3,6 +3,7 @@ FROM node:20-alpine AS build
 
 # Build arguments for environment variables
 ARG VITE_SERVER_URL=http://localhost:3001
+ARG VITE_LINK_SHORTENER_ENABLED=false
 
 # Install build dependencies for canvas and other native modules
 RUN apk add --no-cache \
@@ -42,6 +43,7 @@ COPY scripts/ scripts/
 
 # Set environment variables for build
 ENV VITE_SERVER_URL=$VITE_SERVER_URL
+ENV VITE_LINK_SHORTENER_ENABLED=$VITE_LINK_SHORTENER_ENABLED
 
 # Build the app
 RUN npm run build -w @classroom-widgets/teacher

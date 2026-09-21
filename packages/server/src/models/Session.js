@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const PollRoom = require('./PollRoom');
 const LinkShareRoom = require('./LinkShareRoom');
 const RTFeedbackRoom = require('./RTFeedbackRoom');
@@ -15,6 +16,7 @@ class Session {
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
     this.hostDisconnectedAt = null; // Timestamp when host disconnected
+    this.hostToken = this.rotateHostToken(); // Secret token for host reclaim
     this.activeRooms = new Map(); // roomType -> room instance
     this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
   }
@@ -34,6 +36,27 @@ class Session {
   }
 
   /**
+   * Issue a fresh host token, replacing any previous one.
+   */
+  rotateHostToken() {
+    this.hostToken = crypto.randomBytes(24).toString('base64url');
+    return this.hostToken;
+  }
+
+  /**
+   * Check whether a presented token allows reclaiming the host role.
+   * Constant-time comparison; never leaks this.hostToken.
+   */
+  isValidHostToken(token) {
+    if (typeof token !== 'string') {
+      return false;
+    }
+    const expected = Buffer.from(this.hostToken);
+    const candidate = Buffer.from(token);
+    return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
+  }
+
+  /**
    * Check if a socket is the host
    */
   isHost(socketId) {
@@ -41,43 +64,10 @@ class Session {
   }
 
   /**
-   * Set the host socket, clearing any pending disconnect state
-   */
-  setHost(socketId) {
-    this.hostSocketId = socketId;
-    this.hostDisconnectedAt = null;
-  }
-
-  /**
-   * Mark the host as disconnected
-   */
-  markHostDisconnected() {
-    this.hostDisconnectedAt = Date.now();
-  }
-
-  /**
-   * Clear the host's disconnected state
-   */
-  clearHostDisconnected() {
-    this.hostDisconnectedAt = null;
-  }
-
-  /**
    * Build the internal room key from a room type and optional widget ID
    */
   _roomKey(roomType, widgetId) {
     return widgetId ? `${roomType}:${widgetId}` : roomType;
-  }
-
-  /**
-   * Parse an internal room key back into its room type and widget ID.
-   * Splits on the first ':' only - widget IDs may themselves contain ':'
-   */
-  _parseRoomKey(key) {
-    const separatorIndex = key.indexOf(':');
-    const roomType = separatorIndex === -1 ? key : key.slice(0, separatorIndex);
-    const widgetId = separatorIndex === -1 ? undefined : key.slice(separatorIndex + 1);
-    return { roomType, widgetId };
   }
 
   /**
@@ -180,13 +170,6 @@ class Session {
   }
 
   /**
-   * Check if session has any active rooms
-   */
-  hasActiveRooms() {
-    return this.activeRooms.size > 0;
-  }
-
-  /**
    * Get participant count
    */
   getParticipantCount() {
@@ -201,36 +184,29 @@ class Session {
   }
 
   /**
-   * Get active room types/IDs
+   * Get active room entries as { roomType, widgetId, room } without serializing
    */
-  getActiveRoomTypes() {
-    return Array.from(this.activeRooms.keys());
+  getActiveRoomEntries() {
+    const entries = [];
+    this.activeRooms.forEach((room, roomId) => {
+      // Split on the first ':' only - widget IDs may themselves contain ':'
+      const separatorIndex = roomId.indexOf(':');
+      const roomType = separatorIndex === -1 ? roomId : roomId.slice(0, separatorIndex);
+      const widgetId = separatorIndex === -1 ? undefined : roomId.slice(separatorIndex + 1);
+      entries.push({ roomType, widgetId, room });
+    });
+    return entries;
   }
 
   /**
    * Get all active rooms
    */
   getActiveRooms() {
-    const rooms = [];
-    this.activeRooms.forEach((room, roomId) => {
-      // Split on the first ':' only - widget IDs may themselves contain ':'
-      const separatorIndex = roomId.indexOf(':');
-      const roomType = separatorIndex === -1 ? roomId : roomId.slice(0, separatorIndex);
-      const widgetId = separatorIndex === -1 ? undefined : roomId.slice(separatorIndex + 1);
-      rooms.push({
-        roomType,
-        widgetId,
-        room: room.toJSON()
-      });
-    });
-    return rooms;
-  }
-
-  /**
-   * Check if the session is expired
-   */
-  isExpired(maxAge = 12 * 60 * 60 * 1000) {
-    return Date.now() - this.createdAt > maxAge;
+    return this.getActiveRoomEntries().map(({ roomType, widgetId, room }) => ({
+      roomType,
+      widgetId,
+      room: room.toJSON()
+    }));
   }
 
   /**

@@ -22,11 +22,7 @@ try {
   const service = new BAMLService();
   console.log('✅ Service instance created\n');
 
-  console.log('5. Service info:');
-  const info = service.getInfo();
-  console.log(JSON.stringify(info, null, 2));
-
-  console.log('\n🎉 BAML integration test passed!');
+  console.log('🎉 BAML integration test passed!');
   console.log('\n📝 To test with Ollama, set USE_BAML=true in server/.env');
 
 } catch (error) {

@@ -15,10 +15,10 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-test('the web launcher still requires its build-time key', async () => {
-  vi.stubEnv('VITE_SHORTIO_API_KEY', '');
+test('the web launcher is opt-in via VITE_LINK_SHORTENER_ENABLED', async () => {
+  vi.stubEnv('VITE_LINK_SHORTENER_ENABLED', '');
   expect((await getShortener())?.features?.hidden).toBe(true);
-  vi.stubEnv('VITE_SHORTIO_API_KEY', 'pk_web');
+  vi.stubEnv('VITE_LINK_SHORTENER_ENABLED', 'true');
   expect((await getShortener())?.features?.hidden).toBe(false);
 });
 

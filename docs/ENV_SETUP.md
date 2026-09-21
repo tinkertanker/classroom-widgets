@@ -30,7 +30,7 @@ cp .env.example .env
 # 2. Edit .env and add your secrets
 nano .env
 
-# 3. Update VITE_SHORTIO_API_KEY if using Link Shortener
+# 3. Set backend Short.io variables and enable the web widget if needed
 # That's it! Run: npm run dev
 ```
 
@@ -61,8 +61,10 @@ docker-compose -f docker-compose.prod.yml up -d
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `VITE_SERVER_URL` | Backend server URL | `http://localhost:3001` |
-| `VITE_SHORTIO_API_KEY` | Short.io API key (optional) | `pk_abc123...` |
-| `VITE_SHORTIO_BASE_URL` | Short.io base URL | `https://api.short.io/links` |
+| `VITE_LINK_SHORTENER_ENABLED` | Show the web Link Shortener widget | `true` |
+| `SHORTIO_API_KEY` | Short.io API key (backend only) | `pk_abc123...` |
+| `SHORTIO_DOMAIN` | Short.io short-link domain (backend only) | `go.example.edu` |
+| `SHORTIO_BASE_URL` | Optional Short.io proxy target URL | `https://api.short.io/links/public` |
 | `VITE_UMAMI_SCRIPT_URL` | Umami tracking script URL | `http://localhost:3003/script.js` |
 | `VITE_UMAMI_WEBSITE_ID` | Umami website ID (leave empty to disable) | `a1b2c3d4-...` |
 | `UMAMI_APP_SECRET` | Secret for Umami (docker-compose) | `random-string` |
@@ -85,9 +87,10 @@ All development variables PLUS:
 
 ## Desktop link shortening
 
-The website's Link Shortener still uses `VITE_SHORTIO_API_KEY`,
-`VITE_SHORTIO_DOMAIN`, and the optional `VITE_SHORTIO_BASE_URL` at build time.
-It remains hidden from the web launcher when no API key is configured.
+The web Link Shortener is opt-in with `VITE_LINK_SHORTENER_ENABLED=true`.
+When enabled, it proxies requests through `POST /api/shorten`; configure
+`SHORTIO_API_KEY`, `SHORTIO_DOMAIN`, and optionally `SHORTIO_BASE_URL` on the
+backend. The API key never enters the browser bundle.
 
 The desktop apps instead use **Settings → Link Shortener** at runtime, shared
 across floating widgets and saved in native preferences. TinyURL is the default
@@ -122,7 +125,7 @@ their Settings windows, also accessible from the widget's settings gear.
 **Option 2: Environment variables** (Recommended for CI/CD)
 ```bash
 # Pass secrets at runtime
-VITE_SHORTIO_API_KEY=secret123 docker-compose up
+SHORTIO_API_KEY=secret123 SHORTIO_DOMAIN=go.example.edu docker-compose up
 ```
 
 **Option 3: Secrets manager** (Best for production)
@@ -218,23 +221,18 @@ CORS_ORIGINS=https://app.example.com/
 CORS_ORIGINS=http://app.example.com
 ```
 
-### "API key not found"
+### "Link shortening is not configured"
 
 Check that:
-1. Variable name is correct (including `VITE_` prefix for frontend)
-2. No quotes around the value
-3. No spaces around the `=` sign
-4. Rebuilt the app after changing
+1. `SHORTIO_API_KEY` and `SHORTIO_DOMAIN` are set on the backend
+2. `VITE_LINK_SHORTENER_ENABLED=true` is set for the frontend build
+3. No spaces surround the `=` sign
+4. The backend was restarted after changing its variables
 
 ```bash
 # ✓ Correct
-VITE_SHORTIO_API_KEY=pk_abc123xyz
-
-# ✗ Wrong (quotes)
-VITE_SHORTIO_API_KEY="pk_abc123xyz"
-
-# ✗ Wrong (spaces)
-VITE_SHORTIO_API_KEY = pk_abc123xyz
+SHORTIO_API_KEY=pk_abc123xyz
+SHORTIO_DOMAIN=go.example.edu
 ```
 
 ## 📚 Additional Resources

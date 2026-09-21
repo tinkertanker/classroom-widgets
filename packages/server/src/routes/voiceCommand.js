@@ -4,7 +4,12 @@
 const express = require('express');
 const router = express.Router();
 
+const { createIpRateLimiter } = require('../middleware/socketAuth');
+
 const VOICE_COMMAND_DEBUG = process.env.VOICE_COMMAND_DEBUG === 'true';
+
+// Real voice transcripts are a sentence or two; anything longer is abuse.
+const MAX_TRANSCRIPT_LENGTH = 1000;
 
 // Words that signal a likely command intent. Transcripts that contain none of these
 // (e.g. background chatter, gibberish) skip the full ~50-pattern regex scan. BAML
@@ -328,7 +333,7 @@ class PatternMatchingService {
       // TEXT BANNER WIDGET COMMANDS
       // ========================================
       {
-        pattern: /(?:create|show|display).*banner.*(?:saying|with|text)?.*["']([^"']+)["']/i,
+        pattern: /(?:create|show|display)[^"']*banner[^"']*["']([^"']+)["']/i,
         action: 'CREATE_TEXT_BANNER',
         target: 'textBanner',
         parameters: (match) => ({ text: match[1] }),
@@ -613,9 +618,6 @@ if (USE_BAML) {
 
 const patternService = new PatternMatchingService();
 const bamlService = USE_BAML && BAMLVoiceCommandService ? new BAMLVoiceCommandService() : null;
-// Ollama path is currently unused; the health endpoint references it so keep a
-// nullable handle to avoid a ReferenceError on GET /api/voice-command/health.
-const ollamaService = null;
 
 // Determine active mode
 const aiServiceName = bamlService
@@ -626,8 +628,8 @@ if (VOICE_COMMAND_DEBUG) {
   console.log(`🤖 Voice Command Processing Mode: ${aiServiceName}`);
 }
 
-// POST /api/voice-command
-router.post('/', async (req, res) => {
+// Per-client limit on the unauthenticated POST; /health stays unlimited.
+router.post('/', createIpRateLimiter({ windowMs: 10_000, max: 20 }), async (req, res) => {
   const requestId = Math.random().toString(36).slice(2, 11);
   const startTime = Date.now();
 
@@ -649,6 +651,14 @@ router.post('/', async (req, res) => {
       }
       return res.status(400).json({
         error: 'Transcript is required and must be a string'
+      });
+    }
+
+    // Length cap must run before trim()/regexes so pathological inputs can't
+    // hit the pattern matchers at all.
+    if (transcript.length > MAX_TRANSCRIPT_LENGTH) {
+      return res.status(400).json({
+        error: `Transcript is too long (max ${MAX_TRANSCRIPT_LENGTH} characters)`
       });
     }
 
@@ -761,7 +771,7 @@ router.get('/health', async (req, res) => {
       active: aiServiceName,
       patternMatchingAvailable: true,
       bamlAvailable: !!bamlService,
-      ollamaAvailable: !!ollamaService,
+      ollamaAvailable: false,
       confidenceThreshold: CONFIDENCE_THRESHOLD
     }
   };
@@ -773,19 +783,6 @@ router.get('/health', async (req, res) => {
       health.llmService.baml = bamlHealth;
     } catch (error) {
       health.llmService.baml = {
-        status: 'unhealthy',
-        error: error.message
-      };
-    }
-  }
-
-  // Check Ollama health if enabled
-  if (ollamaService && ollamaService.healthCheck) {
-    try {
-      const ollamaHealth = await ollamaService.healthCheck();
-      health.llmService.ollama = ollamaHealth;
-    } catch (error) {
-      health.llmService.ollama = {
         status: 'unhealthy',
         error: error.message
       };

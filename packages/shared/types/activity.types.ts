@@ -184,17 +184,6 @@ export interface ActivityResults {
   submitted: boolean;
 }
 
-/**
- * Full activity state response from server (HATEOAS)
- */
-export interface ActivityStateResponse {
-  activity: ActivityDefinition;
-  isActive: boolean;
-  actions: ActivityAction[];
-  results?: ActivityResults;
-  correctAnswers?: Record<string, string>; // targetId -> correct itemId (only if revealed)
-}
-
 // ============================================================================
 // Student Placement/Answer Types
 // ============================================================================
@@ -213,34 +202,4 @@ export interface ItemPlacement {
 export interface StudentAnswers {
   placements: ItemPlacement[];
   textInputs: Record<string, string>; // targetId -> text value
-}
-
-// ============================================================================
-// Teacher-side Activity Editor Types
-// ============================================================================
-
-/**
- * Fill-in-the-blank template with markers
- */
-export interface FillBlankTemplate {
-  text: string; // Text with {{blank}} markers
-  distractors?: string[]; // Additional wrong answers to include
-}
-
-/**
- * Sorting activity category
- */
-export interface SortingCategory {
-  id: string;
-  label: string;
-  items: string[]; // Item IDs that belong to this category
-}
-
-/**
- * Matching pair
- */
-export interface MatchingPair {
-  id: string;
-  left: string; // Term
-  right: string; // Definition
 }

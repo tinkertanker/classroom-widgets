@@ -161,6 +161,11 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
   socket.on(EVENTS.ACTIVITY.REQUEST_STATE, (data) => {
     const { sessionCode, widgetId } = asObject(data);
 
+    if (!eventRateLimiter(socket, EVENTS.ACTIVITY.REQUEST_STATE).allowed) {
+      logger.warn('activity:requestState', 'Rate limited', { socketId: socket.id });
+      return;
+    }
+
     const sessionValidation = validators.sessionCode(sessionCode);
     if (!sessionValidation.valid) {
       logger.warn('activity:requestState', sessionValidation.error);
@@ -323,6 +328,17 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       widgetId,
       socketId: socket.id
     });
+
+    const rateLimitResult = eventRateLimiter(socket, EVENTS.ACTIVITY.RETRY);
+    if (!rateLimitResult.allowed) {
+      if (callback) {
+        callback({
+          ...createRateLimitResponse(rateLimitResult.retryAfter),
+          widgetId
+        });
+      }
+      return;
+    }
 
     const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
 

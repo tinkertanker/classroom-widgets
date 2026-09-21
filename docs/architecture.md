@@ -149,8 +149,6 @@ classroom-widgets/
 │   │   ├── types/                    # TypeScript types
 │   │   │   ├── index.ts
 │   │   │   └── widget.types.ts
-│   │   └── constants/                # Shared constants
-│   │       └── widgetTypes.ts
 │   │
 │   ├── store/                        # Global state (Zustand)
 │   │   ├── workspaceStore.simple.ts  # Main store
@@ -932,6 +930,7 @@ Implementation in `server/src/middleware/socketAuth.js`.
 | Endpoint | Protection |
 |----------|------------|
 | `GET /api/*` | Public (read-only) |
+| `POST /api/shorten` | Public web proxy for configured Short.io link shortening |
 | `POST /admin/cleanup` | `ADMIN_TOKEN` env variable required |
 
 ### Input Validation
@@ -948,7 +947,7 @@ All socket events validate input server-side using `server/src/utils/validation.
 
 Access via student app with code "ADMIN":
 - **Read-only**: Can only view session data, cannot modify
-- **No authentication**: Protected only by knowledge of the code
+- **Authentication**: `admin:getSessions` requires the `ADMIN_TOKEN` env variable to be set on the server; the dashboard prompts for it and sends it as `token`
 - **Purpose**: Monitoring and debugging, not administration
 
 ## Best Practices

@@ -156,25 +156,23 @@ public partial class SettingsWindow : Window
         ShortcutRows.Children.Clear();
         _shortcutControls.Clear();
         ShortcutLoadingLabel.Visibility = _host.WidgetOptions.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        if (_host.WidgetOptions.Count > 0)
-        {
-            var header = new Grid { Margin = new Thickness(0, 0, 0, 6) };
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            var widgetHeader = new TextBlock { Text = "Widget", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
-            var showHeader = new TextBlock { Text = "Show", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
-            var dismissHeader = new TextBlock { Text = "Dismiss", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
-            Grid.SetColumn(widgetHeader, 0);
-            Grid.SetColumn(showHeader, 1);
-            Grid.SetColumn(dismissHeader, 2);
-            header.Children.Add(widgetHeader);
-            header.Children.Add(showHeader);
-            header.Children.Add(dismissHeader);
-            ShortcutRows.Children.Add(header);
-        }
-        foreach (var option in _host.WidgetOptions)
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var widgetHeader = new TextBlock { Text = "Widget", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+        var showHeader = new TextBlock { Text = "Show", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+        var dismissHeader = new TextBlock { Text = "Dismiss", Foreground = Brushes.DimGray, FontWeight = FontWeights.SemiBold };
+        Grid.SetColumn(widgetHeader, 0);
+        Grid.SetColumn(showHeader, 1);
+        Grid.SetColumn(dismissHeader, 2);
+        header.Children.Add(widgetHeader);
+        header.Children.Add(showHeader);
+        header.Children.Add(dismissHeader);
+        ShortcutRows.Children.Add(header);
+        var options = new[] { new CompactWidgetOption(DisplayShortcutLogic.WidgetType, "Display") }.Concat(_host.WidgetOptions);
+        foreach (var option in options)
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 12) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
@@ -185,11 +183,13 @@ public partial class SettingsWindow : Window
             var title = new TextBlock { Text = option.Title, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 10, 0) };
             var show = CreateShortcutField(option, WidgetShortcutAction.Show);
             var dismiss = CreateShortcutField(option, WidgetShortcutAction.Dismiss);
-            var reset = new Button { Content = "Reset", Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(6, 0, 0, 0), IsEnabled = _settings.WidgetShortcutDefaults.ContainsKey(option.WidgetType) };
+            var reset = new Button { Content = "Reset", Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(6, 0, 0, 0), IsEnabled = option.WidgetType == DisplayShortcutLogic.WidgetType || _settings.WidgetShortcutDefaults.ContainsKey(option.WidgetType) };
             AutomationProperties.SetName(reset, $"Reset shortcuts for {option.Title}");
             reset.Click += (_, _) =>
             {
-                var shortcut = _settings.WidgetShortcutDefaults.GetValueOrDefault(option.WidgetType);
+                var shortcut = option.WidgetType == DisplayShortcutLogic.WidgetType
+                    ? DisplayShortcutLogic.DefaultShortcut
+                    : _settings.WidgetShortcutDefaults.GetValueOrDefault(option.WidgetType);
                 SetShortcut(option.WidgetType, WidgetShortcutAction.Show, shortcut);
                 SetShortcut(option.WidgetType, WidgetShortcutAction.Dismiss, shortcut);
             };
@@ -203,14 +203,13 @@ public partial class SettingsWindow : Window
 
     private FrameworkElement CreateShortcutField(CompactWidgetOption option, WidgetShortcutAction action)
     {
-        var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
         var panel = new StackPanel { Margin = new Thickness(0, 0, 8, 0) };
         var controls = new Grid();
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         controls.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var capture = new TextBox
         {
-            Text = bindings.GetValueOrDefault(option.WidgetType) ?? "",
+            Text = GetShortcut(option.WidgetType, action) ?? "",
             IsReadOnly = true,
             Padding = new Thickness(7, 5, 7, 5),
             VerticalContentAlignment = VerticalAlignment.Center
@@ -224,7 +223,7 @@ public partial class SettingsWindow : Window
         };
         capture.LostKeyboardFocus += (_, _) =>
         {
-            capture.Text = bindings.GetValueOrDefault(option.WidgetType) ?? "";
+            capture.Text = GetShortcut(option.WidgetType, action) ?? "";
             _shortcuts.Resume();
         };
         capture.PreviewKeyDown += (_, args) => CaptureShortcut(option.WidgetType, action, capture, args);
@@ -265,6 +264,14 @@ public partial class SettingsWindow : Window
         capture.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
     }
 
+    private string? GetShortcut(int widgetType, WidgetShortcutAction action)
+    {
+        if (widgetType == DisplayShortcutLogic.WidgetType)
+            return action == WidgetShortcutAction.Show ? _settings.DisplayPreviewShortcut : _settings.DisplayPreviewDismissShortcut;
+        var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
+        return bindings.GetValueOrDefault(widgetType);
+    }
+
     private void SetShortcut(int widgetType, WidgetShortcutAction action, string? shortcut)
     {
         if (shortcut is not null && _shortcuts.IsDuplicate(widgetType, shortcut))
@@ -274,8 +281,16 @@ public partial class SettingsWindow : Window
             status.Foreground = Brushes.Firebrick;
             return;
         }
-        var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
-        bindings[widgetType] = shortcut;
+        if (widgetType == DisplayShortcutLogic.WidgetType)
+        {
+            if (action == WidgetShortcutAction.Show) _settings.DisplayPreviewShortcut = shortcut;
+            else _settings.DisplayPreviewDismissShortcut = shortcut;
+        }
+        else
+        {
+            var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
+            bindings[widgetType] = shortcut;
+        }
         _settings.NotifyChanged();
         if (_shortcutControls.TryGetValue((widgetType, action), out var controls)) controls.Capture.Text = shortcut ?? "";
         UpdateShortcutStatuses();
@@ -288,7 +303,7 @@ public partial class SettingsWindow : Window
             var registration = _shortcuts.StatusFor(key.WidgetType, key.Action);
             controls.Status.Text = registration.Status switch
             {
-                WidgetShortcutStatus.Active => "Active",
+                WidgetShortcutStatus.Active => registration.Detail is null ? "Active" : $"Active — {registration.Detail}",
                 WidgetShortcutStatus.Conflict => "Conflict — Windows could not register this shortcut",
                 _ => "Inactive"
             };

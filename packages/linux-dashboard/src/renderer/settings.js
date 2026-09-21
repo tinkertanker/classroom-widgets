@@ -41,9 +41,13 @@
   }
 
   var rows = {};
-  var renderedTypes = [];
-  var capturingRow = null;
+  var captureSession = null;
   var rowError = null;
+
+  function setShortcut(entry, action, accelerator) {
+    if (entry.shortcut.widgetType === 'display') return window.classroomSettings.setDisplayShortcut(action, accelerator);
+    return window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator);
+  }
 
   function clearRowError(entry, field) {
     if (!rowError || rowError.widgetType !== entry.shortcut.widgetType || rowError.action !== field.action) return;
@@ -52,10 +56,13 @@
     field.status.textContent = entry.shortcut[field.detailKey];
   }
 
-  function stopCapture(entry, field) {
+  function stopCapture(session) {
+    if (!session || captureSession !== session) return;
+    var entry = session.entry;
+    var field = session.field;
     field.capture.classList.remove('capturing');
     field.capture.textContent = entry.shortcut[field.acceleratorKey] || 'Set shortcut';
-    capturingRow = null;
+    captureSession = null;
     window.classroomSettings.setCapturing(false);
   }
 
@@ -81,29 +88,32 @@
 
     capture.addEventListener('click', function () {
       clearRowError(entry, shortcutField);
-      capturingRow = entry.shortcut.widgetType + ':' + action;
+      captureSession = { entry: entry, field: shortcutField };
       capture.textContent = 'Press shortcut…';
       capture.classList.add('capturing');
       window.classroomSettings.setCapturing(true);
     });
     capture.addEventListener('blur', function () {
-      if (capture.classList.contains('capturing')) stopCapture(entry, shortcutField);
+      if (captureSession && captureSession.field === shortcutField) stopCapture(captureSession);
     });
     capture.addEventListener('keydown', function (event) {
-      if (!capture.classList.contains('capturing')) return;
+      var session = captureSession;
+      if (!session || session.field !== shortcutField) return;
       if (event.key === 'Tab' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-        stopCapture(entry, shortcutField);
+        stopCapture(session);
         return;
       }
       event.preventDefault();
       event.stopPropagation();
       if (event.key === 'Escape') {
-        stopCapture(entry, shortcutField);
+        stopCapture(session);
         return;
       }
       var accelerator = acceleratorFromEvent(event);
       if (!accelerator) return;
-      window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator).then(function (result) {
+      setShortcut(entry, action, accelerator).then(function (result) {
+        // A save may finish after another recording starts, even on this field.
+        if (captureSession !== session) return;
         if (result.ok) {
           clearRowError(entry, shortcutField);
         } else {
@@ -111,12 +121,12 @@
           status.className = 'shortcut-status conflict';
           status.textContent = result.error;
         }
-        stopCapture(entry, shortcutField);
+        stopCapture(session);
       });
     });
     clear.addEventListener('click', function () {
       clearRowError(entry, shortcutField);
-      window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, null);
+      setShortcut(entry, action, null);
     });
     field.append(capture, clear, status);
     return shortcutField;
@@ -135,11 +145,11 @@
     return entry;
   }
 
-  function renderShortcuts(shortcuts) {
+  function renderShortcuts(shortcuts, displayShortcut) {
+    if (displayShortcut) shortcuts = [Object.assign({ widgetType: 'display' }, displayShortcut)].concat(shortcuts);
     document.getElementById('resetShortcuts').disabled = !shortcuts.length;
     if (!shortcuts.length) {
       rows = {};
-      renderedTypes = [];
       shortcutList.replaceChildren();
       var loading = document.createElement('p');
       loading.className = 'hint';
@@ -148,18 +158,19 @@
       return;
     }
     var nextTypes = shortcuts.map(function (shortcut) { return String(shortcut.widgetType); });
-    var needsRebuild = nextTypes.length !== renderedTypes.length
-      || nextTypes.some(function (type, index) { return renderedTypes[index] !== type || !rows[type]; });
-    if (needsRebuild) {
-      rows = {};
-      renderedTypes = nextTypes;
-      shortcutList.replaceChildren();
-      shortcuts.forEach(function (shortcut) {
-        rows[String(shortcut.widgetType)] = buildRow(shortcut);
-      });
-    }
-    shortcuts.forEach(function (shortcut) {
-      var entry = rows[String(shortcut.widgetType)];
+    Object.keys(rows).forEach(function (type) {
+      if (nextTypes.indexOf(type) !== -1) return;
+      rows[type].row.remove();
+      delete rows[type];
+    });
+    if (!Object.keys(rows).length) shortcutList.replaceChildren();
+    shortcuts.forEach(function (shortcut, index) {
+      var type = String(shortcut.widgetType);
+      var entry = rows[type] || (rows[type] = buildRow(shortcut));
+      if (shortcutList.children[index] !== entry.row) {
+        // Unlike removal/reinsertion, moveBefore keeps the recorder focused.
+        shortcutList.moveBefore(entry.row, shortcutList.children[index]);
+      }
       entry.shortcut = shortcut;
       entry.name.textContent = shortcut.title;
       ['show', 'dismiss'].forEach(function (action) {
@@ -168,7 +179,7 @@
         field.clear.disabled = !accelerator;
         field.clear.setAttribute('aria-label', 'Clear ' + action + ' shortcut for ' + shortcut.title);
         field.capture.setAttribute('aria-label', action + ' shortcut for ' + shortcut.title + ': ' + (accelerator || 'not assigned'));
-        if (capturingRow === shortcut.widgetType + ':' + action) {
+        if (captureSession && captureSession.field === field) {
           field.capture.textContent = 'Press shortcut…';
           field.capture.classList.add('capturing');
         } else {
@@ -198,7 +209,7 @@
     domain.value = state.linkShortener.shortioDomain;
     shortioFields.hidden = provider.value !== 'shortio';
     updateLabel();
-    renderShortcuts(state.shortcuts || []);
+    renderShortcuts(state.shortcuts || [], state.displayShortcut);
     document.getElementById('waylandWarning').hidden = state.wayland !== true;
   });
   window.classroomSettings.onShortcutsChanged(renderShortcuts);

@@ -120,13 +120,6 @@ class SessionManager {
     };
   }
 
-  /**
-   * Check if room code is available
-   */
-  isRoomCodeAvailable(code) {
-    return !this.sessions.has(code);
-  }
-
 }
 
 module.exports = SessionManager;

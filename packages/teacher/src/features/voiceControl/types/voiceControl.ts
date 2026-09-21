@@ -35,7 +35,6 @@ export interface VoiceContext {
   activeWidgets: Array<{
     id: string;
     type: string | number;  // Can be WidgetType enum or string
-    state?: any;
     isFocused: boolean;
   }>;
   availableWidgets: string[];
@@ -58,15 +57,6 @@ export interface ExecutionResult {
   action?: string;
 }
 
-export interface TranscriptionResult {
-  transcript: string;
-  confidence: number;
-  alternatives?: Array<{
-    transcript: string;
-    confidence: number;
-  }>;
-}
-
 // Voice UI States
 export type VoiceInterfaceState =
   | 'idle'           // No voice interaction
@@ -82,14 +72,4 @@ export interface UseVoiceRecordingReturn extends VoiceRecordingState {
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<void>;
   resetState: () => void;
-}
-
-export interface UseVoiceControlReturn {
-  voiceState: VoiceInterfaceState;
-  transcript: string;
-  command: VoiceCommand | null;
-  error: string | null;
-  startVoiceControl: () => void;
-  stopVoiceControl: () => void;
-  executeVoiceCommand: (transcript: string) => Promise<void>;
 }

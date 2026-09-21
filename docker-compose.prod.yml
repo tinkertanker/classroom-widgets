@@ -12,9 +12,7 @@ services:
       args:
         # Build-time variables (baked into the image)
         - VITE_SERVER_URL=${VITE_SERVER_URL}
-        - VITE_SHORTIO_API_KEY=${VITE_SHORTIO_API_KEY}
-        - VITE_SHORTIO_BASE_URL=${VITE_SHORTIO_BASE_URL}
-        - VITE_SHORTIO_DOMAIN=${VITE_SHORTIO_DOMAIN}
+        - VITE_LINK_SHORTENER_ENABLED=${VITE_LINK_SHORTENER_ENABLED:-false}
         - VITE_UMAMI_SCRIPT_URL=${VITE_UMAMI_SCRIPT_URL}
         - VITE_UMAMI_WEBSITE_ID=${VITE_UMAMI_WEBSITE_ID}
         - VITE_BUILD_ID=${VITE_BUILD_ID:-development}
@@ -49,6 +47,12 @@ services:
       - PORT=3001
       - CORS_ORIGINS=${CORS_ORIGINS}
       - STUDENT_APP_URL=${STUDENT_APP_URL}
+      - SHORTIO_API_KEY=${SHORTIO_API_KEY}
+      - SHORTIO_DOMAIN=${SHORTIO_DOMAIN}
+      - SHORTIO_BASE_URL=${SHORTIO_BASE_URL:-https://api.short.io/links/public}
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      # Backend sits behind one nginx-proxy hop; needed for per-IP rate limits
+      - TRUST_PROXY=${TRUST_PROXY:-1}
       - VIRTUAL_HOST=${BACKEND_DOMAIN}
       - VIRTUAL_PORT=3001
     networks:

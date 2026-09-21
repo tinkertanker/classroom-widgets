@@ -441,7 +441,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
             origin: .zero,
             size: WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
         )
-        let styleMask: NSWindow.StyleMask = [.titled, .closable, .resizable]
+        let styleMask: NSWindow.StyleMask = [.titled, .closable, .resizable, .nonactivatingPanel]
         let panel = WidgetPanel(
             contentRect: initialContentRect,
             styleMask: styleMask,
@@ -738,7 +738,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         guard url.scheme == dashboardURLScheme || url.scheme == "about" else {
             decisionHandler(.cancel)
             if navigationAction.navigationType == .linkActivated {
-                NSWorkspace.shared.open(url)
+                ExternalLinkOpener.open(url)
             }
             return
         }
@@ -752,7 +752,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
         if let url = navigationAction.request.url, url.scheme != dashboardURLScheme {
-            NSWorkspace.shared.open(url)
+            ExternalLinkOpener.open(url)
         }
         return nil
     }
@@ -1013,10 +1013,7 @@ enum WidgetPanelContentLayout {
     }
 }
 
-private final class WidgetPanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-}
+private final class WidgetPanel: FloatingPanel {}
 
 private final class NonInteractiveVisualEffectView: NSVisualEffectView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }

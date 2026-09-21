@@ -18,11 +18,10 @@
  * Every room type the server can create, and therefore every type that can reach this app.
  *
  * The compiler cannot check this list against the server, so it is verified by hand against
- * the three places that enumerate room types:
- *   - `packages/server/src/config/constants.js` -> `ROOM_TYPES`
+ * the two places that enumerate room types:
  *   - `packages/server/src/models/Session.js` -> `createRoom`'s switch (throws on anything else)
  *   - `packages/shared/types/socket.types.ts` -> `RoomType`
- * All three list exactly these six. `Session.createRoom` throwing on an unknown type is what
+ * Both list exactly these six. `Session.createRoom` throwing on an unknown type is what
  * makes this list complete rather than merely current: a seventh type cannot be created
  * server-side without editing that switch.
  *

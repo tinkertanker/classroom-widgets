@@ -4,6 +4,7 @@ import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
+import { isSafeHttpUrl } from '@shared/utils/validation';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
@@ -35,6 +36,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
     isStarting,
     error,
     handleStart,
+    canEdit,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -98,9 +100,10 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   }, [widgetId, hasRoom, emit, session.sessionCode]);
 
   const handleClearAll = useCallback(() => {
+    if (!canEdit()) return;
     // Clear local state (server maintains submission state)
     setSubmissions([]);
-  }, []);
+  }, [canEdit]);
 
   const handleToggleActive = useCallback(() => {
     if (!hasRoom) return;
@@ -108,7 +111,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   }, [hasRoom, toggleActive]);
 
   const handleToggleAcceptMode = useCallback(() => {
-    if (!widgetId || !hasRoom) return;
+    if (!widgetId || !hasRoom || !canEdit()) return;
     const newMode: AcceptMode = acceptMode === 'links' ? 'all' : 'links';
     setAcceptMode(newMode);
     emit('session:linkShare:setAcceptMode', {
@@ -116,7 +119,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
       widgetId,
       acceptMode: newMode
     });
-  }, [widgetId, hasRoom, acceptMode, emit, session.sessionCode]);
+  }, [widgetId, hasRoom, acceptMode, emit, session.sessionCode, canEdit]);
 
   // Save state
   useEffect(() => {
@@ -177,13 +180,15 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
+          isReady: session.isReady,
           defaultText: "Start Drop Box"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
           isStarting,
           isRecovering: session.isRecovering,
-          isConnected: session.isConnected
+          isConnected: session.isConnected,
+          isReady: session.isReady
         })}
         error={error || undefined}
       />
@@ -204,6 +209,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
           isActive={isWidgetActive}
           isConnected={session.isConnected}
           isRecovering={session.isRecovering}
+          isRecoveryDeferred={session.isRecoveryDeferred}
           pausedMessage="Drop Box is paused"
         />
 
@@ -226,7 +232,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
                       <p className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
                         {submission.studentName || 'Anonymous'}
                       </p>
-                      {submission.isLink ? (
+                      {submission.isLink && isSafeHttpUrl(submission.content) ? (
                         <a
                           href={submission.content}
                           target="_blank"
@@ -244,6 +250,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
                     </div>
                     <button
                       onClick={() => handleDeleteSubmission(submission.id)}
+                      disabled={!session.isReady}
                       className="text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors p-1"
                       title="Delete submission"
                     >
@@ -260,7 +267,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
       {/* Control bar */}
       <NetworkedWidgetControlBar
         isActive={isWidgetActive}
-        isConnected={session.isConnected}
+        isReady={session.isReady}
         onToggleActive={handleToggleActive}
         onClear={handleClearAll}
         clearCount={submissions.length}
@@ -275,7 +282,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
         rightContent={
           <button
             onClick={handleToggleAcceptMode}
-            disabled={!session.isConnected}
+            disabled={!session.isReady}
             className={`px-2 py-1 text-xs font-medium rounded transition-colors inline-flex items-center gap-1.5 ${
               acceptMode === 'all'
                 ? 'bg-terracotta-100 text-terracotta-700 dark:bg-terracotta-900/30 dark:text-terracotta-400'

@@ -14,10 +14,14 @@ function mockFn() {
   return fn;
 }
 
+let socketCounter = 0;
+
 function createMockSocket(id) {
   const handlers = {};
   return {
     id,
+    // Unique per test so the per-connection rate limiter never carries over
+    clientIP: `10.0.0.${++socketCounter}`,
     handshake: { headers: {}, secure: false },
     on: (event, handler) => {
       handlers[event] = handler;
@@ -44,7 +48,7 @@ function joinedResponse(socket) {
 }
 
 describe('sessionHandler: student join', () => {
-  const SESSION_CODE = 'TEST1';
+  const SESSION_CODE = 'TEST12';
   let io;
   let socket;
   let session;
@@ -160,5 +164,107 @@ describe('sessionHandler: student join', () => {
     assert.ok(joinedRooms.includes(`session:${SESSION_CODE}`));
     assert.ok(joinedRooms.includes(`${SESSION_CODE}:poll:w-1`));
     assert.ok(joinedRooms.includes(`${SESSION_CODE}:questions:w-2`));
+  });
+});
+
+describe('sessionHandler: host session:create', () => {
+  const CODE = 'TEST1';
+  let io;
+  let socket;
+  let session;
+  let sessionManager;
+
+  beforeEach(() => {
+    io = createMockIO();
+    socket = createMockSocket('new-host');
+    session = new Session(CODE);
+    session.hostSocketId = 'host-1';
+    sessionManager = {
+      findSessionByHost: () => undefined,
+      getSession: (code) => (code === CODE ? session : undefined),
+      createSession: () => new Session('NEW01')
+    };
+    sessionHandler(io, socket, sessionManager, () => null);
+  });
+
+  async function create(data) {
+    let response;
+    socket.trigger(EVENTS.SESSION.CREATE, data, (r) => { response = r; });
+    await new Promise(resolve => setImmediate(resolve));
+    return response;
+  }
+
+  it('refuses to reclaim an existing session without a token', async () => {
+    const response = await create({ existingCode: CODE });
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, false);
+    assert.equal(response.code, 'NEW01');
+    assert.equal(session.hostSocketId, 'host-1');
+    assert.equal(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED), undefined);
+  });
+
+  it('refuses to reclaim an existing session with a wrong token', async () => {
+    const response = await create({ existingCode: CODE, hostToken: 'not-the-token' });
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, false);
+    assert.equal(response.code, 'NEW01');
+    assert.equal(session.hostSocketId, 'host-1');
+    assert.equal(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED), undefined);
+  });
+
+  it('reclaims the session when the host token matches', async () => {
+    const originalToken = session.hostToken;
+    const response = await create({ existingCode: CODE, hostToken: originalToken });
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, true);
+    assert.equal(response.code, CODE);
+    assert.equal(session.hostSocketId, socket.id);
+    assert.ok(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED));
+
+    // The reclaim rotates the token: the response carries the fresh one
+    assert.notEqual(response.hostToken, originalToken);
+    assert.equal(response.hostToken, session.hostToken);
+  });
+
+  it('rejects replay of the pre-rotation token but accepts the rotated one', async () => {
+    const originalToken = session.hostToken;
+    const first = await create({ existingCode: CODE, hostToken: originalToken });
+    const rotatedToken = first.hostToken;
+
+    // Another socket replaying the consumed token gets a fresh session instead
+    const attacker = createMockSocket('attacker');
+    sessionHandler(io, attacker, sessionManager, () => null);
+    let replayed;
+    attacker.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken: originalToken }, (r) => { replayed = r; });
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(replayed.success, true);
+    assert.equal(replayed.isExisting, false);
+    assert.equal(replayed.code, 'NEW01');
+    assert.equal(session.hostSocketId, socket.id);
+
+    // The rotated token still reclaims the session
+    const reclaim = createMockSocket('reclaimer');
+    sessionHandler(io, reclaim, sessionManager, () => null);
+    let reclaimed;
+    reclaim.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken: rotatedToken }, (r) => { reclaimed = r; });
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.equal(reclaimed.success, true);
+    assert.equal(reclaimed.isExisting, true);
+    assert.equal(session.hostSocketId, reclaim.id);
+  });
+
+  it('creates a new session with a fresh host token', async () => {
+    const response = await create({});
+
+    assert.equal(response.success, true);
+    assert.equal(response.isExisting, false);
+    assert.equal(response.code, 'NEW01');
+    assert.equal(typeof response.hostToken, 'string');
+    assert.ok(response.hostToken.length > 0);
   });
 });

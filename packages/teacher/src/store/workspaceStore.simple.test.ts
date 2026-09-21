@@ -271,26 +271,12 @@ describe('global settings', () => {
 describe('link shortener settings', () => {
   it('fills defaults when rehydrating storage written before the setting existed', async () => {
     // seedStorage writes a globalSettings object with no linkShortener key.
-    vi.stubEnv('VITE_SHORTIO_API_KEY', '');
-    vi.stubEnv('VITE_SHORTIO_DOMAIN', '');
     await seedStorage();
 
     expect(store().linkShortener).toEqual({
       provider: 'tinyurl',
       shortioApiKey: '',
       shortioDomain: ''
-    });
-  });
-
-  it('seeds from the legacy build-time Short.io vars when they are set', async () => {
-    vi.stubEnv('VITE_SHORTIO_API_KEY', 'pk_from_env');
-    vi.stubEnv('VITE_SHORTIO_DOMAIN', 'go.legacy.edu');
-    await seedStorage();
-
-    expect(store().linkShortener).toEqual({
-      provider: 'shortio',
-      shortioApiKey: 'pk_from_env',
-      shortioDomain: 'go.legacy.edu'
     });
   });
 

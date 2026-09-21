@@ -62,6 +62,8 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     isStarting,
     error,
     handleStart,
+    canEdit,
+    editorScope,
     session,
     recoveryData
   } = useNetworkedWidget({
@@ -127,6 +129,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Actions
   const updatePoll = useCallback((data: Partial<PollData>) => {
+    if (!canEdit()) return;
     const newPollData = { ...pollData, ...data };
     setPollData(newPollData);
 
@@ -137,7 +140,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
         pollData: newPollData as any
       });
     }
-  }, [pollData, hasRoom, emit, session.sessionCode, widgetId]);
+  }, [pollData, hasRoom, emit, session.sessionCode, widgetId, canEdit]);
 
   const handleToggleActive = useCallback(() => {
     debug('[Poll] handleToggleActive called, current state:', isWidgetActive, 'hasRoom:', hasRoom);
@@ -168,13 +171,14 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     showModal({
       title: 'Poll Settings',
       content: <PollSettings
+        editorScope={editorScope}
         initialData={{
           question: pollData.question,
           options: pollData.options
         }}
         onSave={(data) => {
+          if (!canEdit()) return false;
           updatePoll(data);
-          hideModal();
 
           // Auto-resize if number of options changed
           if (data.options.length !== pollData.options.length && widget && resize) {
@@ -187,15 +191,16 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
             debug(`[Poll] Auto-resizing after settings change to height: ${calculatedHeight} for ${data.options.length} options`);
             resize({ width: widget.size.width, height: calculatedHeight });
           }
+          return true;
         }}
         onClose={hideModal}
       />,
       onClose: hideModal
     });
-  }, [showModal, hideModal, updatePoll, pollData]);
+  }, [showModal, hideModal, updatePoll, pollData, canEdit, editorScope]);
 
   const resetVotes = useCallback(() => {
-    if (!hasRoom) return;
+    if (!hasRoom || !canEdit()) return;
 
     debug('[Poll] Resetting votes');
     reset();
@@ -206,7 +211,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
       totalVotes: 0,
       participantCount: 0
     });
-  }, [hasRoom, reset]);
+  }, [hasRoom, reset, canEdit]);
 
   // Auto-resize only on initial widget creation
   useEffect(() => {
@@ -287,13 +292,15 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
+          isReady: session.isReady,
           defaultText: "Start Poll"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
           isStarting,
           isRecovering: session.isRecovering,
-          isConnected: session.isConnected
+          isConnected: session.isConnected,
+          isReady: session.isReady
         })}
         error={error || undefined}
       />
@@ -316,6 +323,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
             isActive={isWidgetActive}
             isConnected={session.isConnected}
             isRecovering={session.isRecovering}
+            isRecoveryDeferred={session.isRecoveryDeferred}
             pausedMessage="Poll is paused"
           />
 
@@ -362,7 +370,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
       {/* Control bar */}
       <NetworkedWidgetControlBar
         isActive={isWidgetActive}
-        isConnected={session.isConnected}
+        isReady={session.isReady}
         onToggleActive={handleToggleActive}
         onSettings={openSettings}
         onClear={resetVotes}

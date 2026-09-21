@@ -22,11 +22,7 @@ try {
   const service = new BAMLService();
   console.log('✅ Service instance created\n');
 
-  console.log('5. Service info:');
-  const info = service.getInfo();
-  console.log(JSON.stringify(info, null, 2));
-
-  console.log('\n🎉 BAML integration test passed!');
+  console.log('🎉 BAML integration test passed!');
   console.log('\n📝 Note: To test actual LLM parsing, make sure Ollama is running:');
   console.log('   ollama serve');
   console.log('   ollama pull gemma2:2b\n');

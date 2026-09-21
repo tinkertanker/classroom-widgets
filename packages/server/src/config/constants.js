@@ -1,3 +1,5 @@
+const sessionCode = require('@classroom-widgets/shared/constants/sessionCode.json');
+
 /**
  * Application constants
  */
@@ -14,34 +16,20 @@ module.exports = {
     MAX_SESSIONS: 1000,
     MAX_ROOMS_PER_SESSION: 10,
     MAX_PARTICIPANTS_PER_SESSION: 1000, // Maximum participants per session
-    MAX_PARTICIPANTS_PER_ROOM: 500,     // Maximum participants per widget room
     MAX_TOTAL_PARTICIPANTS: 50000,      // Server-wide participant limit
     MAX_SUBMISSIONS_PER_ROOM: 1000,
     MAX_QUESTIONS_PER_ROOM: 500,
-    ROOM_CODE_LENGTH: 5,
+    ROOM_CODE_LENGTH: sessionCode.length,
     MAX_QUESTION_LENGTH: 500,           // Reduced from 1000 for better UX
     MAX_LINK_LENGTH: 2000,
-    MAX_POLL_QUESTION_LENGTH: 500,
-    MAX_POLL_OPTION_LENGTH: 200,
-    MIN_POLL_OPTIONS: 2,
-    MAX_POLL_OPTIONS: 10,
     MAX_STUDENT_NAME_LENGTH: 50,
     FEEDBACK_MIN_VALUE: 1,
     FEEDBACK_MAX_VALUE: 5
   },
 
-  // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U)
-  SAFE_CHARACTERS: '23456789ACDEFHJKNPQRTUWY',
-
-  // Room types
-  ROOM_TYPES: {
-    POLL: 'poll',
-    LINK_SHARE: 'linkShare',
-    RT_FEEDBACK: 'rtfeedback',
-    QUESTIONS: 'questions',
-    HANDOUT: 'handout',
-    ACTIVITY: 'activity'
-  },
+  // Safe characters for room codes (excluding confusing ones like 0/O, 1/I/l, V/U).
+  // Canonical alphabet lives in packages/shared so client validators match.
+  SAFE_CHARACTERS: sessionCode.alphabet,
 
   // Socket event namespaces
   // Naming convention: {namespace}:{action}
@@ -58,11 +46,7 @@ module.exports = {
       UPDATE_WIDGET_STATE: 'session:updateWidgetState',
       CLEANUP_ROOMS: 'session:cleanupRooms',
       // Server -> Client events
-      CREATED: 'session:created',
-      JOINED: 'session:joined',
       CLOSED: 'session:closed',
-      ROOM_CREATED: 'session:roomCreated',
-      ROOM_CLOSED: 'session:roomClosed',
       PARTICIPANT_UPDATE: 'session:participantUpdate',
       WIDGET_STATE_CHANGED: 'session:widgetStateChanged',
       HOST_DISCONNECTED: 'session:hostDisconnected',

@@ -1,25 +1,47 @@
-import { app, globalShortcut, session } from 'electron';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { app, globalShortcut, screen, session, desktopCapturer } from 'electron';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
 import { WidgetHostController } from './hostController';
 import { LauncherWindow } from './launcherWindow';
 import { log } from './log';
 import { DashboardSettings } from './settings';
-import { isBackgroundLaunch } from './startup';
+import { DisplayCatalog } from './displayCatalog';
+import { DisplayPreviewCoordinator } from './displayPreview';
+import { appImageUpdateRelaunchDelay, isBackgroundLaunch, relaunchExecutable, x11RelaunchArguments } from './startup';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
 import { UpdateController } from './updateController';
 import { WidgetShortcutController } from './widgetShortcuts';
 
-app.setName('ClassroomWidgets');
-
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  process.stderr.write('Another instance is already running; exiting\n');
-  app.quit();
+const relaunchArguments = x11RelaunchArguments(process.platform, process.env, process.argv);
+if (relaunchArguments) {
+  app.relaunch({ args: relaunchArguments, execPath: relaunchExecutable(process.env, process.execPath) });
+  const appImage = process.env.APPIMAGE?.trim();
+  let delay = 0;
+  if (appImage) {
+    try {
+      delay = appImageUpdateRelaunchDelay(process.env, readdirSync(dirname(appImage)));
+    } catch {
+      // The update backup is only a compatibility signal; relaunch normally if its directory is unavailable.
+    }
+  }
+  if (delay > 0) setTimeout(() => app.exit(0), delay);
+  else app.exit(0);
 } else {
-  bootstrap();
+  launch();
+}
+
+function launch(): void {
+  app.setName('ClassroomWidgets');
+
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    process.stderr.write('Another instance is already running; exiting\n');
+    app.quit();
+  } else {
+    bootstrap();
+  }
 }
 
 // Packaged builds get the version via electron-builder extraMetadata; dev runs read the repo-root version.json.
@@ -54,6 +76,7 @@ function bootstrap(): void {
   let tray: TrayController | null = null;
   let updates: UpdateController | null = null;
   let shortcuts: WidgetShortcutController | null = null;
+  let displayPreview: DisplayPreviewCoordinator | null = null;
   let shuttingDown = false;
   let terminationPrepared = false;
   let launcherRequested = !isBackgroundLaunch(process.argv);
@@ -75,6 +98,7 @@ function bootstrap(): void {
   const requestQuit = async (): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
+    displayPreview?.shutdown();
     host?.markShuttingDown();
     if (host && !terminationPrepared) {
       terminationPrepared = await host.prepareForTermination();
@@ -103,6 +127,7 @@ function bootstrap(): void {
 
   app.on('before-quit', () => {
     shuttingDown = true;
+    displayPreview?.shutdown();
     host?.markShuttingDown();
     host?.panelCoordinator.flushPersistedFrames();
     // Panels must not preventDefault the close events that quit triggers.
@@ -115,6 +140,8 @@ function bootstrap(): void {
     log.info(`Classroom Widgets ${version} starting`);
 
     settings = DashboardSettings.load();
+    const displayCatalog = new DisplayCatalog(screen);
+    displayPreview = new DisplayPreviewCoordinator(settings, displayCatalog, { desktopCapturer, screen });
     host = new WidgetHostController(settings, version);
     launcher = new LauncherWindow(version, (widgetType) => {
       if (host?.widgetOptions.some((option) => option.widgetType === widgetType)) {
@@ -127,7 +154,10 @@ function bootstrap(): void {
       (widgetType) => void host?.addWidget(widgetType),
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
+      displayPreview,
     );
+    shortcuts.updateOptions([], false);
+    host.panelCoordinator.on('displayPreviewRequested', () => displayPreview?.open());
     host.on('openSettingsRequested', () => openSettingsWindow(settings!, shortcuts!, version));
     host.on('widgetOptionsChanged', () => {
       shortcuts?.updateOptions(host?.widgetOptions ?? []);
@@ -138,7 +168,7 @@ function bootstrap(): void {
     host.applySettings();
 
     updates = new UpdateController(version, () => void requestQuit());
-    tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit());
+    tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit(), () => displayPreview?.open());
     void host.start();
     setTimeout(() => void updates?.check(), 10_000);
   });

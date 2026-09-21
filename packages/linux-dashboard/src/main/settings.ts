@@ -22,6 +22,10 @@ export interface DashboardSettingsData {
   widgetShortcutsInitialized: boolean;
   widgetShortcuts: Record<string, string | null>;
   widgetDismissShortcuts: Record<string, string | null>;
+  displayPreviewFrame?: PanelFrame;
+  displayPreviewSourceId?: number;
+  displayPreviewShortcut?: string | null;
+  displayPreviewDismissShortcut?: string | null;
 }
 
 /**
@@ -38,6 +42,10 @@ export class DashboardSettings extends EventEmitter {
   widgetShortcutsInitialized = false;
   widgetShortcuts: Record<string, string | null> = {};
   widgetDismissShortcuts: Record<string, string | null> = {};
+  displayPreviewFrame?: PanelFrame;
+  displayPreviewSourceId?: number;
+  displayPreviewShortcut?: string | null;
+  displayPreviewDismissShortcut?: string | null;
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -79,6 +87,18 @@ export class DashboardSettings extends EventEmitter {
             }
           }
         }
+        if (raw.displayPreviewFrame && typeof raw.displayPreviewFrame === 'object') {
+          const frame = raw.displayPreviewFrame;
+          if (
+            typeof frame.left === 'number' && typeof frame.top === 'number'
+            && typeof frame.width === 'number' && typeof frame.height === 'number'
+          ) settings.displayPreviewFrame = { left: frame.left, top: frame.top, width: frame.width, height: frame.height };
+        }
+        if (typeof raw.displayPreviewSourceId === 'number' && Number.isFinite(raw.displayPreviewSourceId)) {
+          settings.displayPreviewSourceId = raw.displayPreviewSourceId;
+        }
+        if (typeof raw.displayPreviewShortcut === 'string' || raw.displayPreviewShortcut === null) settings.displayPreviewShortcut = raw.displayPreviewShortcut;
+        if (typeof raw.displayPreviewDismissShortcut === 'string' || raw.displayPreviewDismissShortcut === null) settings.displayPreviewDismissShortcut = raw.displayPreviewDismissShortcut;
       }
     } catch (error) {
       log.warn(`Unable to read settings: ${error instanceof Error ? error.message : String(error)}`);
@@ -109,6 +129,10 @@ export class DashboardSettings extends EventEmitter {
         widgetShortcutsInitialized: this.widgetShortcutsInitialized,
         widgetShortcuts: this.widgetShortcuts,
         widgetDismissShortcuts: this.widgetDismissShortcuts,
+        displayPreviewFrame: this.displayPreviewFrame,
+        displayPreviewSourceId: this.displayPreviewSourceId,
+        displayPreviewShortcut: this.displayPreviewShortcut,
+        displayPreviewDismissShortcut: this.displayPreviewDismissShortcut,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {
@@ -119,6 +143,38 @@ export class DashboardSettings extends EventEmitter {
   notifyChanged(): void {
     this.save();
     this.emit('changed');
+  }
+
+  getDisplayPreviewFrame(): PanelFrame | undefined {
+    return this.displayPreviewFrame ? { ...this.displayPreviewFrame } : undefined;
+  }
+
+  setDisplayPreviewFrame(frame: PanelFrame): void {
+    this.displayPreviewFrame = { ...frame };
+    this.save();
+  }
+
+  getDisplayPreviewSourceId(): number | null {
+    return this.displayPreviewSourceId ?? null;
+  }
+
+  setDisplayPreviewSourceId(id: number | null): void {
+    this.displayPreviewSourceId = id ?? undefined;
+    this.save();
+  }
+
+  getDisplayPreviewShortcut(): string | null {
+    return this.displayPreviewShortcut ?? null;
+  }
+
+  setDisplayPreviewShortcut(shortcut: string | null): void {
+    this.displayPreviewShortcut = shortcut;
+    this.save();
+  }
+
+  setDisplayPreviewDismissShortcut(shortcut: string | null): void {
+    this.displayPreviewDismissShortcut = shortcut;
+    this.save();
   }
 
   private get autostartPath(): string {

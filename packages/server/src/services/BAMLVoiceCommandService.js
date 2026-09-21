@@ -58,22 +58,6 @@ class BAMLVoiceCommandService {
   }
 
   /**
-   * The widget targets sent to the LLM, derived from the shared definitions.
-   * @returns {string[]}
-   */
-  getWidgetTargets() {
-    return [...WIDGET_TARGETS];
-  }
-
-  /**
-   * The action names sent to the LLM, derived from the shared definitions.
-   * @returns {string[]}
-   */
-  getActionNames() {
-    return [...ACTION_NAMES];
-  }
-
-  /**
    * Process a voice command using BAML
    * @param {string} transcript - The voice command transcript
    * @param {object} context - Additional context (workspace state, user preferences)
@@ -204,25 +188,6 @@ class BAMLVoiceCommandService {
         suggestion: 'Make sure Ollama is running on localhost:11434'
       };
     }
-  }
-
-  /**
-   * Get service metadata
-   * @returns {object} - Service information
-   */
-  getInfo() {
-    return {
-      name: 'BAMLVoiceCommandService',
-      description: 'Type-safe LLM voice command parser using BAML',
-      provider: 'Ollama (configurable)',
-      benefits: [
-        'Type-safe parsing with auto-generated types',
-        'Structured output validation',
-        'Easy provider switching',
-        'Built-in error handling',
-        'Confidence scoring'
-      ]
-    };
   }
 }
 
