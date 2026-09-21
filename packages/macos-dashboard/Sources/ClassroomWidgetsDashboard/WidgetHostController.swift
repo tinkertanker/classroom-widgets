@@ -94,6 +94,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    func showWidget(_ widgetType: Int) {
+        callWidgetHostFunction("showWidget", widgetType: widgetType)
+    }
+
     func dismissWidget(_ widgetType: Int) {
         callWidgetHostFunction("dismissWidget", widgetType: widgetType)
     }
@@ -464,6 +468,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             maximumContentSize: maximumSize,
             isResizable: isResizable,
             aspectRatio: maintainsAspectRatio && preferredHeight > 0 ? CGFloat(preferredWidth / preferredHeight) : nil,
+            hidden: payload["hidden"] as? Bool ?? false,
             snapshotPayload: payload
         )
     }

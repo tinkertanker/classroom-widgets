@@ -56,6 +56,7 @@ const snapshot = (
   maximumSize: null,
   isResizable: true,
   maintainsAspectRatio: true,
+  hidden: false,
   state,
   theme: 'light',
   savedRandomiserLists: []

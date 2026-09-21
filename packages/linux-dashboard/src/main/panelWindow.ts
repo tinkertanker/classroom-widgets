@@ -188,6 +188,10 @@ export class WidgetPanelWindow extends EventEmitter {
     return this.descriptor.isResizable;
   }
 
+  get isHidden(): boolean {
+    return this.descriptor.hidden;
+  }
+
   get currentFrame(): RectFrame {
     return this.win.getBounds();
   }
@@ -198,7 +202,7 @@ export class WidgetPanelWindow extends EventEmitter {
   }
 
   showPanel(): void {
-    if (this.closingPermanently || this.win.isDestroyed()) return;
+    if (this.closingPermanently || this.descriptor.hidden || this.win.isDestroyed()) return;
     if (!this.win.isVisible()) this.win.showInactive();
     this.startHoverTimer();
   }

@@ -26,6 +26,7 @@ struct WidgetPanelDescriptor {
     let maximumContentSize: Size?
     let isResizable: Bool
     let aspectRatio: CGFloat?
+    let hidden: Bool
     let snapshotPayload: [String: Any]
 
     init(
@@ -36,6 +37,7 @@ struct WidgetPanelDescriptor {
         maximumContentSize: Size? = nil,
         isResizable: Bool = true,
         aspectRatio: CGFloat? = nil,
+        hidden: Bool = false,
         snapshotPayload: [String: Any]
     ) {
         self.id = id
@@ -45,6 +47,7 @@ struct WidgetPanelDescriptor {
         self.maximumContentSize = maximumContentSize
         self.isResizable = isResizable
         self.aspectRatio = aspectRatio
+        self.hidden = hidden
         self.snapshotPayload = snapshotPayload
     }
 }
@@ -151,16 +154,26 @@ final class WidgetPanelCoordinator: NSObject {
             let controller: WidgetPanelController
             if let existingController = panelControllers[descriptor.id] {
                 controller = existingController
+                let wasHidden = controller.isHidden
                 controller.apply(descriptor: descriptor)
+                if descriptor.hidden {
+                    controller.hide()
+                } else if wasHidden {
+                    controller.show()
+                }
             } else {
                 controller = makePanelController(descriptor: descriptor)
                 panelControllers[descriptor.id] = controller
+                if descriptor.hidden {
+                    controller.hide()
+                }
             }
             controller.push(snapshot: descriptor.snapshotPayload)
         }
 
         if layout != .freeform {
             let layoutSignature = snapshot.widgets
+                .filter { !$0.hidden }
                 .map { "\($0.id):\($0.preferredContentSize.width)x\($0.preferredContentSize.height)" }
                 .joined(separator: "|")
             if layoutSignature != lastLayoutSignature {
@@ -245,7 +258,7 @@ final class WidgetPanelCoordinator: NSObject {
         let targetScreen = screen ?? panelControllers.values.compactMap(\.window?.screen).first ?? NSScreen.main
         guard let targetScreen else { return }
         let usableFrame = targetScreen.visibleFrame.insetBy(dx: 12, dy: 12)
-        let controllers = orderedControllers
+        let controllers = orderedControllers.filter { !$0.isHidden }
 
         if previousLayout == .freeform {
             freeformFrames.removeAll()
@@ -267,7 +280,7 @@ final class WidgetPanelCoordinator: NSObject {
 
     func restoreFreeformFrames() {
         layout = .freeform
-        for controller in orderedControllers {
+        for controller in orderedControllers where !controller.isHidden {
             let savedFrame = freeformFrames[controller.widgetID] ?? storedFrame(for: controller.widgetID)
             let frame = savedFrame.map {
                 controller.isResizable ? $0 : NSRect(origin: $0.origin, size: controller.preferredFrameSize)
@@ -331,7 +344,7 @@ final class WidgetPanelCoordinator: NSObject {
         guard let screen = NSScreen.main else { return controller.defaultFrame() }
         let usableFrame = screen.visibleFrame.insetBy(dx: 12, dy: 12)
         let size = controller.preferredFrameSize
-        let existingFrames = panelControllers.values.compactMap(\.window?.frame)
+        let existingFrames = panelControllers.values.filter { !$0.isHidden }.compactMap(\.window?.frame)
         let nextX = (existingFrames.map(\.maxX).max() ?? usableFrame.minX - 12) + 12
 
         if nextX + size.width <= usableFrame.maxX {
@@ -419,6 +432,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     var widgetID: String { descriptor.id }
     var isResizable: Bool { descriptor.isResizable }
+    var isHidden: Bool { descriptor.hidden }
     var preferredFrameSize: NSSize {
         let size = WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
         guard let window else { return size }
@@ -530,6 +544,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func show() {
+        guard !descriptor.hidden else { return }
         let wasVisible = window?.isVisible == true
         window?.orderFront(nil)
         if !wasVisible {

@@ -220,7 +220,7 @@ public sealed class WidgetShortcutManager : IDisposable
         if (!_host.IsAvailable) return 0;
         _ = registration.Action switch
         {
-            WidgetShortcutAction.Show => _host.AddWidgetAsync(registration.WidgetType),
+            WidgetShortcutAction.Show => _host.ShowWidgetAsync(registration.WidgetType),
             WidgetShortcutAction.Dismiss => _host.DismissWidgetAsync(registration.WidgetType),
             _ => _host.ToggleWidgetAsync(registration.WidgetType)
         };

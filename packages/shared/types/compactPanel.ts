@@ -17,6 +17,7 @@ export interface CompactWidgetSnapshot {
   maximumSize: Size | null;
   isResizable: boolean;
   maintainsAspectRatio: boolean;
+  hidden: boolean;
   state: JsonValue | null;
   theme: 'light' | 'dark';
   savedRandomiserLists: SavedRandomiserList[];
@@ -67,6 +68,7 @@ export interface CompactPanelHostBridge {
   applyStateChange: (change: CompactPanelStateChange) => boolean;
   applyRandomiserListChange: (change: CompactRandomiserListChange) => boolean;
   addWidget: (widgetType: WidgetType) => boolean;
+  showWidget: (widgetType: WidgetType) => boolean;
   dismissWidget: (widgetType: WidgetType) => boolean;
   toggleWidget: (widgetType: WidgetType) => boolean;
   removeWidget: (widgetId: string) => boolean;

@@ -112,6 +112,13 @@ public sealed class WidgetHostController
         if (!applied) DashboardLog.Warn($"Host refused to add widget type {widgetType}");
     }
 
+    public async Task ShowWidgetAsync(int widgetType)
+    {
+        if (!_initialized || !IsAvailable) return;
+        await DashboardWebView.EvaluateBoolAsync(_webView,
+            $"(() => {{ const host = window.classroomPanelHost; return host?.showWidget ? host.showWidget({widgetType}) : false; }})()");
+    }
+
     public async Task DismissWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;

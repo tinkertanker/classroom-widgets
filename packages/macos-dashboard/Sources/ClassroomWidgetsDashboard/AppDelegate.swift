@@ -581,7 +581,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let replacement = try makeHotKey(shortcut) { [weak self] in
                 guard let self, self.controller?.widgetOptions.contains(where: { $0.widgetType == widgetType }) == true else { return }
                 switch action {
-                case .show: self.controller?.addWidget(widgetType)
+                case .show: self.controller?.showWidget(widgetType)
                 case .dismiss: self.controller?.dismissWidget(widgetType)
                 case nil: self.controller?.toggleWidget(widgetType)
                 }

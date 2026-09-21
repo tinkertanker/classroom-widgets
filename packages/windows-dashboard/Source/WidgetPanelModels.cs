@@ -23,6 +23,7 @@ public sealed record WidgetPanelDescriptor(
     double? AspectRatio,
     int Revision,
     int StateRevision,
+    bool Hidden,
     JsonElement SnapshotPayload)
 {
     public static WidgetPanelDescriptor? FromPayload(JsonElement payload)
@@ -51,6 +52,7 @@ public sealed record WidgetPanelDescriptor(
         var revision = payload.TryGetProperty("revision", out var revisionValue) && revisionValue.TryGetInt32(out var parsedRevision) ? parsedRevision : 0;
         var stateRevision = payload.TryGetProperty("stateRevision", out var stateValue) && stateValue.TryGetInt32(out var parsedState) ? parsedState : 0;
         var maintainsAspectRatio = aspect.GetBoolean();
+        var hidden = payload.TryGetProperty("hidden", out var hiddenValue) && hiddenValue.ValueKind == JsonValueKind.True;
 
         return new WidgetPanelDescriptor(
             id,
@@ -62,6 +64,7 @@ public sealed record WidgetPanelDescriptor(
             maintainsAspectRatio && preferred.Height > 0 ? preferred.Width / preferred.Height : null,
             revision,
             stateRevision,
+            hidden,
             payload.Clone());
     }
 

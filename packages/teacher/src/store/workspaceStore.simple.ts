@@ -547,9 +547,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   },
   removeWidget: (widgetId) => {
     debug('[WorkspaceStore] removeWidget called for widget:', widgetId);
-    set((state) => ({ 
-      widgets: state.widgets.filter(w => w.id !== widgetId) 
-    }));
+    set((state) => {
+      const newStates = new Map(state.widgetStates);
+      newStates.delete(widgetId);
+      return {
+        widgets: state.widgets.filter(w => w.id !== widgetId),
+        widgetStates: newStates
+      };
+    });
   },
   updateWidget: (widgetId, updates) => {
     set((state) => ({
