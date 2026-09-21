@@ -2,6 +2,7 @@ namespace ClassroomWidgets;
 
 public static class DisplayShortcutLogic
 {
+    public const int WidgetType = int.MinValue;
     public const string DefaultShortcut = "Ctrl+Alt+Shift+0";
 
     public static bool IsDuplicate(string? shortcut, IEnumerable<string?> assignments)

@@ -67,6 +67,76 @@ public sealed class WidgetShortcutSettingsTests
     }
 
     [Fact]
+    public void LegacyDisplayShowBecomesMatchingDismissEvenWithoutWidgetInventory()
+    {
+        var settings = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            """{"DisplayPreviewShortcut":"Ctrl+Alt+D"}""")!;
+
+        settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>());
+
+        var saved = System.Text.Json.JsonSerializer.SerializeToElement(settings);
+        Assert.True(saved.TryGetProperty("DisplayPreviewDismissShortcut", out var dismiss));
+        Assert.Equal("Ctrl+Alt+D", dismiss.GetString());
+        Assert.Equal("Ctrl+Alt+D", settings.DisplayPreviewShortcut);
+    }
+
+    [Fact]
+    public void ExplicitlyClearedDisplayShortcutsStayClearedAfterReloadAndBackfill()
+    {
+        var settings = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            """{"DisplayPreviewShortcutsInitialized":true,"DisplayPreviewShortcut":null,"DisplayPreviewDismissShortcut":null}""")!;
+
+        settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]);
+
+        Assert.Null(settings.DisplayPreviewShortcut);
+        var reloaded = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            System.Text.Json.JsonSerializer.Serialize(settings))!;
+        reloaded.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer"), new CompactWidgetOption(40, "Randomiser")]);
+        Assert.Null(reloaded.DisplayPreviewShortcut);
+        var saved = System.Text.Json.JsonSerializer.SerializeToElement(reloaded);
+        Assert.Equal(System.Text.Json.JsonValueKind.Null, saved.GetProperty("DisplayPreviewDismissShortcut").ValueKind);
+    }
+
+    [Fact]
+    public void DisplayDismissReservesItsOwnKeyAgainstWidgetDefaults()
+    {
+        var settings = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
+            """{"DisplayPreviewShortcutsInitialized":true,"DisplayPreviewShortcut":"Ctrl+Alt+D","DisplayPreviewDismissShortcut":"Ctrl+Alt+Shift+1"}""")!;
+
+        settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]);
+
+        Assert.Equal("Ctrl+Alt+Shift+2", settings.WidgetShortcuts[7]);
+        Assert.Equal("Ctrl+Alt+Shift+2", settings.WidgetDismissShortcuts[7]);
+    }
+
+    [Fact]
+    public void DisplayDefaultsInitializeOnceWhileWidgetInventoryIsUnavailable()
+    {
+        var settings = new DashboardSettings();
+
+        Assert.True(settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>()));
+        Assert.False(settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>()));
+        Assert.False(settings.WidgetShortcutsInitialized);
+        Assert.Equal(DisplayShortcutLogic.DefaultShortcut, settings.DisplayPreviewShortcut);
+        Assert.Equal(DisplayShortcutLogic.DefaultShortcut, settings.DisplayPreviewDismissShortcut);
+    }
+
+    [Fact]
+    public void LegacyDefaultIsNotStolenFromAnotherWidgetsDismissAssignment()
+    {
+        var settings = new DashboardSettings
+        {
+            WidgetDismissShortcuts = new Dictionary<int, string?> { [7] = DisplayShortcutLogic.DefaultShortcut }
+        };
+
+        settings.ApplyWidgetShortcutDefaults(Array.Empty<CompactWidgetOption>());
+
+        Assert.Null(settings.DisplayPreviewShortcut);
+        Assert.Null(settings.DisplayPreviewDismissShortcut);
+        Assert.True(settings.DisplayPreviewShortcutsInitialized);
+    }
+
+    [Fact]
     public void EmptyInventoryDoesNotPreventLaterWidgetDefaults()
     {
         var settings = new DashboardSettings();
@@ -97,7 +167,9 @@ public sealed class WidgetShortcutSettingsTests
         {
             DisplayPreviewFrame = new PanelFrame { Left = 1, Top = 2, Width = 480, Height = 402 },
             DisplayPreviewSourceId = @"\\.\DISPLAY2",
-            DisplayPreviewShortcut = "Ctrl+Alt+Shift+0"
+            DisplayPreviewShortcut = "Ctrl+Alt+Shift+0",
+            DisplayPreviewDismissShortcut = "Ctrl+Alt+Shift+D",
+            DisplayPreviewShortcutsInitialized = true
         };
         var options = new System.Text.Json.JsonSerializerOptions();
         var reloaded = System.Text.Json.JsonSerializer.Deserialize<DashboardSettings>(
@@ -105,6 +177,8 @@ public sealed class WidgetShortcutSettingsTests
         Assert.Equal(settings.DisplayPreviewFrame?.Width, reloaded?.DisplayPreviewFrame?.Width);
         Assert.Equal(settings.DisplayPreviewSourceId, reloaded?.DisplayPreviewSourceId);
         Assert.Equal(settings.DisplayPreviewShortcut, reloaded?.DisplayPreviewShortcut);
+        Assert.Equal(settings.DisplayPreviewDismissShortcut, reloaded?.DisplayPreviewDismissShortcut);
+        Assert.True(reloaded?.DisplayPreviewShortcutsInitialized);
     }
 
     [Fact]
