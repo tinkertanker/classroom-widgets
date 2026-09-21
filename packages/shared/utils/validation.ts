@@ -29,14 +29,6 @@ export const isValidSessionCode = (code: string): boolean => {
 };
 
 /**
- * Validates a student name
- * Currently just checks if not empty after trimming
- */
-export const isValidStudentName = (name: string): boolean => {
-  return name.trim().length > 0;
-};
-
-/**
  * Sanitizes a student name by trimming whitespace
  * Returns 'Anonymous' if empty
  */
