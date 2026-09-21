@@ -154,13 +154,19 @@ final class WidgetPanelCoordinator: NSObject {
             let controller: WidgetPanelController
             if let existingController = panelControllers[descriptor.id] {
                 controller = existingController
+                let wasHidden = controller.isHidden
                 controller.apply(descriptor: descriptor)
+                if descriptor.hidden {
+                    controller.hide()
+                } else if wasHidden {
+                    controller.show()
+                }
             } else {
                 controller = makePanelController(descriptor: descriptor)
                 panelControllers[descriptor.id] = controller
-            }
-            if descriptor.hidden {
-                controller.hide()
+                if descriptor.hidden {
+                    controller.hide()
+                }
             }
             controller.push(snapshot: descriptor.snapshotPayload)
         }
