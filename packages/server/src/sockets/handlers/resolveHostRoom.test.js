@@ -29,7 +29,7 @@ describe('resolveHostRoom guard', () => {
 
   beforeEach(() => {
     session = new Session(SESSION_CODE);
-    session.setHost(HOST_SOCKET.id);
+    session.hostSocketId = HOST_SOCKET.id;
     session.createRoom('poll', WIDGET_ID);
     session.createRoom('activity', WIDGET_ID);
   });
@@ -98,7 +98,7 @@ describe('resolveHostRoom guard', () => {
     });
 
     it('rejects with NOT_HOST once the host socket has been replaced', () => {
-      session.setHost('a-newer-host-socket');
+      session.hostSocketId = 'a-newer-host-socket';
 
       const result = resolveHostRoom(session, HOST_SOCKET, 'poll', PollRoom, WIDGET_ID);
 

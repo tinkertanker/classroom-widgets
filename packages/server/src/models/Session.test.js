@@ -92,27 +92,21 @@ describe('Session', () => {
       session.createRoom('poll', 'w-1');
       assert.equal(session.closeRoom('poll', 'w-1'), true);
       assert.equal(session.closeRoom('poll', 'w-1'), false);
-      assert.equal(session.hasActiveRooms(), false);
+      assert.equal(session.activeRooms.size, 0);
     });
   });
 
-  describe('_roomKey / _parseRoomKey', () => {
-    it('round-trips a room type with no widget id', () => {
-      const key = session._roomKey('poll', null);
-      assert.equal(key, 'poll');
-      assert.deepEqual(session._parseRoomKey(key), { roomType: 'poll', widgetId: undefined });
+  describe('_roomKey', () => {
+    it('builds a key from a room type with no widget id', () => {
+      assert.equal(session._roomKey('poll', null), 'poll');
     });
 
-    it('round-trips a room type with a plain widget id', () => {
-      const key = session._roomKey('poll', 'w-1');
-      assert.equal(key, 'poll:w-1');
-      assert.deepEqual(session._parseRoomKey(key), { roomType: 'poll', widgetId: 'w-1' });
+    it('builds a key from a room type with a plain widget id', () => {
+      assert.equal(session._roomKey('poll', 'w-1'), 'poll:w-1');
     });
 
-    it('round-trips a widget id containing colons', () => {
-      const key = session._roomKey('poll', 'widget:with:colons');
-      assert.equal(key, 'poll:widget:with:colons');
-      assert.deepEqual(session._parseRoomKey(key), { roomType: 'poll', widgetId: 'widget:with:colons' });
+    it('builds a key from a widget id containing colons', () => {
+      assert.equal(session._roomKey('poll', 'widget:with:colons'), 'poll:widget:with:colons');
     });
 
     it('produces the same keys createRoom/getRoom/closeRoom relied on before the refactor', () => {
@@ -120,41 +114,6 @@ describe('Session', () => {
       assert.ok(session.activeRooms.has(session._roomKey('poll', 'widget:with:colons')));
       assert.ok(session.getRoom('poll', 'widget:with:colons'));
       assert.equal(session.closeRoom('poll', 'widget:with:colons'), true);
-    });
-  });
-
-  describe('host mutators', () => {
-    it('setHost sets the host socket and clears any prior disconnect timestamp', () => {
-      session.markHostDisconnected();
-      assert.notEqual(session.hostDisconnectedAt, null);
-
-      session.setHost('host-1');
-
-      assert.equal(session.hostSocketId, 'host-1');
-      assert.equal(session.hostDisconnectedAt, null);
-      assert.equal(session.isHost('host-1'), true);
-      assert.equal(session.isHostDisconnected(), false);
-    });
-
-    it('markHostDisconnected sets a timestamp and is safe to call twice', () => {
-      session.markHostDisconnected();
-      const first = session.hostDisconnectedAt;
-
-      assert.notEqual(first, null);
-      assert.equal(session.isHostDisconnected(), true);
-
-      session.markHostDisconnected();
-
-      assert.equal(session.isHostDisconnected(), true);
-      assert.equal(typeof session.hostDisconnectedAt, 'number');
-    });
-
-    it('clearHostDisconnected resets the disconnect timestamp to null', () => {
-      session.markHostDisconnected();
-      session.clearHostDisconnected();
-
-      assert.equal(session.hostDisconnectedAt, null);
-      assert.equal(session.isHostDisconnected(), false);
     });
   });
 
@@ -189,16 +148,9 @@ describe('Session', () => {
     });
   });
 
-  describe('expiry and inactivity', () => {
-    it('is not expired or inactive when fresh', () => {
-      assert.equal(session.isExpired(), false);
+  describe('inactivity', () => {
+    it('is not inactive when fresh', () => {
       assert.equal(session.isInactive(), false);
-    });
-
-    it('expires strictly after maxAge', () => {
-      session.createdAt = Date.now() - 1001;
-      assert.equal(session.isExpired(1000), true);
-      assert.equal(session.isExpired(10_000), false);
     });
 
     it('is only inactive when idle AND empty', () => {
