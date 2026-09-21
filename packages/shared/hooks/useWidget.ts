@@ -1,6 +1,6 @@
 // Widget-specific hooks for easy state management
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { WidgetInstance, Position, Size, WidgetType } from '../types';
@@ -56,45 +56,6 @@ export function useWidgetDrag(widgetId: string) {
     startDrag: () => startDragging(widgetId),
     stopDrag: stopDragging
   };
-}
-
-// Hook for widget lifecycle
-export function useWidgetLifecycle(widgetId: string, onMount?: () => void, onUnmount?: () => void) {
-  useEffect(() => {
-    onMount?.();
-    return () => {
-      onUnmount?.();
-    };
-  }, [widgetId, onMount, onUnmount]);
-}
-
-// Hook for widget events
-export function useWidgetEvents(widgetId: string, handlers: {
-  onUpdate?: (data: any) => void;
-  onMove?: (position: Position) => void;
-  onResize?: (size: Size) => void;
-}) {
-  const addEventListener = useWorkspaceStore((state) => state.addEventListener);
-  const removeEventListener = useWorkspaceStore((state) => state.removeEventListener);
-
-  useEffect(() => {
-    const listener = (event: any) => {
-      switch (event.type) {
-        case 'update':
-          handlers.onUpdate?.(event.data);
-          break;
-        case 'move':
-          handlers.onMove?.(event.data);
-          break;
-        case 'resize':
-          handlers.onResize?.(event.data);
-          break;
-      }
-    };
-
-    addEventListener(widgetId, listener);
-    return () => removeEventListener(widgetId, listener);
-  }, [widgetId, handlers, addEventListener, removeEventListener]);
 }
 
 // Hook for creating a new widget

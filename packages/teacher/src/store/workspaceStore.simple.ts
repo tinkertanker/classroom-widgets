@@ -491,7 +491,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     url: import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
   },
   widgetStates: new Map(),
-  eventListeners: new Map(),
   focusedWidgetId: null,
   classEndTime: null,
   linkShortener: createDefaultShortenerSettings(),
@@ -657,9 +656,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       return { widgetStates: newStates };
     });
   },
-  emitEvent: () => {},
-  addEventListener: () => {},
-  removeEventListener: () => {},
 
   // Workspace management actions
   refreshWorkspaceList: () => {

@@ -44,7 +44,6 @@ export interface WorkspaceStore {
   bottomBar: BottomBarConfig;
   serverStatus: ServerStatus;
   widgetStates: Map<string, any>;
-  eventListeners: Map<string, Function[]>;
   focusedWidgetId: string | null;
   classEndTime: number | null;  // Timestamp for class end time
   layoutFormat: LayoutFormat;
@@ -94,11 +93,6 @@ export interface WorkspaceStore {
   
   // Widget state management
   updateWidgetState: (widgetId: string, state: any) => void;
-
-  // Event management
-  emitEvent: (event: string, data?: any) => void;
-  addEventListener: (event: string, listener: Function) => void;
-  removeEventListener: (event: string, listener: Function) => void;
 
   // Workspace management
   switchWorkspace: (workspaceId: string) => void;
