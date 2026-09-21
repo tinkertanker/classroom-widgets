@@ -5,6 +5,7 @@ Classroom Widgets for Linux is a system-tray app that opens compact classroom wi
 ## Requirements
 
 - 64-bit Linux with a desktop environment that provides a system tray. On GNOME you need an AppIndicator extension (e.g. *AppIndicator and KStatusNotifierItem Support*); KDE Plasma, Cinnamon and XFCE work out of the box.
+- Wayland sessions must provide XWayland. Classroom Widgets automatically uses Electron's X11 backend there because native Wayland does not support the always-on-top, positioning, and non-activating window operations that floating widgets require.
 - For building: Node.js 20+.
 
 ## Using the app
@@ -25,6 +26,13 @@ Launching the app from the desktop application menu opens a searchable widget la
 
 Launch at login starts quietly without opening the launcher.
 
+On a Wayland desktop, normal launches, launch-at-login, AppImage, and `.deb`
+packages all select XWayland automatically. An explicit Electron
+`--ozone-platform` command-line flag is left unchanged for diagnostics or advanced
+use, but native Wayland cannot provide reliable floating widgets or Display
+Preview. If XWayland is disabled in the desktop session, enable it before starting
+Classroom Widgets.
+
 Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
 
 ### Display preview safety
@@ -39,10 +47,10 @@ Capture requires Electron to identify a source with a `display_id` matching the
 selected display. A sole source with an empty, missing, or different ID is not
 proof of identity; the preview refuses it and reports that the source is
 unavailable or display identity is unsupported. Reconnect/select an available
-display, or use an X11 desktop that exposes matching display IDs. There is no
-fallback that guesses which display a Wayland/PipeWire portal returned. Native
-Wayland/PipeWire capture still needs separate validation; passing X11 tests does
-not establish support for it.
+display, or use an X11/XWayland desktop that exposes matching display IDs. There
+is no fallback that guesses which display a Wayland/PipeWire portal returned.
+Classroom Widgets does not use native Wayland by default because its floating
+windows require XWayland; explicitly selecting native Wayland remains unsupported.
 
 ### Where things live
 
@@ -97,7 +105,7 @@ settings, persistence, live updates, reloads, and the widget's settings gear.
 It makes no shortening requests. Set `SCREENSHOT_DIR` to an existing directory
 to capture the default and Short.io Settings screens.
 
-The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but Wayland support depends on the desktop compositor and Electron's portal support; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
+The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but a Wayland compositor may restrict global shortcuts from XWayland applications; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
 
 ## Publishing a release
 

@@ -1,6 +1,6 @@
 import { app, globalShortcut, screen, session, desktopCapturer } from 'electron';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { installProtocolHandler, registerPrivilegedScheme } from './appProtocol';
 import { WidgetHostController } from './hostController';
 import { LauncherWindow } from './launcherWindow';
@@ -8,20 +8,40 @@ import { log } from './log';
 import { DashboardSettings } from './settings';
 import { DisplayCatalog } from './displayCatalog';
 import { DisplayPreviewCoordinator } from './displayPreview';
-import { isBackgroundLaunch } from './startup';
+import { appImageUpdateRelaunchDelay, isBackgroundLaunch, relaunchExecutable, x11RelaunchArguments } from './startup';
 import { TrayController } from './tray';
 import { openSettingsWindow } from './settingsWindow';
 import { UpdateController } from './updateController';
 import { WidgetShortcutController } from './widgetShortcuts';
 
-app.setName('ClassroomWidgets');
-
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  process.stderr.write('Another instance is already running; exiting\n');
-  app.quit();
+const relaunchArguments = x11RelaunchArguments(process.platform, process.env, process.argv);
+if (relaunchArguments) {
+  app.relaunch({ args: relaunchArguments, execPath: relaunchExecutable(process.env, process.execPath) });
+  const appImage = process.env.APPIMAGE?.trim();
+  let delay = 0;
+  if (appImage) {
+    try {
+      delay = appImageUpdateRelaunchDelay(process.env, readdirSync(dirname(appImage)));
+    } catch {
+      // The update backup is only a compatibility signal; relaunch normally if its directory is unavailable.
+    }
+  }
+  if (delay > 0) setTimeout(() => app.exit(0), delay);
+  else app.exit(0);
 } else {
-  bootstrap();
+  launch();
+}
+
+function launch(): void {
+  app.setName('ClassroomWidgets');
+
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    process.stderr.write('Another instance is already running; exiting\n');
+    app.quit();
+  } else {
+    bootstrap();
+  }
 }
 
 // Packaged builds get the version via electron-builder extraMetadata; dev runs read the repo-root version.json.
