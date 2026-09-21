@@ -119,7 +119,7 @@ test('adding, reordering and removing other rows preserves widget recording and 
   const list = shortcut(2, 'List', 'Ctrl+Alt+L');
   const h = await renderer([timer, list]);
   const button = h.begin('Timer', 'dismiss');
-  for (const inventory of [[list, timer], [shortcut(3, 'Text'), list, timer], [timer]]) {
+  for (const inventory of [[list, timer], [timer, list], [shortcut(3, 'Text'), list, timer], [timer]]) {
     h.render(inventory);
     assert.deepEqual(h.capturing, [true]);
     assert.equal(h.document.activeElement, button);
