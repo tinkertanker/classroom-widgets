@@ -932,6 +932,7 @@ Implementation in `server/src/middleware/socketAuth.js`.
 | Endpoint | Protection |
 |----------|------------|
 | `GET /api/*` | Public (read-only) |
+| `POST /api/shorten` | Public web proxy for configured Short.io link shortening |
 | `POST /admin/cleanup` | `ADMIN_TOKEN` env variable required |
 
 ### Input Validation

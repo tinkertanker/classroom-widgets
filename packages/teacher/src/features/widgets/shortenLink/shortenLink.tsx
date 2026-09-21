@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import QRCode from 'react-qr-code';
 import { WidgetInput } from '@shared/components/WidgetInput';
 import { widgetContainer } from '@shared/utils/styles';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
-
-// Use environment variables for API configuration
-const API_KEY = import.meta.env.VITE_SHORTIO_API_KEY || '';
-const BASE_URL = import.meta.env.VITE_SHORTIO_BASE_URL || 'https://api.short.io/links/public';
-const SHORTIO_DOMAIN = import.meta.env.VITE_SHORTIO_DOMAIN || '';
+import { validateTargetUrl } from '@shared/utils/urlShortener';
+import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 
 interface ShortenLinkProps {
 }
 
+interface ShortenResponse {
+  success?: boolean;
+  shortUrl?: string;
+  error?: unknown;
+  message?: unknown;
+}
+
 const ShortenLink: React.FC<ShortenLinkProps> = () => {
+  const serverUrl = useWorkspaceStore((state) => state.serverStatus.url);
   const [link, setLink] = useState<string>('');
   const [shortenedLink, setShortenedLink] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -23,13 +27,9 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!link.trim()) {
-      setError('Please enter a URL');
-      return;
-    }
-
-    if (!API_KEY) {
-      setError('Short.io API key not configured. Please set VITE_SHORTIO_API_KEY in your environment.');
+    const urlError = validateTargetUrl(link);
+    if (urlError) {
+      setError(urlError);
       return;
     }
     
@@ -38,28 +38,31 @@ const ShortenLink: React.FC<ShortenLinkProps> = () => {
     setShortenedLink('');
     
     try {
-      const response = await axios.post(
-        BASE_URL,
-        {
-          originalURL: link,
-          domain: SHORTIO_DOMAIN
-        },
-        {
-          headers: {
-            authorization: API_KEY,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const response = await fetch(`${serverUrl}/api/shorten`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: link })
+      });
+      let data: ShortenResponse = {};
+      try {
+        data = await response.json();
+      } catch {
+        // The server may return an empty or non-JSON error response.
+      }
 
-      if (response.data && (response.data.secureShortURL || response.data.shortURL)) {
-        setShortenedLink(response.data.secureShortURL || response.data.shortURL);
+      if (response.ok && data.success && data.shortUrl) {
+        setShortenedLink(data.shortUrl);
         setError(null);
+      } else if (response.status === 503) {
+        setError('Link shortening is not configured on this server.');
+      } else if (typeof data.message === 'string') {
+        setError(data.message);
+      } else if (typeof data.error === 'string') {
+        setError(data.error);
       } else {
         setError('Failed to shorten the link. Please try again.');
       }
-    } catch (err) {
-      console.error('Error shortening the link:', err);
+    } catch {
       setError('Unable to shorten link. Please check your internet connection.');
     } finally {
       setIsLoading(false);

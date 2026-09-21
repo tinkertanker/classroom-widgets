@@ -4,6 +4,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { ipMissRateLimit } = require('../middleware/rateLimit');
 const serverConfig = require('../config/server.config');
 const voiceCommandRoutes = require('./voiceCommand');
+const { createShortenRouter } = require('./shorten');
 const { isValidAdminToken } = require('../utils/adminToken');
 
 /**
@@ -72,6 +73,7 @@ module.exports = (sessionManager) => {
    * Voice command processing endpoint
    */
   router.use('/voice-command', voiceCommandRoutes);
+  router.use('/shorten', createShortenRouter());
 
   return router;
 };

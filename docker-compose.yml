@@ -11,6 +11,7 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:3001}
+        - VITE_LINK_SHORTENER_ENABLED=${VITE_LINK_SHORTENER_ENABLED:-false}
     ports:
       - "3000:80"
     environment:
@@ -31,6 +32,9 @@ services:
       - PORT=3001
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost,http://127.0.0.1}
       - STUDENT_APP_URL=${STUDENT_APP_URL:-http://localhost:3000/student}
+      - SHORTIO_API_KEY=${SHORTIO_API_KEY:-}
+      - SHORTIO_DOMAIN=${SHORTIO_DOMAIN:-}
+      - SHORTIO_BASE_URL=${SHORTIO_BASE_URL:-https://api.short.io/links/public}
     networks:
       - classroom-widgets
 
