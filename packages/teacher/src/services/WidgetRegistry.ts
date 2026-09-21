@@ -125,7 +125,6 @@ const LazyWidgets = {
   Handout: lazy(widgetImports.Handout),
   FillBlank: lazy(widgetImports.FillBlank),
   CodeFillBlank: lazy(widgetImports.CodeFillBlank),
-  // Wordle: lazy(() => import('../features/widgets/wordle/wordle')) // TEMPORARILY DISABLED
 };
 
 // Default sizes for widgets
@@ -478,23 +477,6 @@ export class WidgetRegistry {
         hidden: true
       }
     });
-
-    // Wordle - TEMPORARILY DISABLED FOR PRODUCTION
-    // this.register({
-    //   type: WidgetType.WORDLE,
-    //   name: 'Wordle',
-    //   icon: FaSpellCheck,
-    //   component: LazyWidgets.Wordle,
-    //   defaultSize: { width: 350, height: 500 },
-    //   minSize: { width: 300, height: 450 },
-    //   maxSize: { width: 400, height: 600 },
-    //   category: WidgetCategory.FUN,
-    //   description: 'Daily word puzzle game',
-    //   features: {
-    //     hasStateManagement: true,
-    //     isResizable: true
-    //   }
-    // });
 
     // NETWORKED WIDGETS
 
