@@ -1,8 +1,6 @@
 // Browser compatibility utilities for voice control
 // Simplified since annyang handles most cross-browser compatibility
 
-import { debug } from '@shared/utils/debug';
-
 export interface BrowserInfo {
   name: string;
   version: string;
@@ -89,24 +87,4 @@ export const getBrowserInfo = (): BrowserInfo => {
       'Try Chrome, Edge, or Firefox for voice control'
     ]
   };
-};
-
-export const getBrowserSupportMessage = (browserInfo: BrowserInfo): string => {
-  if (browserInfo.isSupported) {
-    return browserInfo.recommendations.join('\n\n');
-  }
-
-  return browserInfo.recommendations.join('\n\n');
-};
-
-export const checkMicrophonePermission = async (): Promise<boolean> => {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // Stop all tracks immediately
-    stream.getTracks().forEach(track => track.stop());
-    return true;
-  } catch (error) {
-    debug.error('Microphone permission check failed:', error);
-    return false;
-  }
 };
