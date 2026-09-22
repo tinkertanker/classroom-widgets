@@ -96,6 +96,7 @@ final class WidgetPanelCoordinator: NSObject {
     private var freeformFrames: [String: NSRect] = [:]
     private var layout: WidgetPanelLayout = .freeform
     private var compactPresentationActive = true
+    private var lastFocusedWidgetID: String?
     private var widgetCreationOptions: [CompactWidgetOption] = []
     private var panelBackgroundOpacity = 1.0
     private var panelsJoinAllSpaces = true
@@ -132,6 +133,7 @@ final class WidgetPanelCoordinator: NSObject {
         if let lastSnapshot, snapshot.hostInstanceID != lastSnapshot.hostInstanceID {
             panelControllers.values.forEach { $0.closePermanently() }
             panelControllers.removeAll()
+            lastFocusedWidgetID = nil
         }
         if let lastSnapshot,
            snapshot.hostInstanceID == lastSnapshot.hostInstanceID,
@@ -148,6 +150,7 @@ final class WidgetPanelCoordinator: NSObject {
             panelControllers[id] = nil
             freeformFrames[id] = nil
             UserDefaults.standard.removeObject(forKey: frameDefaultsKey(for: id))
+            if lastFocusedWidgetID == id { lastFocusedWidgetID = nil }
         }
 
         for descriptor in snapshot.widgets where !descriptor.id.isEmpty {
@@ -158,6 +161,7 @@ final class WidgetPanelCoordinator: NSObject {
                 controller.apply(descriptor: descriptor)
                 if descriptor.hidden {
                     controller.hide()
+                    if lastFocusedWidgetID == descriptor.id { lastFocusedWidgetID = nil }
                 } else if wasHidden {
                     controller.show()
                 }
@@ -194,6 +198,7 @@ final class WidgetPanelCoordinator: NSObject {
     func deactivate() {
         compactPresentationActive = false
         lastLayoutSignature = nil
+        lastFocusedWidgetID = nil
         panelControllers.values.forEach { $0.closePermanently() }
         panelControllers.removeAll()
     }
@@ -278,6 +283,34 @@ final class WidgetPanelCoordinator: NSObject {
         }
     }
 
+    /// Moves the selected panel (key, else most recently focused, else the
+    /// only visible one) to the next display in NSScreen order, keeping its
+    /// size and work-area offset. Mirrors a manual drag: the new frame is
+    /// persisted and arrange bookkeeping stays untouched.
+    func moveSelectedPanelToNextScreen() {
+        guard let controller = selectedPanelController(), let frame = controller.window?.frame else { return }
+        let workAreas = NSScreen.screens.map { $0.visibleFrame.insetBy(dx: 12, dy: 12) }
+        guard let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: workAreas) else { return }
+        controller.setFrame(moved, animate: true)
+        persist(frame: moved, for: controller.widgetID)
+    }
+
+    private func selectedPanelController() -> WidgetPanelController? {
+        if let key = panelControllers.values.first(where: {
+            $0.window?.isKeyWindow == true && $0.window?.isVisible == true && !$0.isHidden
+        }) {
+            return key
+        }
+        if let lastFocusedWidgetID {
+            guard let remembered = panelControllers[lastFocusedWidgetID],
+                  remembered.window?.isVisible == true, !remembered.isHidden
+            else { return nil }
+            return remembered
+        }
+        let visible = panelControllers.values.filter { $0.window?.isVisible == true && !$0.isHidden }
+        return visible.count == 1 ? visible.first : nil
+    }
+
     func restoreFreeformFrames() {
         layout = .freeform
         for controller in orderedControllers where !controller.isHidden {
@@ -326,6 +359,9 @@ final class WidgetPanelCoordinator: NSObject {
         }
         controller.onFrameChanged = { [weak self] widgetID, frame in
             self?.persist(frame: frame, for: widgetID)
+        }
+        controller.onBecameKey = { [weak self] widgetID in
+            self?.lastFocusedWidgetID = widgetID
         }
 
         if let storedFrame = storedFrame(for: descriptor.id) {
@@ -414,6 +450,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
     var onFrameChanged: (@MainActor (String, NSRect) -> Void)?
+    var onBecameKey: (@MainActor (String) -> Void)?
 
     private var descriptor: WidgetPanelDescriptor
     private let webView: WKWebView
@@ -713,6 +750,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
+        onBecameKey?(widgetID)
         revealChrome()
         scheduleChromeHide()
     }

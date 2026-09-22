@@ -26,6 +26,8 @@ enum DashboardShortenerSettings {
 enum DashboardSettingKeys {
     static let settingsShortcutKeyCode = "dashboardSettingsShortcutKeyCode"
     static let settingsShortcutModifiers = "dashboardSettingsShortcutModifiers"
+    static let moveWidgetShortcutKeyCode = "moveWidgetShortcutKeyCode"
+    static let moveWidgetShortcutModifiers = "moveWidgetShortcutModifiers"
     static let keepOnAllSpaces = "keepOnAllSpaces"
     static let compactBackgroundOpacity = "compactBackgroundOpacity"
 }
@@ -33,11 +35,15 @@ enum DashboardSettingKeys {
 enum DashboardDefaults {
     static let settingsShortcutKeyCode = Int(kVK_ANSI_Comma)
     static let shortcutModifiers = Int(NSEvent.ModifierFlags([.command, .option]).rawValue)
+    static let moveWidgetShortcutKeyCode = Int(kVK_ANSI_M)
+    static let moveWidgetShortcutModifiers = Int(NSEvent.ModifierFlags([.command, .option, .control]).rawValue)
 
     static func register() {
         UserDefaults.standard.register(defaults: [
             DashboardSettingKeys.settingsShortcutKeyCode: settingsShortcutKeyCode,
             DashboardSettingKeys.settingsShortcutModifiers: shortcutModifiers,
+            DashboardSettingKeys.moveWidgetShortcutKeyCode: moveWidgetShortcutKeyCode,
+            DashboardSettingKeys.moveWidgetShortcutModifiers: moveWidgetShortcutModifiers,
             DashboardSettingKeys.keepOnAllSpaces: true,
             DashboardSettingKeys.compactBackgroundOpacity: 1.0
         ])
@@ -52,8 +58,10 @@ final class DashboardSettingsContext: ObservableObject {
     @Published private(set) var displayShortcutStatuses: [ShortcutBindingState.Owner: String] = [:]
     @Published private(set) var widgetShortcutStatuses: [ShortcutBindingState.Owner: String] = [:]
     @Published private(set) var shortcutStatus: String?
+    @Published private(set) var moveWidgetShortcutStatus: String?
     private let launchAtLoginManager: LaunchAtLoginManager
     private let onShortcutChanged: @MainActor (DashboardShortcut) -> Void
+    private let onMoveWidgetShortcutChanged: @MainActor (DashboardShortcut) -> Void
     private let onWidgetSettingsChanged: @MainActor () -> Void
     private let onDisplayShortcutChanged: @MainActor (WidgetShortcutAction, DashboardShortcut) -> Void
     private let onWidgetShortcutChanged: @MainActor (Int, WidgetShortcutAction, DashboardShortcut) -> Void
@@ -63,6 +71,7 @@ final class DashboardSettingsContext: ObservableObject {
     init(
         launchAtLoginManager: LaunchAtLoginManager,
         onShortcutChanged: @escaping @MainActor (DashboardShortcut) -> Void,
+        onMoveWidgetShortcutChanged: @escaping @MainActor (DashboardShortcut) -> Void,
         onWidgetSettingsChanged: @escaping @MainActor () -> Void,
         onDisplayShortcutChanged: @escaping @MainActor (WidgetShortcutAction, DashboardShortcut) -> Void,
         onWidgetShortcutChanged: @escaping @MainActor (Int, WidgetShortcutAction, DashboardShortcut) -> Void,
@@ -71,6 +80,7 @@ final class DashboardSettingsContext: ObservableObject {
     ) {
         self.launchAtLoginManager = launchAtLoginManager
         self.onShortcutChanged = onShortcutChanged
+        self.onMoveWidgetShortcutChanged = onMoveWidgetShortcutChanged
         self.onWidgetSettingsChanged = onWidgetSettingsChanged
         self.onDisplayShortcutChanged = onDisplayShortcutChanged
         self.onWidgetShortcutChanged = onWidgetShortcutChanged
@@ -84,6 +94,7 @@ final class DashboardSettingsContext: ObservableObject {
         try launchAtLoginManager.setEnabled(enabled)
     }
     func setSettingsShortcut(_ shortcut: DashboardShortcut) { onShortcutChanged(shortcut) }
+    func setMoveWidgetShortcut(_ shortcut: DashboardShortcut) { onMoveWidgetShortcutChanged(shortcut) }
     func widgetSettingsChanged() { onWidgetSettingsChanged() }
     func setDisplayShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction) { onDisplayShortcutChanged(action, shortcut) }
     func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
@@ -97,7 +108,8 @@ final class DashboardSettingsContext: ObservableObject {
         shortcuts: [Int: WidgetShortcutBinding],
         displayStatuses: [ShortcutBindingState.Owner: String],
         widgetStatuses: [ShortcutBindingState.Owner: String],
-        status: String?
+        status: String?,
+        moveWidgetStatus: String?
     ) {
         widgetOptions = options
         self.displayShortcuts = displayShortcuts
@@ -105,6 +117,7 @@ final class DashboardSettingsContext: ObservableObject {
         displayShortcutStatuses = displayStatuses
         widgetShortcutStatuses = widgetStatuses
         shortcutStatus = status
+        moveWidgetShortcutStatus = moveWidgetStatus
     }
 }
 
@@ -173,6 +186,8 @@ struct DashboardGeneralSettingsView: View {
 struct DashboardShortcutSettingsView: View {
     @AppStorage(DashboardSettingKeys.settingsShortcutKeyCode) private var keyCode = DashboardDefaults.settingsShortcutKeyCode
     @AppStorage(DashboardSettingKeys.settingsShortcutModifiers) private var modifiers = DashboardDefaults.shortcutModifiers
+    @AppStorage(DashboardSettingKeys.moveWidgetShortcutKeyCode) private var moveKeyCode = DashboardDefaults.moveWidgetShortcutKeyCode
+    @AppStorage(DashboardSettingKeys.moveWidgetShortcutModifiers) private var moveModifiers = DashboardDefaults.moveWidgetShortcutModifiers
     @ObservedObject var context: DashboardSettingsContext
 
     var body: some View {
@@ -191,8 +206,26 @@ struct DashboardShortcutSettingsView: View {
                     )
                     .frame(width: 210, alignment: .trailing)
                 }
+                LabeledContent("Move Widget to Next Display") {
+                    KeyboardShortcutRecorder(
+                        keyCode: $moveKeyCode,
+                        modifiers: $moveModifiers,
+                        placeholder: "None",
+                        accessibilityLabel: "Move Widget to Next Display keyboard shortcut",
+                        onShortcutChanged: { keyCode, modifiers in
+                            context.setMoveWidgetShortcut(DashboardShortcut(keyCode: keyCode, modifiers: modifiers))
+                        },
+                        onRecordingChanged: context.shortcutRecordingChanged
+                    )
+                    .frame(width: 210, alignment: .trailing)
+                }
                 Text("This shortcut works across macOS while Classroom Widgets is running.")
                     .font(.caption).foregroundStyle(.secondary)
+                Text("Moves the focused (or most recently focused) widget to the next display.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let status = context.moveWidgetShortcutStatus {
+                    Text(status).font(.caption).foregroundStyle(.red)
+                }
             }
             Section("Launch Widgets") {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
@@ -243,6 +276,10 @@ struct DashboardShortcutSettingsView: View {
                     context.setSettingsShortcut(DashboardShortcut(
                         keyCode: DashboardDefaults.settingsShortcutKeyCode,
                         modifiers: DashboardDefaults.shortcutModifiers
+                    ))
+                    context.setMoveWidgetShortcut(DashboardShortcut(
+                        keyCode: DashboardDefaults.moveWidgetShortcutKeyCode,
+                        modifiers: DashboardDefaults.moveWidgetShortcutModifiers
                     ))
                 }
                 Button("Reset Widget Shortcuts") { context.resetWidgetShortcuts() }
