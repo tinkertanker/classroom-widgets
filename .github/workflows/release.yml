@@ -37,15 +37,16 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - run: npm ci
-      - run: npm run windows:publish
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm windows:publish
       - name: Zip
         shell: pwsh
         run: |
@@ -73,20 +74,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          # 20.x resolves to >=20.19 on the runner, which Electron's postinstall
-          # needs for require(esm); do not pin below 20.19.
-          node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            packages/linux-dashboard/package-lock.json
-      - run: npm ci
+          # The workspace requires >=22.13. Electron's postinstall separately
+          # needs >=20.19 for require(esm), which 22 also satisfies; do not pin
+          # below either bound.
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # linux-dashboard is deliberately NOT a pnpm workspace member and keeps its
+      # own package-lock.json, so it still installs with npm.
       - name: Install linux-dashboard dependencies
         working-directory: packages/linux-dashboard
         run: npm ci || npm install
-      - run: npm run linux:publish
+      - run: pnpm linux:publish
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -101,11 +104,12 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: brew install create-dmg
       - name: Import Developer ID certificate
         env:
@@ -131,7 +135,7 @@ jobs:
         run: |
           echo "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
           export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
-          npm run macos:dmg -- --distribution --notarise
+          pnpm macos:dmg -- --distribution --notarise
       - uses: actions/upload-artifact@v4
         with:
           name: macos

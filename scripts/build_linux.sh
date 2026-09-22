@@ -23,7 +23,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package_dir="$repo_root/packages/linux-dashboard"
 
 if [[ "$skip_web" -eq 0 ]]; then
-  (cd "$repo_root" && npm run build -w @classroom-widgets/teacher)
+  (cd "$repo_root" && pnpm --filter @classroom-widgets/teacher build)
 fi
 
 if [[ ! -f "$repo_root/packages/teacher/build/index.html" ]]; then
