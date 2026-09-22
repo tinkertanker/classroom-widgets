@@ -1,10 +1,10 @@
-Display preview shortcut parity and floating-window fixes.
+Instant widget toggling, leaner classrooms, and server-side short links.
 
-- Configure **Show** and **Dismiss** shortcuts for Display in Settings, just like other widgets. Assign the same key to toggle the preview, or different keys to show and dismiss it independently.
-- Existing Display shortcuts become toggles by default. The default remains **Command-Option-Control-0** on macOS and **Ctrl-Alt-Shift-0** on Windows and Linux. Clear either assignment to leave that action unassigned.
-- Dismissing Display closes its window, stops capture, and cancels automatic resumption while keeping the saved source and position. Show reuses an existing preview rather than opening duplicates; menu and launcher actions still show it.
-- macOS widget and Display windows use nonactivating panels to improve floating behavior across full-screen Spaces.
-- Linux automatically uses XWayland in Wayland sessions for floating-window support, unless an explicit Electron backend was supplied. AppImage updates preserve that explicit backend during replacement and rollback.
-- Linux keeps shortcut recording active when widget inventory arrives, without losing keyboard focus or reactivating global shortcuts prematurely.
+- Toggling a desktop widget off now hides its floating window instead of closing it, so toggling back on is instant and keeps the widget's state and position. Dismiss and the window's close button still close it for good. macOS panels reappear promptly when a Space becomes visible again, and clicking a floating panel now activates the app.
+- Windows: legacy Display shortcuts that were never assigned stay unassigned through settings migration rather than picking up a default binding.
+- Link Shortener and QR Code widgets in the browser now shorten through the classroom server, keeping the Short.io key on the backend. Desktop apps keep their per-device shortener settings.
+- Large rooms run leaner: participant updates no longer rebroadcast the full roster, RT Feedback totals accumulate incrementally, and activity grading indexes responses instead of rescanning them. The student app attaches widget listeners once per room, and the teacher app zooms more smoothly.
+- Fixed response counts in the admin session list.
+- Extensive dead-code removal across the teacher, student, server, and shared packages; no behaviour change intended.
 
-Linux Wayland sessions require XWayland; floating-window stacking and global shortcuts remain compositor-dependent. Display preview requires matching display identities from Electron. X11 has been exercised; native Wayland/PipeWire, physical mixed-DPI displays, and portal capture are not certified by this release's tests. An unverified display identity is rejected rather than guessed.
+Hidden widgets keep running while toggled off — a hidden timer keeps counting. Self-hosted deployments must set `SHORTIO_API_KEY` and `SHORTIO_DOMAIN` on the backend for web link shortening (see `docs/ENV_SETUP.md`); without them, shortening is unavailable in the browser.
