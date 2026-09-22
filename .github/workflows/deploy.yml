@@ -9,6 +9,8 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+permissions: {}
+
 jobs:
   deploy:
     name: Deploy
@@ -26,6 +28,11 @@ jobs:
             DEPLOY_SHA="${{ github.sha }}"
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch origin "$DEPLOY_SHA"
+            git fetch origin master
+            if [ "$(git rev-parse FETCH_HEAD)" != "$DEPLOY_SHA" ]; then
+              echo "Skipping stale deploy: $DEPLOY_SHA is not the tip of master"
+              exit 0
+            fi
             git reset --hard "$DEPLOY_SHA"
             git clean -ffd
             export VITE_BUILD_ID="$(printf '%.7s' "$DEPLOY_SHA")"
