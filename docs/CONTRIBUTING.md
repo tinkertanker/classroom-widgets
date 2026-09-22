@@ -22,4 +22,4 @@ For focused changes, these references may also help:
 4. Run the checks relevant to your change. For the main teacher workspace, run `npm test`; for a full web build, run `npm run build:all`.
 5. Open a pull request that explains the change and how it was verified.
 
-Repository-specific coding and verification guidance is in [`CLAUDE.md`](../CLAUDE.md).
+Repository-specific coding and verification guidance is in [`AGENTS.md`](../AGENTS.md).
