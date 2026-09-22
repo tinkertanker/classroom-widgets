@@ -9,6 +9,7 @@ import {
   WidgetPanelStateChange,
 } from './models';
 import { RectFrame, WidgetPanelWindow } from './panelWindow';
+import { nextDisplayFrame } from './moveToNextDisplay';
 
 const GAP = 12;
 const OVERFLOW_STEP = 28;
@@ -128,6 +129,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
   private backgroundOpacity = 1;
   private alwaysOnTop = true;
   private framesDirty = false;
+  private lastFocusedId: string | null = null;
 
   constructor(settings: DashboardSettings, appVersion: string) {
     super();
@@ -163,6 +165,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     if (this.lastInventory && inventory.hostInstanceId !== this.lastInventory.hostInstanceId) {
       for (const panel of this.panels.values()) panel.closePermanently();
       this.panels.clear();
+      this.lastFocusedId = null;
     } else if (this.lastInventory && inventory.revision < this.lastInventory.revision) {
       return false;
     }
@@ -174,6 +177,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
       panel.closePermanently();
       this.panels.delete(id);
       this.freeformFrames.delete(id);
+      if (this.lastFocusedId === id) this.lastFocusedId = null;
     }
 
     let created = false;
@@ -183,7 +187,10 @@ export class WidgetPanelCoordinator extends EventEmitter {
       if (existing) {
         const wasHidden = existing.isHidden;
         existing.apply(descriptor);
-        if (descriptor.hidden) existing.hidePanel();
+        if (descriptor.hidden) {
+          existing.hidePanel();
+          if (this.lastFocusedId === descriptor.id) this.lastFocusedId = null;
+        }
         else if (this.active && wasHidden) existing.showPanel();
         visibilityChanged ||= wasHidden !== descriptor.hidden;
         continue;
@@ -209,9 +216,44 @@ export class WidgetPanelCoordinator extends EventEmitter {
 
   deactivate(): void {
     this.active = false;
+    this.lastFocusedId = null;
     for (const panel of this.panels.values()) panel.closePermanently();
     this.panels.clear();
     this.emit('changed');
+  }
+
+  /**
+   * Moves the selected panel (focused, else most recently focused, else the
+   * only visible one) to the next display in screen order, keeping its size
+   * and work-area offset. Treated like a manual drag: layout becomes
+   * freeform and the new frame is persisted.
+   */
+  moveSelectedPanelToNextDisplay(): void {
+    const panel = this.selectedPanel();
+    if (!panel) return;
+    const frame = nextDisplayFrame(
+      panel.currentFrame,
+      screen.getAllDisplays().map((display) => display.workArea),
+    );
+    if (!frame) return;
+    if (this.layout !== 'freeform') {
+      this.layout = 'freeform';
+      this.freeformFrames.clear();
+    }
+    panel.setFrame(frame);
+    this.persist(panel.currentFrame, panel.widgetId);
+  }
+
+  private selectedPanel(): WidgetPanelWindow | null {
+    for (const panel of this.panels.values()) {
+      if (!panel.isHidden && panel.isFocused()) return panel;
+    }
+    if (this.lastFocusedId) {
+      const remembered = this.panels.get(this.lastFocusedId);
+      return remembered && !remembered.isHidden && remembered.isVisible() ? remembered : null;
+    }
+    const visible = [...this.panels.values()].filter((panel) => !panel.isHidden && panel.isVisible());
+    return visible.length === 1 ? visible[0] : null;
   }
 
   flushPersistedFrames(): void {
@@ -298,6 +340,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     panel.on('displayPreviewRequested', () => this.emit('displayPreviewRequested'));
     panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
     panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout));
+    panel.on('focused', (widgetId: string) => { this.lastFocusedId = widgetId; });
     panel.on('frameChanged', (widgetId: string, frame: RectFrame) => {
       if (this.layout !== 'freeform') {
         this.layout = 'freeform';
