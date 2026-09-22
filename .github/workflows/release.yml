@@ -135,7 +135,7 @@ jobs:
         run: |
           echo "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
           export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
-          pnpm macos:dmg -- --distribution --notarise
+          pnpm macos:dmg --distribution --notarise
       - uses: actions/upload-artifact@v4
         with:
           name: macos

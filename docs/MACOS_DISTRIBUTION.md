@@ -90,7 +90,7 @@ Releases are tagged `v<version>` and contain all platforms; see [Releasing](./RE
 Local app builds require macOS, Xcode, Node.js, and the repository's npm dependencies. From the repository root:
 
 ```bash
-pnpm macos:run -- --verify
+pnpm macos:run --verify
 ```
 
 This builds the teacher assets and the Swift package in `packages/macos-dashboard`, writes `dist/Classroom Widgets Dashboard.app`, installs it to `/Applications`, opens it, and verifies that the `ClassroomWidgets` process is running. It replaces any app at the canonical installation path.
@@ -130,13 +130,13 @@ APPLE_API_KEY_ISSUER_ID="ISSUER-UUID"
 Build a signed DMG without notarizing it:
 
 ```bash
-pnpm macos:dmg -- --distribution
+pnpm macos:dmg --distribution
 ```
 
 Build, notarize, and staple a public-downloadable DMG:
 
 ```bash
-pnpm macos:dmg -- --distribution --notarise
+pnpm macos:dmg --distribution --notarise
 ```
 
 The distribution signature uses hardened runtime and `scripts/macos-distribution-entitlements.plist`, which includes camera access for the Visualiser widget. Successful builds replace the installed app before packaging the DMG.

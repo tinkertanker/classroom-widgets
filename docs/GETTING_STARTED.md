@@ -207,10 +207,10 @@ All widgets support:
 pnpm test
 
 # Run tests in watch mode
-pnpm test -- --watch
+pnpm test --watch
 
 # Run with coverage
-pnpm test -- --coverage
+pnpm test --coverage
 
 # Run specific test file
 pnpm test timer.test
@@ -250,7 +250,7 @@ pnpm dev:concurrent   # Start everything with concurrently
 pnpm build            # Build all workspaces that define a build script
 pnpm build:student    # Build student app for production
 pnpm build:all        # Build everything
-pnpm macos:run -- --verify  # Build, install, launch, and verify the macOS app
+pnpm macos:run --verify  # Build, install, launch, and verify the macOS app
 pnpm macos:dmg        # Create an ad hoc local DMG; do not publish it
 ```
 
