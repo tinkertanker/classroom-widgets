@@ -93,7 +93,7 @@ ollama run phi4 "Convert this to a command: start a timer for 5 minutes"
 **Install Node.js client:**
 ```bash
 cd server
-npm install ollama
+pnpm --filter @classroom-widgets/server add ollama
 ```
 
 **Create OllamaLLMService.js:**
@@ -231,7 +231,7 @@ OLLAMA_HOST=http://localhost:11434
 
 ```bash
 cd server
-npm install node-llama-cpp
+pnpm --filter @classroom-widgets/server add node-llama-cpp
 ```
 
 #### Setup
@@ -324,7 +324,7 @@ module.exports = LlamaCppLLMService;
 #### Installation
 
 ```bash
-npm install @xenova/transformers
+pnpm --filter @classroom-widgets/server add @xenova/transformers
 ```
 
 **Example usage** (for completeness, but not recommended for your server):
@@ -371,7 +371,7 @@ const result = await generator(prompt, { max_new_tokens: 100 });
 - [ ] Install Ollama
 - [ ] Pull model (`ollama pull phi4`)
 - [ ] Test model (`ollama run phi4 "test"`)
-- [ ] Install npm package (`npm install ollama`)
+- [ ] Install npm package (`pnpm --filter @classroom-widgets/server add ollama`)
 - [ ] Create OllamaLLMService.js
 - [ ] Update voiceCommand.js
 - [ ] Test voice commands

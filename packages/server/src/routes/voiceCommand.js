@@ -44,7 +44,7 @@ function buildIntentRegex(keywords) {
  *
  * IMPORTANT: Widget Definitions
  * - All widget names, actions, and parameters are defined in shared/voiceCommandDefinitions.json
- * - Run `npm run generate:voice-types` to regenerate TypeScript/JavaScript files
+ * - Run `pnpm generate:voice-types` to regenerate TypeScript/JavaScript files
  * - This ensures frontend and backend stay perfectly synchronized
  * - Both Ollama prompts and widget target maps are auto-generated from this source
  *
@@ -610,7 +610,7 @@ if (USE_BAML) {
   } catch (error) {
     console.warn('⚠️ BAMLVoiceCommandService not available:', error.message);
     if (VOICE_COMMAND_DEBUG) {
-      console.log('💡 To use BAML, ensure it\'s installed: npm install @boundaryml/baml');
+      console.log('💡 To use BAML, ensure it\'s installed: pnpm --filter @classroom-widgets/server add @boundaryml/baml');
       console.log('💡 Generate client with: npx baml-cli generate');
     }
   }

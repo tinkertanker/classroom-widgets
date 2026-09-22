@@ -31,7 +31,7 @@ cp .env.example .env
 nano .env
 
 # 3. Set backend Short.io variables and enable the web widget if needed
-# That's it! Run: npm run dev
+# That's it! Run: pnpm dev
 ```
 
 ### For Production Deployment
@@ -145,12 +145,12 @@ secrets:
 
 ## 🏗️ Different Environments
 
-### Local Development (npm run dev)
+### Local Development (pnpm dev)
 
 ```bash
 # Uses .env file
 # Default: http://localhost:3001
-npm run dev
+pnpm dev
 ```
 
 ### Docker Local Testing
@@ -173,7 +173,7 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ```bash
 # 1. Build apps
-npm run build:all
+pnpm build:all
 
 # 2. Configure nginx (see nginx.conf)
 sudo cp nginx.conf /etc/nginx/sites-available/classroom-widgets
@@ -183,7 +183,7 @@ sudo ln -s /etc/nginx/sites-available/classroom-widgets /etc/nginx/sites-enabled
 export VITE_SERVER_URL=https://api.example.com
 
 # 4. Start server
-cd server && NODE_ENV=production npm start
+cd server && NODE_ENV=production pnpm start
 ```
 
 ## 🔍 Troubleshooting
@@ -192,7 +192,7 @@ cd server && NODE_ENV=production npm start
 
 **For Vite (Frontend):**
 - Must be prefixed with `VITE_`
-- Rebuild after changing: `npm run build`
+- Rebuild after changing: `pnpm build`
 - In development, restart dev server
 
 **For Express (Backend):**

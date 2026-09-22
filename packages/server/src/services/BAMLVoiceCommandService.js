@@ -26,7 +26,7 @@ async function getBamlClient() {
       const baml = require('../../baml_client');
       bamlClient = baml.b;
     } catch (error) {
-      throw new Error('BAML client requires tsx to load TypeScript files. Install with: npm install --save-dev tsx');
+      throw new Error('BAML client requires tsx to load TypeScript files. Install with: pnpm --filter @classroom-widgets/server add -D tsx');
     }
   }
   return bamlClient;

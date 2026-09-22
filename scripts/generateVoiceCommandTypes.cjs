@@ -26,7 +26,7 @@ function generateTypeScriptFile() {
 
   let content = `// AUTO-GENERATED FILE - DO NOT EDIT
 // Generated from packages/shared/voiceCommandDefinitions.json
-// Run 'npm run generate:voice-types' to regenerate
+// Run 'pnpm generate:voice-types' to regenerate
 
 /**
  * Voice Command Widget Definitions
@@ -117,7 +117,7 @@ function generateJavaScriptFile() {
 
   let content = `// AUTO-GENERATED FILE - DO NOT EDIT
 // Generated from packages/shared/voiceCommandDefinitions.json
-// Run 'npm run generate:voice-types' to regenerate
+// Run 'pnpm generate:voice-types' to regenerate
 
 /**
  * Voice Command Widget Definitions

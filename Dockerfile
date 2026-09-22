@@ -1,5 +1,5 @@
 # Frontend Dockerfile
-FROM node:20-alpine AS build
+FROM node:22-alpine AS build
 
 # Build arguments for environment variables
 ARG VITE_SERVER_URL=http://localhost:3001
@@ -19,18 +19,26 @@ RUN apk add --no-cache \
     make \
     g++
 
+# Install the pinned pnpm from the npm registry (registry-verified; avoids
+# relying on whatever corepack version ships in the base image).
+RUN npm install -g pnpm@11.22.0
+
 # Set working directory
 WORKDIR /app
 
 # Copy workspace root package files
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy workspace package.json files for install
+# Copy every workspace package.json so pnpm can resolve the workspace graph
+# and validate the frozen lockfile
 COPY packages/shared/package.json packages/shared/
 COPY packages/teacher/package.json packages/teacher/
+COPY packages/student/package.json packages/student/
+COPY packages/server/package.json packages/server/
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci --legacy-peer-deps
+# Install only the teacher package graph (its workspace deps included).
+# All four manifests are still copied above so pnpm can validate the lockfile.
+RUN pnpm install --frozen-lockfile --filter "@classroom-widgets/teacher..."
 
 # Copy shared package source
 COPY packages/shared/ packages/shared/
@@ -46,7 +54,7 @@ ENV VITE_SERVER_URL=$VITE_SERVER_URL
 ENV VITE_LINK_SHORTENER_ENABLED=$VITE_LINK_SHORTENER_ENABLED
 
 # Build the app
-RUN npm run build -w @classroom-widgets/teacher
+RUN pnpm --filter @classroom-widgets/teacher build
 
 # Production stage
 FROM nginx:alpine

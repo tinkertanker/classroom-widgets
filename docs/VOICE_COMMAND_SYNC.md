@@ -13,7 +13,7 @@ This file defines ALL widgets, actions, and parameters for voice commands.
 ```
                     shared/voiceCommandDefinitions.json
                                     |
-                    npm run generate:voice-types (auto on build)
+                    pnpm generate:voice-types (auto on build)
                                     |
                     +---------------+---------------+
                     |                               |
@@ -30,17 +30,17 @@ This file defines ALL widgets, actions, and parameters for voice commands.
 
 ```bash
 # Manually regenerate type files
-npm run generate:voice-types
+pnpm generate:voice-types
 
 # Build (auto-generates)
-npm run build
-npm run build:all
+pnpm build
+pnpm build:all
 ```
 
 ### ✏️ Making Changes
 
 1. Edit `shared/voiceCommandDefinitions.json`
-2. Run `npm run generate:voice-types`
+2. Run `pnpm generate:voice-types`
 3. Implement handlers in code if needed
 4. Test!
 
@@ -68,7 +68,7 @@ npm run build:all
 
 **Now** (automated sync):
 1. Edit `shared/voiceCommandDefinitions.json` ✅
-2. Run `npm run generate:voice-types` ✅
+2. Run `pnpm generate:voice-types` ✅
 3. Everything syncs automatically! ✅
 
 ---

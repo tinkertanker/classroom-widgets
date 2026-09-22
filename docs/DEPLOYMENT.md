@@ -430,23 +430,22 @@ curl http://localhost:3001/health
 
 **Build fails:**
 ```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json
-npm cache clean --force
-npm install
-npm run build:all
+# Clear the workspace and reinstall
+pnpm run clean
+pnpm install
+pnpm build:all
 
-# Check Node version (should be 20.19+ or 22.12+ for Vite 7)
+# Check Node version (should be 22.13+ for pnpm 11, Vite 7, and the server)
 node --version
 ```
 
 **TypeScript errors:**
 ```bash
 # Check teacher app type errors
-npm run typecheck -w @classroom-widgets/teacher
+pnpm --filter @classroom-widgets/teacher typecheck
 
 # Check student app type errors
-npm run build -w @classroom-widgets/student
+pnpm --filter @classroom-widgets/student build
 ```
 
 **Missing environment variables:**
@@ -587,7 +586,7 @@ docker system prune -a
 ## Security Checklist
 
 ### Pre-Deployment
-- [ ] Run security audit: `npm audit`
+- [ ] Run security audit: `pnpm audit`
 - [ ] Update all dependencies
 - [ ] Review environment variables
 - [ ] Scan Docker images for vulnerabilities

@@ -14,15 +14,15 @@ Quick start guide for developers working on Classroom Widgets.
 
 ## Prerequisites
 
-- **Node.js** 20.19+ or 22.12+ and npm
+- **Node.js** 22.13+ and pnpm 11 (via `corepack enable`)
 - **Git**
 - **Docker** (optional, for testing production builds)
 - **macOS 13+ and Xcode 15+** (optional, for the native macOS app)
 
 Check your versions:
 ```bash
-node --version  # Should be 20.19+ or 22.12+
-npm --version
+node --version  # Should be 22.13+
+pnpm --version
 git --version
 ```
 
@@ -36,7 +36,7 @@ git clone https://github.com/tinkertanker/classroom-widgets.git
 cd classroom-widgets
 
 # Install all dependencies
-npm run install:all
+pnpm install
 ```
 
 This installs dependencies for:
@@ -68,7 +68,7 @@ cp packages/server/.env.example packages/server/.env
 **Recommended: Run everything together**
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 This **automatically** starts:
@@ -80,16 +80,16 @@ This **automatically** starts:
 
 ```bash
 # Terminal 1: Teacher app only
-npm run dev:teacher
+pnpm dev:teacher
 
 # Terminal 2: Server only
-npm run dev:server
+pnpm dev:server
 
 # Terminal 3: Student app only (dev mode with HMR)
-npm run dev:student
+pnpm dev:student
 
 # OR use concurrently (runs all in one terminal):
-npm run dev:concurrent
+pnpm dev:concurrent
 ```
 
 ### Testing the Application
@@ -147,7 +147,8 @@ classroom-widgets/
 ├── scripts/                    # Build, distribution, and repo tooling scripts
 ├── docs/                       # Documentation
 ├── package.json                # Root workspace scripts
-└── package-lock.json           # Locked dependency graph
+├── pnpm-lock.yaml              # Locked dependency graph
+└── pnpm-workspace.yaml          # Workspace package globs
 ```
 
 ### Key Technologies
@@ -203,16 +204,16 @@ All widgets support:
 
 ```bash
 # Run all tests
-npm test
+pnpm test
 
 # Run tests in watch mode
-npm test -- --watch
+pnpm test -- --watch
 
 # Run with coverage
-npm test -- --coverage
+pnpm test -- --coverage
 
 # Run specific test file
-npm test timer.test
+pnpm test timer.test
 ```
 
 ### Testing Framework
@@ -232,37 +233,37 @@ test('renders timer', () => {
 
 ## Common Tasks
 
-### NPM Scripts Reference
+### Package Scripts Reference
 
 #### Development
 ```bash
-npm run dev              # Start everything (recommended)
-npm run dev:all          # Same as npm run dev
-npm run dev:teacher      # Start teacher app only
-npm run dev:server       # Start backend server only
-npm run dev:student      # Start student app only
-npm run dev:concurrent   # Start everything with concurrently
+pnpm dev              # Start everything (recommended)
+pnpm dev:all          # Same as pnpm dev
+pnpm dev:teacher      # Start teacher app only
+pnpm dev:server       # Start backend server only
+pnpm dev:student      # Start student app only
+pnpm dev:concurrent   # Start everything with concurrently
 ```
 
 #### Building
 ```bash
-npm run build            # Build all workspaces that define a build script
-npm run build:student    # Build student app for production
-npm run build:all        # Build everything
-npm run macos:run -- --verify  # Build, install, launch, and verify the macOS app
-npm run macos:dmg        # Create an ad hoc local DMG; do not publish it
+pnpm build            # Build all workspaces that define a build script
+pnpm build:student    # Build student app for production
+pnpm build:all        # Build everything
+pnpm macos:run -- --verify  # Build, install, launch, and verify the macOS app
+pnpm macos:dmg        # Create an ad hoc local DMG; do not publish it
 ```
 
 #### Testing
 ```bash
-npm test                 # Run tests with Vitest
+pnpm test                 # Run tests with Vitest
 ```
 
 #### Setup/Maintenance
 ```bash
-npm run install:all      # Install all dependencies
-npm run clean            # Remove node_modules and builds
-npm run clean && npm run install:all
+pnpm install      # Install all dependencies
+pnpm clean            # Remove node_modules and builds
+pnpm clean && pnpm install
 ```
 
 ### Adding a New Widget
@@ -309,12 +310,12 @@ kill -9 <PID>
 
 **Dependencies out of sync:**
 ```bash
-npm run clean
-npm run install:all
+pnpm clean
+pnpm install
 ```
 
 **WebSocket not connecting:**
-1. Ensure server is running (`npm run dev:server`)
+1. Ensure server is running (`pnpm dev:server`)
 2. Check `VITE_SERVER_URL` in `packages/teacher/.env` (default: `http://localhost:3001`)
 3. Check browser console for errors
 
@@ -322,16 +323,16 @@ npm run install:all
 ```bash
 # Clear Vite cache
 rm -rf node_modules/.cache
-npm run dev
+pnpm dev
 ```
 
 **TypeScript errors:**
 ```bash
 # Check teacher app type errors
-npm run typecheck -w @classroom-widgets/teacher
+pnpm --filter @classroom-widgets/teacher typecheck
 
 # Check student app type errors
-npm run build -w @classroom-widgets/student
+pnpm --filter @classroom-widgets/student build
 ```
 
 ## Coding Standards

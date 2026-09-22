@@ -330,7 +330,7 @@ const findWidgetByType = (type: WidgetType, preferFocused = true) => {
 
 ```bash
 # Start all services
-npm run dev:all
+pnpm dev:all
 
 # Test in browser:
 # 1. Open teacher app: http://localhost:3000

@@ -176,7 +176,7 @@ export class ErrorService {
   private sendToMonitoring(error: AppError): void {
     // Integration point for monitoring services (Sentry, Rollbar, etc.)
     // To integrate with Sentry:
-    // 1. Install: npm install @sentry/react
+    // 1. Install: pnpm --filter @classroom-widgets/teacher add @sentry/react
     // 2. Initialize in src/main.tsx with Sentry.init({ dsn: '...' })
     // 3. Uncomment below:
     //

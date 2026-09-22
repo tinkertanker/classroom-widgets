@@ -197,6 +197,18 @@ describe('TextBanner text editor', () => {
     expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({ colorIndex: 0 }));
   });
 
+  // 60s, not the 5s default. Under pnpm this one test takes 15-28s depending on
+  // machine load, where under npm it finished comfortably inside 5; the other 596
+  // are unaffected either way. The number is generous because the cost is
+  // variable, not fixed, so a tight bound would just be flaky.
+  //
+  // Ruled out as causes: a duplicated React (there is one copy, 18.3.1, shared by
+  // every package), @testing-library/user-event (pinned back to npm's 14.6.1,
+  // still slow) and react-colorful (pinned back to npm's 5.8.0, still slow). It
+  // is the only test that drives the anchored RGB picker, so the cost lives
+  // somewhere in that tree. This is a real regression in test time and it is
+  // worth finding; it is not a correctness failure, and it is not worth blocking
+  // the migration on.
   it('offers an anchored RGB picker from a rainbow trigger as the final transactional colour choice', async () => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();
@@ -260,7 +272,7 @@ describe('TextBanner text editor', () => {
       customColor: expect.stringMatching(/^#[0-9a-f]{6}$/)
     }));
     expect(onStateChange.mock.calls[0][0].customColor).not.toBe('#7c3aed');
-  });
+  }, 60_000);
 
   it('migrates the legacy instructional sentinel to an empty banner', () => {
     render(<TextBanner savedState={{ text: 'Double-click to edit' }} />);

@@ -1,0 +1,21 @@
+packages:
+  - packages/shared
+  - packages/teacher
+  - packages/student
+  - packages/server
+
+# Run pre/post lifecycle scripts (e.g. root "prebuild" -> generate:voice-types).
+# pnpm 11 already defaults this to true; set explicitly so a future default
+# change can't silently drop the prebuild step.
+enablePrePostScripts: true
+
+# Match the previous npm `--legacy-peer-deps` tolerance: warn on peer-dep
+# mismatches instead of failing the install.
+strictPeerDependencies: false
+
+# Dependencies allowed (or blocked) from running install lifecycle scripts.
+# pnpm blocks every dependency's build scripts by default; entries here opt
+# individual packages in or out.
+allowBuilds:
+  esbuild: true
+  '@scarf/scarf': false

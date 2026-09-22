@@ -9,7 +9,7 @@ The voice command system uses a **single source of truth** approach to ensure th
 ```
 shared/voiceCommandDefinitions.json (SOURCE OF TRUTH)
                     |
-                    | npm run generate:voice-types
+                    | pnpm generate:voice-types
                     |
         +-----------+-----------+
         |                       |
@@ -68,10 +68,10 @@ The generation script runs automatically before builds:
 
 ```bash
 # Runs before build
-npm run build
+pnpm build
 
 # Runs before build:all
-npm run build:all
+pnpm build:all
 ```
 
 ### Manual Generation
@@ -79,7 +79,7 @@ npm run build:all
 You can also generate the files manually:
 
 ```bash
-npm run generate:voice-types
+pnpm generate:voice-types
 ```
 
 This command:
@@ -225,7 +225,7 @@ To add a new widget to the voice command system:
 2. **Regenerate files**:
 
 ```bash
-npm run generate:voice-types
+pnpm generate:voice-types
 ```
 
 3. **Verify generation**:
@@ -268,7 +268,7 @@ To add a new action to an existing widget:
 }
 ```
 
-2. **Regenerate**: `npm run generate:voice-types`
+2. **Regenerate**: `pnpm generate:voice-types`
 
 3. **Implement**: Add handler in `VoiceCommandExecutor.ts`
 
@@ -305,7 +305,7 @@ To add a new action to an existing widget:
 **Fix**:
 1. Check `shared/voiceCommandDefinitions.json` contains the widget
 2. Verify the `targetName` matches what's being sent
-3. Run `npm run generate:voice-types`
+3. Run `pnpm generate:voice-types`
 4. Check generated files were updated
 
 ### Ollama returns different widget names than frontend expects
@@ -313,7 +313,7 @@ To add a new action to an existing widget:
 **Cause**: Generated files are out of date
 
 **Fix**:
-1. Run `npm run generate:voice-types`
+1. Run `pnpm generate:voice-types`
 2. Restart both frontend and backend servers
 
 ### Generated files don't update
@@ -321,7 +321,7 @@ To add a new action to an existing widget:
 **Cause**: Script hasn't run
 
 **Fix**:
-1. Manually run: `npm run generate:voice-types`
+1. Manually run: `pnpm generate:voice-types`
 2. Check for errors in script execution
 3. Verify `shared/voiceCommandDefinitions.json` is valid JSON
 
