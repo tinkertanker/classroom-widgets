@@ -62,10 +62,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let self else { return NSView() }
         return NSHostingView(rootView: DashboardSettingsView(context: self.settingsContext))
     }
-    private lazy var launcherWindowCoordinator = LauncherWindowCoordinator { [weak self] widgetType in
-        guard let self, self.controller?.widgetOptions.contains(where: { $0.widgetType == widgetType }) == true else { return }
-        self.controller?.addWidget(widgetType)
-    }
+    private lazy var launcherWindowCoordinator = LauncherWindowCoordinator(
+        onAddWidget: { [weak self] widgetType in
+            guard let self, self.controller?.widgetOptions.contains(where: { $0.widgetType == widgetType }) == true else { return }
+            self.controller?.addWidget(widgetType)
+        },
+        onOpenDisplayPreview: { [weak self] in
+            self?.displayPreviewCoordinator.open()
+        }
+    )
 
     override convenience init() {
         self.init(defaults: .standard)

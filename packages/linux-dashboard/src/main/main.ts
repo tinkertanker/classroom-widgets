@@ -147,7 +147,7 @@ function bootstrap(): void {
       if (host?.widgetOptions.some((option) => option.widgetType === widgetType)) {
         void host.addWidget(widgetType);
       }
-    });
+    }, () => displayPreview?.open());
     shortcuts = new WidgetShortcutController(
       settings,
       globalShortcut,

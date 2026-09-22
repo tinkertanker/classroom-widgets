@@ -5,16 +5,21 @@ import WebKit
 final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let scriptMessageHandler = DashboardScriptMessageHandler()
     private let onAddWidget: (Int) -> Void
+    private let onOpenDisplayPreview: () -> Void
     private var window: NSWindow?
 
-    init(onAddWidget: @escaping (Int) -> Void) {
+    init(onAddWidget: @escaping (Int) -> Void, onOpenDisplayPreview: @escaping () -> Void) {
         self.onAddWidget = onAddWidget
+        self.onOpenDisplayPreview = onOpenDisplayPreview
         super.init()
         scriptMessageHandler.onDesktopLauncherAddWidget = { [weak self] widgetType in
             self?.onAddWidget(widgetType)
         }
         scriptMessageHandler.onDesktopLauncherClose = { [weak self] in
             self?.window?.performClose(nil)
+        }
+        scriptMessageHandler.onDesktopLauncherOpenDisplayPreview = { [weak self] in
+            self?.onOpenDisplayPreview()
         }
     }
 

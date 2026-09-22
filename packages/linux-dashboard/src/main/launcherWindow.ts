@@ -9,10 +9,12 @@ export class LauncherWindow {
   private showWhenReady = false;
   private readonly appVersion: string;
   private readonly onAddWidget: (widgetType: number) => void;
+  private readonly onOpenDisplayPreview: () => void;
 
-  constructor(appVersion: string, onAddWidget: (widgetType: number) => void) {
+  constructor(appVersion: string, onAddWidget: (widgetType: number) => void, onOpenDisplayPreview: () => void) {
     this.appVersion = appVersion;
     this.onAddWidget = onAddWidget;
+    this.onOpenDisplayPreview = onOpenDisplayPreview;
   }
 
   show(): void {
@@ -70,6 +72,10 @@ export class LauncherWindow {
     if (message.type === 'desktop-launcher-add-widget'
       && typeof message.widgetType === 'number' && Number.isInteger(message.widgetType)) {
       this.onAddWidget(message.widgetType);
+      return;
+    }
+    if (message.type === 'desktop-launcher-open-display-preview') {
+      this.onOpenDisplayPreview();
     }
   }
 }

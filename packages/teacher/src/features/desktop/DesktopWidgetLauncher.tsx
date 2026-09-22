@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import '../../app/App.css';
 import { WidgetType } from '@shared/types';
+import { FaDisplay } from 'react-icons/fa6';
 import { postNativeMessage } from '@shared/utils/nativeBridge';
-import WidgetLaunchpad from '../hud/components/WidgetLaunchpad';
+import WidgetLaunchpad, { LaunchpadExtraItem } from '../hud/components/WidgetLaunchpad';
 
 const DesktopWidgetLauncher = () => {
   useEffect(() => {
@@ -24,6 +25,17 @@ const DesktopWidgetLauncher = () => {
     });
   }, []);
 
+  const openDisplayPreview = useCallback(() => {
+    postNativeMessage('classroomDashboard', {
+      type: 'desktop-launcher-open-display-preview',
+      schemaVersion: 1
+    });
+  }, []);
+
+  const extraItems: LaunchpadExtraItem[] = [
+    { id: 'display-preview', name: 'Display', icon: FaDisplay, onSelect: openDisplayPreview }
+  ];
+
   return (
     <main className="min-h-screen bg-warm-gray-100 p-4 text-warm-gray-800 dark:bg-warm-gray-900 dark:text-warm-gray-100 sm:p-6">
       <section className="mx-auto flex h-[calc(100vh-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-warm-gray-800 sm:h-[calc(100vh-3rem)]">
@@ -44,7 +56,7 @@ const DesktopWidgetLauncher = () => {
           </button>
         </header>
         <div className="min-h-0 flex-1">
-          <WidgetLaunchpad compactOnly groupByCategory={false} onClose={close} onSelectWidget={addWidget} />
+          <WidgetLaunchpad compactOnly groupByCategory={false} extraItems={extraItems} onClose={close} onSelectWidget={addWidget} />
         </div>
       </section>
     </main>

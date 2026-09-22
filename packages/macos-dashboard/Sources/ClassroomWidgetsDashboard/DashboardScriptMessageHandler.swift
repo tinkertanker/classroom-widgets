@@ -40,6 +40,7 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
     var onCompactWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
     var onDesktopLauncherAddWidget: (@MainActor (Int) -> Void)?
     var onDesktopLauncherClose: (@MainActor () -> Void)?
+    var onDesktopLauncherOpenDisplayPreview: (@MainActor () -> Void)?
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         // The user script is injected into all frames, so only honour messages
@@ -66,6 +67,9 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
         case "desktop-launcher-close":
             guard dashboardInteger(body["schemaVersion"]) == 1 else { return }
             onDesktopLauncherClose?()
+        case "desktop-launcher-open-display-preview":
+            guard dashboardInteger(body["schemaVersion"]) == 1 else { return }
+            onDesktopLauncherOpenDisplayPreview?()
         case "widget-panels-changed":
             guard dashboardInteger(body["schemaVersion"]) == 1,
                   let rawHostInstanceID = body["hostInstanceId"] as? String,
