@@ -95,7 +95,7 @@ npm run macos:run -- --verify
 
 This builds the teacher assets and the Swift package in `packages/macos-dashboard`, writes `dist/Classroom Widgets Dashboard.app`, installs it to `/Applications`, opens it, and verifies that the `ClassroomWidgets` process is running. It replaces any app at the canonical installation path.
 
-Other supported modes are `--debug`, `--logs`, and `--telemetry`; see `script/build_and_run.sh` for their exact behavior.
+Other supported modes are `--debug`, `--logs`, and `--telemetry`; see `scripts/build_and_run.sh` for their exact behavior.
 
 ## Local DMG
 
@@ -139,7 +139,7 @@ Build, notarize, and staple a public-downloadable DMG:
 npm run macos:dmg -- --distribution --notarise
 ```
 
-The distribution signature uses hardened runtime and `script/macos-distribution-entitlements.plist`, which includes camera access for the Visualiser widget. Successful builds replace the installed app before packaging the DMG.
+The distribution signature uses hardened runtime and `scripts/macos-distribution-entitlements.plist`, which includes camera access for the Visualiser widget. Successful builds replace the installed app before packaging the DMG.
 
 ## Validate a public artifact
 
