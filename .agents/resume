@@ -2,8 +2,8 @@
 set -euo pipefail
 
 if ! command -v node >/dev/null 2>&1 ||
-  ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major === 22 && minor >= 12 ? 0 : 1)'; then
-  echo "Node.js 22.12 or newer on the Node 22 line is unavailable; rerun .agents/setup." >&2
+  ! node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 13) ? 0 : 1)'; then
+  echo "Node.js 22.13 or newer is unavailable; rerun .agents/setup." >&2
   exit 1
 fi
 
