@@ -11,13 +11,15 @@ public sealed class LauncherWindow
     private readonly Window _window;
     private readonly WebView2 _webView;
     private readonly Action<int> _addWidget;
+    private readonly Action _openDisplayPreview;
     private bool _initializing;
     private bool _initialized;
     private bool _ready;
 
-    public LauncherWindow(Action<int> addWidget)
+    public LauncherWindow(Action<int> addWidget, Action openDisplayPreview)
     {
         _addWidget = addWidget;
+        _openDisplayPreview = openDisplayPreview;
         _webView = new WebView2();
         _window = new Window
         {
@@ -128,6 +130,11 @@ public sealed class LauncherWindow
                 && widgetType.TryGetInt32(out var value))
             {
                 _addWidget(value);
+                return;
+            }
+            if (type.GetString() == "desktop-launcher-open-display-preview")
+            {
+                _openDisplayPreview();
             }
         }
     }

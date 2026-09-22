@@ -94,7 +94,7 @@ public partial class App : Application
             {
                 _ = _host.AddWidgetAsync(widgetType);
             }
-        });
+        }, () => _displayPreview?.Open());
         _host.WidgetOptionsChanged += () =>
         {
             if (_launcherRequested) RequestOpenLauncher();

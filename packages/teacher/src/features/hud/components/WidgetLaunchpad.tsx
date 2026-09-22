@@ -11,6 +11,15 @@ interface WidgetLaunchpadProps {
   onSelectWidget: (type: WidgetType) => void;
   compactOnly?: boolean;
   groupByCategory?: boolean;
+  /** Non-widget entries (e.g. the native display preview) shown alongside the widget grid. */
+  extraItems?: LaunchpadExtraItem[];
+}
+
+export interface LaunchpadExtraItem {
+  id: string;
+  name: string;
+  icon: React.ComponentType<{ className?: string }>;
+  onSelect: () => void;
 }
 
 const categoryTitles: Record<WidgetCategory, string> = {
@@ -24,7 +33,8 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
   onClose,
   onSelectWidget,
   compactOnly = false,
-  groupByCategory = true
+  groupByCategory = true,
+  extraItems = []
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory | null>(null);
@@ -88,7 +98,19 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
     });
   }, [compactOnly, searchQuery, selectedCategory]);
 
-  const highlightedIndex = filteredWidgets.length === 1 ? 0 : -1;
+  // Extra items aren't widgets and belong to no category; a selected category
+  // filter hides them.
+  const filteredExtraItems = useMemo(() => {
+    if (selectedCategory) return [];
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return extraItems;
+    return extraItems.filter(item => item.name.toLowerCase().includes(query));
+  }, [extraItems, searchQuery, selectedCategory]);
+
+  const highlightedIndex = filteredWidgets.length === 1 && filteredExtraItems.length === 0 ? 0 : -1;
+  const highlightedExtraId = filteredWidgets.length === 0 && filteredExtraItems.length === 1
+    ? filteredExtraItems[0].id
+    : null;
   
   // Group widgets by category
   const widgetsByCategory = useMemo(() => {
@@ -109,9 +131,15 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
     onSelectWidget(type);
     onClose();
   };
-  
+
+  const handleExtraItemClick = (item: LaunchpadExtraItem) => {
+    item.onSelect();
+    onClose();
+  };
+
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && filteredWidgets.length === 1) {
+    if (e.key !== 'Enter') return;
+    if (filteredWidgets.length === 1 && filteredExtraItems.length === 0) {
       const widget = filteredWidgets[0];
       const isDisabled = isNetworkedWidget(widget.type) && !serverConnected;
       if (!isDisabled) {
@@ -119,6 +147,11 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
         onSelectWidget(widget.type);
         onClose();
       }
+      return;
+    }
+    if (filteredWidgets.length === 0 && filteredExtraItems.length === 1) {
+      filteredExtraItems[0].onSelect();
+      onClose();
     }
   };
   
@@ -202,7 +235,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
       
       {/* Widget grid */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
-        {filteredWidgets.length === 0 ? (
+        {filteredWidgets.length === 0 && filteredExtraItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <svg className="w-16 h-16 text-warm-gray-300 dark:text-warm-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -245,6 +278,23 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
                   <Icon className="text-2xl mb-2 text-warm-gray-600 dark:text-warm-gray-400" />
                   <span className="text-xs text-center text-warm-gray-700 dark:text-warm-gray-300">
                     {widget.name}
+                  </span>
+                </button>
+              );
+            })}
+            {filteredExtraItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleExtraItemClick(item)}
+                  className={`group relative flex flex-col items-center p-4 rounded-lg transition-all bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
+                    highlightedExtraId === item.id ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
+                  }`}
+                >
+                  <Icon className="text-2xl mb-2 text-warm-gray-600 dark:text-warm-gray-400" />
+                  <span className="text-xs text-center text-warm-gray-700 dark:text-warm-gray-300">
+                    {item.name}
                   </span>
                 </button>
               );

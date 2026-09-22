@@ -14,10 +14,11 @@ describe('DesktopWidgetLauncher', () => {
     vi.mocked(postNativeMessage).mockClear();
   });
 
-  it('shows only native-panel widgets and requests creation before closing', () => {
+  it('shows only native-panel widgets plus the display preview', () => {
     render(<DesktopWidgetLauncher />);
 
     expect(screen.getByRole('button', { name: 'Timer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Display' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Volume Monitor' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Networked' })).not.toBeInTheDocument();
 
@@ -27,6 +28,21 @@ describe('DesktopWidgetLauncher', () => {
       type: 'desktop-launcher-add-widget',
       schemaVersion: 1,
       widgetType: 1
+    });
+    expect(postNativeMessage).toHaveBeenNthCalledWith(2, 'classroomDashboard', {
+      type: 'desktop-launcher-close',
+      schemaVersion: 1
+    });
+  });
+
+  it('requests the display preview before closing', () => {
+    render(<DesktopWidgetLauncher />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Display' }));
+
+    expect(postNativeMessage).toHaveBeenNthCalledWith(1, 'classroomDashboard', {
+      type: 'desktop-launcher-open-display-preview',
+      schemaVersion: 1
     });
     expect(postNativeMessage).toHaveBeenNthCalledWith(2, 'classroomDashboard', {
       type: 'desktop-launcher-close',
