@@ -156,6 +156,7 @@ export class WidgetPanelWindow extends EventEmitter {
       }
     });
 
+    this.win.on('focus', () => this.emit('focused', this.widgetId));
     this.win.on('move', () => this.noteFrameChange());
     this.win.on('resize', () => {
       this.layoutView();
@@ -190,6 +191,14 @@ export class WidgetPanelWindow extends EventEmitter {
 
   get isHidden(): boolean {
     return this.descriptor.hidden;
+  }
+
+  isVisible(): boolean {
+    return !this.win.isDestroyed() && this.win.isVisible();
+  }
+
+  isFocused(): boolean {
+    return !this.win.isDestroyed() && this.win.isFocused();
   }
 
   get currentFrame(): RectFrame {

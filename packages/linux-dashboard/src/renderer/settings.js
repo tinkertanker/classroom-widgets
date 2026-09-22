@@ -46,6 +46,8 @@
 
   function setShortcut(entry, action, accelerator) {
     if (entry.shortcut.widgetType === 'display') return window.classroomSettings.setDisplayShortcut(action, accelerator);
+    if (entry.shortcut.widgetType === 'move-widget-previous') return window.classroomSettings.setMoveWidgetShortcut('previous', accelerator);
+    if (entry.shortcut.widgetType === 'move-widget-next') return window.classroomSettings.setMoveWidgetShortcut('next', accelerator);
     return window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator);
   }
 
@@ -139,13 +141,26 @@
     name.className = 'shortcut-name';
     var entry = { row: row, name: name, shortcut: shortcut };
     entry.show = buildShortcutField(entry, 'show');
-    entry.dismiss = buildShortcutField(entry, 'dismiss');
-    row.append(name, entry.show.capture.parentNode, entry.dismiss.capture.parentNode);
+    if (String(shortcut.widgetType).indexOf('move-widget-') === 0) {
+      entry.dismiss = null;
+      var spacer = document.createElement('span');
+      row.append(name, entry.show.capture.parentNode, spacer);
+    } else {
+      entry.dismiss = buildShortcutField(entry, 'dismiss');
+      row.append(name, entry.show.capture.parentNode, entry.dismiss.capture.parentNode);
+    }
     shortcutList.appendChild(row);
     return entry;
   }
 
-  function renderShortcuts(shortcuts, displayShortcut) {
+  function renderShortcuts(shortcuts, displayShortcut, moveWidgetShortcuts) {
+    if (moveWidgetShortcuts) {
+      shortcuts = ['previous', 'next'].filter(function (direction) {
+        return moveWidgetShortcuts[direction];
+      }).map(function (direction) {
+        return Object.assign({ widgetType: 'move-widget-' + direction }, moveWidgetShortcuts[direction]);
+      }).concat(shortcuts);
+    }
     if (displayShortcut) shortcuts = [Object.assign({ widgetType: 'display' }, displayShortcut)].concat(shortcuts);
     document.getElementById('resetShortcuts').disabled = !shortcuts.length;
     if (!shortcuts.length) {
@@ -175,6 +190,7 @@
       entry.name.textContent = shortcut.title;
       ['show', 'dismiss'].forEach(function (action) {
         var field = entry[action];
+        if (!field) return;
         var accelerator = shortcut[field.acceleratorKey];
         field.clear.disabled = !accelerator;
         field.clear.setAttribute('aria-label', 'Clear ' + action + ' shortcut for ' + shortcut.title);
@@ -209,7 +225,7 @@
     domain.value = state.linkShortener.shortioDomain;
     shortioFields.hidden = provider.value !== 'shortio';
     updateLabel();
-    renderShortcuts(state.shortcuts || [], state.displayShortcut);
+    renderShortcuts(state.shortcuts || [], state.displayShortcut, state.moveWidgetShortcuts);
     document.getElementById('waylandWarning').hidden = state.wayland !== true;
   });
   window.classroomSettings.onShortcutsChanged(renderShortcuts);

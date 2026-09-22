@@ -26,6 +26,8 @@ export interface DashboardSettingsData {
   displayPreviewSourceId?: number;
   displayPreviewShortcut?: string | null;
   displayPreviewDismissShortcut?: string | null;
+  moveWidgetPreviousShortcut?: string | null;
+  moveWidgetNextShortcut?: string | null;
 }
 
 /**
@@ -46,6 +48,8 @@ export class DashboardSettings extends EventEmitter {
   displayPreviewSourceId?: number;
   displayPreviewShortcut?: string | null;
   displayPreviewDismissShortcut?: string | null;
+  moveWidgetPreviousShortcut?: string | null;
+  moveWidgetNextShortcut?: string | null;
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -99,6 +103,8 @@ export class DashboardSettings extends EventEmitter {
         }
         if (typeof raw.displayPreviewShortcut === 'string' || raw.displayPreviewShortcut === null) settings.displayPreviewShortcut = raw.displayPreviewShortcut;
         if (typeof raw.displayPreviewDismissShortcut === 'string' || raw.displayPreviewDismissShortcut === null) settings.displayPreviewDismissShortcut = raw.displayPreviewDismissShortcut;
+        if (typeof raw.moveWidgetPreviousShortcut === 'string' || raw.moveWidgetPreviousShortcut === null) settings.moveWidgetPreviousShortcut = raw.moveWidgetPreviousShortcut;
+        if (typeof raw.moveWidgetNextShortcut === 'string' || raw.moveWidgetNextShortcut === null) settings.moveWidgetNextShortcut = raw.moveWidgetNextShortcut;
       }
     } catch (error) {
       log.warn(`Unable to read settings: ${error instanceof Error ? error.message : String(error)}`);
@@ -133,6 +139,8 @@ export class DashboardSettings extends EventEmitter {
         displayPreviewSourceId: this.displayPreviewSourceId,
         displayPreviewShortcut: this.displayPreviewShortcut,
         displayPreviewDismissShortcut: this.displayPreviewDismissShortcut,
+        moveWidgetPreviousShortcut: this.moveWidgetPreviousShortcut,
+        moveWidgetNextShortcut: this.moveWidgetNextShortcut,
       };
       writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {

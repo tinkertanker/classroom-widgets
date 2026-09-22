@@ -98,6 +98,8 @@ for (const action of ['show', 'dismiss']) {
       widgetDismissShortcuts: { '7': action === 'dismiss' ? 'Shift+Alt+Ctrl+0' : 'Ctrl+Alt+Y' },
       displayPreviewShortcut: 'Ctrl+Alt+S',
       displayPreviewDismissShortcut: 'Ctrl+Alt+D',
+      moveWidgetPreviousShortcut: 'Ctrl+Alt+Shift+Left',
+      moveWidgetNextShortcut: 'Ctrl+Alt+Shift+Right',
     });
     const before = JSON.stringify(h.settings);
     h.controller.updateOptions([], false);
@@ -263,8 +265,10 @@ test('Display defaults initialize without inventory and register one presence to
   h.controller.updateOptions([], false);
   assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
   assert.equal(h.settings.displayPreviewDismissShortcut, 'Ctrl+Alt+Shift+0');
+  assert.equal(h.settings.moveWidgetPreviousShortcut, 'Ctrl+Alt+Shift+Left');
+  assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+Shift+Right');
   assert.equal(h.settings.changed, 1, 'native defaults are persisted without teacher options');
-  assert.deepEqual(h.registrations, ['Ctrl+Alt+Shift+0']);
+  assert.deepEqual(h.registrations, ['Ctrl+Alt+Shift+0', 'Ctrl+Alt+Shift+Left', 'Ctrl+Alt+Shift+Right']);
   const toggle = h.callbacks.get('Ctrl+Alt+Shift+0');
   toggle();
   assert.equal(h.preview.isOpen, true);
@@ -322,7 +326,7 @@ test('both Display chords reserve generic Show/Dismiss including absent inventor
   assert.equal(h.controller.setDisplayShortcut('S').ok, false);
   assert.equal(h.controller.setDisplayShortcut('Alt+Ctrl+S', 'dismiss').ok, true);
   assert.equal(h.controller.getDisplayStatus().dismissAccelerator, 'Ctrl+Alt+S');
-  assert.equal(h.callbacks.size, 1, 'own Display pair can share a chord');
+  assert.equal(h.callbacks.size, 3, 'own Display pair can share a chord');
 });
 
 test('Display conflict status preserves assignments, and recording pause restores both actions', () => {
@@ -362,4 +366,49 @@ test('backfill avoids both Display chords; reset restores both native defaults e
   h.controller.reset();
   assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
   assert.equal(h.settings.displayPreviewDismissShortcut, 'Ctrl+Alt+Shift+0');
+});
+
+test('a stored Display chord equal to a move default leaves that move shortcut unassigned', () => {
+  const h = harness({ displayPreviewShortcut: 'Ctrl+Alt+Shift+Left', displayPreviewDismissShortcut: 'Ctrl+Alt+D' });
+  h.controller.updateOptions([], false);
+  assert.equal(h.settings.moveWidgetPreviousShortcut, null);
+  assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+Shift+Right');
+});
+
+test('an accepted Move edit supersedes a waiting reset', () => {
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '7': 'Ctrl+Alt+Shift+0' },
+    widgetDismissShortcuts: { '7': 'Ctrl+Alt+Y' },
+    displayPreviewShortcut: 'Ctrl+Alt+S',
+    displayPreviewDismissShortcut: 'Ctrl+Alt+D',
+    moveWidgetPreviousShortcut: 'Ctrl+Alt+P',
+    moveWidgetNextShortcut: 'Ctrl+Alt+Q',
+  });
+  h.controller.updateOptions([], false);
+  h.controller.reset();
+  assert.deepEqual(h.controller.setMoveWidgetShortcut('next', 'Ctrl+Alt+N'), { ok: true });
+  h.controller.updateOptions([{ widgetType: 7, title: 'Timer' }]);
+  assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+N');
+  assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+S');
+});
+
+test('reset waits for inventory when a retained widget binding reserves a move default', () => {
+  const h = harness({
+    widgetShortcutsInitialized: true,
+    widgetShortcuts: { '7': 'Ctrl+Alt+Shift+Left' },
+    widgetDismissShortcuts: { '7': 'Ctrl+Alt+Y' },
+    displayPreviewShortcut: 'Ctrl+Alt+S',
+    displayPreviewDismissShortcut: 'Ctrl+Alt+D',
+    moveWidgetPreviousShortcut: 'Ctrl+Alt+P',
+    moveWidgetNextShortcut: 'Ctrl+Alt+Q',
+  });
+  const before = JSON.stringify(h.settings);
+  h.controller.updateOptions([], false);
+  h.controller.reset();
+  assert.equal(JSON.stringify(h.settings), before, 'waiting does not persist a partial reset');
+  h.controller.updateOptions([{ widgetType: 7, title: 'Timer' }]);
+  assert.equal(h.settings.moveWidgetPreviousShortcut, 'Ctrl+Alt+Shift+Left');
+  assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+Shift+Right');
+  assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
 });

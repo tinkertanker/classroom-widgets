@@ -1,6 +1,8 @@
 struct ShortcutBindingState {
     enum Owner: Hashable {
         case settings
+        case moveWidgetPrevious
+        case moveWidgetNext
         case display
         case displayDismiss
         case widget(Int)
@@ -32,10 +34,18 @@ struct ShortcutBindingState {
     private(set) var pending: [Owner: DashboardShortcut] = [:]
     private(set) var recorderCount = 0
 
-    init(settings: DashboardShortcut, display: DashboardShortcut? = nil, displayDismiss: DashboardShortcut? = nil) {
+    init(
+        settings: DashboardShortcut,
+        display: DashboardShortcut? = nil,
+        displayDismiss: DashboardShortcut? = nil,
+        moveWidgetPrevious: DashboardShortcut? = nil,
+        moveWidgetNext: DashboardShortcut? = nil
+    ) {
         accepted = [.settings: settings.normalized]
         if let display { accepted[.display] = display.normalized }
         if let displayDismiss { accepted[.displayDismiss] = displayDismiss.normalized }
+        if let moveWidgetPrevious { accepted[.moveWidgetPrevious] = moveWidgetPrevious.normalized }
+        if let moveWidgetNext { accepted[.moveWidgetNext] = moveWidgetNext.normalized }
     }
 
     var registrationsSuspended: Bool { recorderCount > 0 }
@@ -54,7 +64,7 @@ struct ShortcutBindingState {
     mutating func replaceWidgets(with bindings: [Int: WidgetShortcutBinding], discardPending: Bool = false) {
         accepted = accepted.filter {
             switch $0.key {
-            case .settings, .display, .displayDismiss: true
+            case .settings, .moveWidgetPrevious, .moveWidgetNext, .display, .displayDismiss: true
             case .widget, .widgetDismiss: false
             }
         }
@@ -66,7 +76,7 @@ struct ShortcutBindingState {
             switch owner {
             case let .widget(widgetType), let .widgetDismiss(widgetType):
                 return !discardPending && bindings[widgetType] != nil
-            case .settings, .display, .displayDismiss:
+            case .settings, .moveWidgetPrevious, .moveWidgetNext, .display, .displayDismiss:
                 return true
             }
         }

@@ -171,7 +171,12 @@ public partial class SettingsWindow : Window
         header.Children.Add(showHeader);
         header.Children.Add(dismissHeader);
         ShortcutRows.Children.Add(header);
-        var options = new[] { new CompactWidgetOption(DisplayShortcutLogic.WidgetType, "Display") }.Concat(_host.WidgetOptions);
+        var options = new[]
+        {
+            new CompactWidgetOption(DisplayShortcutLogic.WidgetType, "Display"),
+            new CompactWidgetOption(MoveWidgetShortcutLogic.PreviousWidgetType, "Move to Previous Display"),
+            new CompactWidgetOption(MoveWidgetShortcutLogic.NextWidgetType, "Move to Next Display")
+        }.Concat(_host.WidgetOptions);
         foreach (var option in options)
         {
             var row = new Grid { Margin = new Thickness(0, 0, 0, 12) };
@@ -182,16 +187,21 @@ public partial class SettingsWindow : Window
 
             var title = new TextBlock { Text = option.Title, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 10, 0) };
             var show = CreateShortcutField(option, WidgetShortcutAction.Show);
-            var dismiss = CreateShortcutField(option, WidgetShortcutAction.Dismiss);
-            var reset = new Button { Content = "Reset", Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(6, 0, 0, 0), IsEnabled = option.WidgetType == DisplayShortcutLogic.WidgetType || _settings.WidgetShortcutDefaults.ContainsKey(option.WidgetType) };
+            FrameworkElement dismiss = MoveWidgetShortcutLogic.IsMoveWidgetType(option.WidgetType)
+                ? new Grid()
+                : CreateShortcutField(option, WidgetShortcutAction.Dismiss);
+            var reset = new Button { Content = "Reset", Padding = new Thickness(8, 4, 8, 4), Margin = new Thickness(6, 0, 0, 0), IsEnabled = option.WidgetType == DisplayShortcutLogic.WidgetType || MoveWidgetShortcutLogic.IsMoveWidgetType(option.WidgetType) || _settings.WidgetShortcutDefaults.ContainsKey(option.WidgetType) };
             AutomationProperties.SetName(reset, $"Reset shortcuts for {option.Title}");
             reset.Click += (_, _) =>
             {
                 var shortcut = option.WidgetType == DisplayShortcutLogic.WidgetType
                     ? DisplayShortcutLogic.DefaultShortcut
-                    : _settings.WidgetShortcutDefaults.GetValueOrDefault(option.WidgetType);
+                    : MoveWidgetShortcutLogic.IsMoveWidgetType(option.WidgetType)
+                        ? MoveWidgetShortcutLogic.DefaultShortcut(option.WidgetType)
+                        : _settings.WidgetShortcutDefaults.GetValueOrDefault(option.WidgetType);
                 SetShortcut(option.WidgetType, WidgetShortcutAction.Show, shortcut);
-                SetShortcut(option.WidgetType, WidgetShortcutAction.Dismiss, shortcut);
+                if (!MoveWidgetShortcutLogic.IsMoveWidgetType(option.WidgetType))
+                    SetShortcut(option.WidgetType, WidgetShortcutAction.Dismiss, shortcut);
             };
 
             Grid.SetColumn(title, 0); Grid.SetColumn(show, 1); Grid.SetColumn(dismiss, 2); Grid.SetColumn(reset, 3);
@@ -266,6 +276,8 @@ public partial class SettingsWindow : Window
 
     private string? GetShortcut(int widgetType, WidgetShortcutAction action)
     {
+        if (widgetType == MoveWidgetShortcutLogic.PreviousWidgetType) return _settings.MoveWidgetPreviousShortcut;
+        if (widgetType == MoveWidgetShortcutLogic.NextWidgetType) return _settings.MoveWidgetNextShortcut;
         if (widgetType == DisplayShortcutLogic.WidgetType)
             return action == WidgetShortcutAction.Show ? _settings.DisplayPreviewShortcut : _settings.DisplayPreviewDismissShortcut;
         var bindings = action == WidgetShortcutAction.Show ? _settings.WidgetShortcuts : _settings.WidgetDismissShortcuts;
@@ -281,7 +293,15 @@ public partial class SettingsWindow : Window
             status.Foreground = Brushes.Firebrick;
             return;
         }
-        if (widgetType == DisplayShortcutLogic.WidgetType)
+        if (widgetType == MoveWidgetShortcutLogic.PreviousWidgetType)
+        {
+            _settings.MoveWidgetPreviousShortcut = shortcut;
+        }
+        else if (widgetType == MoveWidgetShortcutLogic.NextWidgetType)
+        {
+            _settings.MoveWidgetNextShortcut = shortcut;
+        }
+        else if (widgetType == DisplayShortcutLogic.WidgetType)
         {
             if (action == WidgetShortcutAction.Show) _settings.DisplayPreviewShortcut = shortcut;
             else _settings.DisplayPreviewDismissShortcut = shortcut;

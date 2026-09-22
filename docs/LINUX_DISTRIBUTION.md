@@ -41,9 +41,10 @@ Display has **Show** and **Dismiss** shortcuts in Settings, both defaulting to
 **Ctrl-Alt-Shift-0**. Matching shortcuts toggle the preview; different shortcuts
 act independently. Existing Display Show assignments are retained and initially
 copied to Dismiss. Clearing either assignment keeps it unassigned. Show opens or
-focuses the single preview window. Dismiss closes it, stops capture and cancels
-automatic resumption while preserving the saved source and position. Menu and
-launcher actions always show Display.
+launcher actions always show Display. **Move to Previous/Next Display**
+shortcuts (defaults: Ctrl-Alt-Shift-Left and Ctrl-Alt-Shift-Right) move the
+focused widget panel between monitors; both are configurable in Settings like
+the others.
 
 The display preview opens idle. Capture starts only after an explicit click or
 power-button action. Moving the preview onto any part of its selected display,

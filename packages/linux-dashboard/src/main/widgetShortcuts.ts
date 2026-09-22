@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { MoveDirection } from './moveToNextDisplay';
 import type { DisplayPreviewCoordinator } from './displayPreview';
 import type { CompactWidgetOption } from './models';
 import type { DashboardSettings } from './settings';
@@ -26,6 +27,15 @@ export type WidgetShortcutAction = 'show' | 'dismiss';
 type ShortcutRegistrationState = Pick<WidgetShortcutStatus, 'state' | 'detail'>;
 
 const DISPLAY_DEFAULT = 'Ctrl+Alt+Shift+0';
+const MOVE_WIDGET_DIRECTIONS: MoveDirection[] = ['previous', 'next'];
+const MOVE_WIDGET_DEFAULTS: Record<MoveDirection, string> = {
+  previous: 'Ctrl+Alt+Shift+Left',
+  next: 'Ctrl+Alt+Shift+Right',
+};
+const MOVE_WIDGET_TITLES: Record<MoveDirection, string> = {
+  previous: 'Move Widget to Previous Display',
+  next: 'Move Widget to Next Display',
+};
 const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Super'] as const;
 const MODIFIER_ALIASES: Record<string, typeof MODIFIER_ORDER[number]> = {
   control: 'Ctrl', ctrl: 'Ctrl', alt: 'Alt', option: 'Alt', shift: 'Shift',
@@ -64,6 +74,7 @@ export class WidgetShortcutController extends EventEmitter {
   private resetPending = false;
   private statuses: WidgetShortcutStatus[] = [];
   private displayStatus?: ShortcutStatus;
+  private moveWidgetStatuses: Record<MoveDirection, ShortcutStatus | undefined> = { previous: undefined, next: undefined };
 
   constructor(
     private readonly settings: DashboardSettings,
@@ -72,6 +83,7 @@ export class WidgetShortcutController extends EventEmitter {
     private readonly dismiss: (widgetType: number) => void,
     private readonly toggle: (widgetType: number) => void,
     private readonly displayPreview: Pick<DisplayPreviewCoordinator, 'open' | 'close' | 'isOpen'>,
+    private readonly moveWidget: (direction: MoveDirection) => void = () => {},
   ) {
     super();
   }
@@ -94,6 +106,20 @@ export class WidgetShortcutController extends EventEmitter {
       changed = true;
     }
     for (const shortcut of [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut]) {
+      const normalized = normalizeAccelerator(shortcut ?? '');
+      if (normalized) reserved.add(normalized);
+    }
+    for (const direction of MOVE_WIDGET_DIRECTIONS) {
+      const key = direction === 'previous' ? 'moveWidgetPreviousShortcut' : 'moveWidgetNextShortcut';
+      if (this.settings[key] === undefined) {
+        const normalized = normalizeAccelerator(MOVE_WIDGET_DEFAULTS[direction]);
+        this.settings[key] = normalized && !reserved.has(normalized) ? normalized : null;
+        changed = true;
+      }
+      const assigned = normalizeAccelerator(this.settings[key] ?? '');
+      if (assigned) reserved.add(assigned);
+    }
+    for (const shortcut of [this.settings.moveWidgetPreviousShortcut, this.settings.moveWidgetNextShortcut]) {
       const normalized = normalizeAccelerator(shortcut ?? '');
       if (normalized) reserved.add(normalized);
     }
@@ -144,7 +170,8 @@ export class WidgetShortcutController extends EventEmitter {
           if (!shortcut || normalizeAccelerator(shortcut) !== normalized) return false;
           return type !== String(widgetType);
         }))
-        || [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut]
+        || [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut,
+          this.settings.moveWidgetPreviousShortcut, this.settings.moveWidgetNextShortcut]
           .some((shortcut) => normalizeAccelerator(shortcut ?? '') === normalized);
       if (duplicate) return { ok: false, error: 'Already assigned to another widget.' };
     }
@@ -159,7 +186,11 @@ export class WidgetShortcutController extends EventEmitter {
   setDisplayShortcut(value: string | null, action: WidgetShortcutAction = 'show'): { ok: boolean; error?: string } {
     const normalized = value === null ? null : normalizeAccelerator(value);
     if (value !== null && !normalized) return { ok: false, error: 'Use one or more modifiers and a supported key.' };
-    if (normalized && this.widgetReservations().has(normalized)) return { ok: false, error: 'Already assigned to another widget.' };
+    if (normalized && (this.widgetReservations().has(normalized)
+      || normalizeAccelerator(this.settings.moveWidgetPreviousShortcut ?? '') === normalized
+      || normalizeAccelerator(this.settings.moveWidgetNextShortcut ?? '') === normalized)) {
+      return { ok: false, error: 'Already assigned to another widget.' };
+    }
     this.resetPending = false;
     if (action === 'show') this.settings.displayPreviewShortcut = normalized;
     else this.settings.displayPreviewDismissShortcut = normalized;
@@ -168,15 +199,38 @@ export class WidgetShortcutController extends EventEmitter {
     return { ok: true };
   }
 
+  setMoveWidgetShortcut(direction: MoveDirection, value: string | null): { ok: boolean; error?: string } {
+    const normalized = value === null ? null : normalizeAccelerator(value);
+    if (value !== null && !normalized) return { ok: false, error: 'Use one or more modifiers and a supported key.' };
+    if (normalized) {
+      const other = direction === 'next' ? this.settings.moveWidgetPreviousShortcut : this.settings.moveWidgetNextShortcut;
+      const duplicate = this.widgetReservations().has(normalized)
+        || [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut, other]
+          .some((shortcut) => normalizeAccelerator(shortcut ?? '') === normalized);
+      if (duplicate) return { ok: false, error: 'Already assigned to another widget.' };
+    }
+    this.resetPending = false;
+    const key = direction === 'previous' ? 'moveWidgetPreviousShortcut' : 'moveWidgetNextShortcut';
+    this.settings[key] = normalized;
+    this.settings.notifyChanged();
+    this.refresh();
+    return { ok: true };
+  }
+
   reset(): void {
-    if (this.options.length === 0 && this.widgetReservations().has(DISPLAY_DEFAULT)) {
-      // Reset both owners together once inventory can release the retained widget key.
+    const retained = this.widgetReservations();
+    if (this.options.length === 0
+      && [DISPLAY_DEFAULT, MOVE_WIDGET_DEFAULTS.previous, MOVE_WIDGET_DEFAULTS.next]
+        .some((chord) => retained.has(normalizeAccelerator(chord) ?? chord))) {
+      // Reset every owner together once inventory can release the retained widget key.
       this.resetPending = true;
       return;
     }
     this.resetPending = false;
     this.settings.displayPreviewShortcut = DISPLAY_DEFAULT;
     this.settings.displayPreviewDismissShortcut = DISPLAY_DEFAULT;
+    this.settings.moveWidgetPreviousShortcut = MOVE_WIDGET_DEFAULTS.previous;
+    this.settings.moveWidgetNextShortcut = MOVE_WIDGET_DEFAULTS.next;
     if (this.options.length === 0) {
       this.settings.notifyChanged();
       this.refresh();
@@ -201,6 +255,10 @@ export class WidgetShortcutController extends EventEmitter {
 
   getDisplayStatus(): ShortcutStatus | undefined {
     return this.displayStatus;
+  }
+
+  getMoveWidgetStatus(direction: MoveDirection): ShortcutStatus | undefined {
+    return this.moveWidgetStatuses[direction];
   }
 
   unregisterAll(): void {
@@ -273,6 +331,25 @@ export class WidgetShortcutController extends EventEmitter {
         this.widgetReservations(),
       ),
     };
+    for (const direction of MOVE_WIDGET_DIRECTIONS) {
+      const key = direction === 'previous' ? 'moveWidgetPreviousShortcut' : 'moveWidgetNextShortcut';
+      this.moveWidgetStatuses[direction] = {
+        title: MOVE_WIDGET_TITLES[direction],
+        ...registerPair(
+          normalizeAccelerator(this.settings[key] ?? ''),
+          null,
+          {
+            show: () => this.moveWidget(direction),
+            dismiss: () => this.moveWidget(direction),
+            toggle: () => this.moveWidget(direction),
+          },
+          this.capturing ? 'Paused while recording' : null,
+          this.widgetReservations(),
+        ),
+        dismissState: 'inactive',
+        dismissDetail: '',
+      };
+    }
     this.emit('changed');
   }
 }

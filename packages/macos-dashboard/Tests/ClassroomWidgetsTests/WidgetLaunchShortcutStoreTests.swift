@@ -326,6 +326,33 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
     }
 
     @MainActor
+    func testStartupLeavesMoveWidgetUnassignedWhenDefaultAlreadyTakenByWidget() {
+        let moveDefault = DashboardShortcut(
+            keyCode: DashboardDefaults.moveWidgetNextShortcutKeyCode,
+            modifiers: DashboardDefaults.moveWidgetShortcutModifiers
+        )
+        WidgetLaunchShortcutStore(defaults: defaults).set(moveDefault, action: .show, for: 42)
+        let state = AppDelegate(defaults: defaults).initialShortcutBindingState()
+
+        XCTAssertEqual(state.shortcut(for: .moveWidgetNext)?.isAssigned, false)
+        XCTAssertEqual(state.shortcut(for: .widget(42)), moveDefault.normalized)
+    }
+
+    @MainActor
+    func testStartupSeedsMoveWidgetDefaultsWhenNothingReservesThem() {
+        let state = AppDelegate(defaults: defaults).initialShortcutBindingState()
+
+        XCTAssertEqual(state.shortcut(for: .moveWidgetPrevious), DashboardShortcut(
+            keyCode: DashboardDefaults.moveWidgetPreviousShortcutKeyCode,
+            modifiers: DashboardDefaults.moveWidgetShortcutModifiers
+        ).normalized)
+        XCTAssertEqual(state.shortcut(for: .moveWidgetNext), DashboardShortcut(
+            keyCode: DashboardDefaults.moveWidgetNextShortcutKeyCode,
+            modifiers: DashboardDefaults.moveWidgetShortcutModifiers
+        ).normalized)
+    }
+
+    @MainActor
     func testStartupStateReservesSavedDismissBindingBeforeDisplayCanBeEdited() {
         let preferred = DashboardShortcut(
             keyCode: Int(kVK_ANSI_0),
