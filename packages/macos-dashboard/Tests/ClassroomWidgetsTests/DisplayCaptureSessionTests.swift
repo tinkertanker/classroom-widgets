@@ -39,10 +39,28 @@ final class DisplayCaptureSessionTests: XCTestCase {
         XCTAssertEqual(DisplayCaptureGapReason.blank.rawValue, "blank")
     }
 
+    func testWindowLookupRetriesOnScreenFirstThenWidensBeforeFailing() {
+        let attempts = Array(1...DisplayCaptureWindowLookupPolicy.maxAttempts)
+        XCTAssertEqual(
+            attempts.map { DisplayCaptureWindowLookupPolicy.onScreenWindowsOnly(forAttempt: $0) },
+            [true, true, false, false, false]
+        )
+        XCTAssertEqual(
+            attempts.map { DisplayCaptureWindowLookupPolicy.shouldRetry(afterAttempt: $0) },
+            [true, true, true, true, false]
+        )
+        XCTAssertEqual(DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: 1), 50_000_000)
+        XCTAssertEqual(
+            DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: 4),
+            DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: 9),
+            "Backoff is capped so a missing window fails within about half a second"
+        )
+    }
+
     func testStopBeforeStartKeepsCancellationStickyAndSkipsContentDiscovery() async throws {
         let discoveryCalled = NSLock()
         var didCallDiscovery = false
-        let session = DisplayCaptureSession(sourceID: 1) {
+        let session = DisplayCaptureSession(sourceID: 1) { _ in
             discoveryCalled.withLock { didCallDiscovery = true }
             throw TestError.unexpectedDiscovery
         }
@@ -63,7 +81,7 @@ final class DisplayCaptureSessionTests: XCTestCase {
     func testSynchronousCancellationRejectsStartBeforeAsynchronousStop() async throws {
         let lock = NSLock()
         var discoveryCalls = 0
-        let session = DisplayCaptureSession(sourceID: 101) {
+        let session = DisplayCaptureSession(sourceID: 101) { _ in
             lock.withLock { discoveryCalls += 1 }
             throw TestError.unexpectedDiscovery
         }

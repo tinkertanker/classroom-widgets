@@ -27,7 +27,7 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
         let fixture = try CoordinatorFixture()
         defer { fixture.close() }
         let discovery = PendingDiscovery()
-        fixture.contentDiscovery = { try await discovery.wait() }
+        fixture.contentDiscovery = { _ in try await discovery.wait() }
         fixture.preflightGranted = true
         fixture.coordinator.open()
         await fulfillment(of: [discovery.started], timeout: 2)
@@ -306,7 +306,7 @@ private final class CoordinatorFixture {
     var permissionRequests = 0
     var duringConsent: (() -> Void)?
     var createdSources: [CGDirectDisplayID] = []
-    var contentDiscovery: DisplayCaptureSession.ContentDiscovery = { throw CancellationError() }
+    var contentDiscovery: DisplayCaptureSession.ContentDiscovery = { _ in throw CancellationError() }
     private let suiteName = "DisplayPreviewCoordinatorTests.\(UUID().uuidString)"
     private let defaults: UserDefaults
 
@@ -325,7 +325,7 @@ private final class CoordinatorFixture {
         makeCaptureSession: { [weak self] id in
             self?.createdSources.append(id)
             // No shareable-content discovery, stream, permission, or capture IO.
-            return DisplayCaptureSession(sourceID: id, contentDiscovery: self?.contentDiscovery ?? { throw CancellationError() })
+            return DisplayCaptureSession(sourceID: id, contentDiscovery: self?.contentDiscovery ?? { _ in throw CancellationError() })
         }
     )
 
