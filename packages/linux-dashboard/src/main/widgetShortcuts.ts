@@ -105,6 +105,10 @@ export class WidgetShortcutController extends EventEmitter {
       this.settings.displayPreviewDismissShortcut = this.settings.displayPreviewShortcut;
       changed = true;
     }
+    for (const shortcut of [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut]) {
+      const normalized = normalizeAccelerator(shortcut ?? '');
+      if (normalized) reserved.add(normalized);
+    }
     for (const direction of MOVE_WIDGET_DIRECTIONS) {
       const key = direction === 'previous' ? 'moveWidgetPreviousShortcut' : 'moveWidgetNextShortcut';
       if (this.settings[key] === undefined) {
@@ -115,7 +119,7 @@ export class WidgetShortcutController extends EventEmitter {
       const assigned = normalizeAccelerator(this.settings[key] ?? '');
       if (assigned) reserved.add(assigned);
     }
-    for (const shortcut of [this.settings.displayPreviewShortcut, this.settings.displayPreviewDismissShortcut, this.settings.moveWidgetPreviousShortcut, this.settings.moveWidgetNextShortcut]) {
+    for (const shortcut of [this.settings.moveWidgetPreviousShortcut, this.settings.moveWidgetNextShortcut]) {
       const normalized = normalizeAccelerator(shortcut ?? '');
       if (normalized) reserved.add(normalized);
     }
@@ -205,6 +209,7 @@ export class WidgetShortcutController extends EventEmitter {
           .some((shortcut) => normalizeAccelerator(shortcut ?? '') === normalized);
       if (duplicate) return { ok: false, error: 'Already assigned to another widget.' };
     }
+    this.resetPending = false;
     const key = direction === 'previous' ? 'moveWidgetPreviousShortcut' : 'moveWidgetNextShortcut';
     this.settings[key] = normalized;
     this.settings.notifyChanged();
@@ -213,8 +218,11 @@ export class WidgetShortcutController extends EventEmitter {
   }
 
   reset(): void {
-    if (this.options.length === 0 && this.widgetReservations().has(DISPLAY_DEFAULT)) {
-      // Reset both owners together once inventory can release the retained widget key.
+    const retained = this.widgetReservations();
+    if (this.options.length === 0
+      && [DISPLAY_DEFAULT, MOVE_WIDGET_DEFAULTS.previous, MOVE_WIDGET_DEFAULTS.next]
+        .some((chord) => retained.has(normalizeAccelerator(chord) ?? chord))) {
+      // Reset every owner together once inventory can release the retained widget key.
       this.resetPending = true;
       return;
     }
