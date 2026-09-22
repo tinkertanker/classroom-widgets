@@ -499,14 +499,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func initialShortcutBindingState() -> ShortcutBindingState {
+        let settings = persistedSettingsShortcut()
+        let display = widgetShortcutStore.storedDisplayBinding()
+        let displayDismiss = widgetShortcutStore.storedDisplayBinding(action: .dismiss)
+        let storedBindings = widgetShortcutStore.storedBindings()
+        let reserved = [settings, display, displayDismiss].compactMap { $0?.normalized }
+            + storedBindings.values.flatMap { [$0.show.normalized, $0.dismiss.normalized] }
         var state = ShortcutBindingState(
-            settings: persistedSettingsShortcut(),
-            display: widgetShortcutStore.storedDisplayBinding(),
-            displayDismiss: widgetShortcutStore.storedDisplayBinding(action: .dismiss),
-            moveWidget: persistedSingleActionShortcut(.moveWidget)
+            settings: settings,
+            display: display,
+            displayDismiss: displayDismiss,
+            moveWidget: initialMoveWidgetShortcut(reserving: reserved)
         )
-        state.replaceWidgets(with: widgetShortcutStore.storedBindings())
+        state.replaceWidgets(with: storedBindings)
         return state
+    }
+
+    private func initialMoveWidgetShortcut(reserving reserved: [DashboardShortcut]) -> DashboardShortcut {
+        let spec = SingleActionHotKeySpec.moveWidget
+        let registered = defaults.volatileDomain(forName: UserDefaults.registrationDomain) ?? [:]
+        func customized(_ key: String) -> Bool {
+            guard let value = defaults.object(forKey: key) as? Int else { return false }
+            if let registeredValue = registered[key] as? Int { return value != registeredValue }
+            return true
+        }
+        if !customized(spec.keyCodeDefaultsKey), !customized(spec.modifiersDefaultsKey) {
+            let fallback = DashboardShortcut(keyCode: spec.defaultKeyCode, modifiers: spec.defaultModifiers).normalized
+            if fallback.isAssigned, reserved.contains(fallback) {
+                let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
+                persistSingleActionShortcut(unassigned, spec)
+                return unassigned
+            }
+        }
+        return persistedSingleActionShortcut(spec)
     }
 
     func shouldApplyPendingDisplayShortcut(in state: ShortcutBindingState) -> Bool {
