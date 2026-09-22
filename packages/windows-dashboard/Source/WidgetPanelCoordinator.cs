@@ -20,6 +20,7 @@ public sealed class WidgetPanelCoordinator
     private double _backgroundOpacity = 1.0;
     private bool _alwaysOnTop = true;
     private bool _framesDirty;
+    private string? _lastActivatedId;
 
     public event Action<WidgetPanelStateChange>? PanelStateChanged;
     public event Action<JsonElement>? RandomiserListChanged;
@@ -60,6 +61,7 @@ public sealed class WidgetPanelCoordinator
         {
             foreach (var panel in _panels.Values) panel.ClosePermanently();
             _panels.Clear();
+            _lastActivatedId = null;
         }
         else if (_lastInventory is not null && inventory.Revision < _lastInventory.Revision)
         {
@@ -74,6 +76,7 @@ public sealed class WidgetPanelCoordinator
             panel.ClosePermanently();
             _panels.Remove(id);
             _freeformFrames.Remove(id);
+            if (_lastActivatedId == id) _lastActivatedId = null;
         }
 
         var created = false;
@@ -84,7 +87,11 @@ public sealed class WidgetPanelCoordinator
             {
                 var wasHidden = existing.IsHidden;
                 existing.Apply(descriptor);
-                if (descriptor.Hidden) existing.HidePanel();
+                if (descriptor.Hidden)
+                {
+                    existing.HidePanel();
+                    if (_lastActivatedId == descriptor.Id) _lastActivatedId = null;
+                }
                 else if (_active && wasHidden) existing.ShowPanel();
                 visibilityChanged |= wasHidden != descriptor.Hidden;
                 continue;
@@ -111,8 +118,44 @@ public sealed class WidgetPanelCoordinator
     public void Deactivate()
     {
         _active = false;
+        _lastActivatedId = null;
         foreach (var panel in _panels.Values) panel.ClosePermanently();
         _panels.Clear();
+    }
+
+    /// <summary>
+    /// Moves the selected panel (active, else most recently activated, else
+    /// the only visible one) to the next display in screen order, keeping its
+    /// size and work-area offset. Treated like a manual drag: layout becomes
+    /// freeform and the new frame is persisted.
+    /// </summary>
+    public void MoveSelectedPanelToNextDisplay()
+    {
+        var panel = SelectedPanel();
+        if (panel is null) return;
+        var moved = MoveToNextDisplayGeometry.NextDisplayFrame(panel.CurrentFrame, ScreenGeometry.AllWorkAreas());
+        if (moved is not { } frame) return;
+        if (_layout != WidgetPanelLayout.Freeform)
+        {
+            _layout = WidgetPanelLayout.Freeform;
+            _freeformFrames.Clear();
+        }
+        panel.SetFrame(frame);
+        Persist(panel.CurrentFrame, panel.WidgetId);
+    }
+
+    private WidgetPanelWindow? SelectedPanel()
+    {
+        var active = _panels.Values.FirstOrDefault(panel => panel.IsActive && !panel.IsHidden);
+        if (active is not null) return active;
+        if (_lastActivatedId is { } lastId)
+        {
+            return _panels.TryGetValue(lastId, out var remembered) && remembered.IsVisible && !remembered.IsHidden
+                ? remembered
+                : null;
+        }
+        var visible = _panels.Values.Where(panel => panel.IsVisible && !panel.IsHidden).ToList();
+        return visible.Count == 1 ? visible[0] : null;
     }
 
     public void FlushPersistedFrames()
@@ -194,6 +237,7 @@ public sealed class WidgetPanelCoordinator
         panel.DisplayPreviewRequested += () => DisplayPreviewRequested?.Invoke();
         panel.OpenSettingsRequested += () => OpenSettingsRequested?.Invoke();
         panel.LayoutRequested += Arrange;
+        panel.Activated += (_, _) => _lastActivatedId = panel.WidgetId;
         panel.FrameChanged += (widgetId, frame) =>
         {
             if (_layout != WidgetPanelLayout.Freeform)
@@ -339,7 +383,13 @@ public static class ScreenGeometry
     /// DPI, so mixed-DPI setups (e.g. a 150% laptop screen driving a 100%
     /// projector) map to the right WPF coordinates.
     /// </summary>
-    private static Rect WorkAreaInDips(System.Windows.Forms.Screen screen)
+    /// <summary>Every monitor's work area in DIPs, ordered by origin (x, then y).</summary>
+    public static IReadOnlyList<Rect> AllWorkAreas() => System.Windows.Forms.Screen.AllScreens
+        .Select(WorkAreaInDips)
+        .OrderBy(area => area.X).ThenBy(area => area.Y)
+        .ToList();
+
+    internal static Rect WorkAreaInDips(System.Windows.Forms.Screen screen)
     {
         var bounds = screen.Bounds;
         var center = new NativeMonitorMethods.POINT { X = bounds.Left + bounds.Width / 2, Y = bounds.Top + bounds.Height / 2 };

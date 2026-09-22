@@ -58,7 +58,7 @@
         <Separator Margin="0,18,0,14" />
         <TextBlock Text="Widget launch shortcuts" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,0,0,12"
-                   Text="When Show and Dismiss match, the shortcut toggles the widget. Make them different to let Show create additional widgets. Display always reuses its preview window; Dismiss closes it and stops capture." />
+                   Text="When Show and Dismiss match, the shortcut toggles the widget. Make them different to let Show create additional widgets. Display always reuses its preview window; Dismiss closes it and stops capture. Move to Next Display uses a single shortcut to send the focused widget to the next monitor." />
         <StackPanel x:Name="ShortcutRows" />
         <TextBlock x:Name="ShortcutLoadingLabel" Text="Loading widgets…" Foreground="#6B7280" FontSize="12" />
 

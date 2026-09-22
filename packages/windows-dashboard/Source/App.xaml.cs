@@ -104,7 +104,7 @@ public partial class App : Application
 
         var displayCatalog = new DisplayCatalog();
         _displayPreview = new DisplayPreviewCoordinator(_settings, displayCatalog);
-        _shortcuts = new WidgetShortcutManager(_settings, _host, _displayPreview.PerformShortcut);
+        _shortcuts = new WidgetShortcutManager(_settings, _host, _displayPreview.PerformShortcut, _host.MoveSelectedWidgetToNextDisplay);
         _updates = new UpdateController(RequestQuitAsync);
         _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => _displayPreview.Open());
         // The widget settings gear posts classroomWidgetPanel open-settings;

@@ -52,6 +52,8 @@ public sealed class DashboardSettings
     public string? DisplayPreviewDismissShortcut { get; set; }
     // Null is an intentional unassignment once the legacy Show-only settings have migrated.
     public bool DisplayPreviewShortcutsInitialized { get; set; }
+    public string? MoveWidgetShortcut { get; set; }
+    public bool MoveWidgetShortcutInitialized { get; set; }
 
     /// <summary>Shortening service used by Link Shortener and QR Code widgets.</summary>
     public string LinkShortenerProvider { get; set; } = DashboardShortenerSettings.DefaultProvider;
@@ -183,6 +185,20 @@ public sealed class DashboardSettings
             DisplayPreviewDismissShortcut ??= DisplayPreviewShortcut;
             DisplayPreviewShortcutsInitialized = true;
             changed = true;
+        }
+        if (!MoveWidgetShortcutInitialized)
+        {
+            var moveDefault = MoveWidgetShortcutLogic.DefaultShortcut;
+            if (MoveWidgetShortcut is null && !reserved.Contains(moveDefault))
+            {
+                MoveWidgetShortcut = moveDefault;
+            }
+            MoveWidgetShortcutInitialized = true;
+            changed = true;
+        }
+        if (MoveWidgetShortcut is { } moveAssigned)
+        {
+            reserved.Add(WidgetShortcutGesture.TryParse(moveAssigned, out var moveGesture) ? moveGesture.Display : moveAssigned);
         }
         if (options.Count == 0)
         {
