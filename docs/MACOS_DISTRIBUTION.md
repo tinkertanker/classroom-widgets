@@ -40,9 +40,9 @@ Display has separate **Show** and **Dismiss** shortcuts, both defaulting to
 **Command-Option-Control-0**. Matching shortcuts toggle the preview; different
 shortcuts act independently. Existing Display Show assignments are retained and
 initially copied to Dismiss. Clearing either assignment keeps it unassigned.
-Show opens or focuses the single preview window. Dismiss closes it and stops
-capture, including pending restarts, while preserving the saved source and
-position. Menu and launcher actions always show Display. Reopening keeps the
+Menu and launcher actions always show Display. A single-action **Move to Next
+Display** shortcut (default: Command-Option-Control-M) moves the focused widget
+panel to the next monitor; it is configurable in Settings like the others. Reopening keeps the
 existing macOS source-selection and screen-recording permission behavior.
 
 The **Link Shortener** settings tab stores the provider and optional Short.io public

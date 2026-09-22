@@ -37,6 +37,9 @@ initially copied to Dismiss. Clearing either assignment keeps it unassigned.
 Show opens or focuses the single preview window. Dismiss closes it and stops
 capture, including overlap resumption, while preserving the saved source and
 position. Reopening starts idle. Menu and launcher actions always show Display.
+A single-action **Move to Next Display** shortcut (default: Ctrl-Alt-Shift-M)
+moves the focused widget panel to the next monitor; it is configurable in
+Settings like the others.
 
 ### Where things live
 
