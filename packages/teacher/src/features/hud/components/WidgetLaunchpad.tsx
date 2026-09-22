@@ -137,6 +137,24 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
     onClose();
   };
 
+  const renderExtraItem = (item: LaunchpadExtraItem) => {
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.id}
+        onClick={() => handleExtraItemClick(item)}
+        className={`group relative flex flex-col items-center p-4 rounded-lg transition-all bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
+          highlightedExtraId === item.id ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
+        }`}
+      >
+        <Icon className="text-2xl mb-2 text-warm-gray-600 dark:text-warm-gray-400" />
+        <span className="text-xs text-center text-warm-gray-700 dark:text-warm-gray-300">
+          {item.name}
+        </span>
+      </button>
+    );
+  };
+
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== 'Enter') return;
     if (filteredWidgets.length === 1 && filteredExtraItems.length === 0) {
@@ -282,23 +300,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
                 </button>
               );
             })}
-            {filteredExtraItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => handleExtraItemClick(item)}
-                  className={`group relative flex flex-col items-center p-4 rounded-lg transition-all bg-warm-gray-50 dark:bg-warm-gray-700 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-600 hover:shadow-md hover:-translate-y-0.5 focus:outline-none ${
-                    highlightedExtraId === item.id ? 'ring-2 ring-sage-500 ring-offset-2 ring-offset-white dark:ring-offset-warm-gray-800' : ''
-                  }`}
-                >
-                  <Icon className="text-2xl mb-2 text-warm-gray-600 dark:text-warm-gray-400" />
-                  <span className="text-xs text-center text-warm-gray-700 dark:text-warm-gray-300">
-                    {item.name}
-                  </span>
-                </button>
-              );
-            })}
+            {filteredExtraItems.map(renderExtraItem)}
           </div>
         ) : (
           // Show widgets grouped by category
@@ -346,6 +348,11 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
                 </div>
               </div>
             ))}
+            {filteredExtraItems.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {filteredExtraItems.map(renderExtraItem)}
+              </div>
+            )}
           </div>
         )}
       </div>
