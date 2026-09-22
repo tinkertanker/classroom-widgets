@@ -144,7 +144,7 @@ classroom-widgets/
 │   │   └── package.json
 │   ├── shared/                 # Shared types, hooks, constants, utilities
 │   └── macos-dashboard/        # Native menu-bar host (SwiftPM + AppKit/WebKit)
-├── script/                     # macOS build and distribution scripts
+├── scripts/                    # Build, distribution, and repo tooling scripts
 ├── docs/                       # Documentation
 ├── package.json                # Root workspace scripts
 └── package-lock.json           # Locked dependency graph

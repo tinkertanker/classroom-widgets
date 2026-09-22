@@ -1,8 +1,8 @@
 # Builds the teacher web app and the native Windows tray app.
 #
-#   .\script\build_windows.ps1            # Debug build, then launch
-#   .\script\build_windows.ps1 -Publish   # Self-contained single-folder release in packages/windows-dashboard/dist
-#   .\script\build_windows.ps1 -NoRun     # Build only
+#   .\scripts\build_windows.ps1            # Debug build, then launch
+#   .\scripts\build_windows.ps1 -Publish   # Self-contained single-folder release in packages/windows-dashboard/dist
+#   .\scripts\build_windows.ps1 -NoRun     # Build only
 [CmdletBinding()]
 param(
     [switch]$Publish,

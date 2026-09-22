@@ -24,7 +24,7 @@ APP_MACOS="${APP_CONTENTS}/MacOS"
 APP_RESOURCES="${APP_CONTENTS}/Resources"
 WEB_RESOURCES="${APP_RESOURCES}/Web"
 STAGING_DIR="${ROOT_DIR}/dist/macos-dmg-staging"
-ENTITLEMENTS_PATH="${ROOT_DIR}/script/macos-distribution-entitlements.plist"
+ENTITLEMENTS_PATH="${ROOT_DIR}/scripts/macos-distribution-entitlements.plist"
 APP_ICON_PATH="${MACOS_DIR}/Sources/ClassroomWidgetsDashboard/Resources/AppIcon.icns"
 VERSION="$(node -p "require('./version.json').version")"
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%Y%m%d%H%M)}"
@@ -41,7 +41,7 @@ USE_NOTARISATION="${USE_NOTARISATION:-false}"
 usage() {
   cat <<'EOF'
 Usage:
-  ./script/build_macos_release.sh [options]
+  ./scripts/build_macos_release.sh [options]
 
 Options:
   --build <number>      CFBundleVersion value (default: timestamp)

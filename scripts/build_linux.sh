@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Builds the teacher web app and the Electron Linux tray app.
 #
-#   ./script/build_linux.sh                 # build, then launch
-#   ./script/build_linux.sh --publish       # AppImage + .deb in packages/linux-dashboard/dist
-#   ./script/build_linux.sh --no-run        # build only
-#   ./script/build_linux.sh --skip-web      # reuse the existing teacher build
+#   ./scripts/build_linux.sh                 # build, then launch
+#   ./scripts/build_linux.sh --publish       # AppImage + .deb in packages/linux-dashboard/dist
+#   ./scripts/build_linux.sh --no-run        # build only
+#   ./scripts/build_linux.sh --skip-web      # reuse the existing teacher build
 set -euo pipefail
 
 publish=0
