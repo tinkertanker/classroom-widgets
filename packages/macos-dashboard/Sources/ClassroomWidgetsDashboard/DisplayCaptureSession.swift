@@ -30,8 +30,29 @@ enum DisplayCaptureGapReason: String, Equatable {
     case stopped
 }
 
+/// WindowServer publishes shareable content asynchronously, so a window that is
+/// on screen can be missing from one `SCShareableContent` snapshot, most often
+/// right after a stream stopped. Lookup retries a few times before failing, and
+/// later attempts widen to off-screen windows in case the panel is momentarily
+/// not counted as on screen.
+enum DisplayCaptureWindowLookupPolicy {
+    static let maxAttempts = 5
+
+    static func shouldRetry(afterAttempt attempt: Int) -> Bool {
+        attempt < maxAttempts
+    }
+
+    static func onScreenWindowsOnly(forAttempt attempt: Int) -> Bool {
+        attempt <= 2
+    }
+
+    static func retryDelayNanoseconds(afterAttempt attempt: Int) -> UInt64 {
+        UInt64(min(attempt, 4)) * 50_000_000
+    }
+}
+
 final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
-    typealias ContentDiscovery = () async throws -> SCShareableContent
+    typealias ContentDiscovery = (_ onScreenWindowsOnly: Bool) async throws -> SCShareableContent
 
     let sourceID: CGDirectDisplayID
     private let outputQueue = DispatchQueue(label: "sg.tk.classroomwidgets.display-preview.frames")
@@ -57,8 +78,8 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
 
     init(
         sourceID: CGDirectDisplayID,
-        contentDiscovery: @escaping ContentDiscovery = {
-            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        contentDiscovery: @escaping ContentDiscovery = { onScreenWindowsOnly in
+            try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: onScreenWindowsOnly)
         }
     ) {
         self.sourceID = sourceID
@@ -75,14 +96,7 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         }
         defer { stateLock.withLock { startInProgress = false } }
         if wasAlreadyCancelled { throw CancellationError() }
-        let content = try await contentDiscovery()
-        try checkCancellation()
-        guard let display = content.displays.first(where: { $0.displayID == sourceID }) else {
-            throw DisplayCaptureSessionError.sourceUnavailable
-        }
-        guard let window = content.windows.first(where: { $0.windowID == excludingWindowID }) else {
-            throw DisplayCaptureSessionError.previewWindowUnavailable
-        }
+        let (display, window) = try await discoverDisplayAndWindow(excludingWindowID: excludingWindowID)
         let filter = SCContentFilter(display: display, excludingWindows: [window])
         let configuration = SCStreamConfiguration()
         configuration.width = max(2, Int(outputSize.width.rounded(.down)))
@@ -103,6 +117,30 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         if wasCancelled { throw CancellationError() }
         try await stream.startCapture()
         try checkCancellation()
+    }
+
+    private func discoverDisplayAndWindow(excludingWindowID: CGWindowID) async throws -> (SCDisplay, SCWindow) {
+        var attempt = 0
+        while true {
+            attempt += 1
+            let content = try await contentDiscovery(
+                DisplayCaptureWindowLookupPolicy.onScreenWindowsOnly(forAttempt: attempt)
+            )
+            try checkCancellation()
+            guard let display = content.displays.first(where: { $0.displayID == sourceID }) else {
+                throw DisplayCaptureSessionError.sourceUnavailable
+            }
+            if let window = content.windows.first(where: { $0.windowID == excludingWindowID }) {
+                return (display, window)
+            }
+            guard DisplayCaptureWindowLookupPolicy.shouldRetry(afterAttempt: attempt) else {
+                throw DisplayCaptureSessionError.previewWindowUnavailable
+            }
+            try await Task.sleep(
+                nanoseconds: DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: attempt)
+            )
+            try checkCancellation()
+        }
     }
 
     /// Revoke pending start and frame delivery before yielding to stream teardown.
