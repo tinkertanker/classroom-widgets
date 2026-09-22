@@ -52,8 +52,9 @@ public sealed class DashboardSettings
     public string? DisplayPreviewDismissShortcut { get; set; }
     // Null is an intentional unassignment once the legacy Show-only settings have migrated.
     public bool DisplayPreviewShortcutsInitialized { get; set; }
-    public string? MoveWidgetShortcut { get; set; }
-    public bool MoveWidgetShortcutInitialized { get; set; }
+    public string? MoveWidgetPreviousShortcut { get; set; }
+    public string? MoveWidgetNextShortcut { get; set; }
+    public bool MoveWidgetShortcutsInitialized { get; set; }
 
     /// <summary>Shortening service used by Link Shortener and QR Code widgets.</summary>
     public string LinkShortenerProvider { get; set; } = DashboardShortenerSettings.DefaultProvider;
@@ -186,17 +187,24 @@ public sealed class DashboardSettings
             DisplayPreviewShortcutsInitialized = true;
             changed = true;
         }
-        if (!MoveWidgetShortcutInitialized)
+        if (!MoveWidgetShortcutsInitialized)
         {
-            var moveDefault = MoveWidgetShortcutLogic.DefaultShortcut;
-            if (MoveWidgetShortcut is null && !reserved.Contains(moveDefault))
+            var previousDefault = MoveWidgetShortcutLogic.DefaultPreviousShortcut;
+            if (MoveWidgetPreviousShortcut is null && !reserved.Contains(previousDefault))
             {
-                MoveWidgetShortcut = moveDefault;
+                MoveWidgetPreviousShortcut = previousDefault;
+                reserved.Add(previousDefault);
             }
-            MoveWidgetShortcutInitialized = true;
+            var nextDefault = MoveWidgetShortcutLogic.DefaultNextShortcut;
+            if (MoveWidgetNextShortcut is null && !reserved.Contains(nextDefault))
+            {
+                MoveWidgetNextShortcut = nextDefault;
+                reserved.Add(nextDefault);
+            }
+            MoveWidgetShortcutsInitialized = true;
             changed = true;
         }
-        if (MoveWidgetShortcut is { } moveAssigned)
+        foreach (var moveAssigned in new[] { MoveWidgetPreviousShortcut, MoveWidgetNextShortcut }.OfType<string>())
         {
             reserved.Add(WidgetShortcutGesture.TryParse(moveAssigned, out var moveGesture) ? moveGesture.Display : moveAssigned);
         }

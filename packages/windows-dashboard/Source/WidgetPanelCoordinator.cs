@@ -125,15 +125,15 @@ public sealed class WidgetPanelCoordinator
 
     /// <summary>
     /// Moves the selected panel (active, else most recently activated, else
-    /// the only visible one) to the next display in screen order, keeping its
-    /// size and work-area offset. Treated like a manual drag: layout becomes
-    /// freeform and the new frame is persisted.
+    /// the only visible one) to the previous/next display in screen order,
+    /// keeping its size and work-area offset. Treated like a manual drag:
+    /// layout becomes freeform and the new frame is persisted.
     /// </summary>
-    public void MoveSelectedPanelToNextDisplay()
+    public void MoveSelectedPanel(MoveDirection direction)
     {
         var panel = SelectedPanel();
         if (panel is null) return;
-        var moved = MoveToNextDisplayGeometry.NextDisplayFrame(panel.CurrentFrame, ScreenGeometry.AllWorkAreas());
+        var moved = MoveToNextDisplayGeometry.NextDisplayFrame(panel.CurrentFrame, ScreenGeometry.AllWorkAreas(), direction);
         if (moved is not { } frame) return;
         if (_layout != WidgetPanelLayout.Freeform)
         {

@@ -119,8 +119,8 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    func moveSelectedWidgetToNextDisplay() {
-        widgetPanelCoordinator.moveSelectedPanelToNextScreen()
+    func moveSelectedWidget(_ direction: MoveDirection) {
+        widgetPanelCoordinator.moveSelectedPanel(direction)
     }
 
     func reloadWidgets() {

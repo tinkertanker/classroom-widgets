@@ -133,7 +133,7 @@ public sealed class WidgetHostController
             $"(() => {{ const host = window.classroomPanelHost; return host?.toggleWidget ? host.toggleWidget({widgetType}) : false; }})()");
     }
 
-    public void MoveSelectedWidgetToNextDisplay() => _coordinator.MoveSelectedPanelToNextDisplay();
+    public void MoveSelectedWidget(MoveDirection direction) => _coordinator.MoveSelectedPanel(direction);
 
     public async Task ReloadWidgetsAsync()
     {

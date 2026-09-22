@@ -98,7 +98,8 @@ for (const action of ['show', 'dismiss']) {
       widgetDismissShortcuts: { '7': action === 'dismiss' ? 'Shift+Alt+Ctrl+0' : 'Ctrl+Alt+Y' },
       displayPreviewShortcut: 'Ctrl+Alt+S',
       displayPreviewDismissShortcut: 'Ctrl+Alt+D',
-      moveWidgetShortcut: 'Ctrl+Alt+Shift+M',
+      moveWidgetPreviousShortcut: 'Ctrl+Alt+Shift+Left',
+      moveWidgetNextShortcut: 'Ctrl+Alt+Shift+Right',
     });
     const before = JSON.stringify(h.settings);
     h.controller.updateOptions([], false);
@@ -264,9 +265,10 @@ test('Display defaults initialize without inventory and register one presence to
   h.controller.updateOptions([], false);
   assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
   assert.equal(h.settings.displayPreviewDismissShortcut, 'Ctrl+Alt+Shift+0');
-  assert.equal(h.settings.moveWidgetShortcut, 'Ctrl+Alt+Shift+M');
+  assert.equal(h.settings.moveWidgetPreviousShortcut, 'Ctrl+Alt+Shift+Left');
+  assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+Shift+Right');
   assert.equal(h.settings.changed, 1, 'native defaults are persisted without teacher options');
-  assert.deepEqual(h.registrations, ['Ctrl+Alt+Shift+0', 'Ctrl+Alt+Shift+M']);
+  assert.deepEqual(h.registrations, ['Ctrl+Alt+Shift+0', 'Ctrl+Alt+Shift+Left', 'Ctrl+Alt+Shift+Right']);
   const toggle = h.callbacks.get('Ctrl+Alt+Shift+0');
   toggle();
   assert.equal(h.preview.isOpen, true);
@@ -324,7 +326,7 @@ test('both Display chords reserve generic Show/Dismiss including absent inventor
   assert.equal(h.controller.setDisplayShortcut('S').ok, false);
   assert.equal(h.controller.setDisplayShortcut('Alt+Ctrl+S', 'dismiss').ok, true);
   assert.equal(h.controller.getDisplayStatus().dismissAccelerator, 'Ctrl+Alt+S');
-  assert.equal(h.callbacks.size, 2, 'own Display pair can share a chord');
+  assert.equal(h.callbacks.size, 3, 'own Display pair can share a chord');
 });
 
 test('Display conflict status preserves assignments, and recording pause restores both actions', () => {

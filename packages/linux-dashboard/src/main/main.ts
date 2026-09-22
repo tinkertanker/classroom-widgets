@@ -155,7 +155,7 @@ function bootstrap(): void {
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
       displayPreview,
-      () => host?.panelCoordinator.moveSelectedPanelToNextDisplay(),
+      (direction) => host?.panelCoordinator.moveSelectedPanel(direction),
     );
     shortcuts.updateOptions([], false);
     host.panelCoordinator.on('displayPreviewRequested', () => displayPreview?.open());

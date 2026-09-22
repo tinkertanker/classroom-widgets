@@ -2,14 +2,29 @@ using System.Windows;
 
 namespace ClassroomWidgets;
 
+public enum MoveDirection
+{
+    Previous,
+    Next
+}
+
 /// <summary>
-/// The single-action "Move Widget to Next Display" shortcut. Its sentinel
-/// widget type never collides with a real option or the Display sentinel.
+/// The single-action "Move Widget to Previous/Next Display" shortcuts. Their
+/// sentinel widget types never collide with a real option or the Display
+/// sentinel.
 /// </summary>
 public static class MoveWidgetShortcutLogic
 {
-    public const int WidgetType = int.MinValue + 1;
-    public const string DefaultShortcut = "Ctrl+Alt+Shift+M";
+    public const int PreviousWidgetType = int.MinValue + 1;
+    public const int NextWidgetType = int.MinValue + 2;
+    public const string DefaultPreviousShortcut = "Ctrl+Alt+Shift+Left";
+    public const string DefaultNextShortcut = "Ctrl+Alt+Shift+Right";
+
+    public static bool IsMoveWidgetType(int widgetType) =>
+        widgetType is PreviousWidgetType or NextWidgetType;
+
+    public static string DefaultShortcut(int widgetType) =>
+        widgetType == PreviousWidgetType ? DefaultPreviousShortcut : DefaultNextShortcut;
 }
 
 /// <summary>
@@ -19,7 +34,7 @@ public static class MoveWidgetShortcutLogic
 /// </summary>
 public static class MoveToNextDisplayGeometry
 {
-    public static Rect? NextDisplayFrame(Rect frame, IReadOnlyList<Rect> workAreas)
+    public static Rect? NextDisplayFrame(Rect frame, IReadOnlyList<Rect> workAreas, MoveDirection direction = MoveDirection.Next)
     {
         if (workAreas.Count < 2) return null;
         var sorted = workAreas.OrderBy(area => area.X).ThenBy(area => area.Y).ToList();
@@ -38,7 +53,8 @@ public static class MoveToNextDisplayGeometry
         if (sourceIndex < 0) return null;
 
         var source = sorted[sourceIndex];
-        var target = sorted[(sourceIndex + 1) % sorted.Count];
+        var step = direction == MoveDirection.Next ? 1 : -1;
+        var target = sorted[(sourceIndex + step + sorted.Count) % sorted.Count];
         return ScreenGeometry.Clamp(new Rect(
             target.X + frame.X - source.X,
             target.Y + frame.Y - source.Y,

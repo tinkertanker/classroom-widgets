@@ -14,7 +14,7 @@ function harness() {
   const calls = [];
   shortcuts.getStatuses = () => [];
   shortcuts.getDisplayStatus = () => display;
-  const move = { title: 'Move to Next Display', accelerator: 'Ctrl+Alt+Shift+M' };
+  const move = { title: 'Move to Previous Display', accelerator: 'Ctrl+Alt+Shift+Left' };
   shortcuts.getMoveWidgetStatus = () => move;
   shortcuts.setMoveWidgetShortcut = (...args) => { calls.push(['move', ...args]); return { ok: true }; };
   shortcuts.setDisplayShortcut = (...args) => { calls.push(args); return { ok: true }; };

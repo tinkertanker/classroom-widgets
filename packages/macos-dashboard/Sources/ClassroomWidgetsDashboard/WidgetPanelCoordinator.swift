@@ -284,13 +284,13 @@ final class WidgetPanelCoordinator: NSObject {
     }
 
     /// Moves the selected panel (key, else most recently focused, else the
-    /// only visible one) to the next display in NSScreen order, keeping its
-    /// size and work-area offset. Mirrors a manual drag: the new frame is
-    /// persisted and arrange bookkeeping stays untouched.
-    func moveSelectedPanelToNextScreen() {
+    /// only visible one) to the previous/next display in NSScreen order,
+    /// keeping its size and work-area offset. Mirrors a manual drag: the new
+    /// frame is persisted and arrange bookkeeping stays untouched.
+    func moveSelectedPanel(_ direction: MoveDirection) {
         guard let controller = selectedPanelController(), let frame = controller.window?.frame else { return }
         let workAreas = NSScreen.screens.map { $0.visibleFrame.insetBy(dx: 12, dy: 12) }
-        guard let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: workAreas) else { return }
+        guard let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: workAreas, direction: direction) else { return }
         controller.setFrame(moved, animate: true)
         persist(frame: moved, for: controller.widgetID)
     }

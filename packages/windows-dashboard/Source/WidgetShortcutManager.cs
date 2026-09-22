@@ -87,7 +87,7 @@ public sealed class WidgetShortcutManager : IDisposable
     private readonly DashboardSettings _settings;
     private readonly WidgetHostController _host;
     private readonly Action<WidgetShortcutAction> _onDisplayPreview;
-    private readonly Action? _onMoveWidget;
+    private readonly Action<MoveDirection>? _onMoveWidget;
     private readonly HwndSource _source;
     private readonly Dictionary<int, (int WidgetType, WidgetShortcutAction Action)> _registeredIds = new();
     private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), WidgetShortcutRegistration> _statuses = new();
@@ -95,7 +95,7 @@ public sealed class WidgetShortcutManager : IDisposable
 
     public event Action? StatusChanged;
 
-    public WidgetShortcutManager(DashboardSettings settings, WidgetHostController host, Action<WidgetShortcutAction> onDisplayPreview, Action? onMoveWidget = null)
+    public WidgetShortcutManager(DashboardSettings settings, WidgetHostController host, Action<WidgetShortcutAction> onDisplayPreview, Action<MoveDirection>? onMoveWidget = null)
     {
         _settings = settings;
         _host = host;
@@ -133,29 +133,34 @@ public sealed class WidgetShortcutManager : IDisposable
     public bool IsDuplicate(int widgetType, string shortcut)
     {
         if (widgetType == DisplayShortcutLogic.WidgetType) return IsDisplayShortcutDuplicate(shortcut);
-        if (widgetType == MoveWidgetShortcutLogic.WidgetType) return IsMoveWidgetDuplicate(shortcut);
+        if (widgetType is MoveWidgetShortcutLogic.PreviousWidgetType or MoveWidgetShortcutLogic.NextWidgetType) return IsMoveWidgetDuplicate(widgetType, shortcut);
         if (!WidgetShortcutGesture.TryParse(shortcut, out var candidate)) return false;
         var widgetDuplicate = new[] { _settings.WidgetShortcuts, _settings.WidgetDismissShortcuts }.Any(bindings =>
             bindings.Any(entry => entry.Key != widgetType &&
                 WidgetShortcutGesture.TryParse(entry.Value, out var existing) && existing == candidate));
-        var displayDuplicate = new[] { _settings.DisplayPreviewShortcut, _settings.DisplayPreviewDismissShortcut, _settings.MoveWidgetShortcut }.Any(shortcut =>
+        var displayDuplicate = new[] { _settings.DisplayPreviewShortcut, _settings.DisplayPreviewDismissShortcut, _settings.MoveWidgetPreviousShortcut, _settings.MoveWidgetNextShortcut }.Any(shortcut =>
             WidgetShortcutGesture.TryParse(shortcut, out var display) && display == candidate);
         return widgetDuplicate || displayDuplicate;
     }
 
     public bool IsDisplayShortcutDuplicate(string shortcut) =>
         DisplayShortcutLogic.IsDuplicate(shortcut,
-            _settings.WidgetShortcuts.Values.Concat(_settings.WidgetDismissShortcuts.Values).Append(_settings.MoveWidgetShortcut))
+            _settings.WidgetShortcuts.Values.Concat(_settings.WidgetDismissShortcuts.Values)
+                .Concat(new[] { _settings.MoveWidgetPreviousShortcut, _settings.MoveWidgetNextShortcut }))
         || (WidgetShortcutGesture.TryParse(shortcut, out var candidate)
             && (new[] { _settings.WidgetShortcuts, _settings.WidgetDismissShortcuts }.Any(bindings =>
                 bindings.Any(entry => WidgetShortcutGesture.TryParse(entry.Value, out var existing) && existing == candidate))
-                || (WidgetShortcutGesture.TryParse(_settings.MoveWidgetShortcut, out var move) && move == candidate)));
+                || new[] { _settings.MoveWidgetPreviousShortcut, _settings.MoveWidgetNextShortcut }
+                    .Any(existing => WidgetShortcutGesture.TryParse(existing, out var move) && move == candidate)));
 
-    public bool IsMoveWidgetDuplicate(string shortcut) =>
+    public bool IsMoveWidgetDuplicate(int widgetType, string shortcut) =>
         WidgetShortcutGesture.TryParse(shortcut, out var candidate)
         && new[] { _settings.DisplayPreviewShortcut, _settings.DisplayPreviewDismissShortcut }
             .Concat(_settings.WidgetShortcuts.Values)
             .Concat(_settings.WidgetDismissShortcuts.Values)
+            .Append(widgetType == MoveWidgetShortcutLogic.PreviousWidgetType
+                ? _settings.MoveWidgetNextShortcut
+                : _settings.MoveWidgetPreviousShortcut)
             .Any(existing => WidgetShortcutGesture.TryParse(existing, out var assigned) && assigned == candidate);
 
     public void Refresh()
@@ -172,11 +177,16 @@ public sealed class WidgetShortcutManager : IDisposable
         }
         id = RegisterPair(id, DisplayShortcutLogic.WidgetType, _settings.DisplayPreviewShortcut,
             _settings.DisplayPreviewDismissShortcut, seen);
-        if (WidgetShortcutGesture.TryParse(_settings.MoveWidgetShortcut, out var moveGesture))
+        foreach (var (moveWidgetType, moveShortcut) in new[]
         {
-            Register(id, MoveWidgetShortcutLogic.WidgetType, WidgetShortcutAction.Toggle, moveGesture, seen);
-            _statuses[(MoveWidgetShortcutLogic.WidgetType, WidgetShortcutAction.Show)] =
-                _statuses[(MoveWidgetShortcutLogic.WidgetType, WidgetShortcutAction.Toggle)];
+            (MoveWidgetShortcutLogic.PreviousWidgetType, _settings.MoveWidgetPreviousShortcut),
+            (MoveWidgetShortcutLogic.NextWidgetType, _settings.MoveWidgetNextShortcut),
+        })
+        {
+            if (!WidgetShortcutGesture.TryParse(moveShortcut, out var moveGesture)) continue;
+            Register(id++, moveWidgetType, WidgetShortcutAction.Toggle, moveGesture, seen);
+            _statuses[(moveWidgetType, WidgetShortcutAction.Show)] =
+                _statuses[(moveWidgetType, WidgetShortcutAction.Toggle)];
         }
         StatusChanged?.Invoke();
     }
@@ -234,9 +244,14 @@ public sealed class WidgetShortcutManager : IDisposable
             _onDisplayPreview(registration.Action);
             return 0;
         }
-        if (registration.WidgetType == MoveWidgetShortcutLogic.WidgetType)
+        if (registration.WidgetType == MoveWidgetShortcutLogic.PreviousWidgetType)
         {
-            _onMoveWidget?.Invoke();
+            _onMoveWidget?.Invoke(MoveDirection.Previous);
+            return 0;
+        }
+        if (registration.WidgetType == MoveWidgetShortcutLogic.NextWidgetType)
+        {
+            _onMoveWidget?.Invoke(MoveDirection.Next);
             return 0;
         }
         if (!_host.IsAvailable) return 0;

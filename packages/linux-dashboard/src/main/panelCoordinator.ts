@@ -9,7 +9,7 @@ import {
   WidgetPanelStateChange,
 } from './models';
 import { RectFrame, WidgetPanelWindow } from './panelWindow';
-import { nextDisplayFrame } from './moveToNextDisplay';
+import { nextDisplayFrame, type MoveDirection } from './moveToNextDisplay';
 
 const GAP = 12;
 const OVERFLOW_STEP = 28;
@@ -228,12 +228,13 @@ export class WidgetPanelCoordinator extends EventEmitter {
    * and work-area offset. Treated like a manual drag: layout becomes
    * freeform and the new frame is persisted.
    */
-  moveSelectedPanelToNextDisplay(): void {
+  moveSelectedPanel(direction: MoveDirection = 'next'): void {
     const panel = this.selectedPanel();
     if (!panel) return;
     const frame = nextDisplayFrame(
       panel.currentFrame,
       screen.getAllDisplays().map((display) => display.workArea),
+      direction,
     );
     if (!frame) return;
     if (this.layout !== 'freeform') {

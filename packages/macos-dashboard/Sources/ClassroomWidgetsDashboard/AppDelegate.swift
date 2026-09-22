@@ -44,14 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var displayShortcutStartupGate = DisplayShortcutStartupGate()
     private var widgetShortcutResetPending = false
     private var shortcutStatus: String?
-    private var moveWidgetShortcutStatus: String?
+    private var moveWidgetShortcutStatuses: [MoveDirection: String] = [:]
     private var statusItem: NSStatusItem?
     private let launchAtLoginManager = LaunchAtLoginManager()
     private let displayPreviewCoordinator = DisplayPreviewCoordinator()
     private(set) lazy var settingsContext = DashboardSettingsContext(
         launchAtLoginManager: launchAtLoginManager,
         onShortcutChanged: { [weak self] shortcut in self?.settingsShortcutChanged(shortcut) },
-        onMoveWidgetShortcutChanged: { [weak self] shortcut in self?.moveWidgetShortcutChanged(shortcut) },
+        onMoveWidgetShortcutChanged: { [weak self] direction, shortcut in self?.moveWidgetShortcutChanged(shortcut, direction: direction) },
         onWidgetSettingsChanged: { [weak self] in self?.applyPresentationSettings() },
         onDisplayShortcutChanged: { [weak self] action, shortcut in self?.setDisplayShortcut(shortcut, action: action) },
         onWidgetShortcutChanged: { [weak self] widgetType, action, shortcut in self?.setWidgetShortcut(shortcut, action: action, for: widgetType) },
@@ -307,34 +307,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             inactiveStatus: "The Open Settings shortcut is inactive because macOS could not register it.",
             unavailableStatus: "The Open Settings shortcut is unavailable. The previous shortcut remains active."
         )
-        static let moveWidget = SingleActionHotKeySpec(
-            owner: .moveWidget,
-            keyCodeDefaultsKey: DashboardSettingKeys.moveWidgetShortcutKeyCode,
-            modifiersDefaultsKey: DashboardSettingKeys.moveWidgetShortcutModifiers,
-            defaultKeyCode: DashboardDefaults.moveWidgetShortcutKeyCode,
+        static let moveWidgetPrevious = SingleActionHotKeySpec(
+            owner: .moveWidgetPrevious,
+            keyCodeDefaultsKey: DashboardSettingKeys.moveWidgetPreviousShortcutKeyCode,
+            modifiersDefaultsKey: DashboardSettingKeys.moveWidgetPreviousShortcutModifiers,
+            defaultKeyCode: DashboardDefaults.moveWidgetPreviousShortcutKeyCode,
+            defaultModifiers: DashboardDefaults.moveWidgetShortcutModifiers,
+            inactiveStatus: "The Move to Previous Display shortcut is inactive because macOS could not register it.",
+            unavailableStatus: "The Move to Previous Display shortcut is unavailable. The previous shortcut remains active."
+        )
+        static let moveWidgetNext = SingleActionHotKeySpec(
+            owner: .moveWidgetNext,
+            keyCodeDefaultsKey: DashboardSettingKeys.moveWidgetNextShortcutKeyCode,
+            modifiersDefaultsKey: DashboardSettingKeys.moveWidgetNextShortcutModifiers,
+            defaultKeyCode: DashboardDefaults.moveWidgetNextShortcutKeyCode,
             defaultModifiers: DashboardDefaults.moveWidgetShortcutModifiers,
             inactiveStatus: "The Move to Next Display shortcut is inactive because macOS could not register it.",
             unavailableStatus: "The Move to Next Display shortcut is unavailable. The previous shortcut remains active."
         )
     }
 
-    private static let singleActionSpecs: [SingleActionHotKeySpec] = [.settings, .moveWidget]
+    private static let singleActionSpecs: [SingleActionHotKeySpec] = [.settings, .moveWidgetPrevious, .moveWidgetNext]
+
+    private static func moveDirection(for owner: ShortcutBindingState.Owner) -> MoveDirection? {
+        switch owner {
+        case .moveWidgetPrevious: return .previous
+        case .moveWidgetNext: return .next
+        default: return nil
+        }
+    }
 
     private func singleActionStatus(_ status: String?, for spec: SingleActionHotKeySpec) {
-        if spec.owner == .moveWidget {
-            moveWidgetShortcutStatus = status
+        if let direction = Self.moveDirection(for: spec.owner) {
+            moveWidgetShortcutStatuses[direction] = status
         } else {
             shortcutStatus = status
         }
     }
 
     private func singleActionStatus(for spec: SingleActionHotKeySpec) -> String? {
-        spec.owner == .moveWidget ? moveWidgetShortcutStatus : shortcutStatus
+        Self.moveDirection(for: spec.owner).flatMap { moveWidgetShortcutStatuses[$0] } ?? (spec.owner == .settings ? shortcutStatus : nil)
     }
 
     private func performSingleAction(_ owner: ShortcutBindingState.Owner) {
         switch owner {
-        case .moveWidget: controller?.moveSelectedWidgetToNextDisplay()
+        case .moveWidgetPrevious: controller?.moveSelectedWidget(.previous)
+        case .moveWidgetNext: controller?.moveSelectedWidget(.next)
         default: showSettings()
         }
     }
@@ -343,8 +361,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         singleActionShortcutChanged(candidate, spec: .settings)
     }
 
-    private func moveWidgetShortcutChanged(_ candidate: DashboardShortcut) {
-        singleActionShortcutChanged(candidate, spec: .moveWidget)
+    private func moveWidgetShortcutChanged(_ candidate: DashboardShortcut, direction: MoveDirection) {
+        singleActionShortcutChanged(candidate, spec: direction == .next ? .moveWidgetNext : .moveWidgetPrevious)
     }
 
     private func singleActionShortcutChanged(_ candidate: DashboardShortcut, spec: SingleActionHotKeySpec) {
@@ -439,7 +457,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         widgetHotKeys = widgetHotKeys.filter { owner, _ in
             switch owner {
             case let .widget(widgetType), let .widgetDismiss(widgetType): return available.contains(widgetType)
-            case .settings, .moveWidget, .display, .displayDismiss: return false
+            case .settings, .moveWidgetPrevious, .moveWidgetNext, .display, .displayDismiss: return false
             }
         }
         let bindings = widgetShortcutStore.bindings(for: options, reserving: acceptedNativeShortcuts)
@@ -509,14 +527,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             settings: settings,
             display: display,
             displayDismiss: displayDismiss,
-            moveWidget: initialMoveWidgetShortcut(reserving: reserved)
+            moveWidgetPrevious: initialMoveWidgetShortcut(.moveWidgetPrevious, reserving: reserved),
+            moveWidgetNext: initialMoveWidgetShortcut(
+                .moveWidgetNext,
+                reserving: reserved + [persistedSingleActionShortcut(.moveWidgetPrevious).normalized]
+            )
         )
         state.replaceWidgets(with: storedBindings)
         return state
     }
 
-    private func initialMoveWidgetShortcut(reserving reserved: [DashboardShortcut]) -> DashboardShortcut {
-        let spec = SingleActionHotKeySpec.moveWidget
+    private func initialMoveWidgetShortcut(_ spec: SingleActionHotKeySpec, reserving reserved: [DashboardShortcut]) -> DashboardShortcut {
         let registered = defaults.volatileDomain(forName: UserDefaults.registrationDomain) ?? [:]
         func customized(_ key: String) -> Bool {
             guard let value = defaults.object(forKey: key) as? Int else { return false }
@@ -791,11 +812,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private var acceptedNativeShortcuts: [DashboardShortcut] {
         guard let state = shortcutState else { return [] }
-        let owners: [ShortcutBindingState.Owner] = [.settings, .moveWidget, .display, .displayDismiss]
+        let owners: [ShortcutBindingState.Owner] = [.settings, .moveWidgetPrevious, .moveWidgetNext, .display, .displayDismiss]
         let accepted = owners.compactMap { state.shortcut(for: $0) }
         // Before the first inventory, new Display choices must be checked against
         // the real widget defaults, not displace those defaults during backfill.
-        let pendingOwners: [ShortcutBindingState.Owner] = displayShortcutStartupGate.hasWidgetInventory ? owners : [.settings, .moveWidget]
+        let pendingOwners: [ShortcutBindingState.Owner] = displayShortcutStartupGate.hasWidgetInventory ? owners : [.settings, .moveWidgetPrevious, .moveWidgetNext]
         return accepted + pendingOwners.compactMap { state.candidate(for: $0) }
     }
 
@@ -812,7 +833,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             displayStatuses: displayShortcutStatuses,
             widgetStatuses: widgetShortcutStatuses,
             status: shortcutStatus,
-            moveWidgetStatus: moveWidgetShortcutStatus
+            moveWidgetStatuses: moveWidgetShortcutStatuses
         )
     }
 
@@ -895,8 +916,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DashboardShortcut(keyCode: shortcutKeyCode(), modifiers: shortcutModifiers()).normalized
     }
 
-    func moveSelectedWidgetToNextDisplay() {
-        controller?.moveSelectedWidgetToNextDisplay()
+    func moveSelectedWidget(_ direction: MoveDirection) {
+        controller?.moveSelectedWidget(direction)
     }
 
     private func shortcutModifiers() -> Int {

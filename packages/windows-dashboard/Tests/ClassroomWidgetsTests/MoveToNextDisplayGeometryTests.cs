@@ -24,6 +24,20 @@ public sealed class MoveToNextDisplayGeometryTests
     }
 
     [Fact]
+    public void PanelMovesToPreviousDisplayPreservingOffset()
+    {
+        var result = MoveToNextDisplayGeometry.NextDisplayFrame(new Rect(2000, 80, 300, 200), [Left, Right], MoveDirection.Previous);
+        Assert.Equal(new Rect(80, 80, 300, 200), result);
+    }
+
+    [Fact]
+    public void PanelWrapsFromFirstDisplayToLast()
+    {
+        var result = MoveToNextDisplayGeometry.NextDisplayFrame(new Rect(100, 50, 400, 300), [Left, Right], MoveDirection.Previous);
+        Assert.Equal(new Rect(2020, 50, 400, 300), result);
+    }
+
+    [Fact]
     public void OffsetOverflowingSmallerTargetIsClamped()
     {
         var small = new Rect(1920, 0, 800, 600);
@@ -45,25 +59,28 @@ public sealed class MoveToNextDisplayGeometryTests
     }
 
     [Fact]
-    public void MoveWidgetDefaultInitializesOnceAndReservesItsKey()
+    public void MoveWidgetDefaultsInitializeOnceAndReserveTheirKeys()
     {
         var settings = new DashboardSettings();
         settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]);
-        Assert.Equal(MoveWidgetShortcutLogic.DefaultShortcut, settings.MoveWidgetShortcut);
-        Assert.True(settings.MoveWidgetShortcutInitialized);
-        Assert.DoesNotContain(MoveWidgetShortcutLogic.DefaultShortcut, settings.WidgetShortcuts.Values);
+        Assert.Equal(MoveWidgetShortcutLogic.DefaultPreviousShortcut, settings.MoveWidgetPreviousShortcut);
+        Assert.Equal(MoveWidgetShortcutLogic.DefaultNextShortcut, settings.MoveWidgetNextShortcut);
+        Assert.True(settings.MoveWidgetShortcutsInitialized);
+        Assert.DoesNotContain(MoveWidgetShortcutLogic.DefaultPreviousShortcut, settings.WidgetShortcuts.Values);
+        Assert.DoesNotContain(MoveWidgetShortcutLogic.DefaultNextShortcut, settings.WidgetShortcuts.Values);
         Assert.False(settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]));
     }
 
     [Fact]
-    public void TakenMoveWidgetDefaultStaysUnassigned()
+    public void TakenMoveWidgetDefaultsStayUnassigned()
     {
         var settings = new DashboardSettings
         {
-            WidgetShortcuts = new Dictionary<int, string?> { [7] = MoveWidgetShortcutLogic.DefaultShortcut }
+            WidgetShortcuts = new Dictionary<int, string?> { [7] = MoveWidgetShortcutLogic.DefaultNextShortcut }
         };
         settings.ApplyWidgetShortcutDefaults([new CompactWidgetOption(7, "Timer")]);
-        Assert.Null(settings.MoveWidgetShortcut);
-        Assert.True(settings.MoveWidgetShortcutInitialized);
+        Assert.Equal(MoveWidgetShortcutLogic.DefaultPreviousShortcut, settings.MoveWidgetPreviousShortcut);
+        Assert.Null(settings.MoveWidgetNextShortcut);
+        Assert.True(settings.MoveWidgetShortcutsInitialized);
     }
 }

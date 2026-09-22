@@ -24,6 +24,18 @@ test('offset overflowing a smaller target work area is clamped', () => {
     { x: 2320, y: 300, width: 400, height: 300 });
 });
 
+test('panel moves to the previous display preserving its work-area offset', () => {
+  assert.deepEqual(
+    nextDisplayFrame({ x: 2000, y: 80, width: 300, height: 200 }, [left, right], 'previous'),
+    { x: 80, y: 80, width: 300, height: 200 });
+});
+
+test('panel wraps from the first display back to the last', () => {
+  assert.deepEqual(
+    nextDisplayFrame({ x: 100, y: 50, width: 400, height: 300 }, [left, right], 'previous'),
+    { x: 2020, y: 50, width: 400, height: 300 });
+});
+
 test('fewer than two displays returns null', () => {
   assert.equal(nextDisplayFrame({ x: 100, y: 50, width: 400, height: 300 }, [left]), null);
   assert.equal(nextDisplayFrame({ x: 100, y: 50, width: 400, height: 300 }, []), null);

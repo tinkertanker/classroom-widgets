@@ -46,7 +46,8 @@
 
   function setShortcut(entry, action, accelerator) {
     if (entry.shortcut.widgetType === 'display') return window.classroomSettings.setDisplayShortcut(action, accelerator);
-    if (entry.shortcut.widgetType === 'move-widget') return window.classroomSettings.setMoveWidgetShortcut(accelerator);
+    if (entry.shortcut.widgetType === 'move-widget-previous') return window.classroomSettings.setMoveWidgetShortcut('previous', accelerator);
+    if (entry.shortcut.widgetType === 'move-widget-next') return window.classroomSettings.setMoveWidgetShortcut('next', accelerator);
     return window.classroomSettings.setShortcut(entry.shortcut.widgetType, action, accelerator);
   }
 
@@ -140,7 +141,7 @@
     name.className = 'shortcut-name';
     var entry = { row: row, name: name, shortcut: shortcut };
     entry.show = buildShortcutField(entry, 'show');
-    if (shortcut.widgetType === 'move-widget') {
+    if (String(shortcut.widgetType).indexOf('move-widget-') === 0) {
       entry.dismiss = null;
       var spacer = document.createElement('span');
       row.append(name, entry.show.capture.parentNode, spacer);
@@ -152,8 +153,14 @@
     return entry;
   }
 
-  function renderShortcuts(shortcuts, displayShortcut, moveWidgetShortcut) {
-    if (moveWidgetShortcut) shortcuts = [Object.assign({ widgetType: 'move-widget' }, moveWidgetShortcut)].concat(shortcuts);
+  function renderShortcuts(shortcuts, displayShortcut, moveWidgetShortcuts) {
+    if (moveWidgetShortcuts) {
+      shortcuts = ['previous', 'next'].filter(function (direction) {
+        return moveWidgetShortcuts[direction];
+      }).map(function (direction) {
+        return Object.assign({ widgetType: 'move-widget-' + direction }, moveWidgetShortcuts[direction]);
+      }).concat(shortcuts);
+    }
     if (displayShortcut) shortcuts = [Object.assign({ widgetType: 'display' }, displayShortcut)].concat(shortcuts);
     document.getElementById('resetShortcuts').disabled = !shortcuts.length;
     if (!shortcuts.length) {
@@ -218,7 +225,7 @@
     domain.value = state.linkShortener.shortioDomain;
     shortioFields.hidden = provider.value !== 'shortio';
     updateLabel();
-    renderShortcuts(state.shortcuts || [], state.displayShortcut, state.moveWidgetShortcut);
+    renderShortcuts(state.shortcuts || [], state.displayShortcut, state.moveWidgetShortcuts);
     document.getElementById('waylandWarning').hidden = state.wayland !== true;
   });
   window.classroomSettings.onShortcutsChanged(renderShortcuts);
