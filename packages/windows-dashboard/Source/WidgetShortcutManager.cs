@@ -170,7 +170,7 @@ public sealed class WidgetShortcutManager : IDisposable
             id = RegisterPair(id, widgetType, _settings.WidgetShortcuts.GetValueOrDefault(widgetType),
                 _settings.WidgetDismissShortcuts.GetValueOrDefault(widgetType), seen);
         }
-        RegisterPair(id, DisplayShortcutLogic.WidgetType, _settings.DisplayPreviewShortcut,
+        id = RegisterPair(id, DisplayShortcutLogic.WidgetType, _settings.DisplayPreviewShortcut,
             _settings.DisplayPreviewDismissShortcut, seen);
         if (WidgetShortcutGesture.TryParse(_settings.MoveWidgetShortcut, out var moveGesture))
         {
