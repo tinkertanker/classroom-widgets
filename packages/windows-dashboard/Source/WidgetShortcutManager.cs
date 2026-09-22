@@ -87,7 +87,7 @@ public sealed class WidgetShortcutManager : IDisposable
     private readonly DashboardSettings _settings;
     private readonly WidgetHostController _host;
     private readonly Action<WidgetShortcutAction> _onDisplayPreview;
-    private readonly Action _onMoveWidget;
+    private readonly Action? _onMoveWidget;
     private readonly HwndSource _source;
     private readonly Dictionary<int, (int WidgetType, WidgetShortcutAction Action)> _registeredIds = new();
     private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), WidgetShortcutRegistration> _statuses = new();
@@ -95,7 +95,7 @@ public sealed class WidgetShortcutManager : IDisposable
 
     public event Action? StatusChanged;
 
-    public WidgetShortcutManager(DashboardSettings settings, WidgetHostController host, Action<WidgetShortcutAction> onDisplayPreview, Action onMoveWidget)
+    public WidgetShortcutManager(DashboardSettings settings, WidgetHostController host, Action<WidgetShortcutAction> onDisplayPreview, Action? onMoveWidget = null)
     {
         _settings = settings;
         _host = host;
@@ -236,7 +236,7 @@ public sealed class WidgetShortcutManager : IDisposable
         }
         if (registration.WidgetType == MoveWidgetShortcutLogic.WidgetType)
         {
-            _onMoveWidget();
+            _onMoveWidget?.Invoke();
             return 0;
         }
         if (!_host.IsAvailable) return 0;
