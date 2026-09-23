@@ -1,0 +1,51 @@
+import fs from 'fs';
+const REF = '/tmp/claude-0/-home-user-classroom-widgets/1019d9be-4c14-5465-b2e2-1ffcd8946341/scratchpad/ref';
+
+const brief = `## The product: Classroom Widgets (by Tinkertanker, Singapore)
+A teacher toolkit of live classroom widgets, projected in front of a class. Web app plus macOS/Windows/Linux desktop apps that launch widgets as floating panels from a menu-bar/tray item.
+
+## LOOK AT THE REAL APP FIRST (mandatory — Read these images before designing)
+- ${REF}/vernacular.png — one sheet showing what teachers actually see: a live board, close-ups, the timer runner cast.
+- ${REF}/c-timer-running.png — the TIMER: the app's signature widget. A big cream disc inside a thick RAINBOW ring that depletes as time runs down, a big number in the middle, and a little creature (hamster, fox, tortoise, bee, penguin, "pip") running along the ring.
+- ${REF}/c-timer-zero.png — the timer at zero ("Time's Up!").
+- ${REF}/c-randomiser.png — the RANDOMISER: a cream card holding a slot-machine window with a purple→pink→amber gradient; three stacked name pills, the middle (chosen) one bright white and bold.
+- ${REF}/c-confetti.png — CONFETTI bursts across the board when the randomiser lands (small red, yellow, teal and navy flecks and strips).
+- ${REF}/c-thumbs.png, c-heart.png, c-star.png, c-rainbow.png, c-smiley.png — STICKERS teachers slap on the board: chunky, bright (pink, blue, orange, emerald, purple, yellow), tilted, with a thick WHITE die-cut border and a soft drop shadow.
+- ${REF}/c-traffic.png — the traffic light (dark pill, three glossy lamps).
+- ${REF}/00-empty.png — the canvas itself: a warm AMBER/caramel low-poly background with pale frosted toolbar buttons.
+The client's note: previous rounds were "not super inspired, and don't look a lot like what Classroom Widgets users see — usually a timer (circle), randomiser etc (some rectangles), stickers. Maybe confetti." A teacher should look at the icon and think "that's the thing with the rainbow timer and the name picker". Abstract tile geometry is out.
+
+## Surfaces this ONE mark must serve
+1. macOS app icon — 1024 squircle (plate rect x=100 y=100 w=824 h=824 rx=185; content may overhang the plate slightly but must stay inside the canvas).
+2. Windows (.ico 16–256), Linux (256 full-bleed) and PWA icons — derived by scaling the plate to fill the canvas, so it must survive full-bleed and on light app grids.
+3. Menu bar (macOS template: one colour + alpha at ~18pt) and system tray (Windows ~16px white on dark; GNOME symbolic white). Today this is a generic 3×3 dot grid; the client wants something that is recognisably this app.
+4. Web favicon (16/32).
+
+## Colour
+Use the app's REAL colours where they carry recognition: the rainbow ring, the purple→pink→amber slot gradient, bright sticker colours with white die-cut borders, the amber canvas, cream widget surfaces. The brand UI palette (sages #86b49f #5a9483 / deep sage #2f5646, terracottas #d4775c #c25e42, dusty rose #d99185, cream #fdfcfb, amber canvas ≈ #a8692a→#c98a3c) is the calm frame around them. Keep it joyful but not garish: ≤ 3 focal elements, one clear hero.
+
+## Lessons from 81 evaluator verdicts (still binding)
+- GLYPH FIRST: draw the 16/18 px one-colour silhouette before any colour; minimum stroke 110 units, minimum gap 100 units; closed masses, no scattered islands or hairlines.
+- The silhouette needs one memorable asymmetric feature. It must not be mistaken for a system icon: a plain clock face (hands, ticks, hub dot), display/monitor, chat bubble, app-grid, record dot, copy, gear, wifi. A timer RING is allowed and encouraged, but it must read as THIS app's timer — e.g. a partial/depleting arc with a gap, a runner on the ring, the rainbow in colour — never hands or ticks, because it sits next to the menu-bar clock.
+- Figure/ground by knockout, overlap and luminance, never hue alone.
+- One consistent top-left light, soft warm shadows, no edge-parallel highlight bars.
+
+## Non-negotiables
+- Colour icon and glyph must be the SAME mark. Glyph: viewBox 0 0 1024 1024, #000 fills only (one 0.5-opacity tone allowed if essential), no gradients/filters; strokes only as stroke="#000" fill="none".
+- Icon: viewBox 0 0 1024 1024, self-contained, survives 32 px, no text (a single numeral inside the timer is allowed only if it survives 32 px).
+- CRITICAL: prefix EVERY id in the icon SVG with "{{SLUG}}-" and every id in the glyph SVG with "{{SLUG}}g-".`;
+
+const directions = [
+  { slug: 'ring', title: 'The rainbow timer ring', brief: `The timer IS the icon: a cream disc inside the thick rainbow ring, the ring already partly depleted so there is a clear gap (time elapsed) — the gap is the memorable asymmetric feature and is what stops it being a clock. No hands, no ticks. Optionally a big bold numeral in the disc if it survives 32 px. Plate: the amber canvas or deep sage — choose whichever makes the rainbow sing. Glyph: a thick C-shaped ring (arc ~270°) with a solid end-cap, maybe a solid dot on the disc; must be unmistakable next to the menu-bar clock.` },
+  { slug: 'runner', title: 'The runner on the ring', brief: `Mascot-led: one of the timer creatures (hamster or fox recommended — see the runner cast in vernacular.png) caught mid-stride on the rainbow ring, which is depleting behind it. The creature is the hero and gives the brand a character; the ring gives it context. Keep the creature simple and chunky so it reads at 32 px. Glyph: the ring arc plus the creature's silhouette sitting on it (ears/tail make it recognisable); if the full creature dies at 18 px, reduce to its head/ears on the arc.` },
+  { slug: 'slot', title: 'The randomiser slot window', brief: `The randomiser as hero: a rounded card with the purple→pink→amber slot window and three stacked pills, the middle one bright white (the chosen name) — rendered without text, as pill shapes. Add two or three chunky confetti flecks escaping the top edge as the celebration moment (deliberate, not scattered noise). Glyph: rounded rectangle with the middle pill as a bold knockout band and one or two confetti pieces fused or clearly separated (≥100 units).` },
+  { slug: 'duo', title: 'Timer + randomiser — the two stars together', brief: `The two most-used widgets overlapping like panels on the board: the rainbow timer circle in front, overlapping the corner of the randomiser card behind it (circle + rectangle is the app's silhouette in two shapes). The overlap gives depth and plurality in one mark. Glyph: a solid rounded rectangle with a circle overlapping its corner, separated by a ≥100-unit knockout ring, with the timer's depleting gap cut into the circle.` },
+  { slug: 'sticker', title: 'The icon is a sticker', brief: `Treat the whole mark as one of the app's stickers: a big chunky star (or heart — pick the stronger) with the thick white die-cut border, tilted ~12°, slapped onto a widget surface (a cream timer disc or card corner peeking out beneath). Bright, tactile, joyful — the stickers are the most "classroom" thing in the app. Glyph: the star silhouette with its die-cut border rendered as a knockout gap against the widget shape behind it.` },
+  { slug: 'board', title: 'A mini board — timer, card, sticker', brief: `The real board distilled to three elements on the amber canvas plate: the rainbow timer circle (hero, largest), the randomiser card (partly hidden behind), and one die-cut sticker (a star) slapped over their junction. It should look like a thumbnail of the actual screenshot. Glyph: circle + card fused into one mass with a knockout where they meet; the star sits over the join as a separate chunky shape.` },
+  { slug: 'pop', title: 'The confetti moment', brief: `Celebration as the mark: the moment the randomiser lands — a widget (the slot card, or the timer disc) with a DIRECTIONAL burst of five to seven chunky confetti pieces fanning out of one corner (strips and dots in the real confetti colours: red, yellow, teal, navy, plus brand terracotta). Energetic but composed, not random. Glyph: the widget shape plus a burst of 3–4 chunky strips radiating from one corner, each ≥110 units, gaps ≥100 units — must not read as a sun, spark or "new" badge.` },
+  { slug: 'gridplus', title: 'The original grid — made of real widgets', brief: `The client says the original 3×3 grid might still work. Keep its calm grid structure, but make the cells REAL widgets instead of blank tiles: a rainbow timer ring, a slot/randomiser card, a star sticker, a traffic-light pill, etc. A 2×2 is allowed if 3×3 is too small, but it must not look like the Windows logo — the four cells must be four different shapes (circle, rectangle, star, pill). Glyph: the grid of four distinct silhouettes — distinct shapes are what make it not a generic grid.` },
+  { slug: 'dial2', title: 'Timer + sticker on the canvas', brief: `A bold, flat, poster-like take: the amber low-poly canvas as the plate (two or three facets, subtle), the rainbow timer ring large and slightly off-centre, and one bright die-cut heart or thumbs-up sticker slapped on the ring's rim at a tilt — a teacher's "great job" moment. Less realism, more graphic punch; think of how it looks in a crowded dock. Glyph: C-ring with a chunky sticker shape overlapping the rim, knockout between them.` },
+];
+
+fs.writeFileSync('r2g-args.json', JSON.stringify({ round: 2, brief, directions }));
+console.log(directions.map(d => d.slug).join(', '), brief.length);

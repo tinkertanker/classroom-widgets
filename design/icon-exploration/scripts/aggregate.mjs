@@ -3,7 +3,7 @@ import fs from 'fs';
 const [,, evalPath, roundPath] = process.argv;
 const evals = JSON.parse(fs.readFileSync(evalPath, 'utf8'));
 const concepts = JSON.parse(fs.readFileSync(roundPath, 'utf8'));
-const crit = ['distinctiveness', 'brandFit', 'glyphLegibility', 'smallSize', 'crossPlatform', 'originality', 'overall'];
+const crit = ['distinctiveness', 'brandFit', 'appRecognition', 'glyphLegibility', 'smallSize', 'crossPlatform', 'originality', 'overall'];
 
 const table = concepts.map(c => {
   const rows = evals.map(e => e.evaluations.find(x => x.slug === c.slug)).filter(Boolean);

@@ -29,7 +29,7 @@ const sheetHtml = c => {
   .wrap{padding:22px 28px}
   h1{font-size:22px;margin:0 0 2px}
   .sub{font-size:13px;color:#666;margin:0 0 14px}
-  .row{display:flex;gap:16px;align-items:flex-start;margin-bottom:14px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-bottom:14px}
   .card{background:#fff;border-radius:12px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px}
   .card.dark{background:#232323;color:#bbb}
   .lab{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#888}
@@ -56,6 +56,7 @@ const sheetHtml = c => {
     <div class="card dark"><img src="${icon}" width="200" height="200"><span class="lab">macOS · dark desktop</span></div>
     <div class="card"><img src="${full}" width="160" height="160" style="border-radius:36px"><span class="lab">Windows / Linux / PWA (full-bleed)</span></div>
     <div class="card dark"><img src="${full}" width="160" height="160" style="border-radius:36px"><span class="lab">full-bleed on dark</span></div>
+    <div class="card" style="background:url('file:///tmp/claude-0/-home-user-classroom-widgets/1019d9be-4c14-5465-b2e2-1ffcd8946341/scratchpad/ref/00-empty.png') 30% 40%/900px auto"><img src="${icon}" width="150" height="150"><span class="lab" style="color:#fff">on the app canvas</span></div>
     <div class="card"><div class="ladder"><img src="${icon}" width="64" height="64"><img src="${icon}" width="32" height="32"><img src="${full}" width="16" height="16"></div><span class="lab">64 · 32 · favicon 16</span></div>
     <div class="card"><div class="tabbar"><div class="tab"><img src="${full}" width="16" height="16" style="border-radius:3px">Classroom Widgets</div><div class="tab" style="background:#eef0f3;color:#888">Google Classroom</div></div><span class="lab">browser tab (favicon 16)</span></div>
   </div>
@@ -102,6 +103,6 @@ const shoot = (html, png, h) => {
   execSync(`${CHROME} --headless --disable-gpu --no-sandbox --hide-scrollbars --force-device-scale-factor=2 --virtual-time-budget=4000 --window-size=1400,${h} --screenshot=${png} "file://${path.resolve(tmp)}"`, { stdio: 'ignore' });
 };
 
-for (const c of concepts) shoot(sheetHtml(c), `${outPrefix}-${c.slug}.png`, 620);
+for (const c of concepts) shoot(sheetHtml(c), `${outPrefix}-${c.slug}.png`, 860);
 shoot(overviewHtml(), `${outPrefix}-overview.png`, 560);
 console.log('rendered', concepts.length, 'sheets + overview to', outDir);

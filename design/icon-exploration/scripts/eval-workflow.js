@@ -14,11 +14,12 @@ const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['slug', 'distinctiveness', 'brandFit', 'glyphLegibility', 'smallSize', 'crossPlatform', 'originality', 'overall', 'verdict', 'riff'],
+        required: ['slug', 'distinctiveness', 'brandFit', 'appRecognition', 'glyphLegibility', 'smallSize', 'crossPlatform', 'originality', 'overall', 'verdict', 'riff'],
         properties: {
           slug: { type: 'string' },
           distinctiveness: { type: 'integer', minimum: 1, maximum: 10 },
           brandFit: { type: 'integer', minimum: 1, maximum: 10 },
+          appRecognition: { type: 'integer', minimum: 1, maximum: 10, description: 'would a teacher who uses the app recognise it from this icon (timer ring, randomiser, stickers, confetti)?' },
           glyphLegibility: { type: 'integer', minimum: 1, maximum: 10 },
           smallSize: { type: 'integer', minimum: 1, maximum: 10 },
           crossPlatform: { type: 'integer', minimum: 1, maximum: 10 },
@@ -49,7 +50,7 @@ const LENSES = [
 const makePrompt = lens => `
 You are ${lens.persona}
 
-You are one of nine evaluators on an icon-system pitch for "Classroom Widgets" (Tinkertanker): a teacher toolkit of live classroom widgets (timer, randomiser, polls, traffic light...) that runs on the web and as macOS/Windows/Linux desktop apps launched from a menu-bar/tray item. The client wants ONE universal mark: a colour app icon (macOS squircle; full-bleed for Windows/Linux/PWA) and a monochrome menu-bar/tray glyph that are obviously the same idea. The current shipping icon is a calm 3×3 pastel tile grid (liked, but generic) and the current menu-bar item is a generic 3×3 dot grid the client explicitly wants replaced. The brand palette is warm: sages, terracottas, dusty roses on an off-white plate. The client asked for DARING new ideas but is open to the grid surviving if it earns it.
+You are one of nine evaluators on an icon-system pitch for "Classroom Widgets" (Tinkertanker): a teacher toolkit of live classroom widgets (timer, randomiser, polls, traffic light...) that runs on the web and as macOS/Windows/Linux desktop apps launched from a menu-bar/tray item. The client wants ONE universal mark: a colour app icon (macOS squircle; full-bleed for Windows/Linux/PWA) and a monochrome menu-bar/tray glyph that are obviously the same idea. The current shipping icon is a calm 3×3 pastel tile grid (liked, but generic) and the current menu-bar item is a generic 3×3 dot grid the client explicitly wants replaced. The brand UI palette is warm (sages, terracottas, dusty roses, cream), but what teachers actually SEE in the app is a warm amber low-poly canvas carrying a big rainbow-ring countdown timer with a little creature running on it, a randomiser slot machine (purple to pink to amber gradient card), bright die-cut stickers (thick white border, tilted) and confetti. The client rejected earlier abstract tile concepts as uninspired and unlike what users see; they want an icon a teacher recognises as \"the app with the rainbow timer and the name picker\", while still being daring and working as a tiny menu-bar glyph. Reference sheet of the real app: /tmp/claude-0/-home-user-classroom-widgets/1019d9be-4c14-5465-b2e2-1ffcd8946341/scratchpad/ref/vernacular.png
 
 ## Round ${args.round} concepts (${args.concepts.length})
 ${args.concepts.map((c, i) => `${i + 1}. slug "${c.slug}" — ${c.name}: ${c.tagline}\n   Designer's concept: ${c.concept}\n   Contact sheet: ${args.sheetDir}/r${args.round}-${c.slug}.png`).join('\n')}
@@ -57,8 +58,8 @@ ${args.concepts.map((c, i) => `${i + 1}. slug "${c.slug}" — ${c.name}: ${c.tag
 Overview of all concepts side by side: ${args.sheetDir}/r${args.round}-overview.png
 
 ## What to do
-1. Read the overview image first, then EVERY contact sheet (use the Read tool on each PNG path). Each sheet shows: the macOS icon on light and dark desktops, the full-bleed Windows/Linux/PWA version, a 64/32/16 ladder and browser tab, the glyph dropped into a macOS menu bar (light and dark), a Windows taskbar and a GNOME top bar at true size, the glyph large, and a pixel zoom of the glyph at 36px and 18px.
-2. Score every concept 1–10 on: distinctiveness, brandFit (warm Classroom Widgets family), glyphLegibility (the tiny monochrome mark), smallSize (icon at 32/16), crossPlatform (works on all four surfaces), originality (daring, not cliché), and overall. Use the full range — a 5 is average, 9–10 is exceptional; do not cluster.
+1. Read the real-app reference sheet (vernacular.png above) first so you know what users see, then the overview image, then EVERY contact sheet (use the Read tool on each PNG path). Each sheet shows: the macOS icon on light and dark desktops, the full-bleed Windows/Linux/PWA version, a 64/32/16 ladder and browser tab, the glyph dropped into a macOS menu bar (light and dark), a Windows taskbar and a GNOME top bar at true size, the icon sitting on the real amber app canvas, the glyph large, and a pixel zoom of the glyph at 36px and 18px.
+2. Score every concept 1–10 on: distinctiveness, brandFit (warm Classroom Widgets family), appRecognition (does it look like what users see in the app), glyphLegibility (the tiny monochrome mark), smallSize (icon at 32/16), crossPlatform (works on all four surfaces), originality (daring, not cliché), and overall. Use the full range — a 5 is average, 9–10 is exceptional; do not cluster.
 3. Write a specific, honest verdict for each through YOUR lens, and one concrete riff (a change or a merge with another concept) that would most improve it.
 4. Name your top 3 (slugs, best first) and write a general note: patterns across the set, what is missing, what the next round should push.
 Be opinionated. Judge what is actually rendered, not what the designer claims.
