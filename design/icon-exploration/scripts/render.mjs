@@ -23,6 +23,7 @@ const CHROME = '/opt/pw-browsers/chromium';
 
 const sheetHtml = c => {
   const icon = uri(c.icon), full = uri(fullBleed(c.icon, c.slug)), glyph = uri(c.glyph);
+  const dark = c.iconDark ? uri(c.iconDark) : icon, small = c.iconSmall ? uri(c.iconSmall) : full;
   const mask = (size, color, extra = '') => `<span class="g" style="width:${size}px;height:${size}px;background:${color};-webkit-mask-image:url('${glyph}');mask-image:url('${glyph}');${extra}"></span>`;
   return `<!doctype html><html><head><meta charset="utf-8"><style>
   body{margin:0;background:#e9e7e2;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#222;width:1400px}
@@ -53,12 +54,12 @@ const sheetHtml = c => {
   <p class="sub">${esc(c.tagline)}</p>
   <div class="row">
     <div class="card"><img src="${icon}" width="200" height="200"><span class="lab">macOS · light desktop</span></div>
-    <div class="card dark"><img src="${icon}" width="200" height="200"><span class="lab">macOS · dark desktop</span></div>
+    <div class="card dark"><img src="${dark}" width="200" height="200"><span class="lab">macOS · dark appearance</span></div>
     <div class="card"><img src="${full}" width="160" height="160" style="border-radius:36px"><span class="lab">Windows / Linux / PWA (full-bleed)</span></div>
     <div class="card dark"><img src="${full}" width="160" height="160" style="border-radius:36px"><span class="lab">full-bleed on dark</span></div>
     <div class="card" style="background:url('file:///tmp/claude-0/-home-user-classroom-widgets/1019d9be-4c14-5465-b2e2-1ffcd8946341/scratchpad/ref/00-empty.png') 30% 40%/900px auto"><img src="${icon}" width="150" height="150"><span class="lab" style="color:#fff">on the app canvas</span></div>
-    <div class="card"><div class="ladder"><img src="${icon}" width="64" height="64"><img src="${icon}" width="32" height="32"><img src="${full}" width="16" height="16"></div><span class="lab">64 · 32 · favicon 16</span></div>
-    <div class="card"><div class="tabbar"><div class="tab"><img src="${full}" width="16" height="16" style="border-radius:3px">Classroom Widgets</div><div class="tab" style="background:#eef0f3;color:#888">Google Classroom</div></div><span class="lab">browser tab (favicon 16)</span></div>
+    <div class="card"><div class="ladder"><img src="${icon}" width="64" height="64"><img src="${small}" width="32" height="32"><img src="${small}" width="16" height="16"></div><span class="lab">64 · small master 32 · 16</span></div>
+    <div class="card"><div class="tabbar"><div class="tab"><img src="${small}" width="16" height="16" style="border-radius:3px">Classroom Widgets</div><div class="tab" style="background:#eef0f3;color:#888">Google Classroom</div></div><span class="lab">browser tab (favicon 16)</span></div>
   </div>
   <div class="row">
     <div class="stack">
@@ -71,9 +72,10 @@ const sheetHtml = c => {
     <div class="card"><span class="g" style="width:150px;height:150px;background:#000;-webkit-mask-image:url('${glyph}');mask-image:url('${glyph}')"></span><span class="lab">glyph at 150 px</span></div>
     <div class="card"><div class="zoomrow"><canvas id="z1" width="36" height="36" style="width:144px;height:144px"></canvas><canvas id="z2" width="18" height="18" style="width:144px;height:144px"></canvas></div><span class="lab">pixel zoom: 18pt @2x (36px) · @1x (18px)</span></div>
   </div>
+  <div class="row"><div class="card" style="align-items:flex-start"><div id="onex" style="display:flex;gap:18px;align-items:flex-end"></div><span class="lab">TRUE 1x device pixels, magnified 4×: 16 · 18 · 20 · 24 px — white on dark taskbar/GNOME · black on light Windows taskbar · label colour on macOS light bar</span></div></div>
   <script>
     const img = new Image(); img.src = '${glyph}';
-    img.onload = () => { for (const [id, s] of [['z1',36],['z2',18]]) { const c = document.getElementById(id).getContext('2d'); c.imageSmoothingEnabled = true; c.drawImage(img, 0, 0, s, s); } };
+    img.onload = () => { const host = document.getElementById('onex'); for (const [bg, fg] of [['#1f1f1f','#ffffff'],['#f3f3f3','#000000'],['#ececec','#262626']]) for (const px of [16,18,20,24]) { const cv = document.createElement('canvas'); const W = px + 6; cv.width = W; cv.height = W; cv.style.width = (W*4/window.devicePixelRatio)+'px'; cv.style.height = (W*4/window.devicePixelRatio)+'px'; cv.style.imageRendering = 'pixelated'; cv.style.border = 'none'; const x = cv.getContext('2d'); x.fillStyle = bg; x.fillRect(0,0,W,W); const t = document.createElement('canvas'); t.width = px; t.height = px; const tx = t.getContext('2d'); tx.drawImage(img,0,0,px,px); tx.globalCompositeOperation = 'source-in'; tx.fillStyle = fg; tx.fillRect(0,0,px,px); x.drawImage(t,3,3); host.appendChild(cv); } for (const [id, s] of [['z1',36],['z2',18]]) { const c = document.getElementById(id).getContext('2d'); c.imageSmoothingEnabled = true; c.drawImage(img, 0, 0, s, s); } };
   </script>
   </div></body></html>`;
 };
@@ -103,6 +105,6 @@ const shoot = (html, png, h) => {
   execSync(`${CHROME} --headless --disable-gpu --no-sandbox --hide-scrollbars --force-device-scale-factor=2 --virtual-time-budget=4000 --window-size=1400,${h} --screenshot=${png} "file://${path.resolve(tmp)}"`, { stdio: 'ignore' });
 };
 
-for (const c of concepts) shoot(sheetHtml(c), `${outPrefix}-${c.slug}.png`, 860);
+for (const c of concepts) shoot(sheetHtml(c), `${outPrefix}-${c.slug}.png`, 1060);
 shoot(overviewHtml(), `${outPrefix}-overview.png`, 560);
 console.log('rendered', concepts.length, 'sheets + overview to', outDir);
