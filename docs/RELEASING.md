@@ -32,7 +32,7 @@ If CI signing is disabled or unavailable, build on an authorised Mac from the ta
 
 ```bash
 git checkout "v${VERSION}"
-npm run macos:dmg -- --distribution --notarise
+pnpm macos:dmg --distribution --notarise
 gh release upload "v${VERSION}" \
   "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
   "dist/ClassroomWidgets-v${VERSION}-macos.zip"
