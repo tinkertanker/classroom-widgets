@@ -87,7 +87,7 @@ Releases are tagged `v<version>` and contain all platforms; see [Releasing](./RE
 
 ## Local development
 
-Local app builds require macOS, Xcode, Node.js, and the repository's npm dependencies. From the repository root:
+Local app builds require macOS, Xcode, Node.js, and the repository's pnpm dependencies. From the repository root:
 
 ```bash
 pnpm macos:run --verify
@@ -166,7 +166,7 @@ The full cross-platform process is in [Releasing](./RELEASING.md). The macOS-spe
 
    ```bash
    VERSION="$(node -p "require('./version.json').version")"
-   npm run macos:dmg -- --distribution --notarise
+   pnpm macos:dmg --distribution --notarise
    gh release upload "v${VERSION}" \
      "dist/ClassroomWidgets-v${VERSION}-macos.dmg" \
      "dist/ClassroomWidgets-v${VERSION}-macos.zip"

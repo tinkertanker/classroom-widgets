@@ -19,7 +19,7 @@ For focused changes, these references may also help:
 1. Fork the repository and create a focused branch.
 2. Follow the existing patterns and keep unrelated changes out of the branch.
 3. Add or update tests for changed behavior.
-4. Run the checks relevant to your change. For the main teacher workspace, run `npm test`; for a full web build, run `npm run build:all`.
+4. Run the checks relevant to your change. For the main teacher workspace, run `pnpm test`; for a full web build, run `pnpm build:all`.
 5. Open a pull request that explains the change and how it was verified.
 
 Repository-specific coding and verification guidance is in [`AGENTS.md`](../AGENTS.md).

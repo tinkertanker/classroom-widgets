@@ -109,7 +109,7 @@ pnpm dev:concurrent
 On a Mac with Xcode installed, build the teacher assets and native Swift host, install the result to Applications, launch it, and verify the process:
 
 ```bash
-npm run macos:run -- --verify
+pnpm macos:run --verify
 ```
 
 Classroom Widgets runs from the menu bar. Select its icon and use **New Floating Widget** to open a supported compact widget. Local builds replace `/Applications/Classroom Widgets Dashboard.app`.
@@ -117,7 +117,7 @@ Classroom Widgets runs from the menu bar. Select its icon and use **New Floating
 To create an ad hoc signed DMG for local packaging checks, install `create-dmg` and run:
 
 ```bash
-npm run macos:dmg
+pnpm macos:dmg
 ```
 
 Do not publish that ad hoc artifact. Public downloads must be Developer ID signed, notarized, and stapled. See [macOS App and Distribution](./MACOS_DISTRIBUTION.md) for installation, supported widgets, app identity, signing, validation, and release instructions.

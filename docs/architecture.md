@@ -70,7 +70,7 @@ Classroom Widgets is a **monorepo** containing three main applications:
 - **Vitest 3.2** - Unit testing
 
 ### Backend
-- **Node.js 18+** - Runtime
+- **Node.js 22.13+** - Runtime
 - **Express.js** - Web framework
 - **Socket.io 4.8** - WebSocket server
 - **In-memory storage** - No database (privacy by design)

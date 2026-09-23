@@ -10,16 +10,23 @@
 
 ## Layout and verification
 
-- npm workspaces are `packages/{shared,teacher,student,server}`.
-  `packages/macos-dashboard` (SwiftPM), `packages/windows-dashboard` (.NET)
-  and `packages/linux-dashboard` (Electron, with its own package-lock,
-  installed by `scripts/build_linux.sh`) are not npm workspaces.
-- `npm test` runs the teacher suite only. Run a workspace's own tests directly
-  when you change it.
+- The repo uses pnpm (Node 22.13+, pnpm 11+). The pnpm workspaces, listed in
+  `pnpm-workspace.yaml`, are `packages/{shared,teacher,student,server}`.
+  Add dependencies with `pnpm --filter <package> add`; never create a root
+  `package-lock.json`.
+- `packages/macos-dashboard` (SwiftPM), `packages/windows-dashboard` (.NET)
+  and `packages/linux-dashboard` (Electron) are not pnpm workspaces.
+  `linux-dashboard` keeps its own `package-lock.json` and stays on npm;
+  `scripts/build_linux.sh` installs it.
+- pnpm passes `--` through to the script as a literal argument. Pass script
+  flags directly, as in `pnpm macos:dmg --distribution`, not
+  `pnpm macos:dmg -- --distribution`.
+- `pnpm test` runs the teacher suite only. When you change the server, also run
+  `pnpm --filter @classroom-widgets/server test`.
 - `packages/shared/voiceCommandDefinitions.json` is the source of truth for the
   generated voice-command constants under `packages/shared/constants/` and
   `packages/server/src/shared/constants/`. Edit the JSON, then run
-  `npm run generate:voice-types` (also runs on `prebuild`). Never edit the
+  `pnpm generate:voice-types` (also runs on `prebuild`). Never edit the
   generated files.
 
 ## macOS releases

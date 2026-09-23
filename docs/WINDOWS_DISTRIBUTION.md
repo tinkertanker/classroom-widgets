@@ -6,7 +6,7 @@ Classroom Widgets for Windows is a system-tray app that opens compact classroom 
 
 - Windows 10 (1809+) or Windows 11, 64-bit.
 - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (Evergreen). Windows 11 and up-to-date Windows 10 machines already have it; otherwise install the Evergreen bootstrapper or `choco install webview2-runtime`.
-- For building: [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) and Node.js 18+.
+- For building: [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), Node.js 22.13+, and pnpm 11+ (via `corepack enable`).
 
 ## Using the app
 
@@ -68,15 +68,15 @@ The web app talks to either shell through `packages/shared/utils/nativeBridge.ts
 From the repository root on Windows:
 
 ```powershell
-npm install
-npm run windows:run            # builds the teacher app + Debug native app, then launches it
-npm run windows:run -- -NoRun  # build only
+pnpm install
+pnpm windows:run            # builds the teacher app + Debug native app, then launches it
+pnpm windows:run -NoRun     # build only
 ```
 
 or directly:
 
 ```powershell
-npm run build -w @classroom-widgets/teacher
+pnpm --filter @classroom-widgets/teacher build
 dotnet build packages/windows-dashboard/ClassroomWidgets.csproj -c Debug
 packages\windows-dashboard\bin\Debug\net8.0-windows\ClassroomWidgets.exe
 ```
@@ -102,12 +102,12 @@ Windows ships in the shared cross-platform release — see [Releasing](./RELEASI
 - `ClassroomWidgets-v<version>-windows-x64-setup.exe` — per-user Inno Setup installer (no admin rights needed). It offers a **Start Classroom Widgets automatically when I sign in** checkbox, which writes the same `HKCU\...\Run` value the tray "Launch at login" toggle manages, so either can turn it off later. Uninstall is via Windows Settings › Apps.
 - `ClassroomWidgets-v<version>-windows-x64.zip` — portable build; unzip anywhere and run `ClassroomWidgets.exe`.
 
-To build the installer locally, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `npm run windows:publish -- -Installer` (source in `packages/windows-dashboard/Installer/ClassroomWidgets.iss`).
+To build the installer locally, install [Inno Setup 6](https://jrsoftware.org/isinfo.php) and run `pnpm windows:publish -Installer` (source in `packages/windows-dashboard/Installer/ClassroomWidgets.iss`).
 
 To build locally instead:
 
 ```powershell
-npm run windows:publish
+pnpm windows:publish
 ```
 
 This runs `dotnet publish -c Release -r win-x64 --self-contained` into `packages/windows-dashboard/dist`, producing a folder that runs on machines without the .NET runtime (the WebView2 Runtime is still required). Zip that folder as `ClassroomWidgets-v<version>-windows-x64.zip`, or wrap it with an installer of your choice.

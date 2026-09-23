@@ -6,7 +6,7 @@ Classroom Widgets for Linux is a system-tray app that opens compact classroom wi
 
 - 64-bit Linux with a desktop environment that provides a system tray. On GNOME you need an AppIndicator extension (e.g. *AppIndicator and KStatusNotifierItem Support*); KDE Plasma, Cinnamon and XFCE work out of the box.
 - Wayland sessions must provide XWayland. Classroom Widgets automatically uses Electron's X11 backend there because native Wayland does not support the always-on-top, positioning, and non-activating window operations that floating widgets require.
-- For building: Node.js 20+.
+- For building: Node.js 22.13+ and pnpm 11+ (via `corepack enable`).
 
 ## Using the app
 
@@ -88,19 +88,19 @@ The web app talks to the shell through `packages/shared/utils/nativeBridge.ts`: 
 From the repository root on Linux:
 
 ```bash
-npm install
-npm run linux:run                 # builds the teacher app + native code, then launches it
-npm run linux:run -- --no-run     # build only
+pnpm install
+pnpm linux:run                 # builds the teacher app + native code, then launches it
+pnpm linux:run --no-run         # build only
 ```
 
 or directly:
 
 ```bash
-npm run build -w @classroom-widgets/teacher
+pnpm --filter @classroom-widgets/teacher build
 cd packages/linux-dashboard && npm install && npm run build && npm start
 ```
 
-`packages/linux-dashboard` is intentionally **not** an npm workspace — it carries its own `package-lock.json` so Electron stays out of server and Docker installs. Rebuild the teacher app whenever web code changes. Only one instance runs at a time (Electron single-instance lock).
+`packages/linux-dashboard` is intentionally **not** a pnpm workspace — it carries its own `package-lock.json` so Electron stays out of server and Docker installs. Rebuild the teacher app whenever web code changes. Only one instance runs at a time (Electron single-instance lock).
 
 After building both packages, run the shortener integration check from the
 repository root (install `xvfb` on headless Linux):
@@ -123,7 +123,7 @@ Linux ships in the shared cross-platform release — see [Releasing](./RELEASING
 To build locally instead:
 
 ```bash
-npm run linux:publish
+pnpm linux:publish
 ```
 
 This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, producing an AppImage and a `.deb`. The AppImage is self-contained; the `.deb` installs under `/opt/Classroom Widgets`.
