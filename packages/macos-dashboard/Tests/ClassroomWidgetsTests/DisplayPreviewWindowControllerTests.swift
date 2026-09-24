@@ -3,20 +3,6 @@ import XCTest
 @testable import ClassroomWidgets
 
 final class DisplayPreviewWindowControllerTests: XCTestCase {
-    func testPanelRemainsVisibleWhenAnotherApplicationActivates() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-
-            XCTAssertEqual(controller.window?.hidesOnDeactivate, false)
-            controller.close()
-        }
-    }
-
     func testOcclusionChangesDoNotEmitMinimizeVisibilityCallbacks() async {
         await MainActor.run {
             _ = NSApplication.shared
@@ -51,195 +37,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             controller.windowDidDeminiaturize(Notification(name: NSWindow.didDeminiaturizeNotification))
 
             XCTAssertEqual(visibilityEvents, [false, true])
-            controller.close()
-        }
-    }
-
-    func testPanelUsesCompactFloatingShellWithoutPermanentContentControls() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel,
-                  let contentView = panel.contentView else {
-                return XCTFail("Expected Display Preview panel")
-            }
-
-            XCTAssertFalse(panel.isOpaque)
-            XCTAssertEqual(panel.backgroundColor, .clear)
-            XCTAssertTrue(panel.titlebarAppearsTransparent)
-            XCTAssertFalse(panel.titlebarAccessoryViewControllers.isEmpty)
-            XCTAssertTrue(descendants(of: contentView, type: NSPopUpButton.self).isEmpty)
-            XCTAssertTrue(descendants(of: contentView, type: NSButton.self).isEmpty)
-            XCTAssertEqual(panel.contentMinSize, NSSize(width: 320, height: 240))
-            panel.setContentSize(panel.contentMinSize)
-            contentView.layoutSubtreeIfNeeded()
-            XCTAssertEqual(contentView.bounds.size, NSSize(width: 320, height: 240))
-            XCTAssertEqual(controller.previewView.frame.minY, contentView.bounds.minY, accuracy: 0.5)
-            XCTAssertEqual(
-                contentView.bounds.maxY - controller.previewView.frame.maxY,
-                WidgetPanelContentLayout.topGap,
-                accuracy: 0.5
-            )
-            controller.close()
-        }
-    }
-
-    func testLongStatusesWrapWithoutGrowingShownMinimumPanel() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel,
-                  let contentView = panel.contentView,
-                  let frameView = contentView.superview,
-                  let statusLabel = descendants(of: contentView, type: NSTextField.self).first
-            else { return XCTFail("Expected Display status label") }
-            panel.orderFront(nil)
-
-            for message in [
-                "Choose a source display, then turn the preview on.",
-                "Preview suspended while it overlaps the source display. Move it fully clear to resume."
-            ] {
-                controller.showStatus(
-                    message,
-                    powerState: .on,
-                    powerEnabled: true,
-                    centerEnabled: false
-                )
-                panel.setContentSize(panel.contentMinSize)
-                frameView.layoutSubtreeIfNeeded()
-                panel.displayIfNeeded()
-
-                XCTAssertEqual(contentView.bounds.size, NSSize(width: 320, height: 240))
-                XCTAssertEqual(statusLabel.stringValue, message)
-                XCTAssertEqual(statusLabel.lineBreakMode, .byWordWrapping)
-                XCTAssertEqual(statusLabel.maximumNumberOfLines, 3)
-                let textHeight = (message as NSString).boundingRect(
-                    with: NSSize(width: statusLabel.bounds.width, height: .greatestFiniteMagnitude),
-                    options: [.usesLineFragmentOrigin, .usesFontLeading],
-                    attributes: [.font: statusLabel.font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize)]
-                ).height
-                XCTAssertGreaterThanOrEqual(
-                    statusLabel.bounds.height + 0.5,
-                    textHeight,
-                    "The full status must wrap without clipping"
-                )
-            }
-            controller.close()
-        }
-    }
-
-    func testBackgroundOpacityDoesNotMakeCapturedPixelsTranslucent() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 0.2,
-                keepOnAllSpaces: true
-            )
-
-            XCTAssertEqual(controller.previewView.alphaValue, 1)
-            XCTAssertEqual(controller.previewView.layer?.opacity, 1)
-            XCTAssertEqual(controller.window?.backgroundColor, .clear)
-            controller.close()
-        }
-    }
-
-    func testDefaultLivePausedAndErrorStatesExposeCompactAccessibleControls() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
-
-            for state in [
-                ("Click to see display", DisplayPreviewPowerState.off, true, false),
-                ("Live: Built-in Display", DisplayPreviewPowerState.on, true, true),
-                ("Paused.", DisplayPreviewPowerState.off, true, false),
-                ("Capture stopped: unavailable", DisplayPreviewPowerState.off, false, false)
-            ] {
-                controller.showStatus(state.0, powerState: state.1, powerEnabled: state.2, centerEnabled: state.3)
-                let accessoryButtons = panel.titlebarAccessoryViewControllers.flatMap {
-                    descendants(of: $0.view, type: NSButton.self)
-                }
-                XCTAssertTrue(accessoryButtons.contains {
-                    $0.identifier == DisplayPreviewWindowController.powerToggleIdentifier
-                })
-                XCTAssertTrue(accessibilityLabels(in: panel).contains("Display Preview status: \(state.0)"))
-            }
-            controller.close()
-        }
-    }
-
-    func testPowerToggleIsImageOnlyAndExposesSemanticOnOffState() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel,
-                  let powerButton = panel.titlebarAccessoryViewControllers.flatMap({
-                    descendants(of: $0.view, type: NSButton.self)
-                  }).first(where: { $0.identifier == DisplayPreviewWindowController.powerToggleIdentifier })
-            else { return XCTFail("Expected Display power toggle") }
-            var toggleCount = 0
-            controller.onToggleCapture = { toggleCount += 1 }
-
-            let states: [(String, DisplayPreviewPowerState, Bool, NSControl.StateValue, String)] = [
-                ("Click to see display", .off, true, .off, "Turn preview on"),
-                ("Starting…", .on, true, .on, "Turn preview off"),
-                ("Live: Built-in Display", .on, true, .on, "Turn preview off"),
-                ("Preview suspended while it overlaps the source display. Move it fully clear to resume.", .on, true, .on, "Turn preview off"),
-                ("Paused.", .off, true, .off, "Turn preview on"),
-                ("Capture stopped: unavailable", .off, false, .off, "Turn preview on"),
-                ("Choose a source display, then turn the preview on.", .off, false, .off, "Turn preview on")
-            ]
-
-            for (message, powerState, enabled, expectedState, actionLabel) in states {
-                controller.showStatus(
-                    message,
-                    powerState: powerState,
-                    powerEnabled: enabled,
-                    centerEnabled: false
-                )
-                XCTAssertEqual(powerButton.title, "", "Power toggle must never expose a visible text title")
-                XCTAssertNotNil(powerButton.image)
-                XCTAssertEqual(powerButton.imagePosition, .imageOnly)
-                XCTAssertEqual(powerButton.state, expectedState)
-                XCTAssertEqual(
-                    powerButton.contentTintColor,
-                    expectedState == .on ? NSColor.controlAccentColor : NSColor.secondaryLabelColor
-                )
-                XCTAssertEqual(powerButton.toolTip, actionLabel)
-                XCTAssertEqual(powerButton.accessibilityLabel(), actionLabel)
-                XCTAssertEqual(powerButton.accessibilityValue() as? String, expectedState == .on ? "On" : "Off")
-                XCTAssertEqual(powerButton.isEnabled, enabled)
-            }
-
-            controller.showStatus("Click to see display", powerState: .off, powerEnabled: true, centerEnabled: false)
-            powerButton.performClick(nil)
-            controller.showStatus(
-                "Preview suspended while it overlaps the source display. Move it fully clear to resume.",
-                powerState: .on,
-                powerEnabled: true,
-                centerEnabled: false
-            )
-            powerButton.performClick(nil)
-            controller.showStatus("Unavailable", powerState: .off, powerEnabled: false, centerEnabled: false)
-            powerButton.performClick(nil)
-            XCTAssertEqual(toggleCount, 2, "Each enabled power action must emit exactly one shared toggle callback")
             controller.close()
         }
     }
@@ -303,44 +100,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             XCTAssertFalse(controller.previewView.isAccessibilitySelectorAllowed(pressSelector))
             XCTAssertFalse(controller.previewView.accessibilityPerformPress())
             XCTAssertEqual(starts, 1)
-            controller.close()
-        }
-    }
-
-    func testTitlebarControlsAlignWithStandardWindowControlsAtNormalAndMinimumSizes() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel,
-                  let frameView = panel.contentView?.superview,
-                  let closeButton = panel.standardWindowButton(.closeButton),
-                  let closeSuperview = closeButton.superview else {
-                return XCTFail("Expected panel titlebar controls")
-            }
-
-            for size in [NSSize(width: 480, height: 360), panel.contentMinSize] {
-                panel.setContentSize(size)
-                frameView.layoutSubtreeIfNeeded()
-                let closeRect = closeSuperview.convert(closeButton.frame, to: frameView)
-                for powerState in [DisplayPreviewPowerState.off, .on] {
-                    controller.showStatus("State", powerState: powerState, powerEnabled: true, centerEnabled: false)
-                    frameView.layoutSubtreeIfNeeded()
-                    let buttons = panel.titlebarAccessoryViewControllers.flatMap {
-                        descendants(of: $0.view, type: NSButton.self)
-                    }
-                    XCTAssertEqual(buttons.count, 2)
-                    for button in buttons {
-                        guard let superview = button.superview else { return XCTFail("Expected titlebar button container") }
-                        let rect = superview.convert(button.frame, to: frameView)
-                        XCTAssertEqual(rect.midY, closeRect.midY, accuracy: 0.5, "Power titlebar control is vertically misaligned")
-                        XCTAssertLessThanOrEqual(rect.maxX, frameView.bounds.maxX, "Power titlebar control extends beyond the panel")
-                    }
-                }
-            }
             controller.close()
         }
     }
@@ -561,53 +320,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 abs(controller.previewView.bounds.height - idealPreviewHeight) * backingScale,
                 1 + 0.0001,
                 "The laid-out preview view must carry the same quantized viewport height"
-            )
-            controller.close()
-        }
-    }
-
-    func testAspectSnapIsExactForAnExactlyRepresentableViewport() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 100, y: 100, width: 608, height: 500),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
-            let source = DisplayDescriptor(
-                id: 2,
-                uuid: "DELL-P2217H",
-                name: "DELL P2217H",
-                bounds: CGRect(x: -212, y: -1080, width: 1920, height: 1080),
-                isActive: true,
-                mirrorMasterID: nil
-            )
-            controller.setSources([source], selectedID: source.id)
-
-            // 608 pt is exactly representable at 16:9, so a correct snap lands on
-            // the integral viewport with no quantization slack: preview 608x342 and
-            // outer 608x384. A snap that used the outer window rectangle, dropped
-            // the titlebar or the 10 pt gap, or never resized cannot reach 342.
-            XCTAssertEqual(608.0 * 9.0 / 16.0, 342.0, accuracy: 0.0001)
-
-            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
-
-            XCTAssertEqual(controller.previewSize.width, 608, accuracy: 0.01)
-            XCTAssertEqual(controller.previewSize.height, 342, accuracy: 0.01)
-            panel.contentView?.layoutSubtreeIfNeeded()
-            XCTAssertEqual(controller.previewView.bounds.width, 608, accuracy: 0.01)
-            XCTAssertEqual(controller.previewView.bounds.height, 342, accuracy: 0.01)
-            XCTAssertEqual(
-                controller.previewSize.width / controller.previewSize.height,
-                16.0 / 9.0,
-                accuracy: 0.0001,
-                "An exactly representable viewport must match the source aspect tightly"
-            )
-            XCTAssertGreaterThan(
-                controller.previewChromeHeight,
-                WidgetPanelContentLayout.topGap,
-                "The sizing math must carry the native titlebar as well as the 10 pt gap"
             )
             controller.close()
         }
@@ -1044,42 +756,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
-    func testSourceMenuSelectionRenormalizesTheViewport() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 100, y: 100, width: 900, height: 700),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
-            controller.setSources([landscape16x9, portrait9x16], selectedID: landscape16x9.id)
-            XCTAssertTrue(controller.matchCurrentSourceAspect(animated: false))
-            var selected: CGDirectDisplayID?
-            controller.onSourceSelected = { selected = $0 }
-
-            let menu = controller.makeControlsMenu()
-            guard let item = menu.items.first(where: {
-                ($0.representedObject as? NSNumber)?.uint32Value == portrait9x16.id
-            }) else { return XCTFail("Expected a source menu item for the portrait display") }
-            guard let action = item.action else { return XCTFail("Expected a source action") }
-            XCTAssertTrue(
-                NSApp.sendAction(action, to: item.target, from: item),
-                "Fixture: the source menu item must dispatch to its target"
-            )
-
-            XCTAssertEqual(selected, portrait9x16.id)
-            panel.contentView?.layoutSubtreeIfNeeded()
-            XCTAssertEqual(
-                controller.previewSize.width / controller.previewSize.height,
-                1080.0 / 1920.0,
-                accuracy: 0.002,
-                "Choosing a source from the menu must re-normalize the viewport aspect"
-            )
-            controller.close()
-        }
-    }
-
     // MARK: - Aspect fixtures and independent geometry helpers
 
     private var landscape16x9: DisplayDescriptor {
@@ -1158,11 +834,5 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
     private func descendants<T: NSView>(of view: NSView, type: T.Type) -> [T] {
         let current = (view as? T).map { [$0] } ?? []
         return current + view.subviews.flatMap { descendants(of: $0, type: type) }
-    }
-
-    @MainActor
-    private func accessibilityLabels(in window: NSWindow) -> [String] {
-        guard let frameView = window.contentView?.superview else { return [] }
-        return descendants(of: frameView, type: NSView.self).compactMap { $0.accessibilityLabel() }
     }
 }

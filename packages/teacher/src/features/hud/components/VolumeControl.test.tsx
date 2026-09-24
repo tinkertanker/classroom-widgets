@@ -14,24 +14,6 @@ describe('VolumeControl', () => {
     vi.useRealTimers();
   });
 
-  it('shows the slider on hover and turns red when clicked to mute', () => {
-    render(<VolumeControl />);
-
-    const muteButton = screen.getByRole('button', { name: 'Mute app sounds' });
-    expect(useAudioVolumeStore.getState().volume).toBe(1);
-    fireEvent.mouseEnter(muteButton.parentElement!);
-
-    expect(muteButton).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('slider', { name: 'App volume' })).toHaveValue('100');
-
-    fireEvent.click(muteButton);
-
-    expect(screen.getByRole('button', { name: 'Unmute app sounds' }))
-      .toHaveClass('text-dusty-rose-600');
-    expect(screen.getByRole('slider', { name: 'App volume' })).toHaveValue('0');
-    expect(useAudioVolumeStore.getState().volume).toBe(0);
-  });
-
   it('keeps the slider open long enough to cross the gap, then hides it', () => {
     vi.useFakeTimers();
     render(<VolumeControl />);
@@ -123,15 +105,5 @@ describe('VolumeControl', () => {
 
     expect(globalEscapeHandler).not.toHaveBeenCalled();
     document.removeEventListener('keydown', globalEscapeHandler);
-  });
-
-  it('drops below expanded session details on narrow screens', () => {
-    render(<VolumeControl avoidSessionBanner />);
-
-    const muteButton = screen.getByRole('button', { name: 'Mute app sounds' });
-    fireEvent.mouseEnter(muteButton.parentElement!);
-
-    expect(screen.getByRole('slider', { name: 'App volume' }).parentElement?.parentElement)
-      .toHaveClass('max-[540px]:mt-16');
   });
 });

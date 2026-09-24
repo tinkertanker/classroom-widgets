@@ -44,22 +44,6 @@ test('shortens a link through the server proxy without an authorization header',
   expect(fetchMock.mock.calls[0][1].headers.authorization).toBeUndefined();
 });
 
-test('shows the server not-configured error', async () => {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: false,
-    status: 503,
-    json: async () => ({
-      success: false,
-      error: 'Link shortening is not configured on this server.'
-    })
-  }));
-  render(<ShortenLink />);
-
-  await submit('https://example.com');
-
-  expect(await screen.findByText('Link shortening is not configured on this server.')).toBeInTheDocument();
-});
-
 test('shows the server message before its error code', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: false,
@@ -76,18 +60,4 @@ test('shows the server message before its error code', async () => {
 
   expect(await screen.findByText('Too many requests. Please try again later.')).toBeInTheDocument();
   expect(screen.queryByText('RATE_LIMITED')).not.toBeInTheDocument();
-});
-
-test('does not fetch when client-side URL validation fails', async () => {
-  const fetchMock = vi.fn();
-  vi.stubGlobal('fetch', fetchMock);
-  render(<ShortenLink />);
-
-  fireEvent.change(screen.getByPlaceholderText('https://example.com'), {
-    target: { value: 'not a url' }
-  });
-  fireEvent.submit(screen.getByRole('button', { name: /shorten link/i }).closest('form')!);
-
-  expect(await screen.findByText('That does not look like a valid link.')).toBeInTheDocument();
-  expect(fetchMock).not.toHaveBeenCalled();
 });

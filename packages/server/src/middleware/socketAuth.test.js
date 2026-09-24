@@ -1,4 +1,4 @@
-const { describe, it, beforeEach, mock } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { eventRateLimiter, createEventRateLimiter, createIpRateLimiter, EVENT_RATE_LIMITS, socketAuth } = require('./socketAuth');
 const { pendingCleanupHandles, stopRateLimiterCleanup } = require('./rateLimit');

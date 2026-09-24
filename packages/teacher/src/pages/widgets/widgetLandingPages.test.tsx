@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import React from 'react';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, cleanup, waitFor } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
 
 import { widgetLandingPages, type WidgetLandingPageConfig } from './widgetLandingPages';
@@ -60,54 +60,7 @@ describe('widget landing pages', () => {
     }
   });
 
-  it('gives every page a distinct heading, lede, how-to heading and meta title', () => {
-    const configs = Object.values(widgetLandingPages);
-    for (const field of ['heading', 'lede'] as const) {
-      expect(new Set(configs.map((c) => c[field])).size).toBe(configs.length);
-    }
-    expect(new Set(configs.map((c) => c.steps.heading)).size).toBe(configs.length);
-    expect(new Set(configs.map((c) => c.meta.title)).size).toBe(configs.length);
-  });
-
   describe.each(ROUTED_PAGES)('$name', ({ Page, config }) => {
-    it('renders its own hero, steps, cards and tips', () => {
-      const container = renderPage(Page);
-
-      expect(container.querySelector('h2')?.textContent).toBe(config.heading);
-      expect(screen.getByText(config.lede)).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: config.steps.heading, level: 3 })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: config.cards.heading, level: 3 })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: config.tips.heading, level: 3 })).toBeInTheDocument();
-
-      for (const step of config.steps.items) {
-        expect(screen.getByText(step.title)).toBeInTheDocument();
-        expect(screen.getByText(step.body)).toBeInTheDocument();
-      }
-      for (const card of config.cards.items) {
-        expect(screen.getByText(card.title)).toBeInTheDocument();
-        expect(screen.getByText(card.body)).toBeInTheDocument();
-      }
-      for (const tip of config.tips.items) {
-        expect(screen.getByText(tip)).toBeInTheDocument();
-      }
-
-      cleanup();
-    });
-
-    it('does not render any other page\'s content', () => {
-      const container = renderPage(Page);
-      const text = container.textContent ?? '';
-
-      for (const other of ROUTED_PAGES) {
-        if (other.config.slug === config.slug) continue;
-        expect(text).not.toContain(other.config.lede);
-        expect(text).not.toContain(other.config.steps.heading);
-        expect(container.querySelector('h2')?.textContent).not.toBe(other.config.heading);
-      }
-
-      cleanup();
-    });
-
     it('publishes its own canonical URL and page title', async () => {
       renderPage(Page);
 

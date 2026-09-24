@@ -78,7 +78,7 @@ describe('buildCodeFillBlankActivity', () => {
     expect(targetIds).toEqual(['blank-0', 'blank-1', 'blank-2']);
   });
 
-  it('preserves code indentation as whitespace-pre text blocks', () => {
+  it('preserves code indentation in text blocks', () => {
     const activity = buildCodeFillBlankActivity(makeState({
       template: 'def foo():\n    return {{1}}',
       answers: ['1']
@@ -89,7 +89,6 @@ describe('buildCodeFillBlankActivity', () => {
 
     expect(textBlock?.type).toBe('text');
     expect(textBlock?.props.content).toBe('    return ');
-    expect(textBlock?.props.className).toContain('whitespace-pre');
   });
 
   it('keeps empty template lines as empty containers so line numbers align', () => {
@@ -101,16 +100,6 @@ describe('buildCodeFillBlankActivity', () => {
 
     expect(codeContainer.children).toHaveLength(3);
     expect(codeContainer.children?.[1].children).toEqual([]);
-  });
-
-  it('applies language-specific styling', () => {
-    const python = buildCodeFillBlankActivity(makeState({ language: 'python' }));
-    const js = buildCodeFillBlankActivity(makeState({ language: 'javascript' }));
-    const text = buildCodeFillBlankActivity(makeState({ language: 'text' }));
-
-    expect((python.uiRecipe ?? [])[0].props.className).toContain('text-blue-300');
-    expect((js.uiRecipe ?? [])[0].props.className).toContain('text-yellow-300');
-    expect((text.uiRecipe ?? [])[0].props.className).toContain('text-warm-gray-200');
   });
 
   it('handles answers containing underscores', () => {
@@ -126,26 +115,9 @@ describe('buildCodeFillBlankActivity', () => {
     const inputs = (codeContainer.children?.[0].children ?? []).filter(c => c.type === 'text-input');
     expect(inputs).toHaveLength(1);
   });
-
-  it('enables feedback and retry by default', () => {
-    const activity = buildCodeFillBlankActivity(makeState());
-    expect(activity.showImmediateFeedback).toBe(true);
-    expect(activity.allowRetry).toBe(true);
-  });
 });
 
 describe('parseAnswers on code templates', () => {
-  it('extracts keywords, identifiers, literals, and operators', () => {
-    expect(parseAnswers('{{def}} hello(): {{return}} 1')).toEqual(['def', 'return']);
-    expect(parseAnswers('def {{greet}}({{name}}):')).toEqual(['greet', 'name']);
-    expect(parseAnswers('print({{"hello"}})')).toEqual(['"hello"']);
-    expect(parseAnswers('for i in range({{10}}):')).toEqual(['10']);
-    expect(parseAnswers('result = a {{+}} b')).toEqual(['+']);
-  });
-
-  it('extracts snake_case answers that the legacy ___ syntax could not express', () => {
-    expect(parseAnswers('{{my_var}} = {{some_func}}()')).toEqual(['my_var', 'some_func']);
-  });
 
   it('works across multiple lines', () => {
     const code = 'const {{add}} = (a, b) => {\n  {{return}} a + b;\n}';

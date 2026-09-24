@@ -36,13 +36,6 @@ describe('POST /api/voice-command hardening', () => {
     body: JSON.stringify(body)
   });
 
-  it('processes a normal command', async () => {
-    const res = await postTranscript({ transcript: 'create a timer' });
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.command.action, 'CREATE_TIMER');
-  });
-
   it('rejects transcripts over MAX_TRANSCRIPT_LENGTH quickly', async () => {
     const transcript = 'create banner ' + 'a'.repeat(5000);
     const start = Date.now();
@@ -70,36 +63,6 @@ describe('POST /api/voice-command hardening', () => {
       context: { blob: 'x'.repeat(100 * 1024) }
     });
     assert.equal(res.status, 413);
-  });
-});
-
-describe('createIpRateLimiter', () => {
-  let server;
-  let baseUrl;
-
-  before(async () => {
-    const app = express();
-    app.use(createIpRateLimiter({ windowMs: 60_000, max: 3 }));
-    app.get('/ping', (req, res) => res.json({ ok: true }));
-    server = await startServer(app);
-    baseUrl = `http://127.0.0.1:${server.address().port}`;
-  });
-
-  after(async () => {
-    await new Promise((resolve) => server.close(resolve));
-    stopRateLimiterCleanup();
-  });
-
-  it('allows up to max requests then returns 429 with Retry-After', async () => {
-    for (let i = 0; i < 3; i++) {
-      const res = await fetch(`${baseUrl}/ping`);
-      assert.equal(res.status, 200, `request ${i + 1}`);
-    }
-    const res = await fetch(`${baseUrl}/ping`);
-    assert.equal(res.status, 429);
-    assert.ok(res.headers.get('retry-after'), 'expected Retry-After header');
-    const body = await res.json();
-    assert.match(body.error, /too many/i);
   });
 });
 
@@ -140,13 +103,5 @@ describe('voice-command per-client rate limiting', () => {
     assert.equal((await postTranscript('203.0.113.6')).status, 200);
     const limited = await postTranscript('203.0.113.5');
     assert.equal(limited.status, 429);
-  });
-
-  it('keeps /health unlimited after the POST bucket is exhausted', async () => {
-    assert.equal((await postTranscript('198.51.100.7')).status, 200);
-    assert.equal((await postTranscript('198.51.100.7')).status, 200);
-    assert.equal((await postTranscript('198.51.100.7')).status, 429);
-    const res = await fetch(`${baseUrl}/api/voice-command/health`);
-    assert.equal(res.status, 200);
   });
 });

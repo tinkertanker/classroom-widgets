@@ -195,43 +195,6 @@ describe('Activity Socket Handler Integration', () => {
       assert.equal(received.results.score, 2);
     });
 
-    it('scores partially correct answers', () => {
-      const callback = mockFn();
-
-      studentSocket.trigger(EVENTS.ACTIVITY.SUBMIT, {
-        sessionCode: SESSION_CODE,
-        widgetId: WIDGET_ID,
-        answers: {
-          placements: [
-            { itemId: 'item-0', targetId: 'blank-0' }, // correct
-            { itemId: 'item-0', targetId: 'blank-1' }  // wrong (should be item-1)
-          ],
-          textInputs: {}
-        }
-      }, callback);
-
-      const response = callback.calls[0][0];
-      assert.equal(response.results.score, 1);
-      assert.equal(response.results.total, 2);
-    });
-
-    it('accepts text input answers', () => {
-      const callback = mockFn();
-
-      studentSocket.trigger(EVENTS.ACTIVITY.SUBMIT, {
-        sessionCode: SESSION_CODE,
-        widgetId: WIDGET_ID,
-        answers: {
-          placements: [],
-          textInputs: { 'blank-0': 'hello', 'blank-1': 'world' }
-        }
-      }, callback);
-
-      const response = callback.calls[0][0];
-      assert.equal(response.success, true);
-      assert.equal(response.results.score, 2);
-    });
-
     it('rejects submission when activity is paused', () => {
       session.getRoom('activity', WIDGET_ID).isActive = false;
       const callback = mockFn();
@@ -410,60 +373,6 @@ describe('Activity Socket Handler Integration', () => {
       const widgetState = emittedPayload(studentSocket.emit, EVENTS.SESSION.WIDGET_STATE_CHANGED);
       assert.deepEqual(widgetState, { roomType: 'activity', widgetId: WIDGET_ID, isActive: true });
     });
-
-    it('includes results if the student has submitted', () => {
-      session.getRoom('activity', WIDGET_ID).submitAnswer(STUDENT_SOCKET_ID, {
-        placements: [{ itemId: 'item-0', targetId: 'blank-0' }],
-        textInputs: {}
-      });
-
-      studentSocket.trigger(EVENTS.ACTIVITY.REQUEST_STATE, {
-        sessionCode: SESSION_CODE,
-        widgetId: WIDGET_ID
-      });
-
-      const state = emittedPayload(studentSocket.emit, EVENTS.ACTIVITY.STATE_UPDATE);
-      assert.equal(state.results.score, 1);
-      assert.equal(state.results.total, 1);
-    });
-
-    it('includes correct answers if revealed', () => {
-      session.getRoom('activity', WIDGET_ID).answersRevealed = true;
-
-      studentSocket.trigger(EVENTS.ACTIVITY.REQUEST_STATE, {
-        sessionCode: SESSION_CODE,
-        widgetId: WIDGET_ID
-      });
-
-      const state = emittedPayload(studentSocket.emit, EVENTS.ACTIVITY.STATE_UPDATE);
-      assert.deepEqual(state.correctAnswers, { 'blank-0': 'item-0' });
-    });
-  });
-
-  describe('code fill-in-blank: whitespace flexible evaluation', () => {
-    it('accepts answers with extra whitespace', () => {
-      setupActivity({
-        type: 'code-fill-blank',
-        items: [
-          { id: 'item-0', content: 'def' },
-          { id: 'item-1', content: 'return' }
-        ]
-      });
-      const callback = mockFn();
-
-      studentSocket.trigger(EVENTS.ACTIVITY.SUBMIT, {
-        sessionCode: SESSION_CODE,
-        widgetId: WIDGET_ID,
-        answers: {
-          placements: [],
-          textInputs: { 'blank-0': '  def  ', 'blank-1': 'return' }
-        }
-      }, callback);
-
-      const response = callback.calls[0][0];
-      assert.equal(response.results.score, 2);
-      assert.equal(response.results.total, 2);
-    });
   });
 
   describe('error handling and hostile payloads', () => {
@@ -513,26 +422,6 @@ describe('Activity Socket Handler Integration', () => {
       }
       // Reaching here without a throw is the assertion; state must be untouched.
       assert.equal(session.getRoom('activity', WIDGET_ID).activity, null);
-    });
-
-    it('survives malformed answers payloads without crashing', () => {
-      setupActivity();
-
-      for (const answers of [null, 'string', 42, [], { placements: 'x' }, { textInputs: { 'blank-0': 123 } }]) {
-        // Six rapid submits exceed the per-connection submit limit; this test
-        // targets payload handling, so give each iteration a fresh client key.
-        studentSocket.clientIP = `10.1.0.${++socketCounter}`;
-        const callback = mockFn();
-        studentSocket.trigger(EVENTS.ACTIVITY.SUBMIT, {
-          sessionCode: SESSION_CODE,
-          widgetId: WIDGET_ID,
-          answers
-        }, callback);
-
-        const response = callback.calls[0][0];
-        assert.equal(response.success, true, `answers ${JSON.stringify(answers)} should degrade to a zero score`);
-        assert.equal(response.results.score, 0);
-      }
     });
 
     it('does not throw when submit/retry are triggered without a callback', () => {

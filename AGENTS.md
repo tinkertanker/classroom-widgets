@@ -29,6 +29,27 @@
   `pnpm generate:voice-types` (also runs on `prebuild`). Never edit the
   generated files.
 
+## Testing
+
+- Prefer end-to-end tests as the sole way to verify a feature: drive the real
+  teacher app, student app, server, or desktop dashboard the way a user would.
+  Use them for anything complex, such as a networked widget running across a
+  teacher and several students.
+- Every E2E run must end by producing a verifiable, repeatable artifact, such as
+  screenshots, a video or trace, or a log of the steps and observed results.
+  Write it to a known directory (the desktop tests use
+  `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`), link it in your report, and make sure
+  rerunning the same command reproduces it.
+- Never write unit tests after you write code. Backfilled tests only restate the
+  implementation and fail on refactors instead of bugs.
+- If a system truly needs testing in isolation (for example parsing, geometry,
+  time arithmetic, auth or rate limits, reconnection races, or a cross-workspace
+  contract), first write down every way it could fail. Then write tests for
+  those failure modes, and only then write the code.
+- Do not add render smoke tests, snapshot or CSS-class assertions, tests that
+  echo mocks back, or tests of trivial wrappers, constants, or framework
+  behaviour. Delete any such tests you find in code you touch.
+
 ## macOS releases
 
 - The Release workflow is configured to build, sign, notarize, and attach the

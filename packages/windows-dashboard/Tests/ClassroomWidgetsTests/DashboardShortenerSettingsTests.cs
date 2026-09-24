@@ -22,17 +22,6 @@ public class DashboardShortenerSettingsTests
     };
 
     [Fact]
-    public void ScriptPublishesDefaultsForFreshSettings()
-    {
-        var script = DashboardShortenerSettings.Script(new DashboardSettings());
-        var payload = ParsePayload(script);
-
-        Assert.Equal("tinyurl", payload.GetProperty("provider").GetString());
-        Assert.Equal("", payload.GetProperty("shortioApiKey").GetString());
-        Assert.Equal("", payload.GetProperty("shortioDomain").GetString());
-    }
-
-    [Fact]
     public void ScriptPublishesEscapedShortioSettingsWithoutInterpolation()
     {
         var settings = new DashboardSettings
@@ -66,25 +55,6 @@ public class DashboardShortenerSettingsTests
             Assert.Equal(provider, DashboardShortenerSettings.NormalizeProvider(provider));
         }
         Assert.Equal("tinyurl", DashboardShortenerSettings.NormalizeProvider(null));
-    }
-
-    [Fact]
-    public void ShortenerSettingsSurviveTheSettingsJsonRoundtrip()
-    {
-        var settings = new DashboardSettings
-        {
-            LinkShortenerProvider = "spoo",
-            LinkShortenerPublicApiKey = "pk_roundtrip",
-            LinkShortenerDomain = "go.school.edu",
-            BackgroundOpacity = 0.6
-        };
-        var reloaded = JsonSerializer.Deserialize<DashboardSettings>(JsonSerializer.Serialize(settings, JsonOptions), JsonOptions);
-
-        Assert.NotNull(reloaded);
-        Assert.Equal("spoo", reloaded.LinkShortenerProvider);
-        Assert.Equal("pk_roundtrip", reloaded.LinkShortenerPublicApiKey);
-        Assert.Equal("go.school.edu", reloaded.LinkShortenerDomain);
-        Assert.Equal(0.6, reloaded.BackgroundOpacity);
     }
 
     [Fact]

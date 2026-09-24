@@ -58,10 +58,6 @@ describe('validators.link', () => {
       assert.equal(validators.link(url).error, 'Only http and https links are allowed', url);
     }
   });
-
-  it('accepts http URLs', () => {
-    assert.equal(validators.link('http://example.com').valid, true);
-  });
 });
 
 describe('validators.normalizeUrl', () => {
@@ -116,11 +112,6 @@ describe('validators.isLink', () => {
   it('rejects unsafe URL protocols', () => {
     assert.equal(validators.isLink('javascript:alert(1)'), false);
     assert.equal(validators.isLink('data:text/html,x'), false);
-  });
-
-  it('accepts bare domains and safe URLs', () => {
-    assert.equal(validators.isLink('example.com'), true);
-    assert.equal(validators.isLink('https://example.com'), true);
   });
 });
 
@@ -236,11 +227,6 @@ describe('validators.requestStateData', () => {
 });
 
 describe('validate()', () => {
-  it('dispatches to the named validator', () => {
-    assert.equal(validate('sessionCode', 'ABCDE').valid, true);
-    assert.equal(validate('pollOption', 2, 4).valid, true);
-  });
-
   it('fails closed for unknown validator names', () => {
     const result = validate('nope', 'x');
     assert.equal(result.valid, false);

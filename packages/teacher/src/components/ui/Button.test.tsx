@@ -52,20 +52,4 @@ describe('button UI components', () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
   });
-
-  test.each(cases)('$name allows explicit submit type', ({ render: renderButton }) => {
-    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-    });
-
-    render(
-      <form onSubmit={onSubmit}>
-        {renderButton({ type: 'submit' })}
-      </form>
-    );
-
-    fireEvent.click(screen.getByRole('button'));
-
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-  });
 });

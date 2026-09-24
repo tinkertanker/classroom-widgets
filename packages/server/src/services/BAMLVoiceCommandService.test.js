@@ -45,50 +45,6 @@ test('passes the shared widget/action catalog into ParseVoiceCommand', async () 
   assert.deepEqual(calls[0].actionNames, EXPECTED_ACTIONS);
 });
 
-test('the widget catalog covers every widget in the shared definitions', async () => {
-  const { service, calls } = makeService(() => OK_RESULT);
-
-  await service.processVoiceCommand('start a wordle');
-
-  const targets = calls[0].widgetTargets;
-  assert.equal(targets.length, Object.keys(sourceDefinitions.widgets).length);
-  for (const widget of Object.values(sourceDefinitions.widgets)) {
-    assert.ok(
-      targets.includes(widget.targetName),
-      `missing widget target "${widget.targetName}" in the catalog sent to the model`
-    );
-  }
-  // Widgets that the previously hardcoded BAML prompt did not expose at all.
-  for (const target of ['wordle', 'snake', 'qrcode', 'ticTacToe', 'visualiser']) {
-    assert.ok(targets.includes(target), `expected newly exposed target "${target}"`);
-  }
-});
-
-test('the action catalog covers every action in the shared definitions', async () => {
-  const { service, calls } = makeService(() => OK_RESULT);
-
-  await service.processVoiceCommand('play a sound effect');
-
-  const actions = calls[0].actionNames;
-  assert.deepEqual(actions, EXPECTED_ACTIONS);
-  assert.ok(actions.includes('LAUNCH_WIDGET'));
-  assert.ok(actions.includes('UNKNOWN'));
-});
-
-test('a recognised command is reported as a success with the model feedback', async () => {
-  const { service } = makeService(() => OK_RESULT);
-
-  const result = await service.processVoiceCommand('start a wordle');
-
-  assert.equal(result.success, true);
-  assert.equal(result.command.action, 'CREATE_WORDLE');
-  assert.equal(result.command.target, 'wordle');
-  assert.equal(result.command.confidence, 0.9);
-  assert.equal(result.feedback.message, 'Starting Wordle');
-  assert.equal(result.feedback.type, 'success');
-  assert.equal(result.feedback.shouldSpeak, true);
-});
-
 test('an UNKNOWN action is not a success and gets a not_understood default feedback', async () => {
   const { service } = makeService(() => ({
     action: 'UNKNOWN',

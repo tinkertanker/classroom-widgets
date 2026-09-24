@@ -41,11 +41,6 @@ describe('normaliseChoiceList', () => {
 });
 
 describe('stringifyChoiceList', () => {
-  it('joins choices with newlines', () => {
-    expect(stringifyChoiceList(['a', 'b'])).toBe('a\nb');
-    expect(stringifyChoiceList([])).toBe('');
-  });
-
   it('round-trips through normaliseChoiceList', () => {
     const choices = ['alice', 'bob', 'carol'];
     expect(normaliseChoiceList(stringifyChoiceList(choices))).toEqual(choices);
@@ -56,14 +51,6 @@ describe('getActiveChoices', () => {
   it('returns an empty list when given an empty list of choices', () => {
     expect(getActiveChoices([], [])).toEqual([]);
     expect(getActiveChoices([], ['alice'])).toEqual([]);
-  });
-
-  it('returns an empty list when all choices are removed', () => {
-    expect(getActiveChoices(['alice', 'bob'], ['alice', 'bob'])).toEqual([]);
-  });
-
-  it('returns all choices when none are removed', () => {
-    expect(getActiveChoices(['alice', 'bob'], [])).toEqual(['alice', 'bob']);
   });
 
   it('filters out only the removed entries, preserving order', () => {

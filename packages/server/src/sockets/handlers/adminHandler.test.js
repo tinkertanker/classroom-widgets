@@ -183,13 +183,4 @@ describe('adminHandler: admin:getSessions room summaries', () => {
     assert.equal(byType.linkShare.submissionCount, 1);
     assert.equal(byType.rtfeedback.responseCount, 2);
   });
-
-  it('reports inactive rooms as not active', () => {
-    session.createRoom('rtfeedback', 'w-rt');
-
-    const response = getSessions();
-    const [room] = response.sessions[0].activeRooms;
-    assert.equal(room.isActive, false);
-    assert.equal(room.responseCount, 0);
-  });
 });

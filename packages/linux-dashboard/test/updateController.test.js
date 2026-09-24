@@ -173,17 +173,6 @@ test('automatic check failure before approval stays quiet', async () => {
   assert.deepEqual(h.downloads, []);
 });
 
-test('Later does not download or install', async () => {
-  delete process.env.APPIMAGE;
-  const h = harness({ responses: [1] });
-
-  await h.controller.check();
-
-  assert.equal(h.dialogs.length, 1);
-  assert.deepEqual(h.downloads, []);
-  assert.deepEqual(h.debInstalls, []);
-});
-
 test('approved AppImage staging error identifies the unwritable location and recovery path', async () => {
   const previous = process.env.APPIMAGE;
   process.env.APPIMAGE = '/opt/Classroom Widgets/ClassroomWidgets.AppImage';

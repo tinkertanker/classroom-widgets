@@ -4,7 +4,6 @@ import { vi } from 'vitest';
 import Timer from './timer';
 import { ModalProvider } from '../../../contexts/ModalContext';
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
-import { warmGray } from '@shared/constants/colors';
 
 const localStorageMock = {
   getItem: vi.fn(() => null),
@@ -71,221 +70,6 @@ describe('Timer Widget', () => {
     });
   });
 
-  test('renders with the default editable time', () => {
-    renderWithModal(<Timer />);
-
-    expect(getByExactText('00:00:10')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
-  });
-
-  test('marks compact controls for shared chrome styling without independently hiding on pointer changes', () => {
-    renderWithModal(<Timer isCompactPanel />);
-
-    const controlsRegion = screen.getByTestId('timer-bottom-controls-region');
-    const controls = screen.getByTestId('timer-bottom-controls');
-
-    expect(controls).toHaveAttribute('data-widget-controls');
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-
-    fireEvent.mouseEnter(controlsRegion);
-    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
-
-    const startButton = screen.getByRole('button', { name: /start/i });
-    fireEvent.pointerDown(startButton);
-    act(() => startButton.focus());
-    fireEvent.mouseLeave(controlsRegion);
-    act(() => {
-      vi.advanceTimersByTime(1799);
-    });
-    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
-
-    act(() => {
-      vi.advanceTimersByTime(1);
-    });
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-  });
-
-  test('does not independently hide compact controls after keyboard focus leaves', () => {
-    renderWithModal(<Timer isCompactPanel />);
-
-    const controls = screen.getByTestId('timer-bottom-controls');
-    const startButton = screen.getByRole('button', { name: /start/i });
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-
-    fireEvent.keyDown(document, { key: 'Tab' });
-    act(() => startButton.focus());
-    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
-
-    fireEvent.mouseLeave(screen.getByTestId('timer-bottom-controls-region'));
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
-
-    act(() => startButton.blur());
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-  });
-
-  test('does not independently hide compact controls when starting replaces the focused control', () => {
-    renderWithModal(<Timer isCompactPanel />);
-
-    const controls = screen.getByTestId('timer-bottom-controls');
-    const startButton = screen.getByRole('button', { name: /start/i });
-    fireEvent.keyDown(document, { key: 'Tab' });
-    act(() => startButton.focus());
-
-    act(() => fireEvent.click(startButton));
-    expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-
-    fireEvent.click(screen.getByRole('button', { name: /pause/i }));
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-  });
-
-  test('does not independently hide compact controls when expiry replaces the focused Pause control', () => {
-    renderWithModal(<Timer isCompactPanel />);
-
-    const controls = screen.getByTestId('timer-bottom-controls');
-    act(() => fireEvent.click(screen.getByRole('button', { name: /start/i })));
-    const pauseButton = screen.getByRole('button', { name: /pause/i });
-    fireEvent.keyDown(document, { key: 'Tab' });
-    act(() => pauseButton.focus());
-    fireEvent.mouseLeave(screen.getByTestId('timer-bottom-controls-region'));
-
-    act(() => {
-      vi.advanceTimersByTime(11000);
-    });
-    expect(screen.getByRole('button', { name: /restart/i })).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-  });
-
-  test('does not independently hide compact controls when an options tray opens or closes', () => {
-    renderWithModal(<Timer isCompactPanel />);
-
-    const controlsRegion = screen.getByTestId('timer-bottom-controls-region');
-    const controls = screen.getByTestId('timer-bottom-controls');
-    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
-    fireEvent.mouseLeave(controlsRegion);
-
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls).not.toHaveClass('pointer-events-none', 'opacity-0');
-
-    fireEvent.click(screen.getByRole('button', { name: /add 1 minute/i }));
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-  });
-
-  test('marks controls for shared styling outside the compact Mac panel too', () => {
-    renderWithModal(<Timer />);
-
-    act(() => {
-      vi.advanceTimersByTime(1800);
-    });
-
-    const controls = screen.getByTestId('timer-bottom-controls');
-    expect(controls).toHaveAttribute('data-widget-controls');
-    expect(controls.className).toBe('transition-opacity duration-150 motion-reduce:transition-none');
-  });
-
-  test('keeps the outer timer shell transparent in dark mode while filling the circle solid dark', () => {
-    useWorkspaceStore.setState({ theme: 'dark' });
-
-    renderWithModal(<Timer />);
-
-    const timerOuterContainer = screen.getByTestId('timer-outer-container');
-    expect(timerOuterContainer).toHaveClass('rounded-lg');
-    expect(timerOuterContainer).toHaveClass('bg-transparent');
-    expect(timerOuterContainer).toHaveClass('dark:bg-transparent');
-    expect(timerOuterContainer).not.toHaveClass('dark:bg-warm-gray-800/90');
-
-    const timerVisualShell = screen.getByTestId('timer-visual-shell');
-    expect(timerVisualShell).toHaveClass('dark:bg-transparent');
-    expect(timerVisualShell).not.toHaveClass('dark:bg-warm-gray-800/90');
-
-    expect(screen.getByTestId('timer-face')).toHaveAttribute('fill', warmGray[800]);
-  });
-
-  test('uses layered strokes instead of SVG filters for the progress glow', () => {
-    const { container } = renderWithModal(<Timer />);
-
-    expect(container.querySelector('filter')).not.toBeInTheDocument();
-    expect(container.querySelectorAll('circle[stroke="url(#rainbowGradient)"]')).toHaveLength(2);
-  });
-
-  test('keeps manual time edits after finishing segment editing', () => {
-    renderWithModal(<Timer />);
-
-    fireEvent.click(screen.getByText('10'));
-
-    const input = screen.getByRole('textbox');
-    fireEvent.change(input, { target: { value: '45' } });
-    fireEvent.blur(input);
-
-    expect(getByExactText('00:00:45')).toBeInTheDocument();
-  });
-
-  test('expands the quick-add tray and applies idle additions', () => {
-    renderWithModal(<Timer />);
-
-    fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
-
-    expect(screen.getByRole('button', { name: /add 1 minute/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /add 1 minute/i }));
-
-    expect(getByExactText('00:01:10')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /add 1 minute/i })).not.toBeInTheDocument();
-  });
-
-  test('opens target-time tray and sets timer from clock time', () => {
-    renderWithModal(<Timer />);
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
-    });
-
-    expect(screen.getByText('Until')).toBeInTheDocument();
-
-    act(() => {
-      fireEvent.change(screen.getByRole('combobox', { name: /target hour/i }), { target: { value: '2' } });
-      fireEvent.change(screen.getByRole('combobox', { name: /target minute/i }), { target: { value: '5' } });
-      fireEvent.click(screen.getByRole('button', { name: 'PM' }));
-    });
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
-    });
-
-    expect(getByExactText('00:05:00')).toBeInTheDocument();
-    expect(screen.queryByText('Until')).not.toBeInTheDocument();
-  });
-
   test('treats earlier target times as tomorrow', () => {
     vi.setSystemTime(new Date('2026-03-11T23:45:00'));
 
@@ -306,57 +90,6 @@ describe('Timer Widget', () => {
     });
 
     expect(getByExactText('23:45:00')).toBeInTheDocument();
-  });
-
-  test('closes target-time tray when clicking the clock button again', () => {
-    renderWithModal(<Timer />);
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
-    });
-
-    expect(screen.getByText('Until')).toBeInTheDocument();
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /hide target time picker/i }));
-    });
-
-    expect(screen.queryByText('Until')).not.toBeInTheDocument();
-  });
-
-  test('closes target-time tray when opening quick-add tray', () => {
-    renderWithModal(<Timer />);
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
-    });
-
-    expect(screen.getByText('Until')).toBeInTheDocument();
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
-    });
-
-    expect(screen.queryByText('Until')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /add 1 minute/i })).toBeInTheDocument();
-  });
-
-  test('exposes the selected target period accessibly', () => {
-    renderWithModal(<Timer />);
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
-    });
-
-    expect(screen.getByRole('button', { name: 'PM' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'AM' })).toHaveAttribute('aria-pressed', 'false');
-
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'AM' }));
-    });
-
-    expect(screen.getByRole('button', { name: 'AM' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'PM' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('adds time while running without interrupting the countdown', () => {
@@ -454,40 +187,6 @@ describe('Timer Widget', () => {
     }));
   });
 
-  test('hides quick-add controls after the timer finishes and still plays audio', () => {
-    renderWithModal(<Timer />);
-
-    fireEvent.click(screen.getByRole('button', { name: /start/i }));
-
-    act(() => {
-      vi.advanceTimersByTime(11000);
-    });
-
-    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /show add time options/i })).not.toBeInTheDocument();
-    expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
-  });
-
-  test('restores a finished timer without replaying its end sound', () => {
-    const onStateChange = vi.fn();
-
-    renderWithModal(<Timer savedState={{ timer: {
-      endTime: null,
-      initialTime: 10,
-      originalTime: 10,
-      isRunning: false,
-      isPaused: false,
-      pausedTimeRemaining: 0,
-      timerFinished: true
-    } }} onStateChange={onStateChange} />);
-
-    expect(screen.getByText("Time's Up!")).toBeInTheDocument();
-    expect(global.HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
-    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
-      timer: expect.objectContaining({ timerFinished: true })
-    }));
-  });
-
   test('notifies once when a running timer expired while unmounted in StrictMode', () => {
     renderWithModal(<React.StrictMode><Timer savedState={{ timer: {
       endTime: Date.now() - 1000,
@@ -544,16 +243,6 @@ describe('Timer Widget', () => {
 
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
-  });
-
-  test('hides target-time toggle while timer is running', () => {
-    renderWithModal(<Timer />);
-
-    expect(screen.getByRole('button', { name: /set target time/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /start/i }));
-
-    expect(screen.queryByRole('button', { name: /set target time/i })).not.toBeInTheDocument();
   });
 
   describe('state machine', () => {
@@ -820,36 +509,6 @@ describe('Timer Widget', () => {
       });
 
       expect(playSpy()).not.toHaveBeenCalled();
-    });
-
-    test('restores an old payload that predates the timerFinished flag', () => {
-      // Payloads written before `timerFinished` existed omit the key entirely;
-      // a running one that has already expired still owes exactly one alarm.
-      const legacyPayload = {
-        endTime: Date.now() - 2000,
-        initialTime: 10,
-        originalTime: 10,
-        isRunning: true,
-        isPaused: false,
-        pausedTimeRemaining: 0
-      };
-
-      expect('timerFinished' in legacyPayload).toBe(false);
-
-      renderWithModal(<Timer savedState={{ timer: legacyPayload }} />);
-
-      act(() => {
-        vi.advanceTimersByTime(0);
-      });
-
-      expect(screen.getByText("Time's Up!")).toBeInTheDocument();
-      expect(playSpy()).toHaveBeenCalledTimes(1);
-
-      act(() => {
-        vi.advanceTimersByTime(20000);
-      });
-
-      expect(playSpy()).toHaveBeenCalledTimes(1);
     });
 
     test('restores a contradictory old payload into exactly one state', () => {

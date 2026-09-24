@@ -295,8 +295,6 @@ describe('App image paste sizing', () => {
 
 describe('App double-Cmd-press voice activation', () => {
   const pressCmd = () => fireEvent.keyDown(document, { key: 'Meta', metaKey: true });
-  const countKeydownCalls = (spy: ReturnType<typeof vi.spyOn>) =>
-    spy.mock.calls.filter(([type]) => type === 'keydown').length;
 
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
@@ -317,22 +315,6 @@ describe('App double-Cmd-press voice activation', () => {
     delete window.cancelClassroomWidgetLauncher;
     vi.useRealTimers();
     vi.clearAllMocks();
-  });
-
-  it('registers the keydown listener once and does not re-register it on a single Cmd press', async () => {
-    const addSpy = vi.spyOn(document, 'addEventListener');
-    const removeSpy = vi.spyOn(document, 'removeEventListener');
-
-    render(<App />);
-
-    await waitFor(() => {
-      expect(countKeydownCalls(addSpy)).toBe(1);
-    });
-
-    pressCmd();
-
-    expect(countKeydownCalls(addSpy)).toBe(1);
-    expect(countKeydownCalls(removeSpy)).toBe(0);
   });
 
   it('activates voice control on a double Cmd press within the 500ms window', async () => {

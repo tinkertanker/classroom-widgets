@@ -50,13 +50,4 @@ describe('DesktopWidgetLauncher', () => {
     });
   });
 
-  it('closes without requesting a widget', () => {
-    render(<DesktopWidgetLauncher />);
-    fireEvent.click(screen.getByRole('button', { name: 'Close widget launcher' }));
-
-    expect(postNativeMessage).toHaveBeenCalledWith('classroomDashboard', {
-      type: 'desktop-launcher-close',
-      schemaVersion: 1
-    });
-  });
 });

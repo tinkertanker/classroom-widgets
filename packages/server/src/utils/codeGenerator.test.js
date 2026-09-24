@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { generateCode, generateSessionCode } = require('./codeGenerator');
-const { SAFE_CHARACTERS, LIMITS } = require('../config/constants');
+const { generateCode } = require('./codeGenerator');
+const { SAFE_CHARACTERS } = require('../config/constants');
 
 describe('generateCode', () => {
   it('generates codes of the requested length from safe characters only', () => {
@@ -12,11 +12,6 @@ describe('generateCode', () => {
         assert.ok(SAFE_CHARACTERS.includes(ch), `unexpected character ${ch}`);
       }
     }
-  });
-
-  it('defaults to the configured room code length', () => {
-    assert.equal(generateCode().length, LIMITS.ROOM_CODE_LENGTH);
-    assert.ok(LIMITS.ROOM_CODE_LENGTH >= 6, 'session codes must be at least 6 characters');
   });
 
   it('does not use Math.random', (t) => {
@@ -40,14 +35,5 @@ describe('generateCode', () => {
       () => generateCode(1, everything),
       /maximum attempts/
     );
-  });
-});
-
-describe('generateSessionCode', () => {
-  it('derives the exclusion set from existing session keys', () => {
-    const sessions = new Map([['AAAAA', {}], ['BBBBB', {}]]);
-    const code = generateSessionCode(sessions);
-    assert.equal(code.length, LIMITS.ROOM_CODE_LENGTH);
-    assert.ok(!sessions.has(code));
   });
 });

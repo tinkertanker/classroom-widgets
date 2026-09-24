@@ -104,10 +104,6 @@ describe('parseBackgroundOpacityFromSearch', () => {
     expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=0')).toBe(0);
   });
 
-  it('parses an explicit 1', () => {
-    expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=1')).toBe(1);
-  });
-
   it('clamps values above 1', () => {
     expect(parseBackgroundOpacityFromSearch('?backgroundOpacity=2.5')).toBe(1);
   });

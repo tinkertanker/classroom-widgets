@@ -65,11 +65,6 @@ describe('Session', () => {
   });
 
   describe('participants', () => {
-    it('defaults studentId to the socket id', () => {
-      session.addParticipant('sock-1', 'Ada');
-      assert.equal(session.getParticipant('sock-1').studentId, 'sock-1');
-    });
-
     it('removes participants from session and all rooms', () => {
       const room = session.createRoom('rtfeedback', 'w-1');
       session.addParticipant('sock-1', 'Ada', 'ada-1');
@@ -80,40 +75,6 @@ describe('Session', () => {
       assert.equal(removed, true);
       assert.equal(session.getParticipantCount(), 0);
       assert.equal(room.getParticipantCount(), 0);
-    });
-
-    it('returns false when removing an unknown participant', () => {
-      assert.equal(session.removeParticipant('ghost'), false);
-    });
-  });
-
-  describe('closeRoom', () => {
-    it('closes rooms and reports whether anything was removed', () => {
-      session.createRoom('poll', 'w-1');
-      assert.equal(session.closeRoom('poll', 'w-1'), true);
-      assert.equal(session.closeRoom('poll', 'w-1'), false);
-      assert.equal(session.activeRooms.size, 0);
-    });
-  });
-
-  describe('_roomKey', () => {
-    it('builds a key from a room type with no widget id', () => {
-      assert.equal(session._roomKey('poll', null), 'poll');
-    });
-
-    it('builds a key from a room type with a plain widget id', () => {
-      assert.equal(session._roomKey('poll', 'w-1'), 'poll:w-1');
-    });
-
-    it('builds a key from a widget id containing colons', () => {
-      assert.equal(session._roomKey('poll', 'widget:with:colons'), 'poll:widget:with:colons');
-    });
-
-    it('produces the same keys createRoom/getRoom/closeRoom relied on before the refactor', () => {
-      session.createRoom('poll', 'widget:with:colons');
-      assert.ok(session.activeRooms.has(session._roomKey('poll', 'widget:with:colons')));
-      assert.ok(session.getRoom('poll', 'widget:with:colons'));
-      assert.equal(session.closeRoom('poll', 'widget:with:colons'), true);
     });
   });
 
@@ -149,10 +110,6 @@ describe('Session', () => {
   });
 
   describe('inactivity', () => {
-    it('is not inactive when fresh', () => {
-      assert.equal(session.isInactive(), false);
-    });
-
     it('is only inactive when idle AND empty', () => {
       session.lastActivity = Date.now() - 5000;
       assert.equal(session.isInactive(1000), true);

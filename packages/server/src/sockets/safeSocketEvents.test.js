@@ -14,24 +14,6 @@ describe('installSafeSocketEvents', () => {
     installSafeSocketEvents(socket);
   });
 
-  it('still delivers events and arguments to the handler', () => {
-    const received = [];
-    socket.on('custom:event', (a, b) => received.push([a, b]));
-
-    socket.emit('custom:event', { x: 1 }, 'second');
-
-    assert.deepEqual(received, [[{ x: 1 }, 'second']]);
-  });
-
-  it('swallows a synchronous throw instead of crashing the process', () => {
-    socket.on('boom', () => {
-      throw new Error('handler exploded');
-    });
-
-    // Without the wrapper this emit would throw straight through EventEmitter.
-    socket.emit('boom', null);
-  });
-
   it('answers the acknowledgement callback with INTERNAL_ERROR when a handler throws', () => {
     socket.on('boom', (_data, _callback) => {
       throw new Error('handler exploded');
@@ -81,18 +63,6 @@ describe('installSafeSocketEvents', () => {
 
     assert.equal(response.success, false);
     assert.equal(response.error.code, 'INTERNAL_ERROR');
-  });
-
-  it('passes through resolved values from async handlers', async () => {
-    const seen = [];
-    socket.on('ok', async (data) => {
-      seen.push(data);
-    });
-
-    socket.emit('ok', 42);
-    await new Promise(resolve => setImmediate(resolve));
-
-    assert.deepEqual(seen, [42]);
   });
 
   it('registers multiple handlers independently', () => {

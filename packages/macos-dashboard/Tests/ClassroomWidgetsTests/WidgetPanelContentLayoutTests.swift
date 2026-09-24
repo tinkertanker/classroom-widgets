@@ -45,16 +45,6 @@ final class WidgetPanelContentLayoutTests: XCTestCase {
         XCTAssertEqual(result, NSSize(width: 450, height: 460))
     }
 
-    func testUnconstrainedAspectLeavesResizeUnchanged() {
-        let proposed = NSSize(width: 450, height: 600)
-        XCTAssertEqual(
-            WidgetPanelContentLayout.constrainedSize(
-                proposed, current: NSSize(width: 350, height: 425), descriptor: descriptor(aspectRatio: nil)
-            ),
-            proposed
-        )
-    }
-
     private func descriptor(
         aspectRatio: CGFloat?,
         maximum: WidgetPanelDescriptor.Size? = nil
