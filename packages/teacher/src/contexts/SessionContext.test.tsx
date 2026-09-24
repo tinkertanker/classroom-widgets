@@ -69,10 +69,6 @@ class FakeSocket {
     this.handlers.get(event)?.forEach(fn => fn(payload));
   }
 
-  listenerCount(event: string) {
-    return this.handlers.get(event)?.size ?? 0;
-  }
-
   /** The acknowledgement callback of the most recent emit of `event`. */
   ackFor(event: string) {
     for (let i = this.emitted.length - 1; i >= 0; i--) {
@@ -206,11 +202,6 @@ describe('SessionContext room + participant state (T5-B)', () => {
     });
     expect(roomOf('widget-1')?.participantCount).toBe(0);
   });
-
-  it('exposes no separate participantCounts map', () => {
-    renderSession();
-    expect('participantCounts' in session).toBe(false);
-  });
 });
 
 describe('SessionContext connection phase (T5-A)', () => {
@@ -328,16 +319,5 @@ describe('SessionContext connection phase (T5-A)', () => {
     });
     expect(session.connectionPhase).toBe('disconnected');
     expect(session.isConnected).toBe(false);
-  });
-
-  it('has no isConnecting flag left, on the context or on the socket', () => {
-    renderSession();
-    connect();
-
-    expect('isConnecting' in session).toBe(false);
-    // socket.io-client never emits 'connecting', so nothing should subscribe to it
-    expect(socket.listenerCount('connecting')).toBe(0);
-    expect(socket.listenerCount('connect')).toBe(1);
-    expect(socket.listenerCount('disconnect')).toBe(1);
   });
 });

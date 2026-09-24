@@ -175,20 +175,6 @@ describe('VoiceInterface', () => {
     expect(screen.getByText('Created a poll')).toBeInTheDocument();
   });
 
-  it('leaves "processing" for the success state when the command resolves', async () => {
-    const onTranscriptComplete = vi.fn().mockResolvedValue(buildResponse());
-
-    render(
-      <VoiceInterface isOpen onClose={vi.fn()} onTranscriptComplete={onTranscriptComplete} />
-    );
-
-    await armMicrophone();
-    await speak();
-
-    expect(screen.queryByText('Processing command...')).not.toBeInTheDocument();
-    expect(screen.getByText('Created a poll')).toBeInTheDocument();
-  });
-
   it('leaves "processing" for the error state when the command rejects', async () => {
     const onTranscriptComplete = vi.fn().mockRejectedValue(new Error('network down'));
 

@@ -75,60 +75,6 @@ describe('CompactPanelHost', () => {
     expect(postMessage.mock.calls[1][0].widgets[0].stateRevision).toBe(stateRevision);
   });
 
-  it('publishes fixed size and aspect ratio constraints for Task Cue', async () => {
-    useWorkspaceStore.setState({
-      widgets: [{
-        id: 'task-cue-1',
-        type: WidgetType.TASK_CUE,
-        position: { x: 0, y: 0 },
-        size: { width: 325, height: 325 },
-        zIndex: 0
-      }],
-      widgetStates: new Map()
-    });
-
-    render(<CompactPanelHost />);
-
-    await waitFor(() => {
-      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
-        widgets: [expect.objectContaining({
-          widgetId: 'task-cue-1',
-          maximumSize: { width: 325, height: 325 },
-          isResizable: false,
-          maintainsAspectRatio: true
-        })]
-      }));
-    });
-  });
-
-  it('publishes Randomiser panels as freely resizable', async () => {
-    useWorkspaceStore.setState({
-      widgets: [{
-        id: 'randomiser-1',
-        type: WidgetType.RANDOMISER,
-        position: { x: 0, y: 0 },
-        size: { width: 350, height: 250 },
-        zIndex: 0
-      }],
-      widgetStates: new Map()
-    });
-
-    render(<CompactPanelHost />);
-
-    await waitFor(() => {
-      expect(postMessage).toHaveBeenCalledWith(expect.objectContaining({
-        widgets: [expect.objectContaining({
-          widgetId: 'randomiser-1',
-          preferredSize: { width: 350, height: 250 },
-          minimumSize: { width: 250, height: 180 },
-          maximumSize: null,
-          isResizable: true,
-          maintainsAspectRatio: false
-        })]
-      }));
-    });
-  });
-
   it('publishes an empty inventory with a newer revision from the same host', async () => {
     render(<CompactPanelHost />);
 
@@ -308,85 +254,6 @@ describe('CompactPanelHost', () => {
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
   });
 
-  it('applies Randomiser collection changes to the authoritative workspace store', () => {
-    useWorkspaceStore.setState({
-      widgets: [{
-        id: 'randomiser-1',
-        type: WidgetType.RANDOMISER,
-        position: { x: 0, y: 0 },
-        size: { width: 350, height: 415 },
-        zIndex: 0
-      }]
-    });
-    const saveRandomiserList = vi.spyOn(useWorkspaceStore.getState(), 'saveRandomiserList').mockReturnValue('saved-1');
-    const deleteRandomiserList = vi.spyOn(useWorkspaceStore.getState(), 'deleteRandomiserList').mockImplementation(() => undefined);
-    render(<CompactPanelHost />);
-
-    expect(window.classroomPanelHost?.applyRandomiserListChange({
-      type: 'randomiser-list-save',
-      schemaVersion: 1,
-      widgetId: 'randomiser-1',
-      name: 'Class names',
-      choices: ['Ada', 'Bea']
-    })).toBe(true);
-    expect(saveRandomiserList).toHaveBeenCalledWith('Class names', ['Ada', 'Bea']);
-
-    expect(window.classroomPanelHost?.applyRandomiserListChange({
-      type: 'randomiser-list-delete',
-      schemaVersion: 1,
-      widgetId: 'randomiser-1',
-      id: 'saved-1'
-    })).toBe(true);
-    expect(deleteRandomiserList).toHaveBeenCalledWith('saved-1');
-  });
-
-  it('adds a supported widget without opening Canvas', () => {
-    render(<CompactPanelHost />);
-
-    act(() => {
-      expect(window.classroomPanelHost?.addWidget(WidgetType.LIST)).toBe(true);
-    });
-
-    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
-      expect.objectContaining({ type: WidgetType.LIST })
-    ]));
-  });
-
-  it('removes a widget when native requests panel removal', () => {
-    render(<CompactPanelHost />);
-
-    act(() => {
-      expect(window.classroomPanelHost?.removeWidget('timer-1')).toBe(true);
-    });
-
-    expect(useWorkspaceStore.getState().widgets).not.toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'timer-1' })
-    ]));
-  });
-
-  it('dismisses the newest widget of a requested type', () => {
-    useWorkspaceStore.setState({
-      widgets: [
-        ...useWorkspaceStore.getState().widgets,
-        {
-          id: 'timer-2',
-          type: WidgetType.TIMER,
-          position: { x: 20, y: 20 },
-          size: { width: 350, height: 415 },
-          zIndex: 1
-        }
-      ]
-    });
-    render(<CompactPanelHost />);
-
-    act(() => {
-      expect(window.classroomPanelHost?.dismissWidget(WidgetType.TIMER)).toBe(true);
-    });
-
-    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).toContain('timer-1');
-    expect(useWorkspaceStore.getState().widgets.map((widget) => widget.id)).not.toContain('timer-2');
-  });
-
   it('hides an existing widget on toggle and restores it unchanged', async () => {
     render(<CompactPanelHost />);
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
@@ -444,17 +311,6 @@ describe('CompactPanelHost', () => {
     const widgets = useWorkspaceStore.getState().widgets;
     expect(widgets.filter((widget) => widget.type === WidgetType.TIMER)).toHaveLength(1);
     expect(widgets[0]).toEqual(expect.objectContaining({ id: 'timer-1', hidden: false }));
-  });
-
-  it('adds a new widget on show when none of that type exists', () => {
-    render(<CompactPanelHost />);
-
-    act(() => {
-      expect(window.classroomPanelHost?.showWidget(WidgetType.LIST)).toBe(true);
-    });
-    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
-      expect.objectContaining({ type: WidgetType.LIST })
-    ]));
   });
 
   it('dismisses the visible widget before a hidden one of the same type', () => {

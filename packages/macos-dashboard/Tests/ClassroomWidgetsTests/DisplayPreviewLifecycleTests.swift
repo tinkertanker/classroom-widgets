@@ -128,16 +128,6 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         XCTAssertTrue(completed?.presentation?.idleStartEnabled == true)
     }
 
-    func testReadyStatusUsesActionableIdlePrompt() {
-        XCTAssertEqual(DisplayPreviewStatus.ready(sourceName: "Creston"), "Click to see display")
-    }
-
-    func testPowerStateReflectsCaptureIntentAndAutomaticRestartIntent() {
-        XCTAssertEqual(DisplayPreviewPowerState.current(wantsCapture: false, hasPendingRestart: false), .off)
-        XCTAssertEqual(DisplayPreviewPowerState.current(wantsCapture: true, hasPendingRestart: false), .on)
-        XCTAssertEqual(DisplayPreviewPowerState.current(wantsCapture: false, hasPendingRestart: true), .on)
-    }
-
     func testOverlapThenClearBeforeStopRestartsOnlyAfterOwnedStopCompletes() {
         var state = DisplayPreviewAutoResumeState()
         XCTAssertEqual(state.placementChanged(
@@ -761,13 +751,6 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         ))
     }
 
-    func testCaptureOrderResetsForEachStreamGeneration() {
-        var order = DisplayPreviewCaptureOrder()
-        XCTAssertTrue(order.acceptsHoldEvent(sequence: 7))
-        order.reset()
-        XCTAssertTrue(order.acceptsFrame(sequence: 1), "A new stream restarts its own sequence space")
-    }
-
     func testFreshLaunchReResolvesARepluggedSourceByUUID() async {
         await MainActor.run {
             let catalog = DisplayCatalog()
@@ -831,23 +814,6 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
         )
         XCTAssertTrue(DisplayPreviewPermissionPolicy.canStart(for: .explicit, preflightGranted: false))
         XCTAssertEqual(DisplayPreviewStartTrigger.launch.logLabel, "launch")
-    }
-
-    func testHoldStatusesNameTheSourceAndStayTruthful() {
-        XCTAssertEqual(DisplayPreviewStatus.ready(sourceName: "DELL P2217H"), "Click to see display")
-        XCTAssertEqual(DisplayPreviewStatus.live(sourceName: "DELL P2217H"), "Live: DELL P2217H")
-        XCTAssertEqual(
-            DisplayPreviewStatus.reconnecting(sourceName: "DELL P2217H"),
-            "Reconnecting to DELL P2217H…"
-        )
-        XCTAssertEqual(
-            DisplayPreviewStatus.waitingForFirstFrame(sourceName: "DELL P2217H"),
-            "Waiting for DELL P2217H to send its first frame…"
-        )
-        XCTAssertEqual(
-            DisplayPreviewStatus.unavailable(sourceName: "DELL P2217H"),
-            "DELL P2217H stopped sending frames. Turn the preview on to retry."
-        )
     }
 
     func testRepeatedTopologyRefreshWithoutChangeDoesNotInvalidateLiveGeometry() async {

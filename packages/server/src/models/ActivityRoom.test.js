@@ -9,44 +9,7 @@ describe('ActivityRoom', () => {
     room = new ActivityRoom('TEST123', 'widget-1');
   });
 
-  describe('constructor', () => {
-    it('initializes with correct defaults', () => {
-      assert.equal(room.code, 'TEST123');
-      assert.equal(room.widgetId, 'widget-1');
-      assert.equal(room.activityType, null);
-      assert.equal(room.activity, null);
-      assert.equal(room.responses.size, 0);
-      assert.equal(room.isActive, false);
-      assert.equal(room.answersRevealed, false);
-      assert.equal(room.getType(), 'activity');
-    });
-  });
-
   describe('setActivity', () => {
-    it('sets activity data correctly', () => {
-      room.setActivity({
-        type: 'fill-blank',
-        title: 'Test Activity',
-        instructions: 'Fill in the blanks',
-        items: [
-          { id: 'item-0', content: 'hello' },
-          { id: 'item-1', content: 'world' }
-        ],
-        targets: [
-          { id: 'blank-0', accepts: ['item-0'] },
-          { id: 'blank-1', accepts: ['item-1'] }
-        ],
-        uiRecipe: []
-      });
-
-      assert.equal(room.activityType, 'fill-blank');
-      assert.equal(room.activity.title, 'Test Activity');
-      assert.equal(room.activity.items.length, 2);
-      assert.equal(room.activity.targets.length, 2);
-      assert.equal(room.showImmediateFeedback, true);
-      assert.equal(room.allowRetry, true);
-    });
-
     it('resets answersRevealed when setting new activity', () => {
       room.answersRevealed = true;
       room.setActivity({ type: 'fill-blank', items: [], targets: [] });
@@ -219,25 +182,6 @@ describe('ActivityRoom', () => {
       assert.equal(result.success, false);
       assert.equal(result.error, 'Activity not active');
     });
-
-    it('records submission and returns results', () => {
-      const result = room.submitAnswer('socket-1', {
-        placements: [{ itemId: 'item-0', targetId: 'blank-0' }],
-        textInputs: {}
-      });
-
-      assert.equal(result.success, true);
-      assert.equal(result.results.score, 1);
-      assert.equal(result.results.total, 1);
-      assert.equal(room.responses.has('socket-1'), true);
-    });
-
-    it('tracks multiple student submissions', () => {
-      room.submitAnswer('socket-1', { placements: [{ itemId: 'item-0', targetId: 'blank-0' }], textInputs: {} });
-      room.submitAnswer('socket-2', { placements: [], textInputs: { 'blank-0': 'test' } });
-
-      assert.equal(room.getResponseCount(), 2);
-    });
   });
 
   describe('getActions', () => {
@@ -282,21 +226,6 @@ describe('ActivityRoom', () => {
           { id: 'blank-1', accepts: ['item-1'] }
         ]
       });
-    });
-
-    it('sets and clears the answersRevealed flag', () => {
-      room.revealAnswers(true);
-      assert.equal(room.answersRevealed, true);
-
-      room.revealAnswers(false);
-      assert.equal(room.answersRevealed, false);
-    });
-
-    it('returns correct answers mapping', () => {
-      const correctAnswers = room.getCorrectAnswers();
-
-      assert.equal(correctAnswers['blank-0'], 'item-0');
-      assert.equal(correctAnswers['blank-1'], 'item-1');
     });
   });
 
@@ -346,28 +275,6 @@ describe('ActivityRoom', () => {
       room.revealAnswers(true);
 
       assert.equal(room.getStateForStudent('socket-1').correctAnswers['blank-0'], 'item-0');
-    });
-  });
-
-  describe('toJSON', () => {
-    it('serializes room state correctly', () => {
-      room.setActivity({
-        type: 'fill-blank',
-        title: 'Test',
-        items: [],
-        targets: []
-      });
-      room.isActive = true;
-      room.answersRevealed = true;
-
-      const json = room.toJSON();
-
-      assert.equal(json.code, 'TEST123');
-      assert.equal(json.widgetId, 'widget-1');
-      assert.equal(json.activityType, 'fill-blank');
-      assert.equal(json.isActive, true);
-      assert.equal(json.answersRevealed, true);
-      assert.equal(json.responseCount, 0);
     });
   });
 

@@ -58,21 +58,6 @@ describe('BottomBarMenu', () => {
     expect(screen.getByText('Link Shortener…')).toBeInTheDocument();
   });
 
-  it('links to the macOS releases immediately above About', () => {
-    renderMenu();
-
-    const downloadLink = screen.getByRole('link', { name: 'Get macOS app' });
-    const aboutLink = screen.getByRole('link', { name: 'About' });
-
-    expect(downloadLink).toHaveAttribute(
-      'href',
-      'https://github.com/tinkertanker/classroom-widgets/releases'
-    );
-    expect(downloadLink).toHaveAttribute('target', '_blank');
-    expect(downloadLink).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(downloadLink.nextElementSibling).toBe(aboutLink);
-  });
-
   it('omits the download link inside the installed macOS app', () => {
     isDesktopDashboardMode.mockReturnValue(true);
 

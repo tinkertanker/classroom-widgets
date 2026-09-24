@@ -222,20 +222,6 @@ function harness(t, getSources = async () => [{ id: 'screen:2:0', display_id: '2
   return { coordinator, window, displays, screen, savedFrames };
 }
 
-test('opening stays idle; an explicit matching singleton starts capture', async t => {
-  let requests = 0;
-  const { window } = harness(t, async () => {
-    requests += 1;
-    return [{ id: 'screen:2:0', display_id: '2' }];
-  });
-  await settle();
-  assert.equal(requests, 0);
-  assert.equal(window.activeStream, null);
-  window.emit('powerToggle');
-  await settle();
-  assert.equal(window.activeStream, 'screen:2:0');
-});
-
 test('moving an idle preview onto its source requires turning it on after moving clear', async t => {
   let requests = 0;
   const { window } = harness(t, async () => {

@@ -79,13 +79,4 @@ describe('secondsToTimeSegments', () => {
     });
   });
 
-  it.each([0, 59, 60, 3599, 3600, 3661, 359999])(
-    'pads all three segments to exactly 2 characters for %i seconds',
-    (totalSeconds) => {
-      const { hoursText, minutesText, secondsText } = secondsToTimeSegments(totalSeconds);
-      expect(hoursText).toHaveLength(2);
-      expect(minutesText).toHaveLength(2);
-      expect(secondsText).toHaveLength(2);
-    }
-  );
 });

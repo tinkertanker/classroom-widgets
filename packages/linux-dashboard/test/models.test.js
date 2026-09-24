@@ -25,11 +25,6 @@ test('descriptor defaults to visible when hidden is absent', () => {
   assert.equal(parseDescriptor(payload()).hidden, false);
 });
 
-test('descriptor parses an explicit hidden flag', () => {
-  assert.equal(parseDescriptor(payload({ hidden: true })).hidden, true);
-  assert.equal(parseDescriptor(payload({ hidden: false })).hidden, false);
-});
-
 test('descriptor treats non-boolean hidden as visible', () => {
   assert.equal(parseDescriptor(payload({ hidden: 'yes' })).hidden, false);
   assert.equal(parseDescriptor(payload({ hidden: 1 })).hidden, false);

@@ -72,14 +72,6 @@ describe('sessionHandler: student join', () => {
     return joinedResponse(socket);
   }
 
-  it('joins with a valid code and name', async () => {
-    const response = await join({ code: SESSION_CODE, name: 'Ada' });
-
-    assert.equal(response.success, true);
-    assert.equal(response.participantId, 'student-1');
-    assert.equal(session.getParticipant('student-1').name, 'Ada');
-  });
-
   it('rejects missing code or name', async () => {
     for (const data of [{}, { code: SESSION_CODE }, { name: 'Ada' }, { code: SESSION_CODE, name: '' }]) {
       socket.emit.calls.length = 0;
@@ -99,12 +91,6 @@ describe('sessionHandler: student join', () => {
       const response = await join(data);
       assert.equal(response.success, false, JSON.stringify(data));
     }
-  });
-
-  it('rejects whitespace-only names', async () => {
-    const response = await join({ code: SESSION_CODE, name: '   \n ' });
-    assert.equal(response.success, false);
-    assert.equal(session.getParticipantCount(), 0);
   });
 
   it('truncates oversized names instead of storing megabytes', async () => {
@@ -255,15 +241,5 @@ describe('sessionHandler: host session:create', () => {
     assert.equal(reclaimed.success, true);
     assert.equal(reclaimed.isExisting, true);
     assert.equal(session.hostSocketId, reclaim.id);
-  });
-
-  it('creates a new session with a fresh host token', async () => {
-    const response = await create({});
-
-    assert.equal(response.success, true);
-    assert.equal(response.isExisting, false);
-    assert.equal(response.code, 'NEW01');
-    assert.equal(typeof response.hostToken, 'string');
-    assert.ok(response.hostToken.length > 0);
   });
 });

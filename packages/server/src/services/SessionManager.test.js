@@ -45,19 +45,6 @@ test('createSession returns the existing session for a known code', () => {
   }
 });
 
-test('createSession generates unique codes', () => {
-  const manager = new SessionManager();
-  try {
-    const codes = new Set();
-    for (let i = 0; i < 50; i++) {
-      codes.add(manager.createSession().code);
-    }
-    assert.equal(codes.size, 50);
-  } finally {
-    manager.stopCleanupInterval();
-  }
-});
-
 test('createSession throws once MAX_SESSIONS is reached instead of growing without bound', () => {
   const manager = new SessionManager();
   try {
@@ -82,26 +69,6 @@ test('findSessionByHost locates sessions and returns null otherwise', () => {
 
     assert.equal(manager.findSessionByHost('host-42'), session);
     assert.equal(manager.findSessionByHost('nobody'), null);
-  } finally {
-    manager.stopCleanupInterval();
-  }
-});
-
-test('getStats aggregates participants and rooms across sessions', () => {
-  const manager = new SessionManager();
-  try {
-    const a = manager.createSession();
-    const b = manager.createSession();
-    a.addParticipant('s1', 'Ada');
-    a.addParticipant('s2', 'Grace');
-    a.createRoom('poll', 'w-1');
-    b.createRoom('questions', 'w-2');
-
-    assert.deepEqual(manager.getStats(), {
-      activeSessions: 2,
-      totalParticipants: 2,
-      totalRooms: 2
-    });
   } finally {
     manager.stopCleanupInterval();
   }

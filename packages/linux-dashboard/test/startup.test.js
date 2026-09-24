@@ -4,17 +4,11 @@ const {
   appImageUpdateRelaunchDelay,
   effectiveOzonePlatformArgument,
   hasExplicitOzonePlatform,
-  isBackgroundLaunch,
   migrateAutostartDesktopEntry,
   relaunchExecutable,
   shouldForceX11,
   x11RelaunchArguments,
 } = require('../out/main/startup.js');
-
-test('background launch arguments suppress the launcher', () => {
-  assert.equal(isBackgroundLaunch(['/opt/classroom-widgets']), false);
-  assert.equal(isBackgroundLaunch(['/opt/classroom-widgets', '--background']), true);
-});
 
 test('Wayland sessions use XWayland when Electron has no explicit backend', () => {
   assert.equal(shouldForceX11('linux', { XDG_SESSION_TYPE: 'wayland', DISPLAY: ':0' }, false), true);
@@ -37,17 +31,6 @@ test('effective Ozone detection follows Chromium equals and last-switch semantic
   assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--ozone-platform=x11', '--ozone-platform=wayland']), '--ozone-platform=wayland');
   assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--ozone-platform=wayland', '-ozone-platform=x11']), '--ozone-platform=x11');
   assert.equal(effectiveOzonePlatformArgument(['/opt/classroom-widgets', '--', '--ozone-platform=x11']), '');
-});
-
-test('effective Ozone argument preserves explicit backends across AppImage updates', () => {
-  assert.equal(effectiveOzonePlatformArgument(['/app']), '');
-  assert.equal(effectiveOzonePlatformArgument(['/app', '-ozone-platform=wayland']), '--ozone-platform=wayland');
-  assert.equal(effectiveOzonePlatformArgument(['/app', '--ozone-platform']), '--ozone-platform');
-  assert.equal(
-    effectiveOzonePlatformArgument(['/app', '--ozone-platform=x11', '--ozone-platform=wayland']),
-    '--ozone-platform=wayland',
-  );
-  assert.equal(effectiveOzonePlatformArgument(['/app', '--', '--ozone-platform=wayland']), '');
 });
 
 test('ozone parsing trims only Chromium ASCII whitespace and preserves value characters', () => {

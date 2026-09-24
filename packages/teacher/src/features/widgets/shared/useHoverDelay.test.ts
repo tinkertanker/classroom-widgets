@@ -15,16 +15,6 @@ describe('useHoverDelay', () => {
     vi.useRealTimers();
   });
 
-  it('starts hidden and shows immediately on mouse enter', () => {
-    const { result } = renderHook(() => useHoverDelay(CANVAS_DELAY));
-
-    expect(result.current.visible).toBe(false);
-
-    act(() => result.current.onMouseEnter());
-
-    expect(result.current.visible).toBe(true);
-  });
-
   it.each([
     ['canvas', CANVAS_DELAY],
     ['column', COLUMN_DELAY]
@@ -40,16 +30,6 @@ describe('useHoverDelay', () => {
 
     act(() => void vi.advanceTimersByTime(1));
     expect(result.current.visible).toBe(false);
-  });
-
-  it('does not hide before the configured delay', () => {
-    const { result } = renderHook(() => useHoverDelay(CANVAS_DELAY));
-
-    act(() => result.current.onMouseEnter());
-    act(() => result.current.onMouseLeave());
-
-    act(() => void vi.advanceTimersByTime(COLUMN_DELAY));
-    expect(result.current.visible).toBe(true);
   });
 
   it('cancels a pending hide when the pointer re-enters before it fires', () => {

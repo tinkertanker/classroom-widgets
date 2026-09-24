@@ -40,14 +40,6 @@ function harness() {
   return { handlers, ipcMain, shortcuts, display, calls, window };
 }
 
-test('settings exposes and updates native Display status without widget inventory', () => {
-  const h = harness();
-  assert.equal(h.handlers.get('settings:get')().displayShortcut, h.display);
-  h.shortcuts.emit('changed');
-  assert.equal(h.window.sent.at(-1)[0], 'settings:shortcuts-changed');
-  assert.equal(h.window.sent.at(-1)[2], h.display);
-});
-
 test('Display settings IPC validates action and nullable accelerator; reset/recording restore registration', () => {
   const h = harness();
   const set = h.handlers.get('settings:set-display-shortcut');

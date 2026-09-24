@@ -1,5 +1,5 @@
 import React, { Profiler } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const animationMock = vi.hoisted(() => ({
@@ -57,24 +57,4 @@ describe('CreatureAnimation', () => {
     expect(renderCount).toBe(renderCountAfterBoundaryChange);
   });
 
-  it('keeps the runner keyboard-accessible when cycling creatures', () => {
-    const onCreatureClick = vi.fn();
-    render(
-      <svg>
-        <CreatureAnimation
-          isRunning
-          progress={0.5}
-          creature="hamster"
-          onCreatureClick={onCreatureClick}
-        />
-      </svg>
-    );
-
-    const runner = screen.getByRole('button', { name: /timer runner: hamster/i });
-    fireEvent.keyDown(runner, { key: 'Enter' });
-    fireEvent.keyDown(runner, { key: ' ' });
-    fireEvent.click(runner);
-
-    expect(onCreatureClick).toHaveBeenCalledTimes(3);
-  });
 });

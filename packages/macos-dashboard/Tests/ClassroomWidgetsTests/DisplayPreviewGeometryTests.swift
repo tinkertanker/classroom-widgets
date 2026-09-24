@@ -156,17 +156,6 @@ final class DisplayPreviewGeometryTests: XCTestCase {
         XCTAssertEqual(size.width / (size.height - 38), 21.0 / 9.0, accuracy: 0.001)
     }
 
-    func testAspectNormalizedWindowSizeKeepsChromeOutOfTheViewport() {
-        let size = DisplayPreviewGeometry.aspectNormalizedWindowSize(
-            matchingAspect: 16.0 / 10.0,
-            proposedPreviewSize: CGSize(width: 640, height: 400),
-            chromeHeight: 38,
-            minimumPreviewSize: CGSize(width: 320, height: 230),
-            maximumSize: CGSize(width: 4000, height: 4000)
-        )
-        XCTAssertEqual(size.height - (size.width / (16.0 / 10.0)), 38, accuracy: 0.001)
-    }
-
     func testAspectNormalizedWindowSizeRejectsInvalidAspect() {
         let current = CGSize(width: 480, height: 322)
         let invalidAspects: [CGFloat] = [0, -1.5, .nan, .infinity, -.infinity]

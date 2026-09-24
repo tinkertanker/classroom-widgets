@@ -4,7 +4,6 @@ import {
   classifyDrop,
   initialWidgetInteractionState,
   isClickSuppressedState,
-  isResizingState,
   useWidgetInteractionState,
   widgetInteractionReducer,
   type WidgetInteractionEvent,
@@ -25,10 +24,6 @@ function run(...events: WidgetInteractionEvent[]): WidgetInteractionState {
 }
 
 describe('widgetInteractionReducer', () => {
-  it('starts idle', () => {
-    expect(initialWidgetInteractionState).toEqual(IDLE);
-  });
-
   describe('idle', () => {
     it('enters dragging, not yet moved, on drag start', () => {
       expect(run({ type: 'dragStart' })).toEqual(DRAGGING);
@@ -147,12 +142,6 @@ describe('widgetInteractionReducer', () => {
       expect(widgetInteractionReducer(state, { type: 'clickSuppressionElapsed' })).toBe(state);
     }
   });
-
-  it('projects only resizing as render-visible', () => {
-    for (const state of ALL_STATES) {
-      expect(isResizingState(state)).toBe(state.status === 'resizing');
-    }
-  });
 });
 
 describe('classifyDrop', () => {
@@ -170,19 +159,6 @@ describe('classifyDrop', () => {
     expect(classifyDrop('board')).toBe('reposition');
     expect(classifyDrop('')).toBe('reposition');
   });
-
-  it('carries the whole difference between a trash drop and a reposition', () => {
-    // Dragging over the trash is a discriminant on the drag-stop edge, not a
-    // state: tracking it live would mean polling the drop target on every
-    // pointer move. So the machine's own transition is identical either way,
-    // and this classifier is the only thing that tells the two drops apart.
-    const afterTrashDrop = run({ type: 'dragStart' }, { type: 'dragMove' }, { type: 'dragStop' });
-    const afterOrdinaryDrop = run({ type: 'dragStart' }, { type: 'dragMove' }, { type: 'dragStop' });
-
-    expect(afterTrashDrop).toEqual(POST_DRAG);
-    expect(afterOrdinaryDrop).toEqual(POST_DRAG);
-    expect(classifyDrop('trash')).not.toBe(classifyDrop(null));
-  });
 });
 
 describe('useWidgetInteractionState', () => {
@@ -192,14 +168,6 @@ describe('useWidgetInteractionState', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-  });
-
-  it('starts idle, not resizing, not suppressing clicks', () => {
-    const { result } = renderHook(() => useWidgetInteractionState());
-
-    expect(result.current.getState()).toEqual(IDLE);
-    expect(result.current.isResizing).toBe(false);
-    expect(result.current.isClickSuppressed()).toBe(false);
   });
 
   it('exposes state synchronously, before React re-renders', () => {

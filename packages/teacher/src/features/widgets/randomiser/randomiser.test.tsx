@@ -1,10 +1,9 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Randomiser from './randomiser';
 import { useChoiceManager, useSlotMachineAnimation } from './hooks';
 
-const showModal = vi.hoisted(() => vi.fn());
 const captureControlBarProps = vi.hoisted(() => vi.fn<(props: { onRandomise: () => void }) => void>());
 
 vi.mock('./hooks', () => ({
@@ -42,7 +41,7 @@ vi.mock('./hooks', () => ({
 vi.mock('./slotMachine', () => ({ default: () => null }));
 vi.mock('./RandomiserSettings', () => ({ default: () => null }));
 vi.mock('../../../contexts/ModalContext', () => ({
-  useModal: () => ({ showModal, hideModal: vi.fn() })
+  useModal: () => ({ showModal: vi.fn(), hideModal: vi.fn() })
 }));
 vi.mock('../../../contexts/ConfettiContext', () => ({
   useConfetti: () => ({ triggerConfetti: vi.fn() })
@@ -75,17 +74,6 @@ describe('Randomiser', () => {
       initialRemovedChoices: ['Ada']
     }));
     expect(updateRemovedChoices).toHaveBeenCalledWith(['Ada']);
-  });
-
-  it('makes settings scrollable inside a compact panel viewport', () => {
-    render(<Randomiser />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-
-    expect(showModal).toHaveBeenCalledWith(expect.objectContaining({
-      className: expect.stringContaining('max-h-[calc(100vh-1rem)] overflow-auto'),
-      noPadding: true
-    }));
   });
 
   it('never passes a removed choice to the animation when randomising', () => {

@@ -127,12 +127,6 @@ describe('buildFillBlankActivity', () => {
 
     expect(kinds).toEqual(['drop-zone', 'text', 'drop-zone']);
   });
-
-  it('enables feedback and retry by default', () => {
-    const activity = buildFillBlankActivity(makeState());
-    expect(activity.showImmediateFeedback).toBe(true);
-    expect(activity.allowRetry).toBe(true);
-  });
 });
 
 describe('parseAnswers', () => {

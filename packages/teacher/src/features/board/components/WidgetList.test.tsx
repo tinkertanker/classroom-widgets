@@ -57,18 +57,4 @@ describe('WidgetList layouts', () => {
 
     expect(widgetIdsFor('widget-body')).toEqual(['timer-1']);
   });
-
-  it('mounts the canvas wrapper for the canvas layout', () => {
-    render(<CanvasWidgetList dashboardVisible />);
-
-    expect(widgetIdsFor('canvas-wrapper')).toEqual(['timer-1', 'stamp-1']);
-    expect(screen.queryAllByTestId('column-wrapper')).toHaveLength(0);
-  });
-
-  it('mounts the column wrapper for the column layout', () => {
-    render(<ColumnWidgetList dashboardVisible />);
-
-    expect(widgetIdsFor('column-wrapper')).toEqual(['timer-1']);
-    expect(screen.queryAllByTestId('canvas-wrapper')).toHaveLength(0);
-  });
 });

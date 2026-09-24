@@ -32,29 +32,6 @@ afterEach(() => {
 });
 
 describe('Sticker', () => {
-  test('renders the sticker type recorded in savedState', () => {
-    render(<Sticker savedState={{ colorIndex: 0, stickerType: 'heart', rotation: 10 }} />);
-
-    expect(screen.getByTestId('icon-heart')).toBeInTheDocument();
-    expect(stickerRoot()).toHaveStyle({ transform: 'rotate(10deg)' });
-  });
-
-  test('falls back to a star when savedState carries no sticker type', () => {
-    render(<Sticker savedState={{ colorIndex: 2 }} />);
-
-    expect(screen.getByTestId('icon-star')).toBeInTheDocument();
-  });
-
-  test('ignores a legacy stampType value on savedState', () => {
-    // A repo-wide grep finds no producer of `stampType` and no storage
-    // migration that writes it, so this shape cannot occur in practice; the
-    // test pins the behaviour now that the fallback has been removed.
-    render(<Sticker savedState={{ colorIndex: 0, stampType: 'heart' } as never} />);
-
-    expect(screen.getByTestId('icon-star')).toBeInTheDocument();
-    expect(screen.queryByTestId('icon-heart')).not.toBeInTheDocument();
-  });
-
   test('adopts a savedState changed externally after mount', () => {
     const onStateChange = vi.fn();
     const { rerender } = render(

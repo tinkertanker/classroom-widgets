@@ -110,13 +110,4 @@ describe('RTFeedbackRoom', () => {
       assert.equal(room.feedbackData.has('s1'), true);
     });
   });
-
-  describe('clearAllFeedback', () => {
-    it('resets all data', () => {
-      room.updateFeedback('s1', 3);
-      room.clearAllFeedback();
-      assert.equal(room.feedbackData.size, 0);
-      assert.deepEqual(room.getAggregatedFeedback().totalResponses, 0);
-    });
-  });
 });

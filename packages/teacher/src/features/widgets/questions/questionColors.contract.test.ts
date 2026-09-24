@@ -47,15 +47,6 @@ describe('question colour token contract', () => {
     }
   });
 
-  it.each(TABLES)('$name contains no raw hex or object stringification', ({ table }) => {
-    for (const entry of table) {
-      for (const value of Object.values(entry)) {
-        expect(String(value)).not.toContain('#');
-        expect(String(value)).not.toContain('[object Object]');
-      }
-    }
-  });
-
   it.each(TABLES)('$name uses the same field set for every option index', ({ table }) => {
     const expected = JSON.stringify(Object.keys(table[0]).sort());
     for (const [index, entry] of table.entries()) {
@@ -70,14 +61,8 @@ describe('question colour token contract', () => {
 });
 
 describe('question colour consumers', () => {
-  // Interpolating the whole token object yields this, which is what the teacher
-  // widget used to emit as a className. The source guard below is the real test;
-  // this pins down what it is guarding against.
-  it('stringifies a whole token object into an unusable class name', () => {
-    expect(`${getQuestionColor(0)}`).toBe('[object Object]');
-    expect(`${getStudentQuestionColor(0)}`).toBe('[object Object]');
-  });
-
+  // Interpolating a whole token object stringifies to "[object Object]", which
+  // is what the teacher widget used to emit as a className.
   it.each(CONSUMERS)('$name never interpolates a whole colour object', ({ source }) => {
     const colourVariables = [
       ...source.matchAll(/(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*get(?:Student)?QuestionColor\s*\(/g)

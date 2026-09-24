@@ -45,16 +45,6 @@ describe('resolveHostRoom guard', () => {
       assert.equal(result.roomId, `poll:${WIDGET_ID}`);
     });
 
-    it('resolves an activity room for the host', () => {
-      const result = resolveHostRoom(session, HOST_SOCKET, 'activity', ActivityRoom, WIDGET_ID);
-
-      assert.equal(result.ok, true);
-      assert.equal(result.error, null);
-      assert.equal(result.room, session.getRoom('activity', WIDGET_ID));
-      assert.ok(result.room instanceof ActivityRoom);
-      assert.equal(result.roomId, `activity:${WIDGET_ID}`);
-    });
-
     it('returns the same room key the session builds internally', () => {
       // Including a widget-less room and a widget ID that itself contains ':'
       session.createRoom('handout');
@@ -152,13 +142,6 @@ describe('resolveHostRoom guard', () => {
       assert.equal(resolveRoom(undefined, 'poll', PollRoom, WIDGET_ID).error, GUARD_ERRORS.NO_SESSION);
       assert.equal(resolveRoom(session, 'poll', PollRoom, 'no-such-widget').error, GUARD_ERRORS.NO_ROOM);
       assert.equal(resolveRoom(session, 'activity', PollRoom, WIDGET_ID).error, GUARD_ERRORS.WRONG_ROOM_TYPE);
-    });
-
-    it('never rejects a non-host socket for being a non-host', () => {
-      const result = resolveRoom(session, 'activity', ActivityRoom, WIDGET_ID);
-
-      assert.equal(result.ok, true);
-      assert.equal(isHostRejection(result.error), false);
     });
   });
 

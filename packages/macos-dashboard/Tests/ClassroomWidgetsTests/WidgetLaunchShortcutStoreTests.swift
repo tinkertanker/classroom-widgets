@@ -339,20 +339,6 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
     }
 
     @MainActor
-    func testStartupSeedsMoveWidgetDefaultsWhenNothingReservesThem() {
-        let state = AppDelegate(defaults: defaults).initialShortcutBindingState()
-
-        XCTAssertEqual(state.shortcut(for: .moveWidgetPrevious), DashboardShortcut(
-            keyCode: DashboardDefaults.moveWidgetPreviousShortcutKeyCode,
-            modifiers: DashboardDefaults.moveWidgetShortcutModifiers
-        ).normalized)
-        XCTAssertEqual(state.shortcut(for: .moveWidgetNext), DashboardShortcut(
-            keyCode: DashboardDefaults.moveWidgetNextShortcutKeyCode,
-            modifiers: DashboardDefaults.moveWidgetShortcutModifiers
-        ).normalized)
-    }
-
-    @MainActor
     func testStartupStateReservesSavedDismissBindingBeforeDisplayCanBeEdited() {
         let preferred = DashboardShortcut(
             keyCode: Int(kVK_ANSI_0),

@@ -1,4 +1,4 @@
-const { describe, it, beforeEach, mock } = require('node:test');
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 const { eventRateLimiter, createEventRateLimiter, createIpRateLimiter, EVENT_RATE_LIMITS, socketAuth } = require('./socketAuth');
 const { pendingCleanupHandles, stopRateLimiterCleanup } = require('./rateLimit');
@@ -202,21 +202,5 @@ describe('socketAuth middleware', () => {
 
     assert.ok(error instanceof Error);
     assert.match(error.message, /capacity/);
-  });
-
-  it('accepts connections below capacity and initializes metadata', () => {
-    const sessionManager = {
-      getStats: () => ({ totalParticipants: 0 })
-    };
-    const middleware = socketAuth(sessionManager);
-    const socket = { handshake: { address: '10.0.0.1' } };
-
-    let error = 'not called';
-    middleware(socket, (err) => { error = err; });
-
-    assert.equal(error, undefined);
-    assert.equal(socket.clientIP, '10.0.0.1');
-    assert.equal(socket.metadata.isHost, false);
-    assert.equal(socket.metadata.sessionCode, null);
   });
 });

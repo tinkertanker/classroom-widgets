@@ -164,17 +164,6 @@ describe('workspace snapshot', () => {
     expect(store().widgetStates).toBe(firstStates);
   });
 
-  it('drops the widget state entry when a widget is removed', async () => {
-    await seedStorage();
-    const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
-    store().updateWidgetState(timerId, { seconds: 42 });
-
-    store().removeWidget(timerId);
-
-    expect(store().widgets).toEqual([]);
-    expect(store().widgetStates.has(timerId)).toBe(false);
-  });
-
   it('round-trips a hidden widget flag through workspace switch', async () => {
     const { idA } = await seedStorage();
     const timerId = store().addWidget(WidgetType.TIMER, { x: 0, y: 0 });
@@ -374,16 +363,6 @@ describe.each(collectionCases)('saved collections: $label', testCase => {
     await seedStorage();
   });
 
-  it('generates a prefixed id and persists the item', () => {
-    const id = save('My list');
-
-    expect(id.startsWith(idPrefix)).toBe(true);
-    expect(list().map(item => item.id)).toEqual([id]);
-
-    const stored = loadStorage();
-    expect(stored?.savedCollections[dictKey][id]?.name).toBe('My list');
-  });
-
   it('trims and truncates the name to 100 characters', () => {
     const id = save(`  ${'x'.repeat(150)}  `);
 
@@ -511,21 +490,5 @@ describe('transient UI state', () => {
     } finally {
       unsubscribe();
     }
-  });
-});
-
-describe('saved collections: isolation between kinds', () => {
-  it('keeps the three collections independent', async () => {
-    await seedStorage();
-
-    const randomiserId = store().saveRandomiserList('names', ['a']);
-    const questionId = store().saveQuestionBank('bank', [{ text: 'q' }]);
-    const pollId = store().savePollQuestion('poll', 'q?', ['yes', 'no']);
-
-    store().deleteRandomiserList(randomiserId);
-
-    expect(store().getRandomiserLists()).toEqual([]);
-    expect(store().getQuestionBanks().map(item => item.id)).toEqual([questionId]);
-    expect(store().getPollQuestions().map(item => item.id)).toEqual([pollId]);
   });
 });

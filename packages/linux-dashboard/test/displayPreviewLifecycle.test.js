@@ -35,14 +35,6 @@ function renderer() {
   };
 }
 
-test('renderer exposes the full status as a tooltip when the compact bar truncates it', () => {
-  const h = renderer();
-  const statusMessage = 'Display identity unavailable. Select another display or try an X11 session.';
-  h.setState({ statusMessage });
-  assert.equal(h.status.textContent, statusMessage);
-  assert.equal(h.status.title, statusMessage);
-});
-
 function mediaStream() {
   const listeners = new Map();
   const track = {

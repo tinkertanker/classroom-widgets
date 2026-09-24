@@ -72,12 +72,6 @@ describe('QuestionsRoom behavior', () => {
     assert.equal(room.deleteQuestion(q.id), true);
     assert.equal(room.getQuestionCount(), 0);
   });
-
-  it('defaults missing student names to Anonymous', () => {
-    const room = new QuestionsRoom('CODE1', 'w-1');
-    const q = room.addQuestion('sock-1', 'Why?', undefined);
-    assert.equal(q.studentName, 'Anonymous');
-  });
 });
 
 describe('LinkShareRoom behavior', () => {

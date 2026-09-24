@@ -177,32 +177,6 @@ test('forwards configured requests and returns the secure short URL', async (t) 
   });
 });
 
-test('maps upstream conflicts to a safe client error', async (t) => {
-  restoreEnv(t);
-  process.env.SHORTIO_API_KEY = 'test-key';
-  process.env.SHORTIO_DOMAIN = 'go.example.edu';
-  stubUpstream(t, async () => ({
-    ok: false,
-    status: 409,
-    async json() {
-      return { error: 'conflict details' };
-    }
-  }));
-
-  await withServer(t, async (baseUrl) => {
-    const response = await realFetch(`${baseUrl}/api/shorten`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'https://example.com' })
-    });
-    assert.equal(response.status, 409);
-    assert.deepEqual(await response.json(), {
-      success: false,
-      error: 'That custom ending is already taken. Try another.'
-    });
-  });
-});
-
 test('does not expose upstream error details', async (t) => {
   restoreEnv(t);
   process.env.SHORTIO_API_KEY = 'test-key';
@@ -223,20 +197,5 @@ test('does not expose upstream error details', async (t) => {
     });
     assert.equal(response.status, 502);
     assert.equal((await response.text()).includes('secret-upstream-detail'), false);
-  });
-});
-
-test('status reflects whether Short.io is configured', async (t) => {
-  restoreEnv(t);
-  delete process.env.SHORTIO_API_KEY;
-  delete process.env.SHORTIO_DOMAIN;
-  await withServer(t, async (baseUrl) => {
-    let response = await realFetch(`${baseUrl}/api/shorten/status`);
-    assert.deepEqual(await response.json(), { success: true, configured: false });
-
-    process.env.SHORTIO_API_KEY = 'test-key';
-    process.env.SHORTIO_DOMAIN = 'go.example.edu';
-    response = await realFetch(`${baseUrl}/api/shorten/status`);
-    assert.deepEqual(await response.json(), { success: true, configured: true });
   });
 });

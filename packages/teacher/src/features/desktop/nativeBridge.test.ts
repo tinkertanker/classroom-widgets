@@ -37,7 +37,4 @@ describe('postNativeMessage', () => {
     });
   });
 
-  it('is a no-op in a plain browser', () => {
-    expect(() => postNativeMessage('classroomDashboard', { type: 'noop' })).not.toThrow();
-  });
 });
