@@ -34,10 +34,10 @@ const options = [
     why: [
       'Most of the panel landed on this pairing on their own. The Mac, art-director, brand and system reviewers all asked for the hamster as the big icon and the plain notched ring for small sizes and the menu bar.',
       'The hamster is the one thing no competitor can claim. It is the app\'s own drawing, copied exactly from creatures.tsx, so teachers see the same character in the Dock and on the board.',
-      'Below 64px the hamster steps out. The favicon, the 32/16 icons and the menu-bar item are the same notched ring as option 2, so nothing has to draw a hamster in 16 pixels.',
+      'Below 64px the hamster becomes two circles, a big orange body and a smaller tan head, facing right like the full drawing. The menu-bar item is the same two circles as a silhouette inside the notched ring, so the hamster is there at every size.',
     ],
     quote: ['“The best colour icon here. The app\'s exact hamster, large and calm in the face of a warm notched rainbow sticker, reads instantly as ‘the hamster timer’.”', 'macOS reviewer'],
-    watch: 'Some reviewers felt a big hamster tips it towards “kids’ pet game”. The ring stays thick and the notch visible so it still reads as a timer first.',
+    watch: 'At a true 16px on a non-retina screen the two circles merge into one rounded shape; the body-and-head silhouette shows from 20px and on every retina menu bar. Some reviewers also felt a big hamster tips it towards “kids’ pet game”, so the ring stays thick and the notch visible.',
   },
   {
     c: by.countdown, rank: 'Highest scored', from: 'Countdown Sticker',
@@ -253,9 +253,9 @@ td b{font-weight:700}
 
   <section class="live" aria-labelledby="live-h">
     <div>
-      <span class="eyebrow">Options 1 and 2 · menu bar</span>
+      <span class="eyebrow">Hamster Timer · menu bar</span>
       <h2 id="live-h" style="font-size:30px;margin-top:10px">The menu-bar item counts down</h2>
-      <p>The resting mark shows the ring with a slice of time already spent. While a timer runs, the notch widens with it; at time's up only the thin track is left, which blinks three times. The ring never spins, so it can't be mistaken for the macOS spinning-wheel cursor. The Gold Star glyph behaves the same way, with the star staying put.</p>
+      <p>The resting mark shows the ring with a slice of time already spent. While a timer runs, the notch widens with it; at time's up only the thin track is left, which blinks three times. The hamster stays put in the middle, and the ring never spins, so it can't be mistaken for the macOS spinning-wheel cursor. Countdown Sticker and Gold Star Timer behave the same way.</p>
     </div>
     <div class="stage">
       <div class="bigring"><svg id="liveBig" width="112" height="112" viewBox="0 0 1024 1024" aria-label="Countdown glyph, animated"></svg><output id="liveOut">Resting</output></div>
@@ -284,6 +284,7 @@ td b{font-weight:700}
   <section class="next" aria-labelledby="next-h">
     <h2 id="next-h" style="font-size:28px;margin-bottom:12px">What changed after the final round, and what happens next</h2>
     <ol>
+      <li>The Hamster Timer's menu-bar glyph and 32/16px icons now carry the hamster too, simplified to two circles: a body and a head.</li>
       <li>All three options share one ring. The glyph's inner hole is now a true circle, the spent track runs along the band's inner edge, and the band is lighter, closer to menu-bar weight.</li>
       <li>The ring uses the timer widget's own left-to-right gradient (red at 9 o'clock, green at 12 and 6, violet at 3), warmed a little. It no longer reads as a colour wheel and has no banding.</li>
       <li>When you pick one, I'll wire it in everywhere: <code>DashboardMenuBarIcon.swift</code> (drawn in code as a template image, with the live countdown), <code>AppIconSource.svg</code> for the macOS app, <code>AppIcon.ico</code> and the tray icon for Windows, <code>tray-icon.png</code> for Linux, and the web <code>favicon.svg</code>, <code>logo.svg</code> and manifest icons.</li>
@@ -295,6 +296,7 @@ td b{font-weight:700}
 (function(){
   var END = 250, R = 504, C = 512, BAND = R * 0.365, TRACK = R * 0.115;
   var face = R - BAND, mid = R - BAND / 2, cap = (BAND / 2) / mid * 180 / Math.PI;
+  var HAM = '<circle cx="' + (C - 0.15 * face) + '" cy="' + (C + 0.13 * face) + '" r="' + 0.44 * face + '" fill="currentColor"/><circle cx="' + (C + 0.38 * face) + '" cy="' + (C - 0.2 * face) + '" r="' + 0.29 * face + '" fill="currentColor"/>';
   function P(r, d){ var t = d * Math.PI / 180; return [(C + r * Math.sin(t)).toFixed(1), (C - r * Math.cos(t)).toFixed(1)]; }
   function draw(svg, f, showBand){
     var end = 360 * f, band = '';
@@ -303,7 +305,7 @@ td b{font-weight:700}
       else if (end > 2 * cap + 1) { var a = P(mid, cap), b = P(mid, end - cap); band = '<path d="M' + a[0] + ' ' + a[1] + 'A' + mid + ' ' + mid + ' 0 ' + (end - 2 * cap > 180 ? 1 : 0) + ' 1 ' + b[0] + ' ' + b[1] + '" fill="none" stroke="currentColor" stroke-width="' + BAND + '" stroke-linecap="round"/>'; }
       else if (end > 0) { var p = P(mid, end / 2); band = '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="' + (BAND / 2) * Math.max(0.35, end / (2 * cap)) + '" fill="currentColor"/>'; }
     }
-    svg.innerHTML = '<circle cx="512" cy="512" r="' + (face + TRACK / 2) + '" fill="none" stroke="currentColor" stroke-width="' + TRACK + '"/>' + band;
+    svg.innerHTML = '<circle cx="512" cy="512" r="' + (face + TRACK / 2) + '" fill="none" stroke="currentColor" stroke-width="' + TRACK + '"/>' + band + HAM;
   }
   var ids = ['liveBig', 'liveL', 'liveD'].map(function(id){ return document.getElementById(id); });
   var out = document.getElementById('liveOut');

@@ -68,6 +68,7 @@ function icon(o) {
   }
 
   let hamsterSvg = '';
+  if (extra === 'ham2') hamsterSvg = ham2(cx, cy, faceR, '#D2691E', '#DEB887', '#8B4513', r1(faceR * 0.06));
   if (extra === 'hamster') {
     const hs = o.hamScale, hx = cx + (o.hamDx ?? 0), hy = cy + (o.hamDy ?? 0);
     hamsterSvg = `
@@ -114,9 +115,18 @@ function icon(o) {
 </svg>`.replace(/\n\s*/g, '');
 }
 
+// ---------- two-circle hamster (body + head), facing right like the colour icon ----------
+// positions/radii are fractions of the face (counter) radius
+const HAM2 = { body: { x: -0.15, y: 0.13, r: 0.44 }, head: { x: 0.38, y: -0.2, r: 0.29 } };
+const ham2 = (cx, cy, faceR, fillBody, fillHead, stroke = '', sw = 0) => {
+  const b = HAM2.body, h = HAM2.head;
+  const st = stroke ? ` stroke="${stroke}" stroke-width="${sw}"` : '';
+  return `<circle cx="${r1(cx + b.x * faceR)}" cy="${r1(cy + b.y * faceR)}" r="${r1(b.r * faceR)}" fill="${fillBody}"${st}/><circle cx="${r1(cx + h.x * faceR)}" cy="${r1(cy + h.y * faceR)}" r="${r1(h.r * faceR)}" fill="${fillHead}"${st}/>`;
+};
+
 // ---------- monochrome glyph ----------
 // f = fraction of the dial still to run (idle mark uses END/360)
-function glyph(id, { f = END / 360, star = false } = {}) {
+function glyph(id, { f = END / 360, star = false, hamster = false } = {}) {
   const cx = star ? 604 : 512, cy = star ? 604 : 512, R = star ? 404 : 504;
   const band = r1(R * 0.365), track = r1(R * 0.115);
   const faceR = R - band, mid = R - band / 2;
@@ -127,7 +137,7 @@ function glyph(id, { f = END / 360, star = false } = {}) {
   else if (endDeg > 2 * cap + 1) bandEl = `<path d="${arc(cx, cy, mid, cap, endDeg - cap)}" fill="none" stroke="#000" stroke-width="${band}" stroke-linecap="round"/>`;
   else if (endDeg > 0) { const [x, y] = P(cx, cy, mid, endDeg / 2); bandEl = `<circle cx="${x}" cy="${y}" r="${band / 2}" fill="#000"/>`; }
   const ring = `<circle cx="${cx}" cy="${cy}" r="${r1(faceR + track / 2)}" fill="none" stroke="#000" stroke-width="${track}"/>${bandEl}`;
-  if (!star) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${ring}</svg>`;
+  if (!star) return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${ring}${hamster ? ham2(cx, cy, faceR, '#000', '#000') : ''}</svg>`;
   const sa = END + (360 - END) * 0.5;
   const [sx, sy] = P(cx, cy, R * 1.2, sa);
   const sp = starPath(sx, sy, 176, -14, 0.5, 0.16);
@@ -146,7 +156,7 @@ const add = (slug, name, tagline, concept, glyphNotes, big, small, extra, gl) =>
     slug, name, tagline, concept, glyphNotes, direction: 'Final system',
     icon: icon({ id: slug, ...big, extra }),
     iconDark: icon({ id: slug + 'd', dark: true, ...big, extra }),
-    iconSmall: icon({ id: slug + 's', small: true, ...small, extra: extra === 'star' ? 'star' : 'none' }),
+    iconSmall: icon({ id: slug + 's', small: true, ...small, extra: extra === 'star' ? 'star' : extra === 'hamster' ? 'ham2' : 'none' }),
     glyph: gl,
   };
   out.push(c);
@@ -159,10 +169,10 @@ add('countdown', 'Countdown Sticker',
   RING_BIG, RING_SMALL, 'none', glyph('countdowng'));
 
 add('hamster', 'Hamster Timer',
-  'The app\'s own hamster sitting in the countdown sticker from 64px up; the plain notched ring below that and in the menu bar.',
-  'A responsive mark. Large sizes (Dock, Start, app grid, PWA) show the hamster at home in the timer. At 32px and below, and in the menu bar/tray, it steps out and leaves the same notched ring, because the hamster turns to mush at 16px.',
-  'Identical to Countdown Sticker: the ring is the constant; the hamster appears only where it can be drawn properly.',
-  { ...RING_BIG, extra: 'hamster', hamScale: 18.5, hamDx: -4, hamDy: 8 }, RING_SMALL, 'hamster', glyph('hamsterg'));
+  'The app\'s own hamster sitting in the countdown sticker. At small sizes and in the menu bar it becomes two circles: a big body and a smaller head.',
+  'A responsive mark. Large sizes (Dock, Start, app grid, PWA) show the hamster at home in the timer. At 32px and below, and in the menu bar/tray, it simplifies to two circles (body and head, facing right like the full hamster) inside the same notched ring.',
+  'The notched ring with a two-circle hamster silhouette in its hole, clear of the ring by at least 1.2px at 16px. The ring counts down; the hamster stays put.',
+  { ...RING_BIG, extra: 'hamster', hamScale: 18.5, hamDx: -4, hamDy: 8 }, RING_SMALL, 'hamster', glyph('hamsterg', { hamster: true }));
 
 add('goldstar', 'Gold Star Timer',
   'The client\'s pick: the app\'s gold star sticker slapped into the spent part of the countdown ring.',
@@ -178,6 +188,6 @@ fs.writeFileSync(new URL('./final.json', import.meta.url), JSON.stringify(out, n
 fs.mkdirSync(new URL('./svg/', import.meta.url), { recursive: true });
 for (const c of out) for (const k of ['icon', 'iconDark', 'iconSmall', 'glyph']) fs.writeFileSync(new URL(`./svg/${c.slug}-${k}.svg`, import.meta.url), c[k]);
 // live states for the ring glyph
-const states = [1, 0.75, 0.5, 0.25, 0.08, 0].map(f => ({ f, svg: glyph('liveg' + Math.round(f * 100), { f }) }));
+const states = [1, 0.75, 0.5, 0.25, 0.08, 0].map(f => ({ f, svg: glyph('liveg' + Math.round(f * 100), { f, hamster: true }) }));
 fs.writeFileSync(new URL('./live.json', import.meta.url), JSON.stringify(states));
 console.log('ok', out.map(c => c.slug).join(', '));
