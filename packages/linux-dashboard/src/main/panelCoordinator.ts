@@ -351,7 +351,12 @@ export class WidgetPanelCoordinator extends EventEmitter {
     panel.getCurrentLayout = () => this.layout;
     panel.on('panelStateChanged', (change: WidgetPanelStateChange) => this.emit('panelStateChanged', change));
     panel.on('randomiserListChanged', (change: unknown) => this.emit('randomiserListChanged', change));
-    panel.on('removalRequested', (widgetId: string) => this.emit('widgetRemovalRequested', widgetId));
+    panel.on('removalRequested', (widgetId: string) => {
+      this.emit('widgetRemovalRequested', widgetId);
+      // The panel is already hidden; the tray should not wait for the host's
+      // next inventory to reflect that.
+      this.emit('changed');
+    });
     panel.on('widgetCreationRequested', (widgetType: number) => this.emit('widgetCreationRequested', widgetType));
     panel.on('displayPreviewRequested', () => this.emit('displayPreviewRequested'));
     panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));

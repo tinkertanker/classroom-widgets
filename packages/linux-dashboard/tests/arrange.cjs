@@ -132,12 +132,18 @@ app.whenReady().then(async () => {
     record('Tray → Free Placement');
     for (const title of Object.keys(panels)) assert.deepEqual(frame(title), freeform[title], `${title} returns to its free-placement frame`);
 
-    panels['Text Banner'].hide();
-    panels['Traffic Light'].hide();
-    arrangeItem('Free Placement').click();
-    await settle();
-    record('Every panel hidden as if just closed, then Tray → Free Placement');
-    assert.equal(item('Arrange Widgets').enabled, false, 'Arrange Widgets is disabled with no panel on screen');
+    // Close the last two on-screen panels the way a user does. The host only
+    // removes them after a round trip to its renderer, so read the tray menu
+    // as soon as the last one hides, before that removal can arrive.
+    const atLastHide = new Promise((done) => panels['Traffic Light'].once('hide', () => process.nextTick(() => {
+      record('Text Banner and Traffic Light closed, before the host removes them');
+      done({ removed: panels['Traffic Light'].isDestroyed(), enabled: item('Arrange Widgets').enabled });
+    })));
+    panels['Text Banner'].close();
+    panels['Traffic Light'].close();
+    const { removed, enabled } = await atLastHide;
+    assert.equal(removed, false, 'the tray menu is read before the host removes the panel');
+    assert.equal(enabled, false, 'Arrange Widgets is disabled as soon as no panel is on screen');
 
     log.push('PASS');
     writeFileSync(join(evidence, 'arrange.txt'), log.join('\n') + '\n');
