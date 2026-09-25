@@ -155,13 +155,13 @@ public partial class WidgetPanelWindow : Window
     {
         _options = options;
         AddMenu.Items.Clear();
-        var display = new MenuItem { Header = "Display" };
+        var display = new MenuItem { Header = CompactWidgetMenu.DisplayLabel };
         display.Click += (_, _) => DisplayPreviewRequested?.Invoke();
         AddMenu.Items.Add(display);
-        AddMenu.Items.Add(new Separator());
-        foreach (var option in options)
+        foreach (var (option, separatorBefore) in CompactWidgetMenu.Entries(options))
         {
-            var item = new MenuItem { Header = option.Title, Tag = option.WidgetType };
+            if (separatorBefore) AddMenu.Items.Add(new Separator());
+            var item = new MenuItem { Header = CompactWidgetMenu.Label(option), Tag = option.WidgetType };
             item.Click += (_, _) => WidgetCreationRequested?.Invoke(option.WidgetType);
             AddMenu.Items.Add(item);
         }
