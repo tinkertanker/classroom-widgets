@@ -79,6 +79,8 @@ export interface WidgetConfig {
     supported: boolean;
     preferredSize?: Size;
     minimumSize?: Size;
+    /** Emoji shown before the widget in native menus that use emoji. */
+    menuEmoji?: string;
   };
 }
 

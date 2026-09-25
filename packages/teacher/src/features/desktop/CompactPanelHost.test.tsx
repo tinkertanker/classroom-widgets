@@ -52,15 +52,28 @@ describe('CompactPanelHost', () => {
           isResizable: true,
           maintainsAspectRatio: true
         })],
-        compactWidgetOptions: expect.arrayContaining([
-          { widgetType: WidgetType.QRCODE, title: 'QR Code' },
-          { widgetType: WidgetType.SOUND_EFFECTS, title: 'Sound Effects' },
-          { widgetType: WidgetType.TASK_CUE, title: 'Task Cue' },
-          { widgetType: WidgetType.TRAFFIC_LIGHT, title: 'Traffic Light' },
-          { widgetType: WidgetType.TEXT_BANNER, title: 'Text Banner' }
-        ])
       }));
     });
+  });
+
+  it('publishes compact widget options in native menu order, most used first', async () => {
+    render(<CompactPanelHost />);
+
+    await waitFor(() => expect(postMessage).toHaveBeenCalled());
+    const options = postMessage.mock.calls[0][0].compactWidgetOptions;
+    expect(options.map(({ widgetType, title, menuGroup }: { widgetType: WidgetType; title: string; menuGroup: number }) => (
+      { widgetType, title, menuGroup }
+    ))).toEqual([
+      { widgetType: WidgetType.TIMER, title: 'Timer', menuGroup: 0 },
+      { widgetType: WidgetType.TEXT_BANNER, title: 'Text Banner', menuGroup: 0 },
+      { widgetType: WidgetType.TRAFFIC_LIGHT, title: 'Traffic Light', menuGroup: 1 },
+      { widgetType: WidgetType.TASK_CUE, title: 'Task Cue', menuGroup: 1 },
+      { widgetType: WidgetType.RANDOMISER, title: 'Randomiser', menuGroup: 2 },
+      { widgetType: WidgetType.LIST, title: 'List', menuGroup: 2 },
+      // Link Shortener is compact only inside a native shell.
+      { widgetType: WidgetType.QRCODE, title: 'QR Code', menuGroup: 3 },
+      { widgetType: WidgetType.SOUND_EFFECTS, title: 'Sound Effects', menuGroup: 3 }
+    ]);
   });
 
   it('publishes the effective dashboard theme and updates on appearance changes', async () => {

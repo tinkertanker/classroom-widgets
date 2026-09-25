@@ -13,6 +13,7 @@ import { WidgetType } from '@shared/types';
 import { postNativeMessage } from '@shared/utils/nativeBridge';
 import { useWorkspaceStore } from '../../store/workspaceStore.simple';
 import { widgetRegistry } from '../../services/WidgetRegistry';
+import { compactWidgetMenuOptions } from './compactWidgetMenu';
 
 declare global {
   interface Window {
@@ -96,11 +97,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
   };
 
   const compactWidgetOptions = useMemo<CompactWidgetOption[]>(() => (
-    widgetRegistry.getAll().flatMap((config) => (
-      config.compactPanel?.supported
-        ? [{ widgetType: config.type, title: config.name }]
-        : []
-    ))
+    compactWidgetMenuOptions(widgetRegistry.getAll())
   ), []);
 
   const snapshots = useMemo<CompactWidgetSnapshot[]>(() => {
@@ -182,7 +179,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
     const fingerprint = [
       windowMode,
       hostInstanceIdRef.current,
-      compactWidgetOptions.map((option) => `${option.widgetType}:${option.title}`).join(','),
+      compactWidgetOptions.map((option) => `${option.widgetType}:${option.title}:${option.menuGroup}`).join(','),
       publishedSnapshots.map((snapshot) => (
         `${snapshot.widgetId}:${snapshot.revision}:${snapshot.stateRevision}`
       )).join(',')

@@ -23,9 +23,16 @@ export interface CompactWidgetSnapshot {
   savedRandomiserLists: SavedRandomiserList[];
 }
 
+/**
+ * A compact widget the native shells can open, listed in menu order. Shells
+ * draw a separator wherever `menuGroup` changes and put Display first.
+ */
 export interface CompactWidgetOption {
   widgetType: WidgetType;
   title: string;
+  menuGroup: number;
+  /** Shown before the title in menus that use emoji rather than native symbols. */
+  emoji?: string;
 }
 
 /**

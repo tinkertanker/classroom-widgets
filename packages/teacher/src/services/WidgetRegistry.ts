@@ -161,6 +161,7 @@ export class WidgetRegistry {
       description: 'Random selection with slot machine animation',
       compactPanel: {
         supported: true,
+        menuEmoji: '🎲',
         preferredSize: { width: 350, height: 250 },
         minimumSize: { width: 250, height: 180 }
       },
@@ -186,6 +187,7 @@ export class WidgetRegistry {
       description: 'Countdown and stopwatch functionality',
       compactPanel: {
         supported: true,
+        menuEmoji: '⏱️',
         preferredSize: { width: 350, height: 415 },
         minimumSize: { width: 250, height: 306 }
       },
@@ -210,6 +212,7 @@ export class WidgetRegistry {
       description: 'Task list with completion tracking',
       compactPanel: {
         supported: true,
+        menuEmoji: '✅',
         preferredSize: { width: 350, height: 400 },
         minimumSize: { width: 240, height: 240 }
       },
@@ -237,6 +240,7 @@ export class WidgetRegistry {
       description: 'Visual work mode indicators',
       compactPanel: {
         supported: true,
+        menuEmoji: '📋',
         preferredSize: { width: 325, height: 325 },
         minimumSize: { width: 280, height: 280 }
       },
@@ -261,6 +265,7 @@ export class WidgetRegistry {
       description: 'Status indicator lights',
       compactPanel: {
         supported: true,
+        menuEmoji: '🚦',
         preferredSize: { width: 360, height: 220 },
         minimumSize: { width: 350, height: 180 }
       },
@@ -304,6 +309,7 @@ export class WidgetRegistry {
       description: 'URL shortening service',
       compactPanel: {
         supported: isNativeDesktop(),
+        menuEmoji: '🔗',
         preferredSize: { width: 350, height: 440 },
         minimumSize: { width: 300, height: 400 }
       },
@@ -326,6 +332,7 @@ export class WidgetRegistry {
       description: 'Customizable text display',
       compactPanel: {
         supported: true,
+        menuEmoji: '🔤',
         preferredSize: { width: 400, height: 300 },
         minimumSize: { width: 300, height: 260 }
       },
@@ -367,6 +374,7 @@ export class WidgetRegistry {
       description: 'QR code generator',
       compactPanel: {
         supported: true,
+        menuEmoji: '🔳',
         preferredSize: { width: 350, height: 400 },
         minimumSize: { width: 280, height: 340 }
       },
@@ -392,6 +400,7 @@ export class WidgetRegistry {
       description: 'Sound effect player',
       compactPanel: {
         supported: true,
+        menuEmoji: '🔊',
         preferredSize: { width: 180, height: 405 },
         minimumSize: { width: 160, height: 240 }
       },
