@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using Microsoft.Win32;
 
 namespace ClassroomWidgets;
 
@@ -44,6 +45,8 @@ public sealed class TrayController : IDisposable
         {
             if (args.Button == MouseButtons.Left) ShowMenu();
         };
+
+        SystemEvents.UserPreferenceChanged += UserPreferenceChanged;
 
         BuildMenu();
         _host.WidgetOptionsChanged += RebuildAddMenu;
@@ -183,19 +186,48 @@ public sealed class TrayController : IDisposable
         }
     }
 
+    /// <summary>
+    /// The tray glyph in the taskbar's colour: black on a light taskbar, white on a dark one.
+    /// </summary>
     private static Icon LoadIcon()
     {
-        var resource = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Assets/AppIcon.ico"));
+        var name = TaskbarUsesLightTheme() ? "TrayIcon-Black.ico" : "TrayIcon-White.ico";
+        var resource = System.Windows.Application.GetResourceStream(new Uri($"pack://application:,,,/Assets/{name}"));
         if (resource is not null)
         {
             using var stream = resource.Stream;
-            return new Icon(stream, new System.Drawing.Size(32, 32));
+            return new Icon(stream, SystemInformation.SmallIconSize);
         }
         return SystemIcons.Application;
     }
 
+    private static bool TaskbarUsesLightTheme()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return key?.GetValue("SystemUsesLightTheme") is int value && value != 0;
+        }
+        catch (Exception error) when (error is System.Security.SecurityException or UnauthorizedAccessException or IOException)
+        {
+            return false;
+        }
+    }
+
+    private void UserPreferenceChanged(object? sender, UserPreferenceChangedEventArgs args)
+    {
+        if (args.Category != UserPreferenceCategory.General) return;
+        System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            var previous = _icon.Icon;
+            _icon.Icon = LoadIcon();
+            previous?.Dispose();
+        }));
+    }
+
     public void Dispose()
     {
+        SystemEvents.UserPreferenceChanged -= UserPreferenceChanged;
         _icon.Visible = false;
         _icon.Dispose();
         _menu.Dispose();

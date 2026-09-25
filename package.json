@@ -19,6 +19,7 @@
     "test": "pnpm --filter @classroom-widgets/teacher test",
     "test:build-config": "node scripts/check-root-build-config.cjs",
     "generate:voice-types": "node scripts/generateVoiceCommandTypes.cjs",
+    "generate:icons": "node scripts/generateAppIcons.mjs",
     "prebuild": "pnpm generate:voice-types",
     "macos:run": "./scripts/build_and_run.sh",
     "macos:dmg": "./scripts/build_macos_release.sh",
@@ -31,6 +32,7 @@
     "clean": "node scripts/clean-workspaces.cjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "concurrently": "^9.2.0"
   }
 }
