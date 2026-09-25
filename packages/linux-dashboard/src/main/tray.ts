@@ -70,7 +70,7 @@ export class TrayController {
       { type: 'separator' },
       {
         label: 'Arrange Widgets',
-        enabled: coordinator.panelCount > 0,
+        enabled: coordinator.hasVisiblePanels,
         submenu: [
           layoutItem('Free Placement', 'freeform'),
           layoutItem('Arrange in a Row', 'row'),

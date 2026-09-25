@@ -34,7 +34,7 @@ public sealed class WidgetPanelCoordinator
         _settings = settings;
     }
 
-    public int PanelCount => _panels.Count;
+    public bool HasVisiblePanels => _panels.Values.Any(IsPresented);
     public WidgetPanelLayout Layout => _layout;
 
     public void SetWidgetCreationOptions(IReadOnlyList<CompactWidgetOption> options)
@@ -178,7 +178,12 @@ public sealed class WidgetPanelCoordinator
         return (changes, prepared);
     }
 
-    public void Arrange(WidgetPanelLayout layout)
+    /// <summary>
+    /// Lays out the panels that are on screen. The target display is
+    /// <paramref name="workArea"/> when given (the requesting panel's), else the
+    /// selected panel's, else the first on-screen panel's in inventory order.
+    /// </summary>
+    public void Arrange(WidgetPanelLayout layout, Rect? workArea = null)
     {
         var previous = _layout;
         _layout = layout;
@@ -188,23 +193,27 @@ public sealed class WidgetPanelCoordinator
             return;
         }
 
-        var panels = OrderedPanels;
-        if (panels.Count == 0) return;
+        var ordered = OrderedPanels;
         if (previous == WidgetPanelLayout.Freeform)
         {
+            // Includes panels closed but not yet removed by the host, so they
+            // keep their frame if the removal never arrives.
             _freeformFrames.Clear();
-            foreach (var panel in panels) _freeformFrames[panel.WidgetId] = panel.CurrentFrame;
+            foreach (var panel in ordered) _freeformFrames[panel.WidgetId] = panel.CurrentFrame;
         }
+        var panels = ordered.Where(IsPresented).ToList();
+        if (panels.Count == 0) return;
 
-        var workArea = ScreenGeometry.WorkAreaContaining(panels[0].CurrentFrame);
-        var usable = new Rect(workArea.X + 12, workArea.Y + 12, Math.Max(workArea.Width - 24, 1), Math.Max(workArea.Height - 24, 1));
+        var anchor = SelectedPanel() ?? panels[0];
+        var target = workArea ?? ScreenGeometry.WorkAreaContaining(anchor.CurrentFrame);
+        var usable = new Rect(target.X + 12, target.Y + 12, Math.Max(target.Width - 24, 1), Math.Max(target.Height - 24, 1));
         var frames = WidgetPanelLayoutEngine.Frames(
             panels.Select(panel => (panel.WidgetId, panel.PreferredFrameSize)).ToList(),
             layout,
             usable);
         foreach (var panel in panels)
         {
-            if (frames.TryGetValue(panel.WidgetId, out var frame)) panel.SetFrame(ScreenGeometry.Clamp(frame, workArea));
+            if (frames.TryGetValue(panel.WidgetId, out var frame)) panel.SetFrame(ScreenGeometry.Clamp(frame, target));
         }
     }
 
@@ -222,6 +231,10 @@ public sealed class WidgetPanelCoordinator
         }
     }
 
+    // A panel the user closed is hidden at once but stays registered until the
+    // host's next inventory removes it; only panels actually on screen count.
+    private static bool IsPresented(WidgetPanelWindow panel) => panel.IsVisible && !panel.IsHidden;
+
     private List<WidgetPanelWindow> OrderedPanels => _lastInventory is null
         ? _panels.Values.Where(panel => !panel.IsHidden).OrderBy(panel => panel.WidgetId, StringComparer.Ordinal).ToList()
         : _lastInventory.Widgets.Select(widget => _panels.GetValueOrDefault(widget.Id)).Where(panel => panel is not null && !panel.IsHidden).Cast<WidgetPanelWindow>().ToList();
@@ -236,7 +249,7 @@ public sealed class WidgetPanelCoordinator
         panel.WidgetCreationRequested += widgetType => WidgetCreationRequested?.Invoke(widgetType);
         panel.DisplayPreviewRequested += () => DisplayPreviewRequested?.Invoke();
         panel.OpenSettingsRequested += () => OpenSettingsRequested?.Invoke();
-        panel.LayoutRequested += Arrange;
+        panel.LayoutRequested += layout => Arrange(layout, ScreenGeometry.WorkAreaContaining(panel.CurrentFrame));
         panel.Activated += (_, _) => _lastActivatedId = panel.WidgetId;
         panel.FrameChanged += (widgetId, frame) =>
         {
