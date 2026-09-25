@@ -1,6 +1,7 @@
-Display preview in the launcher, move-widget display shortcuts on every platform, and a pnpm-based toolchain.
+A new app icon, and a flatter desktop menu that lists widgets most used first with their shortcuts.
 
-- The desktop widget launcher now includes a Display tile, so the screen preview can be opened from the same searchable grid as every other widget on macOS, Windows and Linux. Fixed extra launcher items rendering in the launchpad's grouped view.
-- New configurable Move to Previous/Next Display shortcuts move the focused widget between monitors on all three platforms. macOS defaults to Command-Option-Control-Left/Right, and leaves Move to Next Display unassigned if that chord is already taken. Linux reserves the Display chords so they cannot be reassigned to move shortcuts.
-- macOS: Display capture retries the preview window lookup before failing, fixing spurious start failures.
-- Build tooling migrated from npm to pnpm across the workspaces, Docker images and CI; platform build scripts now live under `scripts/`.
+- New app icon on every platform: the Hamster Timer, a rainbow countdown ring with the app's hamster in the middle. The menu bar and tray icons and the web app's favicons use it too.
+- The menu bar (macOS) and tray (Windows and Linux) menu now lists Display and every widget at the top level instead of in a submenu. Widgets are listed most used first, in groups separated by dividers, and each shows its launch shortcut. A widget's **+** menu shows the same list.
+- The default widget shortcuts 1 to 9 now follow the menu order, starting with Timer. Installs still using the original defaults are renumbered once; if any widget shortcut has been changed, none are renumbered. Display and Move shortcuts are never changed.
+- Arrange Widgets now lays widgets out on the display of the widget you last used, skips widgets that are closing, and is greyed out when no widget is on screen.
+- macOS: hold Option with the menu open to swap Open Widget Launcher for Reload Widgets.
