@@ -272,7 +272,7 @@ final class WidgetPanelCoordinator: NSObject {
 
         if previousLayout == .freeform {
             freeformFrames.removeAll()
-            for controller in controllers {
+            for controller in orderedControllers where !controller.isHidden {
                 freeformFrames[controller.widgetID] = controller.window?.frame
             }
         }
