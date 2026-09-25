@@ -20,8 +20,8 @@ func dashboardInteger(_ value: Any?) -> Int? {
 /// A widget type that the web renderer has declared safe to create in an
 /// isolated compact panel. The host remains the authority here: native only
 /// presents the options it receives and passes the selected type back.
-/// A compact widget in menu order. Menus draw a separator wherever
-/// `menuGroup` changes.
+/// Options arrive in menu order; menus draw a separator wherever `menuGroup`
+/// changes.
 struct CompactWidgetOption: Equatable {
     let widgetType: Int
     let title: String
