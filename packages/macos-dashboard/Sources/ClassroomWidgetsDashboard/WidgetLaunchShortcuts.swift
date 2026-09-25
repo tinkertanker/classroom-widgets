@@ -49,6 +49,11 @@ struct WidgetLaunchShortcutStore {
     static let displayDismissKeyCodeKey = "displayPreviewDismissShortcutKeyCode"
     static let displayDismissModifiersKey = "displayPreviewDismissShortcutModifiers"
     static let defaultDisplayShortcut = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: defaultModifiers)
+    static let menuOrderMigratedKey = "widgetLaunchShortcutsMenuOrderMigrated"
+    /// Widget types in the order defaults 1–9 were handed out before the menu
+    /// was sorted by use: Randomiser, Timer, List, Task Cue, Traffic Light,
+    /// Link Shortener, Text Banner, QR Code, Sound Effects.
+    static let legacyDefaultOrder = [0, 1, 2, 3, 4, 6, 7, 12, 9]
 
     private let defaults: UserDefaults
 
@@ -60,6 +65,7 @@ struct WidgetLaunchShortcutStore {
         for options: [CompactWidgetOption],
         reserving additionalShortcuts: [DashboardShortcut] = []
     ) -> [Int: WidgetShortcutBinding] {
+        moveLegacyDefaultsToMenuOrder(options: options, reserving: additionalShortcuts)
         var bindings = load()
         var changed = false
         var reserved = Set(additionalShortcuts.map(\.normalized).filter(\.isAssigned))
@@ -165,6 +171,20 @@ struct WidgetLaunchShortcutStore {
         }
         defaults.set(true, forKey: Self.initializedKey)
         save(bindings)
+    }
+
+    /// Renumbers a set still on the legacy defaults to follow the current
+    /// menu order. Runs once, on the first real inventory, and leaves any set
+    /// the teacher has changed alone.
+    private func moveLegacyDefaultsToMenuOrder(options: [CompactWidgetOption], reserving reserved: [DashboardShortcut]) {
+        guard !options.isEmpty, !defaults.bool(forKey: Self.menuOrderMigratedKey) else { return }
+        defaults.set(true, forKey: Self.menuOrderMigratedKey)
+        let legacyDefaults = Dictionary(uniqueKeysWithValues: zip(Self.legacyDefaultOrder, Self.defaultKeyCodes).map { widgetType, keyCode in
+            let shortcut = DashboardShortcut(keyCode: keyCode, modifiers: Self.defaultModifiers).normalized
+            return (widgetType, WidgetShortcutBinding(show: shortcut, dismiss: shortcut))
+        })
+        guard load() == legacyDefaults else { return }
+        reset(options: options, reserving: reserved)
     }
 
     private func load() -> [Int: WidgetShortcutBinding] {
