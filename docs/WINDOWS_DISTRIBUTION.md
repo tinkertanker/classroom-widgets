@@ -14,21 +14,22 @@ Launching the app from the Start menu or desktop shortcut opens a searchable wid
 
 | Menu item | What it does |
 | --- | --- |
-| **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
-| **Add Widget ▸** | Opens a floating panel for Randomiser, Timer, List, Task Cue, Traffic Light, Link Shortener, Text Banner, QR Code, or Sound Effects. |
+| **Display**, then the widgets | Opens Display or a floating panel for a widget. Widgets are listed most used first, in the order the web app sends them, with separators between groups: Timer and Text Banner; Traffic Light and Task Cue; Randomiser and List; Link Shortener, QR Code and Sound Effects. Each item shows its global show shortcut, if one is assigned. |
 | **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
-| **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
+| **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` entry. |
-| **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
 | **Check for Updates…** | Checks the latest GitHub release and installs it after confirmation. |
-| **Quit** | Flushes pending widget state and exits. |
+| **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
+| **About Classroom Widgets** | Shows the version and opens the project page. |
+| **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
+| **Quit Classroom Widgets** | Flushes pending widget state and exits. |
 
 Launch at login starts quietly without opening the launcher.
 
-Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget. Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
+Each panel is borderless. Hover its top edge to reveal the chrome row: **×** (remove widget), the title (drag to move), an arrange button, and **+** to add another widget (listed like the tray menu). Resizable widgets can be dragged from any edge; fixed-size widgets (e.g. Traffic Light) cannot. Panel positions are remembered per widget and clamped to the monitor work area on restore.
 
-The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each global shortcut. An assignment remains saved if Windows cannot register it, and Settings reports the conflict so it can be changed without losing the intended shortcut.
+The first nine widgets in menu order default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Installs from before the menu order changed are renumbered once, but only if every widget shortcut is still its original default; any customised or cleared widget shortcut leaves them all as they are. Settings can change, clear, or restore each global shortcut. An assignment remains saved if Windows cannot register it, and Settings reports the conflict so it can be changed without losing the intended shortcut.
 
 Display has **Show** and **Dismiss** shortcuts in the same settings table, both
 defaulting to **Ctrl-Alt-Shift-0**. Matching shortcuts toggle the preview; different

@@ -7,7 +7,12 @@ public readonly record struct PanelSize(double Width, double Height)
     public PanelSize Clamped() => new(Math.Max(Width, 1), Math.Max(Height, 1));
 }
 
-public sealed record CompactWidgetOption(int WidgetType, string Title);
+/// <summary>
+/// A widget the native add menus can open, in menu order. A separator goes
+/// wherever <see cref="MenuGroup"/> changes; <see cref="Emoji"/> prefixes the
+/// title when present.
+/// </summary>
+public sealed record CompactWidgetOption(int WidgetType, string Title, int MenuGroup = 0, string? Emoji = null);
 
 /// <summary>
 /// One widget the host has asked native to present. The full snapshot payload
@@ -115,7 +120,13 @@ public sealed record WidgetPanelInventory(string HostInstanceId, int Revision, I
                 if (!option.TryGetProperty("title", out var titleValue) || titleValue.ValueKind != JsonValueKind.String) continue;
                 var title = titleValue.GetString()?.Trim();
                 if (string.IsNullOrEmpty(title) || !seen.Add(widgetType)) continue;
-                parsed.Add(new CompactWidgetOption(widgetType, title));
+                var menuGroup = option.TryGetProperty("menuGroup", out var groupValue)
+                    && groupValue.ValueKind == JsonValueKind.Number
+                    && groupValue.TryGetInt32(out var parsedGroup) ? parsedGroup : 0;
+                var emoji = option.TryGetProperty("emoji", out var emojiValue) && emojiValue.ValueKind == JsonValueKind.String
+                    ? emojiValue.GetString()?.Trim()
+                    : null;
+                parsed.Add(new CompactWidgetOption(widgetType, title, menuGroup, string.IsNullOrEmpty(emoji) ? null : emoji));
             }
             options = parsed;
         }

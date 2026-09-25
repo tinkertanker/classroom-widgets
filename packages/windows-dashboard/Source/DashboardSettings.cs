@@ -31,6 +31,13 @@ public sealed class DashboardSettings
 
     private bool? _loadedDisplayPreviewShortcutWasPresent;
 
+    private static readonly string[] NumberedWidgetDefaults =
+        Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
+
+    // Widget types in the order releases before the grouped native menu received
+    // them (the teacher registry order), which is how they were numbered 1–9.
+    private static readonly int[] LegacyWidgetShortcutOrder = { 0, 1, 2, 3, 4, 6, 7, 12, 9 };
+
     internal static void UseDataDirectory(string directory) => DataDirectory = directory;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -46,6 +53,9 @@ public sealed class DashboardSettings
     public Dictionary<int, string?> WidgetShortcuts { get; set; } = new();
     public Dictionary<int, string?> WidgetDismissShortcuts { get; set; } = new();
     public Dictionary<int, string> WidgetShortcutDefaults { get; set; } = new();
+    // Set on the first widget inventory once untouched legacy-order defaults have
+    // been renumbered in menu order (or found customised), so it never reruns.
+    public bool WidgetShortcutMenuOrderMigrated { get; set; }
     public PanelFrame? DisplayPreviewFrame { get; set; }
     public string? DisplayPreviewSourceId { get; set; }
     public string? DisplayPreviewShortcut { get; set; }
@@ -155,6 +165,21 @@ public sealed class DashboardSettings
     internal bool ApplyWidgetShortcutDefaults(IReadOnlyList<CompactWidgetOption> options)
     {
         var changed = options.Count > 0 && !WidgetShortcutsInitialized;
+        if (options.Count > 0 && !WidgetShortcutMenuOrderMigrated)
+        {
+            if (HasUntouchedLegacyWidgetDefaults())
+            {
+                // Forget the legacy digits so the allocation below numbers every widget in menu order.
+                foreach (var widgetType in LegacyWidgetShortcutOrder)
+                {
+                    WidgetShortcuts.Remove(widgetType);
+                    WidgetDismissShortcuts.Remove(widgetType);
+                    WidgetShortcutDefaults.Remove(widgetType);
+                }
+            }
+            WidgetShortcutMenuOrderMigrated = true;
+            changed = true;
+        }
         if (!DisplayPreviewShortcutsInitialized && _loadedDisplayPreviewShortcutWasPresent is bool wasPresent)
         {
             if (wasPresent)
@@ -169,7 +194,7 @@ public sealed class DashboardSettings
             DisplayPreviewShortcutsInitialized = true;
             changed = true;
         }
-        var numberedDefaults = Enumerable.Range(1, 9).Select(index => $"Ctrl+Alt+Shift+{index}").ToArray();
+        var numberedDefaults = NumberedWidgetDefaults;
         var reserved = new HashSet<string>(
             WidgetShortcuts.Values.Concat(WidgetDismissShortcuts.Values).OfType<string>()
                 .Concat(new[] { DisplayPreviewShortcut, DisplayPreviewDismissShortcut }.OfType<string>())
@@ -242,6 +267,27 @@ public sealed class DashboardSettings
         }
         WidgetShortcutsInitialized = true;
         return changed;
+    }
+
+    /// <summary>
+    /// True only when every widget show and dismiss binding is exactly the
+    /// legacy default: the registry order numbered 1–9 with dismiss matching
+    /// show. Any customised, cleared, missing or extra binding returns false.
+    /// </summary>
+    private bool HasUntouchedLegacyWidgetDefaults()
+    {
+        if (WidgetShortcuts.Count != LegacyWidgetShortcutOrder.Length
+            || WidgetDismissShortcuts.Count != LegacyWidgetShortcutOrder.Length) return false;
+        for (var index = 0; index < LegacyWidgetShortcutOrder.Length; index++)
+        {
+            var widgetType = LegacyWidgetShortcutOrder[index];
+            var legacyDefault = NumberedWidgetDefaults[index];
+            if (!WidgetShortcuts.TryGetValue(widgetType, out var show)
+                || !string.Equals(show, legacyDefault, StringComparison.OrdinalIgnoreCase)) return false;
+            if (!WidgetDismissShortcuts.TryGetValue(widgetType, out var dismiss)
+                || !string.Equals(dismiss, legacyDefault, StringComparison.OrdinalIgnoreCase)) return false;
+        }
+        return true;
     }
 
     public static bool LaunchAtLoginEnabled

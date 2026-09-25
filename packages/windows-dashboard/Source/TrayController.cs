@@ -20,7 +20,7 @@ public sealed class TrayController : IDisposable
     private readonly Action _openDisplayPreview;
     private readonly NotifyIcon _icon;
     private readonly ContextMenuStrip _menu = new();
-    private readonly ToolStripMenuItem _addMenu = new("Add Widget");
+    private readonly List<ToolStripItem> _fixedItems = new();
     private readonly ToolStripMenuItem _arrangeMenu = new("Arrange Widgets");
     private readonly ToolStripMenuItem _launchAtLogin = new("Launch at Login") { CheckOnClick = true };
     private SettingsWindow? _settingsWindow;
@@ -49,10 +49,11 @@ public sealed class TrayController : IDisposable
         SystemEvents.UserPreferenceChanged += UserPreferenceChanged;
 
         BuildMenu();
-        _host.WidgetOptionsChanged += RebuildAddMenu;
+        _host.WidgetOptionsChanged += RebuildMenu;
         _menu.Opening += (_, _) =>
         {
-            RebuildAddMenu();
+            // Rebuilt on every open so shortcut changes made in Settings show up.
+            RebuildMenu();
             RebuildArrangeMenu();
             _launchAtLogin.Checked = DashboardSettings.LaunchAtLoginEnabled;
         };
@@ -60,7 +61,6 @@ public sealed class TrayController : IDisposable
 
     private void BuildMenu()
     {
-        RebuildAddMenu();
         RebuildArrangeMenu();
 
         var openLauncher = new ToolStripMenuItem("Open Widget Launcher");
@@ -97,39 +97,77 @@ public sealed class TrayController : IDisposable
         var quit = new ToolStripMenuItem("Quit Classroom Widgets");
         quit.Click += (_, _) => _ = ((App)System.Windows.Application.Current).RequestQuitAsync();
 
-        _menu.Items.Add(openLauncher);
-        _menu.Items.Add(_addMenu);
-        _menu.Items.Add(_arrangeMenu);
-        _menu.Items.Add(reload);
-        _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(settingsItem);
-        _menu.Items.Add(_launchAtLogin);
-        _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(openWeb);
-        _menu.Items.Add(checkForUpdates);
-        _menu.Items.Add(about);
-        _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add(quit);
+        _fixedItems.AddRange(new ToolStripItem[]
+        {
+            new ToolStripSeparator(),
+            _arrangeMenu,
+            openLauncher,
+            new ToolStripSeparator(),
+            settingsItem,
+            _launchAtLogin,
+            new ToolStripSeparator(),
+            checkForUpdates,
+            reload,
+            about,
+            openWeb,
+            new ToolStripSeparator(),
+            quit
+        });
+        RebuildMenu();
     }
 
-    private void RebuildAddMenu()
+    /// <summary>
+    /// Lists Display and the widgets in the teacher app's menu order, one level
+    /// deep with a separator between groups, followed by the fixed items. Each
+    /// widget shows its global show shortcut as a hint; the hotkeys themselves
+    /// are registered by <see cref="WidgetShortcutManager"/>.
+    /// </summary>
+    private void RebuildMenu()
     {
-        _addMenu.DropDownItems.Clear();
+        var widgetItems = new List<ToolStripItem>();
+        var display = new ToolStripMenuItem(CompactWidgetMenu.DisplayLabel)
+        {
+            ShortcutKeyDisplayString = ShowShortcutHint(DisplayShortcutLogic.WidgetType, _settings.DisplayPreviewShortcut)
+        };
+        display.Click += (_, _) => _openDisplayPreview();
+        widgetItems.Add(display);
+
         var options = _host.WidgetOptions;
         if (options.Count == 0)
         {
-            _addMenu.DropDownItems.Add(new ToolStripMenuItem("Loading…") { Enabled = false });
+            widgetItems.Add(new ToolStripMenuItem("Loading widgets…") { Enabled = false });
         }
-        foreach (var option in options)
+        foreach (var (option, separatorBefore) in CompactWidgetMenu.Entries(options))
         {
-            var item = new ToolStripMenuItem(option.Title) { Tag = option.WidgetType };
+            if (separatorBefore) widgetItems.Add(new ToolStripSeparator());
+            var item = new ToolStripMenuItem(CompactWidgetMenu.Label(option))
+            {
+                Tag = option.WidgetType,
+                ShortcutKeyDisplayString = ShowShortcutHint(option.WidgetType, _settings.WidgetShortcuts.GetValueOrDefault(option.WidgetType))
+            };
             item.Click += (_, _) => _ = _host.AddWidgetAsync(option.WidgetType);
-            _addMenu.DropDownItems.Add(item);
+            widgetItems.Add(item);
         }
-        _addMenu.DropDownItems.Add(new ToolStripSeparator());
-        var display = new ToolStripMenuItem("Display");
-        display.Click += (_, _) => _openDisplayPreview();
-        _addMenu.DropDownItems.Add(display);
+
+        _menu.SuspendLayout();
+        var previous = _menu.Items.Cast<ToolStripItem>().Where(item => !_fixedItems.Contains(item)).ToList();
+        _menu.Items.Clear();
+        foreach (var item in previous) item.Dispose();
+        _menu.Items.AddRange(widgetItems.ToArray());
+        _menu.Items.AddRange(_fixedItems.ToArray());
+        _menu.ResumeLayout();
+    }
+
+    /// <summary>
+    /// The assigned show shortcut as menu hint text, or null when it is
+    /// unassigned or Windows could not register it.
+    /// </summary>
+    private string? ShowShortcutHint(int widgetType, string? shortcut)
+    {
+        if (!WidgetShortcutGesture.TryParse(shortcut, out var gesture)) return null;
+        return _shortcuts.StatusFor(widgetType, WidgetShortcutAction.Show).Status == WidgetShortcutStatus.Conflict
+            ? null
+            : gesture.Display;
     }
 
     private void RebuildArrangeMenu()
