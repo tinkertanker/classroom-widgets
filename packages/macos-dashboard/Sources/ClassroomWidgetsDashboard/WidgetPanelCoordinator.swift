@@ -264,7 +264,7 @@ final class WidgetPanelCoordinator: NSObject {
 
         let targetScreen = screen
             ?? selectedPanelController()?.window?.screen
-            ?? orderedControllers.compactMap(\.window?.screen).first
+            ?? orderedControllers.first { !$0.isHidden }?.window?.screen
             ?? NSScreen.main
         guard let targetScreen else { return }
         let usableFrame = targetScreen.visibleFrame.insetBy(dx: 12, dy: 12)
