@@ -5,7 +5,8 @@ import { WidgetHostController } from './hostController';
 import { DashboardSettings } from './settings';
 import { openSettingsWindow } from './settingsWindow';
 import { WidgetPanelLayout } from './models';
-import { WidgetShortcutController } from './widgetShortcuts';
+import { ShortcutStatus, WidgetShortcutController } from './widgetShortcuts';
+import { widgetMenuItems } from './widgetMenu';
 
 const FULL_WEB_APP_URL = 'https://widgets.tk.sg';
 const ABOUT_URL = 'https://github.com/tinkertanker/classroom-widgets';
@@ -43,22 +44,14 @@ export class TrayController {
     this.rebuildMenu();
     this.host.on('widgetOptionsChanged', () => this.rebuildMenu());
     this.host.panelCoordinator.on('changed', () => this.rebuildMenu());
+    this.shortcuts.on('changed', () => this.rebuildMenu());
   }
 
   rebuildMenu(): void {
     const coordinator = this.host.panelCoordinator;
-    const options = this.host.widgetOptions;
-
-    const addSubmenu: MenuItemConstructorOptions[] = [
-      ...(options.length === 0
-        ? [{ label: 'Loading…', enabled: false } as MenuItemConstructorOptions]
-        : options.map((option) => ({
-          label: option.title,
-          click: () => void this.host.addWidget(option.widgetType),
-        }))),
-      { type: 'separator' },
-      { label: 'Display', click: () => this.onDisplayPreview() },
-    ];
+    // Hint each assigned Show chord unless another application holds it.
+    const hint = (status: ShortcutStatus | undefined) => (status && status.state !== 'conflict' ? status.accelerator : null);
+    const showAccelerators = new Map(this.shortcuts.getStatuses().map((status) => [status.widgetType, hint(status)]));
 
     const layoutItem = (label: string, layout: WidgetPanelLayout): MenuItemConstructorOptions => ({
       label,
@@ -68,8 +61,13 @@ export class TrayController {
     });
 
     const template: MenuItemConstructorOptions[] = [
-      { label: 'Open Widget Launcher', click: () => this.onOpenLauncher() },
-      { label: 'Add Widget', submenu: addSubmenu },
+      ...widgetMenuItems(this.host.widgetOptions, {
+        openDisplay: () => this.onDisplayPreview(),
+        addWidget: (widgetType) => void this.host.addWidget(widgetType),
+        displayAccelerator: hint(this.shortcuts.getDisplayStatus()),
+        widgetAccelerator: (widgetType) => showAccelerators.get(widgetType) ?? null,
+      }),
+      { type: 'separator' },
       {
         label: 'Arrange Widgets',
         enabled: coordinator.panelCount > 0,
@@ -79,7 +77,7 @@ export class TrayController {
           layoutItem('Arrange in a Column', 'column'),
         ],
       },
-      { label: 'Reload Widgets', click: () => void this.host.reloadWidgets() },
+      { label: 'Open Widget Launcher', click: () => this.onOpenLauncher() },
       { type: 'separator' },
       { label: 'Settings…', click: () => openSettingsWindow(this.settings, this.shortcuts, this.appVersion) },
       {
@@ -92,9 +90,10 @@ export class TrayController {
         },
       },
       { type: 'separator' },
-      { label: 'Open Full Web App', click: () => void openUrl(FULL_WEB_APP_URL) },
       { label: 'Check for Updates…', click: () => this.onCheckForUpdates() },
+      { label: 'Reload Widgets', click: () => void this.host.reloadWidgets() },
       { label: `About Classroom Widgets (v${this.appVersion})`, click: () => void openUrl(ABOUT_URL) },
+      { label: 'Open Full Web App', click: () => void openUrl(FULL_WEB_APP_URL) },
       { type: 'separator' },
       { label: 'Quit Classroom Widgets', click: () => this.onQuit() },
     ];

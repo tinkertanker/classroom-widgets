@@ -12,9 +12,15 @@ export function clampSize(size: PanelSize): PanelSize {
   return { width: Math.max(size.width, 1), height: Math.max(size.height, 1) };
 }
 
+/**
+ * A compact widget the teacher app offers, in native menu order. Menus draw a
+ * separator wherever `menuGroup` changes and put Display first.
+ */
 export interface CompactWidgetOption {
   widgetType: number;
   title: string;
+  menuGroup: number;
+  emoji?: string;
 }
 
 export interface WidgetPanelDescriptor {
@@ -133,7 +139,10 @@ export function parseInventory(body: unknown): WidgetPanelInventory | null {
       const title = rawTitle.trim();
       if (!title || seen.has(widgetType)) continue;
       seen.add(widgetType);
-      parsed.push({ widgetType, title });
+      const rawGroup = intProp(option, 'menuGroup');
+      const menuGroup = rawGroup !== null && rawGroup >= 0 ? rawGroup : 0;
+      const emoji = typeof option.emoji === 'string' ? option.emoji.trim() : '';
+      parsed.push({ widgetType, title, menuGroup, ...(emoji ? { emoji } : {}) });
     }
     options = parsed;
   }

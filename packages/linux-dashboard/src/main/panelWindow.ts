@@ -15,6 +15,7 @@ import { registerNativeMessages, unregisterNativeMessages } from './nativeMessag
 import { configureWebContents, evaluate, evaluateBool } from './webContentsSetup';
 import type { DashboardSettings } from './settings';
 import { shortenerSettingsScript } from './shortenerSettings';
+import { widgetMenuItems } from './widgetMenu';
 
 export interface RectFrame {
   x: number;
@@ -524,17 +525,10 @@ export class WidgetPanelWindow extends EventEmitter {
         this.emit('removalRequested', this.widgetId);
         break;
       case 'add': {
-        const items = [
-          { label: 'Display', click: () => this.emit('displayPreviewRequested') },
-          { type: 'separator' as const },
-          ...this.options.map((option) => ({
-          label: option.title,
-          click: () => this.emit('widgetCreationRequested', option.widgetType),
-          })),
-        ];
-        const menu = Menu.buildFromTemplate(items.length > 2
-          ? items
-          : [{ label: 'Display', click: () => this.emit('displayPreviewRequested') }]);
+        const menu = Menu.buildFromTemplate(widgetMenuItems(this.options, {
+          openDisplay: () => this.emit('displayPreviewRequested'),
+          addWidget: (widgetType) => this.emit('widgetCreationRequested', widgetType),
+        }));
         this.trackMenu(menu);
         const bounds = this.win.getBounds();
         menu.popup({ window: this.win, x: Math.max(0, bounds.width - 48), y: CHROME_HEIGHT });

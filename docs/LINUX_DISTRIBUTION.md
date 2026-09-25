@@ -14,15 +14,16 @@ Launching the app from the desktop application menu opens a searchable widget la
 
 | Menu item | What it does |
 | --- | --- |
-| **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
-| **Add Widget ▸** | Opens a floating panel for Randomiser, Timer, List, Task Cue, Traffic Light, Link Shortener, Text Banner, QR Code, or Sound Effects. |
+| **Display** and the widgets | Opens Display or a floating panel for a widget. Widgets are listed most used first, in separator-delimited groups: Timer and Text Banner (with Display); Traffic Light and Task Cue; Randomiser and List; Link Shortener, QR Code and Sound Effects. Each item shows its global Show shortcut when one is assigned and not held by another application. |
 | **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
-| **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
+| **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles a `~/.config/autostart/classroom-widgets.desktop` entry. |
-| **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
 | **Check for Updates…** | Checks the latest GitHub release and installs it after confirmation. |
-| **Quit** | Flushes pending widget state and exits. |
+| **Reload Widgets** | Reloads the web host and every panel without losing widget state. |
+| **About Classroom Widgets** | Shows the app version and opens the project page. |
+| **Open Full Web App** | Opens https://widgets.tk.sg in the default browser. |
+| **Quit Classroom Widgets** | Flushes pending widget state and exits. |
 
 Launch at login starts quietly without opening the launcher.
 
@@ -114,7 +115,21 @@ settings, persistence, live updates, reloads, and the widget's settings gear.
 It makes no shortening requests. Set `SCREENSHOT_DIR` to an existing directory
 to capture the default and Short.io Settings screens.
 
-The first nine available widget types default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but a Wayland compositor may restrict global shortcuts from XWayland applications; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
+The tray menu check runs the real app the same way:
+
+```bash
+xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/trayMenu.cjs --background
+```
+
+It starts from disposable preferences holding the earlier default widget
+shortcuts, then checks the tray menu layout and shortcut hints, the one-time
+renumbering on disk and in Settings, and that adding a widget enables
+**Arrange Widgets**. It writes `tray-menu.txt`, `settings.json` and
+`settings-window.png` to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default: a
+`classroom-widgets-test-evidence/linux-tray-menu` directory under the system
+temp directory).
+
+The first nine available widget types, in tray menu order, default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Installs whose widget shortcuts are all still the earlier defaults (numbered Randomiser, Timer, List, …) are renumbered to the menu order once, on the first launch that loads the widgets; any customised, cleared or extra widget shortcut leaves every widget shortcut as it was, and Display and Move shortcuts are never changed. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but a Wayland compositor may restrict global shortcuts from XWayland applications; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
 
 ## Publishing a release
 

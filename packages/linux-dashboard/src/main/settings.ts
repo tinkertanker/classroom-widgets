@@ -20,6 +20,7 @@ export interface DashboardSettingsData {
   panelFrames: Record<string, PanelFrame>;
   linkShortener: ShortenerSettings;
   widgetShortcutsInitialized: boolean;
+  widgetShortcutMenuOrderApplied?: boolean;
   widgetShortcuts: Record<string, string | null>;
   widgetDismissShortcuts: Record<string, string | null>;
   displayPreviewFrame?: PanelFrame;
@@ -42,6 +43,8 @@ export class DashboardSettings extends EventEmitter {
   panelFrames: Record<string, PanelFrame> = {};
   linkShortener = readShortenerSettings();
   widgetShortcutsInitialized = false;
+  /** Set on the first inventory once default widget shortcuts follow menu order. */
+  widgetShortcutMenuOrderApplied = false;
   widgetShortcuts: Record<string, string | null> = {};
   widgetDismissShortcuts: Record<string, string | null> = {};
   displayPreviewFrame?: PanelFrame;
@@ -66,6 +69,7 @@ export class DashboardSettings extends EventEmitter {
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
         settings.linkShortener = readShortenerSettings(raw.linkShortener);
         if (raw.widgetShortcutsInitialized === true) settings.widgetShortcutsInitialized = true;
+        if (raw.widgetShortcutMenuOrderApplied === true) settings.widgetShortcutMenuOrderApplied = true;
         if (raw.widgetShortcuts && typeof raw.widgetShortcuts === 'object') {
           for (const [widgetType, shortcut] of Object.entries(raw.widgetShortcuts)) {
             if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
@@ -133,6 +137,7 @@ export class DashboardSettings extends EventEmitter {
         panelFrames: this.panelFrames,
         linkShortener: this.linkShortener,
         widgetShortcutsInitialized: this.widgetShortcutsInitialized,
+        widgetShortcutMenuOrderApplied: this.widgetShortcutMenuOrderApplied,
         widgetShortcuts: this.widgetShortcuts,
         widgetDismissShortcuts: this.widgetDismissShortcuts,
         displayPreviewFrame: this.displayPreviewFrame,

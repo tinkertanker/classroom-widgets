@@ -36,6 +36,13 @@ const MOVE_WIDGET_TITLES: Record<MoveDirection, string> = {
   previous: 'Move Widget to Previous Display',
   next: 'Move Widget to Next Display',
 };
+/** Default launch chords 1–9, handed out in the teacher app's menu order. */
+const WIDGET_DEFAULTS = Array.from({ length: 9 }, (_, index) => `Ctrl+Alt+Shift+${index + 1}`);
+/**
+ * Widget types in the order the teacher app listed them before it sent menu
+ * order. Untouched defaults from then are renumbered once (see updateOptions).
+ */
+const LEGACY_DEFAULT_ORDER = [0, 1, 2, 3, 4, 6, 7, 12, 9];
 const MODIFIER_ORDER = ['Ctrl', 'Alt', 'Shift', 'Super'] as const;
 const MODIFIER_ALIASES: Record<string, typeof MODIFIER_ORDER[number]> = {
   control: 'Ctrl', ctrl: 'Ctrl', alt: 'Alt', option: 'Alt', shift: 'Shift',
@@ -96,6 +103,17 @@ export class WidgetShortcutController extends EventEmitter {
       return;
     }
     let changed = false;
+    if (options.length > 0 && !this.settings.widgetShortcutMenuOrderApplied) {
+      // Decided once, on the first real inventory, before backfill fills gaps.
+      if (this.hasOnlyLegacyWidgetDefaults()) {
+        for (const option of options) {
+          delete this.settings.widgetShortcuts[String(option.widgetType)];
+          delete this.settings.widgetDismissShortcuts[String(option.widgetType)];
+        }
+      }
+      this.settings.widgetShortcutMenuOrderApplied = true;
+      changed = true;
+    }
     const reserved = this.widgetReservations();
     if (this.settings.displayPreviewShortcut === undefined) {
       this.settings.displayPreviewShortcut = reserved.has(DISPLAY_DEFAULT) ? null : DISPLAY_DEFAULT;
@@ -123,11 +141,10 @@ export class WidgetShortcutController extends EventEmitter {
       const normalized = normalizeAccelerator(shortcut ?? '');
       if (normalized) reserved.add(normalized);
     }
-    const defaults = Array.from({ length: 9 }, (_, index) => `Ctrl+Alt+Shift+${index + 1}`);
-    options.slice(0, 9).forEach((option) => {
+    options.slice(0, WIDGET_DEFAULTS.length).forEach((option) => {
       const type = String(option.widgetType);
       if (!Object.hasOwn(this.settings.widgetShortcuts, type)) {
-        const shortcut = defaults.find((candidate) => !reserved.has(candidate)) ?? null;
+        const shortcut = WIDGET_DEFAULTS.find((candidate) => !reserved.has(candidate)) ?? null;
         this.settings.widgetShortcuts[type] = shortcut;
         if (shortcut) reserved.add(shortcut);
         changed = true;
@@ -238,13 +255,14 @@ export class WidgetShortcutController extends EventEmitter {
     }
     this.settings.widgetShortcuts = Object.fromEntries(this.options.map((option) => [String(option.widgetType), null]));
     this.settings.widgetDismissShortcuts = Object.fromEntries(this.options.map((option) => [String(option.widgetType), null]));
-    this.options.slice(0, 9).forEach((option, index) => {
+    this.options.slice(0, WIDGET_DEFAULTS.length).forEach((option, index) => {
       const type = String(option.widgetType);
-      const shortcut = `Ctrl+Alt+Shift+${index + 1}`;
+      const shortcut = WIDGET_DEFAULTS[index];
       this.settings.widgetShortcuts[type] = shortcut;
       this.settings.widgetDismissShortcuts[type] = shortcut;
     });
     this.settings.widgetShortcutsInitialized = true;
+    this.settings.widgetShortcutMenuOrderApplied = true;
     this.settings.notifyChanged();
     this.refresh();
   }
@@ -263,6 +281,21 @@ export class WidgetShortcutController extends EventEmitter {
 
   unregisterAll(): void {
     this.registrar.unregisterAll();
+  }
+
+  /**
+   * True only when the stored widget bindings are exactly what the registry
+   * order handed out: every legacy type on its default Show chord, Dismiss the
+   * same or not yet stored (the pre-Dismiss representation of "same as Show"),
+   * and nothing else stored.
+   */
+  private hasOnlyLegacyWidgetDefaults(): boolean {
+    const legacy = new Map(LEGACY_DEFAULT_ORDER.map((type, index) => [String(type), WIDGET_DEFAULTS[index]]));
+    const show = Object.entries(this.settings.widgetShortcuts);
+    const dismiss = Object.entries(this.settings.widgetDismissShortcuts);
+    return show.length === legacy.size
+      && show.every(([type, shortcut]) => legacy.get(type) === shortcut)
+      && dismiss.every(([type, shortcut]) => legacy.get(type) === shortcut);
   }
 
   private widgetReservations(): Set<string> {
