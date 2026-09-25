@@ -381,3 +381,151 @@ test('reset waits for inventory when a retained widget binding reserves a move d
   assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+Shift+Right');
   assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
 });
+
+// One-time move of untouched default widget shortcuts to the menu order.
+//
+// Ways this migration could fail:
+// 1. An untouched legacy install keeps the registry numbering (Randomiser on 1)
+//    after the menu reorder, so the tray hints and launch keys disagree with the menu.
+// 2. Only Show moves and Dismiss keeps the legacy chord, splitting a toggle into two
+//    different widgets' Show and Dismiss.
+// 3. An install from before Dismiss shortcuts (no Dismiss map) is treated as customised.
+// 4. A customised Show or Dismiss chord, a cleared binding, a missing binding or an
+//    extra binding is overwritten, or the other widgets move around it.
+// 5. Display or Move Widget shortcuts are touched.
+// 6. The new bindings are saved but the old chords stay registered, or the Settings
+//    window is not told.
+// 7. The empty inventory seen before the web host loads decides (and closes) the
+//    migration before the real inventory arrives.
+// 8. It runs again later, for example after a restart or after the user deliberately
+//    picks the legacy numbering, because the done flag is missing or not persisted.
+// 9. A fresh install gets legacy numbering, or is left without the flag.
+const LEGACY_ORDER = [0, 1, 2, 3, 4, 6, 7, 12, 9];
+const MENU_ORDER = [1, 7, 4, 3, 0, 2, 6, 12, 9];
+const menuInventory = () => MENU_ORDER.map((widgetType) => ({ widgetType, title: `Widget ${widgetType}` }));
+const numbered = (order) => Object.fromEntries(order.map((type, index) => [String(type), `Ctrl+Alt+Shift+${index + 1}`]));
+const legacyInstall = (overrides = {}) => ({
+  widgetShortcutsInitialized: true,
+  widgetShortcuts: numbered(LEGACY_ORDER),
+  widgetDismissShortcuts: numbered(LEGACY_ORDER),
+  displayPreviewShortcut: 'Ctrl+Alt+Shift+0',
+  displayPreviewDismissShortcut: 'Ctrl+Alt+Shift+0',
+  moveWidgetPreviousShortcut: 'Ctrl+Alt+Shift+Left',
+  moveWidgetNextShortcut: 'Ctrl+Alt+Shift+Right',
+  ...overrides,
+});
+
+test('menu order migration moves untouched legacy defaults and re-registers them', () => {
+  const h = harness(legacyInstall());
+  let changes = 0;
+  h.controller.on('changed', () => { changes += 1; });
+  h.controller.updateOptions([], false);
+  assert.equal(h.settings.widgetShortcutMenuOrderApplied, undefined, 'an empty inventory does not decide');
+  changes = 0;
+  h.controller.updateOptions(menuInventory());
+  assert.deepEqual(h.settings.widgetShortcuts, numbered(MENU_ORDER));
+  assert.deepEqual(h.settings.widgetDismissShortcuts, numbered(MENU_ORDER));
+  assert.equal(h.settings.widgetShortcutMenuOrderApplied, true);
+  assert.equal(h.settings.displayPreviewShortcut, 'Ctrl+Alt+Shift+0');
+  assert.equal(h.settings.moveWidgetPreviousShortcut, 'Ctrl+Alt+Shift+Left');
+  assert.equal(h.settings.moveWidgetNextShortcut, 'Ctrl+Alt+Shift+Right');
+  assert.equal(changes, 1, 'the Settings window hears about the new bindings');
+  const timer = h.controller.getStatuses().find((status) => status.widgetType === 1);
+  assert.equal(timer.accelerator, 'Ctrl+Alt+Shift+1');
+  h.callbacks.get('Ctrl+Alt+Shift+1')();
+  h.callbacks.get('Ctrl+Alt+Shift+5')();
+  assert.deepEqual(h.toggled, [1, 0]);
+});
+
+test('menu order migration treats a missing Dismiss map as defaults', () => {
+  const h = harness(legacyInstall({ widgetDismissShortcuts: {} }));
+  h.controller.updateOptions(menuInventory());
+  assert.deepEqual(h.settings.widgetShortcuts, numbered(MENU_ORDER));
+  assert.deepEqual(h.settings.widgetDismissShortcuts, numbered(MENU_ORDER));
+});
+
+const customised = {
+  'a customised Show': (s) => { s.widgetShortcuts['12'] = 'Ctrl+Alt+Q'; },
+  'a customised Dismiss': (s) => { s.widgetDismissShortcuts['12'] = 'Ctrl+Alt+Q'; },
+  'a Show chord moved to another widget': (s) => { s.widgetShortcuts['0'] = 'Ctrl+Alt+Shift+2'; s.widgetShortcuts['1'] = 'Ctrl+Alt+Shift+1'; },
+  'a cleared Show': (s) => { s.widgetShortcuts['12'] = null; },
+  'a cleared Dismiss': (s) => { s.widgetDismissShortcuts['12'] = null; },
+  'a missing Show': (s) => { delete s.widgetShortcuts['9']; delete s.widgetDismissShortcuts['9']; },
+  'an extra Show': (s) => { s.widgetShortcuts['99'] = null; },
+  'an extra Dismiss': (s) => { s.widgetDismissShortcuts['99'] = 'Ctrl+Alt+Q'; },
+};
+for (const [name, edit] of Object.entries(customised)) {
+  test(`menu order migration leaves every binding alone with ${name}`, () => {
+    const stored = legacyInstall();
+    edit(stored);
+    const h = harness(JSON.parse(JSON.stringify(stored)));
+    h.controller.updateOptions(menuInventory());
+    for (const type of Object.keys(stored.widgetShortcuts)) {
+      assert.equal(h.settings.widgetShortcuts[type], stored.widgetShortcuts[type], `Show ${type}`);
+    }
+    for (const type of Object.keys(stored.widgetDismissShortcuts)) {
+      assert.equal(h.settings.widgetDismissShortcuts[type], stored.widgetDismissShortcuts[type], `Dismiss ${type}`);
+    }
+    assert.equal(h.settings.widgetShortcutMenuOrderApplied, true, 'decided once even without migrating');
+  });
+}
+
+test('a fresh install gets menu-order defaults and never migrates later', () => {
+  const h = harness();
+  h.controller.updateOptions(menuInventory());
+  assert.deepEqual(h.settings.widgetShortcuts, numbered(MENU_ORDER));
+  assert.equal(h.settings.widgetShortcutMenuOrderApplied, true);
+  for (const [type, chord] of Object.entries(numbered(LEGACY_ORDER))) {
+    h.settings.widgetShortcuts[type] = chord;
+    h.settings.widgetDismissShortcuts[type] = chord;
+  }
+  h.controller.updateOptions(menuInventory().slice(0, 8));
+  h.controller.updateOptions(menuInventory());
+  assert.deepEqual(h.settings.widgetShortcuts, numbered(LEGACY_ORDER));
+});
+
+function persistedController(t, initial) {
+  const { mkdtempSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
+  const { tmpdir } = require('node:os');
+  const { join } = require('node:path');
+  const { runInNewContext } = require('node:vm');
+  const directory = mkdtempSync(join(tmpdir(), 'widget-shortcut-order-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  writeFileSync(join(directory, 'settings.json'), JSON.stringify(initial));
+  const exports = {};
+  runInNewContext(readFileSync(join(__dirname, '../out/main/settings.js'), 'utf8'), {
+    exports,
+    process: { ...process, env: { ...process.env, XDG_CONFIG_HOME: directory } },
+    require(name) {
+      if (name === 'electron') return { app: { getPath: () => directory } };
+      if (name === './log') return { log: { warn() {} } };
+      if (name.startsWith('./')) return require('../out/main/' + name.slice(2));
+      return require(name);
+    },
+  });
+  return () => {
+    const settings = exports.DashboardSettings.load();
+    const registrar = { register: () => true, unregisterAll() {} };
+    const preview = { isOpen: false, open() {}, close() {} };
+    const controller = new WidgetShortcutController(settings, registrar, () => {}, () => {}, () => {}, preview);
+    return { settings, controller };
+  };
+}
+
+test('the migration runs once across restarts, even if the legacy numbering comes back', (t) => {
+  const start = persistedController(t, legacyInstall());
+  const first = start();
+  first.controller.updateOptions(menuInventory());
+  assert.deepEqual({ ...first.settings.widgetShortcuts }, numbered(MENU_ORDER));
+  for (const [type, chord] of Object.entries(numbered(LEGACY_ORDER))) {
+    first.settings.widgetShortcuts[type] = chord;
+    first.settings.widgetDismissShortcuts[type] = chord;
+  }
+  first.settings.save();
+
+  const restarted = start();
+  restarted.controller.updateOptions([], false);
+  restarted.controller.updateOptions(menuInventory());
+  assert.deepEqual({ ...restarted.settings.widgetShortcuts }, numbered(LEGACY_ORDER));
+  assert.deepEqual({ ...restarted.settings.widgetDismissShortcuts }, numbered(LEGACY_ORDER));
+});

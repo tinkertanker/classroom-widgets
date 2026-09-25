@@ -308,5 +308,8 @@ export class WidgetHostController extends EventEmitter {
 }
 
 function optionsEqual(a: CompactWidgetOption[], b: CompactWidgetOption[]): boolean {
-  return a.length === b.length && a.every((option, i) => option.widgetType === b[i].widgetType && option.title === b[i].title);
+  return a.length === b.length && a.every((option, i) => option.widgetType === b[i].widgetType
+    && option.title === b[i].title
+    && option.menuGroup === b[i].menuGroup
+    && option.emoji === b[i].emoji);
 }
