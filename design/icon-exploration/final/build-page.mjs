@@ -296,7 +296,7 @@ td b{font-weight:700}
 (function(){
   var END = 250, R = 504, C = 512, BAND = R * 0.365, TRACK = R * 0.115;
   var face = R - BAND, mid = R - BAND / 2, cap = (BAND / 2) / mid * 180 / Math.PI;
-  var HAM = '<circle cx="' + (C - 0.15 * face) + '" cy="' + (C + 0.13 * face) + '" r="' + 0.44 * face + '" fill="currentColor"/><circle cx="' + (C + 0.38 * face) + '" cy="' + (C - 0.2 * face) + '" r="' + 0.29 * face + '" fill="currentColor"/>';
+  var HAM = '<circle cx="' + (C - 0.17 * face) + '" cy="' + (C + 0.07 * face) + '" r="' + 0.44 * face + '" fill="currentColor"/><circle cx="' + (C + 0.37 * face) + '" cy="' + (C - 0.05 * face) + '" r="' + 0.29 * face + '" fill="currentColor"/>';
   function P(r, d){ var t = d * Math.PI / 180; return [(C + r * Math.sin(t)).toFixed(1), (C - r * Math.cos(t)).toFixed(1)]; }
   function draw(svg, f, showBand){
     var end = 360 * f, band = '';

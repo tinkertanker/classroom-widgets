@@ -117,7 +117,7 @@ function icon(o) {
 
 // ---------- two-circle hamster (body + head), facing right like the colour icon ----------
 // positions/radii are fractions of the face (counter) radius
-const HAM2 = { body: { x: -0.15, y: 0.13, r: 0.44 }, head: { x: 0.38, y: -0.2, r: 0.29 } };
+const HAM2 = { body: { x: -0.17, y: 0.07, r: 0.44 }, head: { x: 0.37, y: -0.05, r: 0.29 } };
 const ham2 = (cx, cy, faceR, fillBody, fillHead, stroke = '', sw = 0) => {
   const b = HAM2.body, h = HAM2.head;
   const st = stroke ? ` stroke="${stroke}" stroke-width="${sw}"` : '';
