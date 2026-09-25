@@ -15,7 +15,7 @@ Launching the app from the Start menu or desktop shortcut opens a searchable wid
 | Menu item | What it does |
 | --- | --- |
 | **Display**, then the widgets | Opens Display or a floating panel for a widget. Widgets are listed most used first, in the order the web app sends them, with separators between groups: Timer and Text Banner; Traffic Light and Task Cue; Randomiser and List; Link Shortener, QR Code and Sound Effects. Each item shows its global show shortcut, if one is assigned. |
-| **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
+| **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. A row or column goes on the display of the panel you last used; a panel's own arrange button uses that panel's display. Greyed out when no widget is on screen. |
 | **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles the `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` entry. |

@@ -15,7 +15,7 @@ Launching the app from the desktop application menu opens a searchable widget la
 | Menu item | What it does |
 | --- | --- |
 | **Display** and the widgets | Opens Display or a floating panel for a widget. Widgets are listed most used first, in separator-delimited groups: Timer and Text Banner (with Display); Traffic Light and Task Cue; Randomiser and List; Link Shortener, QR Code and Sound Effects. Each item shows its global Show shortcut when one is assigned and not held by another application. |
-| **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. |
+| **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. A row or column goes on the display of the panel you last used; a panel's own arrange button uses that panel's display. Greyed out when no widget is on screen. |
 | **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
 | **Launch at Login** | Toggles a `~/.config/autostart/classroom-widgets.desktop` entry. |
@@ -127,6 +127,22 @@ renumbering on disk and in Settings, and that adding a widget enables
 **Arrange Widgets**. It writes `tray-menu.txt`, `settings.json` and
 `settings-window.png` to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default: a
 `classroom-widgets-test-evidence/linux-tray-menu` directory under the system
+temp directory).
+
+The arrange check needs a 2560-pixel-wide X screen, which it reports to the
+app as two 1280x800 displays:
+
+```bash
+xvfb-run -a -s '-screen 0 2560x800x24' packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/arrange.cjs --background
+```
+
+It opens three widgets, drags one to the second display and focuses it, then
+checks that a row follows the focused panel's display, that a panel closed but
+not yet removed by the host is neither laid out nor loses its position, and
+that **Arrange Widgets** is greyed out once no widget is on screen. It writes
+`arrange.txt`, with the panel frames after each step, to
+`CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default: a
+`classroom-widgets-test-evidence/linux-arrange` directory under the system
 temp directory).
 
 The first nine available widget types, in tray menu order, default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Installs whose widget shortcuts are all still the earlier defaults (numbered Randomiser, Timer, List, …) are renumbered to the menu order once, on the first launch that loads the widgets; any customised, cleared or extra widget shortcut leaves every widget shortcut as it was, and Display and Move shortcuts are never changed. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but a Wayland compositor may restrict global shortcuts from XWayland applications; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.

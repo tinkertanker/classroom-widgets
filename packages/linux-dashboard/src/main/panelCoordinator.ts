@@ -112,6 +112,12 @@ export function layoutFrames(
   return frames;
 }
 
+// A panel the user closed is hidden at once but stays registered until the
+// host's next inventory removes it; only panels actually on screen count.
+function isPresented(panel: WidgetPanelWindow): boolean {
+  return !panel.isHidden && panel.isVisible();
+}
+
 /**
  * Coordinates the one-widget-per-window compact presentation. It owns native
  * placement only; widget content and state arrive through versioned host
@@ -137,12 +143,12 @@ export class WidgetPanelCoordinator extends EventEmitter {
     this.appVersion = appVersion;
   }
 
-  get panelCount(): number {
-    return this.panels.size;
-  }
-
   get currentLayout(): WidgetPanelLayout {
     return this.layout;
+  }
+
+  get hasVisiblePanels(): boolean {
+    return [...this.panels.values()].some(isPresented);
   }
 
   setWidgetCreationOptions(options: CompactWidgetOption[]): void {
@@ -275,7 +281,12 @@ export class WidgetPanelCoordinator extends EventEmitter {
     return { changes, prepared };
   }
 
-  arrange(layout: WidgetPanelLayout): void {
+  /**
+   * Lays out the panels that are on screen. The target display is `workArea`
+   * when given (the requesting panel's), else the selected panel's, else the
+   * first on-screen panel's in inventory order, else the primary display.
+   */
+  arrange(layout: WidgetPanelLayout, workArea?: Rect): void {
     const previous = this.layout;
     this.layout = layout;
     if (layout === 'freeform') {
@@ -284,19 +295,23 @@ export class WidgetPanelCoordinator extends EventEmitter {
       return;
     }
 
-    const panels = this.orderedPanels();
-    if (panels.length === 0) return;
+    const ordered = this.orderedPanels();
     if (previous === 'freeform') {
+      // Includes panels closed but not yet removed by the host, so they keep
+      // their frame if the removal never arrives.
       this.freeformFrames.clear();
-      for (const panel of panels) this.freeformFrames.set(panel.widgetId, panel.currentFrame);
+      for (const panel of ordered) this.freeformFrames.set(panel.widgetId, panel.currentFrame);
     }
+    const panels = ordered.filter(isPresented);
+    if (panels.length === 0) return;
 
-    const workArea = workAreaContaining(panels[0].currentFrame);
+    const anchor = this.selectedPanel() ?? panels[0];
+    const target = workArea ?? workAreaContaining(anchor.currentFrame);
     const usable: Rect = {
-      x: workArea.x + GAP,
-      y: workArea.y + GAP,
-      width: Math.max(workArea.width - 24, 1),
-      height: Math.max(workArea.height - 24, 1),
+      x: target.x + GAP,
+      y: target.y + GAP,
+      width: Math.max(target.width - 24, 1),
+      height: Math.max(target.height - 24, 1),
     };
     const frames = layoutFrames(
       panels.map((panel) => ({ id: panel.widgetId, size: panel.preferredFrameSize() })),
@@ -305,7 +320,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     );
     for (const panel of panels) {
       const frame = frames.get(panel.widgetId);
-      if (frame) panel.setFrame(clampFrame(frame, workArea));
+      if (frame) panel.setFrame(clampFrame(frame, target));
     }
     this.emit('changed');
   }
@@ -340,7 +355,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     panel.on('widgetCreationRequested', (widgetType: number) => this.emit('widgetCreationRequested', widgetType));
     panel.on('displayPreviewRequested', () => this.emit('displayPreviewRequested'));
     panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
-    panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout));
+    panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout, workAreaContaining(panel.currentFrame)));
     panel.on('focused', (widgetId: string) => { this.lastFocusedId = widgetId; });
     panel.on('frameChanged', (widgetId: string, frame: RectFrame) => {
       if (this.layout !== 'freeform') {
