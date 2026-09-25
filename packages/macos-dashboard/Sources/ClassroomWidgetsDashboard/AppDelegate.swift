@@ -211,6 +211,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.button?.image = DashboardMenuBarIcon.make(size: 21)
         statusItem.button?.imagePosition = .imageOnly
         let menu = NSMenu()
+        // Items set their own enabled state (Arrange Widgets, Launch at Login).
+        menu.autoenablesItems = false
         menu.delegate = self
         statusItem.menu = menu
         self.statusItem = statusItem
@@ -219,17 +221,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
 
+        WidgetMenu.addWidgetItems(
+            to: menu,
+            options: controller?.widgetOptions ?? [],
+            target: self,
+            displayAction: #selector(showDisplayPreview),
+            widgetAction: #selector(addWidget(_:)),
+            shortcut: { owner in
+                if owner == .display { return self.displayMenuShortcut() }
+                return self.shortcutState?.shortcut(for: owner)
+            }
+        )
+        menu.addItem(.separator())
+
+        let arrangeItem = NSMenuItem(title: "Arrange Widgets", action: nil, keyEquivalent: "")
+        arrangeItem.image = WidgetMenu.symbol(named: "square.grid.2x2", description: "Arrange Widgets")
+        arrangeItem.submenu = makeArrangeMenu()
+        arrangeItem.isEnabled = controller?.hasVisibleWidgetPanels == true
+        menu.addItem(arrangeItem)
+
         let openLauncherItem = NSMenuItem(title: "Open Widget Launcher", action: #selector(openLauncher), keyEquivalent: "")
         openLauncherItem.target = self
+        openLauncherItem.image = WidgetMenu.symbol(named: "square.grid.3x3", description: "Open Widget Launcher")
+        openLauncherItem.keyEquivalentModifierMask = []
         menu.addItem(openLauncherItem)
 
-        let newWidgetItem = NSMenuItem(title: "New Floating Widget", action: nil, keyEquivalent: "")
-        newWidgetItem.submenu = makeNewWidgetMenu(options: controller?.widgetOptions ?? [])
-        menu.addItem(newWidgetItem)
-
+        // Holding Option swaps the launcher item for this troubleshooting action.
         let reloadItem = NSMenuItem(title: "Reload Widgets", action: #selector(reloadWidgets), keyEquivalent: "")
         reloadItem.target = self
+        reloadItem.image = WidgetMenu.symbol(named: "arrow.clockwise", description: "Reload Widgets")
+        reloadItem.keyEquivalentModifierMask = .option
+        reloadItem.isAlternate = true
         menu.addItem(reloadItem)
+        menu.addItem(.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "")
+        settingsItem.target = self
+        applySettingsShortcut(to: settingsItem)
+        menu.addItem(settingsItem)
 
         let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         launchItem.target = self
@@ -237,41 +266,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         launchItem.isEnabled = launchAtLoginManager.canConfigure
         menu.addItem(launchItem)
 
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: "")
-        settingsItem.target = self
-        applySettingsShortcut(to: settingsItem)
-        menu.addItem(settingsItem)
-
-        let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
-        aboutItem.target = self
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
+
+        let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
         menu.addItem(aboutItem)
         menu.addItem(.separator())
+
         let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
     }
 
-    func makeNewWidgetMenu(options: [CompactWidgetOption]) -> NSMenu {
-        let newWidgetMenu = NSMenu(title: "New Floating Widget")
-        for option in options {
-            let item = NSMenuItem(title: option.title, action: #selector(addWidget(_:)), keyEquivalent: "")
+    private func makeArrangeMenu() -> NSMenu {
+        let menu = NSMenu(title: "Arrange Widgets")
+        let current = controller?.widgetPanelLayout
+        let layouts: [(title: String, layout: WidgetPanelLayout)] = [
+            ("Free Placement", .freeform),
+            ("Arrange in a Row", .row),
+            ("Arrange in a Column", .column)
+        ]
+        for entry in layouts {
+            let item = NSMenuItem(title: entry.title, action: #selector(arrangeWidgets(_:)), keyEquivalent: "")
             item.target = self
-            item.tag = option.widgetType
-            newWidgetMenu.addItem(item)
+            item.representedObject = entry.layout.rawValue
+            item.state = entry.layout == current ? .on : .off
+            menu.addItem(item)
         }
-        let previewItem = NSMenuItem(title: DisplayPreviewMenu.title, action: #selector(showDisplayPreview), keyEquivalent: "")
-        previewItem.target = self
-        applyDisplayShortcut(to: previewItem)
-        newWidgetMenu.addItem(previewItem)
-        if newWidgetMenu.items.isEmpty {
-            let item = NSMenuItem(title: "No widgets available", action: nil, keyEquivalent: "")
-            item.isEnabled = false
-            newWidgetMenu.addItem(item)
-        }
-        return newWidgetMenu
+        return menu
     }
 
     private func applySettingsShortcut(to item: NSMenuItem) {
@@ -281,14 +305,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.keyEquivalentModifierMask = DashboardShortcutFormatter.modifierFlags(from: shortcutModifiers())
     }
 
-    private func applyDisplayShortcut(to item: NSMenuItem) {
+    private func displayMenuShortcut() -> DashboardShortcut {
         let settings = persistedSettingsShortcut()
-        let shortcut = shortcutState?.shortcut(for: .display)
+        return shortcutState?.shortcut(for: .display)
             ?? widgetShortcutStore.proposedDisplayBinding(reserving: settings.isAssigned ? [settings] : [])
-        guard shortcut.isAssigned,
-              let equivalent = DashboardShortcutFormatter.keyEquivalent(for: shortcut.keyCode) else { return }
-        item.keyEquivalent = equivalent
-        item.keyEquivalentModifierMask = DashboardShortcutFormatter.modifierFlags(from: shortcut.modifiers)
     }
 
     /// Registration lifecycle shared by the single-action shortcuts (Open
@@ -861,6 +881,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func reloadWidgets() {
         controller?.reloadWidgets()
         displayPreviewCoordinator.restartIfRunning()
+    }
+    @objc private func arrangeWidgets(_ sender: NSMenuItem) {
+        guard let rawLayout = sender.representedObject as? String,
+              let layout = WidgetPanelLayout(rawValue: rawLayout) else { return }
+        controller?.arrangeWidgets(layout)
     }
     @objc private func showDisplayPreview() { displayPreviewCoordinator.open() }
     func performDisplayShortcut(action: WidgetShortcutAction? = .show) {

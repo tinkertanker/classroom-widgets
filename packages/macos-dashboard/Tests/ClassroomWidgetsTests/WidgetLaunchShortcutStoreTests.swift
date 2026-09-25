@@ -117,6 +117,91 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         XCTAssertEqual(store.bindings(for: options)[42]?.dismiss, nextAvailable)
     }
 
+    // Moving untouched defaults to the most-used-first menu order can fail by:
+    // - leaving untouched legacy defaults on the old numbering;
+    // - renumbering a set the teacher customised, cleared or partly changed;
+    // - renumbering again later, undoing choices made after the move;
+    // - spending the one-time check on an empty startup inventory;
+    // - taking a digit already held by Settings, Display or Move;
+    // - touching the Display binding.
+    private static let menuOrder = [1, 7, 4, 3, 0, 2, 6, 12, 9].enumerated().map { index, widgetType in
+        CompactWidgetOption(widgetType: widgetType, title: "Widget \(widgetType)", menuGroup: index / 2)
+    }
+
+    private func seedLegacyDefaults(_ adjust: (inout [String: WidgetShortcutBinding]) -> Void = { _ in }) throws {
+        var stored: [String: WidgetShortcutBinding] = [:]
+        for (widgetType, keyCode) in zip([0, 1, 2, 3, 4, 6, 7, 12, 9], WidgetLaunchShortcutStore.defaultKeyCodes) {
+            let shortcut = DashboardShortcut(keyCode: keyCode, modifiers: WidgetLaunchShortcutStore.defaultModifiers)
+            stored[String(widgetType)] = WidgetShortcutBinding(show: shortcut, dismiss: shortcut)
+        }
+        adjust(&stored)
+        defaults.set(try JSONEncoder().encode(stored), forKey: WidgetLaunchShortcutStore.storageKey)
+        defaults.set(true, forKey: WidgetLaunchShortcutStore.initializedKey)
+    }
+
+    private func digit(_ keyCode: Int) -> WidgetShortcutBinding {
+        let shortcut = DashboardShortcut(keyCode: keyCode, modifiers: WidgetLaunchShortcutStore.defaultModifiers).normalized
+        return WidgetShortcutBinding(show: shortcut, dismiss: shortcut)
+    }
+
+    func testUntouchedLegacyDefaultsMoveToMenuOrderOnce() throws {
+        try seedLegacyDefaults()
+        let display = DashboardShortcut(keyCode: Int(kVK_ANSI_0), modifiers: WidgetLaunchShortcutStore.defaultModifiers)
+        let store = WidgetLaunchShortcutStore(defaults: defaults)
+        store.setDisplay(display)
+
+        _ = store.bindings(for: [])
+        let bindings = store.bindings(for: Self.menuOrder)
+
+        let expected = Dictionary(uniqueKeysWithValues: zip(Self.menuOrder.map(\.widgetType), WidgetLaunchShortcutStore.defaultKeyCodes.map(digit)))
+        XCTAssertEqual(bindings, expected)
+        XCTAssertEqual(store.storedBindings(), expected)
+        XCTAssertEqual(store.storedDisplayBinding(), display.normalized)
+
+        try seedLegacyDefaults()
+        XCTAssertEqual(WidgetLaunchShortcutStore(defaults: defaults).bindings(for: Self.menuOrder)[0], digit(Int(kVK_ANSI_1)))
+    }
+
+    func testCustomisedClearedOrPartialLegacySetsKeepTheirNumbering() throws {
+        let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
+        let custom = DashboardShortcut(keyCode: Int(kVK_ANSI_T), modifiers: Int(NSEvent.ModifierFlags.command.rawValue))
+        let changes: [(inout [String: WidgetShortcutBinding]) -> Void] = [
+            { $0["1"]?.show = custom },
+            { $0["1"]?.dismiss = custom },
+            { $0["2"] = WidgetShortcutBinding(show: unassigned, dismiss: unassigned) },
+            { $0["9"] = nil }
+        ]
+        for change in changes {
+            defaults.removePersistentDomain(forName: suiteName)
+            try seedLegacyDefaults(change)
+            let store = WidgetLaunchShortcutStore(defaults: defaults)
+            let before = store.storedBindings()
+
+            _ = store.bindings(for: Self.menuOrder)
+
+            let after = store.storedBindings()
+            for (widgetType, binding) in before { XCTAssertEqual(after[widgetType], binding) }
+        }
+    }
+
+    func testFreshInstallNeverLaterRenumbersMatchingChoices() throws {
+        let store = WidgetLaunchShortcutStore(defaults: defaults)
+        _ = store.bindings(for: Self.menuOrder)
+        try seedLegacyDefaults()
+
+        XCTAssertEqual(store.bindings(for: Self.menuOrder)[0], digit(Int(kVK_ANSI_1)))
+    }
+
+    func testMenuOrderMoveSkipsReservedNativeShortcut() throws {
+        try seedLegacyDefaults()
+        let settings = DashboardShortcut(keyCode: Int(kVK_ANSI_1), modifiers: WidgetLaunchShortcutStore.defaultModifiers)
+
+        let bindings = WidgetLaunchShortcutStore(defaults: defaults).bindings(for: Self.menuOrder, reserving: [settings])
+
+        XCTAssertEqual(bindings[1], digit(Int(kVK_ANSI_2)))
+        XCTAssertFalse(bindings.values.contains { $0.show == settings.normalized })
+    }
+
     func testSuspendedWidgetCaptureRejectsAnotherWidgetsAcceptedBinding() {
         let command = Int(NSEvent.ModifierFlags.command.rawValue)
         let first = DashboardShortcut(keyCode: 18, modifiers: command)

@@ -94,7 +94,7 @@ final class WidgetPanelCoordinator: NSObject {
     private var panelControllers: [String: WidgetPanelController] = [:]
     private var lastSnapshot: WidgetPanelSnapshot?
     private var freeformFrames: [String: NSRect] = [:]
-    private var layout: WidgetPanelLayout = .freeform
+    private(set) var layout: WidgetPanelLayout = .freeform
     private var compactPresentationActive = true
     private var lastFocusedWidgetID: String?
     private var widgetCreationOptions: [CompactWidgetOption] = []
@@ -252,6 +252,8 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
+    var hasVisiblePanels: Bool { panelControllers.values.contains(where: isPresented) }
+
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
         let previousLayout = self.layout
         self.layout = layout
@@ -260,14 +262,17 @@ final class WidgetPanelCoordinator: NSObject {
             return
         }
 
-        let targetScreen = screen ?? panelControllers.values.compactMap(\.window?.screen).first ?? NSScreen.main
+        let targetScreen = screen
+            ?? selectedPanelController()?.window?.screen
+            ?? orderedControllers.first(where: isPresented)?.window?.screen
+            ?? NSScreen.main
         guard let targetScreen else { return }
         let usableFrame = targetScreen.visibleFrame.insetBy(dx: 12, dy: 12)
-        let controllers = orderedControllers.filter { !$0.isHidden }
+        let controllers = orderedControllers.filter(isPresented)
 
         if previousLayout == .freeform {
             freeformFrames.removeAll()
-            for controller in controllers {
+            for controller in orderedControllers where !controller.isHidden {
                 freeformFrames[controller.widgetID] = controller.window?.frame
             }
         }
@@ -293,6 +298,10 @@ final class WidgetPanelCoordinator: NSObject {
         guard let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: workAreas, direction: direction) else { return }
         controller.setFrame(moved, animate: true)
         persist(frame: moved, for: controller.widgetID)
+    }
+
+    private func isPresented(_ controller: WidgetPanelController) -> Bool {
+        controller.window?.isVisible == true && !controller.isHidden
     }
 
     private func selectedPanelController() -> WidgetPanelController? {
@@ -976,7 +985,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
-        let menu = DisplayPreviewMenu.makePanelMenu(
+        let menu = WidgetMenu.makePanelMenu(
             options: widgetCreationOptions,
             target: self,
             displayAction: #selector(requestDisplayPreview),
