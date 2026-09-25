@@ -94,7 +94,7 @@ final class WidgetPanelCoordinator: NSObject {
     private var panelControllers: [String: WidgetPanelController] = [:]
     private var lastSnapshot: WidgetPanelSnapshot?
     private var freeformFrames: [String: NSRect] = [:]
-    private var layout: WidgetPanelLayout = .freeform
+    private(set) var layout: WidgetPanelLayout = .freeform
     private var compactPresentationActive = true
     private var lastFocusedWidgetID: String?
     private var widgetCreationOptions: [CompactWidgetOption] = []
@@ -251,6 +251,8 @@ final class WidgetPanelCoordinator: NSObject {
         showAll()
         return true
     }
+
+    var hasVisiblePanels: Bool { panelControllers.values.contains { !$0.isHidden } }
 
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
         let previousLayout = self.layout
@@ -976,7 +978,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
-        let menu = DisplayPreviewMenu.makePanelMenu(
+        let menu = WidgetMenu.makePanelMenu(
             options: widgetCreationOptions,
             target: self,
             displayAction: #selector(requestDisplayPreview),

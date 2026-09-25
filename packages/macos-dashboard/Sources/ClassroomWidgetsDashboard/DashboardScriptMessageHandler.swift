@@ -20,9 +20,12 @@ func dashboardInteger(_ value: Any?) -> Int? {
 /// A widget type that the web renderer has declared safe to create in an
 /// isolated compact panel. The host remains the authority here: native only
 /// presents the options it receives and passes the selected type back.
+/// A compact widget in menu order. Menus draw a separator wherever
+/// `menuGroup` changes.
 struct CompactWidgetOption: Equatable {
     let widgetType: Int
     let title: String
+    var menuGroup = 0
 }
 
 /// The host's complete compact-widget inventory. The host instance identifier
@@ -100,7 +103,11 @@ final class DashboardScriptMessageHandler: NSObject, WKScriptMessageHandler {
 
             let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty, seenWidgetTypes.insert(widgetType).inserted else { return nil }
-            return CompactWidgetOption(widgetType: widgetType, title: title)
+            return CompactWidgetOption(
+                widgetType: widgetType,
+                title: title,
+                menuGroup: dashboardInteger(option["menuGroup"]) ?? 0
+            )
         }
     }
 }

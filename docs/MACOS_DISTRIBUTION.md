@@ -13,19 +13,16 @@ Public DMGs are Developer ID signed, notarized by Apple, and stapled. Each relea
 
 ## Use the app
 
-Launch Classroom Widgets from Applications or select **Open Widget Launcher** from its menu-bar menu to browse and search the available widgets. For faster access, select **New Floating Widget** directly from the menu. The current macOS app supports:
+Launch Classroom Widgets from Applications or select **Open Widget Launcher** from its menu-bar menu to browse and search the available widgets. For faster access, pick a widget at the top of the menu. The menu lists them most used first, each with its keyboard shortcut, in groups separated by lines:
 
-- Randomiser
-- Timer
-- List
-- Task Cue
-- Traffic Light
-- Text Banner
-- QR Code
-- Link Shortener
-- Sound Effects
+- Display, Timer, Text Banner
+- Traffic Light, Task Cue
+- Randomiser, List
+- Link Shortener, QR Code, Sound Effects
 
-Each widget opens in its own floating window. Closing the launcher does not close the widgets or quit the app; use Command-Q or **Quit** to exit. Clicking the Dock icon reopens the launcher. Launch at login starts the app without presenting the launcher. The menu also provides **Reload Widgets**, **Launch at Login**, **Settings**, **About**, and **Quit**.
+On a fresh install the widget shortcuts are Control-Option-Command-1 to 9 in that order, and Display is Control-Option-Command-0. Installs still using the original default shortcuts move to this numbering once; any customised shortcuts are kept.
+
+Each widget opens in its own floating window. Closing the launcher does not close the widgets or quit the app; use Command-Q or **Quit** to exit. Clicking the Dock icon reopens the launcher. Launch at login starts the app without presenting the launcher. The menu also provides **Arrange Widgets**, **Settings**, **Launch at Login**, **Check for Updates**, **About**, and **Quit**. Hold Option while the menu is open to replace **Open Widget Launcher** with **Reload Widgets**.
 
 Settings include:
 

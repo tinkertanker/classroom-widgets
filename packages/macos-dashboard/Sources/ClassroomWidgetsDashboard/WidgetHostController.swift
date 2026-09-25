@@ -119,6 +119,13 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
     }
 
+    var widgetPanelLayout: WidgetPanelLayout { widgetPanelCoordinator.layout }
+    var hasVisibleWidgetPanels: Bool { widgetPanelCoordinator.hasVisiblePanels }
+
+    func arrangeWidgets(_ layout: WidgetPanelLayout) {
+        widgetPanelCoordinator.arrange(layout)
+    }
+
     func moveSelectedWidget(_ direction: MoveDirection) {
         widgetPanelCoordinator.moveSelectedPanel(direction)
     }

@@ -112,7 +112,7 @@ On a Mac with Xcode installed, build the teacher assets and native Swift host, i
 pnpm macos:run --verify
 ```
 
-Classroom Widgets runs from the menu bar. Select its icon and use **New Floating Widget** to open a supported compact widget. Local builds replace `/Applications/Classroom Widgets Dashboard.app`.
+Classroom Widgets runs from the menu bar. Select its icon and pick a widget from the top of the menu to open it. Local builds replace `/Applications/Classroom Widgets Dashboard.app`.
 
 To create an ad hoc signed DMG for local packaging checks, install `create-dmg` and run:
 
