@@ -252,7 +252,7 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
-    var hasVisiblePanels: Bool { panelControllers.values.contains { !$0.isHidden } }
+    var hasVisiblePanels: Bool { panelControllers.values.contains(where: isPresented) }
 
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
         let previousLayout = self.layout
@@ -264,11 +264,11 @@ final class WidgetPanelCoordinator: NSObject {
 
         let targetScreen = screen
             ?? selectedPanelController()?.window?.screen
-            ?? orderedControllers.first { !$0.isHidden }?.window?.screen
+            ?? orderedControllers.first(where: isPresented)?.window?.screen
             ?? NSScreen.main
         guard let targetScreen else { return }
         let usableFrame = targetScreen.visibleFrame.insetBy(dx: 12, dy: 12)
-        let controllers = orderedControllers.filter { !$0.isHidden }
+        let controllers = orderedControllers.filter(isPresented)
 
         if previousLayout == .freeform {
             freeformFrames.removeAll()
@@ -298,6 +298,10 @@ final class WidgetPanelCoordinator: NSObject {
         guard let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: workAreas, direction: direction) else { return }
         controller.setFrame(moved, animate: true)
         persist(frame: moved, for: controller.widgetID)
+    }
+
+    private func isPresented(_ controller: WidgetPanelController) -> Bool {
+        controller.window?.isVisible == true && !controller.isHidden
     }
 
     private func selectedPanelController() -> WidgetPanelController? {
