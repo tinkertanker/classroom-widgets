@@ -268,7 +268,8 @@ final class WidgetPanelCoordinator: NSObject {
             ?? NSScreen.main
         guard let targetScreen else { return }
         let usableFrame = targetScreen.visibleFrame.insetBy(dx: 12, dy: 12)
-        let controllers = orderedControllers.filter(isPresented)
+        // Reserve positions for loading panels before content readiness reveals them.
+        let controllers = orderedControllers.filter { !$0.isHidden }
 
         if previousLayout == .freeform {
             freeformFrames.removeAll()
