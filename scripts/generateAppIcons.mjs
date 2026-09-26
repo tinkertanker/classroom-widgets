@@ -305,6 +305,7 @@ const favicon = ico([16, 32, 48].map(px => ({ px, data: png(svg.iconSmall, px) }
 const TEACHER = 'packages/teacher/public';
 write(`${TEACHER}/logo.svg`, svg.icon);
 write(`${TEACHER}/logo.png`, png(svg.icon, 512));
+write(`${TEACHER}/logo-mark.png`, png(svg.layer, 512));
 write(`${TEACHER}/favicon.svg`, svg.iconSmall);
 write(`${TEACHER}/favicon.ico`, favicon);
 write(`${TEACHER}/apple-touch-icon.png`, png(svg.maskable, 180));

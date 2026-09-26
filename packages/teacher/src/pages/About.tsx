@@ -120,10 +120,12 @@ const About: React.FC = () => {
         </div>
         
         <div className="max-w-7xl mx-auto text-center relative z-20">
-          <div className="flex justify-center items-center gap-6 mb-6">
-            <CustomStickerIcons.star className="w-10 h-10 sm:w-12 sm:h-12 text-sage-500 motion-safe:animate-bounce" aria-hidden="true" />
-            <img src="/logo.png" alt="Classroom Widgets Nibbled Timer app icon" width="512" height="512" className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-lg" />
-            <CustomStickerIcons.heart className="w-10 h-10 sm:w-12 sm:h-12 text-dusty-rose-500 motion-safe:animate-bounce" style={{ animationDelay: '400ms' }} aria-hidden="true" />
+          <div className="flex justify-center items-center gap-2 sm:gap-6 mb-6">
+            <CustomStickerIcons.fire className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-terracotta-500 motion-safe:animate-bounce" aria-hidden="true" />
+            <CustomStickerIcons.star className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-sage-500 motion-safe:animate-bounce" style={{ animationDelay: '200ms' }} aria-hidden="true" />
+            <img src="/logo-mark.png" alt="Classroom Widgets Nibbled Timer app icon" width="512" height="512" className="w-28 h-28 sm:w-36 sm:h-36 shrink-0 object-contain motion-safe:animate-bounce" style={{ animationDelay: '300ms' }} />
+            <CustomStickerIcons.heart className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-dusty-rose-500 motion-safe:animate-bounce" style={{ animationDelay: '400ms' }} aria-hidden="true" />
+            <CustomStickerIcons.smile className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-terracotta-400 motion-safe:animate-bounce" style={{ animationDelay: '600ms' }} aria-hidden="true" />
           </div>
           <h2 className="text-5xl font-bold mb-6">
             <span className="bg-gradient-to-r from-terracotta-600 via-sage-600 to-dusty-rose-600 bg-clip-text text-transparent">
