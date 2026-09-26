@@ -41,8 +41,6 @@ const RAINBOW = ['#ec5a4b', '#f48d2f', '#f4c332', '#5cb866', '#2fb2ad', '#4a8ddf
 // The values were tuned by eye in the Nibbled Timer tuner.
 const LARGE = {
   cx: 527, cy: 510, r: 267, band: 112, track: 49, dieCut: 43, bandEnd: 264,
-  // Dark appearance: width of the beige ring between the band and the dark centre.
-  darkRim: 40,
   // The app's hamster standing on the track: feet at the track's outer edge plus `lift`,
   // facing anticlockwise (towards the band's end), with its own sticker border.
   hamster: { angle: 310, lift: -39, scale: 17.5, tilt: 3, facing: 'ccw', outline: 40 },
@@ -87,8 +85,8 @@ const circle = ([x, y, r], fill, extra = '') => `<circle cx="${r1(x)}" cy="${r1(
 
 const PALETTE = {
   light: { plate: ['#dfa85b', '#c8893f', '#a9692b'], facetHi: ['#fff3dc', 0.13], facetLo: ['#5a2c08', 0.1], rim: ['#fff3dd', 0.6], sticker: ['#ffffff', '#efe7da'], face: ['#fffdf8', '#f3ebdd'], track: '#e4d9c6', shadow: ['#3b2a14', 0.34] },
-  // Dark: toned-down sticker, dark track and face, with a beige ring inside the band. The hamster is unchanged.
-  dark: { plate: ['#7a5128', '#5a3718', '#3a220e'], facetHi: ['#ffe9c8', 0.07], facetLo: ['#000000', 0.14], rim: ['#f3d9ae', 0.22], sticker: ['#e9dfd0', '#cfc3b1'], face: ['#3a342e', '#2b2622'], track: '#4c443b', shadow: ['#000000', 0.5], faceRim: '#d9c6a3' },
+  // Dark: toned-down sticker and dark track; the face shows the brown plate through it. The hamster is unchanged.
+  dark: { plate: ['#7a5128', '#5a3718', '#3a220e'], facetHi: ['#ffe9c8', 0.07], facetLo: ['#000000', 0.14], rim: ['#f3d9ae', 0.22], sticker: ['#e9dfd0', '#cfc3b1'], face: ['#3a342e', '#2b2622'], track: '#4c443b', shadow: ['#000000', 0.5] },
 };
 
 // ---------- colour icon ----------
@@ -127,14 +125,13 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
     ? circle(dots.body, '#D2691E', outline) + circle(dots.head, '#DEB887', outline)
     : `<g transform="${hT}"><g transform="translate(-0.25 0.4)" fill="#5b4a32" opacity="0.22" filter="url(#${id}-hsoft)"><ellipse cx="0" cy="0" rx="6.4" ry="4.9"/><circle cx="-4" cy="-1.5" r="3.9"/></g>${HAMSTER}</g>`;
 
-  // Dark appearance: a beige ring inside the band around the dark face.
-  const face = dark && !small
-    ? `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${c.faceRim}"/><circle cx="${cx}" cy="${cy}" r="${faceR - ring.darkRim}" fill="url(#${id}-face)"/>`
-    : `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${small ? c.face[0] : `url(#${id}-face)`}"/>`;
+  // Dark appearance: the face is filled with the plate's own gradient, as if the plate shows through.
+  const face = `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${small ? c.face[0] : `url(#${id}-${dark ? 'plateface' : 'face'})`}"/>`;
 
   const stops = RAINBOW.map((col, i) => `<stop offset="${r1(i / (RAINBOW.length - 1) * 100)}%" stop-color="${col}"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>`
     + `<linearGradient id="${id}-plate" x1="0.12" y1="0.02" x2="0.88" y2="0.98"><stop offset="0" stop-color="${c.plate[0]}"/><stop offset="0.55" stop-color="${c.plate[1]}"/><stop offset="1" stop-color="${c.plate[2]}"/></linearGradient>`
+    + `<linearGradient id="${id}-plateface" x1="198.9" y1="116.5" x2="825.1" y2="907.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.plate[0]}"/><stop offset="0.55" stop-color="${c.plate[1]}"/><stop offset="1" stop-color="${c.plate[2]}"/></linearGradient>`
     + `<clipPath id="${id}-clip"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>`
     + `<filter id="${id}-drop" x="-10%" y="-10%" width="120%" height="125%"><feGaussianBlur stdDeviation="14"/></filter>`
     + `<filter id="${id}-blur" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="16"/></filter>`
