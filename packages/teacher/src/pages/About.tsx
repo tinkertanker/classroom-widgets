@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { FaApple, FaWindows, FaLinux, FaArrowDown } from 'react-icons/fa6';
 import { FaChartColumn, FaQuestion, FaMusic, FaClock, FaComments, FaDice, FaArrowRight, FaChalkboardUser, FaUsers, FaRocket, FaCheck, FaTriangleExclamation, FaFaceSadTear, FaLightbulb, FaLock, FaShieldHalved, FaTableColumns, FaStar } from 'react-icons/fa6';
 import { CustomStickerIcons } from '../features/widgets/sticker/CustomStickerIcons';
 import { FloatingWidgets } from './components/FloatingWidgets';
 
 const About: React.FC = () => {
+  useEffect(() => {
+    // This lazy-loaded page mounts after the browser's initial fragment scroll.
+    if (window.location.hash === '#desktop') {
+      document.getElementById('desktop')?.scrollIntoView();
+    }
+  }, []);
+
   const features = [
     {
       icon: FaChartColumn,
@@ -112,19 +120,10 @@ const About: React.FC = () => {
         </div>
         
         <div className="max-w-7xl mx-auto text-center relative z-20">
-          <div className="flex justify-center gap-6 mb-6 flex-wrap">
-            <div className="animate-bounce" style={{ animationDelay: '0ms' }}>
-              <CustomStickerIcons.fire className="w-16 h-16 text-terracotta-500" />
-            </div>
-            <div className="animate-bounce hidden md:block" style={{ animationDelay: '200ms' }}>
-              <CustomStickerIcons.star className="w-16 h-16 text-sage-500" />
-            </div>
-            <div className="animate-bounce hidden md:block" style={{ animationDelay: '400ms' }}>
-              <CustomStickerIcons.heart className="w-16 h-16 text-dusty-rose-500" />
-            </div>
-            <div className="animate-bounce" style={{ animationDelay: '600ms' }}>
-              <CustomStickerIcons.smile className="w-16 h-16 text-terracotta-400" />
-            </div>
+          <div className="flex justify-center items-center gap-6 mb-6">
+            <CustomStickerIcons.star className="w-10 h-10 sm:w-12 sm:h-12 text-sage-500 motion-safe:animate-bounce" aria-hidden="true" />
+            <img src="/logo.png" alt="Classroom Widgets Nibbled Timer app icon" width="512" height="512" className="w-28 h-28 sm:w-36 sm:h-36 object-contain drop-shadow-lg" />
+            <CustomStickerIcons.heart className="w-10 h-10 sm:w-12 sm:h-12 text-dusty-rose-500 motion-safe:animate-bounce" style={{ animationDelay: '400ms' }} aria-hidden="true" />
           </div>
           <h2 className="text-5xl font-bold mb-6">
             <span className="bg-gradient-to-r from-terracotta-600 via-sage-600 to-dusty-rose-600 bg-clip-text text-transparent">
@@ -154,6 +153,9 @@ const About: React.FC = () => {
               Learn More
             </a>
           </div>
+          <a href="#desktop" className="inline-block mt-6 text-sage-700 dark:text-sage-300 hover:underline underline-offset-4">
+            Now on your desktop: macOS, Windows & Linux ↓
+          </a>
         </div>
       </section>
 
@@ -194,6 +196,49 @@ const About: React.FC = () => {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Desktop Apps */}
+      <section id="desktop" className="scroll-mt-20 py-16 px-4 bg-sage-50 dark:bg-warm-gray-800 relative">
+        <div className="max-w-4xl mx-auto text-center relative z-20">
+          <h3 className="text-3xl font-bold text-warm-gray-900 dark:text-warm-gray-100 mb-4">
+            Your Favourite Widgets. Now Floating Over Everything.
+          </h3>
+          <p className="text-lg text-warm-gray-600 dark:text-warm-gray-400 max-w-2xl mx-auto mb-8">
+            Keep a timer over your slides, a task list beside your lesson, or a traffic light wherever you need it.
+            Our desktop apps keep compact widgets always on top, right from your menu bar or system tray.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { name: 'macOS', icon: FaApple, requirements: 'macOS 13 or later' },
+              { name: 'Windows', icon: FaWindows, requirements: 'Windows 10 (1809+) / 11 · 64-bit · WebView2' },
+              { name: 'Linux', icon: FaLinux, requirements: '64-bit · System tray (GNOME: AppIndicator)' },
+            ].map((platform) => (
+              <article key={platform.name} className="flex flex-col items-center bg-white dark:bg-warm-gray-700 p-6 rounded-2xl border border-warm-gray-100 dark:border-warm-gray-600">
+                <platform.icon className="w-10 h-10 mb-3 text-sage-800 dark:text-sage-200" aria-hidden="true" />
+                <h4 className="text-xl font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-4">{platform.name}</h4>
+                <a href="https://github.com/tinkertanker/classroom-widgets/releases/latest" target="_blank" rel="noopener noreferrer" className="inline-flex w-full justify-center items-center gap-2 px-3 py-3 bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-full transition-colors text-sm font-medium">
+                  Download for {platform.name} <FaArrowDown className="text-xs shrink-0" aria-hidden="true" />
+                </a>
+                <p className="text-xs text-warm-gray-600 dark:text-warm-gray-400 mt-3">{platform.requirements}</p>
+              </article>
+            ))}
+          </div>
+          <p className="text-sm text-warm-gray-600 dark:text-warm-gray-400 mt-6">
+            Includes Timer, Randomiser, List, Task Cue, Traffic Light, Text Banner, QR Code, Sound Effects and Link Shortener.
+            Live polls, Q&A and student activities stay in the <a href="/" className="text-sage-700 dark:text-sage-300 underline underline-offset-4">web app</a>.
+          </p>
+          <div className="mt-10 grid md:grid-cols-2 gap-6 items-center bg-white dark:bg-warm-gray-700 p-6 rounded-2xl text-left border border-warm-gray-100 dark:border-warm-gray-600">
+            <div>
+              <h4 className="text-2xl text-warm-gray-900 dark:text-warm-gray-100 mb-3">Only on Desktop: <strong>Display</strong></h4>
+              <p className="text-warm-gray-600 dark:text-warm-gray-300">Preview your connected projector or extended display in a floating window, with your teaching notes beside it. Only on the desktop app version of Classroom Widgets!</p>
+            </div>
+            <figure>
+              <img src="/display-illustration.webp" alt="Illustration of Display previewing a lesson slide beside a separate teaching-notes window on a Mac" width="1200" height="800" loading="lazy" className="w-full rounded-lg" />
+              <figcaption className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mt-2">Illustration, not an app screenshot.</figcaption>
+            </figure>
           </div>
         </div>
       </section>
@@ -607,11 +652,11 @@ const About: React.FC = () => {
       {/* Footer */}
       <footer className="py-8 px-4 bg-warm-gray-900 dark:bg-warm-gray-950 text-white">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="flex justify-center gap-4 mb-4 flex-wrap">
+          <div className="flex justify-center items-center gap-4 mb-4 flex-wrap">
             <CustomStickerIcons.fire className="w-12 h-12 text-terracotta-400 animate-pulse" />
             <CustomStickerIcons.star className="w-12 h-12 text-sage-400 animate-spin hidden md:block" style={{ animationDuration: '3s' }} />
             <CustomStickerIcons.heart className="w-12 h-12 text-dusty-rose-400 animate-pulse hidden md:block" style={{ animationDelay: '500ms' }} />
-            <CustomStickerIcons.thumbsup className="w-12 h-12 text-terracotta-500 animate-bounce" />
+            <img src="/logo.png" alt="" width="64" height="64" className="w-16 h-16 object-contain" />
             <CustomStickerIcons.check className="w-12 h-12 text-sage-500 animate-pulse" style={{ animationDelay: '1s' }} />
             <CustomStickerIcons.fire className="w-12 h-12 text-dusty-rose-500 animate-pulse hidden md:block" style={{ animationDelay: '1.5s' }} />
           </div>

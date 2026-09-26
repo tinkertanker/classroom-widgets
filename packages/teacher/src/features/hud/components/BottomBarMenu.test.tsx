@@ -58,11 +58,11 @@ describe('BottomBarMenu', () => {
     expect(screen.getByText('Link Shortener…')).toBeInTheDocument();
   });
 
-  it('omits the download link inside the installed macOS app', () => {
+  it('omits the download link inside the installed desktop app', () => {
     isDesktopDashboardMode.mockReturnValue(true);
 
     renderMenu();
 
-    expect(screen.queryByRole('link', { name: 'Get macOS app' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Get desktop apps' })).not.toBeInTheDocument();
   });
 });

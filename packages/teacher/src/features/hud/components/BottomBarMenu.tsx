@@ -263,14 +263,14 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
 
       {!isDashboardMode && (
         <a
-          href="https://github.com/tinkertanker/classroom-widgets/releases"
+          href="/about#desktop"
           target="_blank"
           rel="noopener noreferrer"
           onClick={onClose}
           className="w-full flex items-center px-4 py-2 text-sm text-warm-gray-700 dark:text-warm-gray-300 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 transition-colors"
         >
           <FaLaptop className="mr-3 w-4 h-4 flex-shrink-0" />
-          <span className="flex-1 text-left">Get macOS app</span>
+          <span className="flex-1 text-left">Get desktop apps</span>
         </a>
       )}
 

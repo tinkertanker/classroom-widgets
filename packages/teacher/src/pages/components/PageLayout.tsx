@@ -42,9 +42,9 @@ const PageLayout: React.FC<PageLayoutProps> = ({ children }) => {
       {/* Footer */}
       <footer className="py-12 px-4 bg-warm-gray-900 dark:bg-warm-gray-950 text-white">
         <div className="max-w-7xl mx-auto text-center">
-          <div className="flex justify-center gap-4 mb-6 flex-wrap">
-            <CustomStickerIcons.fire className="w-10 h-10 text-terracotta-400 animate-pulse" />
+          <div className="flex justify-center items-center gap-4 mb-6 flex-wrap">
             <CustomStickerIcons.star className="w-10 h-10 text-sage-400 animate-spin hidden md:block" style={{ animationDuration: '3s' }} />
+            <img src="/logo.png" alt="" width="64" height="64" className="w-16 h-16 object-contain" />
             <CustomStickerIcons.heart className="w-10 h-10 text-dusty-rose-400 animate-pulse" style={{ animationDelay: '500ms' }} />
           </div>
           <a href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-sage-500 text-white rounded-lg hover:bg-sage-600 transition-colors mb-6">
