@@ -41,6 +41,8 @@ const RAINBOW = ['#ec5a4b', '#f48d2f', '#f4c332', '#5cb866', '#2fb2ad', '#4a8ddf
 // The values were tuned by eye in the Nibbled Timer tuner.
 const LARGE = {
   cx: 527, cy: 510, r: 267, band: 112, track: 49, dieCut: 43, bandEnd: 264,
+  // Dark appearance: width of the beige ring between the band and the dark centre.
+  darkRim: 40,
   // The app's hamster standing on the track: feet at the track's outer edge plus `lift`,
   // facing anticlockwise (towards the band's end), with its own sticker border.
   hamster: { angle: 310, lift: -39, scale: 17.5, tilt: 3, facing: 'ccw', outline: 40 },
@@ -85,8 +87,8 @@ const circle = ([x, y, r], fill, extra = '') => `<circle cx="${r1(x)}" cy="${r1(
 
 const PALETTE = {
   light: { plate: ['#dfa85b', '#c8893f', '#a9692b'], facetHi: ['#fff3dc', 0.13], facetLo: ['#5a2c08', 0.1], rim: ['#fff3dd', 0.6], sticker: ['#ffffff', '#efe7da'], face: ['#fffdf8', '#f3ebdd'], track: '#e4d9c6', shadow: ['#3b2a14', 0.34] },
-  // Dark keeps the light sticker, track and hamster; only the plate and the middle of the face go dark.
-  dark: { plate: ['#7a5128', '#5a3718', '#3a220e'], facetHi: ['#ffe9c8', 0.07], facetLo: ['#000000', 0.14], rim: ['#f3d9ae', 0.22], sticker: ['#f4eee5', '#ddd2c2'], face: ['#f6f0e6', '#e6dccd'], track: '#dccfbb', shadow: ['#000000', 0.5], centre: ['#3a342e', '#2b2622'] },
+  // Dark: toned-down sticker, dark track and face, with a beige ring inside the band. The hamster is unchanged.
+  dark: { plate: ['#7a5128', '#5a3718', '#3a220e'], facetHi: ['#ffe9c8', 0.07], facetLo: ['#000000', 0.14], rim: ['#f3d9ae', 0.22], sticker: ['#e9dfd0', '#cfc3b1'], face: ['#3a342e', '#2b2622'], track: '#4c443b', shadow: ['#000000', 0.5], faceRim: '#d9c6a3' },
 };
 
 // ---------- colour icon ----------
@@ -125,10 +127,10 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
     ? circle(dots.body, '#D2691E', outline) + circle(dots.head, '#DEB887', outline)
     : `<g transform="${hT}"><g transform="translate(-0.25 0.4)" fill="#5b4a32" opacity="0.22" filter="url(#${id}-hsoft)"><ellipse cx="0" cy="0" rx="6.4" ry="4.9"/><circle cx="-4" cy="-1.5" r="3.9"/></g>${HAMSTER}</g>`;
 
-  // Dark appearance: a dark disc inset by the track width, leaving a light rim inside the band.
-  const centre = dark && !small
-    ? `<circle cx="${cx}" cy="${cy}" r="${faceR - ring.track}" fill="url(#${id}-centre)"/>`
-    : '';
+  // Dark appearance: a beige ring inside the band around the dark face.
+  const face = dark && !small
+    ? `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${c.faceRim}"/><circle cx="${cx}" cy="${cy}" r="${faceR - ring.darkRim}" fill="url(#${id}-face)"/>`
+    : `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${small ? c.face[0] : `url(#${id}-face)`}"/>`;
 
   const stops = RAINBOW.map((col, i) => `<stop offset="${r1(i / (RAINBOW.length - 1) * 100)}%" stop-color="${col}"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>`
@@ -139,15 +141,13 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
     + `<filter id="${id}-hsoft" x="-30%" y="-40%" width="160%" height="180%"><feGaussianBlur stdDeviation="0.45"/></filter>`
     + `<linearGradient id="${id}-sticker" x1="${cx - ring.r}" y1="${cy - ring.r}" x2="${cx + ring.r}" y2="${cy + ring.r}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.sticker[0]}"/><stop offset="1" stop-color="${c.sticker[1]}"/></linearGradient>`
     + `<radialGradient id="${id}-face" cx="${r1(cx - faceR * 0.3)}" cy="${r1(cy - faceR * 0.35)}" r="${r1(faceR * 1.4)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.face[0]}"/><stop offset="1" stop-color="${c.face[1]}"/></radialGradient>`
-    + (c.centre ? `<radialGradient id="${id}-centre" cx="${r1(cx - faceR * 0.3)}" cy="${r1(cy - faceR * 0.35)}" r="${r1(faceR * 1.4)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.centre[0]}"/><stop offset="1" stop-color="${c.centre[1]}"/></radialGradient>` : '')
     + `<linearGradient id="${id}-band" x1="${cx - ring.r}" y1="0" x2="${cx + ring.r}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient>`
     + `<linearGradient id="${id}-bandlit" x1="${cx - ring.r}" y1="${cy - ring.r}" x2="${cx + ring.r}" y2="${cy + ring.r}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#2a1204" stop-opacity="0.12"/></linearGradient>`
     + `</defs>`
     + plateSvg
     + sticker(small ? c.sticker[0] : `url(#${id}-sticker)`)
     + `<circle cx="${cx}" cy="${cy}" r="${r1(faceR + ring.track / 2)}" fill="none" stroke="${c.track}" stroke-width="${ring.track}"/>`
-    + `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${small ? c.face[0] : `url(#${id}-face)`}"/>`
-    + centre
+    + face
     + (small ? '' : `<circle cx="${cx}" cy="${cy}" r="${faceR - 3}" fill="none" stroke="#6e4c2e" stroke-opacity="0.08" stroke-width="6"/>`)
     + `<path d="${bandPath}" fill="none" stroke="url(#${id}-band)" stroke-width="${ring.band}" stroke-linecap="round"/>`
     + (small ? '' : `<path d="${bandPath}" fill="none" stroke="url(#${id}-bandlit)" stroke-width="${ring.band}" stroke-linecap="round"/>`)
