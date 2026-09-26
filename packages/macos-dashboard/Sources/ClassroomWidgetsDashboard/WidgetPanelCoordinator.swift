@@ -608,6 +608,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         guard showFallbackTask == nil else { return }
         showFallbackTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(Self.showFallbackDelay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
             self?.presentPendingShow()
         }
     }
