@@ -20,15 +20,7 @@ declare global {
 
 const PanelContentReadyNotifier = ({ onReady }: { onReady: () => void }) => {
   useEffect(() => {
-    // Two frames in: the widget's first commit has been painted, not merely mounted.
-    let inner = 0;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(onReady);
-    });
-    return () => {
-      cancelAnimationFrame(outer);
-      cancelAnimationFrame(inner);
-    };
+    onReady();
   }, [onReady]);
   return null;
 };
