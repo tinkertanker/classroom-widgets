@@ -12,9 +12,9 @@ the spent time away.
 | 16–32px (favicons, small `.ico`/`.icns` entries) | A flat master: the same composition with the hamster simplified to two circles (orange body, tan head) on the track |
 | Menu bar and tray | One-colour glyph: the notched ring with the two-circle hamster in the notch, cut free of the ring by a gap |
 
-The macOS dark appearance darkens the plate and track and tones down the
-sticker; the face is filled with the plate's brown gradient, as if the plate
-shows through. The hamster keeps its normal colours and outline.
+The macOS dark appearance darkens the plate and tones down the sticker, and
+fills the face with the sticker's colour. The band, track and hamster look the
+same as in the light icon.
 
 The sizes were tuned by eye in an interactive tuner and live as the `LARGE`,
 `SMALL` and `GLYPH` constants at the top of the generator.
