@@ -331,6 +331,34 @@ describe('CompactWidgetApp', () => {
     ]);
   });
 
+  it('posts panel-content-ready once after the widget renders, not before the snapshot', async () => {
+    const ContentProbe = () => <div data-testid="widget-content">loaded</div>;
+    vi.mocked(widgetRegistry.get).mockReturnValue(panelConfig(ContentProbe));
+
+    render(<CompactWidgetApp />);
+
+    expect(panelPostMessage.mock.calls.filter(
+      ([message]) => (message as { type?: string }).type === 'panel-content-ready'
+    )).toHaveLength(0);
+
+    act(() => {
+      window.classroomWidgetPanel?.receiveSnapshot(snapshot(null));
+    });
+
+    expect(await screen.findByTestId('widget-content')).toHaveTextContent('loaded');
+    await waitFor(() => {
+      expect(panelPostMessage.mock.calls.filter(
+        ([message]) => (message as { type?: string }).type === 'panel-content-ready'
+      )).toEqual([
+        [expect.objectContaining({
+          type: 'panel-content-ready',
+          schemaVersion: 1,
+          widgetId: 'timer-1'
+        })]
+      ]);
+    });
+  });
+
   it('keeps queued state optimistic while acknowledging rapid edits', async () => {
     const PersistingProbe = ({ savedState, onStateChange }: ProbeWidgetProps) => {
       const [state, setState] = useState(savedState);

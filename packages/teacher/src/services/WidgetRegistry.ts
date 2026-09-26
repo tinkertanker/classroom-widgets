@@ -82,9 +82,9 @@ const compactPanelWarmImports = [
   widgetImports.QRCodeWidget,
   widgetImports.SoundEffects
 ];
-if (typeof window !== 'undefined' && !isCompactWidgetPanel) {
+if (typeof window !== 'undefined') {
   const warmCaches = () => {
-    const importsToWarm = isDesktopDashboard ? compactPanelWarmImports : Object.values(widgetImports);
+    const importsToWarm = isDesktopDashboard || isCompactWidgetPanel ? compactPanelWarmImports : Object.values(widgetImports);
     importsToWarm.forEach(fn => {
       // Fire and forget; chunk errors are logged but don't bubble
       fn().catch(err => {
@@ -92,11 +92,16 @@ if (typeof window !== 'undefined' && !isCompactWidgetPanel) {
       });
     });
   };
-  const ric = window.requestIdleCallback;
-  if (typeof ric === 'function') {
-    ric(warmCaches, { timeout: 2000 });
+  if (isCompactWidgetPanel) {
+    // Panel surfaces race first paint against the host's show; warm eagerly.
+    warmCaches();
   } else {
-    setTimeout(warmCaches, 200);
+    const ric = window.requestIdleCallback;
+    if (typeof ric === 'function') {
+      ric(warmCaches, { timeout: 2000 });
+    } else {
+      setTimeout(warmCaches, 200);
+    }
   }
 }
 
