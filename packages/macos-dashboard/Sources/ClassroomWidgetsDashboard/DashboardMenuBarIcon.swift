@@ -1,11 +1,23 @@
 import AppKit
 
-/// The menu bar mark: the timer ring with the spent time cut away and the
-/// hamster (two circles) in its face. Same geometry as
-/// `assets/app-icon/menu-bar-glyph.svg`, which `scripts/generateAppIcons.mjs` draws.
+/// The menu bar mark: the timer ring with the spent time cut away, and the
+/// hamster (two circles) standing in that notch. Same geometry as
+/// `assets/app-icon/menu-bar-glyph.svg`; `scripts/generateAppIcons.mjs` prints
+/// the numbers below when it runs.
 enum DashboardMenuBarIcon {
     /// Share of the dial the resting mark shows as still to run.
-    static let restingRemaining: CGFloat = 250.0 / 360.0
+    static let restingRemaining: CGFloat = 264.0 / 360.0
+
+    // Geometry on a 1024-unit canvas, y pointing down (as in the SVG).
+    private static let canvas: CGFloat = 1024
+    private static let ringCenter = CGPoint(x: 579.5, y: 550.8)
+    private static let outerRadius: CGFloat = 382
+    private static let bandWidth: CGFloat = 124.2
+    private static let trackWidth: CGFloat = 68.8
+    private static let hamsterCircles: [(x: CGFloat, y: CGFloat, radius: CGFloat)] = [(350.1, 257.2, 166), (184.4, 417.2, 122)]
+    private static let hamsterGap: CGFloat = 99
+    /// Share of the image the 1024 canvas fills.
+    private static let artworkScale: CGFloat = 0.85
 
     private static let statusItemIcon = makeImage(size: 21, remaining: restingRemaining)
 
@@ -20,53 +32,63 @@ enum DashboardMenuBarIcon {
 
     private static func makeImage(size: CGFloat, remaining: CGFloat) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
-            NSColor.labelColor.set()
+            let scale = size * artworkScale / canvas
+            let origin = CGPoint(x: rect.midX - canvas * scale / 2, y: rect.midY - canvas * scale / 2)
+            func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+                CGPoint(x: origin.x + x * scale, y: origin.y + (canvas - y) * scale)
+            }
+            func circle(_ center: CGPoint, _ radius: CGFloat) -> NSBezierPath {
+                NSBezierPath(ovalIn: NSRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
+            }
 
-            let center = CGPoint(x: rect.midX, y: rect.midY)
-            let outerRadius = size * 0.38
-            let bandWidth = outerRadius * 0.365
-            let trackWidth = outerRadius * 0.115
-            let faceRadius = outerRadius - bandWidth
+            NSColor.labelColor.set()
+            let center = point(ringCenter.x, ringCenter.y)
+            let band = bandWidth * scale
+            let track = trackWidth * scale
+            let faceRadius = (outerRadius - bandWidth) * scale
 
             // Thin track: the whole dial, on the band's inner edge.
-            let track = NSBezierPath()
-            track.appendArc(withCenter: center, radius: faceRadius + trackWidth / 2, startAngle: 0, endAngle: 360)
-            track.lineWidth = trackWidth
-            track.stroke()
+            let trackPath = NSBezierPath()
+            trackPath.appendArc(withCenter: center, radius: faceRadius + track / 2, startAngle: 0, endAngle: 360)
+            trackPath.lineWidth = track
+            trackPath.stroke()
 
             // Band: clockwise from 12 o'clock for the remaining share, round caps included.
-            let bandRadius = outerRadius - bandWidth / 2
+            let bandRadius = outerRadius * scale - band / 2
             let sweep = 360 * min(max(remaining, 0), 1)
-            let capDegrees = (bandWidth / 2) / bandRadius * 180 / .pi
+            let capDegrees = (band / 2) / bandRadius * 180 / .pi
             if sweep >= 360 {
-                let band = NSBezierPath()
-                band.appendArc(withCenter: center, radius: bandRadius, startAngle: 0, endAngle: 360)
-                band.lineWidth = bandWidth
-                band.stroke()
+                let bandPath = NSBezierPath()
+                bandPath.appendArc(withCenter: center, radius: bandRadius, startAngle: 0, endAngle: 360)
+                bandPath.lineWidth = band
+                bandPath.stroke()
             } else if sweep > capDegrees * 2 {
-                let band = NSBezierPath()
-                band.appendArc(
+                let bandPath = NSBezierPath()
+                bandPath.appendArc(
                     withCenter: center,
                     radius: bandRadius,
                     startAngle: 90 - capDegrees,
                     endAngle: 90 - (sweep - capDegrees),
                     clockwise: true
                 )
-                band.lineWidth = bandWidth
-                band.lineCapStyle = .round
-                band.stroke()
+                bandPath.lineWidth = band
+                bandPath.lineCapStyle = .round
+                bandPath.stroke()
             } else if sweep > 0 {
                 let angle = (90 - sweep / 2) * .pi / 180
-                let dotRadius = bandWidth / 2 * max(0.35, sweep / (capDegrees * 2))
-                let dotCenter = CGPoint(x: center.x + bandRadius * cos(angle), y: center.y + bandRadius * sin(angle))
-                NSBezierPath(ovalIn: NSRect(x: dotCenter.x - dotRadius, y: dotCenter.y - dotRadius, width: dotRadius * 2, height: dotRadius * 2)).fill()
+                let dotRadius = band / 2 * max(0.35, sweep / (capDegrees * 2))
+                circle(CGPoint(x: center.x + bandRadius * cos(angle), y: center.y + bandRadius * sin(angle)), dotRadius).fill()
             }
 
-            // Hamster: body and a slightly higher head, facing right.
-            for (x, y, radius) in [(-0.17, -0.07, 0.44), (0.37, 0.05, 0.29)] as [(CGFloat, CGFloat, CGFloat)] {
-                let r = faceRadius * radius
-                let circleCenter = CGPoint(x: center.x + faceRadius * x, y: center.y + faceRadius * y)
-                NSBezierPath(ovalIn: NSRect(x: circleCenter.x - r, y: circleCenter.y - r, width: r * 2, height: r * 2)).fill()
+            // Hamster: clear a gap around the two circles, then draw them.
+            let circles = hamsterCircles.map { (point($0.x, $0.y), $0.radius * scale) }
+            NSGraphicsContext.current?.compositingOperation = .clear
+            for (circleCenter, radius) in circles {
+                circle(circleCenter, radius + hamsterGap * scale).fill()
+            }
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            for (circleCenter, radius) in circles {
+                circle(circleCenter, radius).fill()
             }
 
             return true

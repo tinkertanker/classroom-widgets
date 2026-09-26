@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 // Generates every Classroom Widgets app icon, favicon and tray/menu-bar image
-// from one parametric drawing: the Hamster Timer. Run `pnpm generate:icons`
+// from one parametric drawing: the Nibbled Timer. Run `pnpm generate:icons`
 // after changing anything below, and commit the regenerated files.
 //
 // The mark is the timer widget's rainbow ring, die-cut like one of the app's
 // stickers, with the time already spent cut out as a notch at upper left. The
-// app's own hamster (creatures.tsx markup, verbatim) sits in the face from 64px
-// up; at 32px and below, and in the menu bar/tray glyph, it simplifies to two
-// circles (body and head). The macOS menu-bar glyph is drawn in code with the
-// same geometry: DashboardMenuBarIcon.swift.
+// app's own hamster (creatures.tsx markup, verbatim) stands on the track in that
+// notch, as if it has nibbled the spent time away. At 32px and below, and in the
+// menu bar/tray glyph, the hamster simplifies to two circles (body and head).
+// The macOS menu-bar glyph is drawn in code from the same numbers:
+// DashboardMenuBarIcon.swift.
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,56 +32,84 @@ const arc = (cx, cy, r, from, to) => {
 };
 const capDegrees = (width, r) => (width / 2) / r * 180 / Math.PI;
 
-// The band runs clockwise from 12 o'clock to BAND_END (round caps included);
-// BAND_END → 360° is the spent time, shown as the thin track only.
-const BAND_END = 250;
-
 // The timer widget's ring gradient (timer.tsx: red → magenta across the dial), warmed.
 const RAINBOW = ['#ec5a4b', '#f48d2f', '#f4c332', '#5cb866', '#2fb2ad', '#4a8ddf', '#9868d8'];
 
-// Colour icon rings (1024 canvas; the macOS plate is x/y 100–924, rx 185).
-const RING_LARGE = { r: 298, band: 96, track: 34, dieCut: 24 };
-const RING_SMALL = { r: 352, band: 138, track: 50, dieCut: 40 };
-
-// Monochrome glyph ring, as fractions of its outer radius.
-const GLYPH = { r: 504, band: 0.365, track: 0.115 };
-
-// Two-circle hamster, as fractions of the face (counter) radius; facing right.
-const HAMSTER_DOTS = { body: { x: -0.17, y: 0.07, r: 0.44 }, head: { x: 0.37, y: -0.05, r: 0.29 } };
-
-// The app's hamster, verbatim from creatures.tsx (viewBox -12..12). The dark
-// appearance lightens the outline so the body edge still separates.
-const hamster = dark => {
-  const outline = dark ? '#e0b98a' : '#8B4513';
-  return `<ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#D2691E" stroke="${outline}" stroke-width="0.8"/><circle cx="-4" cy="-1.5" r="3.5" fill="#DEB887" stroke="${outline}" stroke-width="0.8"/><circle cx="-5.5" cy="-3.5" r="1.3" fill="#D2691E"/><circle cx="-2.5" cy="-3.5" r="1.3" fill="#D2691E"/><circle cx="-5" cy="-1.5" r="0.7" fill="#000"/><circle cx="-3" cy="-1.5" r="0.7" fill="#000"/><circle cx="-4.8" cy="-1.8" r="0.3" fill="#fff"/><circle cx="-2.8" cy="-1.8" r="0.3" fill="#fff"/><circle cx="-6.5" cy="-0.5" r="0.4" fill="#8B4513"/><g><ellipse cx="-2.5" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/><ellipse cx="-4" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/><ellipse cx="1.5" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/><ellipse cx="3" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/></g><path d="M 4.5 0 Q 7 -1.5 8.5 1" stroke="${outline}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+// Each ring: radius, band/track/sticker-border widths, and where the band ends (clockwise
+// from 12, round caps included); bandEnd → 360° is the spent time, shown as the thin track.
+// All in units of the 1024 canvas; the macOS plate is x/y 100–924, rx 185.
+// The values were tuned by eye in the Nibbled Timer tuner.
+const LARGE = {
+  cx: 527, cy: 510, r: 267, band: 112, track: 49, dieCut: 43, bandEnd: 264,
+  // The app's hamster standing on the track: feet at the track's outer edge plus `lift`,
+  // facing anticlockwise (towards the band's end), with its own sticker border.
+  hamster: { angle: 310, lift: -39, scale: 17.5, tilt: 3, facing: 'ccw', outline: 40 },
 };
-const HAMSTER_SHADOW = '<ellipse cx="0" cy="0" rx="6.4" ry="4.9"/><circle cx="-4" cy="-1.5" r="3.9"/><ellipse cx="-3.25" cy="3.5" rx="1.9" ry="1.65"/><ellipse cx="2.25" cy="3.5" rx="1.9" ry="1.65"/><path d="M 4.5 0 Q 7 -1.5 8.5 1" stroke="#5b4a32" stroke-width="1.2" fill="none" stroke-linecap="round"/>';
-
-const hamsterDots = (cx, cy, faceR, body, head, stroke = '') => {
-  const { body: b, head: h } = HAMSTER_DOTS;
-  const outline = stroke ? ` stroke="${stroke}" stroke-width="${r1(faceR * 0.06)}"` : '';
-  return `<circle cx="${r1(cx + b.x * faceR)}" cy="${r1(cy + b.y * faceR)}" r="${r1(b.r * faceR)}" fill="${body}"${outline}/>`
-    + `<circle cx="${r1(cx + h.x * faceR)}" cy="${r1(cy + h.y * faceR)}" r="${r1(h.r * faceR)}" fill="${head}"${outline}/>`;
+// 16–32px master: the same drawing, flatter, with the hamster as two circles.
+const SMALL = {
+  cx: 593.8, cy: 534.4, r: 224.1, band: 94, track: 41.1, dieCut: 36.1, bandEnd: 264,
+  dots: { angle: 310, lift: -32.7, body: 109.4, head: 88.6, spread: 0.7, headRise: 13, facing: 'ccw', outline: 36.1 },
 };
+// One-colour glyph; band and track are shares of the radius. The two circles are cut free
+// of the ring by `gap`. Its centre is shifted so the whole mark sits centred on the canvas.
+const GLYPH = {
+  cx: 645.4, cy: 548.8, r: 382, band: 0.325, track: 0.18, bandEnd: 264,
+  dots: { angle: 322, lift: -120, body: 166, head: 122, spread: 0.8, headRise: -6, facing: 'ccw', gap: 99 },
+};
+
+// The app's hamster, verbatim from creatures.tsx (viewBox -12..12).
+const HAMSTER = '<ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#D2691E" stroke="#8B4513" stroke-width="0.8"/><circle cx="-4" cy="-1.5" r="3.5" fill="#DEB887" stroke="#8B4513" stroke-width="0.8"/><circle cx="-5.5" cy="-3.5" r="1.3" fill="#D2691E"/><circle cx="-2.5" cy="-3.5" r="1.3" fill="#D2691E"/><circle cx="-5" cy="-1.5" r="0.7" fill="#000"/><circle cx="-3" cy="-1.5" r="0.7" fill="#000"/><circle cx="-4.8" cy="-1.8" r="0.3" fill="#fff"/><circle cx="-2.8" cy="-1.8" r="0.3" fill="#fff"/><circle cx="-6.5" cy="-0.5" r="0.4" fill="#8B4513"/><g><ellipse cx="-2.5" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/><ellipse cx="-4" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/><ellipse cx="1.5" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/><ellipse cx="3" cy="3.5" rx="1" ry="1.5" fill="#654321" stroke="#3D2611" stroke-width="0.3"/></g><path d="M 4.5 0 Q 7 -1.5 8.5 1" stroke="#8B4513" stroke-width="1.2" fill="none" stroke-linecap="round"/>';
+// Its silhouette grown by `grow` local units on every side: the hamster's sticker border.
+const hamsterSilhouette = (fill, grow) => `<g fill="${fill}" stroke="${fill}" stroke-width="${2 * grow}" stroke-linejoin="round"><ellipse cx="0" cy="0" rx="6" ry="4.5"/><circle cx="-4" cy="-1.5" r="3.5"/><circle cx="-5.5" cy="-3.5" r="1.3"/><circle cx="-2.5" cy="-3.5" r="1.3"/><ellipse cx="-3.25" cy="3.5" rx="1.9" ry="1.65"/><ellipse cx="2.25" cy="3.5" rx="1.9" ry="1.65"/></g>`
+  + `<path d="M 4.5 0 Q 7 -1.5 8.5 1" fill="none" stroke="${fill}" stroke-width="${1.2 + 2 * grow}" stroke-linecap="round"/>`;
+const hamsterTransform = (cx, cy, trackOuter, h) => {
+  const [x, y] = point(cx, cy, trackOuter + h.lift + 5 * h.scale, h.angle);
+  return `translate(${x} ${y}) rotate(${h.angle + h.tilt}) scale(${h.facing === 'cw' ? -h.scale : h.scale} ${h.scale})`;
+};
+
+// Two-circle hamster standing on the track: [x, y, r] for body and head. The head sits
+// `spread` × (body + head) away along the direction it faces, raised by `headRise` degrees.
+function hamsterDots(cx, cy, trackOuter, d) {
+  const t = d.angle * Math.PI / 180;
+  const [bx, by] = point(cx, cy, trackOuter + d.body + d.lift, d.angle);
+  const dir = d.facing === 'cw' ? 1 : -1;
+  const [tx, ty] = [Math.cos(t) * dir, Math.sin(t) * dir];
+  const [nx, ny] = [Math.sin(t), -Math.cos(t)];
+  const rise = d.headRise * Math.PI / 180, dist = d.spread * (d.body + d.head);
+  return {
+    body: [bx, by, d.body],
+    head: [r1(bx + dist * (Math.cos(rise) * tx + Math.sin(rise) * nx)), r1(by + dist * (Math.cos(rise) * ty + Math.sin(rise) * ny)), d.head],
+  };
+}
+const circle = ([x, y, r], fill, extra = '') => `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(r)}" fill="${fill}"${extra}/>`;
 
 const PALETTE = {
   light: { plate: ['#dfa85b', '#c8893f', '#a9692b'], facetHi: ['#fff3dc', 0.13], facetLo: ['#5a2c08', 0.1], rim: ['#fff3dd', 0.6], sticker: ['#ffffff', '#efe7da'], face: ['#fffdf8', '#f3ebdd'], track: '#e4d9c6', shadow: ['#3b2a14', 0.34] },
-  dark: { plate: ['#7a5128', '#5a3718', '#3a220e'], facetHi: ['#ffe9c8', 0.07], facetLo: ['#000000', 0.14], rim: ['#f3d9ae', 0.22], sticker: ['#e9dfd0', '#cfc3b1'], face: ['#3a342e', '#2b2622'], track: '#4c443b', shadow: ['#000000', 0.5] },
+  // Dark keeps the light sticker, track and hamster; only the plate and the middle of the face go dark.
+  dark: { plate: ['#7a5128', '#5a3718', '#3a220e'], facetHi: ['#ffe9c8', 0.07], facetLo: ['#000000', 0.14], rim: ['#f3d9ae', 0.22], sticker: ['#f4eee5', '#ddd2c2'], face: ['#f6f0e6', '#e6dccd'], track: '#dccfbb', shadow: ['#000000', 0.5], centre: ['#3a342e', '#2b2622'] },
 };
 
 // ---------- colour icon ----------
 // variant: 'large' (64px and up) or 'small' (hand-tuned flat master for 16–32px)
-// plate: true draws the macOS-style amber plate; false leaves only the sticker (Icon Composer layer)
+// plate: true draws the macOS-style amber plate; false leaves only the sticker (Icon Composer layer, Linux tray)
 function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
   const small = variant === 'small';
-  const ring = small ? RING_SMALL : RING_LARGE;
+  const ring = small ? SMALL : LARGE;
   const c = PALETTE[dark ? 'dark' : 'light'];
-  const cx = 512, cy = 512;
+  const { cx, cy } = ring;
   const faceR = ring.r - ring.band;
+  const trackOuter = faceR + ring.track;
   const mid = ring.r - ring.band / 2;
   const cap = capDegrees(ring.band, mid);
-  const bandPath = arc(cx, cy, mid, cap, BAND_END - cap);
-  const sticker = (fill, attrs = '') => `<g fill="${fill}" ${attrs}><circle cx="${cx}" cy="${cy}" r="${faceR + ring.track + ring.dieCut}"/><path d="${bandPath}" fill="none" stroke="${fill}" stroke-width="${ring.band + 2 * ring.dieCut}" stroke-linecap="round"/></g>`;
+  const bandPath = arc(cx, cy, mid, cap, ring.bandEnd - cap);
+  const dots = small && hamsterDots(cx, cy, trackOuter, ring.dots);
+  const hT = !small && hamsterTransform(cx, cy, trackOuter, ring.hamster);
+  const sticker = (fill, attrs = '') => `<g ${attrs}><circle cx="${cx}" cy="${cy}" r="${trackOuter + ring.dieCut}" fill="${fill}"/>`
+    + `<path d="${bandPath}" fill="none" stroke="${fill}" stroke-width="${ring.band + 2 * ring.dieCut}" stroke-linecap="round"/>`
+    + (small
+      ? circle([dots.body[0], dots.body[1], dots.body[2] + ring.dots.outline], fill) + circle([dots.head[0], dots.head[1], dots.head[2] + ring.dots.outline], fill)
+      : `<g transform="${hT}">${hamsterSilhouette(fill, ring.hamster.outline / ring.hamster.scale)}</g>`)
+    + `</g>`;
 
   const plateSvg = !plate ? '' : small
     ? `<rect x="100" y="100" width="824" height="824" rx="185" fill="${c.plate[1]}"/>`
@@ -91,13 +120,15 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
       + sticker(c.shadow[0], `opacity="${c.shadow[1]}" transform="translate(10 18)" filter="url(#${id}-blur)"`)
       + `</g><rect x="104" y="104" width="816" height="816" rx="181" fill="none" stroke="${c.rim[0]}" stroke-opacity="${c.rim[1]}" stroke-width="8"/>`;
 
-  const hs = 18.5, hx = cx - 4, hy = cy + 8;
+  const outline = ` stroke="#8B4513" stroke-width="${r1(ring.dots ? ring.dots.body * 0.14 : 0)}"`;
   const hamsterSvg = small
-    ? hamsterDots(cx, cy, faceR, '#D2691E', '#DEB887', '#8B4513')
-    : `<ellipse cx="${hx}" cy="${r1(hy + 5.2 * hs)}" rx="${r1(7.4 * hs)}" ry="${r1(1.3 * hs)}" fill="#6b4a26" fill-opacity="${dark ? 0.35 : 0.16}" filter="url(#${id}-soft)"/>`
-      + `<g transform="translate(${hx} ${hy}) scale(${-hs} ${hs})">`
-      + `<g transform="translate(-0.25 0.4)" fill="#5b4a32" opacity="${dark ? 0.4 : 0.22}" filter="url(#${id}-hsoft)">${HAMSTER_SHADOW}</g>`
-      + `${hamster(dark)}</g>`;
+    ? circle(dots.body, '#D2691E', outline) + circle(dots.head, '#DEB887', outline)
+    : `<g transform="${hT}"><g transform="translate(-0.25 0.4)" fill="#5b4a32" opacity="0.22" filter="url(#${id}-hsoft)"><ellipse cx="0" cy="0" rx="6.4" ry="4.9"/><circle cx="-4" cy="-1.5" r="3.9"/></g>${HAMSTER}</g>`;
+
+  // Dark appearance: a dark disc inset by the track width, leaving a light rim inside the band.
+  const centre = dark && !small
+    ? `<circle cx="${cx}" cy="${cy}" r="${faceR - ring.track}" fill="url(#${id}-centre)"/>`
+    : '';
 
   const stops = RAINBOW.map((col, i) => `<stop offset="${r1(i / (RAINBOW.length - 1) * 100)}%" stop-color="${col}"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>`
@@ -105,10 +136,10 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
     + `<clipPath id="${id}-clip"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>`
     + `<filter id="${id}-drop" x="-10%" y="-10%" width="120%" height="125%"><feGaussianBlur stdDeviation="14"/></filter>`
     + `<filter id="${id}-blur" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="16"/></filter>`
-    + `<filter id="${id}-soft" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="9"/></filter>`
     + `<filter id="${id}-hsoft" x="-30%" y="-40%" width="160%" height="180%"><feGaussianBlur stdDeviation="0.45"/></filter>`
     + `<linearGradient id="${id}-sticker" x1="${cx - ring.r}" y1="${cy - ring.r}" x2="${cx + ring.r}" y2="${cy + ring.r}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.sticker[0]}"/><stop offset="1" stop-color="${c.sticker[1]}"/></linearGradient>`
     + `<radialGradient id="${id}-face" cx="${r1(cx - faceR * 0.3)}" cy="${r1(cy - faceR * 0.35)}" r="${r1(faceR * 1.4)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.face[0]}"/><stop offset="1" stop-color="${c.face[1]}"/></radialGradient>`
+    + (c.centre ? `<radialGradient id="${id}-centre" cx="${r1(cx - faceR * 0.3)}" cy="${r1(cy - faceR * 0.35)}" r="${r1(faceR * 1.4)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.centre[0]}"/><stop offset="1" stop-color="${c.centre[1]}"/></radialGradient>` : '')
     + `<linearGradient id="${id}-band" x1="${cx - ring.r}" y1="0" x2="${cx + ring.r}" y2="0" gradientUnits="userSpaceOnUse">${stops}</linearGradient>`
     + `<linearGradient id="${id}-bandlit" x1="${cx - ring.r}" y1="${cy - ring.r}" x2="${cx + ring.r}" y2="${cy + ring.r}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#2a1204" stop-opacity="0.12"/></linearGradient>`
     + `</defs>`
@@ -116,7 +147,8 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
     + sticker(small ? c.sticker[0] : `url(#${id}-sticker)`)
     + `<circle cx="${cx}" cy="${cy}" r="${r1(faceR + ring.track / 2)}" fill="none" stroke="${c.track}" stroke-width="${ring.track}"/>`
     + `<circle cx="${cx}" cy="${cy}" r="${faceR}" fill="${small ? c.face[0] : `url(#${id}-face)`}"/>`
-    + (small ? '' : `<circle cx="${cx}" cy="${cy}" r="${faceR - 3}" fill="none" stroke="#6e4c2e" stroke-opacity="${dark ? 0.3 : 0.08}" stroke-width="6"/>`)
+    + centre
+    + (small ? '' : `<circle cx="${cx}" cy="${cy}" r="${faceR - 3}" fill="none" stroke="#6e4c2e" stroke-opacity="0.08" stroke-width="6"/>`)
     + `<path d="${bandPath}" fill="none" stroke="url(#${id}-band)" stroke-width="${ring.band}" stroke-linecap="round"/>`
     + (small ? '' : `<path d="${bandPath}" fill="none" stroke="url(#${id}-bandlit)" stroke-width="${ring.band}" stroke-linecap="round"/>`)
     + hamsterSvg
@@ -133,16 +165,25 @@ function fullBleed(svg, id) {
 }
 
 // ---------- monochrome glyph (menu bar, tray) ----------
+// Geometry in canvas units: ring, two circles, and the offset that centres the whole mark.
+function glyphGeometry() {
+  const R = GLYPH.r, band = R * GLYPH.band, track = R * GLYPH.track;
+  const faceR = R - band, trackOuter = faceR + track;
+  const dots = hamsterDots(GLYPH.cx, GLYPH.cy, trackOuter, GLYPH.dots);
+  const xs = [GLYPH.cx - R, GLYPH.cx + R, dots.body[0] - dots.body[2], dots.body[0] + dots.body[2], dots.head[0] - dots.head[2], dots.head[0] + dots.head[2]];
+  const ys = [GLYPH.cy - R, GLYPH.cy + R, dots.body[1] - dots.body[2], dots.body[1] + dots.body[2], dots.head[1] - dots.head[2], dots.head[1] + dots.head[2]];
+  const dx = r1(512 - (Math.min(...xs) + Math.max(...xs)) / 2), dy = r1(512 - (Math.min(...ys) + Math.max(...ys)) / 2);
+  const shift = ([x, y, r]) => [r1(x + dx), r1(y + dy), r];
+  return { cx: r1(GLYPH.cx + dx), cy: r1(GLYPH.cy + dy), R, band: r1(band), track: r1(track), faceR: r1(faceR), body: shift(dots.body), head: shift(dots.head) };
+}
 function glyph({ fill = '#000' } = {}) {
-  const cx = 512, cy = 512, R = GLYPH.r;
-  const band = r1(R * GLYPH.band), track = r1(R * GLYPH.track);
-  const faceR = R - band, mid = R - band / 2;
-  const cap = capDegrees(band, mid);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">`
-    + `<circle cx="${cx}" cy="${cy}" r="${r1(faceR + track / 2)}" fill="none" stroke="${fill}" stroke-width="${track}"/>`
-    + `<path d="${arc(cx, cy, mid, cap, BAND_END - cap)}" fill="none" stroke="${fill}" stroke-width="${band}" stroke-linecap="round"/>`
-    + hamsterDots(cx, cy, faceR, fill, fill)
-    + `</svg>`;
+  const g = glyphGeometry(), gap = GLYPH.dots.gap;
+  const mid = g.R - g.band / 2, cap = capDegrees(g.band, mid);
+  const ring = `<circle cx="${g.cx}" cy="${g.cy}" r="${r1(g.faceR + g.track / 2)}" fill="none" stroke="${fill}" stroke-width="${g.track}"/>`
+    + `<path d="${arc(g.cx, g.cy, r1(mid), cap, GLYPH.bandEnd - cap)}" fill="none" stroke="${fill}" stroke-width="${g.band}" stroke-linecap="round"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs><mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">`
+    + `<rect width="1024" height="1024" fill="#fff"/>${circle([g.body[0], g.body[1], g.body[2] + gap], '#000')}${circle([g.head[0], g.head[1], g.head[2] + gap], '#000')}</mask></defs>`
+    + `<g mask="url(#gap)">${ring}</g>${circle(g.body, fill)}${circle(g.head, fill)}</svg>`;
 }
 
 // Scale a centred drawing up about the canvas centre (used to fill a tray slot with the plate-less sticker).
@@ -208,7 +249,7 @@ const svg = {
   glyph: glyph(),
 };
 // The small master without its plate, filling the canvas: a colour sticker that reads on light and dark Linux panels.
-svg.traySticker = enlarge(colourIcon({ id: 'cwt', variant: 'small', plate: false }), 1.28);
+svg.traySticker = enlarge(colourIcon({ id: 'cwt', variant: 'small', plate: false }), 1.4);
 svg.maskable = fullBleed(svg.icon, 'cwm');
 svg.iconComposerLayer = fullBleed(svg.layer, 'cwic');
 
@@ -280,3 +321,5 @@ for (const dir of ['packages/student/public', 'packages/server/public/student', 
 }
 
 console.log(`Wrote ${written.length} files:\n  ${written.join('\n  ')}`);
+// DashboardMenuBarIcon.swift draws the menu-bar glyph from these numbers.
+console.log('Menu-bar glyph geometry (1024 canvas):', JSON.stringify({ ...glyphGeometry(), gap: GLYPH.dots.gap, bandEnd: GLYPH.bandEnd }));

@@ -1,15 +1,23 @@
 # App Icon
 
-Classroom Widgets uses one mark everywhere: the **Hamster Timer**. It is the
+Classroom Widgets uses one mark everywhere: the **Nibbled Timer**. It is the
 timer widget's rainbow ring, die-cut like one of the app's stickers, with the
 time already spent cut away as a notch at upper left. The app's own hamster
-sits in the face.
+stands on the track in that notch, facing the band's end, as if it has nibbled
+the spent time away.
 
 | Size | What shows |
 | --- | --- |
-| 64px and up (Dock, Start, app grid, PWA, About) | The full drawing, with the hamster copied verbatim from the timer's `creatures.tsx` markup |
-| 16–32px (favicons, small `.ico`/`.icns` entries) | A flat master: thicker ring, and the hamster simplified to two circles (orange body, slightly higher tan head) |
-| Menu bar and tray | One-colour glyph: the notched ring with the two-circle hamster in its hole |
+| 64px and up (Dock, Start, app grid, PWA, About) | The full drawing, with the hamster copied verbatim from the timer's `creatures.tsx` markup and given its own sticker border |
+| 16–32px (favicons, small `.ico`/`.icns` entries) | A flat master: the same composition with the hamster simplified to two circles (orange body, tan head) on the track |
+| Menu bar and tray | One-colour glyph: the notched ring with the two-circle hamster in the notch, cut free of the ring by a gap |
+
+The macOS dark appearance keeps the light sticker and the hamster as they are;
+only the plate and a disc in the middle of the face go dark, inset by the track
+width so a light rim stays inside the band.
+
+The sizes were tuned by eye in an interactive tuner and live as the `LARGE`,
+`SMALL` and `GLYPH` constants at the top of the generator.
 
 ## Where each platform gets it
 
