@@ -475,6 +475,11 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var isClosingPermanently = false
     private var widgetCreationOptions: [CompactWidgetOption] = []
     private var backgroundOpacity: Double
+    private var contentReady = false
+    private var pendingShow = false
+    private var showFallbackTask: Task<Void, Never>?
+
+    private static let showFallbackDelay: TimeInterval = 1.5
 
     var widgetID: String { descriptor.id }
     var isResizable: Bool { descriptor.isResizable }
@@ -539,6 +544,10 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
                 self?.push(snapshot: snapshot, force: true)
             }
         }
+        messageHandler.onContentReady = { [weak self] in
+            self?.contentReady = true
+            self?.presentPendingShow()
+        }
         messageHandler.onStateChange = { [weak self] stateChange in
             self?.onStateChange?(stateChange)
         }
@@ -591,6 +600,19 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     func show() {
         guard !descriptor.hidden else { return }
+        if contentReady || window?.isVisible == true {
+            presentNow()
+            return
+        }
+        pendingShow = true
+        guard showFallbackTask == nil else { return }
+        showFallbackTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.showFallbackDelay * 1_000_000_000))
+            self?.presentPendingShow()
+        }
+    }
+
+    private func presentNow() {
         let wasVisible = window?.isVisible == true
         window?.orderFront(nil)
         if !wasVisible {
@@ -599,7 +621,18 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         }
     }
 
+    private func presentPendingShow() {
+        showFallbackTask?.cancel()
+        showFallbackTask = nil
+        guard pendingShow, !descriptor.hidden else { return }
+        pendingShow = false
+        presentNow()
+    }
+
     func hide() {
+        pendingShow = false
+        showFallbackTask?.cancel()
+        showFallbackTask = nil
         window?.orderOut(nil)
     }
 
@@ -838,6 +871,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private func loadWidget() {
         lastPushedRevision = nil
         lastPushedStateRevision = nil
+        contentReady = false
         var components = URLComponents()
         components.scheme = dashboardURLScheme
         components.host = "app"
@@ -1110,6 +1144,7 @@ private final class WidgetPanelWebViewFactory {
 @MainActor
 private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHandler {
     var onReady: (@MainActor () -> Void)?
+    var onContentReady: (@MainActor () -> Void)?
     var onStateChange: (@MainActor (WidgetPanelStateChange) -> Void)?
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onWritesCheckpoint: (@MainActor () -> Void)?
@@ -1135,6 +1170,8 @@ private final class WidgetPanelScriptMessageHandler: NSObject, WKScriptMessageHa
             NSApp.sendAction(#selector(AppDelegate.showSettings), to: NSApp.delegate, from: nil)
         case "panel-ready":
             onReady?()
+        case "panel-content-ready":
+            onContentReady?()
         case "panel-state-change":
             guard revision != nil, body["state"] != nil else { return }
             var payload = body

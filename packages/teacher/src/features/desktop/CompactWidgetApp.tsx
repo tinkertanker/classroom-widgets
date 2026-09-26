@@ -18,6 +18,13 @@ declare global {
   }
 }
 
+const PanelContentReadyNotifier = ({ onReady }: { onReady: () => void }) => {
+  useEffect(() => {
+    onReady();
+  }, [onReady]);
+  return null;
+};
+
 const CompactWidgetApp = () => {
   const requestedWidgetId = new URLSearchParams(window.location.search).get('widgetId');
   const requestedBackgroundOpacity = useMemo(
@@ -30,6 +37,7 @@ const CompactWidgetApp = () => {
   const inFlightStateRef = useRef<string | null>(null);
   const queuedStateRef = useRef<string | null>(null);
   const closingRef = useRef(false);
+  const contentReadyPostedRef = useRef(false);
   const randomiserListListenersRef = useRef(new Set<(lists: CompactWidgetSnapshot['savedRandomiserLists']) => void>());
 
   const reportState = useCallback((serializedState: string, baseRevision: number) => {
@@ -167,6 +175,16 @@ const CompactWidgetApp = () => {
     reportState(serializedState, currentSnapshot.stateRevision);
   }, [reportState]);
 
+  const handleContentReady = useCallback(() => {
+    if (contentReadyPostedRef.current) return;
+    contentReadyPostedRef.current = true;
+    postNativeMessage('classroomWidgetPanel', {
+      type: 'panel-content-ready',
+      schemaVersion: 1,
+      widgetId: snapshotRef.current?.widgetId ?? requestedWidgetId
+    });
+  }, [requestedWidgetId]);
+
   if (!snapshot) {
     return <div className="compact-widget-panel-loading" aria-label="Loading widget" />;
   }
@@ -189,6 +207,7 @@ const CompactWidgetApp = () => {
                 isCompactPanel
                 isActive
               />
+              <PanelContentReadyNotifier onReady={handleContentReady} />
             </Suspense>
           </ErrorBoundary>
         </div>
