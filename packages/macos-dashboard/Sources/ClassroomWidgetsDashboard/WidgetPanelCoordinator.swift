@@ -479,7 +479,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var pendingShow = false
     private var showFallbackTask: Task<Void, Never>?
 
-    private static let showFallbackDelay: TimeInterval = 1.5
+    private static let showFallbackDelay: TimeInterval = 5
 
     var widgetID: String { descriptor.id }
     var isResizable: Bool { descriptor.isResizable }
