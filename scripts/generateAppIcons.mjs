@@ -131,7 +131,7 @@ function colourIcon({ id, variant = 'large', dark = false, plate = true }) {
   const stops = RAINBOW.map((col, i) => `<stop offset="${r1(i / (RAINBOW.length - 1) * 100)}%" stop-color="${col}"/>`).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><defs>`
     + `<linearGradient id="${id}-plate" x1="0.12" y1="0.02" x2="0.88" y2="0.98"><stop offset="0" stop-color="${c.plate[0]}"/><stop offset="0.55" stop-color="${c.plate[1]}"/><stop offset="1" stop-color="${c.plate[2]}"/></linearGradient>`
-    + `<linearGradient id="${id}-plateface" x1="198.9" y1="116.5" x2="825.1" y2="907.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.plate[0]}"/><stop offset="0.55" stop-color="${c.plate[1]}"/><stop offset="1" stop-color="${c.plate[2]}"/></linearGradient>`
+    + (dark ? `<linearGradient id="${id}-plateface" x1="198.9" y1="116.5" x2="825.1" y2="907.5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.plate[0]}"/><stop offset="0.55" stop-color="${c.plate[1]}"/><stop offset="1" stop-color="${c.plate[2]}"/></linearGradient>` : '')
     + `<clipPath id="${id}-clip"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>`
     + `<filter id="${id}-drop" x="-10%" y="-10%" width="120%" height="125%"><feGaussianBlur stdDeviation="14"/></filter>`
     + `<filter id="${id}-blur" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur stdDeviation="16"/></filter>`
