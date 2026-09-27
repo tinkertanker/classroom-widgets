@@ -86,7 +86,8 @@ const validators = {
   // Real TLDs (IANA list), so text like "Mr.Tan" stays text in Links + Text mode
   _tlds: new Set(tlds),
 
-  // Honorifics that start a name, so "Ms.Ng" stays text even though .ng is a real TLD
+  // Honorifics that start a name, so "Ms.Ng" stays text even though .ng is a real TLD.
+  // Only applied to two-label hosts, so "ms.office.com" is still a link.
   _honorifics: ['mr', 'mrs', 'ms', 'mdm', 'dr', 'prof', 'miss'],
 
   /**
@@ -139,7 +140,8 @@ const validators = {
         }
         // In Links + Text mode, only treat clear domains as links
         if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
-            (!validators._tlds.has(hostnameExt) || validators._honorifics.includes(hostnameParts[0]))) {
+            (!validators._tlds.has(hostnameExt) ||
+            (hostnameParts.length === 2 && validators._honorifics.includes(hostnameParts[0])))) {
           return trimmed;
         }
         return withProtocol;

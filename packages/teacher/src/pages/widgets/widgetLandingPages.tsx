@@ -466,11 +466,11 @@ export const widgetLandingPages = {
     steps: {
       heading: 'How to collect questions and comments',
       items: [
-        { step: 1, title: 'Launch the widget', body: 'Open the widget launcher and click Questions & Comments.' },
+        { step: 1, title: 'Launch the widget', body: 'Click MORE ("More widgets", or press ⌘K / Ctrl+K) in the toolbar, then choose Questions & Comments.' },
         { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code. No app download, no account needed.' },
         { step: 3, title: 'Start collecting', body: 'Click "Start Collecting", then press play ("Resume submissions") to open submissions. Students can now type and submit questions or comments from their devices.' },
         { step: 4, title: 'Manage the queue', body: 'Submissions appear in real-time. Tick the checkmark to mark one as answered (it moves to the bottom), or delete it. Unanswered ones always float to the top.' },
-        { step: 5, title: 'Pause or clear when done', body: 'Click "Pause submissions" to stop new ones while you work through the queue, and "Resume submissions" to reopen. Clear all when you\'re ready for the next round.' },
+        { step: 5, title: 'Pause or clear when done', body: 'Press pause ("Pause submissions") to stop new ones while you work through the queue, and play ("Resume submissions") to reopen. Clear all when you\'re ready for the next round.' },
       ],
     },
     cards: {
@@ -491,7 +491,7 @@ export const widgetLandingPages = {
         'Leave it open during independent work time — students can queue questions without interrupting the class.',
         'Use it at the end of a lesson as an exit ticket — "What\'s one thing you\'re still unsure about?"',
         'Pause submissions before addressing the queue so new questions don\'t distract you mid-answer.',
-        'Upvoted questions rise naturally — if the same thing is being asked multiple times, you know it\'s the one to address first.',
+        'If several students submit the same question, that\'s the one to address first.',
       ],
     },
   },
