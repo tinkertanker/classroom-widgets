@@ -18,6 +18,7 @@
   "description": "Real-time server for classroom widgets",
   "dependencies": {
     "@boundaryml/baml": "^0.212.0",
+    "@classroom-widgets/shared": "workspace:*",
     "axios": "^1.11.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
