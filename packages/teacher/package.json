@@ -9,6 +9,7 @@
     "build": "vite build",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
+    "e2e:dropbox": "node e2e/dropboxExport.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -49,6 +50,7 @@
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.21",
     "jsdom": "^26.1.0",
+    "playwright-core": "1.56.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
