@@ -265,7 +265,7 @@ export const widgetLandingPages = {
       items: [
         'Leave it running throughout a lesson and glance at it periodically — you don\'t need to talk about it every time.',
         'Use it after introducing a new concept to gauge whether to move on or re-explain.',
-        'Pair it with the Q&A widget — students who find it hard can ask questions while you monitor the feedback distribution.',
+        'Pair it with the Questions & Comments widget — students who find it hard can ask questions while you monitor the feedback distribution.',
         'Clear and restart between topics so each reading is relevant to what\'s happening right now.',
       ],
     },
@@ -453,24 +453,24 @@ export const widgetLandingPages = {
   questions: {
     slug: 'questions',
     meta: {
-      title: 'Q&A Widget — Anonymous Student Questions for Class | Classroom Widgets',
-      description: 'Let students submit questions during class anonymously. Mark answered, delete, or clear all in real-time. Free classroom Q&A tool, no login required.',
-      ogTitle: 'Q&A Widget — Anonymous Student Questions | Classroom Widgets',
-      ogDescription: 'Let students submit questions during class anonymously. Mark answered, delete, or clear all in real-time. Free, no login required.',
+      title: 'Questions & Comments Widget — Anonymous Student Q&A for Class | Classroom Widgets',
+      description: 'Let students submit questions or comments during class anonymously. Mark answered, delete, or clear all in real-time. Free classroom Q&A tool, no login required.',
+      ogTitle: 'Questions & Comments Widget — Anonymous Student Q&A | Classroom Widgets',
+      ogDescription: 'Let students submit questions or comments during class anonymously. Mark answered, delete, or clear all in real-time. Free, no login required.',
     },
     accent: 'sage',
     heroGradient: 'from-sage-50 to-dusty-rose-50',
     heroIcon: FaQuestion,
-    heading: 'Q&A',
-    lede: 'Give every student a voice. The Q&A widget lets students submit questions during class — the quiet ones included — and gives you a live queue to work through at your own pace.',
+    heading: 'Questions & Comments',
+    lede: 'Give every student a voice. The Questions & Comments widget lets students submit questions or comments during class — the quiet ones included — and gives you a live queue to work through at your own pace.',
     steps: {
-      heading: 'How to run a Q&A session',
+      heading: 'How to collect questions and comments',
       items: [
-        { step: 1, title: 'Launch the Q&A widget', body: 'Click Q&A in the toolbar. The widget opens showing an empty question queue.' },
+        { step: 1, title: 'Launch the widget', body: 'Open the widget launcher and click Questions & Comments.' },
         { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code. No app download, no account needed.' },
-        { step: 3, title: 'Start accepting questions', body: 'Click "Start accepting questions". Students can now type and submit questions from their devices.' },
-        { step: 4, title: 'Manage the queue', body: 'Questions appear in real-time. Tick the checkmark to mark a question as answered (it moves to the bottom), or delete it. Unanswered questions always float to the top.' },
-        { step: 5, title: 'Pause or clear when done', body: 'Pause to stop new submissions while you work through the queue. Clear all when you\'re ready for the next round.' },
+        { step: 3, title: 'Start collecting', body: 'Click "Start Collecting". Students can now type and submit questions or comments from their devices.' },
+        { step: 4, title: 'Manage the queue', body: 'Submissions appear in real-time. Tick the checkmark to mark one as answered (it moves to the bottom), or delete it. Unanswered ones always float to the top.' },
+        { step: 5, title: 'Pause or clear when done', body: 'Click "Pause submissions" to stop new ones while you work through the queue, and "Resume submissions" to reopen. Clear all when you\'re ready for the next round.' },
       ],
     },
     cards: {
@@ -479,14 +479,14 @@ export const widgetLandingPages = {
       accent: 'sage',
       columns: 2,
       items: [
-        { icon: FaEyeSlash, title: 'Anonymous by default', body: 'Students type their question and hit submit. No name required — which means the students who never raise their hand actually ask.' },
-        { icon: FaCheck, title: 'Submission confirmation', body: 'After submitting, students see a confirmation toast and their question appears in their local list with a colour tag.' },
+        { icon: FaEyeSlash, title: 'Anonymous by default', body: 'Students type a question or comment and hit Submit. No name required — which means the students who never raise their hand actually ask.' },
+        { icon: FaCheck, title: 'Submission confirmation', body: 'After submitting, students see a confirmation toast and it appears under "Your Submissions" with a colour tag.' },
         { icon: FaQuestion, title: 'See answered status', body: "Students can see when their question has been marked as answered — it gets a strikethrough and a ✓ badge." },
         { icon: FaTrash, title: 'Teacher controls everything', body: 'Only the teacher can delete questions or clear the queue. Students can submit but not moderate.' },
       ],
     },
     tips: {
-      heading: 'Tips for Q&A in class',
+      heading: 'Tips for using Questions & Comments in class',
       items: [
         'Leave it open during independent work time — students can queue questions without interrupting the class.',
         'Use it at the end of a lesson as an exit ticket — "What\'s one thing you\'re still unsure about?"',

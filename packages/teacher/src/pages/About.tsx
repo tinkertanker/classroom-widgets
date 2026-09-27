@@ -257,7 +257,7 @@ const About: React.FC = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[
               { title: 'Live Poll', href: '/widgets/poll', description: 'Instant votes, live results.', color: 'bg-terracotta-500' },
-              { title: 'Q&A', href: '/widgets/questions', description: 'Anonymous student questions.', color: 'bg-sage-500' },
+              { title: 'Questions & Comments', href: '/widgets/questions', description: 'Anonymous student questions and comments.', color: 'bg-sage-500' },
               { title: 'RT Feedback', href: '/widgets/feedback', description: 'Live difficulty gauge.', color: 'bg-dusty-rose-500' },
               { title: 'Handout', href: '/widgets/handout', description: 'Push links to devices instantly.', color: 'bg-terracotta-400' },
             ].map((w) => (
