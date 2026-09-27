@@ -6,6 +6,7 @@ import { redirectFirstVisitToLanding } from './app/firstVisit';
 const surface = new URLSearchParams(window.location.search).get('surface');
 const isCompactWidgetPanel = surface === 'widget-panel';
 const isDesktopWidgetLauncher = surface === 'widget-launcher';
+// Must run before App is imported: the workspace store writes its storage key on load.
 const redirectedToLanding = redirectFirstVisitToLanding();
 
 // Load Umami analytics conditionally (only if env vars are set)
