@@ -97,6 +97,12 @@ export async function highlightCode(code: string, language?: string): Promise<Hi
     const result = hljs.highlight(trimmed, { language, ignoreIllegals: true });
     return { html: result.value, language: result.language ?? language };
   }
+  if (language) {
+    // Tagged with a language outside the bundled set: show it escaped and
+    // uncoloured rather than letting auto-detect guess the wrong language.
+    const result = hljs.highlight(trimmed, { language: 'plaintext' });
+    return { html: result.value, language: 'plaintext' };
+  }
   const result = hljs.highlightAuto(trimmed);
   return { html: result.value, language: result.language ?? 'plaintext' };
 }
