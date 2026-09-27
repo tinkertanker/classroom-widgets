@@ -26,8 +26,12 @@ final class UpdateControllerTests: XCTestCase {
         await controller.check()
         fixture.releaseVersion = "0.11.2"
         await controller.check()
+        fixture.releaseVersion = "0.12.0"
+        fixture.includeAsset = true
+        fixture.assetDigest = nil
+        await controller.check()
 
-        XCTAssertEqual(fixture.availableVersions, ["0.12.0", nil, nil])
+        XCTAssertEqual(fixture.availableVersions, ["0.12.0", nil, nil, nil])
         XCTAssertTrue(fixture.alerts.isEmpty)
     }
 
@@ -125,6 +129,7 @@ private final class UpdateFixture {
     var installError: Error?
     var releaseVersion = "0.12.0"
     var includeAsset = true
+    var assetDigest: String? = "sha256:" + String(repeating: "a", count: 64)
     var responses: [NSApplication.ModalResponse] = []
     var alerts: [NSAlert] = []
     var openedURLs: [URL] = []
@@ -158,8 +163,9 @@ private final class UpdateFixture {
                 self.releaseRequests += 1
                 if let error = self.releaseError { throw error }
                 XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), "ClassroomWidgets/0.11.2")
+                let digest = self.assetDigest.map { ",\"digest\":\"\($0)\"" } ?? ""
                 let assets = self.includeAsset
-                    ? "[{\"name\":\"ClassroomWidgets-v\(self.releaseVersion)-macos.zip\",\"browser_download_url\":\"https://example.invalid/update.zip\"}]"
+                    ? "[{\"name\":\"ClassroomWidgets-v\(self.releaseVersion)-macos.zip\",\"browser_download_url\":\"https://example.invalid/update.zip\"\(digest)}]"
                     : "[]"
                 let data = Data("""
                 {"tag_name":"v\(self.releaseVersion)","html_url":"https://example.invalid/releases/v\(self.releaseVersion)",

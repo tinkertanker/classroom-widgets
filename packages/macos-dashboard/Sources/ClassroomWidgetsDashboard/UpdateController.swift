@@ -59,7 +59,9 @@ final class UpdateController {
                 return
             }
             let expectedName = "ClassroomWidgets-v\(availableVersion)-macos.zip"
-            guard let asset = release.assets.first(where: { $0.name == expectedName }) else {
+            guard let asset = release.assets.first(where: {
+                $0.name == expectedName && Self.hasUsableDigest($0.digest)
+            }) else {
                 updateAvailable(nil)
                 if manual {
                     showReleaseFallback(release.htmlURL, detail: "Version \(availableVersion) is available, but its macOS update is not attached yet.")
@@ -114,7 +116,7 @@ final class UpdateController {
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
         let archive = staging.appendingPathComponent(asset.name)
         try fileManager.moveItem(at: download, to: archive)
-        guard let expectedDigest = asset.digest, expectedDigest.hasPrefix("sha256:"), expectedDigest.count == 71 else {
+        guard let expectedDigest = asset.digest, Self.hasUsableDigest(expectedDigest) else {
             throw UpdateError.checksumMismatch
         }
         let digest = "sha256:" + SHA256.hash(data: try Data(contentsOf: archive)).map { String(format: "%02x", $0) }.joined()
@@ -195,6 +197,11 @@ final class UpdateController {
     private static func versionParts(_ version: String) -> [Int]? {
         let parts = version.split(separator: ".").compactMap { Int($0) }
         return parts.count == 3 ? parts : nil
+    }
+
+    private static func hasUsableDigest(_ digest: String?) -> Bool {
+        guard let digest, digest.hasPrefix("sha256:"), digest.count == 71 else { return false }
+        return digest.dropFirst("sha256:".count).allSatisfy(\.isHexDigit)
     }
 
     private static let helperScript = """

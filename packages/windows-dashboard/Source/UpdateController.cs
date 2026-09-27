@@ -47,7 +47,7 @@ public sealed class UpdateController
             var expectedName = isInstalled
                 ? $"ClassroomWidgets-v{availableVersion}-windows-x64-setup.exe"
                 : $"ClassroomWidgets-v{availableVersion}-windows-x64.zip";
-            var asset = release.Assets.FirstOrDefault(candidate => candidate.Name == expectedName);
+            var asset = release.Assets.FirstOrDefault(candidate => candidate.Name == expectedName && HasUsableDigest(candidate.Digest));
             if (asset is null)
             {
                 UpdateAvailable?.Invoke(null);
@@ -200,6 +200,11 @@ public sealed class UpdateController
         return client;
     }
 
+    private static bool HasUsableDigest(string? digest) =>
+        digest is { Length: 71 }
+        && digest.StartsWith("sha256:", StringComparison.Ordinal)
+        && digest[7..].All(Uri.IsHexDigit);
+
     private static void TryDeleteFile(string path)
     {
         try
@@ -232,5 +237,5 @@ public sealed class UpdateController
     private sealed record GitHubAsset(
         [property: System.Text.Json.Serialization.JsonPropertyName("name")] string Name,
         [property: System.Text.Json.Serialization.JsonPropertyName("browser_download_url")] string DownloadUrl,
-        [property: System.Text.Json.Serialization.JsonPropertyName("digest")] string Digest);
+        [property: System.Text.Json.Serialization.JsonPropertyName("digest")] string? Digest);
 }
