@@ -6,6 +6,9 @@ import { CustomStickerIcons } from '../features/widgets/sticker/CustomStickerIco
 import { FloatingWidgets } from './components/FloatingWidgets';
 import { DemoVideo } from './components/DemoVideo';
 
+// Hero headline: plain lead-in plus the gradient-accented ending. Swap the text here.
+const HERO_HEADLINE = { lead: 'Your whole lesson in ', accent: 'one tab.' };
+
 const About: React.FC = () => {
   useEffect(() => {
     // This lazy-loaded page mounts after the browser's initial fragment scroll.
@@ -124,17 +127,17 @@ const About: React.FC = () => {
 
         <div className="max-w-7xl mx-auto relative z-20 grid gap-10 lg:gap-12 lg:grid-cols-12 lg:items-center">
           <div className="text-center lg:text-left lg:col-span-5">
-            <div className="flex justify-center lg:justify-start items-center gap-2 sm:gap-6 lg:gap-4 mb-6">
+            <div className="flex justify-center lg:justify-start items-center gap-2 sm:gap-6 lg:gap-4 mb-3">
               <CustomStickerIcons.fire className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-terracotta-500 motion-safe:animate-bounce" aria-hidden="true" />
               <CustomStickerIcons.star className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-sage-500 motion-safe:animate-bounce" style={{ animationDelay: '200ms' }} aria-hidden="true" />
               <img src="/logo-mark.png" alt="Classroom Widgets Nibbled Timer app icon" width="512" height="512" className="w-28 h-28 sm:w-36 sm:h-36 lg:w-28 lg:h-28 shrink-0 object-contain motion-safe:animate-bounce" style={{ animationDelay: '300ms' }} />
               <CustomStickerIcons.heart className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-dusty-rose-500 motion-safe:animate-bounce" style={{ animationDelay: '400ms' }} aria-hidden="true" />
               <CustomStickerIcons.smile className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-terracotta-400 motion-safe:animate-bounce" style={{ animationDelay: '600ms' }} aria-hidden="true" />
             </div>
-            <h2 className="text-5xl lg:text-6xl font-bold mb-5">
-              <span className="text-warm-gray-900 dark:text-warm-gray-100">Classroom </span>
+            <h2 className="text-4xl sm:text-5xl font-bold leading-tight mb-5">
+              <span className="text-warm-gray-900 dark:text-warm-gray-100">{HERO_HEADLINE.lead}</span>
               <span className="bg-gradient-to-r from-terracotta-600 via-sage-600 to-dusty-rose-600 bg-clip-text text-transparent">
-                Magic
+                {HERO_HEADLINE.accent}
               </span>
             </h2>
             <p className="text-xl text-warm-gray-600 dark:text-warm-gray-400 mb-8 max-w-xl mx-auto lg:mx-0">

@@ -78,7 +78,7 @@ export const DemoVideo: React.FC = () => {
             onClick={toggleSound}
             aria-pressed={!muted}
             aria-label={muted ? 'Sound on' : 'Sound off'}
-            className="absolute top-2 right-2 sm:top-3 sm:right-3 inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-warm-gray-900/75 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm lg:px-3 lg:py-1.5 lg:text-xs font-medium text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-warm-gray-900/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-warm-gray-900"
+            className="absolute bottom-2 right-2 sm:bottom-3 sm:right-3 inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-warm-gray-900/75 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm lg:px-3 lg:py-1.5 lg:text-xs font-medium text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-warm-gray-900/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-warm-gray-900"
           >
             {muted ? <FaVolumeXmark aria-hidden="true" /> : <FaVolumeHigh aria-hidden="true" />}
             {muted ? 'Sound on' : 'Sound off'}
