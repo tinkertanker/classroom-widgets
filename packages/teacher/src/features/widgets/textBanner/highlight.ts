@@ -64,7 +64,7 @@ function ensureStyles() {
 
 async function loadHighlighter(): Promise<HLJSApi> {
   if (!hljsPromise) {
-    hljsPromise = import('highlight.js')
+    hljsPromise = import('highlight.js/lib/common')
       .then((mod) => mod.default)
       .catch((err) => {
         // Drop the cached rejection so the next attempt can retry the chunk
