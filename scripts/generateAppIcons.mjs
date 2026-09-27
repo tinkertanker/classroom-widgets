@@ -183,6 +183,12 @@ function glyph({ fill = '#000' } = {}) {
     + `<g mask="url(#gap)">${ring}</g>${circle(g.body, fill)}${circle(g.head, fill)}</svg>`;
 }
 
+function updateBadge(svg) {
+  const inner = svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">${inner}`
+    + '<circle cx="850" cy="174" r="135" fill="#e5484d" stroke="#ffffff" stroke-width="58"/></svg>';
+}
+
 // Scale a centred drawing up about the canvas centre (used to fill a tray slot with the plate-less sticker).
 function enlarge(svg, factor) {
   const inner = svg.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '');
@@ -293,12 +299,15 @@ write(`${WIN}/AppIcon.ico`, ico([16, 20, 24, 32, 40, 48, 64, 128, 256].map(px =>
 const traySizes = [16, 20, 24, 32, 40, 48];
 write(`${WIN}/TrayIcon-Black.ico`, ico(traySizes.map(px => ({ px, data: png(glyph({ fill: '#000000' }), px) }))));
 write(`${WIN}/TrayIcon-White.ico`, ico(traySizes.map(px => ({ px, data: png(glyph({ fill: '#ffffff' }), px) }))));
+write(`${WIN}/TrayIcon-Black-Update.ico`, ico(traySizes.map(px => ({ px, data: png(updateBadge(glyph({ fill: '#000000' })), px) }))));
+write(`${WIN}/TrayIcon-White-Update.ico`, ico(traySizes.map(px => ({ px, data: png(updateBadge(glyph({ fill: '#ffffff' })), px) }))));
 
 // Linux: app icon (electron-builder makes the hicolor set) and tray icon. Linux panels can be light or
 // dark and Electron cannot tell which, so the tray uses the colour sticker rather than a one-colour glyph.
 const LINUX = 'packages/linux-dashboard/assets';
 write(`${LINUX}/icon.png`, png(svg.icon, 512));
 write(`${LINUX}/tray-icon.png`, png(svg.traySticker, 64));
+write(`${LINUX}/tray-icon-update.png`, png(updateBadge(svg.traySticker), 64));
 
 // Web: teacher app (also bundled into every desktop app) and student app.
 const favicon = ico([16, 32, 48].map(px => ({ px, data: png(svg.iconSmall, px) })));

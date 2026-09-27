@@ -20,17 +20,18 @@ enum DashboardMenuBarIcon {
     private static let artworkScale: CGFloat = 0.85
 
     private static let statusItemIcon = makeImage(size: 21, remaining: restingRemaining)
+    private static let updateStatusItemIcon = makeImage(size: 21, remaining: restingRemaining, updateAvailable: true)
 
     /// - Parameter remaining: share of the dial still to run, from 0 (time's up)
     ///   to 1 (full ring). The band shortens anticlockwise towards 12 o'clock.
-    static func make(size: CGFloat = 18, remaining: CGFloat = restingRemaining) -> NSImage {
+    static func make(size: CGFloat = 18, remaining: CGFloat = restingRemaining, updateAvailable: Bool = false) -> NSImage {
         if size == 21 && remaining == restingRemaining {
-            return statusItemIcon
+            return updateAvailable ? updateStatusItemIcon : statusItemIcon
         }
-        return makeImage(size: size, remaining: remaining)
+        return makeImage(size: size, remaining: remaining, updateAvailable: updateAvailable)
     }
 
-    private static func makeImage(size: CGFloat, remaining: CGFloat) -> NSImage {
+    private static func makeImage(size: CGFloat, remaining: CGFloat, updateAvailable: Bool = false) -> NSImage {
         let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
             let scale = size * artworkScale / canvas
             let origin = CGPoint(x: rect.midX - canvas * scale / 2, y: rect.midY - canvas * scale / 2)
@@ -91,11 +92,19 @@ enum DashboardMenuBarIcon {
                 circle(circleCenter, radius).fill()
             }
 
+            if updateAvailable {
+                let badgeCenter = CGPoint(x: rect.maxX - 3.5, y: rect.maxY - 3.5)
+                NSGraphicsContext.current?.compositingOperation = .clear
+                circle(badgeCenter, 3.5).fill()
+                NSGraphicsContext.current?.compositingOperation = .sourceOver
+                circle(badgeCenter, 2.5).fill()
+            }
+
             return true
         }
 
         image.isTemplate = true
-        image.accessibilityDescription = "Classroom Widgets"
+        image.accessibilityDescription = updateAvailable ? "Classroom Widgets, update available" : "Classroom Widgets"
         return image
     }
 }

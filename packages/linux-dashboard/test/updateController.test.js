@@ -81,14 +81,50 @@ function harness({ responses = [], fetch, download, installAppImage, installDeb,
   };
 }
 
-test('automatic approved download failure is visible and offers Downloads', async () => {
+test('automatic check publishes an available version without interrupting', async () => {
+  delete process.env.APPIMAGE;
+  const h = harness();
+  const versions = [];
+  h.controller.on('updateAvailable', (version) => versions.push(version));
+
+  await h.controller.check();
+
+  assert.deepEqual(versions, ['2.0.0']);
+  assert.deepEqual(h.dialogs, []);
+  assert.deepEqual(h.downloads, []);
+});
+
+test('successful checks clear a withdrawn or installed update', async () => {
+  delete process.env.APPIMAGE;
+  let check = 0;
+  const h = harness({
+    fetch: async () => {
+      check += 1;
+      const release = await releaseResponse().json();
+      if (check === 2) release.assets = [];
+      if (check === 3) release.tag_name = 'v1.0.0';
+      return { ok: true, status: 200, async json() { return release; } };
+    },
+  });
+  const versions = [];
+  h.controller.on('updateAvailable', (version) => versions.push(version));
+
+  await h.controller.check();
+  await h.controller.check();
+  await h.controller.check();
+
+  assert.deepEqual(versions, ['2.0.0', null, null]);
+  assert.deepEqual(h.dialogs, []);
+});
+
+test('manual approved download failure is visible and offers Downloads', async () => {
   delete process.env.APPIMAGE;
   const h = harness({
     responses: [0, 0],
     download: async () => { throw new Error('Update download returned 503'); },
   });
 
-  await h.controller.check();
+  await h.controller.check(true);
 
   assert.equal(h.dialogs.length, 2);
   assert.equal(h.dialogs[1].message, 'Unable to install update.');
@@ -184,7 +220,7 @@ test('approved AppImage staging error identifies the unwritable location and rec
       },
     });
 
-    await h.controller.check();
+    await h.controller.check(true);
 
     assert.deepEqual(h.appImageInstalls, ['/tmp/intercepted-update-package']);
     assert.equal(h.dialogs[1].message, 'Unable to install update.');
@@ -204,7 +240,7 @@ test('AppImage updater keeps the effective Ozone backend for replacement and rol
   assert.equal(script.match(/"\$3" >\/dev\/null 2>&1 &/g)?.length, 2);
 });
 
-test('automatic approved deb failure reports package-manager and opener errors', async () => {
+test('manual approved deb failure reports package-manager and opener errors', async () => {
   delete process.env.APPIMAGE;
   const h = harness({
     responses: [0, 1],
@@ -213,7 +249,7 @@ test('automatic approved deb failure reports package-manager and opener errors',
     openPath: async () => 'No application is registered for .deb files',
   });
 
-  await h.controller.check();
+  await h.controller.check(true);
 
   assert.deepEqual(h.execFiles, [['pkexec', ['apt-get', 'install', '-y', '/tmp/intercepted-update-package']]]);
   assert.deepEqual(h.openedPaths, ['/tmp/intercepted-update-package']);
@@ -252,7 +288,7 @@ test('successful native deb install relaunches and quits without opening the pac
     openPath: async () => assert.fail('must not open the package after a successful native install'),
   });
 
-  await h.controller.check();
+  await h.controller.check(true);
 
   assert.equal(h.dialogs.length, 1);
   assert.deepEqual(h.openedPaths, []);
@@ -269,7 +305,7 @@ test('successful desktop package handoff is not reported as an installation fail
     openPath: async () => '',
   });
 
-  await h.controller.check();
+  await h.controller.check(true);
 
   assert.equal(h.dialogs.length, 1);
   assert.deepEqual(h.openedPaths, ['/tmp/intercepted-update-package']);

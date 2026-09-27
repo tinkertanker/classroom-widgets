@@ -25,6 +25,7 @@ export class TrayController {
   private readonly onCheckForUpdates: () => void;
   private readonly onQuit: () => void;
   private readonly onDisplayPreview: () => void;
+  private updateVersion: string | null = null;
 
   constructor(host: WidgetHostController, settings: DashboardSettings, shortcuts: WidgetShortcutController, appVersion: string, onOpenLauncher: () => void, onCheckForUpdates: () => void, onQuit: () => void, onDisplayPreview: () => void = () => {}) {
     this.host = host;
@@ -36,8 +37,7 @@ export class TrayController {
     this.onQuit = onQuit;
     this.onDisplayPreview = onDisplayPreview;
 
-    const iconPath = join(app.getAppPath(), 'assets', 'tray-icon.png');
-    this.tray = new Tray(nativeImage.createFromPath(iconPath));
+    this.tray = new Tray(this.trayImage());
     this.tray.setToolTip('Classroom Widgets');
     this.tray.on('click', () => this.tray.popUpContextMenu());
 
@@ -90,7 +90,7 @@ export class TrayController {
         },
       },
       { type: 'separator' },
-      { label: 'Check for Updates…', click: () => this.onCheckForUpdates() },
+      { label: this.updateVersion ? `Update to v${this.updateVersion}…` : 'Check for Updates…', click: () => this.onCheckForUpdates() },
       { label: 'Reload Widgets', click: () => void this.host.reloadWidgets() },
       { label: `About Classroom Widgets (v${this.appVersion})`, click: () => void openUrl(ABOUT_URL) },
       { label: 'Open Full Web App', click: () => void openUrl(FULL_WEB_APP_URL) },
@@ -99,6 +99,18 @@ export class TrayController {
     ];
 
     this.tray.setContextMenu(Menu.buildFromTemplate(template));
+  }
+
+  setUpdateAvailable(version: string | null): void {
+    this.updateVersion = version;
+    this.tray.setImage(this.trayImage(version !== null));
+    this.tray.setToolTip(version ? `Classroom Widgets — update v${version} available` : 'Classroom Widgets');
+    this.rebuildMenu();
+  }
+
+  private trayImage(updateAvailable = false) {
+    const name = updateAvailable ? 'tray-icon-update.png' : 'tray-icon.png';
+    return nativeImage.createFromPath(join(app.getAppPath(), 'assets', name));
   }
 
   destroy(): void {

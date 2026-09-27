@@ -17,6 +17,7 @@ public sealed class UpdateController
     private bool _checking;
 
     public UpdateController(Func<Task> quit) => _quit = quit;
+    public event Action<string?>? UpdateAvailable;
 
     public async Task CheckAsync(bool manual = false)
     {
@@ -37,23 +38,27 @@ public sealed class UpdateController
             var current = Version.Parse(App.AppVersion);
             if (available <= current)
             {
+                UpdateAvailable?.Invoke(null);
                 if (manual) MessageBox.Show($"Version {App.AppVersion} is the latest version.", "Classroom Widgets is up to date", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
-
+            var availableVersion = available.ToString(3);
             var isInstalled = WindowsInstallation.IsInstallerManaged(AppContext.BaseDirectory);
             var expectedName = isInstalled
-                ? $"ClassroomWidgets-v{available.ToString(3)}-windows-x64-setup.exe"
-                : $"ClassroomWidgets-v{available.ToString(3)}-windows-x64.zip";
+                ? $"ClassroomWidgets-v{availableVersion}-windows-x64-setup.exe"
+                : $"ClassroomWidgets-v{availableVersion}-windows-x64.zip";
             var asset = release.Assets.FirstOrDefault(candidate => candidate.Name == expectedName);
             if (asset is null)
             {
-                OpenReleasePage(release.HtmlUrl, $"Version {available.ToString(3)} is available, but its Windows installer is not attached yet.");
+                UpdateAvailable?.Invoke(null);
+                if (manual) OpenReleasePage(release.HtmlUrl, $"Version {availableVersion} is available, but its Windows installer is not attached yet.");
                 return;
             }
+            UpdateAvailable?.Invoke(availableVersion);
+            if (!manual) return;
 
             var choice = MessageBox.Show(
-                $"Classroom Widgets {available.ToString(3)} is available.\n\nYou are using version {App.AppVersion}. The update will be downloaded and the app will restart.",
+                $"Classroom Widgets {availableVersion} is available.\n\nYou are using version {App.AppVersion}. The update will be downloaded and the app will restart.",
                 "Update available",
                 MessageBoxButton.OKCancel,
                 MessageBoxImage.Information);

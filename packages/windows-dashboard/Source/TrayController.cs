@@ -23,6 +23,8 @@ public sealed class TrayController : IDisposable
     private readonly List<ToolStripItem> _fixedItems = new();
     private readonly ToolStripMenuItem _arrangeMenu = new("Arrange Widgets");
     private readonly ToolStripMenuItem _launchAtLogin = new("Launch at Login") { CheckOnClick = true };
+    private readonly ToolStripMenuItem _checkForUpdates = new("Check for Updates…");
+    private string? _updateVersion;
     private SettingsWindow? _settingsWindow;
 
     public TrayController(WidgetHostController host, DashboardSettings settings, WidgetShortcutManager shortcuts, UpdateController updates, Action openLauncher, Action openDisplayPreview)
@@ -47,6 +49,7 @@ public sealed class TrayController : IDisposable
         };
 
         SystemEvents.UserPreferenceChanged += UserPreferenceChanged;
+        _updates.UpdateAvailable += UpdateAvailable;
 
         BuildMenu();
         _host.WidgetOptionsChanged += RebuildMenu;
@@ -91,8 +94,7 @@ public sealed class TrayController : IDisposable
         var openWeb = new ToolStripMenuItem("Open Full Web App");
         openWeb.Click += (_, _) => OpenUrl("https://widgets.tk.sg");
 
-        var checkForUpdates = new ToolStripMenuItem("Check for Updates…");
-        checkForUpdates.Click += (_, _) => _ = _updates.CheckAsync(manual: true);
+        _checkForUpdates.Click += (_, _) => _ = _updates.CheckAsync(manual: true);
 
         var quit = new ToolStripMenuItem("Quit Classroom Widgets");
         quit.Click += (_, _) => _ = ((App)System.Windows.Application.Current).RequestQuitAsync();
@@ -106,7 +108,7 @@ public sealed class TrayController : IDisposable
             settingsItem,
             _launchAtLogin,
             new ToolStripSeparator(),
-            checkForUpdates,
+            _checkForUpdates,
             reload,
             about,
             openWeb,
@@ -227,9 +229,10 @@ public sealed class TrayController : IDisposable
     /// <summary>
     /// The tray glyph in the taskbar's colour: black on a light taskbar, white on a dark one.
     /// </summary>
-    private static Icon LoadIcon()
+    private static Icon LoadIcon(bool updateAvailable = false)
     {
-        var name = TaskbarUsesLightTheme() ? "TrayIcon-Black.ico" : "TrayIcon-White.ico";
+        var theme = TaskbarUsesLightTheme() ? "Black" : "White";
+        var name = updateAvailable ? $"TrayIcon-{theme}-Update.ico" : $"TrayIcon-{theme}.ico";
         var resource = System.Windows.Application.GetResourceStream(new Uri($"pack://application:,,,/Assets/{name}"));
         if (resource is not null)
         {
@@ -258,14 +261,25 @@ public sealed class TrayController : IDisposable
         System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
         {
             var previous = _icon.Icon;
-            _icon.Icon = LoadIcon();
+            _icon.Icon = LoadIcon(_updateVersion is not null);
             previous?.Dispose();
         }));
+    }
+
+    private void UpdateAvailable(string? version)
+    {
+        _updateVersion = version;
+        _checkForUpdates.Text = version is null ? "Check for Updates…" : $"Update to v{version}…";
+        _icon.Text = version is null ? "Classroom Widgets" : $"Classroom Widgets — update v{version} available";
+        var previous = _icon.Icon;
+        _icon.Icon = LoadIcon(updateAvailable: version is not null);
+        previous?.Dispose();
     }
 
     public void Dispose()
     {
         SystemEvents.UserPreferenceChanged -= UserPreferenceChanged;
+        _updates.UpdateAvailable -= UpdateAvailable;
         _icon.Visible = false;
         _icon.Dispose();
         _menu.Dispose();

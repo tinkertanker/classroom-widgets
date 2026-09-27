@@ -11,6 +11,7 @@ final class UpdateController {
     private let loadRelease: @MainActor (URLRequest) async throws -> (Data, URLResponse)
     private let presentAlert: @MainActor (NSAlert) -> NSApplication.ModalResponse
     private let openDownloads: @MainActor (URL) -> Void
+    private let updateAvailable: @MainActor (String?) -> Void
     private let installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)?
     private var checking = false
 
@@ -23,6 +24,7 @@ final class UpdateController {
         },
         presentAlert: @escaping @MainActor (NSAlert) -> NSApplication.ModalResponse = { $0.runModal() },
         openDownloads: @escaping @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) },
+        updateAvailable: @escaping @MainActor (String?) -> Void = { _ in },
         installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)? = nil
     ) {
         self.prepareForTermination = prepareForTermination
@@ -31,6 +33,7 @@ final class UpdateController {
         self.loadRelease = loadRelease
         self.presentAlert = presentAlert
         self.openDownloads = openDownloads
+        self.updateAvailable = updateAvailable
         self.installUpdate = installUpdate
     }
 
@@ -51,15 +54,20 @@ final class UpdateController {
             let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
             let availableVersion = release.tagName.hasPrefix("v") ? String(release.tagName.dropFirst()) : release.tagName
             guard Self.isNewerVersion(availableVersion, than: currentVersion) else {
+                updateAvailable(nil)
                 if manual { showMessage(title: "Classroom Widgets is up to date", detail: "Version \(currentVersion) is the latest version.") }
                 return
             }
-
             let expectedName = "ClassroomWidgets-v\(availableVersion)-macos.zip"
             guard let asset = release.assets.first(where: { $0.name == expectedName }) else {
-                showReleaseFallback(release.htmlURL, detail: "Version \(availableVersion) is available, but its macOS update is not attached yet.")
+                updateAvailable(nil)
+                if manual {
+                    showReleaseFallback(release.htmlURL, detail: "Version \(availableVersion) is available, but its macOS update is not attached yet.")
+                }
                 return
             }
+            updateAvailable(availableVersion)
+            guard manual else { return }
 
             let alert = NSAlert()
             alert.messageText = "Classroom Widgets \(availableVersion) is available."

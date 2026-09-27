@@ -4,8 +4,31 @@ import XCTest
 
 final class UpdateControllerTests: XCTestCase {
     @MainActor
-    func testApprovedAutomaticUpdateFailureIsVisible() async throws {
-        try await assertApprovedUpdateFailureIsVisible(manual: false)
+    func testAutomaticCheckPublishesAvailableVersionWithoutInterrupting() async throws {
+        let fixture = try UpdateFixture()
+        defer { fixture.remove() }
+
+        await fixture.makeController().check()
+
+        XCTAssertEqual(fixture.availableVersions, ["0.12.0"])
+        XCTAssertTrue(fixture.alerts.isEmpty)
+        XCTAssertEqual(fixture.installAttempts, 0)
+    }
+
+    @MainActor
+    func testSuccessfulChecksClearWithdrawnOrInstalledUpdates() async throws {
+        let fixture = try UpdateFixture()
+        defer { fixture.remove() }
+        let controller = fixture.makeController()
+
+        await controller.check()
+        fixture.includeAsset = false
+        await controller.check()
+        fixture.releaseVersion = "0.11.2"
+        await controller.check()
+
+        XCTAssertEqual(fixture.availableVersions, ["0.12.0", nil, nil])
+        XCTAssertTrue(fixture.alerts.isEmpty)
     }
 
     @MainActor
@@ -21,14 +44,14 @@ final class UpdateControllerTests: XCTestCase {
         fixture.responses = [.alertFirstButtonReturn, .alertSecondButtonReturn, .alertSecondButtonReturn]
         let controller = fixture.makeController()
 
-        await controller.check()
+        await controller.check(manual: true)
         let failure = try XCTUnwrap(fixture.alerts.dropFirst().first)
         XCTAssertEqual(failure.messageText, "Unable to install update")
         XCTAssertTrue(failure.informativeText.contains("cannot replace itself"))
         XCTAssertTrue(failure.informativeText.contains("Applications"))
         XCTAssertTrue(fixture.openedURLs.isEmpty, "Cancel must not open a browser")
 
-        await controller.check()
+        await controller.check(manual: true)
         XCTAssertEqual(fixture.releaseRequests, 2, "Failure must release the checking guard")
         XCTAssertEqual(fixture.installAttempts, 1, "Later on the second prompt must not retry installation")
         XCTAssertEqual(fixture.alerts.count, 3)
@@ -56,7 +79,7 @@ final class UpdateControllerTests: XCTestCase {
         defer { fixture.remove() }
         fixture.responses = [.alertSecondButtonReturn]
 
-        await fixture.makeController().check()
+        await fixture.makeController().check(manual: true)
 
         XCTAssertEqual(fixture.alerts.count, 1)
         XCTAssertEqual(fixture.alerts.first?.buttons.map(\.title), ["Install and Restart", "Later"])
@@ -100,9 +123,12 @@ private final class UpdateFixture {
     private let bundle: Bundle
     var releaseError: Error?
     var installError: Error?
+    var releaseVersion = "0.12.0"
+    var includeAsset = true
     var responses: [NSApplication.ModalResponse] = []
     var alerts: [NSAlert] = []
     var openedURLs: [URL] = []
+    var availableVersions: [String?] = []
     var releaseRequests = 0
     var installAttempts = 0
 
@@ -132,10 +158,12 @@ private final class UpdateFixture {
                 self.releaseRequests += 1
                 if let error = self.releaseError { throw error }
                 XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), "ClassroomWidgets/0.11.2")
+                let assets = self.includeAsset
+                    ? "[{\"name\":\"ClassroomWidgets-v\(self.releaseVersion)-macos.zip\",\"browser_download_url\":\"https://example.invalid/update.zip\"}]"
+                    : "[]"
                 let data = Data("""
-                {"tag_name":"v0.12.0","html_url":"https://example.invalid/releases/v0.12.0",
-                 "assets":[{"name":"ClassroomWidgets-v0.12.0-macos.zip",
-                            "browser_download_url":"https://example.invalid/update.zip"}]}
+                {"tag_name":"v\(self.releaseVersion)","html_url":"https://example.invalid/releases/v\(self.releaseVersion)",
+                 "assets":\(assets)}
                 """.utf8)
                 return (data, try XCTUnwrap(HTTPURLResponse(
                     url: try XCTUnwrap(request.url), statusCode: 200, httpVersion: nil, headerFields: nil
@@ -146,6 +174,7 @@ private final class UpdateFixture {
                 return self.responses.isEmpty ? .alertSecondButtonReturn : self.responses.removeFirst()
             },
             openDownloads: { self.openedURLs.append($0) },
+            updateAvailable: { self.availableVersions.append($0) },
             installUpdate: { asset, version in
                 self.installAttempts += 1
                 XCTAssertEqual(asset.downloadURL.absoluteString, "https://example.invalid/update.zip")

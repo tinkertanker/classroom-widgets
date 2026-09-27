@@ -1,6 +1,7 @@
 import { app, dialog, MessageBoxOptions, MessageBoxReturnValue, net, shell } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { chmod, copyFile, mkdtemp, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -32,11 +33,12 @@ interface UpdateControllerDependencies {
   installDeb: (download: string, releasePage: string) => Promise<void>;
 }
 
-export class UpdateController {
+export class UpdateController extends EventEmitter {
   private checking = false;
   private readonly dependencies: UpdateControllerDependencies;
 
   constructor(private readonly currentVersion: string, private readonly onQuit: () => void, dependencies: Partial<UpdateControllerDependencies> = {}) {
+    super();
     this.dependencies = {
       isPackaged: () => app.isPackaged,
       fetch: (...args) => net.fetch(...args),
@@ -63,17 +65,20 @@ export class UpdateController {
       const release = parseUpdateRelease(await response.json());
       if (!release) throw new Error('GitHub returned an invalid release');
       if (!isNewerVersion(release.version, this.currentVersion)) {
+        this.emit('updateAvailable', null);
         if (manual) await this.dependencies.showMessageBox({ type: 'info', message: 'Classroom Widgets is up to date.', detail: `Version ${this.currentVersion} is the latest version.` });
         return;
       }
-
       const appImage = Boolean(process.env.APPIMAGE);
       const suffix = appImage ? '-linux-x86_64.AppImage' : '-linux-amd64.deb';
       const asset = release.assets.find((candidate) => candidate.name === `ClassroomWidgets-v${release.version}${suffix}`);
       if (!asset) {
-        await this.openReleaseFallback(release.pageUrl, `Version ${release.version} is available, but its Linux package is not attached yet.`);
+        this.emit('updateAvailable', null);
+        if (manual) await this.openReleaseFallback(release.pageUrl, `Version ${release.version} is available, but its Linux package is not attached yet.`);
         return;
       }
+      this.emit('updateAvailable', release.version);
+      if (!manual) return;
 
       const answer = await this.dependencies.showMessageBox({
         type: 'info',
