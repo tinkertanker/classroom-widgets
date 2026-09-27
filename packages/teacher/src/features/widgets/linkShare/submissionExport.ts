@@ -8,7 +8,9 @@ export interface ExportableSubmission {
 }
 
 const CSV_HEADER = ['Name', 'Content', 'Type', 'Submitted at'];
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
+const CONTROL_PREFIX = /^[\t\r]/;
+const FORMULA_PREFIX = /^[=+\-@]/;
+const PLAIN_NUMBER = /^[+-]?\d[\d\s.,]*$/;
 const pad = (value: number) => String(value).padStart(2, '0');
 
 const nameOf = (submission: ExportableSubmission) => submission.studentName || 'Anonymous';
@@ -26,12 +28,23 @@ function formatLocalDateTime(timestamp: number | undefined): string {
 }
 
 /**
- * Escapes one CSV field (RFC 4180). Student-typed values that start with a
- * spreadsheet formula character are prefixed with an apostrophe so Excel or
- * Sheets shows them as text instead of evaluating them.
+ * True when a spreadsheet could evaluate the value as a formula: it starts with
+ * a tab or CR, or with = + - @ once leading spaces are ignored. Plain numbers
+ * such as -5 or +65 9123 4567 cannot call functions, so they are left alone.
+ */
+function looksLikeFormula(value: string): boolean {
+  if (CONTROL_PREFIX.test(value)) return true;
+  const trimmed = value.trimStart();
+  return FORMULA_PREFIX.test(trimmed) && !PLAIN_NUMBER.test(trimmed);
+}
+
+/**
+ * Escapes one CSV field (RFC 4180). Student-typed values that look like a
+ * spreadsheet formula are prefixed with an apostrophe so Excel or Sheets shows
+ * them as text instead of evaluating them.
  */
 function escapeCsvField(value: string): string {
-  const safe = FORMULA_PREFIX.test(value) ? `'${value}` : value;
+  const safe = looksLikeFormula(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 

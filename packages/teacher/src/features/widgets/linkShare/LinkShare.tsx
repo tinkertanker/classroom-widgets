@@ -151,11 +151,11 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, [submissions]);
 
-  const copyTitle = copyStatus === 'copied'
-    ? 'Copied!'
+  const copyStatusMessage = copyStatus === 'copied'
+    ? 'Copied all submissions'
     : copyStatus === 'failed'
     ? 'Could not copy to clipboard'
-    : 'Copy all submissions';
+    : '';
 
   // Save state
   useEffect(() => {
@@ -322,8 +322,8 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
               onClick={handleCopyAll}
               disabled={submissions.length === 0}
               className={exportButtonClass}
-              title={copyTitle}
-              aria-label={copyTitle}
+              title="Copy all submissions"
+              aria-label="Copy all submissions"
             >
               {copyStatus === 'copied' ? (
                 <FaCheck className="text-base text-sage-600 dark:text-sage-400" />
@@ -334,7 +334,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
               )}
             </button>
             <span className="sr-only" role="status">
-              {copyStatus === 'idle' ? '' : copyTitle}
+              {copyStatusMessage}
             </span>
             <button
               type="button"

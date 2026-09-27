@@ -23,3 +23,15 @@ For focused changes, these references may also help:
 5. Open a pull request that explains the change and how it was verified.
 
 Repository-specific coding and verification guidance is in [`AGENTS.md`](../AGENTS.md).
+
+## Browser end-to-end checks
+
+Browser checks live in `packages/teacher/e2e/`. Each one starts the server, the teacher app and the student app on free ports and drives them with `playwright-core`. The first time, install a matching Chromium with `pnpm --filter @classroom-widgets/teacher exec playwright-core install chromium`, or set `PLAYWRIGHT_BROWSERS_PATH` to an existing install.
+
+To check the Drop Box "Copy all" and "Download CSV" buttons, run:
+
+```bash
+pnpm --filter @classroom-widgets/teacher e2e:dropbox
+```
+
+Four student pages submit through the student app. The check then asserts the clipboard text and the downloaded CSV. It writes `dropbox-export.txt` (each step and what it observed), `clipboard.txt`, `download.csv` and screenshots to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default: a `classroom-widgets-test-evidence/dropbox-export` directory under the system temp directory).

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   formatSubmissionsAsText,
   formatSubmissionsAsCsv,
@@ -8,7 +8,9 @@ import {
 
 // Failure modes covered here:
 // - student text containing commas, quotes or line breaks splits or shifts CSV columns
-// - student text starting with = + - @ runs as a formula when a teacher opens the CSV in Excel
+// - student text starting with = + - @ runs as a formula when a teacher opens the CSV in Excel,
+//   including when it is hidden behind leading spaces
+// - plain numbers such as -5 or a phone number get a visible apostrophe they do not need
 // - missing name / legacy `link`-only submissions export as "undefined"
 // - a missing or invalid timestamp throws (toISOString) or prints "Invalid Date"
 // - multi-line text breaks the "one submission per line" clipboard format
@@ -59,13 +61,22 @@ describe('formatSubmissionsAsCsv', () => {
     expect(csv).toContain('Ada,"line one\nline two\r\nline three",Text,');
   });
 
-  it.each(['=1+1', '+65 9123', '-cmd', '@SUM(A1)', '\tx', '\rx'])(
+  it.each(['=1+1', '+1+1', '-cmd', '-5+3', '@SUM(A1)', '\tx', '\rx', ' =1+1', '  @SUM(A1)', ' +1+1'])(
     'neutralises spreadsheet formula prefix in %j',
     (content) => {
       const row = formatSubmissionsAsCsv([sub({ content })]).split('\r\n').slice(1).join('\r\n');
       expect(row.startsWith('Ada,')).toBe(true);
       const field = row.slice('Ada,'.length);
       expect(field.replace(/^"/, '').startsWith("'")).toBe(true);
+    }
+  );
+
+  it.each(['-5', '+65 9123 4567', '-3.14', '1,000', '42', ' -5'])(
+    'leaves the plain number %j as it is',
+    (content) => {
+      const field = formatSubmissionsAsCsv([sub({ content })]).split('\r\n')[1].slice('Ada,'.length);
+      expect(field.replace(/^"/, '').startsWith("'")).toBe(false);
+      expect(field).toContain(content);
     }
   );
 
@@ -123,11 +134,25 @@ describe('formatSubmissionsAsText', () => {
 });
 
 describe('getSubmissionsCsvFilename', () => {
+  // Pin a zone ahead of UTC so a UTC-based date (toISOString) fails here even when CI runs in UTC.
+  // Node applies a changed process.env.TZ to later Date calls.
+  let originalTz: string | undefined;
+  beforeEach(() => {
+    originalTz = process.env.TZ;
+    process.env.TZ = 'Asia/Singapore';
+  });
+  afterEach(() => {
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
   it('uses the local calendar date, zero-padded', () => {
     expect(getSubmissionsCsvFilename(new Date(2026, 0, 5, 0, 30))).toBe('drop-box-2026-01-05.csv');
   });
 
   it('does not roll back to the previous UTC day just after local midnight', () => {
-    expect(getSubmissionsCsvFilename(new Date(2026, 11, 31, 0, 1))).toBe('drop-box-2026-12-31.csv');
+    // 07:59 on 31 Dec in Singapore is still 30 Dec in UTC.
+    expect(getSubmissionsCsvFilename(new Date(2026, 11, 31, 7, 59))).toBe('drop-box-2026-12-31.csv');
+    expect(new Date(2026, 11, 31, 7, 59).toISOString().slice(0, 10)).toBe('2026-12-30');
   });
 });
