@@ -405,3 +405,53 @@ describe('SessionContext closes a room when its widget leaves the board (#78)', 
     expect(session.activeRooms.size).toBe(0);
   });
 });
+
+// createSession is called by every widget's Start button and by the
+// "Session not found" retry in createRoom. Ways it could go wrong:
+//  1. A second call while the first is in flight returns null, so that
+//     widget fails to start for no visible reason.
+//  2. A replace answered with the session this socket already hosts
+//     (isExisting: true) wipes the live rooms another widget just created.
+describe('SessionContext createSession (#78)', () => {
+  it('lets a concurrent call wait for the in-flight creation (1)', async () => {
+    renderSession();
+    connect();
+
+    let first: Promise<string | null>;
+    let second: Promise<string | null>;
+    act(() => {
+      first = session.createSession();
+      second = session.createSession();
+    });
+    expect(socket.emitted.filter(c => c.event === 'session:create')).toHaveLength(1);
+
+    await act(async () => {
+      socket.ackFor('session:create')!({ success: true, code: 'NEW123', isExisting: false, hostToken: 't' });
+    });
+    await expect(first!).resolves.toBe('NEW123');
+    await expect(second!).resolves.toBe('NEW123');
+  });
+
+  it('keeps live rooms when a replace is answered with the session already hosted (2)', async () => {
+    renderSession();
+    connect();
+    let created: Promise<string | null>;
+    act(() => { created = session.createSession(); });
+    await act(async () => {
+      socket.ackFor('session:create')!({ success: true, code: 'NEW123', isExisting: false, hostToken: 't' });
+    });
+    await created!;
+    act(() => {
+      socket.fire('session:roomCreated', { roomType: 'poll', widgetId: 'poll-1', roomData: { isActive: true, participantCount: 0 } });
+    });
+
+    let replaced: Promise<string | null>;
+    act(() => { replaced = session.createSession({ replace: true }); });
+    await act(async () => {
+      socket.ackFor('session:create')!({ success: true, code: 'NEW123', isExisting: true, hostToken: 't2' });
+    });
+
+    await expect(replaced!).resolves.toBe('NEW123');
+    expect(session.activeRooms.has('poll-1')).toBe(true);
+  });
+});

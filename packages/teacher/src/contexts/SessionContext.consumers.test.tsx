@@ -211,9 +211,9 @@ describe('session recovery consumer invariants (#157)', () => {
     expect(persistedAge()).toBe(requestedAt);
     expect(requestedAt).toBeGreaterThan(originalCreatedAt!);
     await respond();
-    expect(session.connectionPhase).toBe('recovered');
-    expect(session.sessionCode).not.toBe(CODE);
-    expect(persistedAge()).toBe(requestedAt);
+    // Unknown to the server: refused (reclaim-only, #78), not replaced
+    expect(session.connectionPhase).toBe('recovery-failed');
+    expect(session.sessionCode).toBeNull();
     expect(server.manager.getSession(CODE)).toBe(server.session);
   });
 
@@ -416,17 +416,17 @@ describe('session recovery consumer invariants (#157)', () => {
       if (roomType === 'poll') expect(server.poll.pollData.question).toBe(draft);
     });
 
-    it('keeps the old draft disabled and copyable when the real handler replaces the classroom', async () => {
+    it('keeps the old draft disabled and copyable when the real handler refuses the classroom', async () => {
       const { dialog, save } = await openEditor();
       const clipboard = vi.fn().mockResolvedValue(undefined);
       Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: clipboard } });
       // A different host consumed the reclaim credential. The real handler
-      // refuses this client's stale token and creates a new classroom.
+      // refuses this client's stale token (reclaim-only, #78).
       server.session.rotateHostToken();
       act(() => server.disconnect());
       await connect();
-      expect(session.sessionCode).not.toBe(CODE);
-      expect(session.isSessionReady).toBe(true);
+      expect(session.sessionCode).toBeNull();
+      expect(session.connectionPhase).toBe('recovery-failed');
       expect(server.manager.getSession(CODE)).toBe(server.session);
       expect(screen.getByRole('dialog')).toBe(dialog);
       expect(within(dialog).getByDisplayValue(draft)).toBeInTheDocument();

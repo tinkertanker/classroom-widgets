@@ -230,6 +230,54 @@ describe('room lifecycle', () => {
     });
   });
 
+  // 11. A teacher opening the app the day after gets a new session, and a join
+  //     code on screen, they never started, because recovery of the stored
+  //     code falls back to creating one. Older clients rely on that fallback.
+  describe('reclaim-only recovery (11)', () => {
+    const reclaim = (socket, data) => new Promise(resolve => socket.trigger(EVENTS.SESSION.CREATE, data, resolve));
+
+    it('refuses without creating a session when the stored one is gone', async () => {
+      const result = await reclaim(host, { existingCode: 'GONE42', hostToken: 'old', reclaimOnly: true });
+
+      assert.deepEqual(result, { success: false, error: 'Session not found' });
+      assert.equal(sessionManager.sessions.size, 0);
+    });
+
+    it('refuses without creating a session, or touching the old one, when the token is wrong', async () => {
+      const { code } = await createSession();
+      host.trigger('disconnect');
+      const other = createMockSocket('teacher-other', '10.9.1.3');
+      io.connect(other);
+
+      const result = await reclaim(other, { existingCode: code, hostToken: 'wrong', reclaimOnly: true });
+
+      assert.deepEqual(result, { success: false, error: 'Session not found' });
+      assert.equal(sessionManager.sessions.size, 1);
+      assert.equal(sessionManager.getSession(code).hostSocketId, 'teacher-host');
+    });
+
+    it('still reclaims a live session', async () => {
+      const { code, hostToken } = await createSession();
+      host.trigger('disconnect');
+      const returning = createMockSocket('teacher-back', '10.9.1.4');
+      io.connect(returning);
+
+      const result = await reclaim(returning, { existingCode: code, hostToken, reclaimOnly: true });
+
+      assert.equal(result.success, true);
+      assert.equal(result.code, code);
+      assert.equal(result.isExisting, true);
+    });
+
+    it('keeps the create-a-new-session fallback for clients that do not send the flag', async () => {
+      const result = await reclaim(host, { existingCode: 'GONE42', hostToken: 'old' });
+
+      assert.equal(result.success, true);
+      assert.equal(result.isExisting, false);
+      assert.notEqual(result.code, 'GONE42');
+    });
+  });
+
   describe('teacher disconnect grace period', () => {
     it('keeps the session and its rooms until HOST_RECONNECT_GRACE has passed, then closes them (5, 6)', async () => {
       const { code } = await createSession();

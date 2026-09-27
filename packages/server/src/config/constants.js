@@ -6,7 +6,6 @@ const sessionCode = require('@classroom-widgets/shared/constants/sessionCode.jso
 module.exports = {
   // Time constants
   TIME: {
-    SESSION_MAX_AGE: 12 * 60 * 60 * 1000, // 12 hours
     // Sessions with no connected teacher and no students are swept after this.
     INACTIVITY_TIMEOUT: 2 * 60 * 60 * 1000, // 2 hours
     // How often SessionManager sweeps inactive sessions and idle rooms.

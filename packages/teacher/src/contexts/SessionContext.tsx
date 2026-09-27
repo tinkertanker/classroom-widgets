@@ -191,6 +191,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setConnectionPhaseState(phase);
   }, []);
   const isCreatingSession = useRef(false);
+  // The in-flight session:create, so a concurrent caller can wait for it
+  const creatingSessionRef = useRef<Promise<string | null> | null>(null);
   const sessionCodeRef = useRef(sessionCode);
   const sessionCreatedAtRef = useRef(sessionCreatedAt);
   const setSessionCreatedAt = useCallback((createdAt: number | null) => {
@@ -218,8 +220,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Constants
   // A stored session is always offered back to the server, whatever its age:
   // the server decides whether it is still alive (host reconnect grace and
-  // idle-room expiry in packages/server/src/config/constants.js) and answers
-  // with a new session when it is not.
+  // idle-room expiry in packages/server/src/config/constants.js). If it is
+  // gone, recovery fails and the next widget start creates a new session.
   const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
   const MAX_RECOVERY_ATTEMPTS = 3;
   // Retain the signal after success so later room acknowledgements belong to
@@ -496,7 +498,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             signal.addEventListener('abort', abortHandler, { once: true });
 
             // Attempt to rejoin session
-            socket.emit('session:create', { existingCode: code, hostToken: hostTokenRef.current }, (result: SessionCreatedResponse) => {
+            // reclaimOnly: if the server no longer holds this session it says
+            // so, rather than handing the teacher a session they never started
+            socket.emit('session:create', { existingCode: code, hostToken: hostTokenRef.current, reclaimOnly: true }, (result: SessionCreatedResponse) => {
               clearTimeout(timeoutId);
               signal.removeEventListener('abort', abortHandler);
 
@@ -522,8 +526,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               storeHostToken(response.hostToken);
             }
 
-            // Check if this is actually recovery of existing session
-            // If isExisting is false, the server created a new session (old one was gone)
+            // Check if this is actually recovery of existing session. A server
+            // that predates reclaimOnly still answers a gone session with a new
+            // one (isExisting: false); adopt it rather than fail.
             if (!response.isExisting) {
               debug('[Session] Old session not found, server created new session. Clearing stale state.');
               // Update to use the new session code from server
@@ -686,9 +691,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
   // Create session
   const createSession = useCallback(async ({ replace = false }: { replace?: boolean } = {}): Promise<string | null> => {
-    if (!socket?.connected || isCreatingSession.current) {
-      debug.error('[UnifiedSession] Cannot create session - not connected or already creating');
+    if (!socket?.connected) {
+      debug.error('[UnifiedSession] Cannot create session - not connected');
       return null;
+    }
+    // Another widget is already creating one: share its result
+    if (isCreatingSession.current && creatingSessionRef.current) {
+      return creatingSessionRef.current;
     }
 
     // This is get-or-create for widgets; do not cancel a valid recovery merely
@@ -706,7 +715,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     isCreatingSession.current = true;
     setError(null);
     
-    try {
+    const creation = (async (): Promise<string | null> => { try {
       return await new Promise((resolve) => {
         const onAbort = () => resolve(null);
         signal.addEventListener('abort', onAbort, { once: true });
@@ -720,16 +729,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             if (response.hostToken) {
               storeHostToken(response.hostToken);
             }
+            // isExisting: this socket already hosts that session (a second
+            // "Session not found" replace), so its live rooms stay
+            const sameSession = response.isExisting && response.code === sessionCodeRef.current;
             setSessionCode(response.code);
-            setSessionCreatedAt(Date.now());
+            if (!sameSession) setSessionCreatedAt(Date.now());
             setStoreSessionCode(response.code);
             sessionCodeRef.current = response.code; // Update ref immediately
             // A brand new session needs no recovery, so it is already settled
             if (connectionPhaseRef.current !== 'disconnected') {
               setConnectionPhase('recovered');
             }
-            setActiveRooms(new Map());
-            setRecoveryData(new Map()); // Clear any old recovery data
+            if (!sameSession) {
+              setActiveRooms(new Map());
+              setRecoveryData(new Map()); // Clear any old recovery data
+            }
             // Store the student app URL from server response
             if (response.studentAppUrl) {
               setStudentAppUrl(response.studentAppUrl);
@@ -748,7 +762,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       debug.error('[UnifiedSession] Error creating session:', error);
       setError('Failed to create session');
       return null;
-    }
+    } })();
+    creatingSessionRef.current = creation;
+    creation.finally(() => {
+      if (creatingSessionRef.current === creation) creatingSessionRef.current = null;
+    });
+    return creation;
   }, [socket, setStoreSessionCode, setConnectionPhase, storeHostToken, cancelSessionWork]);
 
   // Recover session (explicit)

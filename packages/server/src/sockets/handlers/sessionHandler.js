@@ -53,7 +53,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
 
-      const { existingCode, hostToken } = data;
+      const { existingCode, hostToken, reclaimOnly } = data;
       
       // Check if host already has a session
       let existingSession = sessionManager.findSessionByHost(socket.id);
@@ -86,6 +86,15 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         }
       }
       
+      // A reclaim-only request (teacher app recovering a stored session) must
+      // not fall back to a new session: the teacher did not ask for one, and
+      // it would sit unswept with a code on screen. Older clients omit the
+      // flag and keep the fallback below.
+      if (reclaimOnly && !existingSession) {
+        callback({ success: false, error: 'Session not found' });
+        return;
+      }
+
       // Get the student app URL for this server
       const serverOrigin = getServerOrigin(socket);
       const studentAppUrl = serverConfig.getStudentAppUrl(serverOrigin);
@@ -221,8 +230,10 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         })));
       }
 
-      // A student arriving counts as activity on every room they join, so an
-      // otherwise idle room is not expired right after someone joins it.
+      // A student joining refreshes every room in the session (they join them
+      // all), so an idle room is not expired right after someone joins it.
+      // This only keeps rooms alive while the teacher is connected: a
+      // disconnected teacher's session still closes after the reconnect grace.
       session.getActiveRoomEntries().forEach(({ room }) => room.updateActivity());
 
       // Join all active widget rooms
