@@ -252,18 +252,22 @@ describe('CompactPanelHost', () => {
       state: { timer: { time: 20 } }
     };
 
-    expect(window.classroomPanelHost?.applyStateChange(firstChange)).toBe(true);
-    expect(window.classroomPanelHost?.applyStateChange({
-      ...firstChange,
-      state: { timer: { time: 21 } }
-    })).toBe(false);
-    expect(window.classroomPanelHost?.applyStateChange({
-      ...firstChange,
-      baseRevision: 0,
-      state: { timer: { time: 25 } },
-      flush: true
-    })).toBe(true);
-    expect(window.classroomPanelHost?.applyStateChange(firstChange)).toBe(false);
+    // One act() batch defers React re-renders until every call has returned,
+    // so each revision check must be reserved synchronously to pass.
+    act(() => {
+      expect(window.classroomPanelHost?.applyStateChange(firstChange)).toBe(true);
+      expect(window.classroomPanelHost?.applyStateChange({
+        ...firstChange,
+        state: { timer: { time: 21 } }
+      })).toBe(false);
+      expect(window.classroomPanelHost?.applyStateChange({
+        ...firstChange,
+        baseRevision: 0,
+        state: { timer: { time: 25 } },
+        flush: true
+      })).toBe(true);
+      expect(window.classroomPanelHost?.applyStateChange(firstChange)).toBe(false);
+    });
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
   });
 
