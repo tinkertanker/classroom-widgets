@@ -64,7 +64,7 @@ function ensureStyles() {
 
 async function loadHighlighter(): Promise<HLJSApi> {
   if (!hljsPromise) {
-    hljsPromise = import('highlight.js')
+    hljsPromise = import('highlight.js/lib/common')
       .then((mod) => mod.default)
       .catch((err) => {
         // Drop the cached rejection so the next attempt can retry the chunk
@@ -96,6 +96,12 @@ export async function highlightCode(code: string, language?: string): Promise<Hi
   if (language && hljs.getLanguage(language)) {
     const result = hljs.highlight(trimmed, { language, ignoreIllegals: true });
     return { html: result.value, language: result.language ?? language };
+  }
+  if (language) {
+    // Tagged with a language outside the bundled set: show it escaped and
+    // uncoloured rather than letting auto-detect guess the wrong language.
+    const result = hljs.highlight(trimmed, { language: 'plaintext' });
+    return { html: result.value, language: 'plaintext' };
   }
   const result = hljs.highlightAuto(trimmed);
   return { html: result.value, language: result.language ?? 'plaintext' };

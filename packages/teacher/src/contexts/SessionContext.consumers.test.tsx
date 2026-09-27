@@ -320,7 +320,7 @@ describe('session recovery consumer invariants (#157)', () => {
 
   it.each([
     ['Drop Box', LinkShare, 'linkShare', 'Pause submissions'],
-    ['Questions', Questions, 'questions', 'Pause accepting questions'],
+    ['Questions', Questions, 'questions', 'Pause submissions'],
     ['RT Feedback', RTFeedback, 'rtfeedback', 'Pause feedback'],
     ['Handout', Handout, 'handout', 'Pause handout'],
     ['Fill Blank', FillBlank, 'activity', 'Pause activity'],

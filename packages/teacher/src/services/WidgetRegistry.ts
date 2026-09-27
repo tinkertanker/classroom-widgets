@@ -567,13 +567,13 @@ export class WidgetRegistry {
     // Questions
     this.register({
       type: WidgetType.QUESTIONS,
-      name: 'Questions',
+      name: 'Questions & Comments',
       icon: FaCircleQuestion,
       component: LazyWidgets.Questions,
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
-      description: 'Q&A functionality with moderation',
+      description: 'Collect questions and comments with moderation',
       columnSizing: 'fixed',
       features: {
         hasStateManagement: true,
