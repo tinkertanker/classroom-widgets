@@ -94,6 +94,36 @@ describe('validators.normalizeUrl', () => {
     const huge = 'a'.repeat(2001) + '.com';
     assert.equal(validators.normalizeUrl(huge), huge);
   });
+
+  it('keeps dotted words as text in Links + Text mode', () => {
+    for (const text of ['Mr.Tan', 'John.Doe', 'e.g.', 'Ms.Ng', 'Mr.Ong', 'Mr.Li', 'Dr.Lim', 'MDM.NG', 'john.doe@gmail.com']) {
+      assert.equal(validators.normalizeUrl(text, 'all'), text);
+    }
+  });
+
+  it('still normalizes clear domains in Links + Text mode', () => {
+    assert.equal(validators.normalizeUrl('example.com', 'all'), 'https://example.com');
+    assert.equal(validators.normalizeUrl('Google.COM', 'all'), 'https://Google.COM');
+    assert.equal(validators.normalizeUrl('bit.ly', 'all'), 'https://bit.ly');
+    assert.equal(validators.normalizeUrl('portal.school', 'all'), 'https://portal.school');
+    assert.equal(validators.normalizeUrl('library.ie', 'all'), 'https://library.ie');
+    assert.equal(validators.normalizeUrl('company.nl', 'all'), 'https://company.nl');
+    assert.equal(validators.normalizeUrl('service.company:8443', 'all'), 'https://service.company:8443');
+    assert.equal(validators.normalizeUrl('www.example.xyz', 'all'), 'https://www.example.xyz');
+    assert.equal(validators.normalizeUrl('kahoot.it/abc', 'all'), 'https://kahoot.it/abc');
+    assert.equal(validators.normalizeUrl('https://Mr.Tan', 'all'), 'https://Mr.Tan');
+  });
+
+  it('still treats honorific-like hosts with a path as links in Links + Text mode', () => {
+    assert.equal(validators.normalizeUrl('dr.com/about', 'all'), 'https://dr.com/about');
+    assert.equal(validators.normalizeUrl('www.ms.ng', 'all'), 'https://www.ms.ng');
+  });
+
+  it('keeps adding https:// to dotted words in Links only mode', () => {
+    assert.equal(validators.normalizeUrl('Mr.Tan', 'links'), 'https://Mr.Tan');
+    assert.equal(validators.normalizeUrl('Ms.Ng', 'links'), 'https://Ms.Ng');
+    assert.equal(validators.normalizeUrl('Mr.Tan'), 'https://Mr.Tan');
+  });
 });
 
 describe('validators.isLink', () => {
@@ -107,6 +137,13 @@ describe('validators.isLink', () => {
     assert.equal(validators.isLink(''), false);
     assert.equal(validators.isLink(null), false);
     assert.equal(validators.isLink(12), false);
+  });
+
+  it('treats dotted words as text in Links + Text mode', () => {
+    assert.equal(validators.isLink('Mr.Tan', 'all'), false);
+    assert.equal(validators.isLink('Ms.Ng', 'all'), false);
+    assert.equal(validators.isLink('john.doe@gmail.com', 'all'), false);
+    assert.equal(validators.isLink('example.com', 'all'), true);
   });
 
   it('rejects unsafe URL protocols', () => {

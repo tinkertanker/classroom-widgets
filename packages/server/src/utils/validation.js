@@ -2,6 +2,7 @@
  * Input validation utilities for socket events
  */
 
+const tlds = require('tlds');
 const { LIMITS } = require('../config/constants');
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 
@@ -82,13 +83,23 @@ const validators = {
   // Common file extensions to exclude from being treated as TLDs
   _fileExtensions: ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'],
 
+  // Real TLDs (IANA list), so text like "Mr.Tan" stays text in Links + Text mode
+  _tlds: new Set(tlds),
+
+  // Honorifics that start a name, so "Ms.Ng" stays text even though .ng is a real TLD
+  _honorifics: ['mr', 'mrs', 'ms', 'mdm', 'dr', 'prof', 'miss'],
+
   /**
    * Normalize a URL by adding https:// if it looks like a domain without protocol.
    * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
+   * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
+   * with www., has a path/query, or ends in a real TLD, and is not an honorific
+   * name (e.g. "Ms.Ng") or an email address.
    * @param {string} text - Text to normalize
+   * @param {string} [acceptMode] - Room accept mode ('links' or 'all')
    * @returns {string} - Normalized text (with https:// if applicable)
    */
-  normalizeUrl: (text) => {
+  normalizeUrl: (text, acceptMode) => {
     if (!text || typeof text !== 'string') return text;
     const trimmed = text.trim();
 
@@ -107,6 +118,11 @@ const validators = {
       return trimmed;
     }
 
+    // In Links + Text mode, keep email addresses as text
+    if (acceptMode === 'all' && /^[^/]*@/.test(trimmed)) {
+      return trimmed;
+    }
+
     // Try adding https:// and see if it's a valid URL
     const withProtocol = `https://${trimmed}`;
     try {
@@ -121,6 +137,11 @@ const validators = {
         if (validators._fileExtensions.includes(hostnameExt)) {
           return trimmed;
         }
+        // In Links + Text mode, only treat clear domains as links
+        if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
+            (!validators._tlds.has(hostnameExt) || validators._honorifics.includes(hostnameParts[0]))) {
+          return trimmed;
+        }
         return withProtocol;
       }
     } catch {
@@ -133,12 +154,13 @@ const validators = {
   /**
    * Check if a string looks like a URL (after normalization)
    * @param {string} text - Text to check
+   * @param {string} [acceptMode] - Room accept mode ('links' or 'all')
    * @returns {boolean}
    */
-  isLink: (text) => {
+  isLink: (text, acceptMode) => {
     if (!text || typeof text !== 'string') return false;
     // Normalize first to catch domains without protocol
-    const normalized = validators.normalizeUrl(text);
+    const normalized = validators.normalizeUrl(text, acceptMode);
     return validators.hasSafeProtocol(normalized);
   },
 
