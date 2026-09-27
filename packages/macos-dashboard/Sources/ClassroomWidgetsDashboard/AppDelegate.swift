@@ -211,8 +211,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func setupStatusItem() {
-        let statusItem = NSStatusBar.system.statusItem(withLength: 26)
-        statusItem.button?.image = DashboardMenuBarIcon.make(size: 21)
+        let statusItem = NSStatusBar.system.statusItem(withLength: 16)
+        statusItem.button?.image = DashboardMenuBarIcon.make(size: 16)
         statusItem.button?.imagePosition = .imageOnly
         let menu = NSMenu()
         // Items set their own enabled state (Arrange Widgets, Launch at Login).
@@ -288,7 +288,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func showUpdateAvailability(_ version: String?) {
         availableUpdateVersion = version
         mainUpdateMenuItem?.title = version.map { "Update to v\($0)…" } ?? "Check for Updates…"
-        statusItem?.button?.image = DashboardMenuBarIcon.make(size: 21, updateAvailable: version != nil)
+        statusItem?.button?.image = DashboardMenuBarIcon.make(size: 16, updateAvailable: version != nil)
         statusItem?.button?.toolTip = version.map { "Classroom Widgets — update v\($0) available" } ?? "Classroom Widgets"
     }
 

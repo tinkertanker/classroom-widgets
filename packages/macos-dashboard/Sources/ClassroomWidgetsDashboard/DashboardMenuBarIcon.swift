@@ -17,15 +17,15 @@ enum DashboardMenuBarIcon {
     private static let hamsterCircles: [(x: CGFloat, y: CGFloat, radius: CGFloat)] = [(350.1, 257.2, 166), (184.4, 417.2, 122)]
     private static let hamsterGap: CGFloat = 99
     /// Share of the image the 1024 canvas fills.
-    private static let artworkScale: CGFloat = 0.85
+    private static let artworkScale: CGFloat = 1.125
 
-    private static let statusItemIcon = makeImage(size: 21, remaining: restingRemaining)
-    private static let updateStatusItemIcon = makeImage(size: 21, remaining: restingRemaining, updateAvailable: true)
+    private static let statusItemIcon = makeImage(size: 16, remaining: restingRemaining)
+    private static let updateStatusItemIcon = makeImage(size: 16, remaining: restingRemaining, updateAvailable: true)
 
     /// - Parameter remaining: share of the dial still to run, from 0 (time's up)
     ///   to 1 (full ring). The band shortens anticlockwise towards 12 o'clock.
     static func make(size: CGFloat = 18, remaining: CGFloat = restingRemaining, updateAvailable: Bool = false) -> NSImage {
-        if size == 21 && remaining == restingRemaining {
+        if size == 16 && remaining == restingRemaining {
             return updateAvailable ? updateStatusItemIcon : statusItemIcon
         }
         return makeImage(size: size, remaining: remaining, updateAvailable: updateAvailable)
@@ -93,11 +93,12 @@ enum DashboardMenuBarIcon {
             }
 
             if updateAvailable {
-                let badgeCenter = CGPoint(x: rect.maxX - 3.5, y: rect.maxY - 3.5)
+                let clearRadius = size / 6
+                let badgeCenter = CGPoint(x: rect.maxX - clearRadius, y: rect.maxY - clearRadius)
                 NSGraphicsContext.current?.compositingOperation = .clear
-                circle(badgeCenter, 3.5).fill()
+                circle(badgeCenter, clearRadius).fill()
                 NSGraphicsContext.current?.compositingOperation = .sourceOver
-                circle(badgeCenter, 2.5).fill()
+                circle(badgeCenter, size * 2.5 / 21).fill()
             }
 
             return true
