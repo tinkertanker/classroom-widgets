@@ -59,7 +59,11 @@ describe('Timer Widget', () => {
   });
 
   afterEach(() => {
-    vi.runOnlyPendingTimers();
+    // The widget is still mounted here (RTL's cleanup runs afterwards), so
+    // flushing a live countdown's timers updates Timer state and needs act().
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
     vi.useRealTimers();
   });
 
