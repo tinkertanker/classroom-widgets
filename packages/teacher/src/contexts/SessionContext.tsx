@@ -85,6 +85,7 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 const HOST_TOKEN_STORAGE_KEY = 'classroom-widgets:hostToken';
+const SESSION_ENDED_MESSAGE = 'Your previous session ended. Press Start to begin a new one.';
 
 // Widget types that own a server-side room
 const NETWORKED_WIDGET_TYPES = [
@@ -404,15 +405,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     });
   };
 
-  // Clear session - defined before attemptSessionRecovery to avoid circular dependency
-  const clearSession = useCallback(() => {
+  // Clear session - defined before attemptSessionRecovery to avoid circular dependency.
+  // `keepStorage` ends the session in this tab only, leaving the stored code
+  // and token that another tab now holds.
+  const clearSession = useCallback(({ keepStorage = false }: { keepStorage?: boolean } = {}) => {
     sessionCodeRef.current = null;
     setSessionCode(null);
     setSessionCreatedAt(null);
     setStudentAppUrl(null);
-    setStoreSessionCode(null);
     setActiveRooms(new Map());
     setRecoveryData(new Map());
+    if (keepStorage) {
+      hostTokenRef.current = null;
+      return;
+    }
+    setStoreSessionCode(null);
     storeHostToken(null);
   }, [setStoreSessionCode, storeHostToken]);
 
@@ -480,6 +487,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         debug(`[Session] Recovery attempt ${attempt}/${MAX_RECOVERY_ATTEMPTS}`);
         let retryDelay = 1000 * attempt;
+        // Read at emit time: another tab may have reclaimed and stored a newer
+        // token since this one loaded
+        const sentToken = localStorage.getItem(HOST_TOKEN_STORAGE_KEY) ?? hostTokenRef.current;
 
         try {
           const response = await new Promise<SessionCreatedResponse>((resolve, reject) => {
@@ -500,7 +510,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             // Attempt to rejoin session
             // reclaimOnly: if the server no longer holds this session it says
             // so, rather than handing the teacher a session they never started
-            socket.emit('session:create', { existingCode: code, hostToken: hostTokenRef.current, reclaimOnly: true }, (result: SessionCreatedResponse) => {
+            socket.emit('session:create', { existingCode: code, hostToken: sentToken, reclaimOnly: true }, (result: SessionCreatedResponse) => {
               clearTimeout(timeoutId);
               signal.removeEventListener('abort', abortHandler);
 
@@ -568,9 +578,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
           lastError = new Error(response.error);
           if (response.retryAfter === undefined) {
-            // Preserve the existing terminal rejection/authentication behavior.
+            // Terminal rejection: the stored session is gone. Only forget the
+            // stored copy if it is still the one we sent; otherwise another
+            // tab has moved on and owns it.
             debug.error('[UnifiedSession] Failed to recover session:', response.error);
-            clearSession();
+            const storedToken = localStorage.getItem(HOST_TOKEN_STORAGE_KEY);
+            clearSession({ keepStorage: storedToken !== null && storedToken !== sentToken });
+            setError(SESSION_ENDED_MESSAGE);
             return completeRecovery('recovery-failed');
           }
 

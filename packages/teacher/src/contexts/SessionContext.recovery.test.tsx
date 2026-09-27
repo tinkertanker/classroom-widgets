@@ -212,7 +212,10 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(server.session.getParticipants().map((student: any) => student.name)).toEqual(['Ada', 'Bo']);
     expect(server.room.getParticipantCount()).toBe(2);
     expect(localStorage.getItem(TOKEN_KEY)).not.toBe(token);
-    expect(server.session.isValidHostToken(token)).toBe(false);
+    // The presented token is retired as soon as the client presents the new
+    // one; until then it stays valid in case this acknowledgement was lost.
+    expect(server.session.hostToken).toBe(localStorage.getItem(TOKEN_KEY));
+    expect(server.session.previousHostToken).toBe(token);
     expect(peer.socket.join).toHaveBeenCalledWith(`${CODE}:poll:poll-1`);
   });
 
@@ -634,11 +637,11 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(context.connectionPhase).toBe('recovering');
     expect(context.activeRooms.size).toBe(0);
     expect(socket.requests()).toHaveLength(1);
-    // The dropped socket's reclaim already consumed the token, so the
-    // replacement's answer is a refusal; it settles, and settles cleanly.
+    // The dropped socket's reclaim rotated the token but its answer was
+    // discarded. The server still accepts the token this client holds.
     await respond();
-    expect(context.connectionPhase).toBe('recovery-failed');
-    expect(context.sessionCode).toBeNull();
+    expect(context.connectionPhase).toBe('recovered');
+    expect(context.sessionCode).toBe(CODE);
   });
 
   // Issue #78: the server now keeps a room until its widget is deleted, the
@@ -676,6 +679,7 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(context.activeRooms.size).toBe(0);
     expect(context.getWidgetRecoveryData('poll-1')).toBeNull();
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
+    expect(context.error).toBe('Your previous session ended. Press Start to begin a new one.');
 
     // The next widget start creates a fresh session
     let code: string | null = null;
@@ -688,6 +692,37 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(code).toBeTruthy();
     expect(code).not.toBe(CODE);
     expect(context.sessionCode).toBe(code);
+    expect(context.error).toBeNull();
+  });
+
+  // Two tabs share localStorage. Ways that could go wrong:
+  //  4. A tab reclaims with the token it read at load, after another tab has
+  //     rotated it, and is refused.
+  //  5. A refused tab wipes the stored code and token another tab now holds.
+  it('reclaims with the token in storage at emit time, not the one read at load (4)', async () => {
+    mount();
+    // Another tab reclaimed (twice) and stored the current token
+    server.session.rotateHostToken();
+    localStorage.setItem(TOKEN_KEY, server.session.hostToken);
+    connect();
+    expect(socket.request().data.hostToken).toBe(server.session.hostToken);
+    expect((await respond()).isExisting).toBe(true);
+    expect(context.connectionPhase).toBe('recovered');
+  });
+
+  it('leaves another tab\'s stored session alone when its own reclaim is refused (5)', async () => {
+    mount();
+    server.manager.deleteSession(CODE);
+    connect();
+    const request = socket.request();
+    // Meanwhile another tab stored a different session's token
+    localStorage.setItem(TOKEN_KEY, 'token-from-other-tab');
+    await acknowledge(await peer.create(request.data), request);
+
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(context.sessionCode).toBeNull();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('token-from-other-tab');
+    expect(storeState.current.setSessionCode).not.toHaveBeenCalledWith(null);
   });
 
   it('keeps the recovered session and its rooms when another widget starts after two hours (3)', async () => {

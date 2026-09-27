@@ -61,10 +61,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // If no session found by socket.id but existingCode provided, check that
       if (!existingSession && existingCode) {
         const candidate = sessionManager.getSession(existingCode);
-        if (candidate && candidate.isValidHostToken(hostToken)) {
+        if (candidate && candidate.reclaimHost(hostToken)) {
           existingSession = candidate;
-          // Rotate the reclaim token so the presented one can't be replayed
-          existingSession.rotateHostToken();
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
 

@@ -278,6 +278,55 @@ describe('room lifecycle', () => {
     });
   });
 
+  // 12. The server rotates the host token before its acknowledgement reaches
+  //     the teacher. If that ack is lost (Wi-Fi flap mid-reclaim), the only
+  //     token the teacher holds is refused on the next reconnect, and the
+  //     session and its students live on for 30 minutes with no teacher.
+  // 13. Tolerating that leaves old tokens valid forever: more than one stale
+  //     token must never reclaim the session.
+  describe('host token after a lost reclaim acknowledgement (12, 13)', () => {
+    const reclaim = (socket, data) => new Promise(resolve => socket.trigger(EVENTS.SESSION.CREATE, data, resolve));
+    const reconnect = (id) => {
+      const socket = createMockSocket(id, `10.9.3.${id.length}`);
+      io.connect(socket);
+      return socket;
+    };
+
+    it('reclaims with the token the teacher still holds after a lost ack, then retires it', async () => {
+      const { code, hostToken: firstToken } = await createSession();
+      await createRoom(code, 'poll', 'poll-1');
+      host.trigger('disconnect');
+
+      // Flap 1: reclaim succeeds on the server, but the ack never arrives
+      const lostAck = reconnect('flap-1');
+      const unseen = await reclaim(lostAck, { existingCode: code, hostToken: firstToken, reclaimOnly: true });
+      assert.equal(unseen.success, true);
+      lostAck.trigger('disconnect');
+
+      // Flap 2: the client still only has the first token
+      const retry = reconnect('flap-2');
+      const recovered = await reclaim(retry, { existingCode: code, hostToken: firstToken, reclaimOnly: true });
+      assert.equal(recovered.success, true, 'the stale token held by the teacher is accepted');
+      assert.equal(recovered.code, code);
+      assert.equal(recovered.isExisting, true);
+      assert.deepEqual(recovered.activeRooms.map(r => r.widgetId), ['poll-1']);
+      assert.equal(sessionManager.getSession(code).hostSocketId, 'flap-2');
+      assert.notEqual(recovered.hostToken, firstToken);
+
+      // Presenting the current token retires the stale one (13)
+      retry.trigger('disconnect');
+      const next = reconnect('flap-3');
+      const current = await reclaim(next, { existingCode: code, hostToken: recovered.hostToken, reclaimOnly: true });
+      assert.equal(current.success, true);
+      next.trigger('disconnect');
+      const replay = reconnect('flap-4');
+      const refused = await reclaim(replay, { existingCode: code, hostToken: firstToken, reclaimOnly: true });
+      assert.deepEqual(refused, { success: false, error: 'Session not found' });
+      const stillOk = await reclaim(replay, { existingCode: code, hostToken: current.hostToken, reclaimOnly: true });
+      assert.equal(stillOk.success, true);
+    });
+  });
+
   describe('teacher disconnect grace period', () => {
     it('keeps the session and its rooms until HOST_RECONNECT_GRACE has passed, then closes them (5, 6)', async () => {
       const { code } = await createSession();

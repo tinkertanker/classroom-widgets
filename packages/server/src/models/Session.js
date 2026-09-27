@@ -16,6 +16,7 @@ class Session {
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
     this.hostDisconnectedAt = null; // Timestamp when host disconnected
+    this.previousHostToken = null; // Last token, until the host shows it got the new one
     this.hostToken = this.rotateHostToken(); // Secret token for host reclaim
     this.activeRooms = new Map(); // roomType -> room instance
     this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
@@ -43,24 +44,59 @@ class Session {
   }
 
   /**
-   * Issue a fresh host token, replacing any previous one.
+   * Issue a fresh host token, replacing the current one and any previous one.
    */
   rotateHostToken() {
+    this.previousHostToken = null;
     this.hostToken = crypto.randomBytes(24).toString('base64url');
     return this.hostToken;
   }
 
   /**
-   * Check whether a presented token allows reclaiming the host role.
-   * Constant-time comparison; never leaks this.hostToken.
+   * Constant-time comparison of a presented token with a stored one.
    */
-  isValidHostToken(token) {
-    if (typeof token !== 'string') {
+  static _tokenMatches(candidate, expected) {
+    if (typeof candidate !== 'string' || typeof expected !== 'string') {
       return false;
     }
-    const expected = Buffer.from(this.hostToken);
-    const candidate = Buffer.from(token);
-    return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
+    const a = Buffer.from(candidate);
+    const b = Buffer.from(expected);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
+  /**
+   * Check whether a presented token allows reclaiming the host role: the
+   * current token, or the previous one while the host has not yet shown it
+   * received the current one. Never leaks either token.
+   */
+  isValidHostToken(token) {
+    // Evaluate both so timing does not reveal which one matched
+    const current = Session._tokenMatches(token, this.hostToken);
+    const previous = Session._tokenMatches(token, this.previousHostToken);
+    return current || previous;
+  }
+
+  /**
+   * Reclaim the host role with a presented token.
+   *
+   * The new token only reaches the host in the acknowledgement, which can be
+   * lost (a Wi-Fi flap mid-reclaim). So the presented token stays valid as the
+   * previous one until the host presents the new one; at most one stale token
+   * is ever accepted.
+   *
+   * @returns {boolean} Whether the token was accepted
+   */
+  reclaimHost(token) {
+    const current = Session._tokenMatches(token, this.hostToken);
+    const previous = Session._tokenMatches(token, this.previousHostToken);
+    if (current) {
+      // The host has the current token: retire the older one, issue a new one
+      this.previousHostToken = this.hostToken;
+      this.hostToken = crypto.randomBytes(24).toString('base64url');
+      return true;
+    }
+    // The host never saw the current token: hand it back out unchanged
+    return previous;
   }
 
   /**

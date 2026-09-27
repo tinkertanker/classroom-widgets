@@ -214,32 +214,39 @@ describe('sessionHandler: host session:create', () => {
     assert.equal(response.hostToken, session.hostToken);
   });
 
-  it('rejects replay of the pre-rotation token but accepts the rotated one', async () => {
+  // The rotated token reaches the host only in the acknowledgement, which can
+  // be lost (#78). The pre-rotation token therefore stays valid until the
+  // rotated one is presented, and never after: at most one stale token works.
+  it('accepts the pre-rotation token only until the rotated one is presented', async () => {
     const originalToken = session.hostToken;
     const first = await create({ existingCode: CODE, hostToken: originalToken });
     const rotatedToken = first.hostToken;
 
-    // Another socket replaying the consumed token gets a fresh session instead
-    const attacker = createMockSocket('attacker');
-    sessionHandler(io, attacker, sessionManager, () => null);
-    let replayed;
-    attacker.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken: originalToken }, (r) => { replayed = r; });
-    await new Promise(resolve => setImmediate(resolve));
+    const attempt = async (id, hostToken) => {
+      const peer = createMockSocket(id);
+      sessionHandler(io, peer, sessionManager, () => null);
+      let result;
+      peer.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken }, (r) => { result = r; });
+      await new Promise(resolve => setImmediate(resolve));
+      return { peer, result };
+    };
 
-    assert.equal(replayed.success, true);
-    assert.equal(replayed.isExisting, false);
-    assert.equal(replayed.code, 'NEW01');
-    assert.equal(session.hostSocketId, socket.id);
+    // The host whose ack was lost still holds the original token
+    const lostAck = await attempt('lost-ack', originalToken);
+    assert.equal(lostAck.result.isExisting, true);
+    assert.equal(lostAck.result.hostToken, rotatedToken, 'it is handed the token it missed');
+    assert.equal(session.hostSocketId, lostAck.peer.id);
 
-    // The rotated token still reclaims the session
-    const reclaim = createMockSocket('reclaimer');
-    sessionHandler(io, reclaim, sessionManager, () => null);
-    let reclaimed;
-    reclaim.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken: rotatedToken }, (r) => { reclaimed = r; });
-    await new Promise(resolve => setImmediate(resolve));
+    // Presenting the rotated token retires the original one
+    const reclaim = await attempt('reclaimer', rotatedToken);
+    assert.equal(reclaim.result.success, true);
+    assert.equal(reclaim.result.isExisting, true);
+    assert.equal(session.hostSocketId, reclaim.peer.id);
 
-    assert.equal(reclaimed.success, true);
-    assert.equal(reclaimed.isExisting, true);
-    assert.equal(session.hostSocketId, reclaim.id);
+    const replay = await attempt('attacker', originalToken);
+    assert.equal(replay.result.success, true);
+    assert.equal(replay.result.isExisting, false);
+    assert.equal(replay.result.code, 'NEW01');
+    assert.equal(session.hostSocketId, reclaim.peer.id);
   });
 });
