@@ -4,7 +4,6 @@ const {
 } = require('./hostDisconnectTimeouts');
 const { installSafeSocketEvents } = require('./safeSocketEvents');
 const { closeRoomAndNotify } = require('./closeRoom');
-const { trackHeartbeats } = require('./hostTokenDelivery');
 const { logger } = require('../utils/logger');
 
 // Import individual socket handlers
@@ -35,7 +34,6 @@ function setupSocketHandlers(io, sessionManager) {
     // All event payloads are client-controlled; make sure a handler that
     // throws on a malformed payload logs instead of crashing the process.
     installSafeSocketEvents(socket);
-    trackHeartbeats(socket);
 
     // Track which session this socket belongs to
     let currentSessionCode = null;
@@ -75,8 +73,6 @@ function setupSocketHandlers(io, sessionManager) {
 
           // Mark host as disconnected
           session.hostDisconnectedAt = Date.now();
-          // It may have dropped before receiving its rotated token
-          session.holdPreviousHostToken();
 
           // Notify all students that the teacher has disconnected
           io.to(`session:${session.code}`).emit(EVENTS.SESSION.HOST_DISCONNECTED);

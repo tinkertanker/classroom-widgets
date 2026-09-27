@@ -32,7 +32,6 @@ process.env.LOG_LEVEL = 'error';
 //     handler, which exits and drops every class; or it stops the sweep and
 //     the other idle rooms are never closed.
 
-const { EventEmitter } = require('node:events');
 const { describe, it, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const { setupSocketHandlers } = require('./socketManager');
@@ -331,29 +330,13 @@ describe('room lifecycle', () => {
   // 14. After a normal reclaim the teacher stays connected all lesson, and the
   //     token it presented keeps reclaiming the session (and hands out the
   //     current token) the whole time: a leaked old token hijacks the class.
-  // 15. Retiring it too eagerly locks out a teacher that dropped the reply:
-  //     a pong to a ping sent before the reply, or a socket that answers the
-  //     heartbeat and then drops at once, is not proof of delivery.
-  describe('retiring the presented token once the new one is delivered (14, 15)', () => {
+  describe('retiring the presented token (14)', () => {
     const reclaim = (socket, data) => new Promise(resolve => socket.trigger(EVENTS.SESSION.CREATE, data, resolve));
-    // A socket with an engine.io-like connection whose heartbeats the test answers
-    const withHeartbeat = (id) => {
-      const socket = createMockSocket(id, `10.9.4.${id.length}`);
-      const conn = new EventEmitter();
-      conn.pings = 0;
-      conn.sendPacket = (type) => {
-        conn.emit('packetCreate', { type });
-        if (type === 'ping') conn.pings++;
-      };
-      conn.pong = () => conn.emit('packet', { type: 'pong' });
-      socket.conn = conn;
-      io.connect(socket);
-      return socket;
-    };
-    const setUp = async (makeSocket = withHeartbeat) => {
+    const setUp = async () => {
       const { code, hostToken: oldToken } = await createSession();
       host.trigger('disconnect');
-      const teacher = makeSocket('teacher-back');
+      const teacher = createMockSocket('teacher-back', '10.9.4.1');
+      io.connect(teacher);
       const result = await reclaim(teacher, { existingCode: code, hostToken: oldToken, reclaimOnly: true });
       assert.equal(result.success, true);
       return { code, oldToken, newToken: result.hostToken, teacher };
@@ -364,68 +347,44 @@ describe('room lifecycle', () => {
       return reclaim(attacker, { existingCode: code, hostToken: token, reclaimOnly: true });
     };
 
-    it('refuses the old token once the teacher answers a heartbeat and stays connected (14)', async () => {
-      const { code, oldToken, newToken, teacher } = await setUp();
-      assert.equal(teacher.conn.pings, 1, 'a heartbeat is sent right after the reply');
+    it('still accepts the old token within the window, before any host event', async () => {
+      const { code, oldToken } = await setUp();
 
-      teacher.conn.pong();
-      mock.timers.tick(TIME.HOST_TOKEN_CONFIRM_DELAY);
+      mock.timers.tick(TIME.PREVIOUS_HOST_TOKEN_MAX_AGE - 1);
+
+      assert.equal(sessionManager.getSession(code).isValidHostToken(oldToken), true);
+    });
+
+    it('refuses the old token once the reclaiming socket sends a host event', async () => {
+      const { code, oldToken, newToken, teacher } = await setUp();
+
+      teacher.trigger(EVENTS.SESSION.CLEANUP_ROOMS, { sessionCode: code, activeWidgetIds: [] });
 
       assert.deepEqual(await attackWith(code, oldToken), { success: false, error: 'Session not found' });
       assert.equal(sessionManager.getSession(code).hostSocketId, 'teacher-back');
       assert.equal(sessionManager.getSession(code).isValidHostToken(newToken), true);
     });
 
-    it('refuses the old token as soon as the teacher sends a host event (14)', async () => {
-      const { code, oldToken, teacher } = await setUp((id) => { const s = createMockSocket(id, '10.9.4.9'); io.connect(s); return s; });
-
-      await new Promise(resolve => teacher.trigger(EVENTS.SESSION.CREATE_ROOM, { sessionCode: code, roomType: 'poll', widgetId: 'poll-1' }, resolve));
-
-      assert.deepEqual(await attackWith(code, oldToken), { success: false, error: 'Session not found' });
-    });
-
-    it('refuses the old token after PREVIOUS_HOST_TOKEN_MAX_AGE even with no confirmation (14)', async () => {
-      const { code, oldToken } = await setUp();
-
-      mock.timers.tick(TIME.PREVIOUS_HOST_TOKEN_MAX_AGE - 1);
-      const early = sessionManager.getSession(code).isValidHostToken(oldToken);
-      mock.timers.tick(1);
-
-      assert.equal(early, true);
-      assert.deepEqual(await attackWith(code, oldToken), { success: false, error: 'Session not found' });
-    });
-
-    it('does not count a pong to a heartbeat sent before the reply (15)', async () => {
-      const { code, hostToken: oldToken } = await createSession();
-      host.trigger('disconnect');
-      const teacher = withHeartbeat('teacher-back');
-      teacher.conn.sendPacket('ping'); // a routine heartbeat already in flight
-      await reclaim(teacher, { existingCode: code, hostToken: oldToken, reclaimOnly: true });
-
-      teacher.conn.pong();
-      mock.timers.tick(TIME.HOST_TOKEN_CONFIRM_DELAY);
-      assert.equal(sessionManager.getSession(code).isValidHostToken(oldToken), true, 'first pong answered the earlier ping');
-
-      teacher.conn.pong();
-      mock.timers.tick(TIME.HOST_TOKEN_CONFIRM_DELAY);
-      assert.equal(sessionManager.getSession(code).isValidHostToken(oldToken), false);
-    });
-
-    it('keeps the old token for a teacher that drops before delivery is confirmed (15)', async () => {
-      const { code, oldToken, teacher } = await setUp();
-      // It answered the heartbeat, but dropped the reply and reconnects at once
-      teacher.conn.pong();
-      mock.timers.tick(TIME.HOST_TOKEN_CONFIRM_DELAY - 100);
-      teacher.conn.emit('close');
-      teacher.trigger('disconnect');
+    it('refuses the old token once the window has passed, even with no host event', async () => {
+      const { code, oldToken, newToken } = await setUp();
 
       mock.timers.tick(TIME.PREVIOUS_HOST_TOKEN_MAX_AGE);
-      const back = withHeartbeat('teacher-again');
-      const result = await reclaim(back, { existingCode: code, hostToken: oldToken, reclaimOnly: true });
 
-      assert.equal(result.success, true);
-      assert.equal(result.code, code);
-      assert.equal(result.isExisting, true);
+      assert.deepEqual(await attackWith(code, oldToken), { success: false, error: 'Session not found' });
+      assert.equal(sessionManager.getSession(code).isValidHostToken(newToken), true);
+    });
+
+    it('does not extend the window when the old token is presented again', async () => {
+      const { code, oldToken, teacher } = await setUp();
+      mock.timers.tick(TIME.PREVIOUS_HOST_TOKEN_MAX_AGE / 2);
+      teacher.trigger('disconnect');
+      const again = createMockSocket('teacher-again', '10.9.4.2');
+      io.connect(again);
+      assert.equal((await reclaim(again, { existingCode: code, hostToken: oldToken, reclaimOnly: true })).success, true);
+
+      mock.timers.tick(TIME.PREVIOUS_HOST_TOKEN_MAX_AGE / 2);
+
+      assert.equal(sessionManager.getSession(code).isValidHostToken(oldToken), false);
     });
   });
 

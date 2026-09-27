@@ -4,7 +4,6 @@ const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
 const { closeRoomAndNotify } = require('../closeRoom');
-const { confirmHostTokenDelivery } = require('../hostTokenDelivery');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 
@@ -58,14 +57,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       
       // Check if host already has a session
       let existingSession = sessionManager.findSessionByHost(socket.id);
-      let reclaimed = false;
 
       // If no session found by socket.id but existingCode provided, check that
       if (!existingSession && existingCode) {
         const candidate = sessionManager.getSession(existingCode);
         if (candidate && candidate.reclaimHost(hostToken)) {
           existingSession = candidate;
-          reclaimed = true;
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
 
@@ -117,9 +114,6 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
           studentAppUrl,
           hostToken: existingSession.hostToken
         });
-        if (reclaimed) {
-          confirmHostTokenDelivery(existingSession, socket);
-        }
       } else {
         // Create new session
         const session = sessionManager.createSession();
