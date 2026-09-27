@@ -53,6 +53,9 @@ final class UpdateController {
             }
             let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
             let availableVersion = release.tagName.hasPrefix("v") ? String(release.tagName.dropFirst()) : release.tagName
+            guard Self.versionParts(availableVersion) != nil, Self.versionParts(currentVersion) != nil else {
+                throw UpdateError.invalidResponse
+            }
             guard Self.isNewerVersion(availableVersion, than: currentVersion) else {
                 updateAvailable(nil)
                 if manual { showMessage(title: "Classroom Widgets is up to date", detail: "Version \(currentVersion) is the latest version.") }
