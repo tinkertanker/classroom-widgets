@@ -4,6 +4,7 @@ import { FaApple, FaWindows, FaLinux, FaArrowDown } from 'react-icons/fa6';
 import { FaChartColumn, FaQuestion, FaMusic, FaClock, FaComments, FaDice, FaArrowRight, FaChalkboardUser, FaUsers, FaRocket, FaCheck, FaTriangleExclamation, FaFaceSadTear, FaLightbulb, FaLock, FaShieldHalved, FaTableColumns, FaStar } from 'react-icons/fa6';
 import { CustomStickerIcons } from '../features/widgets/sticker/CustomStickerIcons';
 import { FloatingWidgets } from './components/FloatingWidgets';
+import { DemoVideo } from './components/DemoVideo';
 
 const About: React.FC = () => {
   useEffect(() => {
@@ -159,6 +160,7 @@ const About: React.FC = () => {
           <a href="#desktop" className="inline-block mt-6 text-sage-700 dark:text-sage-300 hover:underline underline-offset-4">
             Now on your desktop: macOS, Windows & Linux ↓
           </a>
+          <DemoVideo />
         </div>
       </section>
 
