@@ -108,59 +108,61 @@ const About: React.FC = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="py-20 px-4 relative overflow-hidden">
+      <section className="py-12 lg:py-14 px-4 relative overflow-hidden lg:bg-soft-white lg:dark:bg-warm-gray-900">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 left-10 w-72 h-72 bg-sage-300 dark:bg-sage-700 rounded-full filter blur-3xl opacity-30"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-dusty-rose-300 dark:bg-dusty-rose-700 rounded-full filter blur-3xl opacity-30"></div>
           <div className="absolute top-40 right-20 w-64 h-64 bg-terracotta-300 dark:bg-terracotta-700 rounded-full filter blur-3xl opacity-20"></div>
         </div>
-        {/* Subtle decorative images */}
-        <div className="absolute bottom-0 left-1/4 opacity-[0.03] dark:opacity-[0.02] transform -translate-x-1/2">
+        {/* Subtle decorative images (hidden on desktop, where they would sit behind the buttons).
+            On desktop the hero also gets a solid background so the fixed FloatingWidgets cards
+            stay behind it instead of overlapping the headline and video. */}
+        <div className="absolute bottom-0 left-1/4 opacity-[0.03] dark:opacity-[0.02] transform -translate-x-1/2 lg:hidden">
           <img src="/randomiser.png" alt="" className="w-80 h-auto" />
         </div>
-        
-        <div className="max-w-7xl mx-auto text-center relative z-20">
-          <div className="flex justify-center items-center gap-2 sm:gap-6 mb-6">
-            <CustomStickerIcons.fire className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-terracotta-500 motion-safe:animate-bounce" aria-hidden="true" />
-            <CustomStickerIcons.star className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-sage-500 motion-safe:animate-bounce" style={{ animationDelay: '200ms' }} aria-hidden="true" />
-            <img src="/logo-mark.png" alt="Classroom Widgets Nibbled Timer app icon" width="512" height="512" className="w-28 h-28 sm:w-36 sm:h-36 shrink-0 object-contain motion-safe:animate-bounce" style={{ animationDelay: '300ms' }} />
-            <CustomStickerIcons.heart className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-dusty-rose-500 motion-safe:animate-bounce" style={{ animationDelay: '400ms' }} aria-hidden="true" />
-            <CustomStickerIcons.smile className="w-10 h-10 sm:w-16 sm:h-16 shrink-0 text-terracotta-400 motion-safe:animate-bounce" style={{ animationDelay: '600ms' }} aria-hidden="true" />
-          </div>
-          <h2 className="text-5xl font-bold mb-6">
-            <span className="bg-gradient-to-r from-terracotta-600 via-sage-600 to-dusty-rose-600 bg-clip-text text-transparent">
-              &gt; 90% Vibe-Coded
-            </span>
-            <span className="text-warm-gray-900 dark:text-warm-gray-100"> Classroom Magic</span>
-          </h2>
-          <p className="text-xl text-warm-gray-600 dark:text-warm-gray-400 mb-4 max-w-3xl mx-auto">
-            We built this instead of grading student projects. Interactive classroom tools that just work - 
-            timers, polls, Q&A, randomisers, and more. All in one place, zero setup required.
-          </p>
-          <p className="text-lg mb-4 text-warm-gray-500 dark:text-warm-gray-400 italic">
-            Warning: May lead to student engagement and learning
-          </p>
-          <div className="flex gap-4 justify-center flex-wrap">
-            <a
-              href="/"
-              onClick={() => window.umami?.track('start-teaching-click')}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white rounded-lg hover:from-terracotta-600 hover:to-terracotta-700 transition-all transform hover:scale-105 text-lg font-medium shadow-lg"
-            >
-              Start Teaching
-              <FaArrowRight />
+
+        <div className="max-w-7xl mx-auto relative z-20 grid gap-10 lg:gap-12 lg:grid-cols-12 lg:items-center">
+          <div className="text-center lg:text-left lg:col-span-5">
+            <div className="flex justify-center lg:justify-start items-center gap-2 sm:gap-6 lg:gap-4 mb-6">
+              <CustomStickerIcons.fire className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-terracotta-500 motion-safe:animate-bounce" aria-hidden="true" />
+              <CustomStickerIcons.star className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-sage-500 motion-safe:animate-bounce" style={{ animationDelay: '200ms' }} aria-hidden="true" />
+              <img src="/logo-mark.png" alt="Classroom Widgets Nibbled Timer app icon" width="512" height="512" className="w-28 h-28 sm:w-36 sm:h-36 lg:w-28 lg:h-28 shrink-0 object-contain motion-safe:animate-bounce" style={{ animationDelay: '300ms' }} />
+              <CustomStickerIcons.heart className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-dusty-rose-500 motion-safe:animate-bounce" style={{ animationDelay: '400ms' }} aria-hidden="true" />
+              <CustomStickerIcons.smile className="w-10 h-10 sm:w-16 sm:h-16 lg:w-12 lg:h-12 shrink-0 text-terracotta-400 motion-safe:animate-bounce" style={{ animationDelay: '600ms' }} aria-hidden="true" />
+            </div>
+            <h2 className="text-5xl lg:text-6xl font-bold mb-5">
+              <span className="text-warm-gray-900 dark:text-warm-gray-100">Classroom </span>
+              <span className="bg-gradient-to-r from-terracotta-600 via-sage-600 to-dusty-rose-600 bg-clip-text text-transparent">
+                Magic
+              </span>
+            </h2>
+            <p className="text-xl text-warm-gray-600 dark:text-warm-gray-400 mb-8 max-w-xl mx-auto lg:mx-0">
+              We built this instead of grading student projects. Classroom tools that just work, with zero setup.
+            </p>
+            <div className="flex gap-4 justify-center lg:justify-start flex-wrap">
+              <a
+                href="/"
+                onClick={() => window.umami?.track('start-teaching-click')}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white rounded-lg hover:from-terracotta-600 hover:to-terracotta-700 transition-all transform hover:scale-105 text-lg font-medium shadow-lg"
+              >
+                Start Teaching
+                <FaArrowRight />
+              </a>
+              <a
+                href="#features"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sage-100 to-dusty-rose-100 dark:from-sage-800 dark:to-dusty-rose-800 text-sage-800 dark:text-sage-100 rounded-lg hover:from-sage-200 hover:to-dusty-rose-200 dark:hover:from-sage-700 dark:hover:to-dusty-rose-700 transition-all text-lg font-medium border-2 border-sage-200 dark:border-sage-700"
+              >
+                Learn More
+              </a>
+            </div>
+            <a href="#desktop" className="inline-block mt-6 text-sage-700 dark:text-sage-300 hover:underline underline-offset-4">
+              Now on your desktop: macOS, Windows & Linux ↓
             </a>
-            <a
-              href="#features"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sage-100 to-dusty-rose-100 dark:from-sage-800 dark:to-dusty-rose-800 text-sage-800 dark:text-sage-100 rounded-lg hover:from-sage-200 hover:to-dusty-rose-200 dark:hover:from-sage-700 dark:hover:to-dusty-rose-700 transition-all text-lg font-medium border-2 border-sage-200 dark:border-sage-700"
-            >
-              Learn More
-            </a>
           </div>
-          <a href="#desktop" className="inline-block mt-6 text-sage-700 dark:text-sage-300 hover:underline underline-offset-4">
-            Now on your desktop: macOS, Windows & Linux ↓
-          </a>
-          <DemoVideo />
+          <div className="lg:col-span-7">
+            <DemoVideo />
+          </div>
         </div>
       </section>
 
