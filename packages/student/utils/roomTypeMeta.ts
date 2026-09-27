@@ -103,8 +103,8 @@ export const ROOM_TYPE_META: Record<RoomType, RoomTypeMeta> = {
     }
   },
   questions: {
-    label: 'Ask Questions',
-    description: 'Submit questions to your teacher',
+    label: 'Questions & Comments',
+    description: 'Ask a question or share a comment with your teacher',
     showsPerInstanceTitle: false,
     palette: {
       header: 'border-sky-500 dark:border-sky-400 bg-sky-100 dark:bg-sky-900/30 hover:bg-sky-200 dark:hover:bg-sky-900/40',

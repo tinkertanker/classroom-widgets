@@ -170,14 +170,14 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
     return (
       <NetworkedWidgetEmpty
         icon={FaQuestion}
-        title="Questions"
-        description="Collect questions from students in real-time"
+        title="Questions & Comments"
+        description="Collect questions and comments from students in real-time"
         buttonText={getEmptyStateButtonText({
           isStarting,
           isRecovering: session.isRecovering,
           isConnected: session.isConnected,
           isReady: session.isReady,
-          defaultText: "Start Questions"
+          defaultText: "Start Collecting"
         })}
         onStart={handleStart}
         disabled={getEmptyStateDisabled({
@@ -196,8 +196,8 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats label="Questions">
-          {questions.length} question{questions.length !== 1 ? 's' : ''}
+        <NetworkedWidgetStats label="Questions & Comments">
+          {questions.length} submission{questions.length !== 1 ? 's' : ''}
           {unansweredCount > 0 &&
             ` (${unansweredCount} unanswered)`
           }
@@ -209,7 +209,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
           isConnected={session.isConnected}
           isRecovering={session.isRecovering}
           isRecoveryDeferred={session.isRecoveryDeferred}
-          pausedMessage="Questions are paused"
+          pausedMessage="Submissions are paused"
         />
 
         {/* Questions list */}
@@ -217,7 +217,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
           {questions.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-warm-gray-400 dark:text-warm-gray-600">
               <FaQuestion className="text-4xl mb-2" />
-              <p className="text-sm">Waiting for student questions...</p>
+              <p className="text-sm">Waiting for questions or comments...</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -262,7 +262,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
                           onClick={() => handleDeleteQuestion(question.id)}
                           disabled={!session.isReady}
                           className="p-1 text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors"
-                          title="Delete question"
+                          title="Delete submission"
                         >
                           <FaTrash className="text-xs" />
                         </button>
@@ -284,12 +284,12 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
         onClear={handleClearAll}
         clearCount={questions.length}
         clearLabel="Clear all"
-        activeLabel="Pause accepting questions"
-        inactiveLabel="Start accepting questions"
+        activeLabel="Pause submissions"
+        inactiveLabel="Resume submissions"
         showSettings={false}
         clearVariant="clear"
         requireClearConfirmation={true}
-        clearConfirmationMessage="Are you sure you want to clear all questions?"
+        clearConfirmationMessage="Are you sure you want to clear all questions and comments?"
       />
     </div>
   );

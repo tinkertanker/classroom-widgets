@@ -137,7 +137,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     e.preventDefault();
     
     if (!questionText.trim()) {
-      setError('Please enter a question');
+      setError('Please enter a question or comment');
       return;
     }
 
@@ -172,10 +172,10 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
             <h2 className="text-xl font-semibold text-warm-gray-600 dark:text-warm-gray-400 mb-2">
-              Questions Paused
+              Submissions Paused
             </h2>
             <p className="text-warm-gray-500 text-sm">
-              Waiting for teacher to start accepting questions...
+              Waiting for teacher to start accepting questions and comments...
             </p>
           </div>
         </div>
@@ -188,7 +188,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
               <div>
                 <div className="flex justify-between items-baseline mb-1">
                   <label htmlFor="question" className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
-                    Your Question
+                    Your Question or Comment
                   </label>
                   <span className="text-xs text-warm-gray-500 dark:text-warm-gray-400">
                     {questionText.length}/500
@@ -199,7 +199,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
                   value={questionText}
                   onChange={(e) => setQuestionText(e.target.value)}
                   className="w-full py-2 px-3 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md text-sm bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] resize-none"
-                  placeholder="Type your question here..."
+                  placeholder="Ask a question or share a comment..."
                   rows={3}
                   maxLength={500}
                   disabled={isSubmitting}
@@ -217,7 +217,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
                 disabled={isSubmitting || !questionText.trim()}
                 className="w-3/4 mx-auto block bg-sky-500 dark:bg-sky-400 text-white hover:bg-sky-600 dark:hover:bg-sky-500 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Question'}
+                {isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
             </div>
           </form>
@@ -227,7 +227,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
             showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
           }`}>
             <div className="bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 p-3 text-center font-medium text-sm shadow-md border border-sage-200 dark:border-sage-700">
-              ✓ Question submitted successfully!
+              ✓ Submitted successfully!
             </div>
           </div>
 
@@ -235,7 +235,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
           {sortedQuestions.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
-                Your Questions ({sortedQuestions.length})
+                Your Submissions ({sortedQuestions.length})
               </h3>
               <div className="space-y-2 max-h-[200px] overflow-y-auto">
                 {sortedQuestions.map((question, index) => {

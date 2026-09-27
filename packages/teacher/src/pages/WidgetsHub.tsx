@@ -13,8 +13,8 @@ const interactiveWidgets = [
   },
   {
     icon: FaQuestion,
-    title: 'Q&A',
-    description: 'Let students submit questions during class. Mark them answered, delete, or clear all.',
+    title: 'Questions & Comments',
+    description: 'Let students submit questions or comments during class. Mark them answered, delete, or clear all.',
     href: '/widgets/questions',
     color: 'text-sage-500',
   },
