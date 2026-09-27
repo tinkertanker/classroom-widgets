@@ -86,11 +86,15 @@ const validators = {
   // Real TLDs (IANA list), so text like "Mr.Tan" stays text in Links + Text mode
   _tlds: new Set(tlds),
 
+  // Honorifics that start a name, so "Ms.Ng" stays text even though .ng is a real TLD
+  _honorifics: ['mr', 'mrs', 'ms', 'mdm', 'dr', 'prof', 'miss'],
+
   /**
    * Normalize a URL by adding https:// if it looks like a domain without protocol.
    * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
    * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
-   * with www., has a path/query, or ends in a real TLD.
+   * with www., has a path/query, or ends in a real TLD, and is not an honorific
+   * name (e.g. "Ms.Ng") or an email address.
    * @param {string} text - Text to normalize
    * @param {string} [acceptMode] - Room accept mode ('links' or 'all')
    * @returns {string} - Normalized text (with https:// if applicable)
@@ -114,6 +118,11 @@ const validators = {
       return trimmed;
     }
 
+    // In Links + Text mode, keep email addresses as text
+    if (acceptMode === 'all' && /^[^/]*@/.test(trimmed)) {
+      return trimmed;
+    }
+
     // Try adding https:// and see if it's a valid URL
     const withProtocol = `https://${trimmed}`;
     try {
@@ -130,7 +139,7 @@ const validators = {
         }
         // In Links + Text mode, only treat clear domains as links
         if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
-            !validators._tlds.has(hostnameExt)) {
+            (!validators._tlds.has(hostnameExt) || validators._honorifics.includes(hostnameParts[0]))) {
           return trimmed;
         }
         return withProtocol;

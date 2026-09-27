@@ -96,7 +96,7 @@ describe('validators.normalizeUrl', () => {
   });
 
   it('keeps dotted words as text in Links + Text mode', () => {
-    for (const text of ['Mr.Tan', 'John.Doe', 'e.g.']) {
+    for (const text of ['Mr.Tan', 'John.Doe', 'e.g.', 'Ms.Ng', 'Mr.Ong', 'Mr.Li', 'Dr.Lim', 'MDM.NG', 'john.doe@gmail.com']) {
       assert.equal(validators.normalizeUrl(text, 'all'), text);
     }
   });
@@ -114,8 +114,14 @@ describe('validators.normalizeUrl', () => {
     assert.equal(validators.normalizeUrl('https://Mr.Tan', 'all'), 'https://Mr.Tan');
   });
 
+  it('still treats honorific-like hosts with a path as links in Links + Text mode', () => {
+    assert.equal(validators.normalizeUrl('dr.com/about', 'all'), 'https://dr.com/about');
+    assert.equal(validators.normalizeUrl('www.ms.ng', 'all'), 'https://www.ms.ng');
+  });
+
   it('keeps adding https:// to dotted words in Links only mode', () => {
     assert.equal(validators.normalizeUrl('Mr.Tan', 'links'), 'https://Mr.Tan');
+    assert.equal(validators.normalizeUrl('Ms.Ng', 'links'), 'https://Ms.Ng');
     assert.equal(validators.normalizeUrl('Mr.Tan'), 'https://Mr.Tan');
   });
 });
@@ -135,6 +141,8 @@ describe('validators.isLink', () => {
 
   it('treats dotted words as text in Links + Text mode', () => {
     assert.equal(validators.isLink('Mr.Tan', 'all'), false);
+    assert.equal(validators.isLink('Ms.Ng', 'all'), false);
+    assert.equal(validators.isLink('john.doe@gmail.com', 'all'), false);
     assert.equal(validators.isLink('example.com', 'all'), true);
   });
 

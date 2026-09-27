@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
-import tlds from 'tlds';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface LinkShareActivityProps {
@@ -14,64 +13,6 @@ interface LinkShareActivityProps {
 }
 
 const MAX_TEXT_LENGTH = 280;
-
-// Common file extensions to exclude from being treated as TLDs
-const FILE_EXTENSIONS = ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'];
-
-// Real TLDs (IANA list), so text like "Mr.Tan" stays text in Links + Text mode
-// Keep in sync with packages/server/src/utils/validation.js
-const TLDS = new Set(tlds);
-
-/**
- * Check if text looks like a URL without protocol and add https:// if so.
- * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
- * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
- * with www., has a path/query, or ends in a real TLD.
- */
-const normalizeUrl = (text: string, acceptMode: 'links' | 'all'): string => {
-  const trimmed = text.trim();
-
-  // Already has a protocol
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-
-  // Quick check: must contain a dot and start with alphanumeric
-  if (!/^[a-zA-Z0-9]/.test(trimmed) || !trimmed.includes('.')) {
-    return trimmed;
-  }
-
-  // Don't treat things that have spaces
-  if (trimmed.includes(' ') || trimmed.length > 2000) {
-    return trimmed;
-  }
-
-  // Try adding https:// and see if it's a valid URL
-  const withProtocol = `https://${trimmed}`;
-  try {
-    const url = new URL(withProtocol);
-    // Check: hostname should have at least one dot and valid TLD-like ending
-    if (url.hostname.includes('.') && /\.[a-zA-Z]{2,}$/.test(url.hostname)) {
-      // Exclude common file extensions from being treated as domains
-      // e.g., "file.txt" should not become "https://file.txt"
-      // but "domain.com/file.txt" is fine (the hostname is "domain.com")
-      const hostnameExt = url.hostname.split('.').pop()?.toLowerCase();
-      if (hostnameExt && FILE_EXTENSIONS.includes(hostnameExt)) {
-        return trimmed;
-      }
-      // In Links + Text mode, only treat clear domains as links
-      if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
-          !(hostnameExt && TLDS.has(hostnameExt))) {
-        return trimmed;
-      }
-      return withProtocol;
-    }
-  } catch {
-    // Not a valid URL, return as-is
-  }
-
-  return trimmed;
-};
 
 const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   socket,
@@ -121,9 +62,6 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
       return;
     }
 
-    // Normalize URLs (add https:// if it looks like a domain)
-    const normalizedContent = normalizeUrl(trimmedContent, acceptMode);
-
     setIsSubmitting(true);
     setError('');
 
@@ -131,14 +69,14 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
       socket.emit('session:linkShare:submit', {
         sessionCode: roomCode,
         studentName: studentName || 'Anonymous',
-        content: normalizedContent,
+        content: trimmedContent,
         widgetId
       });
     } else {
       socket.emit('linkShare:submit', {
         code: roomCode,
         studentName: studentName || 'Anonymous',
-        content: normalizedContent
+        content: trimmedContent
       });
     }
 
