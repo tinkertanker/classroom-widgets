@@ -87,14 +87,16 @@ describe('highlightCode', () => {
   });
 
   it('renders a tag outside the bundled set as plain text instead of guessing', async () => {
-    const result = await highlightCode('FROM node:22\nRUN echo "<b>hi</b>"', 'dockerfile');
+    const result = await highlightCode('FROM node:22\nRUN apt-get update && echo "<b>hi</b>"', 'dockerfile');
     expect(result.language).toBe('plaintext');
     expect(result.html).not.toContain('<span');
+    expect(result.html).not.toContain('<b>');
+    expect(result.html).toContain('update &amp;&amp; echo');
     expect(result.html).toContain('&lt;b&gt;hi&lt;/b&gt;');
   });
 
   it('still auto-detects an untagged block', async () => {
     const result = await highlightCode('def greet(name):\n    return f"hi {name}"\n');
-    expect(result.language).not.toBe('plaintext');
+    expect(result.language).toBe('python');
   });
 });

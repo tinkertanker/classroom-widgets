@@ -44,9 +44,9 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
       return;
     }
 
-    // Normalize URL if it looks like a link
-    const normalizedContent = validators.normalizeUrl(content);
-    const isLink = validators.isLink(normalizedContent);
+    // Handouts mix links and text, so detect links with the Links + Text rules
+    const normalizedContent = validators.normalizeUrl(content, 'all');
+    const isLink = validators.isLink(normalizedContent, 'all');
 
     // Add item
     const item = room.addItem(normalizedContent, isLink);

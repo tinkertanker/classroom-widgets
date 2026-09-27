@@ -18,7 +18,7 @@
 // 1-empty.png, 2-submissions.png and 3-copied.png (failure.png if a step fails).
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -32,6 +32,13 @@ const serverDir = resolve(teacherDir, '../server');
 const evidence = resolve(process.env.CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
   || join(tmpdir(), 'classroom-widgets-test-evidence', 'dropbox-export'));
 mkdirSync(evidence, { recursive: true });
+// Remove this check's files from earlier runs so stale evidence can't survive.
+// Only these names: CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR may be shared with
+// other suites, so the directory itself is never wiped.
+for (const name of ['dropbox-export.txt', 'clipboard.txt', 'download.csv',
+  '1-empty.png', '2-submissions.png', '3-copied.png', 'failure.png']) {
+  rmSync(join(evidence, name), { force: true });
+}
 
 const STUDENTS = [
   { name: 'Ada Lim', content: 'example.com/ada-project', expected: 'https://example.com/ada-project', type: 'Link' },
@@ -153,6 +160,8 @@ try {
   browser = await chromium.launch();
   const teacherContext = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
   await teacherContext.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: teacherUrl });
+  // A fresh browser on `/` is sent to /about once (SEEN_LANDING_KEY in src/app/firstVisit.ts).
+  await teacherContext.addInitScript(() => localStorage.setItem('classroom-widgets:seen-landing', '1'));
   teacherPage = await teacherContext.newPage();
   teacherPage.on('pageerror', (error) => step(`teacher page error: ${error.message}`));
 

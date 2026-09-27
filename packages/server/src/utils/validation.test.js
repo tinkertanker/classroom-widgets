@@ -119,6 +119,19 @@ describe('validators.normalizeUrl', () => {
     assert.equal(validators.normalizeUrl('www.ms.ng', 'all'), 'https://www.ms.ng');
   });
 
+  it('treats real domains whose first label is an honorific as links in Links + Text mode', () => {
+    assert.equal(validators.normalizeUrl('ms.office.com', 'all'), 'https://ms.office.com');
+    assert.equal(validators.normalizeUrl('mr.bean.com', 'all'), 'https://mr.bean.com');
+    assert.equal(validators.normalizeUrl('Dr.Example.co.uk', 'all'), 'https://Dr.Example.co.uk');
+    assert.equal(validators.normalizeUrl('prof.school.edu.sg', 'all'), 'https://prof.school.edu.sg');
+  });
+
+  it('keeps two-label honorific hosts as text in Links + Text mode, even real ones like dr.com', () => {
+    for (const text of ['Ms.Ng', 'Dr.Lim', 'MRS.TAN', 'Miss.Li', 'dr.com']) {
+      assert.equal(validators.normalizeUrl(text, 'all'), text);
+    }
+  });
+
   it('keeps adding https:// to dotted words in Links only mode', () => {
     assert.equal(validators.normalizeUrl('Mr.Tan', 'links'), 'https://Mr.Tan');
     assert.equal(validators.normalizeUrl('Ms.Ng', 'links'), 'https://Ms.Ng');
