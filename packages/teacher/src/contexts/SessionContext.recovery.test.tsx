@@ -35,6 +35,7 @@ const SessionManager = require('../../../server/src/services/SessionManager.js')
 const { stopRateLimiterCleanup } = require('../../../server/src/middleware/socketAuth.js');
 
 const TOKEN_KEY = 'classroom-widgets:hostToken';
+const TOKEN_CODE_KEY = 'classroom-widgets:hostTokenCode';
 const CODE = 'BCDFGH';
 let ipSequence = 0;
 
@@ -202,7 +203,7 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(socket.requests()).toHaveLength(2);
     await advance(1);
     expect(socket.requests()).toHaveLength(3);
-    expect(socket.request().data).toEqual({ existingCode: CODE, hostToken: token });
+    expect(socket.request().data).toEqual({ existingCode: CODE, hostToken: token, reclaimOnly: true });
     expect((await respond()).isExisting).toBe(true);
 
     expect(context.connectionPhase).toBe('recovered');
@@ -212,8 +213,13 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(server.session.getParticipants().map((student: any) => student.name)).toEqual(['Ada', 'Bo']);
     expect(server.room.getParticipantCount()).toBe(2);
     expect(localStorage.getItem(TOKEN_KEY)).not.toBe(token);
-    expect(server.session.isValidHostToken(token)).toBe(false);
     expect(peer.socket.join).toHaveBeenCalledWith(`${CODE}:poll:poll-1`);
+    // The presented token keeps reclaiming until delivery of the new one is
+    // confirmed (here: the recovered client's first host event), then stops.
+    expect(server.session.isValidHostToken(token)).toBe(true);
+    await peer.createRoom({ sessionCode: CODE, roomType: 'poll', widgetId: 'poll-1' });
+    expect(server.session.isValidHostToken(token)).toBe(false);
+    expect(server.session.isValidHostToken(localStorage.getItem(TOKEN_KEY))).toBe(true);
   });
 
   it('does not spin or clear state when the exact window boundary returns retryAfter: 0', async () => {
@@ -290,7 +296,7 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     // Two clicks in one render must not restart the run or consume two slots.
     act(() => { fireEvent.click(retry); fireEvent.click(retry); });
     expect(socket.requests()).toHaveLength(5);
-    expect(socket.request().data).toEqual({ existingCode: CODE, hostToken: savedToken });
+    expect(socket.request().data).toEqual({ existingCode: CODE, hostToken: savedToken, reclaimOnly: true });
     expect(screen.getByRole('status')).toHaveTextContent('Reconnecting to session');
     expect(screen.getByRole('button', { name: 'Retry session recovery' })).toBeDisabled();
     expect(screen.queryByTitle('Connected to server')).not.toBeInTheDocument();
@@ -447,17 +453,19 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     const oldResponse = await peer.create(oldRequest.data);
     disconnect();
     connect();
-    // A different socket and unknown code must create a fresh authenticated session.
+    // An unknown code is refused (reclaim-only, #78) rather than replaced by a
+    // session the teacher never started; the obsolete answer cannot revive it.
     let result: Promise<boolean>;
     act(() => { result = context.recoverSession('MNPQRS'); });
-    expect(socket.request().data.existingCode).toBe('MNPQRS');
-    const fresh = await respond();
-    expect(await result!).toBe(true);
-    expect(fresh.isExisting).toBe(false);
+    expect(socket.request().data).toMatchObject({ existingCode: 'MNPQRS', reclaimOnly: true });
+    const refused = await respond();
+    expect(await result!).toBe(false);
+    expect(refused).toEqual({ success: false, error: 'Session not found' });
     await acknowledge(oldResponse, oldRequest);
-    expect(context.sessionCode).toBe(fresh.code);
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(context.sessionCode).toBeNull();
     expect(context.activeRooms.size).toBe(0);
-    expect(localStorage.getItem(TOKEN_KEY)).toBe(fresh.hostToken);
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     await advance(180_000);
     expect(socket.requests()).toHaveLength(3);
   });
@@ -504,39 +512,37 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(storeState.current.setSessionCode).not.toHaveBeenCalledWith(response.code);
   });
 
-  it.each(['invalid token', 'deleted session'] as const)('keeps the handler fallback for %s, rather than reclaiming without authentication', async (failure) => {
+  it.each(['invalid token', 'deleted session'] as const)('ends the stored session for %s, without reclaiming or creating one (#78)', async (failure) => {
     mount();
     await recoverOnce();
-    const previousToken = localStorage.getItem(TOKEN_KEY);
     const previousHost = server.session.hostSocketId;
     disconnect();
     if (failure === 'invalid token') server.session.rotateHostToken();
     else server.manager.deleteSession(CODE);
+    const sessionsBefore = server.manager.sessions.size;
     connect();
     const response = await respond();
-    expect(response.isExisting).toBe(false);
-    expect(response.code).not.toBe(CODE);
-    expect(context.connectionPhase).toBe('recovered');
-    expect(context.sessionCode).toBe(response.code);
+    expect(response.success).toBe(false);
+    expect(server.manager.sessions.size).toBe(sessionsBefore);
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(context.sessionCode).toBeNull();
     expect(context.activeRooms.size).toBe(0);
     expect(context.getWidgetRecoveryData('poll-1')).toBeNull();
-    expect(localStorage.getItem(TOKEN_KEY)).toBe(response.hostToken);
-    expect(response.hostToken).not.toBe(previousToken);
+    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
     expect(server.session.hostSocketId).toBe(previousHost);
   });
 
-  it('releases successful room waiters with the replacement code, not the code captured before recovery', async () => {
+  it('releases room waiters when the stored session is gone, without emitting for the dead code', async () => {
     mount();
     server.manager.deleteSession(CODE);
     connect();
     let roomResult: Promise<boolean>;
     act(() => { roomResult = context.createRoom('poll', 'poll-1'); });
-    const fresh = await respond();
-    const request = socket.emitted.find(call => call.event === 'session:createRoom')!;
-    expect(request.data).toEqual({ sessionCode: fresh.code, roomType: 'poll', widgetId: 'poll-1' });
-    await acknowledge(await peer.createRoom(request.data), request);
-    expect(await roomResult!).toBe(true);
-    expect(context.activeRooms.get('poll-1')?.roomData.code).toBe(fresh.code);
+    await respond();
+    expect(await roomResult!).toBe(false);
+    expect(socket.emitted.some(call => call.event === 'session:createRoom')).toBe(false);
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(context.sessionCode).toBeNull();
   });
 
   it('does not let an obsolete negative acknowledgement settle a newer recovery or its waiters', async () => {
@@ -634,24 +640,124 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(context.connectionPhase).toBe('recovering');
     expect(context.activeRooms.size).toBe(0);
     expect(socket.requests()).toHaveLength(1);
+    // The dropped socket's reclaim rotated the token but its answer was
+    // discarded. The server still accepts the token this client holds.
     await respond();
     expect(context.connectionPhase).toBe('recovered');
+    expect(context.sessionCode).toBe(CODE);
   });
 
-  it('allows recovery at the local age limit, but not beyond it', async () => {
-    storeState.current.sessionCreatedAt = Date.now() - 2 * 60 * 60 * 1000;
+  // Issue #78: the server now keeps a room until its widget is deleted, the
+  // teacher is gone for 30 minutes, or the room is idle for 4 hours, so the
+  // client no longer guesses from the session's age. Ways that could go wrong:
+  //  1. A reload after 2 hours drops a session the server still holds, giving
+  //     the teacher a new code while the students sit in the old one.
+  //  2. A stored session the server no longer holds leaves the teacher on a
+  //     dead code, or with rooms and a recovery snapshot from it; or, opened
+  //     the next day, silently starts a new session the teacher never asked
+  //     for (a join code on the banner and an unswept server session).
+  //  3. Starting another widget in a session older than 2 hours creates a
+  //     replacement session or clears the live rooms.
+  it('recovers a stored session older than two hours that the server still holds (1)', async () => {
+    const createdAt = Date.now() - 5 * 60 * 60 * 1000;
+    storeState.current.sessionCreatedAt = createdAt;
     mount();
     await recoverOnce();
     expectPreserved();
+    expect(context.sessionCreatedAt).toBe(createdAt);
   });
 
-  it('still clears a genuinely expired local session without attempting reclaim', () => {
-    storeState.current.sessionCreatedAt = Date.now() - 2 * 60 * 60 * 1000 - 1;
+  it('forgets a stored session the server no longer holds, and starts a new one only when asked (2)', async () => {
+    storeState.current.sessionCreatedAt = Date.now() - 24 * 60 * 60 * 1000;
+    server.manager.sessions.delete(CODE);
     mount();
     connect();
+    const response = await respond();
+
+    expect(response).toMatchObject({ success: false, error: 'Session not found' });
+    expect(server.manager.sessions.size).toBe(0);
     expect(context.connectionPhase).toBe('recovery-failed');
     expect(context.sessionCode).toBeNull();
+    expect(screen.queryByText(CODE)).toBeNull();
+    expect(context.activeRooms.size).toBe(0);
+    expect(context.getWidgetRecoveryData('poll-1')).toBeNull();
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
-    expect(socket.requests()).toHaveLength(0);
+    expect(context.error).toBe('Your previous session ended. Press Start to begin a new one.');
+
+    // The next widget start creates a fresh session
+    let code: string | null = null;
+    await act(async () => {
+      const pending = context.createSession();
+      const created = await peer.create(socket.request().data);
+      await acknowledge(created);
+      code = await pending;
+    });
+    expect(code).toBeTruthy();
+    expect(code).not.toBe(CODE);
+    expect(context.sessionCode).toBe(code);
+    expect(context.error).toBeNull();
+  });
+
+  // Two tabs share localStorage. Ways that could go wrong:
+  //  4. A tab reclaims with the token it read at load, after another tab of
+  //     the same session has rotated it, and is refused.
+  //  5. A refused tab wipes the stored code and token another tab now holds.
+  //  6. A tab sends another session's stored token with its own code, is
+  //     refused for that reason, and then wipes that session's token.
+  it('reclaims with the token in storage at emit time, not the one read at load (4)', async () => {
+    mount();
+    // Another tab of the same session reclaimed and stored the current token
+    server.session.rotateHostToken();
+    localStorage.setItem(TOKEN_KEY, server.session.hostToken);
+    localStorage.setItem(TOKEN_CODE_KEY, CODE);
+    connect();
+    expect(socket.request().data.hostToken).toBe(server.session.hostToken);
+    expect((await respond()).isExisting).toBe(true);
+    expect(context.connectionPhase).toBe('recovered');
+  });
+
+  it('sends its own token when another tab has moved on to another session before the emit (6)', async () => {
+    const ownToken = localStorage.getItem(TOKEN_KEY);
+    mount();
+    server.manager.deleteSession(CODE);
+    localStorage.setItem(TOKEN_KEY, 'token-from-other-tab');
+    localStorage.setItem(TOKEN_CODE_KEY, 'OTHER1');
+    connect();
+    expect(socket.request().data).toMatchObject({ existingCode: CODE, hostToken: ownToken });
+    await respond();
+
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('token-from-other-tab');
+    expect(localStorage.getItem(TOKEN_CODE_KEY)).toBe('OTHER1');
+    expect(storeState.current.setSessionCode).not.toHaveBeenCalledWith(null);
+  });
+
+  it('leaves another tab\'s stored session alone when its own reclaim is refused (5)', async () => {
+    mount();
+    server.manager.deleteSession(CODE);
+    connect();
+    const request = socket.request();
+    // Meanwhile another tab stored a different session's token
+    localStorage.setItem(TOKEN_KEY, 'token-from-other-tab');
+    await acknowledge(await peer.create(request.data), request);
+
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(context.sessionCode).toBeNull();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('token-from-other-tab');
+    expect(storeState.current.setSessionCode).not.toHaveBeenCalledWith(null);
+  });
+
+  it('keeps the recovered session and its rooms when another widget starts after two hours (3)', async () => {
+    storeState.current.sessionCreatedAt = Date.now() - 5 * 60 * 60 * 1000;
+    mount();
+    await recoverOnce();
+    const requestsBefore = socket.requests().length;
+
+    let code: string | null = null;
+    await act(async () => { code = await context.createSession(); });
+
+    expect(code).toBe(CODE);
+    expect(socket.requests()).toHaveLength(requestsBefore);
+    expect(context.activeRooms.has('poll-1')).toBe(true);
   });
 });

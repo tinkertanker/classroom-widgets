@@ -63,7 +63,9 @@ interface SessionContextValue {
   activeRooms: Map<string, ActiveRoom>;
 
   // Session methods
-  createSession: () => Promise<string | null>;
+  // Get-or-create. `replace` asks for a new session even if one is stored,
+  // for when the server has said the stored one is gone.
+  createSession: (options?: { replace?: boolean }) => Promise<string | null>;
   recoverSession: (code: string) => Promise<boolean>;
   closeSession: () => void;
   
@@ -74,6 +76,7 @@ interface SessionContextValue {
   
   // Widget recovery
   getWidgetRecoveryData: (widgetId: string) => ActiveRoom | null;
+  releaseWidgetRecoveryData: (widgetId: string) => void;
   
   // Error state
   error: string | null;
@@ -82,6 +85,28 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 const HOST_TOKEN_STORAGE_KEY = 'classroom-widgets:hostToken';
+// The session code the stored host token belongs to. Tabs share storage, so a
+// token is only ever sent with the code it was issued for.
+const HOST_TOKEN_CODE_STORAGE_KEY = 'classroom-widgets:hostTokenCode';
+const SESSION_ENDED_MESSAGE = 'Your previous session ended. Press Start to begin a new one.';
+
+// Widget types that own a server-side room
+const NETWORKED_WIDGET_TYPES = [
+  WidgetType.POLL,
+  WidgetType.QUESTIONS,
+  WidgetType.RT_FEEDBACK,
+  WidgetType.LINK_SHARE,
+  WidgetType.HANDOUT,
+  WidgetType.FILL_BLANK,
+  WidgetType.CODE_FILL_BLANK,
+  WidgetType.SORTING,
+  WidgetType.SEQUENCING,
+  WidgetType.MATCHING
+];
+
+const networkedWidgetIds = (widgets: any[]): string[] => widgets
+  .filter((w: any) => NETWORKED_WIDGET_TYPES.includes(w.type))
+  .map((w: any) => w.id);
 
 export const useSession = () => {
   const context = useContext(SessionContext);
@@ -111,6 +136,7 @@ export const useSession = () => {
         closeRoom: () => {},
         updateRoomState: () => {},
         getWidgetRecoveryData: () => null,
+        releaseWidgetRecoveryData: () => {},
         error: null
       } as SessionContextValue;
     }
@@ -130,6 +156,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const storeSessionCode = useWorkspaceStore((state) => state.sessionCode);
   const storeSessionCreatedAt = useWorkspaceStore((state) => state.sessionCreatedAt);
   const setStoreSessionCode = useWorkspaceStore((state) => state.setSessionCode);
+  // A string so the selector result is stable between unrelated store updates
+  const boardNetworkedWidgetIds = useWorkspaceStore((state) => networkedWidgetIds(state.widgets).join('\n'));
   const serverUrl = useWorkspaceUiStore((state) => state.serverStatus.url);
   
   // Local state
@@ -153,13 +181,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const connectionPhaseRef = useRef<ConnectionPhase>('disconnected');
   const hostTokenRef = useRef<string | null>(localStorage.getItem(HOST_TOKEN_STORAGE_KEY));
 
-  // Persist the host reconnect token issued by session:create responses
-  const storeHostToken = useCallback((token: string | null) => {
+  // Persist the host reconnect token issued by session:create responses,
+  // together with the session code it belongs to
+  const storeHostToken = useCallback((token: string | null, code?: string | null) => {
     hostTokenRef.current = token;
     if (token) {
       localStorage.setItem(HOST_TOKEN_STORAGE_KEY, token);
+      if (code) localStorage.setItem(HOST_TOKEN_CODE_STORAGE_KEY, code);
     } else {
       localStorage.removeItem(HOST_TOKEN_STORAGE_KEY);
+      localStorage.removeItem(HOST_TOKEN_CODE_STORAGE_KEY);
     }
   }, []);
   const setConnectionPhase = useCallback((phase: ConnectionPhase) => {
@@ -167,6 +198,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     setConnectionPhaseState(phase);
   }, []);
   const isCreatingSession = useRef(false);
+  // The in-flight session:create, so a concurrent caller can wait for it
+  const creatingSessionRef = useRef<Promise<string | null> | null>(null);
   const sessionCodeRef = useRef(sessionCode);
   const sessionCreatedAtRef = useRef(sessionCreatedAt);
   const setSessionCreatedAt = useCallback((createdAt: number | null) => {
@@ -192,7 +225,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   ), [sessionCode, socket, isCurrentSession]);
 
   // Constants
-  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  // A stored session is always offered back to the server, whatever its age:
+  // the server decides whether it is still alive (host reconnect grace and
+  // idle-room expiry in packages/server/src/config/constants.js). If it is
+  // gone, recovery fails and the next widget start creates a new session.
   const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
   const MAX_RECOVERY_ATTEMPTS = 3;
   // Retain the signal after success so later room acknowledgements belong to
@@ -375,15 +411,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     });
   };
 
-  // Clear session - defined before attemptSessionRecovery to avoid circular dependency
-  const clearSession = useCallback(() => {
+  // Clear session - defined before attemptSessionRecovery to avoid circular dependency.
+  // `keepStorage` ends the session in this tab only, leaving the stored code
+  // and token that another tab now holds.
+  const clearSession = useCallback(({ keepStorage = false }: { keepStorage?: boolean } = {}) => {
     sessionCodeRef.current = null;
     setSessionCode(null);
     setSessionCreatedAt(null);
     setStudentAppUrl(null);
-    setStoreSessionCode(null);
     setActiveRooms(new Map());
     setRecoveryData(new Map());
+    if (keepStorage) {
+      hostTokenRef.current = null;
+      return;
+    }
+    setStoreSessionCode(null);
     storeHostToken(null);
   }, [setStoreSessionCode, storeHostToken]);
 
@@ -443,14 +485,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     };
 
     try {
-      // Check session age
-      const sessionAge = Date.now() - createdAt;
-      if (sessionAge > TWO_HOURS) {
-        debug('[UnifiedSession] Session too old, clearing');
-        clearSession();
-        return completeRecovery('recovery-failed');
-      }
-
       // Attempt recovery with retries
       let lastError: Error | null = null;
 
@@ -459,6 +493,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         debug(`[Session] Recovery attempt ${attempt}/${MAX_RECOVERY_ATTEMPTS}`);
         let retryDelay = 1000 * attempt;
+        // This tab's own token for `code`, or a newer one another tab stored
+        // for the same session since this one loaded. Never another session's.
+        const storedToken = localStorage.getItem(HOST_TOKEN_STORAGE_KEY);
+        const sentToken = storedToken && localStorage.getItem(HOST_TOKEN_CODE_STORAGE_KEY) === code
+          ? storedToken
+          : hostTokenRef.current;
 
         try {
           const response = await new Promise<SessionCreatedResponse>((resolve, reject) => {
@@ -477,7 +517,9 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             signal.addEventListener('abort', abortHandler, { once: true });
 
             // Attempt to rejoin session
-            socket.emit('session:create', { existingCode: code, hostToken: hostTokenRef.current }, (result: SessionCreatedResponse) => {
+            // reclaimOnly: if the server no longer holds this session it says
+            // so, rather than handing the teacher a session they never started
+            socket.emit('session:create', { existingCode: code, hostToken: sentToken, reclaimOnly: true }, (result: SessionCreatedResponse) => {
               clearTimeout(timeoutId);
               signal.removeEventListener('abort', abortHandler);
 
@@ -500,11 +542,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               setStudentAppUrl(response.studentAppUrl);
             }
             if (response.hostToken) {
-              storeHostToken(response.hostToken);
+              storeHostToken(response.hostToken, response.code);
             }
 
-            // Check if this is actually recovery of existing session
-            // If isExisting is false, the server created a new session (old one was gone)
+            // Check if this is actually recovery of existing session. A server
+            // that predates reclaimOnly still answers a gone session with a new
+            // one (isExisting: false); adopt it rather than fail.
             if (!response.isExisting) {
               debug('[Session] Old session not found, server created new session. Clearing stale state.');
               // Update to use the new session code from server
@@ -544,9 +587,14 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
           lastError = new Error(response.error);
           if (response.retryAfter === undefined) {
-            // Preserve the existing terminal rejection/authentication behavior.
+            // Terminal rejection: the stored session is gone. Only forget the
+            // stored copy if it still holds the token we sent (tokens are
+            // unique, so that is this session's pair); otherwise another tab
+            // has moved on and owns it.
             debug.error('[UnifiedSession] Failed to recover session:', response.error);
-            clearSession();
+            const storedNow = localStorage.getItem(HOST_TOKEN_STORAGE_KEY);
+            clearSession({ keepStorage: storedNow !== null && storedNow !== sentToken });
+            setError(SESSION_ENDED_MESSAGE);
             return completeRecovery('recovery-failed');
           }
 
@@ -587,33 +635,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const cleanupOrphanedRooms = useCallback(() => {
     if (!socket?.connected || !sessionCode) return;
 
-    // Get current widgets from store
-    // These are the widget types that create server-side rooms
-    const networkedWidgetTypes = [
-      WidgetType.POLL,
-      WidgetType.QUESTIONS,
-      WidgetType.RT_FEEDBACK,
-      WidgetType.LINK_SHARE,
-      WidgetType.HANDOUT,
-      WidgetType.FILL_BLANK,
-      WidgetType.CODE_FILL_BLANK,
-      WidgetType.SORTING,
-      WidgetType.SEQUENCING,
-      WidgetType.MATCHING
-    ];
-    const currentWidgets = useWorkspaceStore.getState().widgets;
-    const networkedWidgetIds = currentWidgets
-      .filter((w: any) => networkedWidgetTypes.includes(w.type))
-      .map((w: any) => w.id);
+    // The networked widgets currently on the board
+    const activeWidgetIds = networkedWidgetIds(useWorkspaceStore.getState().widgets);
 
-    console.log('[UnifiedSession] cleanupOrphanedRooms: Found networked widgets:', networkedWidgetIds);
-    console.log('[UnifiedSession] cleanupOrphanedRooms: Current activeRooms:', Array.from(activeRooms.keys()));
+    console.log('[UnifiedSession] cleanupOrphanedRooms: Found networked widgets:', activeWidgetIds);
 
     // Send cleanup request to server with list of active widget IDs
     // Server will close any rooms not in this list
     socket.emit('session:cleanupRooms', {
       sessionCode,
-      activeWidgetIds: networkedWidgetIds
+      activeWidgetIds
     });
 
     // Update local state to remove orphaned rooms
@@ -621,7 +652,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const next = new Map(prev);
       let hasChanges = false;
       prev.forEach((_, widgetId) => {
-        if (!networkedWidgetIds.includes(widgetId)) {
+        if (!activeWidgetIds.includes(widgetId)) {
           debug('[UnifiedSession] Removing orphaned room from local state:', widgetId);
           next.delete(widgetId);
           hasChanges = true;
@@ -632,6 +663,22 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     debug('[UnifiedSession] Orphaned room cleanup complete');
   }, [socket, sessionCode]);
+
+  // A room belongs to a widget on the board, not to a mounted component: layout
+  // switches and the compact overlay unmount widgets without deleting them.
+  // Close rooms when a networked widget leaves the board (deleted, or its
+  // workspace switched away). Offline deletions are caught by the
+  // post-recovery cleanup below.
+  const previousBoardWidgetIdsRef = useRef(boardNetworkedWidgetIds);
+  useEffect(() => {
+    const previous = previousBoardWidgetIdsRef.current;
+    previousBoardWidgetIdsRef.current = boardNetworkedWidgetIds;
+    if (!previous) return;
+    const current = new Set(boardNetworkedWidgetIds.split('\n'));
+    if (previous.split('\n').some(id => !current.has(id))) {
+      cleanupOrphanedRooms();
+    }
+  }, [boardNetworkedWidgetIds, cleanupOrphanedRooms]);
 
   // Schedule cleanup after recovery completes and widgets have had time to mount
   // This handles the case where widgets were deleted while offline
@@ -667,17 +714,21 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, [connectionPhase, socket?.connected, sessionCode, cleanupOrphanedRooms]);
 
   // Create session
-  const createSession = useCallback(async (): Promise<string | null> => {
-    if (!socket?.connected || isCreatingSession.current) {
-      debug.error('[UnifiedSession] Cannot create session - not connected or already creating');
+  const createSession = useCallback(async ({ replace = false }: { replace?: boolean } = {}): Promise<string | null> => {
+    if (!socket?.connected) {
+      debug.error('[UnifiedSession] Cannot create session - not connected');
       return null;
+    }
+    // Another widget is already creating one: share its result
+    if (isCreatingSession.current && creatingSessionRef.current) {
+      return creatingSessionRef.current;
     }
 
     // This is get-or-create for widgets; do not cancel a valid recovery merely
     // because another widget asks for the same session. The ref observes close
     // and new intents immediately, even before React has rendered them.
     const currentCode = sessionCodeRef.current;
-    if (currentCode && sessionCreatedAt && Date.now() - sessionCreatedAt < TWO_HOURS) {
+    if (currentCode && !replace) {
       return currentCode;
     }
 
@@ -688,7 +739,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     isCreatingSession.current = true;
     setError(null);
     
-    try {
+    const creation = (async (): Promise<string | null> => { try {
       return await new Promise((resolve) => {
         const onAbort = () => resolve(null);
         signal.addEventListener('abort', onAbort, { once: true });
@@ -700,18 +751,23 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           if (response.success) {
             debug('[UnifiedSession] Session created:', response.code);
             if (response.hostToken) {
-              storeHostToken(response.hostToken);
+              storeHostToken(response.hostToken, response.code);
             }
+            // isExisting: this socket already hosts that session (a second
+            // "Session not found" replace), so its live rooms stay
+            const sameSession = response.isExisting && response.code === sessionCodeRef.current;
             setSessionCode(response.code);
-            setSessionCreatedAt(Date.now());
+            if (!sameSession) setSessionCreatedAt(Date.now());
             setStoreSessionCode(response.code);
             sessionCodeRef.current = response.code; // Update ref immediately
             // A brand new session needs no recovery, so it is already settled
             if (connectionPhaseRef.current !== 'disconnected') {
               setConnectionPhase('recovered');
             }
-            setActiveRooms(new Map());
-            setRecoveryData(new Map()); // Clear any old recovery data
+            if (!sameSession) {
+              setActiveRooms(new Map());
+              setRecoveryData(new Map()); // Clear any old recovery data
+            }
             // Store the student app URL from server response
             if (response.studentAppUrl) {
               setStudentAppUrl(response.studentAppUrl);
@@ -730,8 +786,13 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       debug.error('[UnifiedSession] Error creating session:', error);
       setError('Failed to create session');
       return null;
-    }
-  }, [socket, sessionCreatedAt, setStoreSessionCode, setConnectionPhase, storeHostToken, cancelSessionWork]);
+    } })();
+    creatingSessionRef.current = creation;
+    creation.finally(() => {
+      if (creatingSessionRef.current === creation) creatingSessionRef.current = null;
+    });
+    return creation;
+  }, [socket, setStoreSessionCode, setConnectionPhase, storeHostToken, cancelSessionWork]);
 
   // Recover session (explicit)
   const recoverSession = useCallback(async (code: string): Promise<boolean> => {
@@ -811,7 +872,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             setError('Session expired. Creating new session...'); // Clear any previous error and show informative message
 
             // Create a new session and retry
-            createSession().then(newSessionCode => {
+            createSession({ replace: true }).then(newSessionCode => {
               if (!socket.connected || sessionCodeRef.current !== newSessionCode) {
                 resolve(false);
                 return;
@@ -885,6 +946,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     // Only return data from the recovery snapshot, not live activeRooms
     return recoveryData.get(widgetId) || null;
   }, [recoveryData]);
+
+  // The recovery snapshot is only newer than a widget's saved state until that
+  // widget has restored from it. The widget then drops it, so a remount
+  // (layout switch, compact overlay) keeps its newer saved state.
+  const releaseWidgetRecoveryData = useCallback((widgetId: string) => {
+    setRecoveryData(prev => {
+      if (!prev.has(widgetId)) return prev;
+      const next = new Map(prev);
+      next.delete(widgetId);
+      return next;
+    });
+  }, []);
   
   const value = useMemo<SessionContextValue>(() => ({
     // Session state
@@ -918,6 +991,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     
     // Widget recovery
     getWidgetRecoveryData,
+    releaseWidgetRecoveryData,
     
     // Error state
     error
@@ -941,6 +1015,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     closeRoom,
     updateRoomState,
     getWidgetRecoveryData,
+    releaseWidgetRecoveryData,
     error
   ]);
   

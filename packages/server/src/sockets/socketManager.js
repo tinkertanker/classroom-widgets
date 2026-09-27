@@ -3,6 +3,7 @@ const {
   startHostDisconnectTimeout
 } = require('./hostDisconnectTimeouts');
 const { installSafeSocketEvents } = require('./safeSocketEvents');
+const { closeRoomAndNotify } = require('./closeRoom');
 const { logger } = require('../utils/logger');
 
 // Import individual socket handlers
@@ -21,6 +22,10 @@ const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true';
  * Setup all socket handlers
  */
 function setupSocketHandlers(io, sessionManager) {
+  // Idle rooms are closed like any other: the teacher and students are told.
+  sessionManager.setRoomExpiryHandler((session, roomType, widgetId) =>
+    closeRoomAndNotify(io, session, roomType, widgetId));
+
   io.on('connection', (socket) => {
     if (SOCKET_DEBUG) {
       logger.info(`Socket connected: ${socket.id}`);

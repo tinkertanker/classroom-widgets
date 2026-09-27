@@ -39,6 +39,7 @@ vi.mock('../hooks/useSocket', () => ({
 }));
 
 import { SessionProvider, useSession, isRecoverySettled } from './SessionContext';
+import { WidgetType } from '@shared/types';
 
 interface EmittedCall {
   event: string;
@@ -319,5 +320,138 @@ describe('SessionContext connection phase (T5-A)', () => {
     });
     expect(session.connectionPhase).toBe('disconnected');
     expect(session.isConnected).toBe(false);
+  });
+});
+
+// Issue #78: a room belongs to a widget on the board, not to a mounted React
+// component. Ways the teacher side could get this wrong:
+//  1. Deleting a widget leaves its room open, so students keep a card the
+//     teacher can no longer see or stop.
+//  2. Deleting one widget closes another widget's room.
+//  3. Something that is not a deletion (moving, hiding a compact panel,
+//     switching layout, any other store update) closes a room.
+//  4. Switching to another workspace leaves the old board's rooms open with
+//     no widget on screen to control them.
+// Unmounting (layout switch) is covered end to end by e2e/roomLifecycle.mjs.
+describe('SessionContext closes a room when its widget leaves the board (#78)', () => {
+  const poll = { id: 'poll-1', type: WidgetType.POLL, position: { x: 0, y: 0 } };
+  const questions = { id: 'questions-1', type: WidgetType.QUESTIONS, position: { x: 0, y: 0 } };
+  const timer = { id: 'timer-1', type: WidgetType.TIMER, position: { x: 0, y: 0 } };
+
+  // A fresh element each time: React skips re-rendering an identical one
+  const tree = () => (
+    <SessionProvider>
+      <Probe />
+    </SessionProvider>
+  );
+
+  const startRecoveredSession = async () => {
+    storeState.current.sessionCode = 'ABC123';
+    storeState.current.sessionCreatedAt = Date.now();
+    storeState.current.widgets = [poll, questions, timer];
+    const view = render(tree());
+    connect();
+    await act(async () => {
+      socket.ackFor('session:create')!({
+        success: true,
+        isExisting: true,
+        activeRooms: [
+          { roomType: 'poll', widgetId: 'poll-1', room: { isActive: true, participantCount: 3 } },
+          { roomType: 'questions', widgetId: 'questions-1', room: { isActive: true, participantCount: 3 } }
+        ]
+      });
+    });
+    expect(session.connectionPhase).toBe('recovered');
+    return view;
+  };
+
+  const setWidgets = (view: ReturnType<typeof render>, widgets: any[]) => {
+    const before = socket.emitted.length;
+    storeState.current.widgets = widgets;
+    act(() => view.rerender(tree()));
+    return socket.emitted.slice(before).filter(c => c.event === 'session:cleanupRooms' || c.event === 'session:closeRoom');
+  };
+
+  it('closes the deleted widget\'s room and only that room (1, 2)', async () => {
+    const view = await startRecoveredSession();
+
+    const sent = setWidgets(view, [questions, timer]);
+
+    expect(sent).toEqual([
+      { event: 'session:cleanupRooms', data: { sessionCode: 'ABC123', activeWidgetIds: ['questions-1'] }, ack: undefined }
+    ]);
+    expect(session.activeRooms.has('poll-1')).toBe(false);
+    expect(session.activeRooms.has('questions-1')).toBe(true);
+  });
+
+  it('closes nothing for moves, hidden compact panels or non-networked widgets (3)', async () => {
+    const view = await startRecoveredSession();
+
+    expect(setWidgets(view, [{ ...poll, position: { x: 50, y: 80 } }, questions, timer])).toEqual([]);
+    expect(setWidgets(view, [{ ...poll, hidden: true }, questions, timer])).toEqual([]);
+    expect(setWidgets(view, [{ ...poll, hidden: true }, questions])).toEqual([]);
+    expect(session.activeRooms.size).toBe(2);
+  });
+
+  it('closes the old board\'s rooms when the teacher switches workspace (4)', async () => {
+    const view = await startRecoveredSession();
+    const otherBoardPoll = { id: 'poll-2', type: WidgetType.POLL, position: { x: 0, y: 0 } };
+
+    const sent = setWidgets(view, [otherBoardPoll]);
+
+    expect(sent).toEqual([
+      { event: 'session:cleanupRooms', data: { sessionCode: 'ABC123', activeWidgetIds: ['poll-2'] }, ack: undefined }
+    ]);
+    expect(session.activeRooms.size).toBe(0);
+  });
+});
+
+// createSession is called by every widget's Start button and by the
+// "Session not found" retry in createRoom. Ways it could go wrong:
+//  1. A second call while the first is in flight returns null, so that
+//     widget fails to start for no visible reason.
+//  2. A replace answered with the session this socket already hosts
+//     (isExisting: true) wipes the live rooms another widget just created.
+describe('SessionContext createSession (#78)', () => {
+  it('lets a concurrent call wait for the in-flight creation (1)', async () => {
+    renderSession();
+    connect();
+
+    let first: Promise<string | null>;
+    let second: Promise<string | null>;
+    act(() => {
+      first = session.createSession();
+      second = session.createSession();
+    });
+    expect(socket.emitted.filter(c => c.event === 'session:create')).toHaveLength(1);
+
+    await act(async () => {
+      socket.ackFor('session:create')!({ success: true, code: 'NEW123', isExisting: false, hostToken: 't' });
+    });
+    await expect(first!).resolves.toBe('NEW123');
+    await expect(second!).resolves.toBe('NEW123');
+  });
+
+  it('keeps live rooms when a replace is answered with the session already hosted (2)', async () => {
+    renderSession();
+    connect();
+    let created: Promise<string | null>;
+    act(() => { created = session.createSession(); });
+    await act(async () => {
+      socket.ackFor('session:create')!({ success: true, code: 'NEW123', isExisting: false, hostToken: 't' });
+    });
+    await created!;
+    act(() => {
+      socket.fire('session:roomCreated', { roomType: 'poll', widgetId: 'poll-1', roomData: { isActive: true, participantCount: 0 } });
+    });
+
+    let replaced: Promise<string | null>;
+    act(() => { replaced = session.createSession({ replace: true }); });
+    await act(async () => {
+      socket.ackFor('session:create')!({ success: true, code: 'NEW123', isExisting: true, hostToken: 't2' });
+    });
+
+    await expect(replaced!).resolves.toBe('NEW123');
+    expect(session.activeRooms.has('poll-1')).toBe(true);
   });
 });

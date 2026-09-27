@@ -22,7 +22,11 @@ class PollRoom extends Room {
   /**
    * Set poll data and manage vote reset logic
    */
-  setPollData(data) {
+  setPollData(pollData) {
+    // Votes are counted here. A host copy of them can be stale (a teacher
+    // widget restored from a recovery snapshot re-sends it), so ignore it.
+    const { votes: _clientVotes, ...data } = pollData || {};
+
     // Only reset votes if options changed or if votes don't exist
     const shouldResetVotes = !this.pollData.votes || 
                            (data.options && JSON.stringify(data.options) !== JSON.stringify(this.pollData.options));

@@ -3,6 +3,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
+const { closeRoomAndNotify } = require('../closeRoom');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 
@@ -52,7 +53,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
 
-      const { existingCode, hostToken } = data;
+      const { existingCode, hostToken, reclaimOnly } = data;
       
       // Check if host already has a session
       let existingSession = sessionManager.findSessionByHost(socket.id);
@@ -60,10 +61,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // If no session found by socket.id but existingCode provided, check that
       if (!existingSession && existingCode) {
         const candidate = sessionManager.getSession(existingCode);
-        if (candidate && candidate.isValidHostToken(hostToken)) {
+        if (candidate && candidate.reclaimHost(hostToken)) {
           existingSession = candidate;
-          // Rotate the reclaim token so the presented one can't be replayed
-          existingSession.rotateHostToken();
           // Update the hostSocketId to the new socket.id
           existingSession.hostSocketId = socket.id;
 
@@ -85,6 +84,15 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         }
       }
       
+      // A reclaim-only request (teacher app recovering a stored session) must
+      // not fall back to a new session: the teacher did not ask for one, and
+      // it would sit unswept with a code on screen. Older clients omit the
+      // flag and keep the fallback below.
+      if (reclaimOnly && !existingSession) {
+        callback({ success: false, error: 'Session not found' });
+        return;
+      }
+
       // Get the student app URL for this server
       const serverOrigin = getServerOrigin(socket);
       const studentAppUrl = serverConfig.getStudentAppUrl(serverOrigin);
@@ -220,6 +228,12 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         })));
       }
 
+      // A student joining refreshes every room in the session (they join them
+      // all), so an idle room is not expired right after someone joins it.
+      // This only keeps rooms alive while the teacher is connected: a
+      // disconnected teacher's session still closes after the reconnect grace.
+      session.getActiveRoomEntries().forEach(({ room }) => room.updateActivity());
+
       // Join all active widget rooms
       activeRoomsData.forEach(roomData => {
         const roomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
@@ -288,6 +302,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Check if room already exists
       const existingRoom = session.getRoom(roomType, widgetId);
       if (existingRoom) {
+        existingRoom.updateActivity();
         // Rejoin the room
         const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
         socket.join(`${session.code}:${roomId}`);
@@ -432,30 +447,10 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
 
-      const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
       if (SESSION_DEBUG) {
-        logger.info('[SessionHandler] Closing room:', roomId);
+        logger.info('[SessionHandler] Closing room:', { roomType, widgetId });
       }
-      session.closeRoom(roomType, widgetId);
-
-      if (SESSION_DEBUG) {
-        logger.info('[SessionHandler] Broadcasting room closed to all participants');
-      }
-      // Notify all participants
-      io.to(`session:${session.code}`).emit('session:roomClosed', { 
-        roomType, 
-        widgetId
-      });
-      
-      // Clear the room namespace
-      const roomNamespace = `${session.code}:${roomId}`;
-      const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
-      if (socketsInRoom) {
-        socketsInRoom.forEach(socketId => {
-          const s = io.sockets.sockets.get(socketId);
-          if (s) s.leave(roomNamespace);
-        });
-      }
+      closeRoomAndNotify(io, session, roomType, widgetId);
     } catch (error) {
       console.error('Error closing room:', error);
     }
@@ -480,7 +475,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
 
-      if (session.hostSocketId !== socket.id) {
+      if (!session.isHost(socket.id)) {
         if (SESSION_DEBUG) {
           logger.info('[server] updateWidgetState - Not host:', {
             hostSocketId: session.hostSocketId,
@@ -502,6 +497,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         logger.info('[server] Updating room isActive from', room.isActive, 'to', isActive);
       }
       room.isActive = isActive;
+      room.updateActivity();
 
       const sessionRoom = `session:${session.code}`;
 
@@ -549,7 +545,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       const { sessionCode, widgetId } = data;
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
 
-      if (!session || session.hostSocketId !== socket.id) {
+      if (!session || !session.isHost(socket.id)) {
         if (SESSION_DEBUG) {
           logger.info('[server] Unauthorized reset attempt');
         }
@@ -636,7 +632,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
 
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
 
-      if (!session || session.hostSocketId !== socket.id) {
+      if (!session || !session.isHost(socket.id)) {
         logger.warn('session:cleanupRooms', 'Unauthorized cleanup attempt');
         return;
       }
@@ -662,23 +658,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
           roomType: roomInfo.roomType
         });
 
-        session.closeRoom(roomInfo.roomType, roomInfo.widgetId);
-
-        // Notify all participants
-        io.to(`session:${session.code}`).emit('session:roomClosed', {
-          roomType: roomInfo.roomType,
-          widgetId: roomInfo.widgetId
-        });
-
-        // Clear the room namespace
-        const roomNamespace = `${session.code}:${roomInfo.roomKey}`;
-        const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
-        if (socketsInRoom) {
-          socketsInRoom.forEach(socketId => {
-            const s = io.sockets.sockets.get(socketId);
-            if (s) s.leave(roomNamespace);
-          });
-        }
+        closeRoomAndNotify(io, session, roomInfo.roomType, roomInfo.widgetId);
       }
 
       logger.info('session:cleanupRooms', 'Cleanup complete', {

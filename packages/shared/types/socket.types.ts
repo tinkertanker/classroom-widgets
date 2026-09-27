@@ -16,6 +16,9 @@ export interface SessionCreateData {
   existingCode?: string;
   // Secret issued in the SessionCreatedResponse; required to reclaim a session
   hostToken?: string;
+  // Only reclaim: answer { success: false, error: 'Session not found' } instead
+  // of creating a new session when existingCode cannot be reclaimed
+  reclaimOnly?: boolean;
 }
 
 export type SessionCreatedResponse = {

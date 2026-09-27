@@ -17,28 +17,13 @@
 // download.csv (the downloaded file, byte for byte), and screenshots
 // 1-empty.png, 2-submissions.png and 3-copied.png (failure.png if a step fails).
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createServer as createNetServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { chromium } from 'playwright-core';
+import { createStepLog, joinAsStudent, newTeacherContext, prepareEvidence, startStack } from './harness.mjs';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const teacherDir = resolve(here, '..');
-const studentDir = resolve(teacherDir, '../student');
-const serverDir = resolve(teacherDir, '../server');
-const evidence = resolve(process.env.CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
-  || join(tmpdir(), 'classroom-widgets-test-evidence', 'dropbox-export'));
-mkdirSync(evidence, { recursive: true });
-// Remove this check's files from earlier runs so stale evidence can't survive.
-// Only these names: CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR may be shared with
-// other suites, so the directory itself is never wiped.
-for (const name of ['dropbox-export.txt', 'clipboard.txt', 'download.csv',
-  '1-empty.png', '2-submissions.png', '3-copied.png', 'failure.png']) {
-  rmSync(join(evidence, name), { force: true });
-}
+const evidence = prepareEvidence('dropbox-export', ['dropbox-export.txt', 'clipboard.txt', 'download.csv',
+  '1-empty.png', '2-submissions.png', '3-copied.png', 'failure.png']);
 
 const STUDENTS = [
   { name: 'Ada Lim', content: 'example.com/ada-project', expected: 'https://example.com/ada-project', type: 'Link' },
@@ -47,36 +32,7 @@ const STUDENTS = [
   { name: 'Dee', content: '=1+1', type: 'Text' },
 ];
 
-const log = [];
-const step = (message) => {
-  log.push(message);
-  console.log(message);
-};
-const writeLog = () => writeFileSync(join(evidence, 'dropbox-export.txt'), log.join('\n') + '\n');
-
-function freePort() {
-  return new Promise((done, fail) => {
-    const probe = createNetServer();
-    probe.once('error', fail);
-    probe.listen(0, '127.0.0.1', () => {
-      const { port } = probe.address();
-      probe.close(() => done(port));
-    });
-  });
-}
-
-async function waitForHttp(url, what) {
-  for (let i = 0; i < 120; i++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-    } catch {
-      // not listening yet
-    }
-    await new Promise((done) => setTimeout(done, 250));
-  }
-  throw new Error(`${what} did not answer at ${url}`);
-}
+const { step, write: writeLog } = createStepLog(join(evidence, 'dropbox-export.txt'));
 
 // Parses RFC 4180 CSV (quoted fields may hold commas, quotes and line breaks).
 function parseCsv(text) {
@@ -102,66 +58,21 @@ function parseCsv(text) {
 const localDate = (date) => [date.getFullYear(), date.getMonth() + 1, date.getDate()]
   .map((part, index) => (index ? String(part).padStart(2, '0') : String(part))).join('-');
 
-const [teacherPort, serverPort, studentPort] = await Promise.all([freePort(), freePort(), freePort()]);
-const teacherUrl = `http://localhost:${teacherPort}`;
-const serverUrl = `http://localhost:${serverPort}`;
-const studentUrl = `http://localhost:${studentPort}/student/`;
-
-let server;
-let teacherVite;
-let studentVite;
+let stack;
 let browser;
 let teacherPage;
 let failed = false;
 
 try {
   step(`# Drop Box export E2E, ${new Date().toISOString()}`);
+  stack = await startStack();
+  const { teacherUrl, serverUrl, studentUrl } = stack;
   step(`teacher ${teacherUrl}, server ${serverUrl}, student ${studentUrl}`);
-
-  server = spawn(process.execPath, ['src/server.js'], {
-    cwd: serverDir,
-    env: {
-      ...process.env,
-      PORT: String(serverPort),
-      NODE_ENV: 'development',
-      CORS_ORIGINS: [teacherPort, studentPort].map((port) => `http://localhost:${port}`).join(','),
-    },
-    stdio: ['ignore', 'ignore', 'inherit'],
-  });
-  await waitForHttp(`${serverUrl}/health`, 'Server');
-
-  // Vite reads VITE_* variables from the environment at startup.
-  process.env.VITE_SERVER_URL = serverUrl;
-  const { createServer: createVite } = await import('vite');
-  teacherVite = await createVite({
-    root: teacherDir,
-    configFile: join(teacherDir, 'vite.config.js'),
-    logLevel: 'warn',
-    server: { port: teacherPort, strictPort: true, open: false },
-  });
-  await teacherVite.listen();
-  studentVite = await createVite({
-    root: studentDir,
-    configFile: join(studentDir, 'vite.config.dev.ts'),
-    // Closing a student page resets its proxied socket, which Vite logs as an error.
-    logLevel: 'silent',
-    server: {
-      port: studentPort,
-      strictPort: true,
-      proxy: {
-        '/api': { target: serverUrl, changeOrigin: true },
-        '/socket.io': { target: serverUrl, ws: true, changeOrigin: true },
-      },
-    },
-  });
-  await studentVite.listen();
   step('PASS server, teacher app and student app started');
 
   browser = await chromium.launch();
-  const teacherContext = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
+  const teacherContext = await newTeacherContext(browser, { acceptDownloads: true });
   await teacherContext.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: teacherUrl });
-  // A fresh browser on `/` is sent to /about once (SEEN_LANDING_KEY in src/app/firstVisit.ts).
-  await teacherContext.addInitScript(() => localStorage.setItem('classroom-widgets:seen-landing', '1'));
   teacherPage = await teacherContext.newPage();
   teacherPage.on('pageerror', (error) => step(`teacher page error: ${error.message}`));
 
@@ -181,11 +92,7 @@ try {
   step('PASS Copy all and Download CSV are disabled with no submissions (1-empty.png)');
 
   for (const student of STUDENTS) {
-    const studentPage = await browser.newPage({ viewport: { width: 900, height: 800 } });
-    await studentPage.goto(studentUrl);
-    await studentPage.locator('#name').fill(student.name);
-    await studentPage.locator('#code').fill(code);
-    await studentPage.getByRole('button', { name: 'Join Session' }).click();
+    const studentPage = await joinAsStudent(browser, studentUrl, code, student.name);
     await studentPage.locator('#shareContent').fill(student.content);
     await studentPage.getByRole('button', { name: 'Submit' }).click();
     await studentPage.getByText('Submitted successfully!').waitFor();
@@ -240,9 +147,7 @@ try {
   writeLog();
   console.log(`Evidence: ${evidence}`);
   await browser?.close().catch(() => {});
-  await teacherVite?.close().catch(() => {});
-  await studentVite?.close().catch(() => {});
-  server?.kill();
+  await stack?.stop();
 }
 
 process.exit(failed ? 1 : 0);

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { TIME } = require('../config/constants');
 const PollRoom = require('./PollRoom');
 const LinkShareRoom = require('./LinkShareRoom');
 const RTFeedbackRoom = require('./RTFeedbackRoom');
@@ -16,6 +17,8 @@ class Session {
     this.createdAt = Date.now();
     this.lastActivity = Date.now();
     this.hostDisconnectedAt = null; // Timestamp when host disconnected
+    this.previousHostToken = null; // Last token, until the host shows it got the new one
+    this.previousHostTokenExpiresAt = null;
     this.hostToken = this.rotateHostToken(); // Secret token for host reclaim
     this.activeRooms = new Map(); // roomType -> room instance
     this.participants = new Map(); // socketId -> { name, studentId, joinedAt }
@@ -29,6 +32,13 @@ class Session {
   }
 
   /**
+   * Check if a teacher socket currently holds this session
+   */
+  hasConnectedHost() {
+    return Boolean(this.hostSocketId) && !this.isHostDisconnected();
+  }
+
+  /**
    * Update the last activity timestamp
    */
   updateActivity() {
@@ -36,31 +46,86 @@ class Session {
   }
 
   /**
-   * Issue a fresh host token, replacing any previous one.
+   * Issue a fresh host token, replacing the current one and any previous one.
    */
   rotateHostToken() {
+    this.retirePreviousHostToken();
     this.hostToken = crypto.randomBytes(24).toString('base64url');
     return this.hostToken;
   }
 
   /**
-   * Check whether a presented token allows reclaiming the host role.
-   * Constant-time comparison; never leaks this.hostToken.
+   * Constant-time comparison of a presented token with a stored one.
    */
-  isValidHostToken(token) {
-    if (typeof token !== 'string') {
+  static _tokenMatches(candidate, expected) {
+    if (typeof candidate !== 'string' || typeof expected !== 'string') {
       return false;
     }
-    const expected = Buffer.from(this.hostToken);
-    const candidate = Buffer.from(token);
-    return candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
+    const a = Buffer.from(candidate);
+    const b = Buffer.from(expected);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  }
+
+  _previousHostTokenLive() {
+    return this.previousHostToken !== null && Date.now() < this.previousHostTokenExpiresAt;
+  }
+
+  /**
+   * Check whether a presented token allows reclaiming the host role: the
+   * current token, or the previous one while it is still in its window (see
+   * reclaimHost). Never leaks either token.
+   */
+  isValidHostToken(token) {
+    // Evaluate both so timing does not reveal which one matched
+    const current = Session._tokenMatches(token, this.hostToken);
+    const previous = Session._tokenMatches(token, this.previousHostToken);
+    return current || (previous && this._previousHostTokenLive());
+  }
+
+  /**
+   * Reclaim the host role with a presented token.
+   *
+   * A reclaim rotates the token, and the new one reaches the host only in the
+   * acknowledgement, which can be lost (a Wi-Fi flap mid-reclaim). So the
+   * presented token stays valid as the previous one until the reclaiming
+   * socket sends its first host event (isHost), or PREVIOUS_HOST_TOKEN_MAX_AGE
+   * after the rotation, whichever comes first. At most one stale token is ever
+   * accepted.
+   *
+   * @returns {boolean} Whether the token was accepted
+   */
+  reclaimHost(token) {
+    const current = Session._tokenMatches(token, this.hostToken);
+    const previous = Session._tokenMatches(token, this.previousHostToken) && this._previousHostTokenLive();
+    if (current) {
+      this.previousHostToken = this.hostToken;
+      this.previousHostTokenExpiresAt = Date.now() + TIME.PREVIOUS_HOST_TOKEN_MAX_AGE;
+      this.hostToken = crypto.randomBytes(24).toString('base64url');
+      return true;
+    }
+    // With the previous token the host is handed the current one it missed;
+    // the window stays fixed from the rotation
+    return previous;
+  }
+
+  /**
+   * The host has received the current token: the previous one stops working.
+   */
+  retirePreviousHostToken() {
+    this.previousHostToken = null;
+    this.previousHostTokenExpiresAt = null;
   }
 
   /**
    * Check if a socket is the host
    */
   isHost(socketId) {
-    return this.hostSocketId === socketId;
+    const isHost = this.hostSocketId === socketId;
+    // A host event from the reclaiming socket shows it holds the current token
+    if (isHost && this.previousHostToken !== null) {
+      this.retirePreviousHostToken();
+    }
+    return isHost;
   }
 
   /**
@@ -210,10 +275,21 @@ class Session {
   }
 
   /**
-   * Check if the session is inactive
+   * Check if the session is inactive. A session held by a connected teacher
+   * never is: its rooms live until the teacher closes them (or they go idle),
+   * and a disconnected teacher is handled by the reconnect grace period.
    */
   isInactive(inactivityTimeout = 2 * 60 * 60 * 1000) {
-    return Date.now() - this.lastActivity > inactivityTimeout && this.getParticipantCount() === 0;
+    return Date.now() - this.lastActivity > inactivityTimeout
+      && this.getParticipantCount() === 0
+      && !this.hasConnectedHost();
+  }
+
+  /**
+   * Rooms with no host or student activity for longer than `idleTimeout`
+   */
+  getIdleRoomEntries(idleTimeout) {
+    return this.getActiveRoomEntries().filter(({ room }) => room.isInactive(idleTimeout));
   }
 
   /**

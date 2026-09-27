@@ -27,8 +27,12 @@ export function useNetworkedWidgetState({
   hasRoom,
   recoveryData
 }: UseNetworkedWidgetStateOptions): UseNetworkedWidgetStateResult {
-  const [isActive, setIsActive] = useState(false);
   const unifiedSession = useSession();
+  // A widget remounted over a live room (layout switch, compact overlay)
+  // starts from the room's known state rather than "paused".
+  const [isActive, setIsActive] = useState(
+    () => (widgetId ? unifiedSession.activeRooms.get(widgetId)?.isActive : undefined) ?? false
+  );
 
   // Socket event handlers for state changes
   const socketEvents = useMemo(() => ({
@@ -54,9 +58,14 @@ export function useNetworkedWidgetState({
     }
   }, [recoveryData, roomType]);
 
-  // Auto-activate when room is first created (not recovery)
-  const hasAutoActivatedRef = useRef(false);
+  // Auto-activate when room is first created (not recovery). A room that
+  // already existed when this widget mounted is not new, so leave it alone.
+  const hasAutoActivatedRef = useRef(hasRoom);
   useEffect(() => {
+    // A recovered room is not new either, even once its snapshot is retired
+    if (recoveryData) {
+      hasAutoActivatedRef.current = true;
+    }
     if (hasRoom && !recoveryData && !hasAutoActivatedRef.current && widgetId) {
       hasAutoActivatedRef.current = true;
       debug(`[${roomType}] Auto-activating widget on room creation`);

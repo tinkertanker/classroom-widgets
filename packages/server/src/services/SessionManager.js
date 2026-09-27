@@ -9,6 +9,9 @@ class SessionManager {
   constructor() {
     this.sessions = new Map();
     this.cleanupIntervalHandle = null;
+    // Closes an idle room and tells its clients; the socket layer installs one
+    // with setRoomExpiryHandler. Without it the room is closed silently.
+    this.roomExpiryHandler = (session, roomType, widgetId) => session.closeRoom(roomType, widgetId);
 
     // Start cleanup interval
     this.startCleanupInterval();
@@ -80,12 +83,50 @@ class SessionManager {
   }
 
   /**
-   * Start periodic cleanup of inactive sessions
+   * Set how an idle room is closed: (session, roomType, widgetId) => void
+   */
+  setRoomExpiryHandler(handler) {
+    this.roomExpiryHandler = handler;
+  }
+
+  /**
+   * Close rooms that have had no host or student activity for ROOM_IDLE_TIMEOUT
+   */
+  closeIdleRooms() {
+    // This runs on a timer, outside the socket error guards: an exception here
+    // would reach the uncaughtException handler and exit the process. Each
+    // close is isolated so one bad room cannot stop the rest of the sweep; it
+    // is retried on the next sweep.
+    for (const session of Array.from(this.sessions.values())) {
+      let idleRooms = [];
+      try {
+        idleRooms = session.getIdleRoomEntries(TIME.ROOM_IDLE_TIMEOUT);
+      } catch (error) {
+        console.error(`Failed to check idle rooms in session ${session.code}:`, error);
+      }
+      for (const { roomType, widgetId } of idleRooms) {
+        try {
+          console.log(`Closing idle room ${roomType}:${widgetId} in session ${session.code}`);
+          this.roomExpiryHandler(session, roomType, widgetId);
+        } catch (error) {
+          console.error(`Failed to close idle room ${roomType}:${widgetId} in session ${session.code}:`, error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Start periodic cleanup of inactive sessions and idle rooms
    */
   startCleanupInterval() {
     if (this.cleanupIntervalHandle) return;
     this.cleanupIntervalHandle = setInterval(() => {
-      this.cleanupInactiveSessions();
+      try {
+        this.cleanupInactiveSessions();
+      } catch (error) {
+        console.error('Inactive session cleanup failed:', error);
+      }
+      this.closeIdleRooms();
     }, TIME.CLEANUP_INTERVAL);
     // Don't keep the event loop alive just for the cleanup timer.
     if (this.cleanupIntervalHandle.unref) this.cleanupIntervalHandle.unref();
