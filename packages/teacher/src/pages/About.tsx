@@ -143,6 +143,7 @@ const About: React.FC = () => {
           <div className="flex gap-4 justify-center flex-wrap">
             <a
               href="/"
+              onClick={() => window.umami?.track('start-teaching-click')}
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-terracotta-500 to-terracotta-600 text-white rounded-lg hover:from-terracotta-600 hover:to-terracotta-700 transition-all transform hover:scale-105 text-lg font-medium shadow-lg"
             >
               Start Teaching
@@ -603,6 +604,7 @@ const About: React.FC = () => {
           </p>
           <a
             href="/"
+            onClick={() => window.umami?.track('get-started-click')}
             className="inline-flex items-center gap-2 px-8 py-4 bg-white text-sage-600 rounded-lg hover:bg-warm-gray-100 transition-colors text-lg font-medium"
           >
             Get Started Now

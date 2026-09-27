@@ -1,10 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import { redirectFirstVisitToLanding } from './app/firstVisit';
 
 const surface = new URLSearchParams(window.location.search).get('surface');
 const isCompactWidgetPanel = surface === 'widget-panel';
 const isDesktopWidgetLauncher = surface === 'widget-launcher';
+// Must run before App is imported: the workspace store writes its storage key on load.
+const redirectedToLanding = redirectFirstVisitToLanding();
 
 // Load Umami analytics conditionally (only if env vars are set)
 const umamiScriptUrl = import.meta.env.VITE_UMAMI_SCRIPT_URL;
@@ -15,6 +18,10 @@ if (!surface && umamiScriptUrl && umamiWebsiteId) {
   script.defer = true;
   script.src = umamiScriptUrl;
   script.dataset.websiteId = umamiWebsiteId;
+  if (redirectedToLanding) {
+    // Umami has no pre-load queue; window.umami exists once the script has run.
+    script.addEventListener('load', () => window.umami?.track('first-visit-redirect'));
+  }
   document.head.appendChild(script);
 }
 
