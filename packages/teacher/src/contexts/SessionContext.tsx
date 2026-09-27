@@ -85,6 +85,9 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 const HOST_TOKEN_STORAGE_KEY = 'classroom-widgets:hostToken';
+// The session code the stored host token belongs to. Tabs share storage, so a
+// token is only ever sent with the code it was issued for.
+const HOST_TOKEN_CODE_STORAGE_KEY = 'classroom-widgets:hostTokenCode';
 const SESSION_ENDED_MESSAGE = 'Your previous session ended. Press Start to begin a new one.';
 
 // Widget types that own a server-side room
@@ -178,13 +181,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const connectionPhaseRef = useRef<ConnectionPhase>('disconnected');
   const hostTokenRef = useRef<string | null>(localStorage.getItem(HOST_TOKEN_STORAGE_KEY));
 
-  // Persist the host reconnect token issued by session:create responses
-  const storeHostToken = useCallback((token: string | null) => {
+  // Persist the host reconnect token issued by session:create responses,
+  // together with the session code it belongs to
+  const storeHostToken = useCallback((token: string | null, code?: string | null) => {
     hostTokenRef.current = token;
     if (token) {
       localStorage.setItem(HOST_TOKEN_STORAGE_KEY, token);
+      if (code) localStorage.setItem(HOST_TOKEN_CODE_STORAGE_KEY, code);
     } else {
       localStorage.removeItem(HOST_TOKEN_STORAGE_KEY);
+      localStorage.removeItem(HOST_TOKEN_CODE_STORAGE_KEY);
     }
   }, []);
   const setConnectionPhase = useCallback((phase: ConnectionPhase) => {
@@ -487,9 +493,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
         debug(`[Session] Recovery attempt ${attempt}/${MAX_RECOVERY_ATTEMPTS}`);
         let retryDelay = 1000 * attempt;
-        // Read at emit time: another tab may have reclaimed and stored a newer
-        // token since this one loaded
-        const sentToken = localStorage.getItem(HOST_TOKEN_STORAGE_KEY) ?? hostTokenRef.current;
+        // This tab's own token for `code`, or a newer one another tab stored
+        // for the same session since this one loaded. Never another session's.
+        const storedToken = localStorage.getItem(HOST_TOKEN_STORAGE_KEY);
+        const sentToken = storedToken && localStorage.getItem(HOST_TOKEN_CODE_STORAGE_KEY) === code
+          ? storedToken
+          : hostTokenRef.current;
 
         try {
           const response = await new Promise<SessionCreatedResponse>((resolve, reject) => {
@@ -533,7 +542,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
               setStudentAppUrl(response.studentAppUrl);
             }
             if (response.hostToken) {
-              storeHostToken(response.hostToken);
+              storeHostToken(response.hostToken, response.code);
             }
 
             // Check if this is actually recovery of existing session. A server
@@ -579,11 +588,12 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           lastError = new Error(response.error);
           if (response.retryAfter === undefined) {
             // Terminal rejection: the stored session is gone. Only forget the
-            // stored copy if it is still the one we sent; otherwise another
-            // tab has moved on and owns it.
+            // stored copy if it still holds the token we sent (tokens are
+            // unique, so that is this session's pair); otherwise another tab
+            // has moved on and owns it.
             debug.error('[UnifiedSession] Failed to recover session:', response.error);
-            const storedToken = localStorage.getItem(HOST_TOKEN_STORAGE_KEY);
-            clearSession({ keepStorage: storedToken !== null && storedToken !== sentToken });
+            const storedNow = localStorage.getItem(HOST_TOKEN_STORAGE_KEY);
+            clearSession({ keepStorage: storedNow !== null && storedNow !== sentToken });
             setError(SESSION_ENDED_MESSAGE);
             return completeRecovery('recovery-failed');
           }
@@ -741,7 +751,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
           if (response.success) {
             debug('[UnifiedSession] Session created:', response.code);
             if (response.hostToken) {
-              storeHostToken(response.hostToken);
+              storeHostToken(response.hostToken, response.code);
             }
             // isExisting: this socket already hosts that session (a second
             // "Session not found" replace), so its live rooms stay

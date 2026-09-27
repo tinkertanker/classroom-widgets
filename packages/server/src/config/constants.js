@@ -18,7 +18,17 @@ module.exports = {
     HOST_RECONNECT_GRACE: 30 * 60 * 1000, // 30 minutes
     // - a room that gets no host or student event for this long is closed on
     //   the next sweep, even while the teacher stays connected.
-    ROOM_IDLE_TIMEOUT: 4 * 60 * 60 * 1000 // 4 hours
+    ROOM_IDLE_TIMEOUT: 4 * 60 * 60 * 1000, // 4 hours
+    // Host token rotation on reclaim (see Session.reclaimHost). The presented
+    // token stays valid until delivery of the new one is confirmed: the
+    // reclaiming socket sends a host event, or answers a heartbeat sent after
+    // the reply and then stays connected for HOST_TOKEN_CONFIRM_DELAY (a
+    // client that drops the reply mid-flap disconnects sooner). Backstop:
+    // PREVIOUS_HOST_TOKEN_MAX_AGE while connected. It must exceed the socket's
+    // ping interval + timeout (85s), so a silently dead socket is detected, and
+    // its token held, before the backstop fires.
+    HOST_TOKEN_CONFIRM_DELAY: 2 * 1000, // 2 seconds
+    PREVIOUS_HOST_TOKEN_MAX_AGE: 2 * 60 * 1000 // 2 minutes
   },
 
   // Limits

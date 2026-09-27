@@ -35,6 +35,7 @@ const SessionManager = require('../../../server/src/services/SessionManager.js')
 const { stopRateLimiterCleanup } = require('../../../server/src/middleware/socketAuth.js');
 
 const TOKEN_KEY = 'classroom-widgets:hostToken';
+const TOKEN_CODE_KEY = 'classroom-widgets:hostTokenCode';
 const CODE = 'BCDFGH';
 let ipSequence = 0;
 
@@ -212,11 +213,13 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(server.session.getParticipants().map((student: any) => student.name)).toEqual(['Ada', 'Bo']);
     expect(server.room.getParticipantCount()).toBe(2);
     expect(localStorage.getItem(TOKEN_KEY)).not.toBe(token);
-    // The presented token is retired as soon as the client presents the new
-    // one; until then it stays valid in case this acknowledgement was lost.
-    expect(server.session.hostToken).toBe(localStorage.getItem(TOKEN_KEY));
-    expect(server.session.previousHostToken).toBe(token);
     expect(peer.socket.join).toHaveBeenCalledWith(`${CODE}:poll:poll-1`);
+    // The presented token keeps reclaiming until delivery of the new one is
+    // confirmed (here: the recovered client's first host event), then stops.
+    expect(server.session.isValidHostToken(token)).toBe(true);
+    await peer.createRoom({ sessionCode: CODE, roomType: 'poll', widgetId: 'poll-1' });
+    expect(server.session.isValidHostToken(token)).toBe(false);
+    expect(server.session.isValidHostToken(localStorage.getItem(TOKEN_KEY))).toBe(true);
   });
 
   it('does not spin or clear state when the exact window boundary returns retryAfter: 0', async () => {
@@ -696,18 +699,37 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
   });
 
   // Two tabs share localStorage. Ways that could go wrong:
-  //  4. A tab reclaims with the token it read at load, after another tab has
-  //     rotated it, and is refused.
+  //  4. A tab reclaims with the token it read at load, after another tab of
+  //     the same session has rotated it, and is refused.
   //  5. A refused tab wipes the stored code and token another tab now holds.
+  //  6. A tab sends another session's stored token with its own code, is
+  //     refused for that reason, and then wipes that session's token.
   it('reclaims with the token in storage at emit time, not the one read at load (4)', async () => {
     mount();
-    // Another tab reclaimed (twice) and stored the current token
+    // Another tab of the same session reclaimed and stored the current token
     server.session.rotateHostToken();
     localStorage.setItem(TOKEN_KEY, server.session.hostToken);
+    localStorage.setItem(TOKEN_CODE_KEY, CODE);
     connect();
     expect(socket.request().data.hostToken).toBe(server.session.hostToken);
     expect((await respond()).isExisting).toBe(true);
     expect(context.connectionPhase).toBe('recovered');
+  });
+
+  it('sends its own token when another tab has moved on to another session before the emit (6)', async () => {
+    const ownToken = localStorage.getItem(TOKEN_KEY);
+    mount();
+    server.manager.deleteSession(CODE);
+    localStorage.setItem(TOKEN_KEY, 'token-from-other-tab');
+    localStorage.setItem(TOKEN_CODE_KEY, 'OTHER1');
+    connect();
+    expect(socket.request().data).toMatchObject({ existingCode: CODE, hostToken: ownToken });
+    await respond();
+
+    expect(context.connectionPhase).toBe('recovery-failed');
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('token-from-other-tab');
+    expect(localStorage.getItem(TOKEN_CODE_KEY)).toBe('OTHER1');
+    expect(storeState.current.setSessionCode).not.toHaveBeenCalledWith(null);
   });
 
   it('leaves another tab\'s stored session alone when its own reclaim is refused (5)', async () => {
