@@ -20,6 +20,9 @@ importers:
       '@boundaryml/baml':
         specifier: ^0.212.0
         version: 0.212.0
+      '@classroom-widgets/shared':
+        specifier: workspace:*
+        version: link:../shared
       axios:
         specifier: ^1.11.0
         version: 1.20.0(debug@4.4.3(supports-color@5.5.0))(supports-color@5.5.0)
