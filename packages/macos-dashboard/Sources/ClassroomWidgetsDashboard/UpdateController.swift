@@ -200,8 +200,10 @@ final class UpdateController {
     }
 
     private static func hasUsableDigest(_ digest: String?) -> Bool {
-        guard let digest, digest.hasPrefix("sha256:"), digest.count == 71 else { return false }
-        return digest.dropFirst("sha256:".count).allSatisfy(\.isHexDigit)
+        guard let digest, digest.hasPrefix("sha256:"), digest.utf8.count == 71 else { return false }
+        return digest.utf8.dropFirst("sha256:".utf8.count).allSatisfy {
+            (48...57).contains($0) || (97...102).contains($0)
+        }
     }
 
     private static let helperScript = """

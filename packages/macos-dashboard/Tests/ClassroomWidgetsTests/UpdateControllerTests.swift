@@ -30,8 +30,12 @@ final class UpdateControllerTests: XCTestCase {
         fixture.includeAsset = true
         fixture.assetDigest = nil
         await controller.check()
+        fixture.assetDigest = "sha256:" + String(repeating: "A", count: 64)
+        await controller.check()
+        fixture.assetDigest = "sha256:" + String(repeating: "ａ", count: 64)
+        await controller.check()
 
-        XCTAssertEqual(fixture.availableVersions, ["0.12.0", nil, nil, nil])
+        XCTAssertEqual(fixture.availableVersions, ["0.12.0", nil, nil, nil, nil, nil])
         XCTAssertTrue(fixture.alerts.isEmpty)
     }
 
