@@ -94,6 +94,25 @@ describe('validators.normalizeUrl', () => {
     const huge = 'a'.repeat(2001) + '.com';
     assert.equal(validators.normalizeUrl(huge), huge);
   });
+
+  it('keeps dotted words as text in Links + Text mode', () => {
+    for (const text of ['Mr.Tan', 'John.Doe', 'hello.world', 'e.g.']) {
+      assert.equal(validators.normalizeUrl(text, 'all'), text);
+    }
+  });
+
+  it('still normalizes clear domains in Links + Text mode', () => {
+    assert.equal(validators.normalizeUrl('example.com', 'all'), 'https://example.com');
+    assert.equal(validators.normalizeUrl('Google.COM', 'all'), 'https://Google.COM');
+    assert.equal(validators.normalizeUrl('www.example.xyz', 'all'), 'https://www.example.xyz');
+    assert.equal(validators.normalizeUrl('kahoot.it/abc', 'all'), 'https://kahoot.it/abc');
+    assert.equal(validators.normalizeUrl('https://Mr.Tan', 'all'), 'https://Mr.Tan');
+  });
+
+  it('keeps adding https:// to dotted words in Links only mode', () => {
+    assert.equal(validators.normalizeUrl('Mr.Tan', 'links'), 'https://Mr.Tan');
+    assert.equal(validators.normalizeUrl('Mr.Tan'), 'https://Mr.Tan');
+  });
 });
 
 describe('validators.isLink', () => {
@@ -107,6 +126,11 @@ describe('validators.isLink', () => {
     assert.equal(validators.isLink(''), false);
     assert.equal(validators.isLink(null), false);
     assert.equal(validators.isLink(12), false);
+  });
+
+  it('treats dotted words as text in Links + Text mode', () => {
+    assert.equal(validators.isLink('Mr.Tan', 'all'), false);
+    assert.equal(validators.isLink('example.com', 'all'), true);
   });
 
   it('rejects unsafe URL protocols', () => {

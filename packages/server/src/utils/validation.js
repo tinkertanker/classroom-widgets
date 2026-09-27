@@ -82,13 +82,19 @@ const validators = {
   // Common file extensions to exclude from being treated as TLDs
   _fileExtensions: ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'],
 
+  // Common TLDs that count as a link in Links + Text mode, so text like "Mr.Tan" stays text
+  _commonTlds: ['com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'io', 'ai', 'app', 'dev', 'co', 'me', 'tv', 'be', 'ly', 'gl', 'gle', 'gg', 'sg', 'my', 'uk', 'au', 'nz', 'ca', 'cn', 'jp', 'kr', 'hk', 'tw', 'de', 'fr', 'eu', 'xyz', 'site', 'online', 'tech', 'page'],
+
   /**
    * Normalize a URL by adding https:// if it looks like a domain without protocol.
    * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
+   * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
+   * with www., has a path/query, or ends in a common TLD.
    * @param {string} text - Text to normalize
+   * @param {string} [acceptMode] - Room accept mode ('links' or 'all')
    * @returns {string} - Normalized text (with https:// if applicable)
    */
-  normalizeUrl: (text) => {
+  normalizeUrl: (text, acceptMode) => {
     if (!text || typeof text !== 'string') return text;
     const trimmed = text.trim();
 
@@ -121,6 +127,11 @@ const validators = {
         if (validators._fileExtensions.includes(hostnameExt)) {
           return trimmed;
         }
+        // In Links + Text mode, only treat clear domains as links
+        if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
+            !validators._commonTlds.includes(hostnameExt)) {
+          return trimmed;
+        }
         return withProtocol;
       }
     } catch {
@@ -133,12 +144,13 @@ const validators = {
   /**
    * Check if a string looks like a URL (after normalization)
    * @param {string} text - Text to check
+   * @param {string} [acceptMode] - Room accept mode ('links' or 'all')
    * @returns {boolean}
    */
-  isLink: (text) => {
+  isLink: (text, acceptMode) => {
     if (!text || typeof text !== 'string') return false;
     // Normalize first to catch domains without protocol
-    const normalized = validators.normalizeUrl(text);
+    const normalized = validators.normalizeUrl(text, acceptMode);
     return validators.hasSafeProtocol(normalized);
   },
 

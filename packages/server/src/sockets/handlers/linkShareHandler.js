@@ -60,10 +60,10 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     }
 
     // Normalize URL (add https:// if it looks like a domain without protocol)
-    const content = validators.normalizeUrl(rawContent);
+    const content = validators.normalizeUrl(rawContent, room.acceptMode);
 
     // Check if it's a link
-    const isLink = validators.isLink(content);
+    const isLink = validators.isLink(content, room.acceptMode);
 
     // Validate based on room accept mode
     if (room.acceptMode === 'links') {

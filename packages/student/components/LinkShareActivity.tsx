@@ -17,11 +17,17 @@ const MAX_TEXT_LENGTH = 280;
 // Common file extensions to exclude from being treated as TLDs
 const FILE_EXTENSIONS = ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'];
 
+// Common TLDs that count as a link in Links + Text mode, so text like "Mr.Tan" stays text
+// Keep in sync with packages/server/src/utils/validation.js
+const COMMON_TLDS = ['com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'io', 'ai', 'app', 'dev', 'co', 'me', 'tv', 'be', 'ly', 'gl', 'gle', 'gg', 'sg', 'my', 'uk', 'au', 'nz', 'ca', 'cn', 'jp', 'kr', 'hk', 'tw', 'de', 'fr', 'eu', 'xyz', 'site', 'online', 'tech', 'page'];
+
 /**
  * Check if text looks like a URL without protocol and add https:// if so.
  * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
+ * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
+ * with www., has a path/query, or ends in a common TLD.
  */
-const normalizeUrl = (text: string): string => {
+const normalizeUrl = (text: string, acceptMode: 'links' | 'all'): string => {
   const trimmed = text.trim();
 
   // Already has a protocol
@@ -50,6 +56,11 @@ const normalizeUrl = (text: string): string => {
       // but "domain.com/file.txt" is fine (the hostname is "domain.com")
       const hostnameExt = url.hostname.split('.').pop()?.toLowerCase();
       if (hostnameExt && FILE_EXTENSIONS.includes(hostnameExt)) {
+        return trimmed;
+      }
+      // In Links + Text mode, only treat clear domains as links
+      if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
+          !(hostnameExt && COMMON_TLDS.includes(hostnameExt))) {
         return trimmed;
       }
       return withProtocol;
@@ -110,7 +121,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
     }
 
     // Normalize URLs (add https:// if it looks like a domain)
-    const normalizedContent = normalizeUrl(trimmedContent);
+    const normalizedContent = normalizeUrl(trimmedContent, acceptMode);
 
     setIsSubmitting(true);
     setError('');
