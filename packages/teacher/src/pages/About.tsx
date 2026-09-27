@@ -91,7 +91,7 @@ const About: React.FC = () => {
                 className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 object-contain"
               />
               <div className="min-w-0">
-                <h1 className="text-base min-[375px]:text-lg sm:text-xl leading-tight min-[375px]:leading-tight sm:leading-7 whitespace-nowrap font-bold text-warm-gray-900 dark:text-warm-gray-100">
+                <h1 className="relative top-[2px] sm:top-0 text-base min-[375px]:text-lg sm:text-xl leading-tight min-[375px]:leading-tight sm:leading-7 whitespace-nowrap font-bold text-warm-gray-900 dark:text-warm-gray-100">
                   Classroom Widgets
                 </h1>
                 <p className="hidden sm:block text-xs text-warm-gray-600 dark:text-warm-gray-400 -mt-1">
