@@ -2,6 +2,7 @@
  * Input validation utilities for socket events
  */
 
+const tlds = require('tlds');
 const { LIMITS } = require('../config/constants');
 const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:']);
 
@@ -82,14 +83,14 @@ const validators = {
   // Common file extensions to exclude from being treated as TLDs
   _fileExtensions: ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'],
 
-  // Common TLDs that count as a link in Links + Text mode, so text like "Mr.Tan" stays text
-  _commonTlds: ['com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'io', 'ai', 'app', 'dev', 'co', 'me', 'tv', 'be', 'ly', 'gl', 'gle', 'gg', 'sg', 'my', 'uk', 'au', 'nz', 'ca', 'cn', 'jp', 'kr', 'hk', 'tw', 'de', 'fr', 'eu', 'xyz', 'site', 'online', 'tech', 'page'],
+  // Real TLDs (IANA list), so text like "Mr.Tan" stays text in Links + Text mode
+  _tlds: new Set(tlds),
 
   /**
    * Normalize a URL by adding https:// if it looks like a domain without protocol.
    * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
    * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
-   * with www., has a path/query, or ends in a common TLD.
+   * with www., has a path/query, or ends in a real TLD.
    * @param {string} text - Text to normalize
    * @param {string} [acceptMode] - Room accept mode ('links' or 'all')
    * @returns {string} - Normalized text (with https:// if applicable)
@@ -129,7 +130,7 @@ const validators = {
         }
         // In Links + Text mode, only treat clear domains as links
         if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
-            !validators._commonTlds.includes(hostnameExt)) {
+            !validators._tlds.has(hostnameExt)) {
           return trimmed;
         }
         return withProtocol;

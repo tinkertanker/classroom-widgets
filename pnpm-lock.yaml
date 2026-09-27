@@ -47,6 +47,9 @@ importers:
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.3(supports-color@5.5.0)
+      tlds:
+        specifier: ^1.261.0
+        version: 1.261.0
     devDependencies:
       nodemon:
         specifier: ^3.0.1
@@ -100,6 +103,9 @@ importers:
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.3(supports-color@8.1.1)
+      tlds:
+        specifier: ^1.261.0
+        version: 1.261.0
       zustand:
         specifier: ^5.0.6
         version: 5.0.15(@types/react@18.3.31)(react@18.3.1)
@@ -2436,6 +2442,10 @@ packages:
   tinyspy@4.0.4:
     resolution: {integrity: sha512-azl+t0z7pw/z958Gy9svOTuzqIk6xq+NSheJzn5MMWtWTFywIacg2wUlzKFGtt3cthx0r2SxMK0yzJOR0IES7Q==}
     engines: {node: '>=14.0.0'}
+
+  tlds@1.261.0:
+    resolution: {integrity: sha512-QXqwfEl9ddlGBaRFXIvNKK6OhipSiLXuRuLJX5DErz0o0Q0rYxulWLdFryTkV5PkdZct5iMInwYEGe/eR++1AA==}
+    hasBin: true
 
   tldts-core@6.1.86:
     resolution: {integrity: sha512-Je6p7pkk+KMzMv2XXKmAE3McmolOQFdxkKw0R8EYNr7sELW46JqnNeTX8ybPiQgvg1ymCoF8LXs5fzFaZvJPTA==}
@@ -5016,6 +5026,8 @@ snapshots:
   tinyrainbow@2.0.0: {}
 
   tinyspy@4.0.4: {}
+
+  tlds@1.261.0: {}
 
   tldts-core@6.1.86: {}
 

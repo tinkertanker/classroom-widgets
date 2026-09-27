@@ -26,7 +26,8 @@
     "helmet": "^8.2.0",
     "ollama": "^0.6.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tlds": "^1.261.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1",

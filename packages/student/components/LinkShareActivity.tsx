@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
+import tlds from 'tlds';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface LinkShareActivityProps {
@@ -17,15 +18,15 @@ const MAX_TEXT_LENGTH = 280;
 // Common file extensions to exclude from being treated as TLDs
 const FILE_EXTENSIONS = ['txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'zip', 'rar', 'tar', 'gz', 'json', 'xml', 'csv', 'html', 'css', 'js', 'ts', 'py', 'java', 'cpp', 'md', 'log'];
 
-// Common TLDs that count as a link in Links + Text mode, so text like "Mr.Tan" stays text
+// Real TLDs (IANA list), so text like "Mr.Tan" stays text in Links + Text mode
 // Keep in sync with packages/server/src/utils/validation.js
-const COMMON_TLDS = ['com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'info', 'biz', 'io', 'ai', 'app', 'dev', 'co', 'me', 'tv', 'be', 'ly', 'gl', 'gle', 'gg', 'sg', 'my', 'uk', 'au', 'nz', 'ca', 'cn', 'jp', 'kr', 'hk', 'tw', 'de', 'fr', 'eu', 'xyz', 'site', 'online', 'tech', 'page'];
+const TLDS = new Set(tlds);
 
 /**
  * Check if text looks like a URL without protocol and add https:// if so.
  * Uses a simple heuristic: if adding https:// makes it a valid URL, do it.
  * In 'all' (Links + Text) mode, bare input only counts as a domain if it starts
- * with www., has a path/query, or ends in a common TLD.
+ * with www., has a path/query, or ends in a real TLD.
  */
 const normalizeUrl = (text: string, acceptMode: 'links' | 'all'): string => {
   const trimmed = text.trim();
@@ -60,7 +61,7 @@ const normalizeUrl = (text: string, acceptMode: 'links' | 'all'): string => {
       }
       // In Links + Text mode, only treat clear domains as links
       if (acceptMode === 'all' && !/^www\./i.test(trimmed) && url.pathname === '/' && !url.search &&
-          !(hostnameExt && COMMON_TLDS.includes(hostnameExt))) {
+          !(hostnameExt && TLDS.has(hostnameExt))) {
         return trimmed;
       }
       return withProtocol;
