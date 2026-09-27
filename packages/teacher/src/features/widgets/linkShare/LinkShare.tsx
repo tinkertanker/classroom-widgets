@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { FaInbox, FaTrash, FaArrowUpRightFromSquare, FaLink, FaFont } from 'react-icons/fa6';
+import { FaInbox, FaTrash, FaArrowUpRightFromSquare, FaLink, FaFont, FaCopy, FaCheck, FaXmark, FaDownload } from 'react-icons/fa6';
 import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
 import { isSafeHttpUrl } from '@shared/utils/validation';
+import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
+import { formatSubmissionsAsCsv, formatSubmissionsAsText, getSubmissionsCsvFilename } from './submissionExport';
 
 interface Submission {
   id: string;
@@ -20,6 +22,9 @@ interface Submission {
 }
 
 type AcceptMode = 'links' | 'all';
+type CopyStatus = 'idle' | 'copied' | 'failed';
+
+const exportButtonClass = 'p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
 function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
@@ -29,6 +34,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   const [acceptMode, setAcceptMode] = useState<AcceptMode>(
     savedState?.acceptMode || 'all'
   );
+  const { value: copyStatus, setTemporaryValue: showCopyStatus } = useTemporaryState<CopyStatus>('idle', 2000);
 
   // Networked widget hook
   const {
@@ -120,6 +126,36 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
       acceptMode: newMode
     });
   }, [widgetId, hasRoom, acceptMode, emit, session.sessionCode, canEdit]);
+
+  const handleCopyAll = useCallback(async () => {
+    if (submissions.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(formatSubmissionsAsText(submissions));
+      showCopyStatus('copied');
+    } catch {
+      showCopyStatus('failed');
+    }
+  }, [submissions, showCopyStatus]);
+
+  const handleDownloadCsv = useCallback(() => {
+    if (submissions.length === 0) return;
+    // The BOM makes Excel read the file as UTF-8 so non-English names survive.
+    const blob = new Blob(['\uFEFF', formatSubmissionsAsCsv(submissions)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = getSubmissionsCsvFilename();
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, [submissions]);
+
+  const copyTitle = copyStatus === 'copied'
+    ? 'Copied!'
+    : copyStatus === 'failed'
+    ? 'Could not copy to clipboard'
+    : 'Copy all submissions';
 
   // Save state
   useEffect(() => {
@@ -280,28 +316,59 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
         requireClearConfirmation={true}
         clearConfirmationMessage="Are you sure you want to clear all submissions?"
         rightContent={
-          <button
-            onClick={handleToggleAcceptMode}
-            disabled={!session.isReady}
-            className={`px-2 py-1 text-xs font-medium rounded transition-colors inline-flex items-center gap-1.5 ${
-              acceptMode === 'all'
-                ? 'bg-terracotta-100 text-terracotta-700 dark:bg-terracotta-900/30 dark:text-terracotta-400'
-                : 'bg-warm-gray-100 text-warm-gray-600 dark:bg-warm-gray-700 dark:text-warm-gray-400'
-            } hover:bg-terracotta-100 dark:hover:bg-terracotta-900/30 disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={acceptMode === 'all' ? 'Accepting links and text' : 'Accepting links only'}
-          >
-            {acceptMode === 'all' ? (
-              <>
-                <FaFont className="text-[10px]" />
-                <span>Links + Text</span>
-              </>
-            ) : (
-              <>
-                <FaLink className="text-[10px]" />
-                <span>Links Only</span>
-              </>
-            )}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={handleCopyAll}
+              disabled={submissions.length === 0}
+              className={exportButtonClass}
+              title={copyTitle}
+              aria-label={copyTitle}
+            >
+              {copyStatus === 'copied' ? (
+                <FaCheck className="text-base text-sage-600 dark:text-sage-400" />
+              ) : copyStatus === 'failed' ? (
+                <FaXmark className="text-base text-dusty-rose-600 dark:text-dusty-rose-400" />
+              ) : (
+                <FaCopy className="text-base" />
+              )}
+            </button>
+            <span className="sr-only" role="status">
+              {copyStatus === 'idle' ? '' : copyTitle}
+            </span>
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              disabled={submissions.length === 0}
+              className={exportButtonClass}
+              title="Download submissions as CSV"
+              aria-label="Download submissions as CSV"
+            >
+              <FaDownload className="text-base" />
+            </button>
+            <button
+              onClick={handleToggleAcceptMode}
+              disabled={!session.isReady}
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors inline-flex items-center gap-1.5 ${
+                acceptMode === 'all'
+                  ? 'bg-terracotta-100 text-terracotta-700 dark:bg-terracotta-900/30 dark:text-terracotta-400'
+                  : 'bg-warm-gray-100 text-warm-gray-600 dark:bg-warm-gray-700 dark:text-warm-gray-400'
+              } hover:bg-terracotta-100 dark:hover:bg-terracotta-900/30 disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={acceptMode === 'all' ? 'Accepting links and text' : 'Accepting links only'}
+            >
+              {acceptMode === 'all' ? (
+                <>
+                  <FaFont className="text-[10px]" />
+                  <span>Links + Text</span>
+                </>
+              ) : (
+                <>
+                  <FaLink className="text-[10px]" />
+                  <span>Links Only</span>
+                </>
+              )}
+            </button>
+          </>
         }
       />
     </div>
