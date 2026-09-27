@@ -38,7 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.terminationApproved = false
             self?.controller?.resumeAfterCancelledTermination()
             self?.displayPreviewCoordinator.terminationCancelled()
-        }
+        },
+        updateAvailable: { [weak self] version in self?.showUpdateAvailability(version) }
     )
     private var shortcutState: ShortcutBindingState?
     private var displayShortcutStartupGate = DisplayShortcutStartupGate()
@@ -46,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var shortcutStatus: String?
     private var moveWidgetShortcutStatuses: [MoveDirection: String] = [:]
     private var statusItem: NSStatusItem?
+    private var mainUpdateMenuItem: NSMenuItem?
+    private var availableUpdateVersion: String?
     private let launchAtLoginManager = LaunchAtLoginManager()
     private let displayPreviewCoordinator = DisplayPreviewCoordinator()
     private(set) lazy var settingsContext = DashboardSettingsContext(
@@ -181,6 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
         appMenu.addItem(updateItem)
+        mainUpdateMenuItem = updateItem
         appMenu.addItem(.separator())
         appMenu.addItem(NSMenuItem(title: "Quit Classroom Widgets", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         appMenuItem.submenu = appMenu
@@ -266,7 +270,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         launchItem.isEnabled = launchAtLoginManager.canConfigure
         menu.addItem(launchItem)
 
-        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        let updateTitle = availableUpdateVersion.map { "Update to v\($0)…" } ?? "Check for Updates…"
+        let updateItem = NSMenuItem(title: updateTitle, action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
 
@@ -278,6 +283,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
+    }
+
+    private func showUpdateAvailability(_ version: String?) {
+        availableUpdateVersion = version
+        mainUpdateMenuItem?.title = version.map { "Update to v\($0)…" } ?? "Check for Updates…"
+        statusItem?.button?.image = DashboardMenuBarIcon.make(size: 16, updateAvailable: version != nil)
+        statusItem?.button?.toolTip = version.map { "Classroom Widgets — update v\($0) available" } ?? "Classroom Widgets"
     }
 
     private func makeArrangeMenu() -> NSMenu {

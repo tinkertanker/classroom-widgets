@@ -44,6 +44,8 @@
     <Resource Include="Assets\AppIcon.ico" />
     <Resource Include="Assets\TrayIcon-Black.ico" />
     <Resource Include="Assets\TrayIcon-White.ico" />
+    <Resource Include="Assets\TrayIcon-Black-Update.ico" />
+    <Resource Include="Assets\TrayIcon-White-Update.ico" />
   </ItemGroup>
 
   <!-- Bundle the teacher production build so the app runs without a dev server. -->

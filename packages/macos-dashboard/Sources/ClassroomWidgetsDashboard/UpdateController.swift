@@ -11,6 +11,7 @@ final class UpdateController {
     private let loadRelease: @MainActor (URLRequest) async throws -> (Data, URLResponse)
     private let presentAlert: @MainActor (NSAlert) -> NSApplication.ModalResponse
     private let openDownloads: @MainActor (URL) -> Void
+    private let updateAvailable: @MainActor (String?) -> Void
     private let installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)?
     private var checking = false
 
@@ -23,6 +24,7 @@ final class UpdateController {
         },
         presentAlert: @escaping @MainActor (NSAlert) -> NSApplication.ModalResponse = { $0.runModal() },
         openDownloads: @escaping @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) },
+        updateAvailable: @escaping @MainActor (String?) -> Void = { _ in },
         installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)? = nil
     ) {
         self.prepareForTermination = prepareForTermination
@@ -31,6 +33,7 @@ final class UpdateController {
         self.loadRelease = loadRelease
         self.presentAlert = presentAlert
         self.openDownloads = openDownloads
+        self.updateAvailable = updateAvailable
         self.installUpdate = installUpdate
     }
 
@@ -50,16 +53,26 @@ final class UpdateController {
             }
             let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
             let availableVersion = release.tagName.hasPrefix("v") ? String(release.tagName.dropFirst()) : release.tagName
+            guard Self.versionParts(availableVersion) != nil, Self.versionParts(currentVersion) != nil else {
+                throw UpdateError.invalidResponse
+            }
             guard Self.isNewerVersion(availableVersion, than: currentVersion) else {
+                updateAvailable(nil)
                 if manual { showMessage(title: "Classroom Widgets is up to date", detail: "Version \(currentVersion) is the latest version.") }
                 return
             }
-
             let expectedName = "ClassroomWidgets-v\(availableVersion)-macos.zip"
-            guard let asset = release.assets.first(where: { $0.name == expectedName }) else {
-                showReleaseFallback(release.htmlURL, detail: "Version \(availableVersion) is available, but its macOS update is not attached yet.")
+            guard let asset = release.assets.first(where: {
+                $0.name == expectedName && Self.hasUsableDigest($0.digest)
+            }) else {
+                updateAvailable(nil)
+                if manual {
+                    showReleaseFallback(release.htmlURL, detail: "Version \(availableVersion) is available, but its macOS update is not attached yet.")
+                }
                 return
             }
+            updateAvailable(availableVersion)
+            guard manual else { return }
 
             let alert = NSAlert()
             alert.messageText = "Classroom Widgets \(availableVersion) is available."
@@ -106,7 +119,7 @@ final class UpdateController {
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
         let archive = staging.appendingPathComponent(asset.name)
         try fileManager.moveItem(at: download, to: archive)
-        guard let expectedDigest = asset.digest, expectedDigest.hasPrefix("sha256:"), expectedDigest.count == 71 else {
+        guard let expectedDigest = asset.digest, Self.hasUsableDigest(expectedDigest) else {
             throw UpdateError.checksumMismatch
         }
         let digest = "sha256:" + SHA256.hash(data: try Data(contentsOf: archive)).map { String(format: "%02x", $0) }.joined()
@@ -185,8 +198,20 @@ final class UpdateController {
     }
 
     private static func versionParts(_ version: String) -> [Int]? {
-        let parts = version.split(separator: ".").compactMap { Int($0) }
+        let components = version.split(separator: ".", omittingEmptySubsequences: false)
+        guard components.count == 3,
+              components.allSatisfy({ !$0.isEmpty && $0.utf8.allSatisfy { (48...57).contains($0) } }) else {
+            return nil
+        }
+        let parts = components.compactMap { Int($0) }
         return parts.count == 3 ? parts : nil
+    }
+
+    private static func hasUsableDigest(_ digest: String?) -> Bool {
+        guard let digest, digest.hasPrefix("sha256:"), digest.utf8.count == 71 else { return false }
+        return digest.utf8.dropFirst("sha256:".utf8.count).allSatisfy {
+            (48...57).contains($0) || (97...102).contains($0)
+        }
     }
 
     private static let helperScript = """

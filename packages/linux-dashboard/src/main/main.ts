@@ -170,6 +170,7 @@ function bootstrap(): void {
 
     updates = new UpdateController(version, () => void requestQuit());
     tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit(), () => displayPreview?.open());
+    updates.on('updateAvailable', (availableVersion: string | null) => tray?.setUpdateAvailable(availableVersion));
     void host.start();
     setTimeout(() => void updates?.check(), 10_000);
   });
