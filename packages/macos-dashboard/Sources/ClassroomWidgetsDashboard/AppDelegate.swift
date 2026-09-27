@@ -207,8 +207,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func setupStatusItem() {
-        let statusItem = NSStatusBar.system.statusItem(withLength: 26)
-        statusItem.button?.image = DashboardMenuBarIcon.make(size: 21)
+        let statusItem = NSStatusBar.system.statusItem(withLength: 16)
+        statusItem.button?.image = DashboardMenuBarIcon.make(size: 16)
         statusItem.button?.imagePosition = .imageOnly
         let menu = NSMenu()
         // Items set their own enabled state (Arrange Widgets, Launch at Login).

@@ -17,14 +17,14 @@ enum DashboardMenuBarIcon {
     private static let hamsterCircles: [(x: CGFloat, y: CGFloat, radius: CGFloat)] = [(350.1, 257.2, 166), (184.4, 417.2, 122)]
     private static let hamsterGap: CGFloat = 99
     /// Share of the image the 1024 canvas fills.
-    private static let artworkScale: CGFloat = 0.85
+    private static let artworkScale: CGFloat = 1.125
 
-    private static let statusItemIcon = makeImage(size: 21, remaining: restingRemaining)
+    private static let statusItemIcon = makeImage(size: 16, remaining: restingRemaining)
 
     /// - Parameter remaining: share of the dial still to run, from 0 (time's up)
     ///   to 1 (full ring). The band shortens anticlockwise towards 12 o'clock.
     static func make(size: CGFloat = 18, remaining: CGFloat = restingRemaining) -> NSImage {
-        if size == 21 && remaining == restingRemaining {
+        if size == 16 && remaining == restingRemaining {
             return statusItemIcon
         }
         return makeImage(size: size, remaining: remaining)
