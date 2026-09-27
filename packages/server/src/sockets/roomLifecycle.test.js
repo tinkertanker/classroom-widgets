@@ -24,6 +24,13 @@ process.env.LOG_LEVEL = 'error';
 //  8. The session inactivity sweep deletes the session of a teacher who is
 //     still connected (no students joined for a while), silently taking every
 //     room with it.
+//  9. A student joining does not count as activity on the rooms they join
+//     (Link Share and RT Feedback students never send requestState), so an
+//     idle room is closed minutes after a student joins it.
+// 10. Closing one idle room throws. The sweep runs on a timer outside any
+//     socket handler, so the throw reaches the process's uncaughtException
+//     handler, which exits and drops every class; or it stops the sweep and
+//     the other idle rooms are never closed.
 
 const { describe, it, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
@@ -148,6 +155,46 @@ describe('room lifecycle', () => {
       mock.timers.tick(TIME.ROOM_IDLE_TIMEOUT - MINUTE);
 
       assert.ok(sessionManager.getSession(code).getRoom('poll', 'poll-1'), 'student activity kept the room');
+    });
+
+    it('counts a student joining the session as activity on the rooms they join (9)', async () => {
+      const { code } = await createSession();
+      await createRoom(code, 'linkShare', 'drop-box-1');
+
+      mock.timers.tick(TIME.ROOM_IDLE_TIMEOUT - MINUTE);
+      const student = createMockSocket('late-student', '10.9.2.2');
+      io.connect(student);
+      student.trigger(EVENTS.SESSION.JOIN, { code, name: 'Bo', studentId: 'bo' });
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(student.emitted.find(e => e[0] === 'session:joined')?.[1].success, true);
+
+      mock.timers.tick(TIME.CLEANUP_INTERVAL + 2 * MINUTE);
+      assert.ok(sessionManager.getSession(code).getRoom('linkShare', 'drop-box-1'), 'the join kept the room');
+      assert.deepEqual(roomClosedBroadcasts(), []);
+
+      mock.timers.tick(TIME.ROOM_IDLE_TIMEOUT);
+      assert.equal(sessionManager.getSession(code).getRoom('linkShare', 'drop-box-1'), undefined, 'then it goes idle');
+    });
+
+    it('keeps sweeping, and keeps the process up, when closing one idle room throws (10)', async () => {
+      const { code } = await createSession();
+      await createRoom(code, 'poll', 'broken-poll');
+      await createRoom(code, 'poll', 'idle-poll');
+      const closeNormally = sessionManager.roomExpiryHandler;
+      sessionManager.setRoomExpiryHandler((session, roomType, widgetId) => {
+        if (widgetId === 'broken-poll') throw new Error('boom');
+        return closeNormally(session, roomType, widgetId);
+      });
+
+      assert.doesNotThrow(() => mock.timers.tick(TIME.ROOM_IDLE_TIMEOUT + TIME.CLEANUP_INTERVAL));
+
+      const session = sessionManager.getSession(code);
+      assert.equal(session.getRoom('poll', 'idle-poll'), undefined, 'the other idle room still closed');
+      assert.deepEqual(roomClosedBroadcasts().map(b => b.data.widgetId), ['idle-poll']);
+
+      sessionManager.setRoomExpiryHandler(closeNormally);
+      mock.timers.tick(TIME.CLEANUP_INTERVAL);
+      assert.equal(session.getRoom('poll', 'broken-poll'), undefined, 'a later sweep retries it');
     });
 
     it('closes only the idle room, not a busy sibling or the session (4)', async () => {

@@ -638,20 +638,51 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(context.connectionPhase).toBe('recovered');
   });
 
-  it('allows recovery at the local age limit, but not beyond it', async () => {
-    storeState.current.sessionCreatedAt = Date.now() - 2 * 60 * 60 * 1000;
+  // Issue #78: the server now keeps a room until its widget is deleted, the
+  // teacher is gone for 30 minutes, or the room is idle for 4 hours, so the
+  // client no longer guesses from the session's age. Ways that could go wrong:
+  //  1. A reload after 2 hours drops a session the server still holds, giving
+  //     the teacher a new code while the students sit in the old one.
+  //  2. A stored session the server no longer holds leaves the teacher on a
+  //     dead code, or with rooms and a recovery snapshot from it.
+  //  3. Starting another widget in a session older than 2 hours creates a
+  //     replacement session or clears the live rooms.
+  it('recovers a stored session older than two hours that the server still holds (1)', async () => {
+    const createdAt = Date.now() - 5 * 60 * 60 * 1000;
+    storeState.current.sessionCreatedAt = createdAt;
     mount();
     await recoverOnce();
     expectPreserved();
+    expect(context.sessionCreatedAt).toBe(createdAt);
   });
 
-  it('still clears a genuinely expired local session without attempting reclaim', () => {
-    storeState.current.sessionCreatedAt = Date.now() - 2 * 60 * 60 * 1000 - 1;
+  it('falls back to a new session when the server no longer holds the stored one (2)', async () => {
+    storeState.current.sessionCreatedAt = Date.now() - 5 * 60 * 60 * 1000;
+    server.manager.sessions.delete(CODE);
     mount();
     connect();
-    expect(context.connectionPhase).toBe('recovery-failed');
-    expect(context.sessionCode).toBeNull();
-    expect(localStorage.getItem(TOKEN_KEY)).toBeNull();
-    expect(socket.requests()).toHaveLength(0);
+    const response = await respond();
+
+    expect(response.isExisting).toBe(false);
+    expect(context.connectionPhase).toBe('recovered');
+    expect(context.sessionCode).toBe(response.code);
+    expect(context.sessionCode).not.toBe(CODE);
+    expect(context.activeRooms.size).toBe(0);
+    expect(context.getWidgetRecoveryData('poll-1')).toBeNull();
+    expect(localStorage.getItem(TOKEN_KEY)).toBe(response.hostToken);
+  });
+
+  it('keeps the recovered session and its rooms when another widget starts after two hours (3)', async () => {
+    storeState.current.sessionCreatedAt = Date.now() - 5 * 60 * 60 * 1000;
+    mount();
+    await recoverOnce();
+    const requestsBefore = socket.requests().length;
+
+    let code: string | null = null;
+    await act(async () => { code = await context.createSession(); });
+
+    expect(code).toBe(CODE);
+    expect(socket.requests()).toHaveLength(requestsBefore);
+    expect(context.activeRooms.has('poll-1')).toBe(true);
   });
 });

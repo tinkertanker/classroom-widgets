@@ -221,6 +221,10 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         })));
       }
 
+      // A student arriving counts as activity on every room they join, so an
+      // otherwise idle room is not expired right after someone joins it.
+      session.getActiveRoomEntries().forEach(({ room }) => room.updateActivity());
+
       // Join all active widget rooms
       activeRoomsData.forEach(roomData => {
         const roomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;

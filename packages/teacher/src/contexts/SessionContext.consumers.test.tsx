@@ -162,30 +162,21 @@ afterEach(() => { cleanup(); server.manager.stopCleanupInterval(); vi.useRealTim
 afterAll(stopRateLimiterCleanup);
 
 describe('session recovery consumer invariants (#157)', () => {
-  it.each([TWO_HOURS - 1, TWO_HOURS, TWO_HOURS + 1])('keeps same-session persisted age when retrying at age %i', async (age) => {
+  // The server decides whether a stored session is still alive (#78), so a
+  // retry reclaims it at any age and never renews the persisted age.
+  it.each([TWO_HOURS - 1, TWO_HOURS + 1, 3 * TWO_HOURS])('keeps same-session persisted age when retrying at age %i', async (age) => {
     const createdAt = Date.now();
     mount();
     await connect();
     await defer();
     vi.setSystemTime(createdAt + age);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Retry session recovery' })); });
-    if (age <= TWO_HOURS) {
-      await respond();
-      expect(session.connectionPhase).toBe('recovered');
-      expect(server.creates()).toHaveLength(5);
-      expect(session.sessionCreatedAt).toBe(createdAt);
-      expect(useWorkspaceStore.getState().sessionCreatedAt).toBe(createdAt);
-      expect(persistedAge()).toBe(createdAt);
-      await advance(1);
-      act(() => { void session.recoverSession(CODE); });
-      if (age === TWO_HOURS) expect(server.creates()).toHaveLength(5);
-    } else {
-      expect(server.creates()).toHaveLength(4);
-      expect(session.connectionPhase).toBe('recovery-failed');
-      expect(session.sessionCreatedAt).toBeNull();
-      expect(useWorkspaceStore.getState().sessionCreatedAt).toBeNull();
-      expect(persistedAge()).toBeNull();
-    }
+    await respond();
+    expect(session.connectionPhase).toBe('recovered');
+    expect(server.creates()).toHaveLength(5);
+    expect(session.sessionCreatedAt).toBe(createdAt);
+    expect(useWorkspaceStore.getState().sessionCreatedAt).toBe(createdAt);
+    expect(persistedAge()).toBe(createdAt);
   });
 
   it('does not renew persisted age on repeated failed same-code retries', async () => {

@@ -63,7 +63,9 @@ interface SessionContextValue {
   activeRooms: Map<string, ActiveRoom>;
 
   // Session methods
-  createSession: () => Promise<string | null>;
+  // Get-or-create. `replace` asks for a new session even if one is stored,
+  // for when the server has said the stored one is gone.
+  createSession: (options?: { replace?: boolean }) => Promise<string | null>;
   recoverSession: (code: string) => Promise<boolean>;
   closeSession: () => void;
   
@@ -214,7 +216,10 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   ), [sessionCode, socket, isCurrentSession]);
 
   // Constants
-  const TWO_HOURS = 2 * 60 * 60 * 1000;
+  // A stored session is always offered back to the server, whatever its age:
+  // the server decides whether it is still alive (host reconnect grace and
+  // idle-room expiry in packages/server/src/config/constants.js) and answers
+  // with a new session when it is not.
   const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
   const MAX_RECOVERY_ATTEMPTS = 3;
   // Retain the signal after success so later room acknowledgements belong to
@@ -465,14 +470,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     };
 
     try {
-      // Check session age
-      const sessionAge = Date.now() - createdAt;
-      if (sessionAge > TWO_HOURS) {
-        debug('[UnifiedSession] Session too old, clearing');
-        clearSession();
-        return completeRecovery('recovery-failed');
-      }
-
       // Attempt recovery with retries
       let lastError: Error | null = null;
 
@@ -688,7 +685,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   }, [connectionPhase, socket?.connected, sessionCode, cleanupOrphanedRooms]);
 
   // Create session
-  const createSession = useCallback(async (): Promise<string | null> => {
+  const createSession = useCallback(async ({ replace = false }: { replace?: boolean } = {}): Promise<string | null> => {
     if (!socket?.connected || isCreatingSession.current) {
       debug.error('[UnifiedSession] Cannot create session - not connected or already creating');
       return null;
@@ -698,7 +695,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     // because another widget asks for the same session. The ref observes close
     // and new intents immediately, even before React has rendered them.
     const currentCode = sessionCodeRef.current;
-    if (currentCode && sessionCreatedAt && Date.now() - sessionCreatedAt < TWO_HOURS) {
+    if (currentCode && !replace) {
       return currentCode;
     }
 
@@ -752,7 +749,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       setError('Failed to create session');
       return null;
     }
-  }, [socket, sessionCreatedAt, setStoreSessionCode, setConnectionPhase, storeHostToken, cancelSessionWork]);
+  }, [socket, setStoreSessionCode, setConnectionPhase, storeHostToken, cancelSessionWork]);
 
   // Recover session (explicit)
   const recoverSession = useCallback(async (code: string): Promise<boolean> => {
@@ -832,7 +829,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
             setError('Session expired. Creating new session...'); // Clear any previous error and show informative message
 
             // Create a new session and retry
-            createSession().then(newSessionCode => {
+            createSession({ replace: true }).then(newSessionCode => {
               if (!socket.connected || sessionCodeRef.current !== newSessionCode) {
                 resolve(false);
                 return;
