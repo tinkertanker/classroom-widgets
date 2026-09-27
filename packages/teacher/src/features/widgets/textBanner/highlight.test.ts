@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normaliseCode, findCodeBlock } from './highlight';
+import { normaliseCode, findCodeBlock, highlightCode } from './highlight';
 
 describe('normaliseCode', () => {
   it('replaces curly single quotes with straight single quotes', () => {
@@ -77,5 +77,24 @@ describe('findCodeBlock', () => {
     expect(findCodeBlock('```c++\nint x;\n```')?.language).toBe('c++');
     expect(findCodeBlock('```html5\n<p></p>\n```')?.language).toBe('html5');
     expect(findCodeBlock('```objective_c\nNSLog(@"");\n```')?.language).toBe('objective_c');
+  });
+});
+
+describe('highlightCode', () => {
+  it('loads the highlighter and honours a tag in the bundled set', async () => {
+    const result = await highlightCode('print(1)', 'python');
+    expect(result.language).toBe('python');
+  });
+
+  it('renders a tag outside the bundled set as plain text instead of guessing', async () => {
+    const result = await highlightCode('FROM node:22\nRUN echo "<b>hi</b>"', 'dockerfile');
+    expect(result.language).toBe('plaintext');
+    expect(result.html).not.toContain('<span');
+    expect(result.html).toContain('&lt;b&gt;hi&lt;/b&gt;');
+  });
+
+  it('still auto-detects an untagged block', async () => {
+    const result = await highlightCode('def greet(name):\n    return f"hi {name}"\n');
+    expect(result.language).not.toBe('plaintext');
   });
 });
