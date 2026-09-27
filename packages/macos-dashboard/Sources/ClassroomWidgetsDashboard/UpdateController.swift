@@ -198,7 +198,12 @@ final class UpdateController {
     }
 
     private static func versionParts(_ version: String) -> [Int]? {
-        let parts = version.split(separator: ".").compactMap { Int($0) }
+        let components = version.split(separator: ".", omittingEmptySubsequences: false)
+        guard components.count == 3,
+              components.allSatisfy({ !$0.isEmpty && $0.utf8.allSatisfy { (48...57).contains($0) } }) else {
+            return nil
+        }
+        let parts = components.compactMap { Int($0) }
         return parts.count == 3 ? parts : nil
     }
 

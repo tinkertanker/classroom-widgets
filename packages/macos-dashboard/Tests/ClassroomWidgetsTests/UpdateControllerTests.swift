@@ -36,6 +36,10 @@ final class UpdateControllerTests: XCTestCase {
         await controller.check()
         fixture.releaseVersion = "nightly"
         await controller.check()
+        fixture.releaseVersion = "0.1.0.invalid"
+        await controller.check()
+        fixture.releaseVersion = "0..1"
+        await controller.check()
 
         XCTAssertEqual(fixture.availableVersions, ["0.12.0", nil, nil, nil, nil, nil])
         XCTAssertTrue(fixture.alerts.isEmpty)
@@ -104,6 +108,8 @@ final class UpdateControllerTests: XCTestCase {
         XCTAssertFalse(UpdateController.isNewerVersion("0.11.2", than: "0.11.2"))
         XCTAssertFalse(UpdateController.isNewerVersion("0.10.99", than: "0.11.0"))
         XCTAssertFalse(UpdateController.isNewerVersion("nightly", than: "0.11.0"))
+        XCTAssertFalse(UpdateController.isNewerVersion("0.1.0.invalid", than: "0.11.0"))
+        XCTAssertFalse(UpdateController.isNewerVersion("0..1", than: "0.11.0"))
     }
 
     @MainActor
