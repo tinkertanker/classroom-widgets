@@ -21,7 +21,7 @@ const About: React.FC = () => {
     },
     {
       icon: FaQuestion,
-      title: "Q&A Sessions",
+      title: "Questions & Comments",
       description: "Let students submit questions or comments anonymously and manage them with ease during lectures"
     },
     {

@@ -468,7 +468,7 @@ export const widgetLandingPages = {
       items: [
         { step: 1, title: 'Launch the widget', body: 'Open the widget launcher and click Questions & Comments.' },
         { step: 2, title: 'Share the session code', body: 'Students visit your Classroom Widgets URL and enter the 6-character session code. No app download, no account needed.' },
-        { step: 3, title: 'Start collecting', body: 'Click "Start Collecting". Students can now type and submit questions or comments from their devices.' },
+        { step: 3, title: 'Start collecting', body: 'Click "Start Collecting", then press play ("Resume submissions") to open submissions. Students can now type and submit questions or comments from their devices.' },
         { step: 4, title: 'Manage the queue', body: 'Submissions appear in real-time. Tick the checkmark to mark one as answered (it moves to the bottom), or delete it. Unanswered ones always float to the top.' },
         { step: 5, title: 'Pause or clear when done', body: 'Click "Pause submissions" to stop new ones while you work through the queue, and "Resume submissions" to reopen. Clear all when you\'re ready for the next round.' },
       ],
