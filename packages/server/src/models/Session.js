@@ -29,6 +29,13 @@ class Session {
   }
 
   /**
+   * Check if a teacher socket currently holds this session
+   */
+  hasConnectedHost() {
+    return Boolean(this.hostSocketId) && !this.isHostDisconnected();
+  }
+
+  /**
    * Update the last activity timestamp
    */
   updateActivity() {
@@ -210,10 +217,21 @@ class Session {
   }
 
   /**
-   * Check if the session is inactive
+   * Check if the session is inactive. A session held by a connected teacher
+   * never is: its rooms live until the teacher closes them (or they go idle),
+   * and a disconnected teacher is handled by the reconnect grace period.
    */
   isInactive(inactivityTimeout = 2 * 60 * 60 * 1000) {
-    return Date.now() - this.lastActivity > inactivityTimeout && this.getParticipantCount() === 0;
+    return Date.now() - this.lastActivity > inactivityTimeout
+      && this.getParticipantCount() === 0
+      && !this.hasConnectedHost();
+  }
+
+  /**
+   * Rooms with no host or student activity for longer than `idleTimeout`
+   */
+  getIdleRoomEntries(idleTimeout) {
+    return this.getActiveRoomEntries().filter(({ room }) => room.isInactive(idleTimeout));
   }
 
   /**

@@ -74,6 +74,7 @@ interface SessionContextValue {
   
   // Widget recovery
   getWidgetRecoveryData: (widgetId: string) => ActiveRoom | null;
+  releaseWidgetRecoveryData: (widgetId: string) => void;
   
   // Error state
   error: string | null;
@@ -82,6 +83,24 @@ interface SessionContextValue {
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 const HOST_TOKEN_STORAGE_KEY = 'classroom-widgets:hostToken';
+
+// Widget types that own a server-side room
+const NETWORKED_WIDGET_TYPES = [
+  WidgetType.POLL,
+  WidgetType.QUESTIONS,
+  WidgetType.RT_FEEDBACK,
+  WidgetType.LINK_SHARE,
+  WidgetType.HANDOUT,
+  WidgetType.FILL_BLANK,
+  WidgetType.CODE_FILL_BLANK,
+  WidgetType.SORTING,
+  WidgetType.SEQUENCING,
+  WidgetType.MATCHING
+];
+
+const networkedWidgetIds = (widgets: any[]): string[] => widgets
+  .filter((w: any) => NETWORKED_WIDGET_TYPES.includes(w.type))
+  .map((w: any) => w.id);
 
 export const useSession = () => {
   const context = useContext(SessionContext);
@@ -111,6 +130,7 @@ export const useSession = () => {
         closeRoom: () => {},
         updateRoomState: () => {},
         getWidgetRecoveryData: () => null,
+        releaseWidgetRecoveryData: () => {},
         error: null
       } as SessionContextValue;
     }
@@ -130,6 +150,8 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const storeSessionCode = useWorkspaceStore((state) => state.sessionCode);
   const storeSessionCreatedAt = useWorkspaceStore((state) => state.sessionCreatedAt);
   const setStoreSessionCode = useWorkspaceStore((state) => state.setSessionCode);
+  // A string so the selector result is stable between unrelated store updates
+  const boardNetworkedWidgetIds = useWorkspaceStore((state) => networkedWidgetIds(state.widgets).join('\n'));
   const serverUrl = useWorkspaceUiStore((state) => state.serverStatus.url);
   
   // Local state
@@ -587,33 +609,16 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   const cleanupOrphanedRooms = useCallback(() => {
     if (!socket?.connected || !sessionCode) return;
 
-    // Get current widgets from store
-    // These are the widget types that create server-side rooms
-    const networkedWidgetTypes = [
-      WidgetType.POLL,
-      WidgetType.QUESTIONS,
-      WidgetType.RT_FEEDBACK,
-      WidgetType.LINK_SHARE,
-      WidgetType.HANDOUT,
-      WidgetType.FILL_BLANK,
-      WidgetType.CODE_FILL_BLANK,
-      WidgetType.SORTING,
-      WidgetType.SEQUENCING,
-      WidgetType.MATCHING
-    ];
-    const currentWidgets = useWorkspaceStore.getState().widgets;
-    const networkedWidgetIds = currentWidgets
-      .filter((w: any) => networkedWidgetTypes.includes(w.type))
-      .map((w: any) => w.id);
+    // The networked widgets currently on the board
+    const activeWidgetIds = networkedWidgetIds(useWorkspaceStore.getState().widgets);
 
-    console.log('[UnifiedSession] cleanupOrphanedRooms: Found networked widgets:', networkedWidgetIds);
-    console.log('[UnifiedSession] cleanupOrphanedRooms: Current activeRooms:', Array.from(activeRooms.keys()));
+    console.log('[UnifiedSession] cleanupOrphanedRooms: Found networked widgets:', activeWidgetIds);
 
     // Send cleanup request to server with list of active widget IDs
     // Server will close any rooms not in this list
     socket.emit('session:cleanupRooms', {
       sessionCode,
-      activeWidgetIds: networkedWidgetIds
+      activeWidgetIds
     });
 
     // Update local state to remove orphaned rooms
@@ -621,7 +626,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
       const next = new Map(prev);
       let hasChanges = false;
       prev.forEach((_, widgetId) => {
-        if (!networkedWidgetIds.includes(widgetId)) {
+        if (!activeWidgetIds.includes(widgetId)) {
           debug('[UnifiedSession] Removing orphaned room from local state:', widgetId);
           next.delete(widgetId);
           hasChanges = true;
@@ -632,6 +637,22 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
 
     debug('[UnifiedSession] Orphaned room cleanup complete');
   }, [socket, sessionCode]);
+
+  // A room belongs to a widget on the board, not to a mounted component: layout
+  // switches and the compact overlay unmount widgets without deleting them.
+  // Close rooms when a networked widget leaves the board (deleted, or its
+  // workspace switched away). Offline deletions are caught by the
+  // post-recovery cleanup below.
+  const previousBoardWidgetIdsRef = useRef(boardNetworkedWidgetIds);
+  useEffect(() => {
+    const previous = previousBoardWidgetIdsRef.current;
+    previousBoardWidgetIdsRef.current = boardNetworkedWidgetIds;
+    if (!previous) return;
+    const current = new Set(boardNetworkedWidgetIds.split('\n'));
+    if (previous.split('\n').some(id => !current.has(id))) {
+      cleanupOrphanedRooms();
+    }
+  }, [boardNetworkedWidgetIds, cleanupOrphanedRooms]);
 
   // Schedule cleanup after recovery completes and widgets have had time to mount
   // This handles the case where widgets were deleted while offline
@@ -885,6 +906,18 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     // Only return data from the recovery snapshot, not live activeRooms
     return recoveryData.get(widgetId) || null;
   }, [recoveryData]);
+
+  // The recovery snapshot is only newer than a widget's saved state until that
+  // widget has restored from it. The widget then drops it, so a remount
+  // (layout switch, compact overlay) keeps its newer saved state.
+  const releaseWidgetRecoveryData = useCallback((widgetId: string) => {
+    setRecoveryData(prev => {
+      if (!prev.has(widgetId)) return prev;
+      const next = new Map(prev);
+      next.delete(widgetId);
+      return next;
+    });
+  }, []);
   
   const value = useMemo<SessionContextValue>(() => ({
     // Session state
@@ -918,6 +951,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     
     // Widget recovery
     getWidgetRecoveryData,
+    releaseWidgetRecoveryData,
     
     // Error state
     error
@@ -941,6 +975,7 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     closeRoom,
     updateRoomState,
     getWidgetRecoveryData,
+    releaseWidgetRecoveryData,
     error
   ]);
   

@@ -3,6 +3,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
+const { closeRoomAndNotify } = require('../closeRoom');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 
@@ -288,6 +289,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       // Check if room already exists
       const existingRoom = session.getRoom(roomType, widgetId);
       if (existingRoom) {
+        existingRoom.updateActivity();
         // Rejoin the room
         const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
         socket.join(`${session.code}:${roomId}`);
@@ -432,30 +434,10 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
 
-      const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
       if (SESSION_DEBUG) {
-        logger.info('[SessionHandler] Closing room:', roomId);
+        logger.info('[SessionHandler] Closing room:', { roomType, widgetId });
       }
-      session.closeRoom(roomType, widgetId);
-
-      if (SESSION_DEBUG) {
-        logger.info('[SessionHandler] Broadcasting room closed to all participants');
-      }
-      // Notify all participants
-      io.to(`session:${session.code}`).emit('session:roomClosed', { 
-        roomType, 
-        widgetId
-      });
-      
-      // Clear the room namespace
-      const roomNamespace = `${session.code}:${roomId}`;
-      const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
-      if (socketsInRoom) {
-        socketsInRoom.forEach(socketId => {
-          const s = io.sockets.sockets.get(socketId);
-          if (s) s.leave(roomNamespace);
-        });
-      }
+      closeRoomAndNotify(io, session, roomType, widgetId);
     } catch (error) {
       console.error('Error closing room:', error);
     }
@@ -502,6 +484,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         logger.info('[server] Updating room isActive from', room.isActive, 'to', isActive);
       }
       room.isActive = isActive;
+      room.updateActivity();
 
       const sessionRoom = `session:${session.code}`;
 
@@ -662,23 +645,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
           roomType: roomInfo.roomType
         });
 
-        session.closeRoom(roomInfo.roomType, roomInfo.widgetId);
-
-        // Notify all participants
-        io.to(`session:${session.code}`).emit('session:roomClosed', {
-          roomType: roomInfo.roomType,
-          widgetId: roomInfo.widgetId
-        });
-
-        // Clear the room namespace
-        const roomNamespace = `${session.code}:${roomInfo.roomKey}`;
-        const socketsInRoom = io.sockets.adapter.rooms.get(roomNamespace);
-        if (socketsInRoom) {
-          socketsInRoom.forEach(socketId => {
-            const s = io.sockets.sockets.get(socketId);
-            if (s) s.leave(roomNamespace);
-          });
-        }
+        closeRoomAndNotify(io, session, roomInfo.roomType, roomInfo.widgetId);
       }
 
       logger.info('session:cleanupRooms', 'Cleanup complete', {

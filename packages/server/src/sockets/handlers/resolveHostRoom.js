@@ -8,7 +8,8 @@
  * internal room key that `Session` already builds for its own lookups, so
  * handlers stop hand-rolling `roomType:widgetId` strings.
  *
- * It deliberately never logs and never emits. Each handler keeps its own
+ * It deliberately never logs and never emits. A resolved room is marked as
+ * active, which is what keeps it from idle expiry. Each handler keeps its own
  * rejection shape - some warn and return silently, others answer over a
  * callback or a socket event - and maps the returned `error` onto that shape.
  *
@@ -78,6 +79,10 @@ function resolveRoom(session, roomType, RoomClass, widgetId) {
   if (!(room instanceof RoomClass)) {
     return reject(GUARD_ERRORS.WRONG_ROOM_TYPE);
   }
+
+  // Every host or student event on a room goes through here, so this is the
+  // one place that keeps a room in use from being expired as idle.
+  room.updateActivity();
 
   // Session already knows how to build its own room key; reuse it rather than
   // rebuilding `roomType:widgetId` at every broadcast site.

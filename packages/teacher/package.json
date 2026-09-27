@@ -10,6 +10,7 @@
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "e2e:dropbox": "node e2e/dropboxExport.mjs",
+    "e2e:rooms": "node e2e/roomLifecycle.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

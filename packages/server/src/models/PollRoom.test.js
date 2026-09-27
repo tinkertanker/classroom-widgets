@@ -75,4 +75,20 @@ describe('PollRoom', () => {
       assert.deepEqual(results.votes, {});
     });
   });
+
+  // Issue #78: a teacher widget that remounts over a live room re-sends its
+  // poll data. After a page reload that copy came from the recovery snapshot,
+  // which includes the vote counts at reload time. Votes are counted by the
+  // server; a host update must never roll them back to a stale copy.
+  it('keeps its own vote counts when a host update carries a stale votes map', () => {
+    room.vote('student-1', 0);
+    // What the teacher got from the recovery snapshot (serialised over the socket)
+    const staleCopy = JSON.parse(JSON.stringify(room.toJSON().pollData));
+    room.vote('student-2', 2);
+
+    room.setPollData(staleCopy);
+
+    assert.deepEqual(room.pollData.votes, { 0: 1, 1: 0, 2: 1 });
+    assert.equal(room.getResults().totalVotes, 2);
+  });
 });

@@ -7,8 +7,19 @@ module.exports = {
   // Time constants
   TIME: {
     SESSION_MAX_AGE: 12 * 60 * 60 * 1000, // 12 hours
+    // Sessions with no connected teacher and no students are swept after this.
     INACTIVITY_TIMEOUT: 2 * 60 * 60 * 1000, // 2 hours
-    CLEANUP_INTERVAL: 60 * 60 * 1000 // 1 hour
+    // How often SessionManager sweeps inactive sessions and idle rooms.
+    CLEANUP_INTERVAL: 15 * 60 * 1000, // 15 minutes
+    // Room lifecycle (issue #78). A room lives until the teacher deletes its
+    // widget or ends the session, bounded by these two limits:
+    // - after the teacher's socket disconnects, the session and all its rooms
+    //   close unless the teacher reconnects within this grace period (covers a
+    //   reload, a Wi-Fi drop or a laptop closed between lessons);
+    HOST_RECONNECT_GRACE: 30 * 60 * 1000, // 30 minutes
+    // - a room that gets no host or student event for this long is closed on
+    //   the next sweep, even while the teacher stays connected.
+    ROOM_IDLE_TIMEOUT: 4 * 60 * 60 * 1000 // 4 hours
   },
 
   // Limits

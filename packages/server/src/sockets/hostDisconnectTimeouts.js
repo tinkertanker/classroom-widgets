@@ -1,11 +1,11 @@
-const { EVENTS } = require('../config/constants');
+const { EVENTS, TIME } = require('../config/constants');
 const { logger } = require('../utils/logger');
 
 // Track host disconnect timeouts (sessionCode -> timeoutId)
 const hostDisconnectTimeouts = new Map();
 
-// Time to wait before closing session after host disconnects (5 minutes)
-const HOST_DISCONNECT_TIMEOUT = 5 * 60 * 1000;
+// Time to wait before closing session after host disconnects
+const HOST_DISCONNECT_TIMEOUT = TIME.HOST_RECONNECT_GRACE;
 const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true';
 
 /**

@@ -9,6 +9,9 @@ class SessionManager {
   constructor() {
     this.sessions = new Map();
     this.cleanupIntervalHandle = null;
+    // Closes an idle room and tells its clients; the socket layer installs one
+    // with setRoomExpiryHandler. Without it the room is closed silently.
+    this.roomExpiryHandler = (session, roomType, widgetId) => session.closeRoom(roomType, widgetId);
 
     // Start cleanup interval
     this.startCleanupInterval();
@@ -80,12 +83,32 @@ class SessionManager {
   }
 
   /**
-   * Start periodic cleanup of inactive sessions
+   * Set how an idle room is closed: (session, roomType, widgetId) => void
+   */
+  setRoomExpiryHandler(handler) {
+    this.roomExpiryHandler = handler;
+  }
+
+  /**
+   * Close rooms that have had no host or student activity for ROOM_IDLE_TIMEOUT
+   */
+  closeIdleRooms() {
+    for (const session of this.sessions.values()) {
+      for (const { roomType, widgetId } of session.getIdleRoomEntries(TIME.ROOM_IDLE_TIMEOUT)) {
+        console.log(`Closing idle room ${roomType}:${widgetId} in session ${session.code}`);
+        this.roomExpiryHandler(session, roomType, widgetId);
+      }
+    }
+  }
+
+  /**
+   * Start periodic cleanup of inactive sessions and idle rooms
    */
   startCleanupInterval() {
     if (this.cleanupIntervalHandle) return;
     this.cleanupIntervalHandle = setInterval(() => {
       this.cleanupInactiveSessions();
+      this.closeIdleRooms();
     }, TIME.CLEANUP_INTERVAL);
     // Don't keep the event loop alive just for the cleanup timer.
     if (this.cleanupIntervalHandle.unref) this.cleanupIntervalHandle.unref();
