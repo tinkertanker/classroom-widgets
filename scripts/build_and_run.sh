@@ -77,7 +77,9 @@ cp -R "$ROOT_DIR/packages/teacher/build/." "$APP_RESOURCES/Web/"
 find "$APP_RESOURCES/Web" -name '*.map' -delete
 # The /about promo videos are web-only (about 7.7 MB). Keep the poster so the
 # still frame renders if /about is opened in the app; the player falls back to it.
-find "$APP_RESOURCES/Web" -path '*/promo/*' \( -name '*.webm' -o -name '*.mp4' \) -delete
+if [ -d "$APP_RESOURCES/Web/promo" ]; then
+  find "$APP_RESOURCES/Web/promo" -maxdepth 1 -type f \( -name '*.webm' -o -name '*.mp4' \) -delete
+fi
 if [ -f "$APP_ICON_PATH" ]; then
   cp "$APP_ICON_PATH" "$APP_RESOURCES/AppIcon.icns"
 fi
