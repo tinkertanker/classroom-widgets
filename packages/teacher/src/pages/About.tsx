@@ -83,15 +83,15 @@ const About: React.FC = () => {
       {/* Navigation */}
       <nav className="bg-white/80 dark:bg-warm-gray-800/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-warm-gray-200 dark:border-warm-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center gap-3 h-16">
+          <div className="flex justify-between items-center gap-2 min-[360px]:gap-3 h-16">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img 
                 src="/logo.png" 
                 alt="Classroom Widgets Logo" 
-                className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 object-contain"
+                className="w-7 h-7 min-[360px]:w-8 min-[360px]:h-8 sm:w-10 sm:h-10 shrink-0 object-contain"
               />
               <div className="min-w-0">
-                <h1 className="relative top-[2px] sm:top-0 text-base min-[375px]:text-lg sm:text-xl leading-tight min-[375px]:leading-tight sm:leading-7 whitespace-nowrap font-bold text-warm-gray-900 dark:text-warm-gray-100">
+                <h1 className="relative top-[2px] sm:top-0 text-[14px] min-[360px]:text-base min-[375px]:text-lg sm:text-xl leading-tight min-[375px]:leading-tight sm:leading-7 truncate font-bold text-warm-gray-900 dark:text-warm-gray-100">
                   Classroom Widgets
                 </h1>
                 <p className="hidden sm:block text-xs text-warm-gray-600 dark:text-warm-gray-400 -mt-1">
@@ -101,10 +101,10 @@ const About: React.FC = () => {
             </div>
             <a
               href="/"
-              className="inline-flex shrink-0 items-center gap-1.5 sm:gap-2 whitespace-nowrap px-2.5 min-[375px]:px-3 sm:px-4 py-2 text-sm sm:text-base bg-sage-500 text-white rounded-lg hover:bg-sage-600 transition-colors"
+              className="inline-flex shrink-0 items-center gap-1.5 sm:gap-2 whitespace-nowrap px-2.5 min-[375px]:px-3 sm:px-4 py-2 text-[13px] min-[360px]:text-sm sm:text-base bg-sage-500 text-white rounded-lg hover:bg-sage-600 transition-colors"
             >
               Try It Now
-              <FaArrowRight className="text-xs sm:text-sm" aria-hidden="true" />
+              <FaArrowRight className="hidden min-[360px]:inline text-xs sm:text-sm" aria-hidden="true" />
             </a>
           </div>
         </div>
