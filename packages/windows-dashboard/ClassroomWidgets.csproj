@@ -48,9 +48,11 @@
     <Resource Include="Assets\TrayIcon-White-Update.ico" />
   </ItemGroup>
 
-  <!-- Bundle the teacher production build so the app runs without a dev server. -->
+  <!-- Bundle the teacher production build so the app runs without a dev server.
+       The /about promo videos are web-only (about 7.7 MB); the poster stays so the
+       still frame renders if /about is opened in the app. -->
   <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/../teacher/build/index.html')">
-    <None Include="../teacher/build/**/*" Link="Web/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../teacher/build/**/*" Exclude="../teacher/build/promo/*.webm;../teacher/build/promo/*.mp4" Link="Web/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
