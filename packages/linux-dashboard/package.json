@@ -34,7 +34,12 @@
     "extraResources": [
       {
         "from": "../teacher/build",
-        "to": "Web"
+        "to": "Web",
+        "filter": [
+          "**/*",
+          "!promo/*.webm",
+          "!promo/*.mp4"
+        ]
       }
     ],
     "linux": {

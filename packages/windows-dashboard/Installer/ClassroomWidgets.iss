@@ -46,6 +46,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "autostart"; Description: "{#AutostartDescription}"; GroupDescription: "Startup:"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[InstallDelete]
+; Upgrades don't remove files that are missing from the new payload. The /about
+; promo videos were bundled before they were excluded from the desktop build.
+Type: files; Name: "{app}\Web\promo\*.webm"
+Type: files; Name: "{app}\Web\promo\*.mp4"
+
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

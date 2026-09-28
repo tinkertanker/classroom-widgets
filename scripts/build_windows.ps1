@@ -38,6 +38,9 @@ Get-Process ClassroomWidgets -ErrorAction SilentlyContinue | Stop-Process -Force
 
 if ($Publish) {
     $dist = Join-Path $projectDir 'dist'
+    # dotnet publish doesn't remove files from earlier runs, so start from an
+    # empty folder; otherwise stale files (like old promo videos) get packaged.
+    if (Test-Path $dist) { Remove-Item $dist -Recurse -Force }
     dotnet publish $project -c Release -r win-x64 --self-contained true -o $dist `
         -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true
     if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed.' }
