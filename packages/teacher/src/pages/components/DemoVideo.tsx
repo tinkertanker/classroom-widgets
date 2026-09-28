@@ -98,6 +98,13 @@ export const DemoVideo: React.FC = () => {
     setPlayback('idle');
   };
 
+  // The last <source> failing means no source could load (offline, 404): go back
+  // to the final-frame overlay instead of leaving the spinner and Pause up.
+  const onSourcesFailed = () => {
+    setBuffering(false);
+    setPlayback('idle');
+  };
+
   const toggleSound = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -132,11 +139,11 @@ export const DemoVideo: React.FC = () => {
           title="Classroom Widgets demo"
         >
           <source src={WEBM_SRC} type='video/webm; codecs="vp9, opus"' />
-          <source src={MP4_SRC} type="video/mp4" />
+          <source src={MP4_SRC} type="video/mp4" onError={onSourcesFailed} />
         </video>
 
         {idle ? (
-          <div className="group absolute inset-0 cursor-pointer">
+          <div className="absolute inset-0 cursor-pointer">
             <img
               src={POSTER_SRC}
               alt=""
@@ -180,8 +187,9 @@ export const DemoVideo: React.FC = () => {
         ) : (
           <>
             {buffering && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status" aria-label="Loading video">
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center" role="status">
                 <span className="h-10 w-10 sm:h-12 sm:w-12 animate-spin rounded-full border-4 border-white/40 border-t-white" aria-hidden="true" />
+                <span className="sr-only">Loading video</span>
               </div>
             )}
             <button
