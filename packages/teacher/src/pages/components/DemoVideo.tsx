@@ -9,8 +9,9 @@ const POSTER_SRC = '/promo/poster.jpg';
  * Landing-page promo video. Click to play, never autoplays.
  *
  * Before playback (and again after it ends) the exact final frame is shown as an
- * <img> overlay with a big "Play" button (muted) and a smaller "Play with sound"
- * button. The poster attribute alone is not enough: some browsers swap it for the
+ * <img> overlay with a "Play" button (muted) and a smaller "Play with sound"
+ * button in the top-right corner. Hovering anywhere on the frame highlights Play,
+ * and clicking anywhere on it (other than "Play with sound") plays muted. The poster attribute alone is not enough: some browsers swap it for the
  * first frame once media data loads, so the overlay is a real image and the video
  * uses preload="none".
  *
@@ -88,7 +89,7 @@ export const DemoVideo: React.FC = () => {
         </video>
 
         {idle ? (
-          <div className="absolute inset-0">
+          <div className="group absolute inset-0 cursor-pointer">
             <img
               src={POSTER_SRC}
               alt=""
@@ -96,12 +97,20 @@ export const DemoVideo: React.FC = () => {
               height={1080}
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-warm-gray-900/40">
+            {/* Mouse/touch target: clicking anywhere on the still frame plays muted,
+                like the Play button. Hidden from assistive tech; the real buttons
+                below are the accessible controls. */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-warm-gray-900/0 transition-colors group-hover:bg-warm-gray-900/10"
+              onClick={() => start(false)}
+            />
+            <div className="absolute top-2 right-2 sm:top-4 sm:right-4 flex flex-col items-end gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => start(false)}
                 aria-label="Play the demo video (muted)"
-                className="inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-6 py-3 sm:px-8 sm:py-4 text-lg sm:text-xl font-semibold text-white shadow-2xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-terracotta-600"
+                className="inline-flex items-center gap-1.5 sm:gap-3 rounded-full bg-gradient-to-r from-terracotta-500 to-terracotta-600 px-3 py-1.5 sm:px-6 sm:py-3 text-sm sm:text-lg font-semibold text-white shadow-2xl ring-0 ring-white/80 transition-all group-hover:scale-105 group-hover:from-terracotta-600 group-hover:to-terracotta-700 group-hover:ring-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-terracotta-600"
               >
                 <FaPlay aria-hidden="true" />
                 Play
@@ -110,7 +119,7 @@ export const DemoVideo: React.FC = () => {
                 type="button"
                 onClick={() => start(true)}
                 aria-label="Play the demo video with sound"
-                className="inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-1.5 text-sm font-medium text-warm-gray-900 shadow-lg transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-warm-gray-900"
+                className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/90 px-2.5 py-0.5 sm:px-4 sm:py-1.5 text-[11px] sm:text-sm font-medium text-warm-gray-900 shadow-lg transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-warm-gray-900"
               >
                 <FaVolumeHigh aria-hidden="true" />
                 Play with sound
