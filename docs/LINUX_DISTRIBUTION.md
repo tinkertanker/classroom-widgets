@@ -157,7 +157,7 @@ To build locally instead:
 pnpm linux:publish
 ```
 
-This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, producing an AppImage and a `.deb`. The AppImage is self-contained; the `.deb` installs under `/opt/Classroom Widgets`.
+This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, producing an AppImage and a `.deb`. The `dist` script sets `XZ_DEFAULTS=-T0` so the `.deb` payload is xz-compressed on every core. The AppImage is self-contained; the `.deb` installs under `/opt/Classroom Widgets`.
 
 The native version comes from the repo-root `version.json` (shared with macOS and Windows; passed to electron-builder via `-c.extraMetadata.version`) and is independent of the web build ID. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_LINUX_VERSION__`.
 
