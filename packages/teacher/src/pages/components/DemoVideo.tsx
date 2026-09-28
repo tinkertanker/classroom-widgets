@@ -34,6 +34,8 @@ export const DemoVideo: React.FC = () => {
   const pauseButtonRef = useRef<HTMLButtonElement>(null);
   const startedAtRef = useRef(0);
   const focusAfterRenderRef = useRef<'pause' | 'play' | null>(null);
+  const playAttemptRef = useRef(0);
+  const startedFromButtonRef = useRef(false);
   const [playback, setPlayback] = useState<PlaybackState>('idle');
   const [muted, setMuted] = useState(true);
   const [buffering, setBuffering] = useState(false);
@@ -49,9 +51,13 @@ export const DemoVideo: React.FC = () => {
   const play = () => {
     const video = videoRef.current;
     if (!video) return;
+    // Only the latest play() may reset the state: an earlier one rejecting late
+    // (for example when load() retries after a failure) must not undo a newer start.
+    const id = ++playAttemptRef.current;
     const attempt = video.play?.();
     if (attempt && typeof attempt.catch === 'function') {
       attempt.catch(() => {
+        if (id !== playAttemptRef.current) return;
         setBuffering(false);
         setPlayback(video.currentTime > 0 ? 'paused' : 'idle');
       });
@@ -64,7 +70,11 @@ export const DemoVideo: React.FC = () => {
     video.muted = !withSound;
     setMuted(!withSound);
     if (video.ended || playback === 'idle') video.currentTime = 0;
+    // After every source failed once (offline, 404) the element stays in
+    // NETWORK_NO_SOURCE and play() never settles; load() makes it retry.
+    if (video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) video.load();
     startedAtRef.current = performance.now();
+    startedFromButtonRef.current = fromButton;
     if (fromButton) focusAfterRenderRef.current = 'pause';
     setBuffering(true);
     setFrameHover(false);
@@ -102,6 +112,14 @@ export const DemoVideo: React.FC = () => {
   // to the final-frame overlay instead of leaving the spinner and Pause up.
   const onSourcesFailed = () => {
     setBuffering(false);
+    // The failure can land while the button that started playback is being
+    // swapped for Pause, when focus is briefly on <body>.
+    const active = document.activeElement;
+    const focusWasHere = !!active && (videoRef.current?.parentElement?.contains(active)
+      || (active === document.body && startedFromButtonRef.current));
+    if (focusWasHere) {
+      focusAfterRenderRef.current = 'play';
+    }
     setPlayback('idle');
   };
 
