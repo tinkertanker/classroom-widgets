@@ -35,7 +35,6 @@ export const DemoVideo: React.FC = () => {
   const startedAtRef = useRef(0);
   const focusAfterRenderRef = useRef<'pause' | 'play' | null>(null);
   const playAttemptRef = useRef(0);
-  const startedFromButtonRef = useRef(false);
   const [playback, setPlayback] = useState<PlaybackState>('idle');
   const [muted, setMuted] = useState(true);
   const [buffering, setBuffering] = useState(false);
@@ -45,7 +44,7 @@ export const DemoVideo: React.FC = () => {
     const target = focusAfterRenderRef.current;
     if (!target) return;
     focusAfterRenderRef.current = null;
-    (target === 'pause' ? pauseButtonRef : playButtonRef).current?.focus();
+    (target === 'pause' ? pauseButtonRef : playButtonRef).current?.focus({ preventScroll: true });
   }, [playback]);
 
   const play = () => {
@@ -74,7 +73,6 @@ export const DemoVideo: React.FC = () => {
     // NETWORK_NO_SOURCE and play() never settles; load() makes it retry.
     if (video.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) video.load();
     startedAtRef.current = performance.now();
-    startedFromButtonRef.current = fromButton;
     if (fromButton) focusAfterRenderRef.current = 'pause';
     setBuffering(true);
     setFrameHover(false);
@@ -112,12 +110,8 @@ export const DemoVideo: React.FC = () => {
   // to the final-frame overlay instead of leaving the spinner and Pause up.
   const onSourcesFailed = () => {
     setBuffering(false);
-    // The failure can land while the button that started playback is being
-    // swapped for Pause, when focus is briefly on <body>.
     const active = document.activeElement;
-    const focusWasHere = !!active && (videoRef.current?.parentElement?.contains(active)
-      || (active === document.body && startedFromButtonRef.current));
-    if (focusWasHere) {
+    if (active && videoRef.current?.parentElement?.contains(active)) {
       focusAfterRenderRef.current = 'play';
     }
     setPlayback('idle');
