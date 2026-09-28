@@ -64,7 +64,7 @@ detect_signing_identity() {
   SIGNING_IDENTITY="$(security find-identity -p codesigning -v 2>/dev/null | awk -F'\"' '/Developer ID Application:/{ print $2; exit }')"
 }
 
-pnpm --filter @classroom-widgets/teacher build
+pnpm --filter @classroom-widgets/teacher build:desktop
 
 swift build --package-path "$MACOS_DIR" -c debug
 
