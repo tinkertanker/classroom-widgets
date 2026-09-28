@@ -39,7 +39,7 @@ browser screenshot "$EVIDENCE/display-callout.png"
 browser open "$BASE/about"
 browser wait 'a[href="#desktop"]'
 settle
-check 'document.querySelector("h2").textContent.includes("90% Vibe-Coded")' 'Original marketing hero is preserved'
+check 'document.querySelector("section h2").textContent.includes("Your whole lesson in one tab.") && document.querySelector("section figure video")' 'Marketing hero shows the headline and the demo video'
 check 'document.querySelector("section img[alt=\"Classroom Widgets Nibbled Timer app icon\"]").naturalWidth === 512 && document.querySelector("section img[alt=\"Classroom Widgets Nibbled Timer app icon\"]").getBoundingClientRect().bottom < innerHeight' 'Actual app icon is visible in the hero'
 browser screenshot "$EVIDENCE/marketing-wide.png"
 browser eval 'document.querySelector("footer").scrollIntoView()'
