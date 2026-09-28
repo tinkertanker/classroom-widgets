@@ -89,7 +89,7 @@ jobs:
       # own package-lock.json, so it still installs with npm.
       - name: Install linux-dashboard dependencies
         working-directory: packages/linux-dashboard
-        run: npm ci
+        run: npm ci || npm install
       - run: pnpm linux:publish
       - uses: actions/upload-artifact@v4
         with:
