@@ -60,7 +60,7 @@ public sealed class WidgetHostController
         _hostWindow.Show();
         try
         {
-            await DashboardWebView.InitializeAsync(_webView, string.Empty);
+            await DashboardWebView.InitializeAsync(_webView, DashboardAudioSettings.Script(_settings));
         }
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or System.Runtime.InteropServices.COMException)
         {
@@ -88,6 +88,7 @@ public sealed class WidgetHostController
             // shortener preferences as the visible panels, mirroring the
             // macOS didFinish navigation behaviour.
             _ = core.ExecuteScriptAsync(DashboardShortenerSettings.Script(_settings));
+            _ = core.ExecuteScriptAsync(DashboardAudioSettings.Script(_settings));
         };
         _initialized = true;
         LoadHost();
@@ -101,6 +102,7 @@ public sealed class WidgetHostController
             _ = _webView.CoreWebView2.ExecuteScriptAsync(
                 $"window.classroomDashboard?.setBackgroundOpacity?.({_settings.BackgroundOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
             _ = _webView.CoreWebView2.ExecuteScriptAsync(DashboardShortenerSettings.Script(_settings));
+            _ = _webView.CoreWebView2.ExecuteScriptAsync(DashboardAudioSettings.Script(_settings));
         }
     }
 

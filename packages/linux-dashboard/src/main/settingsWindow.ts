@@ -13,6 +13,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
   ipcInstalled = true;
   ipcMain.handle('settings:get', () => ({
     backgroundOpacity: settings.backgroundOpacity,
+    outputVolume: settings.outputVolume,
     alwaysOnTop: settings.alwaysOnTop,
     launchAtLogin: settings.launchAtLoginEnabled,
     linkShortener: settings.linkShortener,
@@ -24,8 +25,13 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
   ipcMain.on('settings:set', (_event, update: unknown) => {
     if (typeof update !== 'object' || update === null) return;
     const partial = update as Record<string, unknown>;
+    let changedSetting: 'outputVolume' | undefined;
     if (typeof partial.backgroundOpacity === 'number' && Number.isFinite(partial.backgroundOpacity)) {
       settings.backgroundOpacity = Math.min(1, Math.max(0, Math.round(partial.backgroundOpacity * 100) / 100));
+    }
+    if (typeof partial.outputVolume === 'number' && Number.isFinite(partial.outputVolume)) {
+      settings.outputVolume = Math.min(1, Math.max(0, Math.round(partial.outputVolume * 100) / 100));
+      changedSetting = 'outputVolume';
     }
     if (typeof partial.alwaysOnTop === 'boolean') {
       settings.alwaysOnTop = partial.alwaysOnTop;
@@ -36,7 +42,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     if (partial.linkShortener && typeof partial.linkShortener === 'object') {
       settings.linkShortener = readShortenerSettings(partial.linkShortener);
     }
-    settings.notifyChanged();
+    settings.notifyChanged(changedSetting);
   });
   ipcMain.on('settings:reset-positions', () => {
     settings.panelFrames = {};
@@ -68,6 +74,13 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
   shortcuts.on('changed', () => {
     if (settingsWindow && !settingsWindow.isDestroyed()) {
       settingsWindow.webContents.send('settings:shortcuts-changed', shortcuts.getStatuses(), shortcuts.getDisplayStatus(), moveWidgetStatuses(shortcuts));
+    }
+  });
+  settings.on('changed', (changedSetting) => {
+    if (changedSetting === 'outputVolume' && settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send('settings:changed', {
+        outputVolume: settings.outputVolume,
+      });
     }
   });
 }

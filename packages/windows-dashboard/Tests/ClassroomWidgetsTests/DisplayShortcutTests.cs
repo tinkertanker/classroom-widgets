@@ -160,6 +160,34 @@ public sealed class DisplayShortcutTests
         });
     }
 
+    [Fact]
+    public void OpenSettingsWindowTracksNativeVolumeChanges()
+    {
+        WithSettings(settings =>
+        {
+            var host = new WidgetHostController(settings);
+            using var shortcuts = new WidgetShortcutManager(settings, host, _ => { });
+            var window = new SettingsWindow(settings, host, shortcuts);
+            try
+            {
+                window.Show();
+                WpfTestHost.DoEvents();
+                var volume = Find<Slider>(window, "Output volume");
+                Assert.Equal(1, volume.Value);
+
+                settings.OutputVolume = 0;
+                settings.NotifyChanged();
+                WpfTestHost.DoEvents();
+
+                Assert.Equal(0, volume.Value);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+    }
+
     private static void WithSettings(Action<DashboardSettings> body)
     {
         var previous = DashboardSettings.DataDirectory;

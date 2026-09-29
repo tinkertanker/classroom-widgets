@@ -20,6 +20,9 @@ function harness() {
   shortcuts.setDisplayShortcut = (...args) => { calls.push(args); return { ok: true }; };
   shortcuts.setCapturing = active => calls.push(['capturing', active]);
   shortcuts.reset = () => calls.push(['reset']);
+  const settings = new EventEmitter();
+  settings.outputVolume = 1;
+  settings.notifyChanged = changedSetting => settings.emit('changed', changedSetting);
   let window;
   class BrowserWindow extends EventEmitter {
     constructor() { super(); window = this; this.sent = []; this.webContents = { send: (...args) => this.sent.push(args) }; }
@@ -36,8 +39,8 @@ function harness() {
       return require(name);
     },
   });
-  exports.openSettingsWindow({}, shortcuts, 'test');
-  return { handlers, ipcMain, shortcuts, display, calls, window };
+  exports.openSettingsWindow(settings, shortcuts, 'test');
+  return { handlers, ipcMain, settings, shortcuts, display, calls, window };
 }
 
 test('Display settings IPC validates action and nullable accelerator; reset/recording restore registration', () => {
@@ -54,4 +57,15 @@ test('Display settings IPC validates action and nullable accelerator; reset/reco
   h.window.emit('closed');
   h.ipcMain.emit('settings:reset-shortcuts');
   assert.deepEqual(h.calls, [['capturing', true], ['capturing', false], ['reset']]);
+});
+
+test('open settings window receives native volume changes', () => {
+  const h = harness();
+  h.settings.emit('changed');
+  assert.equal(h.window.sent.length, 0, 'unrelated settings changes must not supersede a pending volume edit');
+  h.settings.outputVolume = 0.35;
+  h.settings.notifyChanged('outputVolume');
+  assert.equal(h.window.sent.length, 1);
+  assert.equal(h.window.sent[0][0], 'settings:changed');
+  assert.equal(h.window.sent[0][1].outputVolume, 0.35);
 });

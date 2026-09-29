@@ -59,11 +59,13 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
   const elements = {};
   document.getElementById = id => elements[id] || (elements[id] = element());
   document.createElement = element;
-  let changed;
-  const capturing = [], assignments = [];
+  let changed, settingsChanged;
+  const capturing = [], assignments = [], settingsUpdates = [];
   const api = {
     get: async () => ({ shortcuts, displayShortcut: display, linkShortener: {} }),
     onShortcutsChanged: callback => { changed = callback; },
+    onSettingsChanged: callback => { settingsChanged = callback; },
+    set: update => settingsUpdates.push(update),
     setCapturing: active => capturing.push(active),
     setDisplayShortcut: async (...args) => { assignments.push(['display', ...args]); return save(); },
     setShortcut: async (...args) => { assignments.push(args); return save(); },
@@ -77,8 +79,9 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
     return row?.children[action === 'show' ? 1 : 2];
   }
   return {
-    document, elements, capturing, assignments, field,
+    document, elements, capturing, assignments, settingsUpdates, field,
     render: (next, nextDisplay = display) => changed(next, nextDisplay),
+    updateSettings: update => settingsChanged(update),
     begin(title, action) {
       const button = field(title, action).children[0];
       button.focus();
@@ -87,6 +90,39 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
     },
   };
 }
+
+test('volume changes commit immediately without cancelling an opacity debounce', async () => {
+  const h = await renderer();
+  h.elements.volume.value = 0.25;
+  h.elements.volume.dispatch('input');
+  h.elements.opacity.value = 0.5;
+  h.elements.opacity.dispatch('input');
+  assert.equal(h.settingsUpdates.length, 1);
+  assert.equal(h.settingsUpdates[0].outputVolume, 0.25);
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal(h.settingsUpdates.length, 2);
+  assert.equal(h.settingsUpdates[1].backgroundOpacity, 0.5);
+});
+
+test('external volume changes refresh the open settings slider without writeback', async () => {
+  const h = await renderer();
+  h.updateSettings({ outputVolume: 0 });
+  assert.equal(h.elements.volume.value, 0);
+  assert.equal(h.elements.volumeLabel.textContent, '0%');
+  assert.deepEqual(h.settingsUpdates, []);
+});
+
+test('a newer external volume change has no older slider commit left to overwrite it', async () => {
+  const h = await renderer();
+  h.elements.volume.value = 0.75;
+  h.elements.volume.dispatch('input');
+  assert.equal(h.settingsUpdates.length, 1);
+  h.updateSettings({ outputVolume: 0 });
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal(h.elements.volume.value, 0);
+  assert.equal(h.elements.volumeLabel.textContent, '0%');
+  assert.equal(h.settingsUpdates.length, 1);
+});
 
 function key(button, key, modifiers = {}) {
   button.dispatch('keydown', {

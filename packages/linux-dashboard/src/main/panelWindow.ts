@@ -13,7 +13,7 @@ import {
 } from './models';
 import { registerNativeMessages, unregisterNativeMessages } from './nativeMessages';
 import { configureWebContents, evaluate, evaluateBool } from './webContentsSetup';
-import type { DashboardSettings } from './settings';
+import { audioSettingsScript, type DashboardSettings } from './settings';
 import { shortenerSettingsScript } from './shortenerSettings';
 import { widgetMenuItems } from './widgetMenu';
 
@@ -33,6 +33,7 @@ interface ChromeUpdate {
   title: string;
   theme: 'light' | 'dark';
   opacity: number;
+  outputVolume: number;
   chromeVisible: boolean;
   addEnabled: boolean;
 }
@@ -236,11 +237,9 @@ export class WidgetPanelWindow extends EventEmitter {
 
   applyPresentationSettings(backgroundOpacity: number, alwaysOnTop: boolean): void {
     const next = Math.min(1, Math.max(0, backgroundOpacity));
-    const opacityChanged = this.backgroundOpacity !== next;
     this.backgroundOpacity = next;
     if (!this.win.isDestroyed()) this.win.setAlwaysOnTop(alwaysOnTop);
     this.applyWebPresentation();
-    if (!opacityChanged) return;
     this.pushChromeUpdate();
   }
 
@@ -382,6 +381,7 @@ export class WidgetPanelWindow extends EventEmitter {
     void evaluateBool(
       this.view.webContents,
       shortenerSettingsScript(this.settings.linkShortener)
+        + audioSettingsScript(this.settings.outputVolume)
         + `(() => { const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot(${snapshot}); return true; })()`,
     );
   }
@@ -417,6 +417,7 @@ export class WidgetPanelWindow extends EventEmitter {
       title: this.descriptor.title,
       theme,
       opacity: this.backgroundOpacity,
+      outputVolume: this.settings.outputVolume,
       chromeVisible: this.chromeVisible,
       addEnabled: this.options.length > 0,
     };
@@ -428,6 +429,7 @@ export class WidgetPanelWindow extends EventEmitter {
     void evaluate(
       this.view.webContents,
       shortenerSettingsScript(this.settings.linkShortener)
+        + audioSettingsScript(this.settings.outputVolume)
         + `document.documentElement.dataset.widgetChromeVisible = '${this.chromeVisible ? 'true' : 'false'}';`
         + `document.documentElement.style.setProperty('--compact-widget-background-opacity', '${this.opacityText()}');`,
     );
@@ -549,6 +551,31 @@ export class WidgetPanelWindow extends EventEmitter {
         ]);
         this.trackMenu(menu);
         menu.popup({ window: this.win, y: CHROME_HEIGHT });
+        break;
+      }
+      case 'volume': {
+        const percentage = Math.round(this.settings.outputVolume * 100);
+        const preset = (label: string, volume: number) => ({
+          label,
+          type: 'checkbox' as const,
+          checked: Math.abs(this.settings.outputVolume - volume) < 0.001,
+          click: () => {
+            this.settings.outputVolume = volume;
+            this.settings.notifyChanged('outputVolume');
+          },
+        });
+        const menu = Menu.buildFromTemplate([
+          { label: `Current: ${percentage}%`, enabled: false },
+          { type: 'separator' },
+          preset('Mute', 0),
+          preset('25%', 0.25),
+          preset('50%', 0.5),
+          preset('75%', 0.75),
+          preset('100%', 1),
+        ]);
+        this.trackMenu(menu);
+        const bounds = this.win.getBounds();
+        menu.popup({ window: this.win, x: Math.max(0, bounds.width - 100), y: CHROME_HEIGHT });
         break;
       }
     }

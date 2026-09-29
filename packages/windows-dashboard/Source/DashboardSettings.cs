@@ -47,6 +47,7 @@ public sealed class DashboardSettings
     };
 
     public double BackgroundOpacity { get; set; } = 1.0;
+    public double OutputVolume { get; set; } = 1.0;
     public bool AlwaysOnTop { get; set; } = true;
     public Dictionary<string, PanelFrame> PanelFrames { get; set; } = new();
     public bool WidgetShortcutsInitialized { get; set; }
@@ -88,6 +89,7 @@ public sealed class DashboardSettings
                 if (loaded is not null)
                 {
                     loaded.BackgroundOpacity = Math.Clamp(loaded.BackgroundOpacity, 0, 1);
+                    loaded.OutputVolume = Math.Clamp(loaded.OutputVolume, 0, 1);
                     loaded.WidgetShortcuts ??= new();
                     loaded.WidgetDismissShortcuts ??= new();
                     loaded.WidgetShortcutDefaults ??= new();

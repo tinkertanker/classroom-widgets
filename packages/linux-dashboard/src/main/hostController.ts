@@ -12,7 +12,7 @@ import { HostWriteTracker } from './hostWriteTracker';
 import { registerNativeMessages } from './nativeMessages';
 import { bridgePreloadPath } from './panelWindow';
 import { WidgetPanelCoordinator } from './panelCoordinator';
-import { DashboardSettings } from './settings';
+import { audioSettingsScript, DashboardSettings } from './settings';
 import { configureWebContents, evaluateBool } from './webContentsSetup';
 import { shortenerSettingsScript } from './shortenerSettings';
 
@@ -101,6 +101,7 @@ export class WidgetHostController extends EventEmitter {
       void evaluateBool(
         this.window.webContents,
         shortenerSettingsScript(this.settings.linkShortener)
+          + audioSettingsScript(this.settings.outputVolume)
           + `window.classroomDashboard?.setBackgroundOpacity?.(${JSON.stringify(this.settings.backgroundOpacity)})`,
       );
     }
