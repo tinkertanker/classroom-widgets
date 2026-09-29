@@ -561,7 +561,7 @@ export class WidgetPanelWindow extends EventEmitter {
           checked: Math.abs(this.settings.outputVolume - volume) < 0.001,
           click: () => {
             this.settings.outputVolume = volume;
-            this.settings.notifyChanged();
+            this.settings.notifyChanged('outputVolume');
           },
         });
         const menu = Menu.buildFromTemplate([

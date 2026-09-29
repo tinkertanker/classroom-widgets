@@ -22,6 +22,7 @@ function harness() {
   shortcuts.reset = () => calls.push(['reset']);
   const settings = new EventEmitter();
   settings.outputVolume = 1;
+  settings.notifyChanged = changedSetting => settings.emit('changed', changedSetting);
   let window;
   class BrowserWindow extends EventEmitter {
     constructor() { super(); window = this; this.sent = []; this.webContents = { send: (...args) => this.sent.push(args) }; }
@@ -60,8 +61,10 @@ test('Display settings IPC validates action and nullable accelerator; reset/reco
 
 test('open settings window receives native volume changes', () => {
   const h = harness();
-  h.settings.outputVolume = 0.35;
   h.settings.emit('changed');
+  assert.equal(h.window.sent.length, 0, 'unrelated settings changes must not supersede a pending volume edit');
+  h.settings.outputVolume = 0.35;
+  h.settings.notifyChanged('outputVolume');
   assert.equal(h.window.sent.length, 1);
   assert.equal(h.window.sent[0][0], 'settings:changed');
   assert.equal(h.window.sent[0][1].outputVolume, 0.35);

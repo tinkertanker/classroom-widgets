@@ -91,15 +91,16 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
   };
 }
 
-test('opacity and volume changes debounce independently', async () => {
+test('volume changes commit immediately without cancelling an opacity debounce', async () => {
   const h = await renderer();
   h.elements.volume.value = 0.25;
   h.elements.volume.dispatch('input');
   h.elements.opacity.value = 0.5;
   h.elements.opacity.dispatch('input');
+  assert.equal(h.settingsUpdates.length, 1);
+  assert.equal(h.settingsUpdates[0].outputVolume, 0.25);
   await new Promise(resolve => setTimeout(resolve, 300));
   assert.equal(h.settingsUpdates.length, 2);
-  assert.equal(h.settingsUpdates[0].outputVolume, 0.25);
   assert.equal(h.settingsUpdates[1].backgroundOpacity, 0.5);
 });
 
@@ -109,6 +110,18 @@ test('external volume changes refresh the open settings slider without writeback
   assert.equal(h.elements.volume.value, 0);
   assert.equal(h.elements.volumeLabel.textContent, '0%');
   assert.deepEqual(h.settingsUpdates, []);
+});
+
+test('a newer external volume change has no older slider commit left to overwrite it', async () => {
+  const h = await renderer();
+  h.elements.volume.value = 0.75;
+  h.elements.volume.dispatch('input');
+  assert.equal(h.settingsUpdates.length, 1);
+  h.updateSettings({ outputVolume: 0 });
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert.equal(h.elements.volume.value, 0);
+  assert.equal(h.elements.volumeLabel.textContent, '0%');
+  assert.equal(h.settingsUpdates.length, 1);
 });
 
 function key(button, key, modifiers = {}) {

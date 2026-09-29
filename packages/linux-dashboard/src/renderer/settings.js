@@ -11,7 +11,6 @@
   var domain = document.getElementById('shortioDomain');
   var shortioFields = document.getElementById('shortioFields');
   var opacityCommitTimer = null;
-  var volumeCommitTimer = null;
 
   function saveShortener() {
     shortioFields.hidden = provider.value !== 'shortio';
@@ -263,11 +262,7 @@
   });
   volume.addEventListener('input', function () {
     updateLabel();
-    var nextVolume = Number(volume.value);
-    if (volumeCommitTimer) clearTimeout(volumeCommitTimer);
-    volumeCommitTimer = setTimeout(function () {
-      window.classroomSettings.set({ outputVolume: nextVolume });
-    }, 250);
+    window.classroomSettings.set({ outputVolume: Number(volume.value) });
   });
   document.getElementById('reset').addEventListener('click', function () {
     window.classroomSettings.resetPositions();

@@ -159,9 +159,9 @@ export class DashboardSettings extends EventEmitter {
     }
   }
 
-  notifyChanged(): void {
+  notifyChanged(changedSetting?: 'outputVolume'): void {
     this.save();
-    this.emit('changed');
+    this.emit('changed', changedSetting);
   }
 
   getDisplayPreviewFrame(): PanelFrame | undefined {
