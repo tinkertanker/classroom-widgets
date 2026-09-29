@@ -158,6 +158,7 @@ struct DashboardGeneralSettingsView: View {
                     GridRow {
                         Text("Background opacity")
                         Slider(value: $compactBackgroundOpacity, in: 0...1, step: 0.05)
+                            .accessibilityLabel("Background opacity")
                         Text("\(Int((compactBackgroundOpacity * 100).rounded()))%")
                             .monospacedDigit().frame(width: 38, alignment: .trailing)
                     }
