@@ -97,7 +97,7 @@ pnpm linux:run --no-run         # build only
 or directly:
 
 ```bash
-pnpm --filter @classroom-widgets/teacher build
+pnpm --filter @classroom-widgets/teacher build:desktop
 cd packages/linux-dashboard && npm install && npm run build && npm start
 ```
 
