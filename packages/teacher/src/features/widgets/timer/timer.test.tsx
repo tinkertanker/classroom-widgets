@@ -83,17 +83,50 @@ describe('Timer Widget', () => {
       fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
     });
 
-    act(() => {
-      fireEvent.change(screen.getByRole('combobox', { name: /target hour/i }), { target: { value: '11' } });
-      fireEvent.change(screen.getByRole('combobox', { name: /target minute/i }), { target: { value: '30' } });
-      fireEvent.click(screen.getByRole('button', { name: 'PM' }));
-    });
+    fireEvent.click(screen.getByRole('button', { name: /target hour/i }));
+    fireEvent.click(screen.getByRole('option', { name: '11' }));
+    fireEvent.click(screen.getByRole('button', { name: /target minute/i }));
+    fireEvent.click(screen.getByRole('option', { name: '30' }));
+    fireEvent.click(screen.getByRole('button', { name: 'PM' }));
 
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
     });
 
     expect(getByExactText('23:45:00')).toBeInTheDocument();
+  });
+
+  test('supports keyboard navigation and restores focus after closing a target-time menu', () => {
+    renderWithModal(<Timer />);
+
+    fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
+    const hourTrigger = screen.getByRole('button', { name: /target hour/i });
+    fireEvent.click(hourTrigger);
+
+    const selectedHour = screen.getByRole('option', { selected: true });
+    expect(selectedHour).toHaveFocus();
+
+    const options = screen.getAllByRole('option');
+    const nextOption = options[options.indexOf(selectedHour) + 1];
+    fireEvent.keyDown(selectedHour, { key: 'ArrowRight' });
+    expect(nextOption).toHaveFocus();
+
+    fireEvent.keyDown(nextOption, { key: 'Escape' });
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(hourTrigger).toHaveFocus();
+  });
+
+  test('uses unique listbox IDs across timer instances', () => {
+    renderWithModal(<><Timer /><Timer /></>);
+
+    screen.getAllByRole('button', { name: /set target time/i }).forEach(button => {
+      fireEvent.click(button);
+    });
+    const hourTriggers = screen.getAllByRole('button', { name: /target hour/i });
+    hourTriggers.forEach(button => fireEvent.click(button));
+
+    const controlledIds = hourTriggers.map(button => button.getAttribute('aria-controls'));
+    expect(new Set(controlledIds).size).toBe(2);
   });
 
   test('adds time while running without interrupting the countdown', () => {
@@ -386,11 +419,11 @@ describe('Timer Widget', () => {
         fireEvent.click(screen.getByRole('button', { name: /set target time/i }));
       });
 
-      act(() => {
-        fireEvent.change(screen.getByRole('combobox', { name: /target hour/i }), { target: { value: '2' } });
-        fireEvent.change(screen.getByRole('combobox', { name: /target minute/i }), { target: { value: '5' } });
-        fireEvent.click(screen.getByRole('button', { name: 'PM' }));
-      });
+      fireEvent.click(screen.getByRole('button', { name: /target hour/i }));
+      fireEvent.click(screen.getByRole('option', { name: '2' }));
+      fireEvent.click(screen.getByRole('button', { name: /target minute/i }));
+      fireEvent.click(screen.getByRole('option', { name: '05' }));
+      fireEvent.click(screen.getByRole('button', { name: 'PM' }));
 
       act(() => {
         fireEvent.click(screen.getByRole('button', { name: /^set$/i }));
