@@ -44,10 +44,12 @@ public partial class SettingsWindow : Window
         DomainBox.Text = _settings.LinkShortenerDomain;
         VersionLabel.Text = $"Classroom Widgets for Windows v{App.AppVersion}";
         BuildShortcutRows();
+        _settings.Changed += OnSettingsChanged;
         _host.WidgetOptionsChanged += OnWidgetOptionsChanged;
         _shortcuts.StatusChanged += OnShortcutStatusChanged;
         Closed += (_, _) =>
         {
+            _settings.Changed -= OnSettingsChanged;
             _host.WidgetOptionsChanged -= OnWidgetOptionsChanged;
             _shortcuts.StatusChanged -= OnShortcutStatusChanged;
             _shortcuts.Resume();
@@ -110,6 +112,16 @@ public partial class SettingsWindow : Window
     private void UpdateVolumeLabel()
     {
         VolumeLabel.Text = $"{Math.Round(VolumeSlider.Value * 100)}%";
+    }
+
+    private void OnSettingsChanged()
+    {
+        if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(OnSettingsChanged); return; }
+        var wasLoading = _loading;
+        _loading = true;
+        VolumeSlider.Value = Math.Clamp(_settings.OutputVolume, VolumeSlider.Minimum, VolumeSlider.Maximum);
+        UpdateVolumeLabel();
+        _loading = wasLoading;
     }
 
     private void ProviderCombo_SelectionChanged(object sender, SelectionChangedEventArgs args)

@@ -10,7 +10,8 @@
   var apiKey = document.getElementById('shortioApiKey');
   var domain = document.getElementById('shortioDomain');
   var shortioFields = document.getElementById('shortioFields');
-  var commitTimer = null;
+  var opacityCommitTimer = null;
+  var volumeCommitTimer = null;
 
   function saveShortener() {
     shortioFields.hidden = provider.value !== 'shortio';
@@ -233,6 +234,12 @@
     document.getElementById('waylandWarning').hidden = state.wayland !== true;
   });
   window.classroomSettings.onShortcutsChanged(renderShortcuts);
+  window.classroomSettings.onSettingsChanged(function (state) {
+    if (Number.isFinite(Number(state.outputVolume))) {
+      volume.value = Math.min(1, Math.max(0, Number(state.outputVolume)));
+      updateLabel();
+    }
+  });
 
   version.textContent = 'Classroom Widgets for Linux v' + (window.__CLASSROOM_SETTINGS_VERSION__ || '0.0.0');
 
@@ -248,16 +255,18 @@
   });
   opacity.addEventListener('input', function () {
     updateLabel();
-    if (commitTimer) clearTimeout(commitTimer);
-    commitTimer = setTimeout(function () {
-      window.classroomSettings.set({ backgroundOpacity: Number(opacity.value) });
+    var nextOpacity = Number(opacity.value);
+    if (opacityCommitTimer) clearTimeout(opacityCommitTimer);
+    opacityCommitTimer = setTimeout(function () {
+      window.classroomSettings.set({ backgroundOpacity: nextOpacity });
     }, 250);
   });
   volume.addEventListener('input', function () {
     updateLabel();
-    if (commitTimer) clearTimeout(commitTimer);
-    commitTimer = setTimeout(function () {
-      window.classroomSettings.set({ outputVolume: Number(volume.value) });
+    var nextVolume = Number(volume.value);
+    if (volumeCommitTimer) clearTimeout(volumeCommitTimer);
+    volumeCommitTimer = setTimeout(function () {
+      window.classroomSettings.set({ outputVolume: nextVolume });
     }, 250);
   });
   document.getElementById('reset').addEventListener('click', function () {

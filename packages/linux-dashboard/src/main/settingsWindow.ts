@@ -74,6 +74,11 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
       settingsWindow.webContents.send('settings:shortcuts-changed', shortcuts.getStatuses(), shortcuts.getDisplayStatus(), moveWidgetStatuses(shortcuts));
     }
   });
+  settings.on('changed', () => {
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send('settings:changed', { outputVolume: settings.outputVolume });
+    }
+  });
 }
 
 function moveWidgetStatuses(shortcuts: WidgetShortcutController) {

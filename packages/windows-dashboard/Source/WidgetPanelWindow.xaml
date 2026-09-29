@@ -70,7 +70,7 @@
                     <Button x:Name="VolumeButton" Style="{StaticResource ChromeButton}" Content="&#xE767;" ToolTip="Output volume"
                             AutomationProperties.Name="Output volume" Click="VolumeButton_Click">
                         <Button.ContextMenu>
-                            <ContextMenu x:Name="VolumeMenu" />
+                            <ContextMenu x:Name="VolumeMenu" Opened="VolumeMenu_Opened" />
                         </Button.ContextMenu>
                     </Button>
                     <Button x:Name="ArrangeButton" Style="{StaticResource ChromeButton}" Content="&#xE80A;" ToolTip="Arrange widgets" Click="ArrangeButton_Click">

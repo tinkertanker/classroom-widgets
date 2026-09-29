@@ -557,7 +557,7 @@ export class WidgetPanelWindow extends EventEmitter {
         const percentage = Math.round(this.settings.outputVolume * 100);
         const preset = (label: string, volume: number) => ({
           label,
-          type: 'radio' as const,
+          type: 'checkbox' as const,
           checked: Math.abs(this.settings.outputVolume - volume) < 0.001,
           click: () => {
             this.settings.outputVolume = volume;

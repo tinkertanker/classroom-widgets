@@ -164,6 +164,7 @@ struct DashboardGeneralSettingsView: View {
                     GridRow {
                         Text("Output volume")
                         Slider(value: $outputVolume, in: 0...1, step: 0.05)
+                            .accessibilityLabel("Output volume")
                         Text("\(Int((outputVolume * 100).rounded()))%")
                             .monospacedDigit().frame(width: 38, alignment: .trailing)
                     }

@@ -447,7 +447,7 @@ public partial class WidgetPanelWindow : Window
                 inside = CurrentFrame.Contains(dip);
             }
         }
-        if (inside || AddMenu.IsOpen || ArrangeMenu.IsOpen)
+        if (inside || AddMenu.IsOpen || ArrangeMenu.IsOpen || VolumeMenu.IsOpen)
         {
             _pointerLeftAt = DateTime.MinValue;
             SetChromeVisible(true);
@@ -554,7 +554,14 @@ public partial class WidgetPanelWindow : Window
 
     private void ArrangeButton_Click(object sender, RoutedEventArgs args) => OpenMenu(ArrangeButton, ArrangeMenu);
 
-    private void VolumeButton_Click(object sender, RoutedEventArgs args)
+    private void VolumeButton_Click(object sender, RoutedEventArgs args) => OpenMenu(VolumeButton, VolumeMenu);
+
+    private void VolumeMenu_Opened(object sender, RoutedEventArgs args)
+    {
+        PopulateVolumeMenu();
+    }
+
+    private void PopulateVolumeMenu()
     {
         VolumeMenu.Items.Clear();
         VolumeMenu.Items.Add(new MenuItem
@@ -582,7 +589,6 @@ public partial class WidgetPanelWindow : Window
             item.Click += OutputVolumeMenuItem_Click;
             VolumeMenu.Items.Add(item);
         }
-        OpenMenu(VolumeButton, VolumeMenu);
     }
 
     private void OutputVolumeMenuItem_Click(object sender, RoutedEventArgs args)

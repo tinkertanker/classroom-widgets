@@ -29,7 +29,7 @@
                 <ColumnDefinition Width="48" />
             </Grid.ColumnDefinitions>
             <Slider x:Name="OpacitySlider" Grid.Column="0" Minimum="0.2" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
-                    ValueChanged="OpacitySlider_ValueChanged" />
+                    AutomationProperties.Name="Background opacity" ValueChanged="OpacitySlider_ValueChanged" />
             <TextBlock x:Name="OpacityLabel" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
@@ -42,7 +42,7 @@
                 <ColumnDefinition Width="48" />
             </Grid.ColumnDefinitions>
             <Slider x:Name="VolumeSlider" Grid.Column="0" Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
-                    ValueChanged="VolumeSlider_ValueChanged" />
+                    AutomationProperties.Name="Output volume" ValueChanged="VolumeSlider_ValueChanged" />
             <TextBlock x:Name="VolumeLabel" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
