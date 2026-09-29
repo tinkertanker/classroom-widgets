@@ -88,6 +88,7 @@ final class WidgetPanelCoordinator: NSObject {
     var onRandomiserListChange: (@MainActor (WidgetPanelRandomiserListChange) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
+    var onOutputVolumeChanged: (@MainActor (Double) -> Void)?
     var onWidgetRemovalRequested: (@MainActor (String) -> Void)?
 
     private let webViewFactory = WidgetPanelWebViewFactory()
@@ -364,6 +365,9 @@ final class WidgetPanelCoordinator: NSObject {
         controller.onDisplayPreviewRequested = { [weak self] in
             self?.onDisplayPreviewRequested?()
         }
+        controller.onOutputVolumeChanged = { [weak self] volume in
+            self?.onOutputVolumeChanged?(volume)
+        }
         controller.onLayoutRequested = { [weak self, weak controller] layout in
             self?.arrange(layout, on: controller?.window?.screen)
         }
@@ -458,6 +462,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     var onRemovalRequested: (@MainActor (String) -> Void)?
     var onWidgetCreationRequested: (@MainActor (Int) -> Void)?
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
+    var onOutputVolumeChanged: (@MainActor (Double) -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
     var onFrameChanged: (@MainActor (String, NSRect) -> Void)?
     var onBecameKey: (@MainActor (String) -> Void)?
@@ -475,6 +480,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private var isProgrammaticallyChangingFrame = false
     private var isClosingPermanently = false
     private var widgetCreationOptions: [CompactWidgetOption] = []
+    private weak var volumeButton: NSButton?
     private var backgroundOpacity: Double
     private var contentReady = false
     private var pendingShow = false
@@ -590,6 +596,8 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         window?.backgroundColor = .clear
         window?.collectionBehavior = Self.collectionBehavior(joinsAllSpaces: keepOnAllSpaces)
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
+        webView.evaluateJavaScript(DashboardAudioSettings.script(), completionHandler: nil)
+        updateVolumeButton()
         if opacityChanged {
             setWebBackgroundOpacity()
         }
@@ -749,6 +757,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         webView.callAsyncJavaScript(
             """
             \(DashboardShortenerSettings.script())
+            \(DashboardAudioSettings.script())
             (() => {
               const panel = window.classroomWidgetPanel;
               if (!panel?.receiveSnapshot) return false;
@@ -809,6 +818,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
+        webView.evaluateJavaScript(DashboardAudioSettings.script(), completionHandler: nil)
         setWebBackgroundOpacity()
         setWebChromeVisibility()
         guard let snapshot = currentSnapshot else { return }
@@ -888,6 +898,17 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     }
 
     private func addCompactAccessories(to panel: NSPanel) {
+        let volumeButton = NSButton(
+            image: volumeButtonImage,
+            target: self,
+            action: #selector(showOutputVolumeMenu(_:))
+        )
+        volumeButton.bezelStyle = .texturedRounded
+        volumeButton.controlSize = .small
+        volumeButton.imagePosition = .imageOnly
+        volumeButton.toolTip = "Output volume"
+        self.volumeButton = volumeButton
+
         let addButton = NSButton(
             image: NSImage(systemSymbolName: "plus", accessibilityDescription: "Add widget") ?? NSImage(),
             target: self,
@@ -908,7 +929,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         arrangeButton.imagePosition = .imageOnly
         arrangeButton.toolTip = "Arrange widgets"
 
-        let controls = NSStackView(views: [addButton, arrangeButton])
+        let controls = NSStackView(views: [volumeButton, addButton, arrangeButton])
         controls.orientation = .horizontal
         controls.alignment = .centerY
         controls.spacing = 6
@@ -1020,6 +1041,40 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
             .compactMap { panel.standardWindowButton($0) }
     }
 
+    @objc private func showOutputVolumeMenu(_ sender: NSButton) {
+        let volume = UserDefaults.standard.double(forKey: DashboardSettingKeys.outputVolume)
+        let percentage = Int((volume * 100).rounded())
+        let menu = NSMenu(title: "Output Volume")
+        let currentItem = NSMenuItem(title: "Current: \(percentage)%", action: nil, keyEquivalent: "")
+        currentItem.isEnabled = false
+        menu.addItem(currentItem)
+        menu.addItem(.separator())
+        for preset in [0, 25, 50, 75, 100] {
+            let title = preset == 0 ? "Mute" : "\(preset)%"
+            let item = NSMenuItem(title: title, action: #selector(setOutputVolume(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = Double(preset) / 100
+            item.state = percentage == preset ? .on : .off
+            menu.addItem(item)
+        }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
+    }
+
+    @objc private func setOutputVolume(_ sender: NSMenuItem) {
+        guard let volume = sender.representedObject as? Double else { return }
+        onOutputVolumeChanged?(volume)
+    }
+
+    private var volumeButtonImage: NSImage {
+        let volume = UserDefaults.standard.double(forKey: DashboardSettingKeys.outputVolume)
+        let symbol = volume == 0 ? "speaker.slash.fill" : volume < 0.5 ? "speaker.wave.1.fill" : "speaker.wave.2.fill"
+        return NSImage(systemSymbolName: symbol, accessibilityDescription: "Output volume") ?? NSImage()
+    }
+
+    private func updateVolumeButton() {
+        volumeButton?.image = volumeButtonImage
+    }
+
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
         let menu = WidgetMenu.makePanelMenu(
             options: widgetCreationOptions,
@@ -1128,7 +1183,7 @@ private final class WidgetPanelWebViewFactory {
 
         let userContentController = WKUserContentController()
         userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGET_PANEL__ = true;",
+            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGET_PANEL__ = true; \(DashboardAudioSettings.script())",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))

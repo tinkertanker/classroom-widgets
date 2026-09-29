@@ -30,7 +30,7 @@ public partial class WidgetPanelWindow : Window
 
     private WidgetPanelDescriptor _descriptor;
     private double _backgroundOpacity;
-    private readonly DashboardSettings _shortenerSettings;
+    private readonly DashboardSettings _settings;
     private bool _isDark;
     private IReadOnlyList<CompactWidgetOption> _options = Array.Empty<CompactWidgetOption>();
     private readonly DispatcherTimer _hoverTimer;
@@ -71,10 +71,11 @@ public partial class WidgetPanelWindow : Window
     {
         _descriptor = descriptor;
         _backgroundOpacity = Math.Clamp(backgroundOpacity, 0, 1);
-        _shortenerSettings = settings;
+        _settings = settings;
         InitializeComponent();
         Topmost = alwaysOnTop;
         ApplyDescriptorPresentation();
+        UpdateVolumeButton();
 
         _hoverTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(120) };
         _hoverTimer.Tick += (_, _) => UpdateChromeForPointer();
@@ -135,6 +136,8 @@ public partial class WidgetPanelWindow : Window
         // Native shortener preferences outrank anything a panel cached, so
         // republish them on every settings change, like macOS does.
         ApplyShortenerSettings();
+        ApplyAudioSettings();
+        UpdateVolumeButton();
         if (!opacityChanged) return;
         ApplyPanelBackground();
         ApplyWebPresentation();
@@ -148,7 +151,13 @@ public partial class WidgetPanelWindow : Window
     private void ApplyShortenerSettings()
     {
         if (!_webReady) return;
-        _ = WebView.CoreWebView2.ExecuteScriptAsync(DashboardShortenerSettings.Script(_shortenerSettings));
+        _ = WebView.CoreWebView2.ExecuteScriptAsync(DashboardShortenerSettings.Script(_settings));
+    }
+
+    private void ApplyAudioSettings()
+    {
+        if (!_webReady) return;
+        _ = WebView.CoreWebView2.ExecuteScriptAsync(DashboardAudioSettings.Script(_settings));
     }
 
     public void SetWidgetCreationOptions(IReadOnlyList<CompactWidgetOption> options)
@@ -253,7 +262,9 @@ public partial class WidgetPanelWindow : Window
         if (_webReady || _closingPermanently) return;
         try
         {
-            await DashboardWebView.InitializeAsync(WebView, "window.__CLASSROOM_WIDGET_PANEL__ = true;");
+            await DashboardWebView.InitializeAsync(
+                WebView,
+                "window.__CLASSROOM_WIDGET_PANEL__ = true;" + DashboardAudioSettings.Script(_settings));
         }
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or COMException)
         {
@@ -267,7 +278,11 @@ public partial class WidgetPanelWindow : Window
         {
             // Mirror the macOS didFinish navigation behaviour: republish the
             // native shortener settings before the reloaded panel state.
-            if (args.IsSuccess) ApplyShortenerSettings();
+            if (args.IsSuccess)
+            {
+                ApplyShortenerSettings();
+                ApplyAudioSettings();
+            }
             ApplyWebPresentation();
         };
         WebView.CoreWebView2.ProcessFailed += (_, args) =>
@@ -367,7 +382,8 @@ public partial class WidgetPanelWindow : Window
         // same script so widgets read current preferences on their first
         // render, the way the macOS panel does.
         _ = DashboardWebView.EvaluateBoolAsync(WebView,
-            DashboardShortenerSettings.Script(_shortenerSettings)
+            DashboardShortenerSettings.Script(_settings)
+            + DashboardAudioSettings.Script(_settings)
             + $"(() => {{ const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot({snapshot}); return true; }})()");
     }
 
@@ -537,6 +553,50 @@ public partial class WidgetPanelWindow : Window
     private void AddButton_Click(object sender, RoutedEventArgs args) => OpenMenu(AddButton, AddMenu);
 
     private void ArrangeButton_Click(object sender, RoutedEventArgs args) => OpenMenu(ArrangeButton, ArrangeMenu);
+
+    private void VolumeButton_Click(object sender, RoutedEventArgs args)
+    {
+        VolumeMenu.Items.Clear();
+        VolumeMenu.Items.Add(new MenuItem
+        {
+            Header = $"Current: {Math.Round(_settings.OutputVolume * 100)}%",
+            IsEnabled = false
+        });
+        VolumeMenu.Items.Add(new Separator());
+        foreach (var (label, volume) in new[]
+        {
+            ("Mute", 0.0),
+            ("25%", 0.25),
+            ("50%", 0.5),
+            ("75%", 0.75),
+            ("100%", 1.0)
+        })
+        {
+            var item = new MenuItem
+            {
+                Header = label,
+                IsCheckable = true,
+                IsChecked = Math.Abs(_settings.OutputVolume - volume) < 0.001,
+                Tag = volume
+            };
+            item.Click += OutputVolumeMenuItem_Click;
+            VolumeMenu.Items.Add(item);
+        }
+        OpenMenu(VolumeButton, VolumeMenu);
+    }
+
+    private void OutputVolumeMenuItem_Click(object sender, RoutedEventArgs args)
+    {
+        if (sender is not MenuItem { Tag: double volume }) return;
+        _settings.OutputVolume = volume;
+        _settings.NotifyChanged();
+    }
+
+    private void UpdateVolumeButton()
+    {
+        VolumeButton.Content = _settings.OutputVolume == 0 ? "\uE74F" : "\uE767";
+        VolumeButton.ToolTip = $"Output volume: {Math.Round(_settings.OutputVolume * 100)}%";
+    }
 
     private void ArrangeMenuItem_Click(object sender, RoutedEventArgs args)
     {

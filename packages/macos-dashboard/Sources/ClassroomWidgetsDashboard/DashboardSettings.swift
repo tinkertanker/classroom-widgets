@@ -23,6 +23,13 @@ enum DashboardShortenerSettings {
     }
 }
 
+enum DashboardAudioSettings {
+    static func script(defaults: UserDefaults = .standard) -> String {
+        let volume = min(max(defaults.double(forKey: DashboardSettingKeys.outputVolume), 0), 1)
+        return "window.__CLASSROOM_WIDGETS_AUDIO_VOLUME__ = \(volume); window.classroomAudio?.setVolume(\(volume));"
+    }
+}
+
 enum DashboardSettingKeys {
     static let settingsShortcutKeyCode = "dashboardSettingsShortcutKeyCode"
     static let settingsShortcutModifiers = "dashboardSettingsShortcutModifiers"
@@ -32,6 +39,7 @@ enum DashboardSettingKeys {
     static let moveWidgetNextShortcutModifiers = "moveWidgetNextShortcutModifiers"
     static let keepOnAllSpaces = "keepOnAllSpaces"
     static let compactBackgroundOpacity = "compactBackgroundOpacity"
+    static let outputVolume = "outputVolume"
 }
 
 enum DashboardDefaults {
@@ -50,7 +58,8 @@ enum DashboardDefaults {
             DashboardSettingKeys.moveWidgetNextShortcutKeyCode: moveWidgetNextShortcutKeyCode,
             DashboardSettingKeys.moveWidgetNextShortcutModifiers: moveWidgetShortcutModifiers,
             DashboardSettingKeys.keepOnAllSpaces: true,
-            DashboardSettingKeys.compactBackgroundOpacity: 1.0
+            DashboardSettingKeys.compactBackgroundOpacity: 1.0,
+            DashboardSettingKeys.outputVolume: 1.0
         ])
     }
 }
@@ -129,6 +138,7 @@ final class DashboardSettingsContext: ObservableObject {
 struct DashboardGeneralSettingsView: View {
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
     @AppStorage(DashboardSettingKeys.compactBackgroundOpacity) private var compactBackgroundOpacity = 1.0
+    @AppStorage(DashboardSettingKeys.outputVolume) private var outputVolume = 1.0
     @State private var launchAtLoginEnabled = false
     @State private var launchAtLoginAlertMessage: String?
     let context: DashboardSettingsContext
@@ -144,12 +154,22 @@ struct DashboardGeneralSettingsView: View {
 
             Section("Floating Widgets") {
                 Toggle("Show on all Spaces", isOn: $keepOnAllSpaces)
-                HStack {
-                    Text("Background opacity")
-                    Slider(value: $compactBackgroundOpacity, in: 0...1, step: 0.05)
-                    Text("\(Int((compactBackgroundOpacity * 100).rounded()))%")
-                        .monospacedDigit().frame(width: 38, alignment: .trailing)
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                    GridRow {
+                        Text("Background opacity")
+                        Slider(value: $compactBackgroundOpacity, in: 0...1, step: 0.05)
+                        Text("\(Int((compactBackgroundOpacity * 100).rounded()))%")
+                            .monospacedDigit().frame(width: 38, alignment: .trailing)
+                    }
+                    GridRow {
+                        Text("Output volume")
+                        Slider(value: $outputVolume, in: 0...1, step: 0.05)
+                        Text("\(Int((outputVolume * 100).rounded()))%")
+                            .monospacedDigit().frame(width: 38, alignment: .trailing)
+                    }
                 }
+                Text("Controls sounds from every floating widget without changing the Mac's system volume.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -185,7 +205,7 @@ struct DashboardGeneralSettingsView: View {
     private var launchAtLoginAlertIsPresented: Binding<Bool> {
         Binding(get: { launchAtLoginAlertMessage != nil }, set: { if !$0 { launchAtLoginAlertMessage = nil } })
     }
-    private var widgetSettingsSignature: String { "\(keepOnAllSpaces):\(compactBackgroundOpacity)" }
+    private var widgetSettingsSignature: String { "\(keepOnAllSpaces):\(compactBackgroundOpacity):\(outputVolume)" }
 }
 
 struct DashboardShortcutSettingsView: View {

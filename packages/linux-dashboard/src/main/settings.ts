@@ -16,6 +16,7 @@ export interface PanelFrame {
 
 export interface DashboardSettingsData {
   backgroundOpacity: number;
+  outputVolume: number;
   alwaysOnTop: boolean;
   panelFrames: Record<string, PanelFrame>;
   linkShortener: ShortenerSettings;
@@ -39,6 +40,7 @@ export interface DashboardSettingsData {
 export class DashboardSettings extends EventEmitter {
   readonly backgroundOpacityDefault = 1;
   backgroundOpacity = 1;
+  outputVolume = 1;
   alwaysOnTop = true;
   panelFrames: Record<string, PanelFrame> = {};
   linkShortener = readShortenerSettings();
@@ -65,6 +67,9 @@ export class DashboardSettings extends EventEmitter {
         const raw = JSON.parse(readFileSync(settings.settingsPath, 'utf8')) as Partial<DashboardSettingsData>;
         if (typeof raw.backgroundOpacity === 'number' && Number.isFinite(raw.backgroundOpacity)) {
           settings.backgroundOpacity = Math.min(1, Math.max(0, raw.backgroundOpacity));
+        }
+        if (typeof raw.outputVolume === 'number' && Number.isFinite(raw.outputVolume)) {
+          settings.outputVolume = Math.min(1, Math.max(0, raw.outputVolume));
         }
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
         settings.linkShortener = readShortenerSettings(raw.linkShortener);
@@ -133,6 +138,7 @@ export class DashboardSettings extends EventEmitter {
       mkdirSync(dirname(this.settingsPath), { recursive: true });
       const data: DashboardSettingsData = {
         backgroundOpacity: this.backgroundOpacity,
+        outputVolume: this.outputVolume,
         alwaysOnTop: this.alwaysOnTop,
         panelFrames: this.panelFrames,
         linkShortener: this.linkShortener,
@@ -230,4 +236,9 @@ export class DashboardSettings extends EventEmitter {
       log.warn(`Unable to write autostart entry: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+}
+
+export function audioSettingsScript(outputVolume: number): string {
+  const volume = Math.min(1, Math.max(0, outputVolume));
+  return `window.__CLASSROOM_WIDGETS_AUDIO_VOLUME__ = ${JSON.stringify(volume)}; window.classroomAudio?.setVolume(${JSON.stringify(volume)});`;
 }

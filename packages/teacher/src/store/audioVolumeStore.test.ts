@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getMasterVolume, useAudioVolumeStore } from './audioVolumeStore';
 
 describe('audioVolumeStore', () => {
@@ -39,5 +39,21 @@ describe('audioVolumeStore', () => {
     useAudioVolumeStore.getState().toggleMuted();
 
     expect(useAudioVolumeStore.getState().volume).toBe(0.35);
+  });
+
+  it('uses the native desktop volume at startup and accepts live native updates', async () => {
+    vi.resetModules();
+    localStorage.clear();
+    (window as Window & { __CLASSROOM_WIDGETS_AUDIO_VOLUME__?: number }).__CLASSROOM_WIDGETS_AUDIO_VOLUME__ = 0.35;
+
+    const { useAudioVolumeStore: desktopStore } = await import('./audioVolumeStore');
+
+    expect(desktopStore.getState().volume).toBe(0.35);
+    (window as Window & { classroomAudio?: { setVolume: (volume: number) => void } })
+      .classroomAudio?.setVolume(0.2);
+    expect(desktopStore.getState().volume).toBe(0.2);
+
+    delete (window as Window & { __CLASSROOM_WIDGETS_AUDIO_VOLUME__?: number }).__CLASSROOM_WIDGETS_AUDIO_VOLUME__;
+    delete (window as Window & { classroomAudio?: unknown }).classroomAudio;
   });
 });

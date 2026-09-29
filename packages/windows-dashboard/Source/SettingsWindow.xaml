@@ -35,6 +35,19 @@
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
                    Text="Lower the opacity to let slides or other windows show through the widgets." />
 
+        <TextBlock Text="Output volume" Margin="0,16,0,4" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="48" />
+            </Grid.ColumnDefinitions>
+            <Slider x:Name="VolumeSlider" Grid.Column="0" Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                    ValueChanged="VolumeSlider_ValueChanged" />
+            <TextBlock x:Name="VolumeLabel" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" />
+        </Grid>
+        <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
+                   Text="Controls sounds from every floating widget without changing Windows system volume." />
+
         <TextBlock Text="Link Shortener" FontWeight="SemiBold" FontSize="15" Margin="0,20,0,8" />
 
         <ComboBox x:Name="ProviderCombo" Margin="0,4" SelectionChanged="ProviderCombo_SelectionChanged">

@@ -28,7 +28,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         )
         DashboardWebKitShared.schemeHandler.prewarmCriticalAssets()
         configuration.userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGETS_MACOS_VERSION__ = \(appVersionJSON);",
+            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGETS_MACOS_VERSION__ = \(appVersionJSON); \(DashboardAudioSettings.script())",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))
@@ -60,6 +60,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         }
         widgetPanelCoordinator.onDisplayPreviewRequested = { [weak self] in
             self?.onDisplayPreviewRequested?()
+        }
+        widgetPanelCoordinator.onOutputVolumeChanged = { [weak self] volume in
+            UserDefaults.standard.set(volume, forKey: DashboardSettingKeys.outputVolume)
+            self?.applySettings()
         }
         widgetPanelCoordinator.onWidgetRemovalRequested = { [weak self] widgetID in
             self?.removeWidget(widgetID)
@@ -150,6 +154,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         )
         setWebBackgroundOpacity(backgroundOpacity)
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
+        webView.evaluateJavaScript(DashboardAudioSettings.script(), completionHandler: nil)
     }
 
     func flushPersistedState() {
@@ -200,6 +205,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         setWebBackgroundOpacity(backgroundOpacity)
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
+        webView.evaluateJavaScript(DashboardAudioSettings.script(), completionHandler: nil)
     }
 
     func webView(

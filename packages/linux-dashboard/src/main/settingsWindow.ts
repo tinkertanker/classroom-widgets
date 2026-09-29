@@ -13,6 +13,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
   ipcInstalled = true;
   ipcMain.handle('settings:get', () => ({
     backgroundOpacity: settings.backgroundOpacity,
+    outputVolume: settings.outputVolume,
     alwaysOnTop: settings.alwaysOnTop,
     launchAtLogin: settings.launchAtLoginEnabled,
     linkShortener: settings.linkShortener,
@@ -26,6 +27,9 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     const partial = update as Record<string, unknown>;
     if (typeof partial.backgroundOpacity === 'number' && Number.isFinite(partial.backgroundOpacity)) {
       settings.backgroundOpacity = Math.min(1, Math.max(0, Math.round(partial.backgroundOpacity * 100) / 100));
+    }
+    if (typeof partial.outputVolume === 'number' && Number.isFinite(partial.outputVolume)) {
+      settings.outputVolume = Math.min(1, Math.max(0, Math.round(partial.outputVolume * 100) / 100));
     }
     if (typeof partial.alwaysOnTop === 'boolean') {
       settings.alwaysOnTop = partial.alwaysOnTop;

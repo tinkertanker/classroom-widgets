@@ -67,6 +67,12 @@
                            FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource ChromeForeground}"
                            TextTrimming="CharacterEllipsis" IsHitTestVisible="False" />
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center">
+                    <Button x:Name="VolumeButton" Style="{StaticResource ChromeButton}" Content="&#xE767;" ToolTip="Output volume"
+                            AutomationProperties.Name="Output volume" Click="VolumeButton_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu x:Name="VolumeMenu" />
+                        </Button.ContextMenu>
+                    </Button>
                     <Button x:Name="ArrangeButton" Style="{StaticResource ChromeButton}" Content="&#xE80A;" ToolTip="Arrange widgets" Click="ArrangeButton_Click">
                         <Button.ContextMenu>
                             <ContextMenu x:Name="ArrangeMenu">

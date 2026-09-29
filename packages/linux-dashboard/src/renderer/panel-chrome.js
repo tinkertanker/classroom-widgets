@@ -2,6 +2,7 @@
   var chromeEl = document.getElementById('chrome');
   var titleEl = document.getElementById('title');
   var addBtn = document.getElementById('add');
+  var volumeBtn = document.getElementById('volume');
 
   document.getElementById('close').addEventListener('click', function () {
     window.classroomPanelChrome.send('close');
@@ -11,6 +12,9 @@
   });
   document.getElementById('arrange').addEventListener('click', function () {
     window.classroomPanelChrome.send('arrange');
+  });
+  volumeBtn.addEventListener('click', function () {
+    window.classroomPanelChrome.send('volume');
   });
 
   window.classroomPanelChrome.onUpdate(function (update) {
@@ -24,5 +28,11 @@
     }
     chromeEl.classList.toggle('visible', update.chromeVisible === true);
     addBtn.disabled = update.addEnabled === false;
+    if (typeof update.outputVolume === 'number') {
+      var percentage = Math.round(update.outputVolume * 100);
+      volumeBtn.textContent = percentage === 0 ? '🔇' : '🔊';
+      volumeBtn.title = 'Output volume: ' + percentage + '%';
+      volumeBtn.setAttribute('aria-label', volumeBtn.title);
+    }
   });
 })();

@@ -13,7 +13,7 @@ public partial class SettingsWindow : Window
     private readonly DashboardSettings _settings;
     private readonly WidgetHostController _host;
     private readonly WidgetShortcutManager _shortcuts;
-    private readonly DispatcherTimer _opacityCommit;
+    private readonly DispatcherTimer _settingsCommit;
     private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), (TextBox Capture, TextBlock Status)> _shortcutControls = new();
     private bool _loading = true;
 
@@ -25,10 +25,10 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         Height = Math.Min(Height, SystemParameters.WorkArea.Height - 40);
 
-        _opacityCommit = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _opacityCommit.Tick += (_, _) =>
+        _settingsCommit = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _settingsCommit.Tick += (_, _) =>
         {
-            _opacityCommit.Stop();
+            _settingsCommit.Stop();
             _settings.NotifyChanged();
         };
 
@@ -36,6 +36,8 @@ public partial class SettingsWindow : Window
         LaunchAtLoginCheck.IsChecked = DashboardSettings.LaunchAtLoginEnabled;
         OpacitySlider.Value = Math.Clamp(_settings.BackgroundOpacity, OpacitySlider.Minimum, OpacitySlider.Maximum);
         UpdateOpacityLabel();
+        VolumeSlider.Value = Math.Clamp(_settings.OutputVolume, VolumeSlider.Minimum, VolumeSlider.Maximum);
+        UpdateVolumeLabel();
         SelectProvider(DashboardShortenerSettings.NormalizeProvider(_settings.LinkShortenerProvider));
         UpdateShortioFields();
         ApiKeyBox.Password = _settings.LinkShortenerPublicApiKey;
@@ -81,8 +83,17 @@ public partial class SettingsWindow : Window
         if (_loading) return;
         _settings.BackgroundOpacity = Math.Round(args.NewValue, 2);
         UpdateOpacityLabel();
-        _opacityCommit.Stop();
-        _opacityCommit.Start();
+        _settingsCommit.Stop();
+        _settingsCommit.Start();
+    }
+
+    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> args)
+    {
+        if (_loading) return;
+        _settings.OutputVolume = Math.Round(args.NewValue, 2);
+        UpdateVolumeLabel();
+        _settingsCommit.Stop();
+        _settingsCommit.Start();
     }
 
     private void ResetPositionsButton_Click(object sender, RoutedEventArgs args)
@@ -94,6 +105,11 @@ public partial class SettingsWindow : Window
     private void UpdateOpacityLabel()
     {
         OpacityLabel.Text = $"{Math.Round(OpacitySlider.Value * 100)}%";
+    }
+
+    private void UpdateVolumeLabel()
+    {
+        VolumeLabel.Text = $"{Math.Round(VolumeSlider.Value * 100)}%";
     }
 
     private void ProviderCombo_SelectionChanged(object sender, SelectionChangedEventArgs args)

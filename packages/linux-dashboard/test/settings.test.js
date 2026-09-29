@@ -46,3 +46,14 @@ test('legacy Display Show is retained and missing Dismiss stays distinguishable 
   settings.setDisplayPreviewDismissShortcut(null);
   assert.equal(h.load().displayPreviewDismissShortcut, null);
 });
+
+test('output volume defaults to full and persisted values are clamped', t => {
+  const legacy = persistedSettings(t, { backgroundOpacity: 0.5 });
+  assert.equal(legacy.load().outputVolume, 1);
+
+  const tooLoud = persistedSettings(t, { outputVolume: 4 });
+  assert.equal(tooLoud.load().outputVolume, 1);
+
+  const muted = persistedSettings(t, { outputVolume: -1 });
+  assert.equal(muted.load().outputVolume, 0);
+});
