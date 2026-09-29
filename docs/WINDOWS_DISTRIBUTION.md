@@ -77,7 +77,7 @@ pnpm windows:run -NoRun     # build only
 or directly:
 
 ```powershell
-pnpm --filter @classroom-widgets/teacher build
+pnpm --filter @classroom-widgets/teacher build:desktop
 dotnet build packages/windows-dashboard/ClassroomWidgets.csproj -c Debug
 packages\windows-dashboard\bin\Debug\net8.0-windows\ClassroomWidgets.exe
 ```

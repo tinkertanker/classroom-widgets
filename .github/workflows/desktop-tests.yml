@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - run: swift test --package-path packages/macos-dashboard --jobs 2
+      - run: swift test --package-path packages/macos-dashboard
 
   linux:
     name: Linux unit tests

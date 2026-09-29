@@ -23,7 +23,7 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
 if (-not $SkipWeb) {
     Push-Location $repoRoot
     try {
-        pnpm --filter @classroom-widgets/teacher build
+        pnpm --filter @classroom-widgets/teacher build:desktop
         if ($LASTEXITCODE -ne 0) { throw 'Teacher web build failed.' }
     } finally {
         Pop-Location

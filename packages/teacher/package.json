@@ -7,6 +7,7 @@
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
+    "build:desktop": "vite build --sourcemap false",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "e2e:dropbox": "node e2e/dropboxExport.mjs",
