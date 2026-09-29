@@ -22,6 +22,170 @@ import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
 type SoundMode = 'short' | 'long';
+type TargetTimeField = 'hour' | 'minute';
+
+interface TargetTimeDropdownProps {
+  field: TargetTimeField;
+  label: string;
+  value: number;
+  values: number[];
+  formatValue?: (value: number) => string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onDismiss: (field: TargetTimeField) => void;
+  onChange: (value: number) => void;
+}
+
+const TargetTimeDropdown: React.FC<TargetTimeDropdownProps> = ({
+  field,
+  label,
+  value,
+  values,
+  formatValue = String,
+  isOpen,
+  onToggle,
+  onDismiss,
+  onChange
+}) => {
+  const listboxId = `${React.useId()}-${field}-options`;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listboxRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    listboxRef.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.focus();
+
+    const dismissOnOutsidePointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        onDismiss(field);
+      }
+    };
+
+    document.addEventListener('pointerdown', dismissOnOutsidePointer);
+    return () => document.removeEventListener('pointerdown', dismissOnOutsidePointer);
+  }, [isOpen, onDismiss]);
+
+  const closeAndRestoreFocus = () => {
+    onDismiss(field);
+    triggerRef.current?.focus();
+  };
+
+  const focusOption = (index: number) => {
+    const wrappedIndex = (index + values.length) % values.length;
+    listboxRef.current
+      ?.querySelectorAll<HTMLElement>('[role="option"]')
+      .item(wrappedIndex)
+      ?.focus();
+  };
+
+  const handleOptionKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        focusOption(index + 2);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        focusOption(index - 2);
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        focusOption(index + 1);
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        focusOption(index - 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        focusOption(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        focusOption(values.length - 1);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        closeAndRestoreFocus();
+        break;
+      case 'Tab':
+        onDismiss(field);
+        break;
+    }
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`${label}: ${formatValue(value)}`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        onClick={onToggle}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!isOpen) {
+              onToggle();
+            } else {
+              focusOption(values.indexOf(value));
+            }
+          } else if (event.key === 'Escape' && isOpen) {
+            event.preventDefault();
+            closeAndRestoreFocus();
+          }
+        }}
+        className={cn(
+          field === 'hour' ? 'w-12' : 'w-14',
+          "rounded-md border px-1.5 py-1 text-sm font-medium text-center",
+          backgrounds.surface,
+          text.primary
+        )}
+      >
+        {formatValue(value)} <span aria-hidden="true">▾</span>
+      </button>
+      {isOpen && (
+        <div
+          ref={listboxRef}
+          id={listboxId}
+          role="listbox"
+          aria-label={`${label} options`}
+          className="absolute bottom-full left-1/2 z-30 mb-1 grid min-w-[5.5rem] -translate-x-1/2 grid-cols-2 rounded-md border border-warm-gray-200 bg-white p-1 shadow-lg dark:border-warm-gray-600 dark:bg-warm-gray-800"
+        >
+          {values.map((option, index) => (
+            <button
+              key={option}
+              type="button"
+              role="option"
+              aria-selected={option === value}
+              onClick={() => {
+                onChange(option);
+                triggerRef.current?.focus();
+              }}
+              onKeyDown={(event) => handleOptionKeyDown(event, index)}
+              className={cn(
+                "block w-full rounded px-2 py-1 text-center text-sm",
+                option === value
+                  ? 'bg-sage-500 text-white'
+                  : 'text-warm-gray-700 hover:bg-warm-gray-100 dark:text-warm-gray-200 dark:hover:bg-warm-gray-700'
+              )}
+            >
+              {formatValue(option)}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface TimerProps {
   savedState?: any;
@@ -47,6 +211,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
   const [quickAddExpanded, setQuickAddExpanded] = useState(false);
   const [targetTimeExpanded, setTargetTimeExpanded] = useState(false);
   const [targetTime, setTargetTime] = useState<ClockTimeSelection>(() => getDefaultTargetSelection());
+  const [openTargetTimeField, setOpenTargetTimeField] = useState<TargetTimeField | null>(null);
 
   // Mute gates playback rather than the hooks' enabled flag, so the Audio
   // element stays alive (and preloaded) across mute toggles.
@@ -174,6 +339,11 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
       ...prev,
       [field]: value
     }));
+    setOpenTargetTimeField(null);
+  }, []);
+
+  const handleTargetTimeDismiss = useCallback((field: TargetTimeField) => {
+    setOpenTargetTimeField(currentField => currentField === field ? null : currentField);
   }, []);
 
   const handleSetTargetTime = useCallback(() => {
@@ -186,6 +356,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
     segmentEditor.setTimeValues([hours, minutes, seconds]);
     resetTimer(totalSeconds);
     setTargetTimeExpanded(false);
+    setOpenTargetTimeField(null);
   }, [targetTime, segmentEditor, resetTimer]);
 
   const handleStart = useCallback(() => {
@@ -230,12 +401,14 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
       }
       return !prev;
     });
+    setOpenTargetTimeField(null);
     setQuickAddExpanded(false);
   }, []);
 
   const handleQuickAddToggle = useCallback(() => {
     setQuickAddExpanded(prev => !prev);
     setTargetTimeExpanded(false);
+    setOpenTargetTimeField(null);
   }, []);
 
   const showStartButton = !isRunning && !isPaused && !timerFinished;
@@ -461,42 +634,35 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
           <div
             id="timer-target-time-tray"
             data-widget-controls-tray
-            className="mt-2 overflow-hidden transition-all duration-200 ease-out"
+            className="mt-2 transition-all duration-200 ease-out"
           >
             <div className="rounded-lg border border-white/40 bg-white/45 p-2 shadow-sm backdrop-blur-md dark:border-warm-gray-600/40 dark:bg-warm-gray-800/45">
               <div className="flex items-center justify-center gap-2">
                 <span className={cn("text-xs font-medium uppercase tracking-wide whitespace-nowrap", text.muted)}>
                   Until
                 </span>
-                  <select
-                    aria-label="Target hour"
+                  <TargetTimeDropdown
+                    field="hour"
+                    label="Target hour"
                     value={targetTime.hour}
-                    onChange={(e) => handleTargetTimeChange('hour', parseInt(e.target.value, 10))}
-                    className={cn(
-                      "w-12 rounded-md border px-1.5 py-1 text-sm font-medium text-center",
-                      backgrounds.surface,
-                      text.primary
-                    )}
-                  >
-                    {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((hour) => (
-                      <option key={hour} value={hour}>{hour}</option>
-                    ))}
-                  </select>
+                    values={[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]}
+                    isOpen={openTargetTimeField === 'hour'}
+                    onToggle={() => setOpenTargetTimeField(prev => prev === 'hour' ? null : 'hour')}
+                    onDismiss={handleTargetTimeDismiss}
+                    onChange={(hour) => handleTargetTimeChange('hour', hour)}
+                  />
                   <span className={cn("text-lg font-medium", text.muted)}>:</span>
-                  <select
-                    aria-label="Target minute"
+                  <TargetTimeDropdown
+                    field="minute"
+                    label="Target minute"
                     value={targetTime.minute}
-                    onChange={(e) => handleTargetTimeChange('minute', parseInt(e.target.value, 10))}
-                    className={cn(
-                      "w-14 rounded-md border px-1.5 py-1 text-sm font-medium text-center",
-                      backgrounds.surface,
-                      text.primary
-                    )}
-                  >
-                    {Array.from({ length: 12 }, (_, index) => index * 5).map((minute) => (
-                      <option key={minute} value={minute}>{minute.toString().padStart(2, '0')}</option>
-                    ))}
-                  </select>
+                    values={Array.from({ length: 12 }, (_, index) => index * 5)}
+                    formatValue={(minute) => minute.toString().padStart(2, '0')}
+                    isOpen={openTargetTimeField === 'minute'}
+                    onToggle={() => setOpenTargetTimeField(prev => prev === 'minute' ? null : 'minute')}
+                    onDismiss={handleTargetTimeDismiss}
+                    onChange={(minute) => handleTargetTimeChange('minute', minute)}
+                  />
                   <div
                     className="flex overflow-hidden rounded-md border border-white/50 dark:border-warm-gray-600/40"
                     role="group"
