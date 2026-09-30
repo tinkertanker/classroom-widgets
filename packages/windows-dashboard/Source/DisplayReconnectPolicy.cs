@@ -17,6 +17,9 @@ public sealed class DisplayReconnectPolicy
     /// <summary>Screen notices arrive in bursts during one plug or unplug.</summary>
     public static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(750);
 
+    /// <summary>How long after an automatic reopen a live stand-in may still move to the saved display.</summary>
+    public static readonly TimeSpan StandInSwitchWindow = TimeSpan.FromSeconds(10);
+
     private enum Phase { Idle, Hiding, HiddenByDisconnect }
 
     private Phase _phase = Phase.Idle;

@@ -35,6 +35,7 @@ final class DisplayPreviewCoordinator: NSObject {
     private var reconnectTask: Task<Void, Never>?
     private let reconnectDebounceNanoseconds: UInt64
     private var closeTrigger: String?
+    private var autoReopenedAt: Date?
     private var deliveredFrameGeneration: UInt64?
     private var streamActivityGeneration: UInt64?
     private var pendingOpeningAspect = false
@@ -88,6 +89,7 @@ final class DisplayPreviewCoordinator: NSObject {
     /// `activatingApp: false` is for automatic reopening, which must not steal focus.
     func open(activatingApp: Bool = true) {
         reconnect.windowOpened()
+        autoReopenedAt = activatingApp ? nil : Date()
         if let window = windowController?.window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -306,6 +308,8 @@ final class DisplayPreviewCoordinator: NSObject {
         let hostID = hostDisplayID(windowController?.window)
         let candidates = catalog.eligibleSources(hostDisplayID: hostID)
         guard let source = candidates.first(where: { $0.id == id }), source != selectedSource else {
+            // Re-picking the current source still makes it the saved choice.
+            if let current = selectedSource, current.id == id { defaultsWriter.set(current.uuid, forKey: Keys.sourceUUID) }
             // A menu action can outlive its host/topology snapshot. Restore the
             // accepted selection rather than cancelling its overlap-resume intent.
             refreshSourceMenu()
@@ -819,19 +823,31 @@ final class DisplayPreviewCoordinator: NSObject {
     }
 
     /// A stand-in chosen while the saved display was missing gives way when it
-    /// returns. A manual pick is saved, so it never counts as a stand-in.
+    /// returns. A manual pick is saved, so it never counts as a stand-in. A live
+    /// stand-in only moves shortly after an automatic reopen.
     private func switchToSavedSource(from current: DisplayDescriptor, among candidates: [DisplayDescriptor]) -> Bool {
         guard let savedUUID = defaultsWriter.value(forKey: Keys.sourceUUID), savedUUID != current.uuid,
               let saved = catalog.matchSavedUUID(savedUUID, among: candidates)
         else { return false }
-        let wasCapturing = intent.wantsCapture || autoResume.hasPendingRestart
+        let running = intent.wantsCapture
+        let justReopened = autoReopenedAt.map {
+            Date().timeIntervalSince($0) < DisplayPreviewReconnectPolicy.standInSwitchSeconds
+        } ?? false
+        guard !running || justReopened else { return false }
+        let carried = autoResume
         selectSource(saved.id)
-        guard wasCapturing, selectedSource == saved else { return true }
-        if session == nil {
-            start(trigger: .visibilityResume)
-        } else {
-            // Starts once the stand-in's stream has stopped.
-            autoResume.requestRestart(sourceUUID: saved.uuid)
+        guard selectedSource == saved else { return true }
+        if running {
+            if session == nil {
+                start(trigger: .visibilityResume)
+            } else {
+                // Starts once the stand-in's stream has stopped.
+                autoResume.requestRestart(sourceUUID: saved.uuid)
+            }
+        } else if carried.hasPendingRestart {
+            // Keep a hidden/overlap restart and its blockers for the new source.
+            autoResume = carried
+            autoResume.retarget(sourceUUID: saved.uuid)
         }
         return true
     }

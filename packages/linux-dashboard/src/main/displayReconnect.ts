@@ -3,6 +3,9 @@ export type DisplayReconnectAction = 'none' | 'hide' | 'show';
 /** Screen notices arrive in bursts during one plug or unplug. */
 export const DISPLAY_RECONNECT_DEBOUNCE_MS = 750;
 
+/** How long after an automatic reopen a live stand-in may still move to the saved display. */
+export const STAND_IN_SWITCH_WINDOW_MS = 10_000;
+
 /**
  * Hides Display when the external display goes away and brings it back when
  * one returns, but only if the hide was ours, not the user's.

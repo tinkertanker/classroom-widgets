@@ -526,6 +526,12 @@ struct DisplayPreviewAutoResumeState {
         restartRequested = true
     }
 
+    /// Moves a pending restart, with its blockers, to another source.
+    mutating func retarget(sourceUUID: String) {
+        guard restartRequested else { return }
+        self.sourceUUID = sourceUUID
+    }
+
     mutating func stopCompleted(currentSourceUUID: String?, terminating: Bool) -> Bool {
         guard !terminating, sourceUUID == currentSourceUUID else {
             cancel()

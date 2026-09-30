@@ -15,7 +15,7 @@ import {
   DisplayPreviewWindow,
 } from './displayPreviewWindow';
 import { movePointer } from './pointer';
-import { DISPLAY_RECONNECT_DEBOUNCE_MS, DisplayReconnectPolicy } from './displayReconnect';
+import { DISPLAY_RECONNECT_DEBOUNCE_MS, DisplayReconnectPolicy, STAND_IN_SWITCH_WINDOW_MS } from './displayReconnect';
 
 interface ScreenLike {
   getDisplayMatching(rect: Rect): Electron.Display;
@@ -65,6 +65,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   private frameTimer: NodeJS.Timeout | null = null;
   private startGeneration = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private autoReopenedAt: number | null = null;
   private readonly reconnect: DisplayReconnectPolicy;
   private readonly displayChanged = (): void => {
     this.refreshSources();
@@ -96,6 +97,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   open(options: { activate?: boolean } = {}): void {
     const activate = options.activate !== false;
     this.reconnect.windowOpened();
+    this.autoReopenedAt = activate ? null : Date.now();
     if (this.window) {
       this.window.show();
       this.window.focus();
@@ -231,8 +233,10 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       }
     } else if (selectedCurrent) {
       // A stand-in gives way when the saved display returns; manual picks are saved.
+      // A live stand-in only moves shortly after an automatic reopen.
       const saved = this.candidates.find((candidate) => candidate.id === this.settings.getDisplayPreviewSourceId());
-      if (saved && saved.id !== selectedCurrent.id) {
+      const justReopened = this.autoReopenedAt !== null && Date.now() - this.autoReopenedAt < STAND_IN_SWITCH_WINDOW_MS;
+      if (saved && saved.id !== selectedCurrent.id && (!this.wantsCapture || justReopened)) {
         this.selectSource(saved);
         return;
       }

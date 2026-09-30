@@ -18,6 +18,8 @@ struct DisplayPreviewReconnectPolicy {
 
     /// Screen notices arrive in bursts during one plug or unplug.
     static let debounceNanoseconds: UInt64 = 750_000_000
+    /// How long after an automatic reopen a live stand-in may still move to the saved display.
+    static let standInSwitchSeconds: Double = 10
 
     private var phase = Phase.idle
     private var externalDisplayAvailable: Bool

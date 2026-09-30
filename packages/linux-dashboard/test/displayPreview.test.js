@@ -487,3 +487,16 @@ test('a dock whose displays return one at a time ends on the saved display', t =
   h.screen.emit('display-added');
   assert.equal(h.windows[1].states.at(-1).sourceId, 3);
 });
+
+test('a live stand-in is not switched away outside the reopen window', async t => {
+  const h = reconnectHarness(t, true, [display(1, 0, 1000), display(2, 1000), display(3, 1800)], 3);
+  h.coordinator.open();
+  h.displays.splice(2, 1);
+  h.screen.emit('display-removed');
+  assert.equal(h.windows[0].states.at(-1).sourceId, 2, 'display 2 stands in');
+  h.windows[0].emit('powerToggle');
+  h.displays.push(display(3, 1800));
+  h.screen.emit('display-added');
+  assert.equal(h.windows[0].states.at(-1).sourceId, 2);
+  assert.equal(h.windows[0].states.at(-1).powerState, 'on');
+});

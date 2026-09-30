@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using ClassroomWidgets;
 using Xunit;
 using Forms = System.Windows.Forms;
@@ -62,6 +63,27 @@ public sealed class DisplayPreviewReconnectTests
             displays.Add(right);
             coordinator.DisplaysChanged();
             Assert.Equal(right.Id, coordinator.SelectedSource?.Id);
+        });
+
+    [Fact]
+    public void ALiveStandInIsNotSwitchedAwayOutsideTheReopenWindow()
+        => WithDisplays((host, displays, settings, coordinator) =>
+        {
+            var (_, right) = Externals(host);
+            // Covers the preview window, so turning it on keeps capture intent without GDI capture.
+            var standIn = new DisplayDescriptor(@"\\.\CLASSROOM_WIDGETS_TEST_C", "Test display C", host.Bounds, host.WorkingArea, false);
+            displays.AddRange(new[] { standIn, right });
+            settings.DisplayPreviewSourceId = right.Id;
+            coordinator.Open();
+            displays.Remove(right);
+            coordinator.DisplaysChanged();
+            Assert.Equal(standIn.Id, coordinator.SelectedSource?.Id);
+
+            coordinator.Window!.PowerButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            WpfTestHost.DoEvents();
+            displays.Add(right);
+            coordinator.DisplaysChanged();
+            Assert.Equal(standIn.Id, coordinator.SelectedSource?.Id);
         });
 
     [Fact]

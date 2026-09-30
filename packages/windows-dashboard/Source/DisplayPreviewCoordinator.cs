@@ -32,6 +32,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     private bool _suspendedForOverlap;
     private bool _closing;
     private bool _systemEventsSubscribed;
+    private DateTime? _autoReopenedAt;
 
     public bool IsOpen => _window is { IsVisible: true };
     internal DisplayPreviewWindow? Window => _window;
@@ -65,6 +66,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     public void Open(bool activate = true)
     {
         _reconnect.WindowOpened();
+        _autoReopenedAt = activate ? null : DateTime.UtcNow;
         if (_window is not null)
         {
             _window.Show();
@@ -196,8 +198,11 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         var previous = _selected;
         var current = _selected is null ? null : _catalog.CurrentMatching(_selected);
         // A stand-in gives way when the saved display returns; manual picks are saved.
+        // A live stand-in only moves shortly after an automatic reopen.
         var saved = _candidates.FirstOrDefault(candidate => string.Equals(candidate.Id, _settings.DisplayPreviewSourceId, StringComparison.OrdinalIgnoreCase));
-        if (current is not null && saved is not null && !string.Equals(saved.Id, current.Id, StringComparison.OrdinalIgnoreCase))
+        var justReopened = _autoReopenedAt is { } reopened && DateTime.UtcNow - reopened < DisplayReconnectPolicy.StandInSwitchWindow;
+        if (current is not null && saved is not null && !string.Equals(saved.Id, current.Id, StringComparison.OrdinalIgnoreCase)
+            && (!_wantsCapture || justReopened))
         {
             SelectSource(saved);
             return;
