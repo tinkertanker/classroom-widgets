@@ -15,6 +15,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     backgroundOpacity: settings.backgroundOpacity,
     outputVolume: settings.outputVolume,
     alwaysOnTop: settings.alwaysOnTop,
+    displayPreviewShowOnReconnect: settings.displayPreviewShowOnReconnect,
     launchAtLogin: settings.launchAtLoginEnabled,
     linkShortener: settings.linkShortener,
     shortcuts: shortcuts.getStatuses(),
@@ -35,6 +36,9 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     }
     if (typeof partial.alwaysOnTop === 'boolean') {
       settings.alwaysOnTop = partial.alwaysOnTop;
+    }
+    if (typeof partial.displayPreviewShowOnReconnect === 'boolean') {
+      settings.displayPreviewShowOnReconnect = partial.displayPreviewShowOnReconnect;
     }
     if (typeof partial.launchAtLogin === 'boolean') {
       settings.launchAtLoginEnabled = partial.launchAtLogin;

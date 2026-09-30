@@ -92,6 +92,8 @@ enum DisplayPreviewTransition: String {
     case revealed
     case deferredRestart
     case termination
+    case disconnectHide
+    case reconnectShow
 }
 
 /// What a `didChangeScreenParameters` notice means for the current preview.
@@ -522,6 +524,12 @@ struct DisplayPreviewAutoResumeState {
         self.sourceUUID = sourceUUID
         blockers.removeAll()
         restartRequested = true
+    }
+
+    /// Moves a pending restart, with its blockers, to another source.
+    mutating func retarget(sourceUUID: String) {
+        guard restartRequested else { return }
+        self.sourceUUID = sourceUUID
     }
 
     mutating func stopCompleted(currentSourceUUID: String?, terminating: Bool) -> Bool {

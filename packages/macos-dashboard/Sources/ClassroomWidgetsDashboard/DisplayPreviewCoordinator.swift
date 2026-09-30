@@ -31,6 +31,11 @@ final class DisplayPreviewCoordinator: NSObject {
     private var frameRecovery = DisplayPreviewFrameRecovery()
     private var captureOrder = DisplayPreviewCaptureOrder()
     private var recoveryTask: Task<Void, Never>?
+    private var reconnect: DisplayPreviewReconnectPolicy
+    private var reconnectTask: Task<Void, Never>?
+    private let reconnectDebounceNanoseconds: UInt64
+    private var closeTrigger: String?
+    private var autoReopenedAt: Date?
     private var deliveredFrameGeneration: UInt64?
     private var streamActivityGeneration: UInt64?
     private var pendingOpeningAspect = false
@@ -49,9 +54,14 @@ final class DisplayPreviewCoordinator: NSObject {
         requestPermission: (@MainActor () -> Bool)? = nil,
         makeCaptureSession: @escaping @MainActor (CGDirectDisplayID) -> DisplayCaptureSession = {
             DisplayCaptureSession(sourceID: $0)
-        }
+        },
+        reconnectDebounceNanoseconds: UInt64 = DisplayPreviewReconnectPolicy.debounceNanoseconds
     ) {
-        self.catalog = catalog ?? DisplayCatalog()
+        let catalog = catalog ?? DisplayCatalog()
+        self.catalog = catalog
+        reconnect = DisplayPreviewReconnectPolicy(
+            externalDisplayAvailable: DisplayPreviewReconnectPolicy.hasExternalDisplay(in: catalog.displays())
+        )
         self.defaults = defaults
         defaultsWriter = DebouncedDefaultsWriter(defaults: defaults)
         self.hostDisplayID = hostDisplayID
@@ -59,6 +69,7 @@ final class DisplayPreviewCoordinator: NSObject {
         self.preflightCaptureAccess = preflightCaptureAccess
         self.requestPermission = requestPermission
         self.makeCaptureSession = makeCaptureSession
+        self.reconnectDebounceNanoseconds = reconnectDebounceNanoseconds
         super.init()
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -75,7 +86,10 @@ final class DisplayPreviewCoordinator: NSObject {
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
     }
 
-    func open() {
+    /// `activatingApp: false` is for automatic reopening, which must not steal focus.
+    func open(activatingApp: Bool = true) {
+        reconnect.windowOpened()
+        autoReopenedAt = activatingApp ? nil : Date()
         if let window = windowController?.window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -111,8 +125,12 @@ final class DisplayPreviewCoordinator: NSObject {
             intent: intent.wantsCapture,
             enabled: selectedSource != nil
         )
-        controller.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if activatingApp {
+            controller.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            controller.window?.orderFrontRegardless()
+        }
         if DisplayPreviewLaunchPolicy.outcome(
             existingWindow: false,
             wantsCapture: intent.wantsCapture,
@@ -157,6 +175,7 @@ final class DisplayPreviewCoordinator: NSObject {
 
     func prepareForTermination() async -> Bool {
         stopLifecycle.beginTermination()
+        reconnectTask?.cancel()
         cancelDeferredRestarts()
         cancelFrameRecovery()
         intent.pause()
@@ -289,6 +308,8 @@ final class DisplayPreviewCoordinator: NSObject {
         let hostID = hostDisplayID(windowController?.window)
         let candidates = catalog.eligibleSources(hostDisplayID: hostID)
         guard let source = candidates.first(where: { $0.id == id }), source != selectedSource else {
+            // Re-picking the current source still makes it the saved choice.
+            if let current = selectedSource, current.id == id { defaultsWriter.set(current.uuid, forKey: Keys.sourceUUID) }
             // A menu action can outlive its host/topology snapshot. Restore the
             // accepted selection rather than cancelling its overlap-resume intent.
             refreshSourceMenu()
@@ -701,11 +722,12 @@ final class DisplayPreviewCoordinator: NSObject {
         intent.close()
         clearFrame(status: "Closed.")
         logDisplayTransition(
-            .close, trigger: "closeButton", source: selectedSource, intent: false, enabled: false
+            .close, trigger: closeTrigger ?? "closeButton", source: selectedSource, intent: false, enabled: false
         )
         persist(frame: windowController?.window?.frame ?? .zero)
         defaultsWriter.flush()
         windowController = nil
+        reconnect.windowClosed()
         stopCurrent(message: "Closed.")
     }
 
@@ -729,6 +751,7 @@ final class DisplayPreviewCoordinator: NSObject {
             enabled: selectedSource != nil,
             extra: "displays=\(catalog.topologySummary())"
         )
+        scheduleReconnectCheck()
         guard let controller = windowController else { return }
         controller.previewView.discardPendingClick()
         let hostID = hostDisplayID(controller.window)
@@ -745,11 +768,13 @@ final class DisplayPreviewCoordinator: NSObject {
             isHostCandidate: isHostCandidate
         ) {
         case .ignore:
-            controller.setSources(candidates, selectedID: selectedSource?.id)
+            // No source yet: a display that just arrived may be the one to preview.
+            refreshSources(preselect: true)
             return
         case .preserveSource:
             guard let current = match else { return }
             selectedSource = current
+            if switchToSavedSource(from: current, among: candidates) { return }
             controller.setSources(candidates, selectedID: current.id, retainingSelectedSource: current)
             // Host-filtered candidacy is a placement fact: while the preview
             // overlaps its own source the menu keeps its selection and the
@@ -795,6 +820,69 @@ final class DisplayPreviewCoordinator: NSObject {
         selectedSource = nil
         intent.select(sourceID: nil)
         refreshSources(preselect: true)
+    }
+
+    /// A stand-in chosen while the saved display was missing gives way when it
+    /// returns. A manual pick is saved, so it never counts as a stand-in. A live
+    /// stand-in only moves shortly after an automatic reopen.
+    private func switchToSavedSource(from current: DisplayDescriptor, among candidates: [DisplayDescriptor]) -> Bool {
+        guard let savedUUID = defaultsWriter.value(forKey: Keys.sourceUUID), savedUUID != current.uuid,
+              let saved = catalog.matchSavedUUID(savedUUID, among: candidates)
+        else { return false }
+        let running = intent.wantsCapture
+        let justReopened = autoReopenedAt.map {
+            Date().timeIntervalSince($0) < DisplayPreviewReconnectPolicy.standInSwitchSeconds
+        } ?? false
+        guard !running || justReopened else { return false }
+        let carried = autoResume
+        selectSource(saved.id)
+        guard selectedSource == saved else { return true }
+        if running {
+            if session == nil {
+                start(trigger: .visibilityResume)
+            } else {
+                // Starts once the stand-in's stream has stopped.
+                autoResume.requestRestart(sourceUUID: saved.uuid)
+            }
+        } else if carried.hasPendingRestart {
+            // Keep a hidden/overlap restart and its blockers for the new source.
+            autoResume = carried
+            autoResume.retarget(sourceUUID: saved.uuid)
+        }
+        return true
+    }
+
+    /// Debounced: one plug or unplug posts several notices.
+    private func scheduleReconnectCheck() {
+        reconnectTask?.cancel()
+        reconnectTask = Task { @MainActor [weak self] in
+            guard let delay = self?.reconnectDebounceNanoseconds else { return }
+            try? await Task.sleep(nanoseconds: delay)
+            guard !Task.isCancelled, let self else { return }
+            self.reconnectTask = nil
+            self.applyDisplayAvailability()
+        }
+    }
+
+    private func applyDisplayAvailability() {
+        guard !stopLifecycle.terminating else { return }
+        let showOnReconnect = defaults.object(forKey: DashboardSettingKeys.displayPreviewShowOnReconnect) as? Bool ?? true
+        switch reconnect.displaysChanged(
+            externalDisplayAvailable: DisplayPreviewReconnectPolicy.hasExternalDisplay(in: catalog.displays()),
+            isOpen: windowController != nil,
+            showOnReconnect: showOnReconnect
+        ) {
+        case .hide:
+            logDisplayTransition(.disconnectHide, trigger: "didChangeScreenParameters", source: selectedSource)
+            closeTrigger = "disconnectHide"
+            dismiss()
+            closeTrigger = nil
+        case .show:
+            logDisplayTransition(.reconnectShow, trigger: "didChangeScreenParameters")
+            open(activatingApp: false)
+        case .none:
+            break
+        }
     }
 
     private func visibilityChanged(_ visible: Bool) {

@@ -15,6 +15,7 @@ import {
   DisplayPreviewWindow,
 } from './displayPreviewWindow';
 import { movePointer } from './pointer';
+import { DISPLAY_RECONNECT_DEBOUNCE_MS, DisplayReconnectPolicy, STAND_IN_SWITCH_WINDOW_MS } from './displayReconnect';
 
 interface ScreenLike {
   getDisplayMatching(rect: Rect): Electron.Display;
@@ -40,6 +41,7 @@ export interface DisplayPreviewWindowLike extends EventEmitter {
   setSize(size: { width: number; height: number }): void;
   getContentSize(): { width: number; height: number };
   show(): void;
+  showInactive?(): void;
   focus(): void;
   close(): void;
   setState(state: DisplayPreviewState): void;
@@ -62,7 +64,18 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   private suspendedForOverlap = false;
   private frameTimer: NodeJS.Timeout | null = null;
   private startGeneration = 0;
-  private readonly displayChanged = (): void => void this.refreshSources();
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private autoReopenedAt: number | null = null;
+  private readonly reconnect: DisplayReconnectPolicy;
+  private readonly displayChanged = (): void => {
+    this.refreshSources();
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.applyDisplayAvailability();
+    }, DISPLAY_RECONNECT_DEBOUNCE_MS);
+    this.reconnectTimer.unref?.();
+  };
 
   constructor(
     private readonly settings: DashboardSettings,
@@ -70,13 +83,21 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     private readonly deps: DisplayPreviewDeps = { desktopCapturer, screen },
   ) {
     super();
+    this.reconnect = new DisplayReconnectPolicy(catalog.displays().length > 1);
+    // Listen while closed too, so a reconnect can bring Display back.
+    this.deps.screen.on('display-added', this.displayChanged);
+    this.deps.screen.on('display-removed', this.displayChanged);
+    this.deps.screen.on('display-metrics-changed', this.displayChanged);
   }
 
   get isOpen(): boolean {
     return this.window !== null;
   }
 
-  open(): void {
+  open(options: { activate?: boolean } = {}): void {
+    const activate = options.activate !== false;
+    this.reconnect.windowOpened();
+    this.autoReopenedAt = activate ? null : Date.now();
     if (this.window) {
       this.window.show();
       this.window.focus();
@@ -86,11 +107,14 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     const window = this.deps.createWindow?.(bounds) ?? new DisplayPreviewWindow(bounds);
     this.window = window;
     this.attachWindow(window);
-    this.deps.screen.on('display-added', this.displayChanged);
-    this.deps.screen.on('display-removed', this.displayChanged);
-    this.deps.screen.on('display-metrics-changed', this.displayChanged);
-    window.show();
-    window.focus();
+    if (activate) {
+      window.show();
+      window.focus();
+    } else if (window.showInactive) {
+      window.showInactive();
+    } else {
+      window.show();
+    }
     this.refreshSources();
   }
 
@@ -107,9 +131,24 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   }
 
   shutdown(): void {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
+    this.deps.screen.removeListener?.('display-added', this.displayChanged);
+    this.deps.screen.removeListener?.('display-removed', this.displayChanged);
+    this.deps.screen.removeListener?.('display-metrics-changed', this.displayChanged);
     this.stop();
     this.window?.close();
     this.window = null;
+  }
+
+  private applyDisplayAvailability(): void {
+    const action = this.reconnect.displaysChanged(
+      this.catalog.displays().length > 1,
+      this.window !== null,
+      this.settings.displayPreviewShowOnReconnect !== false,
+    );
+    if (action === 'hide') this.close();
+    else if (action === 'show') this.open({ activate: false });
   }
 
   private attachWindow(window: DisplayPreviewWindowLike): void {
@@ -156,9 +195,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       if (this.frameTimer) clearTimeout(this.frameTimer);
       this.frameTimer = null;
       this.window = null;
-      this.deps.screen.removeListener?.('display-added', this.displayChanged);
-      this.deps.screen.removeListener?.('display-removed', this.displayChanged);
-      this.deps.screen.removeListener?.('display-metrics-changed', this.displayChanged);
+      this.reconnect.windowClosed();
       this.emit('closed');
     });
   }
@@ -188,13 +225,21 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     let sourceChanged = false;
     if (previousSource && !selectedCurrent) {
       this.stopCapture();
-      this.settings.setDisplayPreviewSourceId(null);
-      this.selectedSource = this.catalog.resolveSource(null, this.candidates);
+      // Keep the saved id so a reconnect can find this display again.
+      this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
       if (!this.selectedSource) {
         this.publish('The selected display is no longer available.');
         return;
       }
     } else if (selectedCurrent) {
+      // A stand-in gives way when the saved display returns; manual picks are saved.
+      // A live stand-in only moves shortly after an automatic reopen.
+      const saved = this.candidates.find((candidate) => candidate.id === this.settings.getDisplayPreviewSourceId());
+      const justReopened = this.autoReopenedAt !== null && Date.now() - this.autoReopenedAt < STAND_IN_SWITCH_WINDOW_MS;
+      if (saved && saved.id !== selectedCurrent.id && (!this.wantsCapture || justReopened)) {
+        this.selectSource(saved);
+        return;
+      }
       sourceChanged = previousSource !== null
         && (previousSource.bounds.x !== selectedCurrent.bounds.x
           || previousSource.bounds.y !== selectedCurrent.bounds.y
@@ -205,9 +250,6 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       this.selectedSource = selectedCurrent;
     } else {
       this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
-      if (this.selectedSource && this.selectedSource.id !== this.settings.getDisplayPreviewSourceId()) {
-        this.settings.setDisplayPreviewSourceId(this.selectedSource.id);
-      }
     }
     if (this.wantsCapture && this.selectedSource) {
       if (rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {

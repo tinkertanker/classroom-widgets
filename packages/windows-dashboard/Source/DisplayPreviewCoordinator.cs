@@ -21,6 +21,9 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     private readonly DashboardSettings _settings;
     private readonly DisplayCatalog _catalog;
     private readonly DispatcherTimer _frameTimer;
+    private readonly DispatcherTimer _displayChangeTimer;
+    private readonly Dispatcher _dispatcher;
+    private readonly DisplayReconnectPolicy _reconnect;
     private DisplayPreviewWindow? _window;
     private DisplayCaptureSession? _capture;
     private IReadOnlyList<DisplayDescriptor> _candidates = Array.Empty<DisplayDescriptor>();
@@ -29,10 +32,12 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     private bool _suspendedForOverlap;
     private bool _closing;
     private bool _systemEventsSubscribed;
+    private DateTime? _autoReopenedAt;
 
     public bool IsOpen => _window is { IsVisible: true };
     internal DisplayPreviewWindow? Window => _window;
     internal DisplayCaptureSession? Capture => _capture;
+    internal DisplayDescriptor? SelectedSource => _selected;
 
     public DisplayPreviewCoordinator(DashboardSettings settings, DisplayCatalog catalog)
     {
@@ -45,10 +50,23 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             NoteFrameChange();
             if (!_closing && _window is not null) RefreshSources();
         };
+        _dispatcher = Dispatcher.CurrentDispatcher;
+        _reconnect = new DisplayReconnectPolicy(catalog.Displays().Count > 1);
+        _displayChangeTimer = new DispatcherTimer { Interval = DisplayReconnectPolicy.Debounce };
+        _displayChangeTimer.Tick += (_, _) =>
+        {
+            _displayChangeTimer.Stop();
+            ApplyDisplayAvailability();
+        };
+        // Listen while closed too, so a reconnect can bring Display back.
+        SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
+        _systemEventsSubscribed = true;
     }
 
-    public void Open()
+    public void Open(bool activate = true)
     {
+        _reconnect.WindowOpened();
+        _autoReopenedAt = activate ? null : DateTime.UtcNow;
         if (_window is not null)
         {
             _window.Show();
@@ -66,11 +84,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _window.PreviewClicked += PreviewClicked;
         _window.FrameChanged += WindowFrameChanged;
         _window.Closed += WindowClosed;
-        if (!_systemEventsSubscribed)
-        {
-            SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
-            _systemEventsSubscribed = true;
-        }
+        _window.ShowActivated = activate;
         _window.Show();
         if (remembered is not { Width: >= 320, Height: >= 240 } || !OverlapsAnyDisplay())
         {
@@ -81,7 +95,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             ClampToHostWorkArea();
         }
         RefreshSources();
-        _window.Activate();
+        if (activate) _window.Activate();
     }
 
     public void Close()
@@ -115,6 +129,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     {
         _closing = true;
         _frameTimer.Stop();
+        _displayChangeTimer.Stop();
         StopCapture();
         if (_window is not null) _window.Close();
         UnsubscribeDisplayEvents();
@@ -182,14 +197,23 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _candidates = _catalog.EligibleSources(host?.Id);
         var previous = _selected;
         var current = _selected is null ? null : _catalog.CurrentMatching(_selected);
+        // A stand-in gives way when the saved display returns; manual picks are saved.
+        // A live stand-in only moves shortly after an automatic reopen.
+        var saved = _candidates.FirstOrDefault(candidate => string.Equals(candidate.Id, _settings.DisplayPreviewSourceId, StringComparison.OrdinalIgnoreCase));
+        var justReopened = _autoReopenedAt is { } reopened && DateTime.UtcNow - reopened < DisplayReconnectPolicy.StandInSwitchWindow;
+        if (current is not null && saved is not null && !string.Equals(saved.Id, current.Id, StringComparison.OrdinalIgnoreCase)
+            && (!_wantsCapture || justReopened))
+        {
+            SelectSource(saved);
+            return;
+        }
         if (previous is not null && current is null)
         {
             StopCapture();
             _wantsCapture = false;
             _suspendedForOverlap = false;
-            _settings.DisplayPreviewSourceId = null;
-            _settings.Save();
-            _selected = _catalog.ResolveSource(null, _candidates);
+            // Keep the saved ID so a reconnect can find this display again.
+            _selected = _catalog.ResolveSource(_settings.DisplayPreviewSourceId, _candidates);
             if (_selected is null)
             {
                 Publish(_candidates.Count == 0 ? NoDisplays : SourceLost);
@@ -353,7 +377,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _window = null;
         _wantsCapture = false;
         _suspendedForOverlap = false;
-        UnsubscribeDisplayEvents();
+        _reconnect.WindowClosed();
     }
 
     private DisplayDescriptor? HostDisplay()
@@ -405,8 +429,27 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             : physical;
     }
 
+    // SystemEvents raises this on its own thread.
     private void DisplaySettingsChanged(object? sender, EventArgs args)
-        => _window?.Dispatcher.BeginInvoke(new Action(RefreshSources));
+        => _dispatcher.BeginInvoke(new Action(DisplaysChanged));
+
+    internal void DisplaysChanged()
+    {
+        if (_closing) return;
+        RefreshSources();
+        _displayChangeTimer.Stop();
+        _displayChangeTimer.Start();
+    }
+
+    private void ApplyDisplayAvailability()
+    {
+        if (_closing) return;
+        switch (_reconnect.DisplaysChanged(_catalog.Displays().Count > 1, _window is not null, _settings.DisplayPreviewShowOnReconnect))
+        {
+            case DisplayReconnectAction.Hide: Close(); break;
+            case DisplayReconnectAction.Show: Open(activate: false); break;
+        }
+    }
 
     private void UnsubscribeDisplayEvents()
     {

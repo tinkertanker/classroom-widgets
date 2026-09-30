@@ -59,6 +59,8 @@ public sealed class DashboardSettings
     public bool WidgetShortcutMenuOrderMigrated { get; set; }
     public PanelFrame? DisplayPreviewFrame { get; set; }
     public string? DisplayPreviewSourceId { get; set; }
+    // Reopen Display when a monitor returns after a disconnect hid it.
+    public bool DisplayPreviewShowOnReconnect { get; set; } = true;
     public string? DisplayPreviewShortcut { get; set; }
     public string? DisplayPreviewDismissShortcut { get; set; }
     // Null is an intentional unassignment once the legacy Show-only settings have migrated.

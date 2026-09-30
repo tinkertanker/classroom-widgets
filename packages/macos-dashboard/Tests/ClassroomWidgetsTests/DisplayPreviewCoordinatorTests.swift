@@ -288,6 +288,120 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
             XCTAssertEqual(fixture.coordinator.session?.sourceID, CoordinatorFixture.displayB.id)
         }
     }
+
+    @MainActor
+    func testUnplugHidesDisplayAndReplugWithANewIdentityBringsItBackWithoutPrompting() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        fixture.coordinator.open()
+        XCTAssertNotNil(fixture.coordinator.windowController)
+
+        fixture.displays = [CoordinatorFixture.displayA]
+        fixture.postScreenNotice()
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertNil(fixture.coordinator.windowController, "Losing the only external display hides Display")
+
+        fixture.preflightGranted = true
+        fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.replugged]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertNotNil(fixture.coordinator.windowController, "The display came back, so Display does too")
+        XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.replugged.id])
+        XCTAssertEqual(fixture.permissionRequests, 0)
+    }
+
+    @MainActor
+    func testDisplayTheUserClosedStaysClosedAcrossUnplugAndReplug() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        fixture.coordinator.open()
+        fixture.coordinator.dismiss()
+
+        fixture.displays = [CoordinatorFixture.displayA]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.replugged]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertNil(fixture.coordinator.windowController)
+    }
+
+    @MainActor
+    func testStaggeredDockReturnSwitchesFromTheStandInToTheSavedDisplay() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        let (a, b, c) = (CoordinatorFixture.displayA, CoordinatorFixture.displayB, CoordinatorFixture.displayC)
+        fixture.displays = [a, b, c]
+        fixture.coordinator.open()
+        try XCTUnwrap(fixture.coordinator.windowController).onSourceSelected?(c.id)
+
+        fixture.displays = [a]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertNil(fixture.coordinator.windowController)
+
+        fixture.displays = [a, b]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        let controller = try XCTUnwrap(fixture.coordinator.windowController)
+        XCTAssertEqual(fixture.sourceItem(b.id, in: controller.makeControlsMenu())?.state, .on, "Only B is back, so it stands in")
+
+        fixture.displays = [a, b, c]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertEqual(fixture.sourceItem(c.id, in: controller.makeControlsMenu())?.state, .on, "The saved display wins once it returns")
+    }
+
+    func testRePickingTheStandInSavesItSoTheOldDisplayDoesNotTakeOver() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            let controller = try fixture.openWithStandIn()
+            controller.onSourceSelected?(CoordinatorFixture.displayB.id)
+
+            fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB, CoordinatorFixture.displayC]
+            fixture.postScreenNotice()
+            XCTAssertEqual(fixture.sourceItem(CoordinatorFixture.displayB.id, in: controller.makeControlsMenu())?.state, .on)
+        }
+    }
+
+    func testALiveStandInIsNotSwitchedAwayOutsideTheReopenWindow() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.preflightGranted = true
+            let controller = try fixture.openWithStandIn()
+            controller.onToggleCapture?()
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id])
+
+            fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB, CoordinatorFixture.displayC]
+            fixture.postScreenNotice()
+            XCTAssertEqual(fixture.sourceItem(CoordinatorFixture.displayB.id, in: controller.makeControlsMenu())?.state, .on)
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id])
+        }
+    }
+
+    func testSwitchingAMinimizedStandInWaitsForTheWindowToBeRevealed() async throws {
+        try await MainActor.run {
+            let fixture = try CoordinatorFixture()
+            defer { fixture.close() }
+            fixture.preflightGranted = true
+            let controller = try fixture.openWithStandIn()
+            controller.onToggleCapture?()
+            let capture = try XCTUnwrap(fixture.coordinator.session)
+            controller.onVisibilityChanged?(false)
+
+            fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB, CoordinatorFixture.displayC]
+            fixture.postScreenNotice()
+            XCTAssertEqual(fixture.sourceItem(CoordinatorFixture.displayC.id, in: controller.makeControlsMenu())?.state, .on)
+            capture.onStop?(CancellationError())
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id], "No capture while minimized")
+
+            controller.onVisibilityChanged?(true)
+            XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.displayB.id, CoordinatorFixture.displayC.id])
+        }
+    }
 }
 
 @MainActor
@@ -300,6 +414,16 @@ private final class CoordinatorFixture {
         id: 202, uuid: "fixture-b", name: "Display B",
         bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
     )
+    static let replugged = DisplayDescriptor(
+        id: 303, uuid: "fixture-b-replugged", name: "Display B",
+        bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
+    )
+    static let displayC = DisplayDescriptor(
+        id: 404, uuid: "fixture-c", name: "Display C",
+        bounds: CGRect(x: 3432, y: 0, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
+    )
+    static let reconnectDebounce: UInt64 = 20_000_000
+    static let pastReconnectDebounce: UInt64 = 500_000_000
     var displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB]
     var hostID = CoordinatorFixture.displayA.id
     var preflightGranted = false
@@ -326,7 +450,8 @@ private final class CoordinatorFixture {
             self?.createdSources.append(id)
             // No shareable-content discovery, stream, permission, or capture IO.
             return DisplayCaptureSession(sourceID: id, contentDiscovery: self?.contentDiscovery ?? { _ in throw CancellationError() })
-        }
+        },
+        reconnectDebounceNanoseconds: CoordinatorFixture.reconnectDebounce
     )
 
     init() throws {
@@ -336,6 +461,18 @@ private final class CoordinatorFixture {
 
     func sourceItem(_ id: CGDirectDisplayID, in menu: NSMenu) -> NSMenuItem? {
         menu.items.first { ($0.representedObject as? NSNumber)?.uint32Value == id }
+    }
+
+    /// Saves C by hand, then unplugs it so B stands in while Display stays open.
+    func openWithStandIn() throws -> DisplayPreviewWindowController {
+        displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB, CoordinatorFixture.displayC]
+        coordinator.open()
+        let controller = try XCTUnwrap(coordinator.windowController)
+        controller.onSourceSelected?(CoordinatorFixture.displayC.id)
+        displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB]
+        postScreenNotice()
+        XCTAssertEqual(sourceItem(CoordinatorFixture.displayB.id, in: controller.makeControlsMenu())?.state, .on)
+        return controller
     }
 
     func postScreenNotice() {

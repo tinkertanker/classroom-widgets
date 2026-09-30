@@ -57,3 +57,14 @@ test('output volume defaults to full and persisted values are clamped', t => {
   const muted = persistedSettings(t, { outputVolume: -1 });
   assert.equal(muted.load().outputVolume, 0);
 });
+
+test('Display reconnect showing defaults on for older settings and an opt-out survives reload', t => {
+  const legacy = persistedSettings(t, { backgroundOpacity: 0.5 });
+  assert.equal(legacy.load().displayPreviewShowOnReconnect, true);
+
+  const optedOut = persistedSettings(t, { displayPreviewShowOnReconnect: false });
+  const settings = optedOut.load();
+  assert.equal(settings.displayPreviewShowOnReconnect, false);
+  settings.save();
+  assert.equal(optedOut.raw().displayPreviewShowOnReconnect, false);
+});

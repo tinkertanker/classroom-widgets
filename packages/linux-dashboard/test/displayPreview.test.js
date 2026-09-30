@@ -15,13 +15,15 @@ class FakeWindow extends EventEmitter {
     this.activeStream = null;
     this.stopStreams = 0;
     this.menu = [];
+    this.focused = false;
   }
   getBounds() { return this.bounds; }
   setBounds(bounds) { this.bounds = bounds; }
   setSize() {}
   getContentSize() { return { width: 480, height: 402 }; }
   show() {}
-  focus() {}
+  showInactive() {}
+  focus() { this.focused = true; }
   close() { this.emit('closed'); }
   setState(state) { this.states.push(state); }
   startStream(sourceId, size) { this.activeStream = sourceId; this.streams.push({ sourceId, size }); }
@@ -116,7 +118,7 @@ test('source loss stops capture and selects the remaining display', async () => 
   assert.equal(window.stopStreams, 1);
   assert.equal(window.states.at(-1).powerState, 'off');
   assert.equal(window.states.at(-1).sourceId, 3);
-  assert.equal(settings.sourceId, null);
+  assert.equal(settings.sourceId, 2, 'the saved source survives so a reconnect can find it again');
 });
 
 test('stale starts do not stream a source selected before capture resolves', async () => {
@@ -169,7 +171,7 @@ test('stale starts do not stream a source selected before capture resolves', asy
   assert.deepEqual(window.streams, [{ sourceId: 'screen:3:0', size: { width: 800, height: 600 } }]);
 });
 
-test('auto-selecting the sole candidate remembers it as the source', () => {
+test('auto-selecting the sole candidate does not overwrite the saved source', () => {
   const displays = [display(1, 0, 1000), display(2, 1000, 1000)];
   const fakeScreen = {
     getAllDisplays: () => displays,
@@ -191,7 +193,7 @@ test('auto-selecting the sole candidate remembers it as the source', () => {
     { screen: fakeScreen, desktopCapturer: { async getSources() { return []; } }, createWindow: (bounds) => (window = new FakeWindow(bounds)) },
   );
   coordinator.open();
-  assert.equal(rememberedId, 2);
+  assert.equal(rememberedId, null, 'only a manual pick is saved');
   assert.equal(window.states.at(-1).sourceId, 2);
   assert.equal(window.states.at(-1).statusMessage, 'Click to see display');
 });
@@ -368,4 +370,133 @@ test('pointer clicks require live captured geometry and refresh it after topolog
   window.emit('streamLive');
   window.emit('previewClick', click);
   assert.deepEqual(points, [{ x: 1200, y: 450 }, { x: 1460, y: 450 }]);
+});
+
+function reconnectHarness(t, showOnReconnect = true, displays = [display(1, 0, 1000), display(2, 1000)], saved = null) {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const screen = new EventEmitter();
+  screen.getAllDisplays = () => displays;
+  screen.getDisplayMatching = () => displays[0];
+  screen.getCursorScreenPoint = () => ({ x: 100, y: 100 });
+  const windows = [];
+  let remembered = saved;
+  const coordinator = new DisplayPreviewCoordinator({
+    displayPreviewShowOnReconnect: showOnReconnect,
+    getDisplayPreviewFrame: () => undefined,
+    getDisplayPreviewSourceId: () => remembered,
+    setDisplayPreviewSourceId(id) { remembered = id; },
+    setDisplayPreviewFrame() {},
+  }, new DisplayCatalog(screen), {
+    screen, desktopCapturer: { async getSources() { return []; } },
+    createWindow: bounds => { const window = new FakeWindow(bounds); windows.push(window); return window; },
+  });
+  t.after(() => coordinator.shutdown());
+  return {
+    coordinator, displays, screen, windows,
+    remembered: () => remembered,
+    unplug() { displays.splice(1, 1); screen.emit('display-removed'); },
+    replug(id = 2) { displays.push(display(id, 1000)); screen.emit('display-added'); },
+  };
+}
+
+test('unplugging the external display hides Display after the burst of notices settles', t => {
+  const h = reconnectHarness(t);
+  h.coordinator.open();
+  h.unplug();
+  h.screen.emit('display-metrics-changed');
+  t.mock.timers.tick(500);
+  h.screen.emit('display-metrics-changed');
+  t.mock.timers.tick(500);
+  assert.equal(h.coordinator.isOpen, true, 'each notice restarts the debounce');
+  t.mock.timers.tick(300);
+  assert.equal(h.coordinator.isOpen, false);
+});
+
+test('a reconnected display with a new id brings Display back and selects it', t => {
+  const h = reconnectHarness(t);
+  h.coordinator.open();
+  h.unplug();
+  t.mock.timers.tick(1000);
+  h.replug(7);
+  t.mock.timers.tick(1000);
+  assert.equal(h.coordinator.isOpen, true);
+  assert.equal(h.windows.length, 2);
+  assert.equal(h.windows[1].states.at(-1).sourceId, 7);
+  assert.equal(h.windows[1].focused, false, 'an automatic reopen must not steal focus');
+});
+
+test('an unplug and replug inside the debounce leaves Display open', t => {
+  const h = reconnectHarness(t);
+  h.coordinator.open();
+  h.unplug();
+  h.replug();
+  t.mock.timers.tick(1000);
+  assert.equal(h.coordinator.isOpen, true);
+  assert.equal(h.windows.length, 1);
+});
+
+test('Display the user closed stays closed across unplug and replug', t => {
+  const h = reconnectHarness(t);
+  h.coordinator.open();
+  h.coordinator.close();
+  h.unplug();
+  t.mock.timers.tick(1000);
+  h.replug();
+  t.mock.timers.tick(1000);
+  assert.equal(h.coordinator.isOpen, false);
+});
+
+test('with reconnect showing off, an auto-hidden Display stays hidden', t => {
+  const h = reconnectHarness(t, false);
+  h.coordinator.open();
+  h.unplug();
+  t.mock.timers.tick(1000);
+  h.replug();
+  t.mock.timers.tick(1000);
+  assert.equal(h.coordinator.isOpen, false);
+});
+
+test('unplugging a dock with two displays keeps the chosen one for the reconnect', t => {
+  const h = reconnectHarness(t, true, [display(1, 0, 1000), display(2, 1000), display(3, 1800)], 3);
+  h.coordinator.open();
+  assert.equal(h.windows[0].states.at(-1).sourceId, 3);
+  h.displays.splice(1, 2);
+  h.screen.emit('display-removed');
+  t.mock.timers.tick(1000);
+  assert.equal(h.coordinator.isOpen, false);
+  assert.equal(h.remembered(), 3);
+  h.displays.push(display(3, 1800), display(2, 1000));
+  h.screen.emit('display-added');
+  t.mock.timers.tick(1000);
+  assert.equal(h.windows[1].states.at(-1).sourceId, 3);
+  assert.equal(h.windows[1].states.at(-1).statusMessage, 'Click to see display');
+});
+
+test('a dock whose displays return one at a time ends on the saved display', t => {
+  const h = reconnectHarness(t, true, [display(1, 0, 1000), display(2, 1000), display(3, 1800)], 3);
+  h.coordinator.open();
+  h.displays.splice(1, 2);
+  h.screen.emit('display-removed');
+  t.mock.timers.tick(1000);
+  h.displays.push(display(2, 1000));
+  h.screen.emit('display-added');
+  t.mock.timers.tick(1000);
+  assert.equal(h.windows[1].states.at(-1).sourceId, 2, 'display 2 stands in');
+  assert.equal(h.remembered(), 3, 'a stand-in is never saved');
+  h.displays.push(display(3, 1800));
+  h.screen.emit('display-added');
+  assert.equal(h.windows[1].states.at(-1).sourceId, 3);
+});
+
+test('a live stand-in is not switched away outside the reopen window', async t => {
+  const h = reconnectHarness(t, true, [display(1, 0, 1000), display(2, 1000), display(3, 1800)], 3);
+  h.coordinator.open();
+  h.displays.splice(2, 1);
+  h.screen.emit('display-removed');
+  assert.equal(h.windows[0].states.at(-1).sourceId, 2, 'display 2 stands in');
+  h.windows[0].emit('powerToggle');
+  h.displays.push(display(3, 1800));
+  h.screen.emit('display-added');
+  assert.equal(h.windows[0].states.at(-1).sourceId, 2);
+  assert.equal(h.windows[0].states.at(-1).powerState, 'on');
 });

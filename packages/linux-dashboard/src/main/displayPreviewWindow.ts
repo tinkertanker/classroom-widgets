@@ -141,6 +141,10 @@ export class DisplayPreviewWindow extends EventEmitter {
     if (!this.win.isDestroyed()) this.win.show();
   }
 
+  showInactive(): void {
+    if (!this.win.isDestroyed()) this.win.showInactive();
+  }
+
   focus(): void {
     if (!this.win.isDestroyed()) this.win.focus();
   }
