@@ -223,8 +223,8 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     let sourceChanged = false;
     if (previousSource && !selectedCurrent) {
       this.stopCapture();
-      this.settings.setDisplayPreviewSourceId(null);
-      this.selectedSource = this.catalog.resolveSource(null, this.candidates);
+      // Keep the saved id so a reconnect can find this display again.
+      this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
       if (!this.selectedSource) {
         this.publish('The selected display is no longer available.');
         return;

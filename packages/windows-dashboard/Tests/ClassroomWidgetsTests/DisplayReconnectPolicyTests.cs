@@ -1,4 +1,3 @@
-using System.Text.Json;
 using ClassroomWidgets;
 using Xunit;
 
@@ -97,7 +96,7 @@ public class DisplayReconnectPolicyTests
     [Fact]
     public void PreferencesFromEarlierVersionsShowDisplayOnReconnect()
     {
-        var settings = JsonSerializer.Deserialize<DashboardSettings>("""{ "BackgroundOpacity": 0.4 }""");
+        var settings = DashboardSettings.DeserializeSettings("""{ "BackgroundOpacity": 0.4 }""");
 
         Assert.NotNull(settings);
         Assert.True(settings.DisplayPreviewShowOnReconnect);

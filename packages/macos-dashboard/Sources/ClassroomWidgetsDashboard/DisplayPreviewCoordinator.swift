@@ -33,6 +33,8 @@ final class DisplayPreviewCoordinator: NSObject {
     private var recoveryTask: Task<Void, Never>?
     private var reconnect: DisplayPreviewReconnectPolicy
     private var reconnectTask: Task<Void, Never>?
+    private let reconnectDebounceNanoseconds: UInt64
+    private var closeTrigger: String?
     private var deliveredFrameGeneration: UInt64?
     private var streamActivityGeneration: UInt64?
     private var pendingOpeningAspect = false
@@ -51,7 +53,8 @@ final class DisplayPreviewCoordinator: NSObject {
         requestPermission: (@MainActor () -> Bool)? = nil,
         makeCaptureSession: @escaping @MainActor (CGDirectDisplayID) -> DisplayCaptureSession = {
             DisplayCaptureSession(sourceID: $0)
-        }
+        },
+        reconnectDebounceNanoseconds: UInt64 = DisplayPreviewReconnectPolicy.debounceNanoseconds
     ) {
         let catalog = catalog ?? DisplayCatalog()
         self.catalog = catalog
@@ -65,6 +68,7 @@ final class DisplayPreviewCoordinator: NSObject {
         self.preflightCaptureAccess = preflightCaptureAccess
         self.requestPermission = requestPermission
         self.makeCaptureSession = makeCaptureSession
+        self.reconnectDebounceNanoseconds = reconnectDebounceNanoseconds
         super.init()
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -714,7 +718,7 @@ final class DisplayPreviewCoordinator: NSObject {
         intent.close()
         clearFrame(status: "Closed.")
         logDisplayTransition(
-            .close, trigger: "closeButton", source: selectedSource, intent: false, enabled: false
+            .close, trigger: closeTrigger ?? "closeButton", source: selectedSource, intent: false, enabled: false
         )
         persist(frame: windowController?.window?.frame ?? .zero)
         defaultsWriter.flush()
@@ -817,7 +821,8 @@ final class DisplayPreviewCoordinator: NSObject {
     private func scheduleReconnectCheck() {
         reconnectTask?.cancel()
         reconnectTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: DisplayPreviewReconnectPolicy.debounceNanoseconds)
+            guard let delay = self?.reconnectDebounceNanoseconds else { return }
+            try? await Task.sleep(nanoseconds: delay)
             guard !Task.isCancelled, let self else { return }
             self.reconnectTask = nil
             self.applyDisplayAvailability()
@@ -834,7 +839,9 @@ final class DisplayPreviewCoordinator: NSObject {
         ) {
         case .hide:
             logDisplayTransition(.disconnectHide, trigger: "didChangeScreenParameters", source: selectedSource)
+            closeTrigger = "disconnectHide"
             dismiss()
+            closeTrigger = nil
         case .show:
             logDisplayTransition(.reconnectShow, trigger: "didChangeScreenParameters")
             open(activatingApp: false)

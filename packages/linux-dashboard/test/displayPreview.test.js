@@ -118,7 +118,7 @@ test('source loss stops capture and selects the remaining display', async () => 
   assert.equal(window.stopStreams, 1);
   assert.equal(window.states.at(-1).powerState, 'off');
   assert.equal(window.states.at(-1).sourceId, 3);
-  assert.equal(settings.sourceId, null);
+  assert.equal(settings.sourceId, 2, 'the saved source survives so a reconnect can find it again');
 });
 
 test('stale starts do not stream a source selected before capture resolves', async () => {
@@ -372,15 +372,14 @@ test('pointer clicks require live captured geometry and refresh it after topolog
   assert.deepEqual(points, [{ x: 1200, y: 450 }, { x: 1460, y: 450 }]);
 });
 
-function reconnectHarness(t, showOnReconnect = true) {
+function reconnectHarness(t, showOnReconnect = true, displays = [display(1, 0, 1000), display(2, 1000)], saved = null) {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const displays = [display(1, 0, 1000), display(2, 1000)];
   const screen = new EventEmitter();
   screen.getAllDisplays = () => displays;
   screen.getDisplayMatching = () => displays[0];
   screen.getCursorScreenPoint = () => ({ x: 100, y: 100 });
   const windows = [];
-  let remembered = null;
+  let remembered = saved;
   const coordinator = new DisplayPreviewCoordinator({
     displayPreviewShowOnReconnect: showOnReconnect,
     getDisplayPreviewFrame: () => undefined,
@@ -394,6 +393,7 @@ function reconnectHarness(t, showOnReconnect = true) {
   t.after(() => coordinator.shutdown());
   return {
     coordinator, displays, screen, windows,
+    remembered: () => remembered,
     unplug() { displays.splice(1, 1); screen.emit('display-removed'); },
     replug(id = 2) { displays.push(display(id, 1000)); screen.emit('display-added'); },
   };
@@ -454,4 +454,20 @@ test('with reconnect showing off, an auto-hidden Display stays hidden', t => {
   h.replug();
   t.mock.timers.tick(1000);
   assert.equal(h.coordinator.isOpen, false);
+});
+
+test('unplugging a dock with two displays keeps the chosen one for the reconnect', t => {
+  const h = reconnectHarness(t, true, [display(1, 0, 1000), display(2, 1000), display(3, 1800)], 3);
+  h.coordinator.open();
+  assert.equal(h.windows[0].states.at(-1).sourceId, 3);
+  h.displays.splice(1, 2);
+  h.screen.emit('display-removed');
+  t.mock.timers.tick(1000);
+  assert.equal(h.coordinator.isOpen, false);
+  assert.equal(h.remembered(), 3);
+  h.displays.push(display(3, 1800), display(2, 1000));
+  h.screen.emit('display-added');
+  t.mock.timers.tick(1000);
+  assert.equal(h.windows[1].states.at(-1).sourceId, 3);
+  assert.equal(h.windows[1].states.at(-1).statusMessage, 'Click to see display');
 });

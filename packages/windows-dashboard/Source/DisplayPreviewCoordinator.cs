@@ -199,9 +199,8 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             StopCapture();
             _wantsCapture = false;
             _suspendedForOverlap = false;
-            _settings.DisplayPreviewSourceId = null;
-            _settings.Save();
-            _selected = _catalog.ResolveSource(null, _candidates);
+            // Keep the saved ID so a reconnect can find this display again.
+            _selected = _catalog.ResolveSource(_settings.DisplayPreviewSourceId, _candidates);
             if (_selected is null)
             {
                 Publish(_candidates.Count == 0 ? NoDisplays : SourceLost);
@@ -421,7 +420,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     private void DisplaySettingsChanged(object? sender, EventArgs args)
         => _dispatcher.BeginInvoke(new Action(DisplaysChanged));
 
-    private void DisplaysChanged()
+    internal void DisplaysChanged()
     {
         if (_closing) return;
         RefreshSources();

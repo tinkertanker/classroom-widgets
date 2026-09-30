@@ -299,13 +299,13 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
         fixture.displays = [CoordinatorFixture.displayA]
         fixture.postScreenNotice()
         fixture.postScreenNotice()
-        try await Task.sleep(nanoseconds: 1_200_000_000)
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
         XCTAssertNil(fixture.coordinator.windowController, "Losing the only external display hides Display")
 
         fixture.preflightGranted = true
         fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.replugged]
         fixture.postScreenNotice()
-        try await Task.sleep(nanoseconds: 1_200_000_000)
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
         XCTAssertNotNil(fixture.coordinator.windowController, "The display came back, so Display does too")
         XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.replugged.id])
         XCTAssertEqual(fixture.permissionRequests, 0)
@@ -320,10 +320,10 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
 
         fixture.displays = [CoordinatorFixture.displayA]
         fixture.postScreenNotice()
-        try await Task.sleep(nanoseconds: 1_200_000_000)
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
         fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.replugged]
         fixture.postScreenNotice()
-        try await Task.sleep(nanoseconds: 1_200_000_000)
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
         XCTAssertNil(fixture.coordinator.windowController)
     }
 }
@@ -342,6 +342,8 @@ private final class CoordinatorFixture {
         id: 303, uuid: "fixture-b-replugged", name: "Display B",
         bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
     )
+    static let reconnectDebounce: UInt64 = 20_000_000
+    static let pastReconnectDebounce: UInt64 = 200_000_000
     var displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB]
     var hostID = CoordinatorFixture.displayA.id
     var preflightGranted = false
@@ -368,7 +370,8 @@ private final class CoordinatorFixture {
             self?.createdSources.append(id)
             // No shareable-content discovery, stream, permission, or capture IO.
             return DisplayCaptureSession(sourceID: id, contentDiscovery: self?.contentDiscovery ?? { _ in throw CancellationError() })
-        }
+        },
+        reconnectDebounceNanoseconds: CoordinatorFixture.reconnectDebounce
     )
 
     init() throws {
