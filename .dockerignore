@@ -36,3 +36,6 @@ Dockerfile*
 .dockerignore
 packages/teacher/build
 packages/server/public/student
+# Demo videos and their render pipelines (media/) never ship in an image; keep
+# them out of the build context too. See media/display-widget-demo/README.md.
+media
