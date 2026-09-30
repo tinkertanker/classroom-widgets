@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full pipeline: narration -> timeline -> Timer capture -> audio mix -> frame render -> mux.
-# Prereqs (see ../README.md): ffmpeg, Node 22 + `npm ci` + `npx playwright install chromium`,
+# Prereqs (see docs/display-widget-demo-video.md): ffmpeg, Node 22 + `npm ci` + `npx playwright install chromium`,
 # Python 3 with `pip install kokoro-onnx soundfile numpy`, Kokoro model in $KOKORO_DIR
 # (./fetch_tts.sh), and the teacher dev server on :3000 for the Timer capture.
 #   SKIP_TTS=1      reuse audio/*.wav + audio/durations.json from an earlier run
