@@ -1,0 +1,156 @@
+[
+ {
+  "id": "intro",
+  "chunks": [
+   [
+    "Here's how to use Classroom Widgets on the desktop with a second screen, like a projector.",
+    "Here’s how to use Classroom Widgets on the desktop with a second screen, like a projector."
+   ]
+  ]
+ },
+ {
+  "id": "plug",
+  "chunks": [
+   [
+    "First, plug in your projector or second monitor.",
+    "First, plug in your projector or second monitor."
+   ]
+  ]
+ },
+ {
+  "id": "extend",
+  "chunks": [
+   [
+    "In System Settings, open Displays, and set it to Extended display, not Mirror.",
+    "In System Settings, open Displays, and set it to Extended display, not Mirror."
+   ],
+   [
+    "On Windows, choose Extend these displays.",
+    "On Windows, choose “Extend these displays”."
+   ]
+  ]
+ },
+ {
+  "id": "roles",
+  "chunks": [
+   [
+    "Now your laptop is your working screen, and the projector is what the class sees.",
+    "Now your laptop is your working screen, and the projector is what the class sees."
+   ]
+  ]
+ },
+ {
+  "id": "display",
+  "chunks": [
+   [
+    "Press Control, Option, Command and zero to open the Display widget.",
+    "Press ⌃ ⌥ ⌘ 0 to open the Display widget."
+   ],
+   [
+    "You can change this shortcut in Settings.",
+    "You can change this shortcut in Settings."
+   ]
+  ]
+ },
+ {
+  "id": "live",
+  "chunks": [
+   [
+    "It shows a live view of the projector, so you can see what the class sees without turning round.",
+    "It shows a live view of the projector, so you can see what the class sees without turning round."
+   ]
+  ]
+ },
+ {
+  "id": "floats",
+  "chunks": [
+   [
+    "And it floats over your desktop, like all the other widgets.",
+    "And it floats over your desktop, like all the other widgets."
+   ]
+  ]
+ },
+ {
+  "id": "click",
+  "chunks": [
+   [
+    "Click anywhere in the preview, and your pointer jumps to that spot on the projector.",
+    "Click anywhere in the preview, and your pointer jumps to that spot on the projector."
+   ],
+   [
+    "Then click as normal.",
+    "Then click as normal."
+   ]
+  ]
+ },
+ {
+  "id": "hide",
+  "chunks": [
+   [
+    "Press the same shortcut again to hide it.",
+    "Press the same shortcut, ⌃ ⌥ ⌘ 0, again to hide it."
+   ]
+  ]
+ },
+ {
+  "id": "timer",
+  "chunks": [
+   [
+    "You can send widgets between displays easily too.",
+    "You can send widgets between displays easily too."
+   ],
+   [
+    "Control, Option, Command and one opens a timer, on your working screen.",
+    "⌃ ⌥ ⌘ 1 opens a timer, on your working screen."
+   ]
+  ]
+ },
+ {
+  "id": "send",
+  "chunks": [
+   [
+    "When it's ready, press Control, Option, Command and the right arrow to send it to the next screen.",
+    "When it’s ready, press ⌃ ⌥ ⌘ → to send it to the next screen."
+   ]
+  ]
+ },
+ {
+  "id": "over",
+  "chunks": [
+   [
+    "And over it goes.",
+    "And over it goes."
+   ],
+   [
+    "To bring it back, use the left arrow instead.",
+    "To bring it back, use the left arrow (⌃ ⌥ ⌘ ←) instead."
+   ]
+  ]
+ },
+ {
+  "id": "custom",
+  "chunks": [
+   [
+    "You can change all of these shortcuts in Settings, under Shortcuts.",
+    "You can change all of these shortcuts in Settings, under Shortcuts."
+   ]
+  ]
+ },
+ {
+  "id": "outro",
+  "chunks": [
+   [
+    "That's it.",
+    "That’s it."
+   ],
+   [
+    "No more craning your neck to find your pointer on the other screen.",
+    "No more craning your neck to find your pointer on the other screen."
+   ],
+   [
+    "And no more accidentally showing your browser tabs to the class.",
+    "And no more accidentally showing your browser tabs to the class."
+   ]
+  ]
+ }
+]

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Display widget demo compose</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <!-- ============ Desk scene ============ -->
+  <div id="scene">
+    <div id="cam">
+      <div id="laptop" class="device">
+        <div class="lap-lid"><div class="lap-cam"></div>
+          <div class="screenwrap" id="lapWrap"><div class="screen" id="lapRoot"></div></div>
+        </div>
+        <div class="lap-base"><div class="lap-notch"></div></div>
+        <div class="dev-shadow"></div>
+      </div>
+      <div id="monitor" class="device">
+        <div class="mon-bezel">
+          <div class="screenwrap" id="projWrap"><div class="screen" id="projRoot"></div></div>
+          <div class="glow" id="projGlow"></div>
+        </div>
+        <div class="mon-neck"></div><div class="mon-foot"></div>
+        <div class="dev-shadow"></div>
+      </div>
+      <svg id="cable" width="1920" height="1080" viewBox="0 0 1920 1080"><path id="cablePath" d="" fill="none" stroke="#5b544d" stroke-width="7" stroke-linecap="round"/></svg>
+      <div class="devlabel" id="labLaptop"><span class="dot sage"></span><span class="a">Laptop</span><span class="b">Laptop · your working screen</span></div>
+      <div class="devlabel" id="labProj"><span class="dot terra"></span><span class="a">Projector</span><span class="b">Projector · what the class sees</span></div>
+      <svg id="jumpArc" width="1920" height="1080" viewBox="0 0 1920 1080">
+        <defs><marker id="ah" markerUnits="userSpaceOnUse" markerWidth="22" markerHeight="22" refX="12" refY="11" orient="auto"><path d="M0,0 L22,11 L0,22 z" fill="#cc7d4a"/></marker></defs>
+        <path id="arcPath" d="" fill="none" stroke="#cc7d4a" stroke-width="5" stroke-dasharray="12 10" stroke-linecap="round" marker-end="url(#ah)"/>
+        <circle id="arcRing" r="10" fill="none" stroke="#cc7d4a" stroke-width="5"/>
+      </svg>
+      <div id="timerWin"><canvas id="timerCanvas" width="525" height="622"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ============ Overlays (outside camera) ============ -->
+  <div id="keycaps" class="topcard"><div class="chips"></div><div class="ktext"><div class="ktitle"></div><div class="knote"></div><div class="knote2">Change it in Settings › Shortcuts</div></div></div>
+  <div id="winNote" class="topcard note"><div class="wicon"><i></i><i></i><i></i><i></i></div><div><div class="ntitle">On Windows</div><div class="nbody">Settings › System › Display › <b>Extend these displays</b></div></div></div>
+  <div id="permNote" class="topcard note"><div class="picon">i</div><div><div class="ntitle">First time only</div><div class="nbody">macOS asks for <b>Screen Recording</b> permission, so the widget can see the other screen.</div></div></div>
+  <div id="backHint" class="topcard note"><div class="chips small"></div><div><div class="ntitle">Move widget to previous display</div><div class="nbody">Windows: Ctrl + Alt + Shift + ←</div></div></div>
+  <div id="recap"><div class="dim"></div>
+    <div class="crumb">Menu bar icon › Settings… › <b>Shortcuts</b></div>
+    <div class="swin">
+      <div class="stitle"><span class="lights"><i></i><i></i><i></i></span>Classroom Widgets Settings</div>
+      <div class="stabs"><span>General</span><span>Link Shortener</span><span class="on">Shortcuts</span></div>
+      <div class="sbody">
+        <div class="sgroup-h">Keyboard Shortcut</div>
+        <div class="sgroup">
+          <div class="srow"><span>Open Settings</span><span class="rec">⌥⌘,</span></div>
+          <div class="srow"><span>Move Widget to Previous Display</span><span class="rec">⌃⌥⌘←</span></div>
+          <div class="srow hl"><span>Move Widget to Next Display</span><span class="rec">⌃⌥⌘→</span></div>
+        </div>
+        <div class="sgroup-h">Launch Widgets</div>
+        <div class="sgroup">
+          <div class="srow head"><span>Widget</span><span class="c">Show</span><span class="c">Dismiss</span></div>
+          <div class="srow hl"><span>Display</span><span class="rec c">⌃⌥⌘0</span><span class="rec c">⌃⌥⌘0</span></div>
+          <div class="srow hl"><span>Timer</span><span class="rec c">⌃⌥⌘1</span><span class="rec c">⌃⌥⌘1</span></div>
+          <div class="srow"><span>Text Banner</span><span class="rec c">⌃⌥⌘2</span><span class="rec c">⌃⌥⌘2</span></div>
+          <div class="srow"><span>Traffic Light</span><span class="rec c">⌃⌥⌘3</span><span class="rec c">⌃⌥⌘3</span></div>
+        </div>
+        <div class="sfoot">When Show and Dismiss match, the shortcut toggles the widget.</div>
+      </div>
+    </div>
+  </div>
+  <div id="captions"><div class="cap"></div></div>
+
+  <!-- ============ Title cards ============ -->
+  <div id="cardIntro" class="card">
+    <div class="bg"></div><div class="vig"></div>
+    <div class="stickers"></div>
+    <img class="logo" src="../assets/logo-mark.png">
+    <div class="title">Classroom Widgets</div>
+    <div class="subtitle">Using the desktop Display widget</div>
+    <div class="small">Desktop app for macOS, Windows and Linux</div>
+  </div>
+  <div id="cardOutro" class="card">
+    <div class="bg"></div><div class="vig"></div>
+    <div class="stickers"></div>
+    <img class="logo" src="../assets/logo-mark.png">
+    <div class="title">Classroom Widgets</div>
+    <div class="subtitle">Face the class, not the projector.</div>
+    <div class="link">widgets.tk.sg</div>
+    <div class="platforms">Web app · macOS · Windows · Linux</div>
+    <div class="ticker"><div class="tick-inner"></div></div>
+  </div>
+</div>
+<script src="compose.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Everything the pipeline downloads or generates. Only sources are committed.
+/node_modules
+/tts
+/audio
+/out
+/timeline.json
+/assets/*
+!/assets/lowpoly-bg-blur.jpg
+/voicetest/*.wav
+/.venv
