@@ -40,6 +40,7 @@ enum DashboardSettingKeys {
     static let keepOnAllSpaces = "keepOnAllSpaces"
     static let compactBackgroundOpacity = "compactBackgroundOpacity"
     static let outputVolume = "outputVolume"
+    static let displayPreviewShowOnReconnect = "displayPreviewShowOnReconnect"
 }
 
 enum DashboardDefaults {
@@ -59,7 +60,8 @@ enum DashboardDefaults {
             DashboardSettingKeys.moveWidgetNextShortcutModifiers: moveWidgetShortcutModifiers,
             DashboardSettingKeys.keepOnAllSpaces: true,
             DashboardSettingKeys.compactBackgroundOpacity: 1.0,
-            DashboardSettingKeys.outputVolume: 1.0
+            DashboardSettingKeys.outputVolume: 1.0,
+            DashboardSettingKeys.displayPreviewShowOnReconnect: true
         ])
     }
 }
@@ -139,6 +141,7 @@ struct DashboardGeneralSettingsView: View {
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
     @AppStorage(DashboardSettingKeys.compactBackgroundOpacity) private var compactBackgroundOpacity = 1.0
     @AppStorage(DashboardSettingKeys.outputVolume) private var outputVolume = 1.0
+    @AppStorage(DashboardSettingKeys.displayPreviewShowOnReconnect) private var displayPreviewShowOnReconnect = true
     @State private var launchAtLoginEnabled = false
     @State private var launchAtLoginAlertMessage: String?
     let context: DashboardSettingsContext
@@ -171,6 +174,9 @@ struct DashboardGeneralSettingsView: View {
                     }
                 }
                 Text("Controls sounds from every floating widget without changing the Mac's system volume.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Toggle("Show Display widget when a monitor reconnects", isOn: $displayPreviewShowOnReconnect)
+                Text("Display hides when its external monitor disconnects. Turn this off to keep it hidden until you open it.")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }

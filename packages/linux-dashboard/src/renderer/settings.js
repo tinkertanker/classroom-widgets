@@ -1,6 +1,7 @@
 (function () {
   var alwaysOnTop = document.getElementById('alwaysOnTop');
   var launchAtLogin = document.getElementById('launchAtLogin');
+  var displayShowOnReconnect = document.getElementById('displayShowOnReconnect');
   var opacity = document.getElementById('opacity');
   var opacityLabel = document.getElementById('opacityLabel');
   var volume = document.getElementById('volume');
@@ -222,6 +223,7 @@
   window.classroomSettings.get().then(function (state) {
     alwaysOnTop.checked = state.alwaysOnTop === true;
     launchAtLogin.checked = state.launchAtLogin === true;
+    displayShowOnReconnect.checked = state.displayPreviewShowOnReconnect !== false;
     opacity.value = Math.min(1, Math.max(0.2, Number(state.backgroundOpacity) || 1));
     volume.value = Math.min(1, Math.max(0, Number.isFinite(Number(state.outputVolume)) ? Number(state.outputVolume) : 1));
     provider.value = state.linkShortener.provider;
@@ -251,6 +253,9 @@
   });
   launchAtLogin.addEventListener('change', function () {
     window.classroomSettings.set({ launchAtLogin: launchAtLogin.checked });
+  });
+  displayShowOnReconnect.addEventListener('change', function () {
+    window.classroomSettings.set({ displayPreviewShowOnReconnect: displayShowOnReconnect.checked });
   });
   opacity.addEventListener('input', function () {
     updateLabel();

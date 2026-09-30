@@ -31,6 +31,8 @@ final class DisplayPreviewCoordinator: NSObject {
     private var frameRecovery = DisplayPreviewFrameRecovery()
     private var captureOrder = DisplayPreviewCaptureOrder()
     private var recoveryTask: Task<Void, Never>?
+    private var reconnect: DisplayPreviewReconnectPolicy
+    private var reconnectTask: Task<Void, Never>?
     private var deliveredFrameGeneration: UInt64?
     private var streamActivityGeneration: UInt64?
     private var pendingOpeningAspect = false
@@ -51,7 +53,11 @@ final class DisplayPreviewCoordinator: NSObject {
             DisplayCaptureSession(sourceID: $0)
         }
     ) {
-        self.catalog = catalog ?? DisplayCatalog()
+        let catalog = catalog ?? DisplayCatalog()
+        self.catalog = catalog
+        reconnect = DisplayPreviewReconnectPolicy(
+            externalDisplayAvailable: DisplayPreviewReconnectPolicy.hasExternalDisplay(in: catalog.displays())
+        )
         self.defaults = defaults
         defaultsWriter = DebouncedDefaultsWriter(defaults: defaults)
         self.hostDisplayID = hostDisplayID
@@ -75,7 +81,9 @@ final class DisplayPreviewCoordinator: NSObject {
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
     }
 
-    func open() {
+    /// `activatingApp: false` is for automatic reopening, which must not steal focus.
+    func open(activatingApp: Bool = true) {
+        reconnect.windowOpened()
         if let window = windowController?.window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -111,8 +119,12 @@ final class DisplayPreviewCoordinator: NSObject {
             intent: intent.wantsCapture,
             enabled: selectedSource != nil
         )
-        controller.window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if activatingApp {
+            controller.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            controller.window?.orderFrontRegardless()
+        }
         if DisplayPreviewLaunchPolicy.outcome(
             existingWindow: false,
             wantsCapture: intent.wantsCapture,
@@ -157,6 +169,7 @@ final class DisplayPreviewCoordinator: NSObject {
 
     func prepareForTermination() async -> Bool {
         stopLifecycle.beginTermination()
+        reconnectTask?.cancel()
         cancelDeferredRestarts()
         cancelFrameRecovery()
         intent.pause()
@@ -706,6 +719,7 @@ final class DisplayPreviewCoordinator: NSObject {
         persist(frame: windowController?.window?.frame ?? .zero)
         defaultsWriter.flush()
         windowController = nil
+        reconnect.windowClosed()
         stopCurrent(message: "Closed.")
     }
 
@@ -729,6 +743,7 @@ final class DisplayPreviewCoordinator: NSObject {
             enabled: selectedSource != nil,
             extra: "displays=\(catalog.topologySummary())"
         )
+        scheduleReconnectCheck()
         guard let controller = windowController else { return }
         controller.previewView.discardPendingClick()
         let hostID = hostDisplayID(controller.window)
@@ -745,7 +760,8 @@ final class DisplayPreviewCoordinator: NSObject {
             isHostCandidate: isHostCandidate
         ) {
         case .ignore:
-            controller.setSources(candidates, selectedID: selectedSource?.id)
+            // No source yet: a display that just arrived may be the one to preview.
+            refreshSources(preselect: true)
             return
         case .preserveSource:
             guard let current = match else { return }
@@ -795,6 +811,36 @@ final class DisplayPreviewCoordinator: NSObject {
         selectedSource = nil
         intent.select(sourceID: nil)
         refreshSources(preselect: true)
+    }
+
+    /// Debounced: one plug or unplug posts several notices.
+    private func scheduleReconnectCheck() {
+        reconnectTask?.cancel()
+        reconnectTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: DisplayPreviewReconnectPolicy.debounceNanoseconds)
+            guard !Task.isCancelled, let self else { return }
+            self.reconnectTask = nil
+            self.applyDisplayAvailability()
+        }
+    }
+
+    private func applyDisplayAvailability() {
+        guard !stopLifecycle.terminating else { return }
+        let showOnReconnect = defaults.object(forKey: DashboardSettingKeys.displayPreviewShowOnReconnect) as? Bool ?? true
+        switch reconnect.displaysChanged(
+            externalDisplayAvailable: DisplayPreviewReconnectPolicy.hasExternalDisplay(in: catalog.displays()),
+            isOpen: windowController != nil,
+            showOnReconnect: showOnReconnect
+        ) {
+        case .hide:
+            logDisplayTransition(.disconnectHide, trigger: "didChangeScreenParameters", source: selectedSource)
+            dismiss()
+        case .show:
+            logDisplayTransition(.reconnectShow, trigger: "didChangeScreenParameters")
+            open(activatingApp: false)
+        case .none:
+            break
+        }
     }
 
     private func visibilityChanged(_ visible: Bool) {

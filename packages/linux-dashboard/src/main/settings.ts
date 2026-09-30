@@ -18,6 +18,7 @@ export interface DashboardSettingsData {
   backgroundOpacity: number;
   outputVolume: number;
   alwaysOnTop: boolean;
+  displayPreviewShowOnReconnect?: boolean;
   panelFrames: Record<string, PanelFrame>;
   linkShortener: ShortenerSettings;
   widgetShortcutsInitialized: boolean;
@@ -42,6 +43,8 @@ export class DashboardSettings extends EventEmitter {
   backgroundOpacity = 1;
   outputVolume = 1;
   alwaysOnTop = true;
+  /** Reopen Display when a monitor returns after a disconnect hid it. */
+  displayPreviewShowOnReconnect = true;
   panelFrames: Record<string, PanelFrame> = {};
   linkShortener = readShortenerSettings();
   widgetShortcutsInitialized = false;
@@ -72,6 +75,7 @@ export class DashboardSettings extends EventEmitter {
           settings.outputVolume = Math.min(1, Math.max(0, raw.outputVolume));
         }
         if (typeof raw.alwaysOnTop === 'boolean') settings.alwaysOnTop = raw.alwaysOnTop;
+        if (typeof raw.displayPreviewShowOnReconnect === 'boolean') settings.displayPreviewShowOnReconnect = raw.displayPreviewShowOnReconnect;
         settings.linkShortener = readShortenerSettings(raw.linkShortener);
         if (raw.widgetShortcutsInitialized === true) settings.widgetShortcutsInitialized = true;
         if (raw.widgetShortcutMenuOrderApplied === true) settings.widgetShortcutMenuOrderApplied = true;
@@ -140,6 +144,7 @@ export class DashboardSettings extends EventEmitter {
         backgroundOpacity: this.backgroundOpacity,
         outputVolume: this.outputVolume,
         alwaysOnTop: this.alwaysOnTop,
+        displayPreviewShowOnReconnect: this.displayPreviewShowOnReconnect,
         panelFrames: this.panelFrames,
         linkShortener: this.linkShortener,
         widgetShortcutsInitialized: this.widgetShortcutsInitialized,

@@ -38,6 +38,7 @@ public partial class SettingsWindow : Window
         UpdateOpacityLabel();
         VolumeSlider.Value = Math.Clamp(_settings.OutputVolume, VolumeSlider.Minimum, VolumeSlider.Maximum);
         UpdateVolumeLabel();
+        DisplayShowOnReconnectCheck.IsChecked = _settings.DisplayPreviewShowOnReconnect;
         SelectProvider(DashboardShortenerSettings.NormalizeProvider(_settings.LinkShortenerProvider));
         UpdateShortioFields();
         ApiKeyBox.Password = _settings.LinkShortenerPublicApiKey;
@@ -61,6 +62,13 @@ public partial class SettingsWindow : Window
     {
         if (_loading) return;
         _settings.AlwaysOnTop = AlwaysOnTopCheck.IsChecked == true;
+        _settings.NotifyChanged();
+    }
+
+    private void DisplayShowOnReconnectCheck_Changed(object sender, RoutedEventArgs args)
+    {
+        if (_loading) return;
+        _settings.DisplayPreviewShowOnReconnect = DisplayShowOnReconnectCheck.IsChecked == true;
         _settings.NotifyChanged();
     }
 

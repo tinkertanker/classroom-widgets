@@ -92,6 +92,8 @@ enum DisplayPreviewTransition: String {
     case revealed
     case deferredRestart
     case termination
+    case disconnectHide
+    case reconnectShow
 }
 
 /// What a `didChangeScreenParameters` notice means for the current preview.

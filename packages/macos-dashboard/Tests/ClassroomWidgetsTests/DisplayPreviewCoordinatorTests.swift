@@ -288,6 +288,44 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
             XCTAssertEqual(fixture.coordinator.session?.sourceID, CoordinatorFixture.displayB.id)
         }
     }
+
+    @MainActor
+    func testUnplugHidesDisplayAndReplugWithANewIdentityBringsItBackWithoutPrompting() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        fixture.coordinator.open()
+        XCTAssertNotNil(fixture.coordinator.windowController)
+
+        fixture.displays = [CoordinatorFixture.displayA]
+        fixture.postScreenNotice()
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: 1_200_000_000)
+        XCTAssertNil(fixture.coordinator.windowController, "Losing the only external display hides Display")
+
+        fixture.preflightGranted = true
+        fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.replugged]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: 1_200_000_000)
+        XCTAssertNotNil(fixture.coordinator.windowController, "The display came back, so Display does too")
+        XCTAssertEqual(fixture.createdSources, [CoordinatorFixture.replugged.id])
+        XCTAssertEqual(fixture.permissionRequests, 0)
+    }
+
+    @MainActor
+    func testDisplayTheUserClosedStaysClosedAcrossUnplugAndReplug() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        fixture.coordinator.open()
+        fixture.coordinator.dismiss()
+
+        fixture.displays = [CoordinatorFixture.displayA]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: 1_200_000_000)
+        fixture.displays = [CoordinatorFixture.displayA, CoordinatorFixture.replugged]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: 1_200_000_000)
+        XCTAssertNil(fixture.coordinator.windowController)
+    }
 }
 
 @MainActor
@@ -298,6 +336,10 @@ private final class CoordinatorFixture {
     )
     static let displayB = DisplayDescriptor(
         id: 202, uuid: "fixture-b", name: "Display B",
+        bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
+    )
+    static let replugged = DisplayDescriptor(
+        id: 303, uuid: "fixture-b-replugged", name: "Display B",
         bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
     )
     var displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB]
