@@ -42,6 +42,29 @@ public sealed class DisplayPreviewReconnectTests
         });
 
     [Fact]
+    public void ADockWhoseDisplaysReturnOneAtATimeEndsOnTheSavedDisplay()
+        => WithDisplays((host, displays, settings, coordinator) =>
+        {
+            var (left, right) = Externals(host);
+            displays.AddRange(new[] { left, right });
+            settings.DisplayPreviewSourceId = right.Id;
+            coordinator.Open();
+
+            displays.RemoveRange(1, 2);
+            coordinator.DisplaysChanged();
+            WpfTestHost.PumpUntil(() => coordinator.Window is null, Timeout, "the disconnect to hide Display");
+            displays.Add(left);
+            coordinator.DisplaysChanged();
+            WpfTestHost.PumpUntil(() => coordinator.Window is { IsVisible: true }, Timeout, "the first display to reopen Display");
+            Assert.Equal(left.Id, coordinator.SelectedSource?.Id);
+            Assert.Equal(right.Id, settings.DisplayPreviewSourceId);
+
+            displays.Add(right);
+            coordinator.DisplaysChanged();
+            Assert.Equal(right.Id, coordinator.SelectedSource?.Id);
+        });
+
+    [Fact]
     public void DisplayTheUserClosedStaysClosedAcrossUnplugAndReplug()
         => WithDisplays((host, displays, _, coordinator) =>
         {

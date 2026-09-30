@@ -230,6 +230,12 @@ export class DisplayPreviewCoordinator extends EventEmitter {
         return;
       }
     } else if (selectedCurrent) {
+      // A stand-in gives way when the saved display returns; manual picks are saved.
+      const saved = this.candidates.find((candidate) => candidate.id === this.settings.getDisplayPreviewSourceId());
+      if (saved && saved.id !== selectedCurrent.id) {
+        this.selectSource(saved);
+        return;
+      }
       sourceChanged = previousSource !== null
         && (previousSource.bounds.x !== selectedCurrent.bounds.x
           || previousSource.bounds.y !== selectedCurrent.bounds.y
@@ -240,9 +246,6 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       this.selectedSource = selectedCurrent;
     } else {
       this.selectedSource = this.catalog.resolveSource(this.settings.getDisplayPreviewSourceId(), this.candidates);
-      if (this.selectedSource && this.selectedSource.id !== this.settings.getDisplayPreviewSourceId()) {
-        this.settings.setDisplayPreviewSourceId(this.selectedSource.id);
-      }
     }
     if (this.wantsCapture && this.selectedSource) {
       if (rectsIntersect(this.window.getBounds(), this.selectedSource.bounds)) {

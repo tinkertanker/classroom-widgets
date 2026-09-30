@@ -171,7 +171,7 @@ test('stale starts do not stream a source selected before capture resolves', asy
   assert.deepEqual(window.streams, [{ sourceId: 'screen:3:0', size: { width: 800, height: 600 } }]);
 });
 
-test('auto-selecting the sole candidate remembers it as the source', () => {
+test('auto-selecting the sole candidate does not overwrite the saved source', () => {
   const displays = [display(1, 0, 1000), display(2, 1000, 1000)];
   const fakeScreen = {
     getAllDisplays: () => displays,
@@ -193,7 +193,7 @@ test('auto-selecting the sole candidate remembers it as the source', () => {
     { screen: fakeScreen, desktopCapturer: { async getSources() { return []; } }, createWindow: (bounds) => (window = new FakeWindow(bounds)) },
   );
   coordinator.open();
-  assert.equal(rememberedId, 2);
+  assert.equal(rememberedId, null, 'only a manual pick is saved');
   assert.equal(window.states.at(-1).sourceId, 2);
   assert.equal(window.states.at(-1).statusMessage, 'Click to see display');
 });
@@ -470,4 +470,20 @@ test('unplugging a dock with two displays keeps the chosen one for the reconnect
   t.mock.timers.tick(1000);
   assert.equal(h.windows[1].states.at(-1).sourceId, 3);
   assert.equal(h.windows[1].states.at(-1).statusMessage, 'Click to see display');
+});
+
+test('a dock whose displays return one at a time ends on the saved display', t => {
+  const h = reconnectHarness(t, true, [display(1, 0, 1000), display(2, 1000), display(3, 1800)], 3);
+  h.coordinator.open();
+  h.displays.splice(1, 2);
+  h.screen.emit('display-removed');
+  t.mock.timers.tick(1000);
+  h.displays.push(display(2, 1000));
+  h.screen.emit('display-added');
+  t.mock.timers.tick(1000);
+  assert.equal(h.windows[1].states.at(-1).sourceId, 2, 'display 2 stands in');
+  assert.equal(h.remembered(), 3, 'a stand-in is never saved');
+  h.displays.push(display(3, 1800));
+  h.screen.emit('display-added');
+  assert.equal(h.windows[1].states.at(-1).sourceId, 3);
 });

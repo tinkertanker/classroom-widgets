@@ -770,6 +770,7 @@ final class DisplayPreviewCoordinator: NSObject {
         case .preserveSource:
             guard let current = match else { return }
             selectedSource = current
+            if switchToSavedSource(from: current, among: candidates) { return }
             controller.setSources(candidates, selectedID: current.id, retainingSelectedSource: current)
             // Host-filtered candidacy is a placement fact: while the preview
             // overlaps its own source the menu keeps its selection and the
@@ -815,6 +816,24 @@ final class DisplayPreviewCoordinator: NSObject {
         selectedSource = nil
         intent.select(sourceID: nil)
         refreshSources(preselect: true)
+    }
+
+    /// A stand-in chosen while the saved display was missing gives way when it
+    /// returns. A manual pick is saved, so it never counts as a stand-in.
+    private func switchToSavedSource(from current: DisplayDescriptor, among candidates: [DisplayDescriptor]) -> Bool {
+        guard let savedUUID = defaultsWriter.value(forKey: Keys.sourceUUID), savedUUID != current.uuid,
+              let saved = catalog.matchSavedUUID(savedUUID, among: candidates)
+        else { return false }
+        let wasCapturing = intent.wantsCapture || autoResume.hasPendingRestart
+        selectSource(saved.id)
+        guard wasCapturing, selectedSource == saved else { return true }
+        if session == nil {
+            start(trigger: .visibilityResume)
+        } else {
+            // Starts once the stand-in's stream has stopped.
+            autoResume.requestRestart(sourceUUID: saved.uuid)
+        }
+        return true
     }
 
     /// Debounced: one plug or unplug posts several notices.

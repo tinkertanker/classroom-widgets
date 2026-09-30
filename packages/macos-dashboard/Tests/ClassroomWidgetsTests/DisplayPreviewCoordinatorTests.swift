@@ -326,6 +326,32 @@ final class DisplayPreviewCoordinatorTests: XCTestCase {
         try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
         XCTAssertNil(fixture.coordinator.windowController)
     }
+
+    @MainActor
+    func testStaggeredDockReturnSwitchesFromTheStandInToTheSavedDisplay() async throws {
+        let fixture = try CoordinatorFixture()
+        defer { fixture.close() }
+        let (a, b, c) = (CoordinatorFixture.displayA, CoordinatorFixture.displayB, CoordinatorFixture.displayC)
+        fixture.displays = [a, b, c]
+        fixture.coordinator.open()
+        try XCTUnwrap(fixture.coordinator.windowController).onSourceSelected?(c.id)
+
+        fixture.displays = [a]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertNil(fixture.coordinator.windowController)
+
+        fixture.displays = [a, b]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        let controller = try XCTUnwrap(fixture.coordinator.windowController)
+        XCTAssertEqual(fixture.sourceItem(b.id, in: controller.makeControlsMenu())?.state, .on, "Only B is back, so it stands in")
+
+        fixture.displays = [a, b, c]
+        fixture.postScreenNotice()
+        try await Task.sleep(nanoseconds: CoordinatorFixture.pastReconnectDebounce)
+        XCTAssertEqual(fixture.sourceItem(c.id, in: controller.makeControlsMenu())?.state, .on, "The saved display wins once it returns")
+    }
 }
 
 @MainActor
@@ -342,8 +368,12 @@ private final class CoordinatorFixture {
         id: 303, uuid: "fixture-b-replugged", name: "Display B",
         bounds: CGRect(x: 1512, y: -120, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
     )
+    static let displayC = DisplayDescriptor(
+        id: 404, uuid: "fixture-c", name: "Display C",
+        bounds: CGRect(x: 3432, y: 0, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
+    )
     static let reconnectDebounce: UInt64 = 20_000_000
-    static let pastReconnectDebounce: UInt64 = 200_000_000
+    static let pastReconnectDebounce: UInt64 = 500_000_000
     var displays = [CoordinatorFixture.displayA, CoordinatorFixture.displayB]
     var hostID = CoordinatorFixture.displayA.id
     var preflightGranted = false

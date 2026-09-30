@@ -36,6 +36,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     public bool IsOpen => _window is { IsVisible: true };
     internal DisplayPreviewWindow? Window => _window;
     internal DisplayCaptureSession? Capture => _capture;
+    internal DisplayDescriptor? SelectedSource => _selected;
 
     public DisplayPreviewCoordinator(DashboardSettings settings, DisplayCatalog catalog)
     {
@@ -194,6 +195,13 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _candidates = _catalog.EligibleSources(host?.Id);
         var previous = _selected;
         var current = _selected is null ? null : _catalog.CurrentMatching(_selected);
+        // A stand-in gives way when the saved display returns; manual picks are saved.
+        var saved = _candidates.FirstOrDefault(candidate => string.Equals(candidate.Id, _settings.DisplayPreviewSourceId, StringComparison.OrdinalIgnoreCase));
+        if (current is not null && saved is not null && !string.Equals(saved.Id, current.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            SelectSource(saved);
+            return;
+        }
         if (previous is not null && current is null)
         {
             StopCapture();

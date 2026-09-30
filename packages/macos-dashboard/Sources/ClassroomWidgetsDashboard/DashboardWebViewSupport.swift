@@ -57,6 +57,11 @@ final class DebouncedDefaultsWriter {
         }
     }
 
+    /// The latest value, including one not yet written.
+    func value(forKey key: String) -> String? {
+        pending[key] ?? defaults.string(forKey: key)
+    }
+
     func flush() {
         generation += 1
         guard !pending.isEmpty else { return }
