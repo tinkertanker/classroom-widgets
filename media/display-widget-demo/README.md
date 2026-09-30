@@ -70,7 +70,7 @@ If you change a default in the apps, update the video (or at least this table).
 ## How it was made
 
 - **Voice:** [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) v1.0, fp32 ONNX, run
-  with `pip install kokoro-onnx` (0.6.1). The voice is a blend of 60% `bm_george` and
+  with `kokoro-onnx` 0.6.1. The voice is a blend of 60% `bm_george` and
   40% `bm_fable` (weighted average of the two style vectors), speed 1.1, `en-gb`
   phonemes, with "one" corrected to /wʌn/. It was picked from eight British voices using
   pitch-range and clarity measurements (`pipeline/voicetest/`). Both the model and the
@@ -90,20 +90,26 @@ If you change a default in the apps, update the video (or at least this table).
 
 ## Re-rendering
 
-Tested on Ubuntu 24.04 with Node 22 and Python 3.11. A full render takes about five
-minutes.
+Tested with Node 22 and Python 3.11; any Python from 3.10 to 3.13 works (kokoro-onnx 0.6.1
+needs `>=3.10,<3.14`), including the 3.12 that ships with Ubuntu 24.04. A full render
+takes about five minutes.
 
 1. Install the system tools:
-   `sudo apt install ffmpeg fonts-dejavu-core python3-pip`
-2. Install the Node and Python dependencies, from `media/display-widget-demo/pipeline`:
-   `npm ci && npx playwright install --with-deps chromium && pip install kokoro-onnx soundfile numpy`
-   (add `praat-parselmouth` only if you want to run `voicetest/`)
-3. Download the voice model, about 325 MB, into `pipeline/tts/`: `./fetch_tts.sh`
+   `sudo apt install ffmpeg fonts-dejavu-core python3-venv`
+2. Install the Node dependencies, from `media/display-widget-demo/pipeline`:
+   `npm ci && npx playwright install --with-deps chromium`
+3. Install the Python dependencies into a virtual environment, from the same folder (a
+   bare `pip install` is refused on Ubuntu 24.04 by PEP 668):
+   `python3 -m venv .venv && . .venv/bin/activate && pip install kokoro-onnx==0.6.1 soundfile numpy`
+   (add `praat-parselmouth` only if you want to run `voicetest/`). Keep the venv active
+   for the remaining steps; in a new shell, run `. .venv/bin/activate` again. The scripts
+   call `python3` from `PATH`, so they pick up the venv.
+4. Download the voice model, about 325 MB, into `pipeline/tts/`: `./fetch_tts.sh`
    (set `KOKORO_DIR=/absolute/path` to keep it elsewhere)
-4. From the repo root, start the teacher dev server for the Timer capture:
+5. From the repo root, start the teacher dev server for the Timer capture:
    `pnpm install && pnpm dev:teacher` (set `TEACHER_URL` if it is not on
    `http://127.0.0.1:3000`)
-5. Render: `./make.sh`. It writes
+6. Render: `./make.sh`. It writes
    `out/classroom-widgets-display-widget-demo-v4.mp4` and `out/poster.jpg`. Copy both up
    to this folder to publish them.
 

@@ -7,3 +7,4 @@
 /assets/*
 !/assets/lowpoly-bg-blur.jpg
 /voicetest/*.wav
+/.venv
