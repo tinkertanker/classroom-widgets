@@ -39,7 +39,8 @@ It selects all five choices through Settings and through native-menu keyboard
 input, plays a bundled sound, checks each audio element's gain, verifies live
 Settings/tooltip synchronization, and reloads preferences from disk. It also checks
 that a saved legacy gain of 0.75 stays Custom. It writes `volume-e2e.json` and
-screenshots to the evidence directory, including on a failed check.
+screenshots to the evidence directory. Failed checks retain the JSON result and
+any screenshots captured before the failure.
 
 ### Digital-output measurement in an Amp orb
 

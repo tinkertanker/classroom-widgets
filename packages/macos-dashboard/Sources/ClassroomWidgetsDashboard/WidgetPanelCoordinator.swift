@@ -908,6 +908,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         volumeButton.imagePosition = .imageOnly
         volumeButton.toolTip = "Output volume"
         self.volumeButton = volumeButton
+        updateVolumeButton()
 
         let addButton = NSButton(
             image: NSImage(systemSymbolName: "plus", accessibilityDescription: "Add widget") ?? NSImage(),
