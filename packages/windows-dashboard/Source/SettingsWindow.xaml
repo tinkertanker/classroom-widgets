@@ -37,6 +37,7 @@
 
         <TextBlock Text="Output volume" Margin="0,16,0,4" />
         <ComboBox x:Name="VolumeCombo" AutomationProperties.Name="Output volume"
+                  IsTextSearchEnabled="False"
                   SelectionChanged="VolumeCombo_SelectionChanged" />
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
                    Text="Controls sounds from every floating widget without changing Windows system volume." />
