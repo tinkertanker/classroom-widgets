@@ -172,14 +172,24 @@ public sealed class DisplayShortcutTests
             {
                 window.Show();
                 WpfTestHost.DoEvents();
-                var volume = Find<Slider>(window, "Output volume");
-                Assert.Equal(1, volume.Value);
+                var volume = Find<ComboBox>(window, "Output volume");
+                Assert.Equal("Level 4", ((ComboBoxItem)volume.SelectedItem).Content);
+
+                settings.OutputVolume = 0.35;
+                settings.NotifyChanged();
+                WpfTestHost.DoEvents();
+                Assert.Equal("Custom", ((ComboBoxItem)volume.SelectedItem).Content);
+                Assert.Equal(0.35, settings.OutputVolume);
+
+                volume.SelectedIndex = 1;
+                WpfTestHost.DoEvents();
+                Assert.Equal(0.1, settings.OutputVolume);
 
                 settings.OutputVolume = 0;
                 settings.NotifyChanged();
                 WpfTestHost.DoEvents();
 
-                Assert.Equal(0, volume.Value);
+                Assert.Equal("Mute", ((ComboBoxItem)volume.SelectedItem).Content);
             }
             finally
             {

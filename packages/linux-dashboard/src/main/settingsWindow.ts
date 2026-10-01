@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'node:path';
-import { DashboardSettings } from './settings';
+import { DashboardSettings, outputVolumePresets } from './settings';
 import { rendererDir } from './panelWindow';
 import { readShortenerSettings } from './shortenerSettings';
 import { WidgetShortcutController } from './widgetShortcuts';
@@ -14,6 +14,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
   ipcMain.handle('settings:get', () => ({
     backgroundOpacity: settings.backgroundOpacity,
     outputVolume: settings.outputVolume,
+    outputVolumePresets,
     alwaysOnTop: settings.alwaysOnTop,
     displayPreviewShowOnReconnect: settings.displayPreviewShowOnReconnect,
     launchAtLogin: settings.launchAtLoginEnabled,

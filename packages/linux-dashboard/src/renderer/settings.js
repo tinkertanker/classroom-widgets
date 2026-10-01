@@ -5,7 +5,8 @@
   var opacity = document.getElementById('opacity');
   var opacityLabel = document.getElementById('opacityLabel');
   var volume = document.getElementById('volume');
-  var volumeLabel = document.getElementById('volumeLabel');
+  var volumeCustom = document.getElementById('volumeCustom');
+  var volumePresets = [];
   var version = document.getElementById('version');
   var provider = document.getElementById('shortenerProvider');
   var apiKey = document.getElementById('shortioApiKey');
@@ -217,7 +218,13 @@
 
   function updateLabel() {
     opacityLabel.textContent = Math.round(Number(opacity.value) * 100) + '%';
-    volumeLabel.textContent = Math.round(Number(volume.value) * 100) + '%';
+  }
+
+  function updateVolumeChoice(value) {
+    var next = Math.min(1, Math.max(0, Number.isFinite(Number(value)) ? Number(value) : 1));
+    volumeCustom.hidden = volumePresets.some(function (preset) { return preset.volume === next; });
+    volumeCustom.value = volumeCustom.hidden ? 'custom' : next;
+    volume.value = next;
   }
 
   window.classroomSettings.get().then(function (state) {
@@ -225,7 +232,14 @@
     launchAtLogin.checked = state.launchAtLogin === true;
     displayShowOnReconnect.checked = state.displayPreviewShowOnReconnect !== false;
     opacity.value = Math.min(1, Math.max(0.2, Number(state.backgroundOpacity) || 1));
-    volume.value = Math.min(1, Math.max(0, Number.isFinite(Number(state.outputVolume)) ? Number(state.outputVolume) : 1));
+    volumePresets = state.outputVolumePresets;
+    volumePresets.forEach(function (preset) {
+      var option = document.createElement('option');
+      option.textContent = preset.label;
+      option.value = preset.volume;
+      volume.appendChild(option);
+    });
+    updateVolumeChoice(state.outputVolume);
     provider.value = state.linkShortener.provider;
     apiKey.value = state.linkShortener.shortioApiKey;
     domain.value = state.linkShortener.shortioDomain;
@@ -237,8 +251,7 @@
   window.classroomSettings.onShortcutsChanged(renderShortcuts);
   window.classroomSettings.onSettingsChanged(function (state) {
     if (Number.isFinite(Number(state.outputVolume))) {
-      volume.value = Math.min(1, Math.max(0, Number(state.outputVolume)));
-      updateLabel();
+      updateVolumeChoice(state.outputVolume);
     }
   });
 
@@ -265,8 +278,7 @@
       window.classroomSettings.set({ backgroundOpacity: nextOpacity });
     }, 250);
   });
-  volume.addEventListener('input', function () {
-    updateLabel();
+  volume.addEventListener('change', function () {
     window.classroomSettings.set({ outputVolume: Number(volume.value) });
   });
   document.getElementById('reset').addEventListener('click', function () {

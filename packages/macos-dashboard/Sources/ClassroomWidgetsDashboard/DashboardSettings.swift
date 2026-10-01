@@ -24,6 +24,14 @@ enum DashboardShortenerSettings {
 }
 
 enum DashboardAudioSettings {
+    static let presets: [(label: String, volume: Double)] = [
+        ("Mute", 0), ("Level 1", 0.1), ("Level 2", 0.25), ("Level 3", 0.5), ("Level 4", 1)
+    ]
+
+    static func label(for volume: Double) -> String {
+        presets.first { $0.volume == volume }?.label ?? "Custom"
+    }
+
     static func script(defaults: UserDefaults = .standard) -> String {
         let volume = min(max(defaults.double(forKey: DashboardSettingKeys.outputVolume), 0), 1)
         return "window.__CLASSROOM_WIDGETS_AUDIO_VOLUME__ = \(volume); window.classroomAudio?.setVolume(\(volume));"
@@ -167,10 +175,16 @@ struct DashboardGeneralSettingsView: View {
                     }
                     GridRow {
                         Text("Output volume")
-                        Slider(value: $outputVolume, in: 0...1, step: 0.05)
+                        Picker("Output volume", selection: $outputVolume) {
+                            if DashboardAudioSettings.label(for: outputVolume) == "Custom" {
+                                Text("Custom").tag(outputVolume)
+                            }
+                            ForEach(DashboardAudioSettings.presets, id: \.volume) { preset in
+                                Text(preset.label).tag(preset.volume)
+                            }
+                        }
+                            .labelsHidden()
                             .accessibilityLabel("Output volume")
-                        Text("\(Int((outputVolume * 100).rounded()))%")
-                            .monospacedDigit().frame(width: 38, alignment: .trailing)
                     }
                 }
                 Text("Controls sounds from every floating widget without changing the Mac's system volume.")

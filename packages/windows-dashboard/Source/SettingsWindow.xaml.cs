@@ -36,8 +36,7 @@ public partial class SettingsWindow : Window
         LaunchAtLoginCheck.IsChecked = DashboardSettings.LaunchAtLoginEnabled;
         OpacitySlider.Value = Math.Clamp(_settings.BackgroundOpacity, OpacitySlider.Minimum, OpacitySlider.Maximum);
         UpdateOpacityLabel();
-        VolumeSlider.Value = Math.Clamp(_settings.OutputVolume, VolumeSlider.Minimum, VolumeSlider.Maximum);
-        UpdateVolumeLabel();
+        UpdateVolumeChoice();
         DisplayShowOnReconnectCheck.IsChecked = _settings.DisplayPreviewShowOnReconnect;
         SelectProvider(DashboardShortenerSettings.NormalizeProvider(_settings.LinkShortenerProvider));
         UpdateShortioFields();
@@ -97,13 +96,12 @@ public partial class SettingsWindow : Window
         _settingsCommit.Start();
     }
 
-    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> args)
+    private void VolumeCombo_SelectionChanged(object sender, SelectionChangedEventArgs args)
     {
         if (_loading) return;
-        _settings.OutputVolume = Math.Round(args.NewValue, 2);
-        UpdateVolumeLabel();
-        _settingsCommit.Stop();
-        _settingsCommit.Start();
+        if (VolumeCombo.SelectedItem is not ComboBoxItem { Tag: double volume }) return;
+        _settings.OutputVolume = volume;
+        _settings.NotifyChanged();
     }
 
     private void ResetPositionsButton_Click(object sender, RoutedEventArgs args)
@@ -117,9 +115,21 @@ public partial class SettingsWindow : Window
         OpacityLabel.Text = $"{Math.Round(OpacitySlider.Value * 100)}%";
     }
 
-    private void UpdateVolumeLabel()
+    private void UpdateVolumeChoice()
     {
-        VolumeLabel.Text = $"{Math.Round(VolumeSlider.Value * 100)}%";
+        VolumeCombo.Items.Clear();
+        foreach (var (label, volume) in DashboardAudioSettings.Presets)
+        {
+            var item = new ComboBoxItem { Content = label, Tag = volume };
+            VolumeCombo.Items.Add(item);
+            if (_settings.OutputVolume == volume) VolumeCombo.SelectedItem = item;
+        }
+        if (VolumeCombo.SelectedItem is null)
+        {
+            var custom = new ComboBoxItem { Content = "Custom", IsEnabled = false };
+            VolumeCombo.Items.Add(custom);
+            VolumeCombo.SelectedItem = custom;
+        }
     }
 
     private void OnSettingsChanged()
@@ -127,8 +137,7 @@ public partial class SettingsWindow : Window
         if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(OnSettingsChanged); return; }
         var wasLoading = _loading;
         _loading = true;
-        VolumeSlider.Value = Math.Clamp(_settings.OutputVolume, VolumeSlider.Minimum, VolumeSlider.Maximum);
-        UpdateVolumeLabel();
+        UpdateVolumeChoice();
         _loading = wasLoading;
     }
 

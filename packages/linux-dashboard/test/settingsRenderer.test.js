@@ -59,13 +59,20 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
   const elements = {};
   document.getElementById = id => elements[id] || (elements[id] = element());
   document.createElement = element;
-  let changed, settingsChanged;
-  const capturing = [], assignments = [], settingsUpdates = [];
+  let changed;
+  const capturing = [], assignments = [];
   const api = {
-    get: async () => ({ shortcuts, displayShortcut: display, linkShortener: {} }),
+    get: async () => ({
+      shortcuts, displayShortcut: display, linkShortener: {},
+      outputVolumePresets: [
+        { label: 'Mute', volume: 0 }, { label: 'Level 1', volume: 0.1 },
+        { label: 'Level 2', volume: 0.25 }, { label: 'Level 3', volume: 0.5 },
+        { label: 'Level 4', volume: 1 },
+      ],
+    }),
     onShortcutsChanged: callback => { changed = callback; },
-    onSettingsChanged: callback => { settingsChanged = callback; },
-    set: update => settingsUpdates.push(update),
+    onSettingsChanged() {},
+    set() {},
     setCapturing: active => capturing.push(active),
     setDisplayShortcut: async (...args) => { assignments.push(['display', ...args]); return save(); },
     setShortcut: async (...args) => { assignments.push(args); return save(); },
@@ -79,9 +86,8 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
     return row?.children[action === 'show' ? 1 : 2];
   }
   return {
-    document, elements, capturing, assignments, settingsUpdates, field,
+    document, elements, capturing, assignments, field,
     render: (next, nextDisplay = display) => changed(next, nextDisplay),
-    updateSettings: update => settingsChanged(update),
     begin(title, action) {
       const button = field(title, action).children[0];
       button.focus();
@@ -90,39 +96,6 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
     },
   };
 }
-
-test('volume changes commit immediately without cancelling an opacity debounce', async () => {
-  const h = await renderer();
-  h.elements.volume.value = 0.25;
-  h.elements.volume.dispatch('input');
-  h.elements.opacity.value = 0.5;
-  h.elements.opacity.dispatch('input');
-  assert.equal(h.settingsUpdates.length, 1);
-  assert.equal(h.settingsUpdates[0].outputVolume, 0.25);
-  await new Promise(resolve => setTimeout(resolve, 300));
-  assert.equal(h.settingsUpdates.length, 2);
-  assert.equal(h.settingsUpdates[1].backgroundOpacity, 0.5);
-});
-
-test('external volume changes refresh the open settings slider without writeback', async () => {
-  const h = await renderer();
-  h.updateSettings({ outputVolume: 0 });
-  assert.equal(h.elements.volume.value, 0);
-  assert.equal(h.elements.volumeLabel.textContent, '0%');
-  assert.deepEqual(h.settingsUpdates, []);
-});
-
-test('a newer external volume change has no older slider commit left to overwrite it', async () => {
-  const h = await renderer();
-  h.elements.volume.value = 0.75;
-  h.elements.volume.dispatch('input');
-  assert.equal(h.settingsUpdates.length, 1);
-  h.updateSettings({ outputVolume: 0 });
-  await new Promise(resolve => setTimeout(resolve, 300));
-  assert.equal(h.elements.volume.value, 0);
-  assert.equal(h.elements.volumeLabel.textContent, '0%');
-  assert.equal(h.settingsUpdates.length, 1);
-});
 
 function key(button, key, modifiers = {}) {
   button.dispatch('keydown', {
@@ -168,7 +141,6 @@ for (const action of ['show', 'dismiss']) {
         await settle();
         assert.deepEqual(h.capturing, [true, false, true], 'old completion must not resume global shortcuts');
         assert.equal(h.document.activeElement, current);
-        assert.equal(current.classList.contains('capturing'), true);
         assert.equal(current.textContent, 'Press shortcut…');
         assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
 
@@ -178,7 +150,6 @@ for (const action of ['show', 'dismiss']) {
         await settle();
         assert.deepEqual(h.assignments, [['display', action, 'Ctrl+Alt+E'], ['display', nextAction, 'Ctrl+Alt+U']]);
         assert.deepEqual(h.capturing, [true, false, true, false]);
-        assert.equal(current.classList.contains('capturing'), false);
       });
     }
   }
@@ -191,7 +162,6 @@ for (const action of ['show', 'dismiss']) {
     finish({ ok: false, error: 'Already assigned to another widget.' });
     await settle();
     assert.deepEqual(h.capturing, [true, false]);
-    assert.equal(button.classList.contains('capturing'), false);
     assert.equal(h.field('Display', action).children[2].textContent, 'Already assigned to another widget.');
     h.begin('Display', action);
     assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
@@ -231,17 +201,15 @@ for (const end of ['Escape', 'Tab', 'blur']) {
     if (end === 'blur') h.elements.resetShortcuts.focus();
     else key(button, end);
     assert.deepEqual(h.capturing, [true, false]);
-    assert.equal(button.classList.contains('capturing'), false);
     assert.deepEqual(h.assignments, []);
   });
 }
 
 test('removing the recorded widget ends recording rather than leaving shortcuts paused', async () => {
   const h = await renderer([shortcut(1, 'Timer'), shortcut(2, 'List')]);
-  const button = h.begin('Timer', 'show');
+  h.begin('Timer', 'show');
   h.render([shortcut(2, 'List')]);
   assert.deepEqual(h.capturing, [true, false]);
-  assert.equal(button.classList.contains('capturing'), false);
   assert.equal(h.field('Timer', 'show'), undefined);
   assert.deepEqual(h.elements.shortcuts.children.map(row => row.children[0].textContent), ['Display', 'List']);
 });

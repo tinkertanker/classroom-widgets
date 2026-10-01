@@ -908,6 +908,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         volumeButton.imagePosition = .imageOnly
         volumeButton.toolTip = "Output volume"
         self.volumeButton = volumeButton
+        updateVolumeButton()
 
         let addButton = NSButton(
             image: NSImage(systemSymbolName: "plus", accessibilityDescription: "Add widget") ?? NSImage(),
@@ -1043,18 +1044,16 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     @objc private func showOutputVolumeMenu(_ sender: NSButton) {
         let volume = UserDefaults.standard.double(forKey: DashboardSettingKeys.outputVolume)
-        let percentage = Int((volume * 100).rounded())
         let menu = NSMenu(title: "Output Volume")
-        let currentItem = NSMenuItem(title: "Current: \(percentage)%", action: nil, keyEquivalent: "")
+        let currentItem = NSMenuItem(title: "Current: \(DashboardAudioSettings.label(for: volume))", action: nil, keyEquivalent: "")
         currentItem.isEnabled = false
         menu.addItem(currentItem)
         menu.addItem(.separator())
-        for preset in [0, 25, 50, 75, 100] {
-            let title = preset == 0 ? "Mute" : "\(preset)%"
-            let item = NSMenuItem(title: title, action: #selector(setOutputVolume(_:)), keyEquivalent: "")
+        for preset in DashboardAudioSettings.presets {
+            let item = NSMenuItem(title: preset.label, action: #selector(setOutputVolume(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = Double(preset) / 100
-            item.state = percentage == preset ? .on : .off
+            item.representedObject = preset.volume
+            item.state = volume == preset.volume ? .on : .off
             menu.addItem(item)
         }
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
@@ -1073,6 +1072,10 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     private func updateVolumeButton() {
         volumeButton?.image = volumeButtonImage
+        let volume = UserDefaults.standard.double(forKey: DashboardSettingKeys.outputVolume)
+        let label = "Output volume: \(DashboardAudioSettings.label(for: volume))"
+        volumeButton?.toolTip = label
+        volumeButton?.setAccessibilityLabel(label)
     }
 
     @objc private func showAddWidgetMenu(_ sender: NSButton) {
