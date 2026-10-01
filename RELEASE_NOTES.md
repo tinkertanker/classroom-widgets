@@ -5,6 +5,6 @@ More control over widget sound, easier submission exports, and smoother desktop 
 - Desktop: available updates now appear in the menu-bar or system-tray menu, with an indicator on the app icon.
 - Timer: choose the target hour and minute from dropdowns, including keyboard navigation, instead of typing a time.
 - Dropbox: copy all submissions or download them as CSV. Names, email addresses, and ordinary text are no longer mistaken for links.
-- Live rooms stay open until their widget is deleted, with more reliable session recovery after a connection drops.
+- Live rooms now survive layout changes and temporary widget unmounts, with more reliable session recovery after brief connection drops.
 - Questions now explicitly welcomes both questions and comments. Text Banner loads a smaller set of common syntax-highlighting languages, with plain-text fallback for other languages.
 - Smaller desktop downloads omit website-only promotional videos. macOS also has tighter menu-bar icon spacing.
