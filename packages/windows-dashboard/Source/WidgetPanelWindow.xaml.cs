@@ -566,24 +566,17 @@ public partial class WidgetPanelWindow : Window
         VolumeMenu.Items.Clear();
         VolumeMenu.Items.Add(new MenuItem
         {
-            Header = $"Current: {Math.Round(_settings.OutputVolume * 100)}%",
+            Header = $"Current: {DashboardAudioSettings.Label(_settings.OutputVolume)}",
             IsEnabled = false
         });
         VolumeMenu.Items.Add(new Separator());
-        foreach (var (label, volume) in new[]
-        {
-            ("Mute", 0.0),
-            ("25%", 0.25),
-            ("50%", 0.5),
-            ("75%", 0.75),
-            ("100%", 1.0)
-        })
+        foreach (var (label, volume) in DashboardAudioSettings.Presets)
         {
             var item = new MenuItem
             {
                 Header = label,
                 IsCheckable = true,
-                IsChecked = Math.Abs(_settings.OutputVolume - volume) < 0.001,
+                IsChecked = _settings.OutputVolume == volume,
                 Tag = volume
             };
             item.Click += OutputVolumeMenuItem_Click;
@@ -601,7 +594,9 @@ public partial class WidgetPanelWindow : Window
     private void UpdateVolumeButton()
     {
         VolumeButton.Content = _settings.OutputVolume == 0 ? "\uE74F" : "\uE767";
-        VolumeButton.ToolTip = $"Output volume: {Math.Round(_settings.OutputVolume * 100)}%";
+        var label = $"Output volume: {DashboardAudioSettings.Label(_settings.OutputVolume)}";
+        VolumeButton.ToolTip = label;
+        System.Windows.Automation.AutomationProperties.SetName(VolumeButton, label);
     }
 
     private void ArrangeMenuItem_Click(object sender, RoutedEventArgs args)

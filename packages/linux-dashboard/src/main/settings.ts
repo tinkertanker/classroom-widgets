@@ -7,6 +7,18 @@ import { log } from './log';
 import { readShortenerSettings, ShortenerSettings } from './shortenerSettings';
 import { migrateAutostartDesktopEntry } from './startup';
 
+export const outputVolumePresets = [
+  { label: 'Mute', volume: 0 },
+  { label: 'Level 1', volume: 0.1 },
+  { label: 'Level 2', volume: 0.25 },
+  { label: 'Level 3', volume: 0.5 },
+  { label: 'Level 4', volume: 1 },
+];
+
+export function outputVolumeLabel(volume: number): string {
+  return outputVolumePresets.find(preset => preset.volume === volume)?.label ?? 'Custom';
+}
+
 export interface PanelFrame {
   left: number;
   top: number;

@@ -13,7 +13,7 @@ import {
 } from './models';
 import { registerNativeMessages, unregisterNativeMessages } from './nativeMessages';
 import { configureWebContents, evaluate, evaluateBool } from './webContentsSetup';
-import { audioSettingsScript, type DashboardSettings } from './settings';
+import { audioSettingsScript, outputVolumeLabel, outputVolumePresets, type DashboardSettings } from './settings';
 import { shortenerSettingsScript } from './shortenerSettings';
 import { widgetMenuItems } from './widgetMenu';
 
@@ -34,6 +34,7 @@ interface ChromeUpdate {
   theme: 'light' | 'dark';
   opacity: number;
   outputVolume: number;
+  outputVolumeLabel: string;
   chromeVisible: boolean;
   addEnabled: boolean;
 }
@@ -418,6 +419,7 @@ export class WidgetPanelWindow extends EventEmitter {
       theme,
       opacity: this.backgroundOpacity,
       outputVolume: this.settings.outputVolume,
+      outputVolumeLabel: outputVolumeLabel(this.settings.outputVolume),
       chromeVisible: this.chromeVisible,
       addEnabled: this.options.length > 0,
     };
@@ -554,24 +556,19 @@ export class WidgetPanelWindow extends EventEmitter {
         break;
       }
       case 'volume': {
-        const percentage = Math.round(this.settings.outputVolume * 100);
         const preset = (label: string, volume: number) => ({
           label,
           type: 'checkbox' as const,
-          checked: Math.abs(this.settings.outputVolume - volume) < 0.001,
+          checked: this.settings.outputVolume === volume,
           click: () => {
             this.settings.outputVolume = volume;
             this.settings.notifyChanged('outputVolume');
           },
         });
         const menu = Menu.buildFromTemplate([
-          { label: `Current: ${percentage}%`, enabled: false },
+          { label: `Current: ${outputVolumeLabel(this.settings.outputVolume)}`, enabled: false },
           { type: 'separator' },
-          preset('Mute', 0),
-          preset('25%', 0.25),
-          preset('50%', 0.5),
-          preset('75%', 0.75),
-          preset('100%', 1),
+          ...outputVolumePresets.map(({ label, volume }) => preset(label, volume)),
         ]);
         this.trackMenu(menu);
         const bounds = this.win.getBounds();

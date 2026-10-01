@@ -36,15 +36,8 @@
                    Text="Lower the opacity to let slides or other windows show through the widgets." />
 
         <TextBlock Text="Output volume" Margin="0,16,0,4" />
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="48" />
-            </Grid.ColumnDefinitions>
-            <Slider x:Name="VolumeSlider" Grid.Column="0" Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
-                    AutomationProperties.Name="Output volume" ValueChanged="VolumeSlider_ValueChanged" />
-            <TextBlock x:Name="VolumeLabel" Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" />
-        </Grid>
+        <ComboBox x:Name="VolumeCombo" AutomationProperties.Name="Output volume"
+                  SelectionChanged="VolumeCombo_SelectionChanged" />
         <TextBlock TextWrapping="Wrap" Foreground="#6B7280" FontSize="12" Margin="0,4,0,0"
                    Text="Controls sounds from every floating widget without changing Windows system volume." />
 

@@ -29,9 +29,8 @@
     chromeEl.classList.toggle('visible', update.chromeVisible === true);
     addBtn.disabled = update.addEnabled === false;
     if (typeof update.outputVolume === 'number') {
-      var percentage = Math.round(update.outputVolume * 100);
-      volumeBtn.textContent = percentage === 0 ? '🔇' : '🔊';
-      volumeBtn.title = 'Output volume: ' + percentage + '%';
+      volumeBtn.textContent = update.outputVolume === 0 ? '🔇' : '🔊';
+      volumeBtn.title = 'Output volume: ' + update.outputVolumeLabel;
       volumeBtn.setAttribute('aria-label', volumeBtn.title);
     }
   });
