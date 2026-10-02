@@ -107,7 +107,9 @@ app.whenReady().then(async () => {
   // survive recovery, not just snapshots whose debounce already completed.
   view.sendInputEvent({ type: 'char', keyCode: 'Z' });
   await until('last key rendered', async () => (await texts(view))[0]?.endsWith('ABCDEZ'));
+  const previousHostInstance = inventory(host).hostInstanceId;
   await host.reloadWidgets();
+  await until('new host instance after reload', () => inventory(host).hostInstanceId !== previousHostInstance);
   const restored = await until('restored edited List', async () => {
     for (const candidate of panelViews()) if ((await texts(candidate))[0] === 'List 0 row 0ABCDEZ') return candidate;
   });
