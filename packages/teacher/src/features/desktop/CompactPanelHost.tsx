@@ -49,6 +49,8 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
     signature: string;
     stateRevision: number;
     stateSignature: string;
+    stateSource?: unknown;
+    state?: JsonValue | null;
   }>());
   const hostInstanceIdRef = useRef(createHostInstanceId());
   const lastPostedFingerprintRef = useRef<string | null>(null);
@@ -118,6 +120,13 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
           : (config.columnHeight ?? widget.size.height)),
         maximumSize?.height ?? Infinity
       ));
+      const stateSource = workspace.widgetStates.get(widget.id);
+      const previous = widgetRevisionsRef.current.get(widget.id);
+      // Store updates replace widget state immutably. Keep the detached JSON
+      // snapshot for unchanged widgets rather than cloning every List per edit.
+      const state = previous?.state !== undefined && Object.is(previous.stateSource, stateSource)
+        ? previous.state
+        : asJsonValue(stateSource);
 
       return [{
         schemaVersion: 1,
@@ -133,7 +142,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         isResizable: config.features?.isResizable !== false,
         maintainsAspectRatio: config.maintainAspectRatio === true,
         hidden: widget.hidden === true,
-        state: asJsonValue(workspace.widgetStates.get(widget.id)),
+        state,
         theme: dashboardTheme,
         savedRandomiserLists: widget.type === WidgetType.RANDOMISER
           ? Object.values(workspace.randomiserLists).sort((a, b) => b.updatedAt - a.updatedAt)
@@ -149,6 +158,8 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
       signature: string;
       stateRevision: number;
       stateSignature: string;
+      stateSource?: unknown;
+      state?: JsonValue | null;
     }>();
     const publishedSnapshots = snapshots.map((snapshot) => {
       const metadataSignature = JSON.stringify({
@@ -164,15 +175,19 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         theme: snapshot.theme,
         savedRandomiserLists: snapshot.savedRandomiserLists
       });
-      const stateSignature = JSON.stringify(snapshot.state);
       const previous = widgetRevisionsRef.current.get(snapshot.widgetId);
+      const stateSignature = previous?.state === snapshot.state
+        ? previous.stateSignature
+        : JSON.stringify(snapshot.state);
       const widgetRevision = previous?.signature === metadataSignature ? previous.revision : nextRevision;
       const stateRevision = previous?.stateSignature === stateSignature ? previous.stateRevision : nextRevision;
       nextWidgetRevisions.set(snapshot.widgetId, {
         revision: widgetRevision,
         signature: metadataSignature,
         stateRevision,
-        stateSignature
+        stateSignature,
+        stateSource: workspace.widgetStates.get(snapshot.widgetId),
+        state: snapshot.state
       });
       return { ...snapshot, revision: widgetRevision, stateRevision };
     });
@@ -201,7 +216,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
     };
 
     postNativeMessage('classroomDashboard', inventory);
-  }, [compactWidgetOptions, snapshots, windowMode]);
+  }, [compactWidgetOptions, snapshots, windowMode, workspace.widgetStates]);
 
   useEffect(() => {
     window.classroomPanelHost = {
