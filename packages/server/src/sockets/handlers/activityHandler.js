@@ -187,13 +187,6 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       stateData.responseCount = room.getResponseCount();
 
       socket.emit(EVENTS.ACTIVITY.STATE_UPDATE, stateData);
-
-      // Also emit the widget's active state
-      socket.emit(EVENTS.SESSION.WIDGET_STATE_CHANGED, {
-        roomType: 'activity',
-        widgetId: widgetId,
-        isActive: room.isActive
-      });
     }
   });
 

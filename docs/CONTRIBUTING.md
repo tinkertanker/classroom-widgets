@@ -36,6 +36,20 @@ pnpm --filter @classroom-widgets/teacher e2e:dropbox
 
 Four student pages submit through the student app. The check then asserts the clipboard text and the downloaded CSV. It writes `dropbox-export.txt` (each step and what it observed), `clipboard.txt`, `download.csv` and screenshots to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default: a `classroom-widgets-test-evidence/dropbox-export` directory under the system temp directory).
 
+To check activity state requests and host pause/resume, run:
+
+```bash
+pnpm --filter @classroom-widgets/teacher e2e:activity-state
+```
+
+This creates both fill-blank activity types through the teacher app, then joins,
+reloads and rejoins through the student app, including while paused. It counts
+Socket.IO requests, replies and activation notifications over both polling and
+WebSocket transports to detect request/reply loops. `CHROME_BIN` can select an
+existing Chromium executable. Results go to `activity-state.txt` in
+`CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
+`classroom-widgets-test-evidence/activity-state` under the system temp directory).
+
 To check on-demand widget loading against the production bundle, run:
 
 ```bash
