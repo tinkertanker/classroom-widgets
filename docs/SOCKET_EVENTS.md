@@ -196,12 +196,12 @@ For Poll widgets specifically:
 
 *   `Student → Server`: `session:rtfeedback:submit` with `{ sessionCode, widgetId, value }`
 *   `Server → Student`: `session:rtfeedback:submitted` with `{ success, error? }`
-*   `Server → All`: `rtfeedback:dataUpdate` with `{ understanding, totalResponses, widgetId }`
+*   `Server → Teacher`: `rtfeedback:dataUpdate` with `{ understanding, totalResponses, widgetId }`
 
 **Reset**
 
 *   `Teacher → Server`: `session:rtfeedback:reset` with `{ sessionCode, widgetId }`
-*   `Server → All`: `rtfeedback:dataUpdate` with `{ understanding, totalResponses, widgetId }`
+*   `Server → Teacher`: `rtfeedback:dataUpdate` with `{ understanding, totalResponses, widgetId }`
 
 ### Questions Widget
 
