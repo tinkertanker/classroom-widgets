@@ -173,7 +173,7 @@ public sealed class DisplayShortcutTests
                 window.Show();
                 WpfTestHost.DoEvents();
                 var volume = Find<ComboBox>(window, "Output volume");
-                Assert.Equal("Level 4", ((ComboBoxItem)volume.SelectedItem).Content);
+                Assert.Equal("4 ■■■■", ((ComboBoxItem)volume.SelectedItem).Content);
 
                 settings.OutputVolume = 0.35;
                 settings.NotifyChanged();

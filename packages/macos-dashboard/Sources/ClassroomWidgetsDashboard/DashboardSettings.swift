@@ -25,7 +25,7 @@ enum DashboardShortenerSettings {
 
 enum DashboardAudioSettings {
     static let presets: [(label: String, volume: Double)] = [
-        ("Mute", 0), ("Level 1", 0.1), ("Level 2", 0.25), ("Level 3", 0.5), ("Level 4", 1)
+        ("Mute", 0), ("1 ■□□□", 0.1), ("2 ■■□□", 0.25), ("3 ■■■□", 0.5), ("4 ■■■■", 1)
     ]
 
     static func label(for volume: Double) -> String {
