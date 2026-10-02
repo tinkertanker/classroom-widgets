@@ -13,6 +13,7 @@
     "e2e:dropbox": "node e2e/dropboxExport.mjs",
     "e2e:rooms": "node e2e/roomLifecycle.mjs",
     "e2e:activity-state": "node e2e/activityState.mjs",
+    "e2e:feedback-delivery": "node e2e/feedbackDelivery.mjs",
     "e2e:widget-loading": "vite build --manifest && node e2e/widgetLoading.mjs",
     "preview": "vite preview"
   },

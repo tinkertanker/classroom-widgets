@@ -38,7 +38,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
       return;
     }
-    const { room, roomId: rtfeedbackRoomId } = guard;
+    const { room } = guard;
 
     // Check if feedback is active
     if (!room.isActive) {
@@ -66,13 +66,13 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     // Send confirmation
     socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createSuccessResponse());
 
-    // Emit updated aggregated feedback to all in the room
-    const updateData = {
-      ...room.getAggregatedFeedback(),
-      widgetId: data.widgetId
-    };
-
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, updateData);
+    // Only the teacher consumes the aggregate; students receive confirmations.
+    if (session.hostSocketId) {
+      io.to(session.hostSocketId).emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, {
+        ...room.getAggregatedFeedback(),
+        widgetId: data.widgetId
+      });
+    }
 
     session.updateActivity();
   });
@@ -128,17 +128,15 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       logger.warn('rtfeedback:reset', 'Room not found', { widgetId: data.widgetId });
       return;
     }
-    const { room, roomId: rtfeedbackRoomId } = guard;
+    const { room } = guard;
 
     room.clearAllFeedback();
 
-    // Emit updated state to all in the room
-    const updateData = {
+    // The reset caller is the authorized host.
+    socket.emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, {
       ...room.getAggregatedFeedback(),
       widgetId: data.widgetId
-    };
-
-    io.to(`${session.code}:${rtfeedbackRoomId}`).emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, updateData);
+    });
 
     session.updateActivity();
   });

@@ -50,6 +50,19 @@ existing Chromium executable. Results go to `activity-state.txt` in
 `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
 `classroom-widgets-test-evidence/activity-state` under the system temp directory).
 
+To check that live-feedback aggregates go only to the teacher, run:
+
+```bash
+pnpm --filter @classroom-widgets/teacher e2e:feedback-delivery
+```
+
+Three real student pages submit and replace slider scores. The check verifies
+teacher histograms, student acknowledgments, teacher reconnection, clear and
+pause/resume while counting unused student aggregate deliveries. `CHROME_BIN`
+can select an existing Chromium. It writes `feedback-delivery.txt` to
+`CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
+`classroom-widgets-test-evidence/feedback-delivery` under the system temp directory).
+
 To check on-demand widget loading against the production bundle, run:
 
 ```bash
