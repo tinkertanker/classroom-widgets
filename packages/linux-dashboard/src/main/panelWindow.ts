@@ -566,8 +566,6 @@ export class WidgetPanelWindow extends EventEmitter {
           },
         });
         const menu = Menu.buildFromTemplate([
-          { label: `Current: ${outputVolumeLabel(this.settings.outputVolume)}`, enabled: false },
-          { type: 'separator' },
           ...outputVolumePresets.map(({ label, volume }) => preset(label, volume)),
         ]);
         this.trackMenu(menu);

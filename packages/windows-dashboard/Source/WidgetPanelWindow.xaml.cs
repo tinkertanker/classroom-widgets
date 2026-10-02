@@ -564,12 +564,6 @@ public partial class WidgetPanelWindow : Window
     private void PopulateVolumeMenu()
     {
         VolumeMenu.Items.Clear();
-        VolumeMenu.Items.Add(new MenuItem
-        {
-            Header = $"Current: {DashboardAudioSettings.Label(_settings.OutputVolume)}",
-            IsEnabled = false
-        });
-        VolumeMenu.Items.Add(new Separator());
         foreach (var (label, volume) in DashboardAudioSettings.Presets)
         {
             var item = new MenuItem

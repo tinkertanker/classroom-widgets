@@ -175,7 +175,7 @@ app.whenReady().then(async () => {
     lastMenu = undefined;
     await panel.webContents.executeJavaScript("document.getElementById('volume').click()");
     await until(() => lastMenu, 'native volume menu');
-    assert.deepEqual(lastMenu.items.filter(item => item.type === 'checkbox').map(item => item.label), expected.map(([name]) => name));
+    assert.deepEqual(lastMenu.items.map(item => item.label), expected.map(([name]) => name));
     const checked = lastMenu.items.filter(item => item.checked).map(item => item.label);
     assert.deepEqual(checked, [await choice().then(value => value.label)]);
     await delay(150);

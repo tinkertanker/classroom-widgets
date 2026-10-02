@@ -1045,10 +1045,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     @objc private func showOutputVolumeMenu(_ sender: NSButton) {
         let volume = UserDefaults.standard.double(forKey: DashboardSettingKeys.outputVolume)
         let menu = NSMenu(title: "Output Volume")
-        let currentItem = NSMenuItem(title: "Current: \(DashboardAudioSettings.label(for: volume))", action: nil, keyEquivalent: "")
-        currentItem.isEnabled = false
-        menu.addItem(currentItem)
-        menu.addItem(.separator())
         for preset in DashboardAudioSettings.presets {
             let item = NSMenuItem(title: preset.label, action: #selector(setOutputVolume(_:)), keyEquivalent: "")
             item.target = self
