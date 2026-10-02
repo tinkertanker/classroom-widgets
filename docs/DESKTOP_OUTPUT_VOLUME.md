@@ -6,11 +6,12 @@ Settings and each floating widget's volume menu:
 | Label | Audio gain |
 | --- | --- |
 | Mute | 0 |
-| Level 1 | 0.10 |
-| Level 2 | 0.25 |
-| Level 3 | 0.50 |
-| Level 4 | 1.00 |
+| 1 ■□□□ | 0.10 |
+| 2 ■■□□ | 0.25 |
+| 3 ■■■□ | 0.50 |
+| 4 ■■■■ | 1.00 |
 
+More filled blocks mean louder output: 1 is softest and 4 is loudest.
 These gains control widget audio, not the operating system's volume. They do not
 describe perceived loudness. The persisted `outputVolume` remains a raw gain;
 older values outside the presets appear as Custom and are not changed just by

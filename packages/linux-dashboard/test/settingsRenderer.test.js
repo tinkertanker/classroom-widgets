@@ -65,9 +65,9 @@ async function renderer(shortcuts = [], display = shortcut('display', 'Display')
     get: async () => ({
       shortcuts, displayShortcut: display, linkShortener: {},
       outputVolumePresets: [
-        { label: 'Mute', volume: 0 }, { label: 'Level 1', volume: 0.1 },
-        { label: 'Level 2', volume: 0.25 }, { label: 'Level 3', volume: 0.5 },
-        { label: 'Level 4', volume: 1 },
+        { label: 'Mute', volume: 0 }, { label: '1 ■□□□', volume: 0.1 },
+        { label: '2 ■■□□', volume: 0.25 }, { label: '3 ■■■□', volume: 0.5 },
+        { label: '4 ■■■■', volume: 1 },
       ],
     }),
     onShortcutsChanged: callback => { changed = callback; },

@@ -30,7 +30,7 @@ const { openSettingsWindow } = require('../out/main/settingsWindow');
 registerPrivilegedScheme();
 
 const checks = [];
-const expected = [['Mute', 0], ['Level 1', 0.1], ['Level 2', 0.25], ['Level 3', 0.5], ['Level 4', 1]];
+const expected = [['Mute', 0], ['1 ■□□□', 0.1], ['2 ■■□□', 0.25], ['3 ■■■□', 0.5], ['4 ■■■■', 1]];
 const measuredPeaks = new Map();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(check, description) {
