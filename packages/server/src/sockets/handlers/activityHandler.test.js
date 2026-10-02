@@ -359,7 +359,7 @@ describe('Activity Socket Handler Integration', () => {
       });
     });
 
-    it('returns current activity state and widget active state', () => {
+    it('returns active status in the state reply without announcing another activation', () => {
       studentSocket.trigger(EVENTS.ACTIVITY.REQUEST_STATE, {
         sessionCode: SESSION_CODE,
         widgetId: WIDGET_ID
@@ -371,7 +371,7 @@ describe('Activity Socket Handler Integration', () => {
       assert.equal(state.isActive, true);
 
       const widgetState = emittedPayload(studentSocket.emit, EVENTS.SESSION.WIDGET_STATE_CHANGED);
-      assert.deepEqual(widgetState, { roomType: 'activity', widgetId: WIDGET_ID, isActive: true });
+      assert.equal(widgetState, undefined, 'activation notifications make students request state again');
     });
   });
 
