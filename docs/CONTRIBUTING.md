@@ -35,3 +35,27 @@ pnpm --filter @classroom-widgets/teacher e2e:dropbox
 ```
 
 Four student pages submit through the student app. The check then asserts the clipboard text and the downloaded CSV. It writes `dropbox-export.txt` (each step and what it observed), `clipboard.txt`, `download.csv` and screenshots to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default: a `classroom-widgets-test-evidence/dropbox-export` directory under the system temp directory).
+
+To check on-demand widget loading against the production bundle, run:
+
+```bash
+pnpm --filter @classroom-widgets/teacher e2e:widget-loading
+```
+
+This builds with a manifest, checks that an empty workspace requests no widget
+entry chunks, and opens, starts, pauses and reloads a Timer without loading other
+widgets. Set `CHROME_BIN` to use an existing Chromium executable instead of the
+Playwright-managed browser. The request counts, uncompressed JavaScript bytes and
+restored Timer screenshot go to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
+`classroom-widgets-test-evidence/widget-loading` under the system temp directory).
+
+After that build and `npm --prefix packages/linux-dashboard run build`, check the
+same behavior in the real Linux host, launcher and panel:
+
+```bash
+xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu --force-device-scale-factor=2 packages/linux-dashboard/tests/widgetLoading.cjs
+```
+
+The Linux check uses disposable settings and writes `widget-loading.txt` and
+`timer-restored.png` to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
+`classroom-widgets-test-evidence/linux-widget-loading` under the system temp directory).

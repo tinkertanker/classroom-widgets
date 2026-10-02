@@ -31,8 +31,8 @@ import { WidgetType, WidgetConfig, WidgetCategory, WidgetFeatures, Size, ColumnS
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { isNativeDesktop } from '@shared/utils/nativeBridge';
 
-// Preload all widget chunks immediately so they're browser-cached
-// before React.lazy needs them (prevents "Loading widget..." flash)
+// Load only widgets rendered by this surface. Each desktop panel has its own
+// module graph, so warming the whole registry repeats work in every webview.
 const widgetImports = {
   Randomiser: () => import('../features/widgets/randomiser'),
   Timer: () => import('../features/widgets/timer'),
@@ -58,54 +58,6 @@ const widgetImports = {
   CodeFillBlank: () => import('../features/widgets/activity/codeFillBlank'),
 };
 
-// Warm widget chunks during idle time after first paint.
-// React.lazy will hit the cached resolved modules on first render, so users
-// don't see a "Loading widget..." flash - without blocking the critical path.
-const isCompactWidgetPanel = typeof window !== 'undefined'
-  && new URLSearchParams(window.location.search).get('surface') === 'widget-panel';
-type DesktopShellWindow = Window & {
-  __CLASSROOM_WIDGETS_MACOS__?: boolean;
-  __CLASSROOM_WIDGETS_WINDOWS__?: boolean;
-  __CLASSROOM_WIDGETS_LINUX__?: boolean;
-};
-const isDesktopDashboard = typeof window !== 'undefined'
-  && Boolean((window as DesktopShellWindow).__CLASSROOM_WIDGETS_MACOS__
-    || (window as DesktopShellWindow).__CLASSROOM_WIDGETS_WINDOWS__
-    || (window as DesktopShellWindow).__CLASSROOM_WIDGETS_LINUX__);
-const compactPanelWarmImports = [
-  widgetImports.Randomiser,
-  widgetImports.Timer,
-  widgetImports.List,
-  widgetImports.TaskCue,
-  widgetImports.TrafficLight,
-  widgetImports.TextBanner,
-  widgetImports.QRCodeWidget,
-  widgetImports.SoundEffects
-];
-if (typeof window !== 'undefined') {
-  const warmCaches = () => {
-    const importsToWarm = isDesktopDashboard || isCompactWidgetPanel ? compactPanelWarmImports : Object.values(widgetImports);
-    importsToWarm.forEach(fn => {
-      // Fire and forget; chunk errors are logged but don't bubble
-      fn().catch(err => {
-        if (import.meta.env?.DEV) console.warn('[WidgetRegistry] preload failed', err);
-      });
-    });
-  };
-  if (isCompactWidgetPanel) {
-    // Panel surfaces race first paint against the host's show; warm eagerly.
-    warmCaches();
-  } else {
-    const ric = window.requestIdleCallback;
-    if (typeof ric === 'function') {
-      ric(warmCaches, { timeout: 2000 });
-    } else {
-      setTimeout(warmCaches, 200);
-    }
-  }
-}
-
-// Lazy load all widgets (reuses cached imports from above)
 const LazyWidgets = {
   Randomiser: lazy(widgetImports.Randomiser),
   Timer: lazy(widgetImports.Timer),
