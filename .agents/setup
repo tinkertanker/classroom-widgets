@@ -42,4 +42,10 @@ echo "Using Node.js $(node --version) and pnpm $(pnpm --version)"
 echo "Installing locked pnpm workspace dependencies..."
 pnpm install --frozen-lockfile
 
+if ! command -v xvfb-run >/dev/null 2>&1; then
+  echo "Installing the headless display for Linux Electron E2E checks..."
+  "${SUDO[@]}" apt-get update
+  "${SUDO[@]}" apt-get install -y xvfb
+fi
+
 echo "Orb setup complete."
