@@ -54,6 +54,11 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       }
 
       const { existingCode, hostToken, reclaimOnly } = data;
+
+      if (sessionManager.getSession(getCurrentSessionCode())?.getParticipant(socket.id)) {
+        callback({ success: false, error: 'Leave the student session before hosting' });
+        return;
+      }
       
       // Check if host already has a session
       let existingSession = sessionManager.findSessionByHost(socket.id);
@@ -197,6 +202,16 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         });
         return;
       }
+
+      const currentSessionCode = getCurrentSessionCode();
+      if (sessionManager.findSessionByHost(socket.id)
+        || (currentSessionCode !== code && sessionManager.getSession(currentSessionCode))) {
+        socket.emit('session:joined', {
+          success: false,
+          error: 'Leave the current session before joining another'
+        });
+        return;
+      }
       
       // Check session-level participant limit
       if (session.getParticipantCount() >= LIMITS.MAX_PARTICIPANTS_PER_SESSION) {
@@ -214,6 +229,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         ? studentId
         : socket.id;
       session.addParticipant(socket.id, name, safeStudentId);
+      socket.data.sessionCode = code;
       
       // Join session room
       socket.join(`session:${code}`);

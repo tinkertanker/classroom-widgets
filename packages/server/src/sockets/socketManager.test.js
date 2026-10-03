@@ -12,6 +12,7 @@ function createMockSocket(id) {
   const handlers = {};
   return {
     id,
+    data: {},
     clientIP: `10.2.0.${id.length}`,
     handshake: { headers: {}, secure: false },
     on: (event, handler) => { handlers[event] = handler; },

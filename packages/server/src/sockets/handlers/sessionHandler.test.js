@@ -20,6 +20,7 @@ function createMockSocket(id) {
   const handlers = {};
   return {
     id,
+    data: {},
     // Unique per test so the per-connection rate limiter never carries over
     clientIP: `10.0.0.${++socketCounter}`,
     handshake: { headers: {}, secure: false },
@@ -60,6 +61,7 @@ describe('sessionHandler: student join', () => {
     session = new Session(SESSION_CODE);
     session.hostSocketId = 'host-1';
     sessionManager = {
+      findSessionByHost: () => undefined,
       getSession: (code) => (code === SESSION_CODE ? session : undefined)
     };
     sessionHandler(io, socket, sessionManager, () => null);
