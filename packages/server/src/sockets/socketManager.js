@@ -35,24 +35,17 @@ function setupSocketHandlers(io, sessionManager) {
     // throws on a malformed payload logs instead of crashing the process.
     installSafeSocketEvents(socket);
 
-    // Track which session this socket belongs to
-    let currentSessionCode = null;
-
-    // Attach session tracking to socket
-    socket.on(EVENTS.SESSION.JOIN, (data) => {
-      if (data && typeof data.code === 'string') {
-        currentSessionCode = data.code;
-      }
-    });
+    // Only the join handler can establish a validated participant identity.
+    const getCurrentSessionCode = () => socket.data.sessionCode;
 
     // Setup all handlers
-    sessionHandler(io, socket, sessionManager, () => currentSessionCode);
-    pollHandler(io, socket, sessionManager, () => currentSessionCode);
-    linkShareHandler(io, socket, sessionManager, () => currentSessionCode);
-    rtFeedbackHandler(io, socket, sessionManager, () => currentSessionCode);
-    questionsHandler(io, socket, sessionManager, () => currentSessionCode);
-    handoutHandler(io, socket, sessionManager, () => currentSessionCode);
-    activityHandler(io, socket, sessionManager, () => currentSessionCode);
+    sessionHandler(io, socket, sessionManager, getCurrentSessionCode);
+    pollHandler(io, socket, sessionManager, getCurrentSessionCode);
+    linkShareHandler(io, socket, sessionManager, getCurrentSessionCode);
+    rtFeedbackHandler(io, socket, sessionManager, getCurrentSessionCode);
+    questionsHandler(io, socket, sessionManager, getCurrentSessionCode);
+    handoutHandler(io, socket, sessionManager, getCurrentSessionCode);
+    activityHandler(io, socket, sessionManager, getCurrentSessionCode);
     adminHandler(io, socket, sessionManager);
 
     // Handle disconnection
@@ -61,9 +54,10 @@ function setupSocketHandlers(io, sessionManager) {
         logger.info(`Socket disconnected: ${socket.id}`);
       }
 
-      // Hosts never emit session:join, so currentSessionCode is only set for
+      // Hosts never emit session:join, so the tracked code is only set for
       // participants; fall back to the session this socket hosts so that
       // create-only connections are reaped too.
+      const currentSessionCode = getCurrentSessionCode();
       const session = (currentSessionCode && sessionManager.getSession(currentSessionCode))
         || sessionManager.findSessionByHost(socket.id);
 

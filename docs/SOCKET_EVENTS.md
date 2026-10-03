@@ -33,10 +33,25 @@ The server issues a per-session `hostToken` in the response; the teacher must pr
 *   `Server → Student`: `session:joined` with `{ success, activeRooms, participantId, error? }`
 *   `Server → Teacher`: `session:participantUpdate` with `{ count, participants }`
 
+Only a successful join establishes the socket's participant session. A rejected
+join preserves its existing membership. Rejoining the same session is allowed;
+switching live sessions or mixing student and host roles on one socket is rejected.
+Disconnect and use a fresh socket to switch sessions or roles.
+
 **Student Leaves Session (Automatic)**
 
 *   On disconnect (e.g., page close), the server automatically detects the departure and sends:
     *   `Server → Teacher`: `session:participantUpdate` with `{ count, participants }`
+
+The real-network regression can be rerun against a disposable server on port 3001:
+
+```sh
+CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=/tmp/session-identity-evidence \
+  node packages/server/e2e/sessionIdentity.cjs
+```
+
+It checks rejected joins, duplicate joins, cross-session isolation, fresh-socket
+switching and role separation; it closes its sessions and writes `session-identity.txt`.
 
 ### Widget (Room) Management
 

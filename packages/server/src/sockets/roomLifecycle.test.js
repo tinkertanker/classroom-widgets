@@ -46,6 +46,7 @@ function createMockSocket(id, ip = `10.9.0.${id.length}`) {
   const emitted = [];
   return {
     id,
+    data: {},
     clientIP: ip,
     handshake: { headers: {}, secure: false },
     rooms: new Set(),
