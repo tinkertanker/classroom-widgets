@@ -1,6 +1,7 @@
 name: Deploy Web to Production
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
