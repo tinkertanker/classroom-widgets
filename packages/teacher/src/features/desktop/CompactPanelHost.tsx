@@ -142,6 +142,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         isResizable: config.features?.isResizable !== false,
         maintainsAspectRatio: config.maintainAspectRatio === true,
         hidden: widget.hidden === true,
+        keepAliveWhenHidden: config.features?.hasAudioPlayback === true,
         state,
         theme: dashboardTheme,
         savedRandomiserLists: widget.type === WidgetType.RANDOMISER
@@ -172,6 +173,7 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         isResizable: snapshot.isResizable,
         maintainsAspectRatio: snapshot.maintainsAspectRatio,
         hidden: snapshot.hidden,
+        keepAliveWhenHidden: snapshot.keepAliveWhenHidden,
         theme: snapshot.theme,
         savedRandomiserLists: snapshot.savedRandomiserLists
       });

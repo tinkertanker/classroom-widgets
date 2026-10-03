@@ -100,3 +100,22 @@ hide/show and immediate pending-edit recovery after host reload. It writes
 `compact-state-cache.txt` and `list-restored.png` to
 `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
 `classroom-widgets-test-evidence/compact-state-cache` under the system temp directory).
+
+To measure never-shown hidden Linux panels and check their lifecycle, use the
+same builds and run each startup sample in a separate process:
+
+```bash
+for count in 0 10 30; do
+  xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/hiddenPanels.cjs --count=$count || break
+done
+```
+
+This restores hidden Lists from disposable workspace storage and records panel
+windows, renderer processes and private memory from Linux `/proc`. The 10-List
+case also verifies first reveal uses the latest state and saved frame, real edits,
+hide/show reuse, genuine host reload and a hidden Timer's countdown/alarm attempt.
+Never-shown passive panels are deferred; audio-capable and previously created
+panels stay alive. Missing capability metadata keeps older bundles eager.
+Results (`memory-<count>.json`, `hidden-panels-<count>.txt`, `list-restored.png`)
+go to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
+`classroom-widgets-test-evidence/hidden-panels` under the system temp directory).
