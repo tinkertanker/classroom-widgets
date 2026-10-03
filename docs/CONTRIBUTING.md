@@ -86,3 +86,17 @@ xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --d
 The Linux check uses disposable settings and writes `widget-loading.txt` and
 `timer-restored.png` to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
 `classroom-widgets-test-evidence/linux-widget-loading` under the system temp directory).
+
+To check compact-host state caching after building the teacher app and Linux
+dashboard, run:
+
+```bash
+xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/compactStateCache.cjs
+```
+
+This creates six 100-row Lists and types through a real panel. It counts host
+state clones and signature serializations, verifies unchanged state revisions,
+hide/show and immediate pending-edit recovery after host reload. It writes
+`compact-state-cache.txt` and `list-restored.png` to
+`CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
+`classroom-widgets-test-evidence/compact-state-cache` under the system temp directory).
