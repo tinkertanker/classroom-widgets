@@ -101,7 +101,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
           score: data.results.score,
           total: data.results.total,
           timestamp: Date.now()
-        }]);
+        }].slice(-5));
       }
     }
   }), [widgetId]);
