@@ -56,6 +56,20 @@ describe('CompactPanelHost', () => {
     });
   });
 
+  it('keeps audio widgets running while allowing passive hidden panels to defer', async () => {
+    useWorkspaceStore.setState({
+      widgets: [
+        ...useWorkspaceStore.getState().widgets,
+        { id: 'list-1', type: WidgetType.LIST, hidden: true, position: { x: 0, y: 0 }, size: { width: 350, height: 400 }, zIndex: 1 }
+      ]
+    });
+    render(<CompactPanelHost />);
+    await waitFor(() => expect(postMessage).toHaveBeenCalled());
+    const widgets = postMessage.mock.calls[0][0].widgets;
+    expect(widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').keepAliveWhenHidden).toBe(true);
+    expect(widgets.find((widget: { widgetId: string }) => widget.widgetId === 'list-1').keepAliveWhenHidden).toBe(false);
+  });
+
   it('publishes compact widget options in native menu order, most used first', async () => {
     render(<CompactPanelHost />);
 

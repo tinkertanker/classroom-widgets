@@ -32,6 +32,7 @@ export interface WidgetPanelDescriptor {
   isResizable: boolean;
   aspectRatio: number | null;
   hidden: boolean;
+  keepAliveWhenHidden: boolean;
   revision: number;
   stateRevision: number;
   /** The full inventory payload, retained verbatim for the panel web view. */
@@ -98,6 +99,7 @@ export function parseDescriptor(payload: unknown): WidgetPanelDescriptor | null 
     isResizable: resizable,
     aspectRatio: maintainsAspectRatio && preferred.height > 0 ? preferred.width / preferred.height : null,
     hidden: payload.hidden === true,
+    keepAliveWhenHidden: payload.keepAliveWhenHidden !== false,
     revision,
     stateRevision,
     snapshotPayload: payload,

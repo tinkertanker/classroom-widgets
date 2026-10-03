@@ -30,6 +30,15 @@ test('descriptor treats non-boolean hidden as visible', () => {
   assert.equal(parseDescriptor(payload({ hidden: 1 })).hidden, false);
 });
 
+// Old bundles and malformed metadata must retain eager/background execution.
+// Only an explicit false from the host permits deferred creation.
+test('hidden execution stays enabled unless the host explicitly disables it', () => {
+  for (const value of [undefined, null, true, 0, 'false']) {
+    assert.equal(parseDescriptor(payload({ keepAliveWhenHidden: value })).keepAliveWhenHidden, true);
+  }
+  assert.equal(parseDescriptor(payload({ keepAliveWhenHidden: false })).keepAliveWhenHidden, false);
+});
+
 // The teacher app sends compactWidgetOptions in menu order with menuGroup and an
 // optional emoji. Ways parsing could fail: an older bundle without menuGroup, or a
 // malformed value, drops the option or yields a group that is not a small integer,

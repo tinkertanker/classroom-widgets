@@ -18,6 +18,8 @@ export interface CompactWidgetSnapshot {
   isResizable: boolean;
   maintainsAspectRatio: boolean;
   hidden: boolean;
+  /** Only explicit false permits shells to defer a never-shown hidden panel. */
+  keepAliveWhenHidden?: boolean;
   state: JsonValue | null;
   theme: 'light' | 'dark';
   savedRandomiserLists: SavedRandomiserList[];

@@ -201,6 +201,9 @@ export class WidgetPanelCoordinator extends EventEmitter {
         visibilityChanged ||= wasHidden !== descriptor.hidden;
         continue;
       }
+      // Retain existing panels for pending edits/background playback, but avoid
+      // allocating two renderers for a never-shown passive widget.
+      if (descriptor.hidden && !descriptor.keepAliveWhenHidden) continue;
       const panel = this.makePanel(descriptor);
       this.panels.set(descriptor.id, panel);
       created = true;
