@@ -95,9 +95,11 @@ const cases = [
   for (const [label, run] of cases) {
     const sessions = [];
     const students = [];
+    const hosts = [];
     try {
       for (let i = 0; i < 2; i++) {
         const socket = await connect();
+        hosts.push(socket);
         const result = await socket.timeout(5000).emitWithAck('session:create', {});
         assert.equal(result.success, true);
         const session = { socket, code: result.code, count: 0 };
@@ -121,7 +123,7 @@ const cases = [
           await closed;
         } catch (error) { failures++; step(`FAIL cleanup: ${error.message}`); }
       }
-      for (const socket of [...students, ...sessions.map(session => session.socket)]) socket.disconnect();
+      for (const socket of [...students, ...hosts]) socket.disconnect();
     }
   }
   step(`RESULT ${failures ? 'FAIL' : 'PASS'}: ${cases.length} identity scenarios; disposable sessions closed`);

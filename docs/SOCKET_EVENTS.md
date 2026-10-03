@@ -34,8 +34,9 @@ The server issues a per-session `hostToken` in the response; the teacher must pr
 *   `Server → Teacher`: `session:participantUpdate` with `{ count, participants }`
 
 Only a successful join establishes the socket's participant session. A rejected
-join preserves its existing membership. Rejoining the same session is allowed;
-switching live sessions or mixing student and host roles on one socket is rejected.
+join preserves its existing membership. Rejoining the same session remains subject
+to the existing admission and rate limits; switching live sessions or mixing
+student and host roles on one socket is rejected.
 Disconnect and use a fresh socket to switch sessions or roles.
 
 **Student Leaves Session (Automatic)**
