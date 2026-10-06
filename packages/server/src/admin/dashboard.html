@@ -16,6 +16,7 @@
     --text-secondary: #52514e;
     --text-muted: #7a7974;
     --series-1: #2a78d6;
+    --live: #1a7f4b;
     --danger: #b3261e;
   }
   @media (prefers-color-scheme: dark) {
@@ -29,6 +30,7 @@
       --text-secondary: #c3c2b7;
       --text-muted: #8f8e86;
       --series-1: #3987e5;
+      --live: #4cc38a;
       --danger: #f2b8b5;
     }
   }
@@ -42,6 +44,7 @@
     --text-secondary: #c3c2b7;
     --text-muted: #8f8e86;
     --series-1: #3987e5;
+    --live: #4cc38a;
     --danger: #f2b8b5;
   }
   * { box-sizing: border-box; }
@@ -97,6 +100,15 @@
   details summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; margin-top: 8px; }
   .table-scroll { overflow-x: auto; }
   footer { font-size: 13px; color: var(--text-muted); }
+  .live-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .live-head h2 { margin: 0; display: flex; align-items: center; gap: 8px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 0 var(--live); animation: pulse 2s infinite; }
+  .live-dot.stale { background: var(--text-muted); animation: none; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 50%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+  @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+  .live-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .live-tiles .tile { background: var(--surface-0); border-color: var(--grid); }
+  .live-rooms { margin: 12px 0 0; font-size: 13px; color: var(--text-secondary); }
   [hidden] { display: none !important; }
   @media (max-width: 560px) { td.meter-cell, th.meter-cell { display: none; } }
 </style>
@@ -142,6 +154,15 @@
     <p id="loggingOff" class="card secondary" hidden>Usage logging is off on this server. Set <code>USAGE_LOG_DIR</code> to start recording.</p>
     <p id="loadError" class="error" role="alert"></p>
 
+    <section class="card" id="live" aria-labelledby="liveTitle">
+      <div class="live-head">
+        <h2 id="liveTitle"><span class="live-dot" id="liveDot" aria-hidden="true"></span>Live now</h2>
+        <span class="muted" id="liveUpdated" aria-live="polite"></span>
+      </div>
+      <div class="live-tiles" id="liveTiles"></div>
+      <p class="live-rooms" id="liveRooms"></p>
+    </section>
+
     <div class="tiles" id="tiles"></div>
 
     <section class="card">
@@ -171,6 +192,7 @@
     </section>
 
     <footer>
+      Live figures refresh every 10 seconds and the rest every minute while this tab is open.
       A device is one browser or desktop app, identified by a random ID the teacher app keeps locally. A visit is one load of the teacher app.
       Sessions are classroom sessions started for students; student joins count each time a student joins one. No names, IP addresses or classroom content are recorded.
     </footer>
@@ -397,6 +419,72 @@
     }));
   }
 
+  const roomLabels = {
+    poll: 'Poll', questions: 'Questions', rtfeedback: 'Real-time feedback',
+    linkShare: 'Link share', handout: 'Handout', activity: 'Activity'
+  };
+  const timeFormat = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+  function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }
+
+  function renderLive(live) {
+    const roomTotal = live.rooms.reduce((sum, r) => sum + r.count, 0);
+    const tiles = [
+      ['Teachers online', live.teachersOnline, `${number.format(live.teacherApps)} app ${live.teacherApps === 1 ? 'window' : 'windows'} open`],
+      ['Live sessions', live.activeSessions, live.waitingSessions ? `${number.format(live.waitingSessions)} waiting for teacher to reconnect` : 'with teacher connected'],
+      ['Students connected', live.studentsConnected, 'across all sessions'],
+      ['Live widgets', roomTotal, 'running for students']
+    ];
+    $('liveTiles').replaceChildren(...tiles.map(([label, value, detail]) => {
+      const tile = el('div', { class: 'tile' });
+      tile.append(el('div', { class: 'label' }, label), el('div', { class: 'value' }, number.format(value)), el('div', { class: 'detail' }, detail));
+      return tile;
+    }));
+    $('liveRooms').textContent = live.rooms.length
+      ? `Running now: ${live.rooms.map(r => `${roomLabels[r.roomType] || r.roomType} ${number.format(r.count)}`).join(' · ')}`
+      : 'No student-facing widgets running.';
+    $('liveDot').classList.remove('stale');
+    $('liveUpdated').textContent = `Updated ${timeFormat.format(live.at)} · server up ${formatUptime(live.uptimeSeconds)}`;
+  }
+
+  async function loadLive() {
+    try {
+      renderLive(await api('/api/live'));
+    } catch (error) {
+      if (error.status === 401) return start();
+      $('liveDot').classList.add('stale');
+      $('liveUpdated').textContent = `Could not refresh: ${error.message}`;
+    }
+  }
+
+  // Poll only while the tab is visible; catch up as soon as it is shown again.
+  const LIVE_EVERY_MS = 10_000;
+  const USAGE_EVERY_MS = 60_000;
+  let timers = [];
+  function stopPolling() {
+    timers.forEach(clearInterval);
+    timers = [];
+  }
+  function startPolling() {
+    stopPolling();
+    timers = [setInterval(loadLive, LIVE_EVERY_MS), setInterval(loadUsage, USAGE_EVERY_MS)];
+  }
+  document.addEventListener('visibilitychange', () => {
+    if ($('dashboard').hidden) return;
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      loadLive();
+      loadUsage();
+      startPolling();
+    }
+  });
+
   let lastDays = null;
   async function loadUsage() {
     $('loadError').textContent = '';
@@ -420,11 +508,15 @@
 
   async function start() {
     const session = await api('/session');
-    if (!session.authenticated) return showSignIn(session);
+    if (!session.authenticated) {
+      stopPolling();
+      return showSignIn(session);
+    }
     $('signIn').hidden = true;
     $('dashboard').hidden = false;
     $('whoami').textContent = session.email === 'admin-token' ? 'Signed in with admin token' : session.email;
-    await loadUsage();
+    await Promise.all([loadLive(), loadUsage()]);
+    startPolling();
   }
 
   start().catch((error) => {

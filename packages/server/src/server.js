@@ -22,6 +22,7 @@ const { logger } = require('./utils/logger');
 const SessionManager = require('./services/SessionManager');
 const { usageLog } = require('./services/usageLog');
 const { createAdminAuth } = require('./services/adminAuth');
+const { getLiveStats } = require('./services/liveStats');
 
 // Import socket manager
 const { setupSocketHandlers } = require('./sockets/socketManager');
@@ -108,6 +109,8 @@ class AppServer {
     this.app.use('/admin', createAdminRouter({
       adminAuth: createAdminAuth(),
       usageLog,
+      // Socket.IO is configured after middleware, so look it up per request.
+      getLiveStats: () => getLiveStats(this.io, this.sessionManager),
       secureCookies: serverConfig.IS_PRODUCTION
     }));
 

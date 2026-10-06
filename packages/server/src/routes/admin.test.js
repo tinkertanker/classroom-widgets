@@ -16,6 +16,7 @@ const { UsageLog } = require('../services/usageLog');
 // - sign-in attempts can be guessed without limit
 // - another site can post a sign-in or sign-out on an admin's behalf
 // - the page's headers block the Google sign-in popup or let it be cached
+// - live figures are readable without signing in, or are cached
 
 async function startServer(t, { secureCookies = false, claims } = {}) {
   const previousToken = process.env.ADMIN_TOKEN;
@@ -41,7 +42,8 @@ async function startServer(t, { secureCookies = false, claims } = {}) {
     adminAuth,
     usageLog,
     secureCookies,
-    loginRateLimit: { windowMs: 60_000, max: 3 }
+    loginRateLimit: { windowMs: 60_000, max: 3 },
+    getLiveStats: () => ({ teachersOnline: 2, activeSessions: 1, studentsConnected: 5, rooms: [] })
   }));
   const server = await new Promise(resolve => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s));
@@ -158,4 +160,15 @@ test('the dashboard page allows the Google popup and is never cached', async (t)
   assert.match(response.headers.get('content-type'), /text\/html/);
   assert.equal(response.headers.get('cross-origin-opener-policy'), 'same-origin-allow-popups');
   assert.match(response.headers.get('cache-control'), /no-store/);
+});
+
+test('live figures need sign-in and are never cached', async (t) => {
+  const { base } = await startServer(t);
+  assert.equal((await fetch(`${base}/api/live`)).status, 401);
+  assert.equal((await fetch(`${base}/api/live`, { headers: { Cookie: 'cw_admin=forged.value' } })).status, 401);
+
+  const response = await fetch(`${base}/api/live`, { headers: { Authorization: 'Bearer correct-admin-token' } });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get('cache-control'), /no-store/);
+  assert.equal((await response.json()).teachersOnline, 2);
 });

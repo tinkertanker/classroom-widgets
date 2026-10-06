@@ -8,7 +8,18 @@ Open it at `https://<BACKEND_DOMAIN>/admin` (locally, `http://localhost:3001/adm
 
 ## What it shows
 
-For the last 7, 30, 90 or 365 days:
+**Live now**, refreshed every 10 seconds from the server's memory (nothing is
+stored, and it works even with logging off):
+
+| Figure | Meaning |
+|--------|---------|
+| Teachers online | Teacher app devices connected right now (several tabs on one device count once), with the number of open app windows |
+| Live sessions | Classroom sessions whose teacher is connected, plus any held open while their teacher reconnects |
+| Students connected | Students in any session |
+| Live widgets | Student-facing widget rooms running (poll, questions, real-time feedback and so on), broken down by type |
+
+**History** for the last 7, 30, 90 or 365 days, refreshed every minute. Today's
+figures include events up to the moment of each refresh:
 
 | Figure | Meaning |
 |--------|---------|
@@ -19,7 +30,15 @@ For the last 7, 30, 90 or 365 days:
 | Widgets added | Widgets placed on a board, per widget type, with how many devices added each |
 
 There is also a daily chart of unique devices, with a table view of every daily
-figure.
+figure. Refreshing pauses while the dashboard tab is hidden and catches up when
+it is shown again.
+
+Scripts can read both with the admin token:
+
+```bash
+curl -H "Authorization: Bearer $ADMIN_TOKEN" https://<BACKEND_DOMAIN>/admin/api/live
+curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://<BACKEND_DOMAIN>/admin/api/usage?days=30"
+```
 
 ## What is recorded
 
@@ -126,7 +145,8 @@ docker run --rm -v classroom-widgets_usage-data:/data -v "$PWD":/backup alpine \
   `pnpm --filter @classroom-widgets/server test`.
 - `pnpm --filter @classroom-widgets/teacher e2e:usage` starts the real server,
   teacher app and student app, drives two teacher devices and a student, then
-  signs in to the dashboard with a token and checks every figure. Evidence
+  signs in to the dashboard with a token and checks every figure, including
+  the live panel updating by itself when a teacher closes the app. Evidence
   (step log, raw log and screenshots) goes to
   `$CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`.
 - Google sign-in itself needs a real Google account and the configured origin,

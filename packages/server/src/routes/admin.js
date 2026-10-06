@@ -39,10 +39,12 @@ const sameOriginOnly = (req, res, next) => {
  * POST /admin/auth/token   { token } matching ADMIN_TOKEN
  * POST /admin/auth/logout
  * GET  /admin/api/usage    ?days=N; session cookie or `Authorization: Bearer <ADMIN_TOKEN>`
+ * GET  /admin/api/live     what is happening right now; same authorisation
  */
 function createAdminRouter({
   adminAuth,
   usageLog,
+  getLiveStats,
   secureCookies = false,
   loginRateLimit = { windowMs: 15 * 60 * 1000, max: 10 }
 }) {
@@ -121,6 +123,11 @@ function createAdminRouter({
     res.set('Cache-Control', 'no-store');
     res.json(await usageLog.summarise({ days: req.query.days ?? 30 }));
   }));
+
+  router.get('/api/live', requireAdmin, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json(getLiveStats());
+  });
 
   return router;
 }

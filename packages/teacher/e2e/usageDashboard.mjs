@@ -6,7 +6,9 @@
 // device B opens the app and adds a Timer. Then an admin opens <server>/admin,
 // is refused with a wrong token, signs in with ADMIN_TOKEN, and must see
 // 2 devices, 3 visits, 1 session, 1 student join, Timer added twice on two
-// devices and Poll once. The raw log must hold no student name. Google
+// devices and Poll once. The live panel must show 2 teachers online, 1 live
+// session, 1 student and 1 Poll, then drop to 1 teacher by itself (no reload)
+// when device B closes the app. The raw log must hold no student name. Google
 // sign-in needs a real Google account, so it is covered by the server's
 // route tests rather than here. From the repository root:
 //
@@ -16,7 +18,7 @@
 // temp directory's classroom-widgets-test-evidence/usage-dashboard):
 // usage-dashboard.txt (every step and what it observed), usage-log.jsonl (the
 // raw events the server wrote) and screenshots 1-sign-in.png,
-// 2-wrong-token.png, 3-dashboard.png, 4-dashboard-dark.png, 5-dashboard-mobile.png
+// 2-wrong-token.png, 3-dashboard.png, 3b-live-updated.png, 4-dashboard-dark.png, 5-dashboard-mobile.png
 // (failure.png if a step fails).
 import assert from 'node:assert/strict';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -26,7 +28,7 @@ import { chromium } from 'playwright-core';
 import { createStepLog, joinAsStudent, newTeacherContext, prepareEvidence, startStack } from './harness.mjs';
 
 const evidence = prepareEvidence('usage-dashboard', ['usage-dashboard.txt', 'usage-log.jsonl', '1-sign-in.png',
-  '2-wrong-token.png', '3-dashboard.png', '4-dashboard-dark.png', '5-dashboard-mobile.png', 'failure.png']);
+  '2-wrong-token.png', '3-dashboard.png', '3b-live-updated.png', '4-dashboard-dark.png', '5-dashboard-mobile.png', 'failure.png']);
 const { step, write: writeLog } = createStepLog(join(evidence, 'usage-dashboard.txt'));
 
 const ADMIN_TOKEN = 'e2e-admin-token';
@@ -137,6 +139,19 @@ try {
     'Widgets added': '3'
   });
 
+  const liveTiles = () => admin.locator('#liveTiles .tile').evaluateAll((nodes) =>
+    Object.fromEntries(nodes.map((node) => [node.querySelector('.label').textContent, node.querySelector('.value').textContent])));
+  const live = await liveTiles();
+  step(`live tiles ${JSON.stringify(live)}; ${await admin.locator('#liveRooms').textContent()}`);
+  assert.deepEqual(live, {
+    'Teachers online': '2',
+    'Live sessions': '1',
+    'Students connected': '1',
+    'Live widgets': '1'
+  });
+  assert.equal(await admin.locator('#liveRooms').textContent(), 'Running now: Poll 1');
+  step('PASS live panel shows 2 teachers online, 1 live session, 1 student, Poll running');
+
   const widgetRows = await admin.locator('#widgetTable tr').evaluateAll((rows) =>
     rows.map((row) => Array.from(row.querySelectorAll('td'), (td) => td.textContent).filter(Boolean)));
   step(`dashboard widget rows ${JSON.stringify(widgetRows)}`);
@@ -144,6 +159,20 @@ try {
   assert.equal(await admin.locator('#chartSvg path.bar[d^="M"]').count(), 1);
   await admin.screenshot({ path: join(evidence, '3-dashboard.png'), fullPage: true });
   step('PASS dashboard shows 2 devices, 3 visits, 1 session, 1 join; Timer 2 on 2 devices, Poll 1');
+
+  // Device B closes the app; the open dashboard must notice without a reload.
+  const updatedBefore = await admin.locator('#liveUpdated').textContent();
+  await deviceB.close();
+  const started = Date.now();
+  await admin.waitForFunction(() => {
+    const tile = Array.from(document.querySelectorAll('#liveTiles .tile'))
+      .find((node) => node.querySelector('.label').textContent === 'Teachers online');
+    return tile?.querySelector('.value').textContent === '1';
+  }, null, { timeout: 25_000 });
+  const updatedAfter = await admin.locator('#liveUpdated').textContent();
+  assert.notEqual(updatedAfter, updatedBefore);
+  await admin.screenshot({ path: join(evidence, '3b-live-updated.png'), fullPage: true });
+  step(`PASS live panel dropped to 1 teacher online by itself after ${Math.round((Date.now() - started) / 1000)}s ("${updatedBefore}" -> "${updatedAfter}")`);
 
   await admin.emulateMedia({ colorScheme: 'dark' });
   await admin.screenshot({ path: join(evidence, '4-dashboard-dark.png'), fullPage: true });
