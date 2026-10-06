@@ -41,8 +41,8 @@ if (serverConfig.IS_PRODUCTION) {
   // Serve the main app for all other routes (SPA)
   // But exclude API routes to prevent serving HTML for API calls
   router.get('*', (req, res, next) => {
-    // Skip API routes and health check
-    if (req.path.startsWith('/api/') || req.path === '/health') {
+    // Skip API routes, the admin dashboard and health check
+    if (req.path.startsWith('/api/') || req.path.startsWith('/admin') || req.path === '/health') {
       return next();
     }
     res.sendFile(path.join(publicPath, 'index.html'));

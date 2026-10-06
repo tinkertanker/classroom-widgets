@@ -7,6 +7,7 @@ import { createDefaultShortenerSettings, type ShortenerSettings } from '@shared/
 import { WorkspaceStore } from './workspaceStore';
 import { useWorkspaceUiStore } from './workspaceUiStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
+import { trackWidgetAdd } from '../services/usageTracking';
 import { debug } from '@shared/utils/debug';
 import {
   StorageFormatV2,
@@ -543,6 +544,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       widgets: [...state.widgets, newWidget],
       bottomBar: { ...state.bottomBar, recentWidgets: updatedRecent }
     }));
+    trackWidgetAdd(type);
     return id;
   },
   removeWidget: (widgetId) => {

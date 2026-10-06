@@ -24,6 +24,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",
     "express": "^4.21.2",
+    "google-auth-library": "^11.1.0",
     "helmet": "^8.2.0",
     "ollama": "^0.6.0",
     "socket.io": "^4.8.1",

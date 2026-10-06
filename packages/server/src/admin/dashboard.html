@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Usage Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-0: #f4f3f0;
+    --surface-1: #fcfcfb;
+    --border: #e2e0da;
+    --grid: #ecebe6;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #7a7974;
+    --series-1: #2a78d6;
+    --danger: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --surface-0: #111110;
+      --surface-1: #1a1a19;
+      --border: #2e2e2c;
+      --grid: #262624;
+      --text-primary: #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted: #8f8e86;
+      --series-1: #3987e5;
+      --danger: #f2b8b5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-0: #111110;
+    --surface-1: #1a1a19;
+    --border: #2e2e2c;
+    --grid: #262624;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #8f8e86;
+    --series-1: #3987e5;
+    --danger: #f2b8b5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  .muted { color: var(--text-muted); }
+  .secondary { color: var(--text-secondary); }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button, select, input {
+    font: inherit; color: inherit; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+  }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--text-muted); }
+  .error { color: var(--danger); min-height: 1.5em; margin: 8px 0 0; }
+  .sign-in { max-width: 420px; margin: 48px auto; }
+  .sign-in form { display: flex; gap: 8px; margin-top: 12px; }
+  .sign-in input { flex: 1; min-width: 0; }
+  .divider { margin: 16px 0 4px; font-size: 13px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .value { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .label { color: var(--text-secondary); font-size: 13px; }
+  .tile .detail { color: var(--text-muted); font-size: 12px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 220px; overflow: visible; }
+  .chart .bar { fill: var(--series-1); }
+  .chart .hit { fill: transparent; cursor: default; }
+  .chart .hit:hover + .bar, .chart .bar.active { opacity: 0.75; }
+  .chart .gridline { stroke: var(--grid); stroke-width: 1; }
+  .chart text { fill: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 16px rgb(0 0 0 / 0.12);
+    white-space: nowrap; display: none; z-index: 1;
+  }
+  .tooltip strong { display: block; margin-bottom: 2px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--text-secondary); font-weight: 500; font-size: 13px; }
+  td.num, th.num { text-align: right; width: 90px; }
+  .meter { height: 8px; border-radius: 4px; background: var(--series-1); min-width: 2px; }
+  td.meter-cell { width: 40%; }
+  details summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; margin-top: 8px; }
+  .table-scroll { overflow-x: auto; }
+  footer { font-size: 13px; color: var(--text-muted); }
+  [hidden] { display: none !important; }
+  @media (max-width: 560px) { td.meter-cell, th.meter-cell { display: none; } }
+</style>
+</head>
+<body>
+<main>
+  <section id="signIn" class="card sign-in" hidden>
+    <h1>Usage dashboard</h1>
+    <p class="secondary">Sign in with an admin account to see usage.</p>
+    <div id="googleSection" hidden>
+      <div id="googleButton"></div>
+    </div>
+    <div id="tokenSection" hidden>
+      <p class="divider muted" id="tokenDivider">Or use the admin token</p>
+      <form id="tokenForm">
+        <input id="tokenInput" type="password" autocomplete="current-password" placeholder="ADMIN_TOKEN" aria-label="Admin token" required>
+        <button type="submit">Sign in</button>
+      </form>
+    </div>
+    <p id="noSignIn" class="muted" hidden>No sign-in method is configured. Set GOOGLE_CLIENT_ID with ADMIN_EMAILS or ADMIN_EMAIL_DOMAINS, or ADMIN_TOKEN, on the server.</p>
+    <p id="signInError" class="error" role="alert"></p>
+  </section>
+
+  <section id="dashboard" hidden>
+    <header>
+      <div>
+        <h1>Classroom Widgets usage</h1>
+        <div class="muted" id="rangeLabel"></div>
+      </div>
+      <div class="controls">
+        <label class="secondary" for="rangeSelect">Range</label>
+        <select id="rangeSelect">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="365">Last 365 days</option>
+        </select>
+        <span class="muted" id="whoami"></span>
+        <button id="signOut" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <p id="loggingOff" class="card secondary" hidden>Usage logging is off on this server. Set <code>USAGE_LOG_DIR</code> to start recording.</p>
+    <p id="loadError" class="error" role="alert"></p>
+
+    <div class="tiles" id="tiles"></div>
+
+    <section class="card">
+      <h2>Unique devices per day</h2>
+      <div class="chart" id="chart">
+        <svg id="chartSvg" role="img" aria-labelledby="chartTitle"><title id="chartTitle">Unique devices per day</title></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <details>
+        <summary>Show daily figures as a table</summary>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Date</th><th class="num">Devices</th><th class="num">Visits</th><th class="num">Widgets added</th><th class="num">Sessions</th><th class="num">Student joins</th></tr></thead>
+            <tbody id="dailyTable"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2>Widgets added</h2>
+      <table>
+        <thead><tr><th>Widget</th><th class="meter-cell"></th><th class="num">Added</th><th class="num">Devices</th></tr></thead>
+        <tbody id="widgetTable"></tbody>
+      </table>
+      <p id="noWidgets" class="muted" hidden>No widgets added in this range.</p>
+    </section>
+
+    <footer>
+      A device is one browser or desktop app, identified by a random ID the teacher app keeps locally. A visit is one load of the teacher app.
+      Sessions are classroom sessions started for students; student joins count each time a student joins one. No names, IP addresses or classroom content are recorded.
+    </footer>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const number = new Intl.NumberFormat('en-GB');
+  let rangeDays = 30;
+  try { rangeDays = Number(localStorage.getItem('cw-admin-range')) || 30; } catch {}
+  $('rangeSelect').value = String(rangeDays);
+  if ($('rangeSelect').value !== String(rangeDays)) { rangeDays = 30; $('rangeSelect').value = '30'; }
+
+  const el = (tag, attrs = {}, text) => {
+    const node = document.createElementNS(tag === 'svg' || attrs.svg ? 'http://www.w3.org/2000/svg' : 'http://www.w3.org/1999/xhtml', tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key !== 'svg') node.setAttribute(key, value);
+    }
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  const widgetLabel = (key) => key.toLowerCase().split('_').map((w, i) => i === 0 ? w[0].toUpperCase() + w.slice(1) : w).join(' ')
+    .replace(/^Qrcode$/, 'QR code').replace(/^Rt feedback$/, 'Real-time feedback');
+
+  const formatDate = (key, options = { day: 'numeric', month: 'short' }) =>
+    new Date(`${key}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', ...options });
+
+  async function api(path, options = {}) {
+    const response = await fetch(`/admin${path}`, {
+      credentials: 'same-origin',
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.message || body.error || `Request failed (${response.status})`);
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  function showSignIn(session) {
+    $('dashboard').hidden = true;
+    $('signIn').hidden = false;
+    const hasGoogle = Boolean(session.googleClientId);
+    $('googleSection').hidden = !hasGoogle;
+    $('tokenSection').hidden = !session.tokenLoginEnabled;
+    $('tokenDivider').hidden = !hasGoogle;
+    $('noSignIn').hidden = hasGoogle || session.tokenLoginEnabled;
+    if (hasGoogle) loadGoogle(session.googleClientId);
+  }
+
+  let googleLoaded = false;
+  function loadGoogle(clientId) {
+    if (googleLoaded) return;
+    googleLoaded = true;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = () => {
+      google.accounts.id.initialize({ client_id: clientId, callback: onGoogleCredential, ux_mode: 'popup' });
+      google.accounts.id.renderButton($('googleButton'), { theme: 'outline', size: 'large', text: 'signin_with' });
+    };
+    script.onerror = () => { $('signInError').textContent = 'Could not load Google sign-in.'; };
+    document.head.appendChild(script);
+  }
+
+  async function onGoogleCredential({ credential }) {
+    $('signInError').textContent = '';
+    try {
+      await api('/auth/google', { method: 'POST', body: JSON.stringify({ credential }) });
+      await start();
+    } catch (error) {
+      $('signInError').textContent = error.status === 401
+        ? 'That Google account is not an admin for this server.'
+        : error.message;
+    }
+  }
+
+  $('tokenForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('signInError').textContent = '';
+    try {
+      await api('/auth/token', { method: 'POST', body: JSON.stringify({ token: $('tokenInput').value }) });
+      $('tokenInput').value = '';
+      await start();
+    } catch (error) {
+      $('signInError').textContent = error.status === 401 ? 'That token is not valid.' : error.message;
+    }
+  });
+
+  $('signOut').addEventListener('click', async () => {
+    await api('/auth/logout', { method: 'POST', body: '{}' }).catch(() => {});
+    if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
+    await start();
+  });
+
+  $('rangeSelect').addEventListener('change', () => {
+    rangeDays = Number($('rangeSelect').value);
+    try { localStorage.setItem('cw-admin-range', String(rangeDays)); } catch {}
+    loadUsage();
+  });
+
+  function renderTiles(totals) {
+    const tiles = [
+      ['Unique devices', totals.uniqueClients, `${number.format(totals.webClients)} web · ${number.format(totals.desktopClients)} desktop`],
+      ['Visits', totals.visits, `${number.format(totals.appOpens)} app opens`],
+      ['Classroom sessions', totals.sessions, 'started for students'],
+      ['Student joins', totals.studentJoins, 'across all sessions'],
+      ['Widgets added', totals.widgetAdds, 'to teacher boards']
+    ];
+    $('tiles').replaceChildren(...tiles.map(([label, value, detail]) => {
+      const tile = el('div', { class: 'tile' });
+      tile.append(el('div', { class: 'label' }, label), el('div', { class: 'value' }, number.format(value)), el('div', { class: 'detail' }, detail));
+      return tile;
+    }));
+  }
+
+  function niceMax(value) {
+    if (value <= 4) return 4;
+    const magnitude = 10 ** Math.floor(Math.log10(value));
+    for (const step of [1, 2, 2.5, 5, 10]) {
+      if (step * magnitude >= value) return step * magnitude;
+    }
+    return 10 * magnitude;
+  }
+
+  function renderChart(days) {
+    const svg = $('chartSvg');
+    const width = svg.clientWidth || 800;
+    const height = 220;
+    const margin = { top: 8, right: 4, bottom: 22, left: 36 };
+    const plotW = width - margin.left - margin.right;
+    const plotH = height - margin.top - margin.bottom;
+    const max = niceMax(Math.max(...days.map(d => d.uniqueClients), 0));
+    const slot = plotW / days.length;
+    const gap = days.length > 60 ? 1 : 2;
+    const barW = Math.max(1, slot - gap);
+
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const title = $('chartTitle');
+    svg.replaceChildren(title);
+
+    for (let i = 0; i <= 4; i++) {
+      const value = (max / 4) * i;
+      const y = margin.top + plotH - (value / max) * plotH;
+      svg.append(el('line', { svg: true, class: 'gridline', x1: margin.left, x2: width - margin.right, y1: y, y2: y }));
+      svg.append(el('text', { svg: true, x: margin.left - 6, y: y + 4, 'text-anchor': 'end' }, number.format(value)));
+    }
+
+    const labelEvery = Math.ceil(days.length / Math.max(1, Math.floor(plotW / 64)));
+    days.forEach((day, i) => {
+      const x = margin.left + i * slot + gap / 2;
+      const h = (day.uniqueClients / max) * plotH;
+      const y = margin.top + plotH - h;
+      const hit = el('rect', { svg: true, class: 'hit', x: margin.left + i * slot, y: margin.top, width: slot, height: plotH });
+      const r = Math.min(4, barW / 2, h);
+      // Bar with rounded top corners, square at the baseline.
+      const bar = el('path', {
+        svg: true,
+        class: 'bar',
+        d: h > 0
+          ? `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${y + h} Z`
+          : ''
+      });
+      hit.addEventListener('mouseenter', () => showTooltip(day, x + barW / 2, y));
+      hit.addEventListener('mouseleave', hideTooltip);
+      svg.append(hit, bar);
+      if (i % labelEvery === 0) {
+        svg.append(el('text', { svg: true, x: x + barW / 2, y: height - 6, 'text-anchor': 'middle' }, formatDate(day.date)));
+      }
+    });
+  }
+
+  function showTooltip(day, x, y) {
+    const tooltip = $('tooltip');
+    tooltip.replaceChildren(
+      el('strong', {}, formatDate(day.date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })),
+      el('div', {}, `${number.format(day.uniqueClients)} devices · ${number.format(day.visits)} visits`),
+      el('div', { class: 'secondary' }, `${number.format(day.widgetAdds)} widgets added`),
+      el('div', { class: 'secondary' }, `${number.format(day.sessions)} sessions · ${number.format(day.studentJoins)} student joins`)
+    );
+    tooltip.style.display = 'block';
+    const chart = $('chart');
+    const scale = chart.clientWidth / ($('chartSvg').viewBox.baseVal.width || chart.clientWidth);
+    const left = Math.min(Math.max(0, x * scale - tooltip.offsetWidth / 2), chart.clientWidth - tooltip.offsetWidth);
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${Math.max(0, y * scale - tooltip.offsetHeight - 8)}px`;
+  }
+
+  function hideTooltip() { $('tooltip').style.display = 'none'; }
+
+  function renderDailyTable(days) {
+    $('dailyTable').replaceChildren(...days.slice().reverse().map(day => {
+      const row = el('tr');
+      row.append(
+        el('td', {}, formatDate(day.date, { weekday: 'short', day: 'numeric', month: 'short' })),
+        ...[day.uniqueClients, day.visits, day.widgetAdds, day.sessions, day.studentJoins].map(v => el('td', { class: 'num' }, number.format(v)))
+      );
+      return row;
+    }));
+  }
+
+  function renderWidgets(widgets) {
+    const max = Math.max(1, ...widgets.map(w => w.adds));
+    $('noWidgets').hidden = widgets.length > 0;
+    $('widgetTable').replaceChildren(...widgets.map(widget => {
+      const row = el('tr');
+      const meterCell = el('td', { class: 'meter-cell' });
+      const meter = el('div', { class: 'meter' });
+      meter.style.width = `${(widget.adds / max) * 100}%`;
+      meterCell.append(meter);
+      row.append(
+        el('td', {}, widgetLabel(widget.widget)),
+        meterCell,
+        el('td', { class: 'num' }, number.format(widget.adds)),
+        el('td', { class: 'num' }, number.format(widget.uniqueClients))
+      );
+      return row;
+    }));
+  }
+
+  let lastDays = null;
+  async function loadUsage() {
+    $('loadError').textContent = '';
+    try {
+      const usage = await api(`/api/usage?days=${rangeDays}`);
+      $('loggingOff').hidden = usage.enabled;
+      $('rangeLabel').textContent = `${formatDate(usage.from, { day: 'numeric', month: 'short', year: 'numeric' })} to ${formatDate(usage.to, { day: 'numeric', month: 'short', year: 'numeric' })} · ${usage.timeZone}`;
+      if (!usage.enabled) return;
+      lastDays = usage.days;
+      renderTiles(usage.totals);
+      renderChart(usage.days);
+      renderDailyTable(usage.days);
+      renderWidgets(usage.widgets);
+    } catch (error) {
+      if (error.status === 401) return start();
+      $('loadError').textContent = error.message;
+    }
+  }
+
+  window.addEventListener('resize', () => { if (lastDays) renderChart(lastDays); });
+
+  async function start() {
+    const session = await api('/session');
+    if (!session.authenticated) return showSignIn(session);
+    $('signIn').hidden = true;
+    $('dashboard').hidden = false;
+    $('whoami').textContent = session.email === 'admin-token' ? 'Signed in with admin token' : session.email;
+    await loadUsage();
+  }
+
+  start().catch((error) => {
+    $('signIn').hidden = false;
+    $('signInError').textContent = error.message;
+  });
+})();
+</script>
+</body>
+</html>

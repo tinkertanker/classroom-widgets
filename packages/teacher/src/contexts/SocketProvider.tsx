@@ -3,6 +3,7 @@ import io, { Socket } from 'socket.io-client';
 import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { useServerConnection } from '@shared/hooks/useWorkspace';
 import { debug } from '@shared/utils/debug';
+import { attachUsageSocket } from '../services/usageTracking';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -27,6 +28,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     setSocket(newSocket);
+    const detachUsage = attachUsageSocket(newSocket);
     
     // Store socket in window for backwards compatibility
     (window as any).socket = newSocket;
@@ -49,6 +51,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     return () => {
+      detachUsage();
       newSocket.disconnect();
       delete (window as any).socket;
     };

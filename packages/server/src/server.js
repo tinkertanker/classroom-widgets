@@ -20,6 +20,8 @@ const { logger } = require('./utils/logger');
 
 // Import services
 const SessionManager = require('./services/SessionManager');
+const { usageLog } = require('./services/usageLog');
+const { createAdminAuth } = require('./services/adminAuth');
 
 // Import socket manager
 const { setupSocketHandlers } = require('./sockets/socketManager');
@@ -27,6 +29,7 @@ const { setupSocketHandlers } = require('./sockets/socketManager');
 // Import routes
 const apiRoutes = require('./routes/api');
 const staticRoutes = require('./routes/static');
+const { createAdminRouter } = require('./routes/admin');
 
 const normaliseOrigin = (value) => {
   try {
@@ -99,6 +102,14 @@ class AppServer {
 
     // Gzip responses (skip websocket upgrade frames automatically).
     this.app.use(compression());
+
+    // Admin usage dashboard. Same-origin only, so it sits ahead of CORS and
+    // of the production SPA fallback.
+    this.app.use('/admin', createAdminRouter({
+      adminAuth: createAdminAuth(),
+      usageLog,
+      secureCookies: serverConfig.IS_PRODUCTION
+    }));
 
     // Static file serving should come BEFORE CORS in production
     // This prevents CORS checks on static assets served from the same domain
@@ -203,6 +214,7 @@ class AppServer {
       this.configureMiddleware();
       this.configureSocketIO();
       this.configureRoutes();
+      usageLog.startPruning();
 
       // Start listening
       const port = serverConfig.PORT;
@@ -249,6 +261,8 @@ class AppServer {
           this.sessionManager.stopCleanupInterval();
         }
         stopRateLimiterCleanup();
+        usageLog.stopPruning();
+        await usageLog.flush();
 
         // Stop accepting new connections
         this.server.close(() => {

@@ -6,6 +6,7 @@ const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
 const { closeRoomAndNotify } = require('../closeRoom');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
+const { usageLog } = require('../../services/usageLog');
 
 const SESSION_DEBUG = process.env.SESSION_DEBUG === 'true';
 const JOIN_MISS_EVENT = 'session:join:miss';
@@ -123,6 +124,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         // Create new session
         const session = sessionManager.createSession();
         session.hostSocketId = socket.id;
+        usageLog.record({ e: 'session_start' });
 
         socket.join(`session:${session.code}`);
         callback({
@@ -230,6 +232,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         : socket.id;
       session.addParticipant(socket.id, name, safeStudentId);
       socket.data.sessionCode = code;
+      usageLog.record({ e: 'student_join' });
       
       // Join session room
       socket.join(`session:${code}`);

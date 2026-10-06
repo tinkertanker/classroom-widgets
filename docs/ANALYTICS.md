@@ -2,6 +2,8 @@
 
 This guide explains how to set up Umami, a privacy-focused analytics solution for Classroom Widgets.
 
+For counts of teachers, visits and widgets added without running Umami, use the built-in [Admin Usage Dashboard](./USAGE_DASHBOARD.md).
+
 ## Why Umami?
 
 - **Privacy-focused**: No cookies, no personal data collection
