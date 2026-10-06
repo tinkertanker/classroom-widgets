@@ -1,15 +1,18 @@
 import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FaApple, FaWindows, FaLinux, FaArrowDown } from 'react-icons/fa6';
+import { FaArrowDown } from 'react-icons/fa6';
 import { FaChartColumn, FaQuestion, FaMusic, FaClock, FaComments, FaDice, FaArrowRight, FaChalkboardUser, FaUsers, FaRocket, FaCheck, FaTriangleExclamation, FaFaceSadTear, FaLightbulb, FaLock, FaShieldHalved, FaTableColumns, FaStar } from 'react-icons/fa6';
 import { CustomStickerIcons } from '../features/widgets/sticker/CustomStickerIcons';
 import { FloatingWidgets } from './components/FloatingWidgets';
 import { DemoVideo } from './components/DemoVideo';
+import { desktopPlatforms } from '../desktopDownloads';
+import { useWorkspaceUiStore } from '../store/workspaceUiStore';
 
 // Hero headline: plain lead-in plus the gradient-accented ending. Swap the text here.
 const HERO_HEADLINE = { lead: 'Your whole lesson in ', accent: 'one tab.' };
 
 const About: React.FC = () => {
+  const serverUrl = useWorkspaceUiStore(state => state.serverStatus.url);
   useEffect(() => {
     // This lazy-loaded page mounts after the browser's initial fragment scroll.
     if (window.location.hash === '#desktop') {
@@ -221,15 +224,11 @@ const About: React.FC = () => {
             Our desktop apps keep compact widgets always on top, right from your menu bar or system tray.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { name: 'macOS', icon: FaApple, requirements: 'macOS 13 or later' },
-              { name: 'Windows', icon: FaWindows, requirements: 'Windows 10 (1809+) / 11 · 64-bit · WebView2' },
-              { name: 'Linux', icon: FaLinux, requirements: '64-bit · System tray (GNOME: AppIndicator)' },
-            ].map((platform) => (
+            {desktopPlatforms.map((platform) => (
               <article key={platform.name} className="flex flex-col items-center bg-white dark:bg-warm-gray-700 p-6 rounded-2xl border border-warm-gray-100 dark:border-warm-gray-600">
                 <platform.icon className="w-10 h-10 mb-3 text-sage-800 dark:text-sage-200" aria-hidden="true" />
                 <h4 className="text-xl font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-4">{platform.name}</h4>
-                <a href="https://github.com/tinkertanker/classroom-widgets/releases/latest" target="_blank" rel="noopener noreferrer" className="inline-flex w-full justify-center items-center gap-2 px-3 py-3 bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-full transition-colors text-sm font-medium">
+                <a href={`${serverUrl}/api/downloads/${platform.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex w-full justify-center items-center gap-2 px-3 py-3 bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-full transition-colors text-sm font-medium">
                   Download for {platform.name} <FaArrowDown className="text-xs shrink-0" aria-hidden="true" />
                 </a>
                 <p className="text-xs text-warm-gray-600 dark:text-warm-gray-400 mt-3">{platform.requirements}</p>

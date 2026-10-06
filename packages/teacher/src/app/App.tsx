@@ -15,6 +15,8 @@ import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
 import TopControls from '../features/hud/components/TopControls';
 import NarrowModeExitButton from '../features/hud/components/NarrowModeExitButton';
+import DesktopDownloadButton from '../features/hud/components/DesktopDownloadButton';
+import { isNativeDesktop } from '@shared/utils/nativeBridge';
 import { CanvasWidgetList, ColumnWidgetList } from '../features/board/components/WidgetList';
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '@shared/components/SmallScreenWarning';
@@ -685,12 +687,14 @@ function App() {
             {getReleaseLabel()}
           </a>
 
-          {/* Layout toggle - shows whenever in column mode (escape hatch to canvas) or on narrow screens */}
-          <NarrowModeExitButton
-            isNarrowScreen={isNarrowScreen}
-            layoutFormat={layoutFormat}
-            onToggleLayout={handleToggleLayoutNarrow}
-          />
+          {/* Web download shortcut; native apps retain their layout escape hatch. */}
+          {isNativeDesktop() ? (
+            <NarrowModeExitButton
+              isNarrowScreen={isNarrowScreen}
+              layoutFormat={layoutFormat}
+              onToggleLayout={handleToggleLayoutNarrow}
+            />
+          ) : <DesktopDownloadButton />}
           </>
           )}
 

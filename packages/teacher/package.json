@@ -15,6 +15,7 @@
     "e2e:activity-state": "node e2e/activityState.mjs",
     "e2e:activity-history": "node e2e/activityHistory.mjs",
     "e2e:feedback-delivery": "node e2e/feedbackDelivery.mjs",
+    "e2e:desktop-downloads": "node e2e/desktopDownloads.mjs",
     "e2e:widget-loading": "vite build --manifest && node e2e/widgetLoading.mjs",
     "preview": "vite preview"
   },
