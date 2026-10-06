@@ -228,3 +228,25 @@ test('the previous period is the same length, just before the range, and only wh
   assert.equal((await log.summarise({ days: 20 })).previous, null);
   assert.notEqual((await log.summarise({ days: 15 })).previous, null);
 });
+
+// The recent-events feed can fail by:
+// - growing without bound
+// - leaking device or visit IDs to the dashboard
+// - disappearing when history logging is off (it is in memory only)
+test('recent events are newest first, capped, and carry no IDs', () => {
+  let now = Date.parse('2026-10-06T02:00:00Z');
+  const log = new UsageLog({ dir: '', now: () => now, recentLimit: 3 });
+  log.record({ e: 'app_open', c: CLIENT, v: VISIT, s: 'desktop' });
+  now += 1000;
+  log.record({ e: 'widget_add', c: CLIENT, v: VISIT, w: 'POLL', s: 'web' });
+  now += 1000;
+  log.record({ e: 'session_start' });
+  now += 1000;
+  log.record({ e: 'student_join' });
+
+  assert.deepEqual(log.recent(), [
+    { t: now, e: 'student_join' },
+    { t: now - 1000, e: 'session_start' },
+    { t: now - 2000, e: 'widget_add', w: 'POLL', s: 'web' }
+  ]);
+});

@@ -22,7 +22,7 @@ const { logger } = require('./utils/logger');
 const SessionManager = require('./services/SessionManager');
 const { usageLog } = require('./services/usageLog');
 const { createAdminAuth } = require('./services/adminAuth');
-const { getLiveStats } = require('./services/liveStats');
+const { getLiveStats, LiveHistory } = require('./services/liveStats');
 
 // Import socket manager
 const { setupSocketHandlers } = require('./sockets/socketManager');
@@ -58,6 +58,8 @@ class AppServer {
     this.server = http.createServer(this.app);
     this.io = null;
     this.sessionManager = new SessionManager();
+    this.liveHistory = new LiveHistory();
+    this.liveSampleHandle = null;
     
     // Setup global error handlers
     setupGlobalErrorHandlers();
@@ -110,7 +112,7 @@ class AppServer {
       adminAuth: createAdminAuth(),
       usageLog,
       // Socket.IO is configured after middleware, so look it up per request.
-      getLiveStats: () => getLiveStats(this.io, this.sessionManager),
+      getLiveStats: () => this.getLiveStats(),
       secureCookies: serverConfig.IS_PRODUCTION
     }));
 
@@ -152,6 +154,10 @@ class AppServer {
         next();
       });
     }
+  }
+
+  getLiveStats() {
+    return getLiveStats(this.io, this.sessionManager, { history: this.liveHistory, usageLog });
   }
 
   /**
@@ -218,6 +224,9 @@ class AppServer {
       this.configureSocketIO();
       this.configureRoutes();
       usageLog.startPruning();
+      // Sample the live figures every minute for the dashboard's last-hour trend.
+      this.liveSampleHandle = setInterval(() => this.getLiveStats(), 60_000);
+      this.liveSampleHandle.unref();
 
       // Start listening
       const port = serverConfig.PORT;
@@ -265,6 +274,7 @@ class AppServer {
         }
         stopRateLimiterCleanup();
         usageLog.stopPruning();
+        clearInterval(this.liveSampleHandle);
         await usageLog.flush();
 
         // Stop accepting new connections

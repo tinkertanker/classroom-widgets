@@ -86,7 +86,7 @@ function addEvent(day, event) {
  * directory is configured (USAGE_LOG_DIR).
  */
 class UsageLog {
-  constructor({ dir, timeZone = 'UTC', retentionDays = 400, now = Date.now } = {}) {
+  constructor({ dir, timeZone = 'UTC', retentionDays = 400, now = Date.now, recentLimit = 25 } = {}) {
     this.dir = dir || null;
     this.enabled = Boolean(this.dir);
     this.retentionDays = Math.max(1, Math.floor(retentionDays) || 400);
@@ -108,6 +108,10 @@ class UsageLog {
     this.dirReady = null;
     this.pastDays = new Map();
     this.pruneHandle = null;
+    // A short in-memory feed for the dashboard's live view, kept even when
+    // the log itself is off. It holds no device or visit IDs.
+    this.recentLimit = recentLimit;
+    this.recentEvents = [];
   }
 
   dayKey(timestamp) {
@@ -127,10 +131,18 @@ class UsageLog {
     return this.dirReady;
   }
 
+  /** Newest first. */
+  recent() {
+    return this.recentEvents.slice().reverse();
+  }
+
   /** Queue an event for writing. Never throws; failures are logged. */
   record(event) {
-    if (!this.enabled) return;
     const t = this.now();
+    const { e, w, s } = event;
+    this.recentEvents.push({ t, e, ...(w ? { w } : {}), ...(s ? { s } : {}) });
+    if (this.recentEvents.length > this.recentLimit) this.recentEvents.shift();
+    if (!this.enabled) return;
     const line = `${JSON.stringify({ t, ...event })}\n`;
     const file = this.fileFor(this.dayKey(t));
     this.writeChain = this.writeChain

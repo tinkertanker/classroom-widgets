@@ -5,7 +5,7 @@
  * A teacher is "online" while a socket that reported app_open (see
  * usageHandler) is connected; several tabs on one device count once.
  */
-function getLiveStats(io, sessionManager) {
+function getLiveStats(io, sessionManager, { history, usageLog } = {}) {
   const teacherDevices = new Set();
   let teacherApps = 0;
   if (io) {
@@ -28,7 +28,7 @@ function getLiveStats(io, sessionManager) {
     }
   }
 
-  return {
+  const stats = {
     at: Date.now(),
     teachersOnline: teacherDevices.size,
     teacherApps,
@@ -40,6 +40,50 @@ function getLiveStats(io, sessionManager) {
       .sort((a, b) => b.count - a.count || a.roomType.localeCompare(b.roomType)),
     uptimeSeconds: Math.round(process.uptime())
   };
+  if (history) {
+    history.sample(stats);
+    stats.lastHour = history.points();
+  }
+  if (usageLog) stats.recent = usageLog.recent();
+  return stats;
 }
 
-module.exports = { getLiveStats };
+const MINUTE_MS = 60_000;
+
+/**
+ * Per-minute samples of the live figures for the last hour, in memory, so
+ * the dashboard can show a short trend. Each minute keeps the most seen at
+ * once during it, so a short visit still shows. Lost on restart, which is
+ * fine for a "right now" view.
+ */
+class LiveHistory {
+  constructor({ minutes = 60, now = Date.now } = {}) {
+    this.minutes = minutes;
+    this.now = now;
+    this.samples = [];
+  }
+
+  sample({ teachersOnline, studentsConnected }) {
+    const t = Math.floor(this.now() / MINUTE_MS) * MINUTE_MS;
+    const current = this.samples.at(-1);
+    if (current?.t === t) {
+      current.teachersOnline = Math.max(current.teachersOnline, teachersOnline);
+      current.studentsConnected = Math.max(current.studentsConnected, studentsConnected);
+    } else {
+      this.samples.push({ t, teachersOnline, studentsConnected });
+    }
+    this.drop();
+  }
+
+  points() {
+    this.drop();
+    return this.samples.slice();
+  }
+
+  drop() {
+    const oldest = Math.floor(this.now() / MINUTE_MS) * MINUTE_MS - (this.minutes - 1) * MINUTE_MS;
+    while (this.samples.length && this.samples[0].t < oldest) this.samples.shift();
+  }
+}
+
+module.exports = { getLiveStats, LiveHistory };

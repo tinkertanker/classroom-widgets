@@ -6,9 +6,11 @@
 // device B opens the app and adds a Timer. Then an admin opens <server>/admin,
 // is refused with a wrong token, signs in with ADMIN_TOKEN, and must see
 // 2 devices, 3 visits, 1 session, 1 student join, Timer added twice on two
-// devices and Poll once. The live panel must show 2 teachers online, 1 live
-// session, 1 student and 1 Poll, then drop to 1 teacher by itself (no reload)
-// when device B closes the app. The raw log must hold no student name. Google
+// devices and Poll once, with metric tabs switching the chart. The live panel
+// must read "2 teachers ... 1 live session with 1 student" with a Poll running,
+// list the recent activity without names, drop to 1 teacher by itself (no
+// reload) when device B closes the app, and draw the last-hour trend once a
+// second minute is sampled. The raw log must hold no student name. Google
 // sign-in needs a real Google account, so it is covered by the server's
 // route tests rather than here. From the repository root:
 //
@@ -125,54 +127,60 @@ try {
 
   await admin.getByPlaceholder('ADMIN_TOKEN').fill(ADMIN_TOKEN);
   await admin.getByRole('button', { name: 'Sign in' }).click();
-  await admin.getByRole('heading', { name: 'Classroom Widgets usage' }).waitFor();
-  await admin.locator('#tiles .tile').first().waitFor();
+  await admin.locator('.metric[data-metric]').first().waitFor();
 
-  const tiles = Object.fromEntries(await admin.locator('#tiles .tile').evaluateAll((nodes) =>
-    nodes.map((node) => [node.querySelector('.label').textContent, node.querySelector('.value').textContent])));
-  step(`dashboard tiles ${JSON.stringify(tiles)}`);
-  assert.deepEqual(tiles, {
-    'Unique devices': '2',
-    Visits: '3',
-    'Classroom sessions': '1',
-    'Student joins': '1',
-    'Widgets added': '3'
-  });
+  const metrics = Object.fromEntries(await admin.locator('.metric[data-metric]').evaluateAll((nodes) =>
+    nodes.map((node) => [node.querySelector('.metric-label').textContent, node.querySelector('.metric-value').textContent])));
+  step(`history metrics ${JSON.stringify(metrics)}`);
+  assert.deepEqual(metrics, { Devices: '2', Visits: '3', Sessions: '1', 'Student joins': '1', 'Widgets added': '3' });
 
-  const liveTiles = () => admin.locator('#liveTiles .tile').evaluateAll((nodes) =>
-    Object.fromEntries(nodes.map((node) => [node.querySelector('.label').textContent, node.querySelector('.value').textContent])));
-  const live = await liveTiles();
-  step(`live tiles ${JSON.stringify(live)}; ${await admin.locator('#liveRooms').textContent()}`);
-  assert.deepEqual(live, {
-    'Teachers online': '2',
-    'Live sessions': '1',
-    'Students connected': '1',
-    'Live widgets': '1'
-  });
-  assert.equal(await admin.locator('#liveRooms').textContent(), 'Running now: Poll 1');
-  step('PASS live panel shows 2 teachers online, 1 live session, 1 student, Poll running');
+  const liveFigures = () => admin.locator('[data-live]').evaluateAll((nodes) =>
+    Object.fromEntries(nodes.map((node) => [node.dataset.live, node.textContent])));
+  const live = await liveFigures();
+  const sentence = await admin.locator('#liveSentence').textContent();
+  step(`live sentence "${sentence}"; rooms "${await admin.locator('#liveRooms').textContent()}"`);
+  assert.deepEqual(live, { teachersOnline: '2 teachers', activeSessions: '1 live session', studentsConnected: '1 student' });
+  assert.equal(sentence, '2 teachers have Classroom Widgets open, running 1 live session with 1 student.');
+  assert.equal(await admin.locator('#liveRooms [data-room="poll"]').textContent(), 'Poll1');
+  step('PASS live panel says 2 teachers, 1 live session, 1 student, with a Poll running');
 
-  const widgetRows = await admin.locator('#widgetTable tr').evaluateAll((rows) =>
-    rows.map((row) => Array.from(row.querySelectorAll('td'), (td) => td.textContent).filter(Boolean)));
-  step(`dashboard widget rows ${JSON.stringify(widgetRows)}`);
-  assert.deepEqual(widgetRows, [['Timer', '2', '2'], ['Poll', '1', '1']]);
+  const feed = await admin.locator('#feed li[data-event]').evaluateAll((items) =>
+    items.map((item) => item.querySelector('.feed-text').textContent));
+  step(`activity feed ${JSON.stringify(feed)}`);
+  assert.ok(feed.includes('Timer added to a board'), 'feed shows the latest Timer add');
+  assert.ok(feed.includes('A student joined a session'), 'feed shows the student join');
+  assert.ok(feed.includes('A class started a session'), 'feed shows the session start');
+  assert.ok(!feed.join(' ').includes('Ada'), 'feed shows no student name');
+  step('PASS activity feed lists the widget adds, session start and student join, with no names');
+
+  const widgetRows = await admin.locator('#widgetList li').evaluateAll((rows) => rows.map((row) => [
+    row.querySelector('.w-name').textContent, row.querySelector('.w-adds').textContent, row.querySelector('.w-devices').textContent]));
+  step(`widget ranking ${JSON.stringify(widgetRows)}`);
+  assert.deepEqual(widgetRows, [['Timer', '2', ' · 2 devices'], ['Poll', '1', ' · 1 device']]);
   assert.equal(await admin.locator('#chartSvg path.bar[d^="M"]').count(), 1);
+  await admin.locator('.metric[data-metric="widgetAdds"]').click();
+  assert.equal(await admin.locator('.metric[aria-selected="true"]').getAttribute('data-metric'), 'widgetAdds');
+  assert.match(await admin.locator('#chartTitle').textContent(), /^Widgets added per day/);
+  await admin.locator('.metric[data-metric="uniqueClients"]').click();
   await admin.screenshot({ path: join(evidence, '3-dashboard.png'), fullPage: true });
-  step('PASS dashboard shows 2 devices, 3 visits, 1 session, 1 join; Timer 2 on 2 devices, Poll 1');
+  step('PASS history shows Timer 2 on 2 devices and Poll 1; clicking a metric switches the chart');
 
   // Device B closes the app; the open dashboard must notice without a reload.
   const updatedBefore = await admin.locator('#liveUpdated').textContent();
   await deviceB.close();
   const started = Date.now();
-  await admin.waitForFunction(() => {
-    const tile = Array.from(document.querySelectorAll('#liveTiles .tile'))
-      .find((node) => node.querySelector('.label').textContent === 'Teachers online');
-    return tile?.querySelector('.value').textContent === '1';
-  }, null, { timeout: 25_000 });
+  await admin.waitForFunction(() =>
+    document.querySelector('[data-live="teachersOnline"]')?.textContent === '1 teacher', null, { timeout: 25_000 });
   const updatedAfter = await admin.locator('#liveUpdated').textContent();
   assert.notEqual(updatedAfter, updatedBefore);
+  step(`PASS live panel dropped to 1 teacher by itself after ${Math.round((Date.now() - started) / 1000)}s ("${updatedBefore}" -> "${updatedAfter}")`);
+
+  // The last-hour trend needs samples from two different minutes.
+  await admin.waitForFunction(() => document.querySelector('#pulseSvg path.line'), null, { timeout: 80_000 });
+  const peak = await admin.locator('#pulsePeak').textContent();
+  assert.equal(peak, 'Peak 2');
   await admin.screenshot({ path: join(evidence, '3b-live-updated.png'), fullPage: true });
-  step(`PASS live panel dropped to 1 teacher online by itself after ${Math.round((Date.now() - started) / 1000)}s ("${updatedBefore}" -> "${updatedAfter}")`);
+  step(`PASS last-hour trend drawn once a second minute was sampled ("${peak}")`);
 
   await admin.emulateMedia({ colorScheme: 'dark' });
   await admin.screenshot({ path: join(evidence, '4-dashboard-dark.png'), fullPage: true });
