@@ -25,11 +25,13 @@ import { useWorkspace, useTheme, useBottomBar } from '@shared/hooks/useWorkspace
 import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
 import { useWidgets } from '@shared/hooks/useWidget';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
+import { isNativeDesktop } from '@shared/utils/nativeBridge';
 import { BackgroundType } from '@shared/types';
 import { dropdownContainer, zIndex } from '@shared/utils/styles';
 import { MenuItem, MenuDivider, MenuSectionHeader } from '../../../components/ui';
 import { useModal } from '../../../contexts/ModalContext';
 import LinkShortenerSettings from '../../../components/settings/LinkShortenerSettings';
+import { getReleaseLabel } from '../../../version';
 
 interface BottomBarMenuProps {
   onClose: () => void;
@@ -283,6 +285,14 @@ const BottomBarMenu: React.FC<BottomBarMenuProps> = ({ onClose, onToggleLayout }
         <FaCircleInfo className="mr-3 w-4 h-4 flex-shrink-0" />
         <span className="flex-1 text-left">About</span>
       </a>
+      {!isNativeDesktop() && (
+        <>
+          <MenuDivider />
+          <p className="px-4 py-1 text-xs text-warm-gray-500 dark:text-warm-gray-400 select-text">
+            {getReleaseLabel()}
+          </p>
+        </>
+      )}
     </div>
   );
 };

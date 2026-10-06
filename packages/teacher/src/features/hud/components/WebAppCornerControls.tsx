@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FaDownload, FaArrowDown } from 'react-icons/fa6';
+import { FaDownload, FaArrowDown, FaCircleInfo } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { dropdownContainer, hudContainer, zIndex } from '@shared/utils/styles';
 import { desktopPlatforms } from '../../../desktopDownloads';
 import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
-const DesktopDownloadButton: React.FC = () => {
+const cornerPosition = clsx('fixed bottom-2 max-[1280px]:bottom-28 pointer-events-auto text-warm-gray-800 dark:text-warm-gray-100', zIndex.hud);
+const cornerButton = clsx(hudContainer.button, 'gap-2 px-3 text-sm font-medium transition-opacity duration-200 hover:opacity-100 focus-visible:opacity-100');
+
+const WebAppCornerControls: React.FC = () => {
   const serverUrl = useWorkspaceUiStore(state => state.serverStatus.url);
   const [isOpen, setIsOpen] = useState(false);
   const controlRef = useRef<HTMLDivElement>(null);
@@ -33,10 +36,19 @@ const DesktopDownloadButton: React.FC = () => {
   }, [isOpen]);
 
   return (
+    <>
+    <a
+      href="/about"
+      data-dashboard-chrome="true"
+      className={clsx(cornerPosition, cornerButton, 'left-2 opacity-40')}
+    >
+      <FaCircleInfo aria-hidden="true" />
+      About
+    </a>
     <div
       ref={controlRef}
       data-dashboard-chrome="true"
-      className={clsx('fixed bottom-2 max-[1280px]:bottom-28 max-[540px]:bottom-20 right-2 pointer-events-auto text-warm-gray-800 dark:text-warm-gray-100', zIndex.hud)}
+      className={clsx(cornerPosition, 'right-2')}
       onBlur={event => {
         if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
       }}
@@ -49,8 +61,7 @@ const DesktopDownloadButton: React.FC = () => {
         aria-controls="desktop-downloads"
         onClick={() => setIsOpen(open => !open)}
         className={clsx(
-          hudContainer.button,
-          'gap-2 px-3 text-sm font-medium transition-opacity duration-200 hover:opacity-100 focus-visible:opacity-100',
+          cornerButton,
           isOpen ? 'opacity-100' : 'opacity-40'
         )}
       >
@@ -86,7 +97,8 @@ const DesktopDownloadButton: React.FC = () => {
         </section>
       )}
     </div>
+    </>
   );
 };
 
-export default DesktopDownloadButton;
+export default WebAppCornerControls;

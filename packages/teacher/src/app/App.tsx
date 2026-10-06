@@ -15,7 +15,7 @@ import ColumnBoard from '../features/board/components/ColumnBoard';
 import BottomBar from '../features/hud/components';
 import TopControls from '../features/hud/components/TopControls';
 import NarrowModeExitButton from '../features/hud/components/NarrowModeExitButton';
-import DesktopDownloadButton from '../features/hud/components/DesktopDownloadButton';
+import WebAppCornerControls from '../features/hud/components/WebAppCornerControls';
 import { isNativeDesktop } from '@shared/utils/nativeBridge';
 import { CanvasWidgetList, ColumnWidgetList } from '../features/board/components/WidgetList';
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
@@ -682,19 +682,19 @@ function App() {
             <BottomBar onToggleLayout={handleToggleLayoutNarrow} />
           </div>
 
-          {/* Version label */}
-          <a href="/about" data-dashboard-chrome="true" className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 hover:opacity-100 select-none z-10 transition-opacity">
-            {getReleaseLabel()}
-          </a>
-
-          {/* Web download shortcut; native apps retain their layout escape hatch. */}
+          {/* Web corner shortcuts are desktop-only; native chrome stays unchanged. */}
           {isNativeDesktop() ? (
+            <>
+            <a href="/about" data-dashboard-chrome="true" className="fixed bottom-2 left-2 text-xs text-warm-gray-400 dark:text-warm-gray-600 opacity-50 hover:opacity-100 select-none z-10 transition-opacity">
+              {getReleaseLabel()}
+            </a>
             <NarrowModeExitButton
               isNarrowScreen={isNarrowScreen}
               layoutFormat={layoutFormat}
               onToggleLayout={handleToggleLayoutNarrow}
             />
-          ) : <DesktopDownloadButton />}
+            </>
+          ) : !isNarrowScreen && <WebAppCornerControls />}
           </>
           )}
 
