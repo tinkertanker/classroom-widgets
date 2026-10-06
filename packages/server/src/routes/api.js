@@ -5,6 +5,7 @@ const { ipMissRateLimit } = require('../middleware/rateLimit');
 const serverConfig = require('../config/server.config');
 const voiceCommandRoutes = require('./voiceCommand');
 const { createShortenRouter } = require('./shorten');
+const { createDownloadsRouter } = require('./downloads');
 const { isValidAdminToken } = require('../utils/adminToken');
 
 /**
@@ -74,6 +75,7 @@ module.exports = (sessionManager) => {
    */
   router.use('/voice-command', voiceCommandRoutes);
   router.use('/shorten', createShortenRouter());
+  router.use('/downloads', createDownloadsRouter());
 
   return router;
 };
