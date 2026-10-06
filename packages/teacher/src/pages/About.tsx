@@ -228,7 +228,7 @@ const About: React.FC = () => {
               <article key={platform.name} className="flex flex-col items-center bg-white dark:bg-warm-gray-700 p-6 rounded-2xl border border-warm-gray-100 dark:border-warm-gray-600">
                 <platform.icon className="w-10 h-10 mb-3 text-sage-800 dark:text-sage-200" aria-hidden="true" />
                 <h4 className="text-xl font-semibold text-warm-gray-900 dark:text-warm-gray-100 mb-4">{platform.name}</h4>
-                <a href={`${serverUrl}/api/downloads/${platform.id}`} className="inline-flex w-full justify-center items-center gap-2 px-3 py-3 bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-full transition-colors text-sm font-medium">
+                <a href={`${serverUrl}/api/downloads/${platform.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex w-full justify-center items-center gap-2 px-3 py-3 bg-terracotta-600 hover:bg-terracotta-700 text-white rounded-full transition-colors text-sm font-medium">
                   Download for {platform.name} <FaArrowDown className="text-xs shrink-0" aria-hidden="true" />
                 </a>
                 <p className="text-xs text-warm-gray-600 dark:text-warm-gray-400 mt-3">{platform.requirements}</p>

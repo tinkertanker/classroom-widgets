@@ -36,7 +36,7 @@ const DesktopDownloadButton: React.FC = () => {
     <div
       ref={controlRef}
       data-dashboard-chrome="true"
-      className={clsx('fixed bottom-2 max-[768px]:bottom-20 right-2 pointer-events-auto text-warm-gray-800 dark:text-warm-gray-100', zIndex.hud)}
+      className={clsx('fixed bottom-2 max-[1280px]:bottom-28 max-[540px]:bottom-20 right-2 pointer-events-auto text-warm-gray-800 dark:text-warm-gray-100', zIndex.hud)}
       onBlur={event => {
         if (!event.currentTarget.contains(event.relatedTarget)) setIsOpen(false);
       }}
@@ -60,6 +60,7 @@ const DesktopDownloadButton: React.FC = () => {
       {isOpen && (
         <section
           id="desktop-downloads"
+          tabIndex={-1}
           aria-label="Download desktop apps"
           className={clsx('absolute bottom-full right-0 mb-2 w-72 max-w-[calc(100vw-1rem)] p-3', dropdownContainer, zIndex.hudDropdown)}
         >
@@ -69,6 +70,8 @@ const DesktopDownloadButton: React.FC = () => {
             <a
               key={platform.id}
               href={`${serverUrl}/api/downloads/${platform.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-3 rounded-lg px-3 py-3 hover:bg-sage-100 dark:hover:bg-warm-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sage-500"
             >

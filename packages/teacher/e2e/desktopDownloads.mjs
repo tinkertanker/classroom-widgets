@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import { createStepLog, newTeacherContext, prepareEvidence, startStack } from './harness.mjs';
 
-const evidence = prepareEvidence('desktop-downloads', ['downloads.txt', 'download-idle.png', 'download-hover.png', 'download-popup.png', 'download-narrow-dark.png', 'homepage-downloads.png']);
+const evidence = prepareEvidence('desktop-downloads', ['downloads.txt', 'download-idle.png', 'download-hover.png', 'download-popup.png', 'download-tablet.png', 'download-narrow-dark.png', 'homepage-downloads.png']);
 const { step, write } = createStepLog(join(evidence, 'downloads.txt'));
 const platforms = [
   ['Windows', 'windows', 'windows-x64-setup.exe'],
@@ -24,6 +24,21 @@ try {
   await page.goto(stack.teacherUrl);
   const trigger = page.getByRole('button', { name: 'Download desktop apps', exact: true });
   await trigger.waitFor();
+  for (const width of [800, 1000, 1100]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByTitle('Menu', { exact: true }).hover();
+    await page.waitForTimeout(350);
+    const buttonBounds = await trigger.boundingBox();
+    const toolbarBounds = await page.locator('.toolbar-content').boundingBox();
+    const overlaps = buttonBounds.x < toolbarBounds.x + toolbarBounds.width
+      && buttonBounds.x + buttonBounds.width > toolbarBounds.x
+      && buttonBounds.y < toolbarBounds.y + toolbarBounds.height
+      && buttonBounds.y + buttonBounds.height > toolbarBounds.y;
+    step(`Toolbar at ${width}px: button=${JSON.stringify(buttonBounds)}, toolbar=${JSON.stringify(toolbarBounds)}`);
+    assert.equal(overlaps, false, `Download must not overlap the toolbar at ${width}px`);
+  }
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.mouse.move(200, 100);
   const idleOpacity = await trigger.evaluate(element => Number(getComputedStyle(element).opacity));
   assert.ok(idleOpacity > 0 && idleOpacity < 0.5, 'Download is subtly visible by default');
   const corner = { x: 1050, y: 760, width: 350, height: 140 };
@@ -42,11 +57,15 @@ try {
   await popup.getByRole('link').first().focus();
   await page.mouse.move(200, 100);
   await page.waitForFunction(() => getComputedStyle(document.querySelector('[aria-controls="desktop-downloads"]')).opacity === '1');
+  await popup.getByRole('heading', { name: 'Get the desktop app' }).click();
+  assert.equal(await popup.count(), 1, 'clicking popup text must not dismiss it');
   assert.equal(await trigger.getAttribute('aria-expanded'), 'true');
   for (const [name, platform, suffix] of platforms) {
     const link = popup.getByRole('link', { name: new RegExp(name) });
     const href = await link.getAttribute('href');
     assert.equal(href, `${stack.serverUrl}/api/downloads/${platform}`);
+    assert.equal(await link.getAttribute('target'), '_blank', 'download errors must not replace the teaching board');
+    assert.equal(await link.getAttribute('rel'), 'noopener noreferrer');
     // Exercise the actual server and GitHub metadata without fetching installers.
     const response = await fetch(href, { redirect: 'manual' });
     assert.equal(response.status, 302);
@@ -67,6 +86,12 @@ try {
   assert.equal(await popup.count(), 0);
   step('PASS: keyboard opening, tabbable downloads, Escape/focus restoration and outside-click dismissal');
 
+  await page.setViewportSize({ width: 800, height: 900 });
+  await trigger.click();
+  await popup.waitFor();
+  await page.screenshot({ path: join(evidence, 'download-tablet.png') });
+  await page.keyboard.press('Escape');
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => document.documentElement.classList.add('dark'));
   await trigger.click();
@@ -85,6 +110,7 @@ try {
   for (const [name, platform] of platforms) {
     const link = page.getByRole('link', { name: `Download for ${name}`, exact: true });
     assert.equal(await link.getAttribute('href'), `${stack.serverUrl}/api/downloads/${platform}`);
+    assert.equal(await link.getAttribute('target'), '_blank');
   }
   await page.locator('#desktop').scrollIntoViewIfNeeded();
   await page.screenshot({ path: join(evidence, 'homepage-downloads.png') });
