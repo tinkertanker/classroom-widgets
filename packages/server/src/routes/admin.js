@@ -6,6 +6,8 @@ const { isValidAdminToken } = require('../utils/adminToken');
 const { SESSION_COOKIE } = require('../services/adminAuth');
 
 const DASHBOARD_PAGE = path.join(__dirname, '..', 'admin', 'dashboard.html');
+// The app icon, shared with the student app.
+const LOGO = path.join(__dirname, '..', '..', 'public', 'favicon.svg');
 
 const bearerToken = (req) => {
   const header = req.headers.authorization;
@@ -92,6 +94,11 @@ function createAdminRouter({
       'Referrer-Policy': 'strict-origin-when-cross-origin'
     });
     res.sendFile(DASHBOARD_PAGE);
+  });
+
+  router.get('/logo.svg', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.sendFile(LOGO);
   });
 
   router.get('/session', (req, res) => {

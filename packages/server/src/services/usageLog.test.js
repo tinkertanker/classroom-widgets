@@ -197,3 +197,34 @@ test('a write failure is logged, not thrown', async (t) => {
   assert.doesNotThrow(() => log.record({ e: 'app_open', c: CLIENT, v: VISIT }));
   await assert.doesNotReject(log.flush());
 });
+
+// Comparing with the previous period can fail by:
+// - letting the previous window overlap the current one
+// - reporting a previous window that runs past the retention limit as if complete
+test('the previous period is the same length, just before the range, and only when retained', async (t) => {
+  const dir = tempDir(t);
+  const clock = { now: Date.parse('2026-10-01T02:00:00Z') };
+  const log = createLog(dir, clock);
+  const other = '7d3a1c9e-0000-4000-8000-000000000001';
+
+  log.record({ e: 'app_open', c: CLIENT, v: VISIT });          // 1 Oct: previous window
+  log.record({ e: 'session_start' });
+  clock.now = Date.parse('2026-10-03T02:00:00Z');
+  log.record({ e: 'app_open', c: CLIENT, v: 'visit-two-00000000' }); // 3 Oct: previous window
+  clock.now = Date.parse('2026-10-04T02:00:00Z');
+  log.record({ e: 'app_open', c: other, v: 'visit-three-000000' }); // 4 Oct: current window
+  clock.now = Date.parse('2026-10-06T02:00:00Z');
+
+  const summary = await log.summarise({ days: 3 });
+  assert.equal(summary.from, '2026-10-04');
+  assert.deepEqual(summary.previous.from, '2026-10-01');
+  assert.deepEqual(summary.previous.to, '2026-10-03');
+  assert.equal(summary.previous.totals.appOpens, 2);
+  assert.equal(summary.previous.totals.uniqueClients, 1);
+  assert.equal(summary.previous.totals.sessions, 1);
+  assert.equal(summary.totals.appOpens, 1);
+
+  // 30-day retention cannot cover two 20-day windows.
+  assert.equal((await log.summarise({ days: 20 })).previous, null);
+  assert.notEqual((await log.summarise({ days: 15 })).previous, null);
+});

@@ -187,20 +187,45 @@ class UsageLog {
     if (!this.enabled) return base;
 
     await this.flush();
-    const dayKeys = Array.from({ length: span }, (_, i) => shiftDay(from, i));
-    const dayData = [];
-    for (const key of dayKeys) {
-      dayData.push(await this.getDay(key, today));
+    const current = await this.aggregate(from, span, today);
+    // The equal-length window just before this one, for comparison, but only
+    // when retention still covers all of it.
+    const previousFrom = shiftDay(from, -span);
+    const previous = span * 2 <= this.retentionDays
+      ? { from: previousFrom, to: shiftDay(from, -1), totals: (await this.aggregate(previousFrom, span, today)).totals }
+      : null;
+
+    return {
+      ...base,
+      days: current.days.map(day => ({
+        date: day.date,
+        appOpens: day.appOpens,
+        visits: day.visits.size,
+        uniqueClients: day.clients.size,
+        widgetAdds: day.widgetAdds,
+        sessions: day.sessions,
+        studentJoins: day.studentJoins
+      })),
+      totals: current.totals,
+      widgets: current.widgets,
+      previous
+    };
+  }
+
+  async aggregate(from, span, today) {
+    const days = [];
+    for (let i = 0; i < span; i++) {
+      days.push(await this.getDay(shiftDay(from, i), today));
     }
 
     const clients = new Set();
     const visits = new Set();
     const surfaces = { web: new Set(), desktop: new Set() };
     const widgets = new Map();
-    const totals = { appOpens: 0, widgetAdds: 0, sessions: 0, studentJoins: 0 };
+    const counts = { appOpens: 0, widgetAdds: 0, sessions: 0, studentJoins: 0 };
 
-    for (const day of dayData) {
-      for (const key of Object.keys(totals)) totals[key] += day[key];
+    for (const day of days) {
+      for (const key of Object.keys(counts)) counts[key] += day[key];
       day.clients.forEach(c => clients.add(c));
       day.visits.forEach(v => visits.add(v));
       day.surfaces.web.forEach(c => surfaces.web.add(c));
@@ -214,25 +239,16 @@ class UsageLog {
     }
 
     return {
-      ...base,
-      days: dayData.map(day => ({
-        date: day.date,
-        appOpens: day.appOpens,
-        visits: day.visits.size,
-        uniqueClients: day.clients.size,
-        widgetAdds: day.widgetAdds,
-        sessions: day.sessions,
-        studentJoins: day.studentJoins
-      })),
+      days,
       totals: {
-        appOpens: totals.appOpens,
+        appOpens: counts.appOpens,
         visits: visits.size,
         uniqueClients: clients.size,
         webClients: surfaces.web.size,
         desktopClients: surfaces.desktop.size,
-        widgetAdds: totals.widgetAdds,
-        sessions: totals.sessions,
-        studentJoins: totals.studentJoins
+        widgetAdds: counts.widgetAdds,
+        sessions: counts.sessions,
+        studentJoins: counts.studentJoins
       },
       widgets: Array.from(widgets, ([widget, { adds, clients: widgetClients }]) => ({
         widget, adds, uniqueClients: widgetClients.size
