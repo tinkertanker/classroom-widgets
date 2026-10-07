@@ -36,9 +36,8 @@ const sameOriginOnly = (req, res, next) => {
  * Admin usage dashboard, served at /admin by the backend.
  *
  * GET  /admin              dashboard page
- * GET  /admin/session      sign-in state and which sign-in methods are on
- * POST /admin/auth/google  { credential } from Google Identity Services
- * POST /admin/auth/token   { token } matching ADMIN_TOKEN
+ * GET  /admin/session      sign-in state and whether a password is set
+ * POST /admin/auth/token   { token }, the password, matching ADMIN_TOKEN
  * POST /admin/auth/logout
  * GET  /admin/api/usage    ?days=N; session cookie or `Authorization: Bearer <ADMIN_TOKEN>`
  * GET  /admin/api/live     what is happening right now; same authorisation
@@ -87,12 +86,7 @@ function createAdminRouter({
   const limitFailedSignIns = ipMissRateLimit(loginRateLimit);
 
   router.get('/', (req, res) => {
-    res.set({
-      'Cache-Control': 'no-store',
-      // Google's sign-in popup needs to report back to this window.
-      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-      'Referrer-Policy': 'strict-origin-when-cross-origin'
-    });
+    res.set('Cache-Control', 'no-store');
     res.sendFile(DASHBOARD_PAGE);
   });
 
@@ -107,15 +101,10 @@ function createAdminRouter({
     res.json({
       authenticated: Boolean(admin),
       email: admin?.email || null,
-      googleClientId: adminAuth.googleClientId,
       tokenLoginEnabled: adminAuth.tokenLoginEnabled(),
       usageLoggingEnabled: usageLog.enabled
     });
   });
-
-  router.post('/auth/google', sameOriginOnly, limitFailedSignIns, asyncHandler(async (req, res) => {
-    signIn(req, res, await adminAuth.loginWithGoogle(req.body?.credential));
-  }));
 
   router.post('/auth/token', sameOriginOnly, limitFailedSignIns, (req, res) => {
     signIn(req, res, adminAuth.loginWithToken(req.body?.token));

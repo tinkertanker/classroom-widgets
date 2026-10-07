@@ -4,15 +4,14 @@
 // app. Teacher device A opens the app, adds a Timer and starts a Poll; a
 // student joins; A reloads (a second visit from the same device). Teacher
 // device B opens the app and adds a Timer. Then an admin opens <server>/admin,
-// is refused with a wrong token, signs in with ADMIN_TOKEN, and must see
+// is refused with a wrong password, signs in with the ADMIN_TOKEN password, and must see
 // 2 devices, 3 visits, 1 session, 1 student join, Timer added twice on two
 // devices and Poll once, with metric tabs switching the chart. The live panel
 // must read "2 teachers ... 1 live session with 1 student" with a Poll running,
 // list the recent activity without names, drop to 1 teacher by itself (no
 // reload) when device B closes the app, and draw the last-hour trend once a
-// second minute is sampled. The raw log must hold no student name. Google
-// sign-in needs a real Google account, so it is covered by the server's
-// route tests rather than here. From the repository root:
+// second minute is sampled. The raw log must hold no student name.
+// From the repository root:
 //
 //   pnpm --filter @classroom-widgets/teacher e2e:usage
 //
@@ -115,17 +114,17 @@ try {
   activePage = admin;
   admin.on('pageerror', (error) => step(`admin page error: ${error.message}`));
   await admin.goto(`${serverUrl}/admin`);
-  await admin.getByPlaceholder('ADMIN_TOKEN').waitFor();
+  await admin.getByPlaceholder('Password').waitFor();
   await admin.screenshot({ path: join(evidence, '1-sign-in.png') });
   step('PASS dashboard shows the sign-in form');
 
-  await admin.getByPlaceholder('ADMIN_TOKEN').fill('wrong-token');
+  await admin.getByPlaceholder('Password').fill('wrong-password');
   await admin.getByRole('button', { name: 'Sign in' }).click();
-  await admin.getByText('That token is not valid.').waitFor();
+  await admin.getByText('That password is not right.').waitFor();
   await admin.screenshot({ path: join(evidence, '2-wrong-token.png') });
-  step('PASS a wrong token is refused');
+  step('PASS a wrong password is refused');
 
-  await admin.getByPlaceholder('ADMIN_TOKEN').fill(ADMIN_TOKEN);
+  await admin.getByPlaceholder('Password').fill(ADMIN_TOKEN);
   await admin.getByRole('button', { name: 'Sign in' }).click();
   await admin.locator('.metric[data-metric]').first().waitFor();
 
@@ -192,7 +191,7 @@ try {
   step('PASS dark-mode and phone-width screenshots taken; no sideways scroll at 390px');
 
   await admin.getByRole('button', { name: 'Sign out' }).click();
-  await admin.getByPlaceholder('ADMIN_TOKEN').waitFor();
+  await admin.getByPlaceholder('Password').waitFor();
   step('PASS sign-out returns to the sign-in form');
 
   const files = readdirSync(usageDir);

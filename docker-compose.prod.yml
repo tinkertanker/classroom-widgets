@@ -50,11 +50,8 @@ services:
       - SHORTIO_API_KEY=${SHORTIO_API_KEY}
       - SHORTIO_DOMAIN=${SHORTIO_DOMAIN}
       - SHORTIO_BASE_URL=${SHORTIO_BASE_URL:-https://api.short.io/links/public}
+      # ADMIN_TOKEN is also the password for the usage dashboard at https://<BACKEND_DOMAIN>/admin (docs/USAGE_DASHBOARD.md)
       - ADMIN_TOKEN=${ADMIN_TOKEN}
-      # Admin usage dashboard at https://<BACKEND_DOMAIN>/admin (docs/USAGE_DASHBOARD.md)
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
-      - ADMIN_EMAIL_DOMAINS=${ADMIN_EMAIL_DOMAINS:-}
       - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:-}
       - USAGE_LOG_DIR=${USAGE_LOG_DIR:-/data/usage}
       - USAGE_TIMEZONE=${USAGE_TIMEZONE:-UTC}

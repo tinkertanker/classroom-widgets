@@ -15,24 +15,16 @@ const { UsageLog } = require('../services/usageLog');
 // - a failed sign-in still sets a cookie
 // - sign-in attempts can be guessed without limit
 // - another site can post a sign-in or sign-out on an admin's behalf
-// - the page's headers block the Google sign-in popup or let it be cached
+// - the page can be cached
 // - live figures are readable without signing in, or are cached
 
-async function startServer(t, { secureCookies = false, claims } = {}) {
+async function startServer(t, { secureCookies = false } = {}) {
   const previousToken = process.env.ADMIN_TOKEN;
   process.env.ADMIN_TOKEN = 'correct-admin-token';
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'admin-route-test-'));
 
   const adminAuth = createAdminAuth({
-    env: {
-      GOOGLE_CLIENT_ID: 'client-id.apps.googleusercontent.com',
-      ADMIN_EMAILS: 'admin@example.com',
-      ADMIN_SESSION_SECRET: 'route-test-secret'
-    },
-    verifyGoogleIdToken: async (credential) => {
-      if (credential !== 'good-credential') throw new Error('Invalid token');
-      return claims || { email: 'admin@example.com', email_verified: true };
-    }
+    env: { ADMIN_SESSION_SECRET: 'route-test-secret' }
   });
   const usageLog = new UsageLog({ dir, timeZone: 'UTC' });
   usageLog.record({ e: 'app_open', c: '0f8c2a52-2f38-4f6b-9d1e-3b7f2b9d6a10', v: 'b1f1c6f4-7f39-4a1e' });
@@ -86,12 +78,12 @@ test('usage data needs a session cookie or the admin bearer token', async (t) =>
   assert.equal(body.totals.appOpens, 1);
 });
 
-test('Google sign-in sets a locked-down cookie that unlocks usage data', async (t) => {
+test('password sign-in sets a locked-down cookie that unlocks usage data', async (t) => {
   const { base, post } = await startServer(t);
 
-  const response = await post('/auth/google', { credential: 'good-credential' });
+  const response = await post('/auth/token', { token: 'correct-admin-token' });
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { success: true, email: 'admin@example.com' });
+  assert.deepEqual(await response.json(), { success: true, email: 'admin-token' });
 
   const header = response.headers.get('set-cookie');
   assert.match(header, /HttpOnly/i);
@@ -105,7 +97,8 @@ test('Google sign-in sets a locked-down cookie that unlocks usage data', async (
 
   const session = await (await fetch(`${base}/session`, { headers: { Cookie: cookie } })).json();
   assert.equal(session.authenticated, true);
-  assert.equal(session.email, 'admin@example.com');
+  assert.equal(session.email, 'admin-token');
+  assert.equal(session.tokenLoginEnabled, true);
 });
 
 test('production cookies are Secure', async (t) => {
@@ -122,20 +115,13 @@ test('failed sign-ins set no cookie and are limited per client', async (t) => {
   assert.equal((await post('/auth/token', { token: 'correct-admin-token' })).status, 200);
 
   for (let i = 0; i < 3; i++) {
-    const response = await post(i % 2 ? '/auth/google' : '/auth/token', i % 2 ? { credential: 'bad' } : { token: 'wrong' });
+    const response = await post('/auth/token', { token: 'wrong' });
     assert.equal(response.status, 401);
     assert.equal(response.headers.get('set-cookie'), null);
   }
   const limited = await post('/auth/token', { token: 'correct-admin-token' });
   assert.equal(limited.status, 429);
   assert.equal(limited.headers.get('set-cookie'), null);
-});
-
-test('an unlisted Google account cannot sign in', async (t) => {
-  const { post } = await startServer(t, { claims: { email: 'intruder@example.com', email_verified: true } });
-  const response = await post('/auth/google', { credential: 'good-credential' });
-  assert.equal(response.status, 401);
-  assert.equal(response.headers.get('set-cookie'), null);
 });
 
 test('cross-site posts are refused', async (t) => {
@@ -153,12 +139,11 @@ test('sign-out clears the cookie', async (t) => {
   assert.match(response.headers.get('set-cookie'), /cw_admin=;.*(Max-Age=0|Expires=Thu, 01 Jan 1970)/i);
 });
 
-test('the dashboard page allows the Google popup and is never cached', async (t) => {
+test('the dashboard page is HTML and is never cached', async (t) => {
   const { base } = await startServer(t);
   const response = await fetch(`${base}/`);
   assert.equal(response.status, 200);
   assert.match(response.headers.get('content-type'), /text\/html/);
-  assert.equal(response.headers.get('cross-origin-opener-policy'), 'same-origin-allow-popups');
   assert.match(response.headers.get('cache-control'), /no-store/);
 });
 
