@@ -390,9 +390,17 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
   }, [restartTimer]);
 
   const handleQuickAdd = useCallback((deltaSeconds: number) => {
-    adjustTime(deltaSeconds);
+    const editedSeconds =
+      segmentEditor.timeValues[0] * 3600 +
+      segmentEditor.timeValues[1] * 60 +
+      segmentEditor.timeValues[2];
+    const nextTime = adjustTime(deltaSeconds, editedSeconds);
+    if (!isRunning && nextTime !== undefined) {
+      // The sum can equal the old countdown value, so its sync effect may not run.
+      segmentEditor.updateFromTime(nextTime);
+    }
     setQuickAddExpanded(false);
-  }, [adjustTime]);
+  }, [adjustTime, isRunning, segmentEditor.timeValues, segmentEditor.updateFromTime]);
 
   const handleTargetTimeToggle = useCallback(() => {
     setTargetTimeExpanded(prev => {
