@@ -968,7 +968,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func moveSelectedWidget(_ direction: MoveDirection) {
-        controller?.moveSelectedWidget(direction, workAreas: moveWorkAreas())
+        let workAreas = moveWorkAreas()
+        if let window = displayPreviewCoordinator.windowController?.window, window.isKeyWindow {
+            if let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: window.frame, workAreas: workAreas, direction: direction) {
+                // The native move callback persists the frame and revokes capture
+                // synchronously if Display now overlaps its source.
+                window.setFrame(moved, display: true)
+            }
+            return
+        }
+        controller?.moveSelectedWidget(direction, workAreas: workAreas)
     }
 
     private func shortcutModifiers() -> Int {
