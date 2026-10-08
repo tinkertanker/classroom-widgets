@@ -37,6 +37,7 @@ API_KEY_ID="${APPLE_API_KEY_ID:-}"
 API_ISSUER_ID="${APPLE_API_KEY_ISSUER_ID:-}"
 USE_DISTRIBUTION_SIGNING="${USE_DISTRIBUTION_SIGNING:-false}"
 USE_NOTARISATION="${USE_NOTARISATION:-false}"
+BUILD_ONLY="false"
 
 usage() {
   cat <<'EOF'
@@ -46,6 +47,7 @@ Usage:
 Options:
   --build <number>      CFBundleVersion value (default: timestamp)
   --output <path>       DMG output path
+  --build-only          Build an unsigned universal app; do not install or package it
   --distribution        Sign app and DMG with a Developer ID Application identity
   --notarise            Submit the signed DMG for notarisation and staple it
   --notarize            Alias for --notarise
@@ -59,6 +61,7 @@ Environment:
   .env.release.local is loaded automatically when present. Supported keys:
   APPLE_SIGNING_IDENTITY, APPLE_TEAM_ID, APPLE_API_KEY_PATH,
   APPLE_API_KEY_ID, APPLE_API_KEY_ISSUER_ID.
+  SWIFT_BUILD_JOBS limits native build concurrency (default: 2).
 EOF
 }
 
@@ -89,6 +92,10 @@ while [[ $# -gt 0 ]]; do
       [[ -n "${2:-}" ]] || { echo "--output requires a value" >&2; usage; exit 1; }
       DMG_PATH="$2"
       shift 2
+      ;;
+    --build-only)
+      BUILD_ONLY="true"
+      shift
       ;;
     --distribution|--release|--sign)
       USE_DISTRIBUTION_SIGNING="true"
@@ -138,7 +145,12 @@ done
 
 DMG_PATH="${DMG_PATH:-${ROOT_DIR}/dist/${PRODUCT_NAME}-v${VERSION}-macos.dmg}"
 
-if ! command -v create-dmg >/dev/null 2>&1; then
+if [ "${BUILD_ONLY}" = "true" ] && { [ "${USE_DISTRIBUTION_SIGNING}" = "true" ] || [ "${USE_NOTARISATION}" = "true" ]; }; then
+  echo "--build-only cannot be combined with signing or notarisation." >&2
+  exit 1
+fi
+
+if [ "${BUILD_ONLY}" = "false" ] && ! command -v create-dmg >/dev/null 2>&1; then
   echo "create-dmg not found. Install it with: brew install create-dmg" >&2
   exit 1
 fi
@@ -171,17 +183,23 @@ fi
 
 mkdir -p "${ROOT_DIR}/dist"
 trash_path "${APP_BUNDLE}"
-trash_path "${STAGING_DIR}"
-trash_path "${DMG_PATH}"
-trash_path "${ZIP_PATH}"
+if [ "${BUILD_ONLY}" = "false" ]; then
+  trash_path "${STAGING_DIR}"
+  trash_path "${DMG_PATH}"
+  trash_path "${ZIP_PATH}"
+fi
 
 echo "Building teacher web assets"
 pnpm --filter @classroom-widgets/teacher build:desktop
 
-echo "Building macOS executable"
-swift build --package-path "${MACOS_DIR}" -c release
+echo "Building universal macOS executable (Apple silicon and Intel)"
+SWIFT_BUILD_ARGS=(--package-path "${MACOS_DIR}" -c release --arch arm64 --arch x86_64 -j "${SWIFT_BUILD_JOBS:-2}")
+swift build "${SWIFT_BUILD_ARGS[@]}"
 
-EXECUTABLE="${MACOS_DIR}/.build/release/${PRODUCT_NAME}"
+EXECUTABLE="$(swift build "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)/${PRODUCT_NAME}"
+for architecture in arm64 x86_64; do
+  xcrun lipo "${EXECUTABLE}" -verify_arch "${architecture}"
+done
 mkdir -p "${APP_MACOS}" "${WEB_RESOURCES}"
 cp "${EXECUTABLE}" "${APP_MACOS}/${PRODUCT_NAME}"
 chmod +x "${APP_MACOS}/${PRODUCT_NAME}"
@@ -238,6 +256,11 @@ cat > "${APP_RESOURCES}/en.lproj/InfoPlist.strings" <<STRINGS
 "CFBundleDisplayName" = "${APP_NAME}";
 "CFBundleName" = "${APP_NAME}";
 STRINGS
+
+if [ "${BUILD_ONLY}" = "true" ]; then
+  echo "Built unsigned universal app (not installed): ${APP_BUNDLE}"
+  exit 0
+fi
 
 if [ "${USE_DISTRIBUTION_SIGNING}" = "true" ]; then
   echo "Signing app with ${SIGNING_IDENTITY}"
