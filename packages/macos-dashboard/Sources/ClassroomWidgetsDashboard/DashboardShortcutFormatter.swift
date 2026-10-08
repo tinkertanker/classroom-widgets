@@ -11,7 +11,7 @@ enum DashboardShortcutFormatter {
         return modifierSymbols(from: flags) + keyTitle(for: keyCode)
     }
 
-    static func keyEquivalent(for keyCode: Int) -> String? {
+    static func keyEquivalent(for keyCode: Int, layoutData: CFData? = currentLayoutData()) -> String? {
         guard keyCode != -1 else {
             return nil
         }
@@ -20,7 +20,8 @@ enum DashboardShortcutFormatter {
             return specialKey
         }
 
-        return keyCodeToUSKeyboardCharacter[keyCode]?.lowercased()
+        return (translatedCharacter(for: keyCode, layoutData: layoutData)
+            ?? keyCodeToUSKeyboardCharacter[keyCode])?.lowercased()
     }
 
     static func modifierFlags(from modifiers: Int) -> NSEvent.ModifierFlags {
@@ -36,12 +37,36 @@ enum DashboardShortcutFormatter {
         return symbols
     }
 
-    static func keyTitle(for keyCode: Int) -> String {
+    static func keyTitle(for keyCode: Int, layoutData: CFData? = currentLayoutData()) -> String {
         if let specialKey = specialKeys[keyCode] {
             return specialKey
         }
 
-        return keyCodeToUSKeyboardCharacter[keyCode] ?? "?"
+        return translatedCharacter(for: keyCode, layoutData: layoutData)?.uppercased()
+            ?? keyCodeToUSKeyboardCharacter[keyCode] ?? "?"
+    }
+
+    static func currentLayoutData() -> CFData? {
+        let source = TISCopyCurrentKeyboardLayoutInputSource().takeRetainedValue()
+        guard let pointer = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        return Unmanaged<CFData>.fromOpaque(pointer).takeUnretainedValue()
+    }
+
+    private static func translatedCharacter(for keyCode: Int, layoutData: CFData?) -> String? {
+        guard let key = UInt16(exactly: keyCode), let layoutData else { return nil }
+        return (layoutData as Data).withUnsafeBytes { bytes in
+            guard let layout = bytes.baseAddress?.assumingMemoryBound(to: UCKeyboardLayout.self) else { return nil }
+            var deadKeyState: UInt32 = 0
+            var length = 0
+            var characters = [UniChar](repeating: 0, count: 8)
+            let status = UCKeyTranslate(
+                layout, key, UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                OptionBits(kUCKeyTranslateNoDeadKeysMask), &deadKeyState,
+                characters.count, &length, &characters
+            )
+            guard status == noErr, length > 0 else { return nil }
+            return String(utf16CodeUnits: characters, count: length)
+        }
     }
 
     private static let specialKeys: [Int: String] = [
