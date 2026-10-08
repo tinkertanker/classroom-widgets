@@ -89,16 +89,13 @@ public sealed class WebViewRecoveryTests
             var healthyEnvironment = DashboardWebView.Environment;
             var blockedProfile = Path.Combine(DashboardSettings.DataDirectory, "profile-is-a-file");
             File.WriteAllText(blockedProfile, "not a directory");
-            async Task<CoreWebView2Environment> UnavailableEnvironment()
-                => await CoreWebView2Environment.CreateAsync(userDataFolder: blockedProfile);
-            var unavailable = UnavailableEnvironment();
-            WpfTestHost.PumpUntil(() => unavailable.IsCompleted, TimeSpan.FromSeconds(15), "actual SDK initialization failure");
-            Assert.True(unavailable.IsFaulted, "The SDK must reject a file as its profile directory.");
-            var failure = unavailable.Exception!.GetBaseException();
-            Assert.IsType<System.Runtime.InteropServices.COMException>(failure);
-            Log($"replacement initialization fixture: real SDK {failure.GetType().Name}, HRESULT=0x{failure.HResult:X8}, persistent={persistent}");
+            // Environment creation succeeds; controller initialization is the
+            // SDK operation that actually opens (and rejects) this profile.
+            var unavailable = CoreWebView2Environment.CreateAsync(userDataFolder: blockedProfile);
+            Complete(unavailable);
 
             var replacements = 0;
+            Exception? initializationFailure = null;
             var hostWindow = Field<Window>(host, "_hostWindow");
             var contentProperty = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
                 System.Windows.Controls.ContentControl.ContentProperty, typeof(Window));
@@ -106,6 +103,12 @@ public sealed class WebViewRecoveryTests
             {
                 replacements++;
                 Log($"replacement initialization: native host control replacement {replacements}");
+                View(host).CoreWebView2InitializationCompleted += (_, args) =>
+                {
+                    if (args.IsSuccess) return;
+                    initializationFailure = args.InitializationException;
+                    Log($"replacement initialization: real SDK {initializationFailure.GetType().Name}, HRESULT=0x{initializationFailure.HResult:X8}, persistent={persistent}");
+                };
             };
             contentProperty.AddValueChanged(hostWindow, replaced);
             try
@@ -132,8 +135,9 @@ public sealed class WebViewRecoveryTests
                 environmentField.SetValue(null, unavailable);
                 var browserId = View(host).CoreWebView2.BrowserProcessId;
                 using (var process = Process.GetProcessById((int)browserId)) process.Kill();
-                WpfTestHost.PumpUntil(() => replacements > 0 && Field<object?>(host, "_pendingRecoveryChanges") is not null,
-                    TimeSpan.FromSeconds(15), "replacement after actual browser exit and edit collection");
+                WpfTestHost.PumpUntil(() => initializationFailure is not null,
+                    TimeSpan.FromSeconds(15), "actual replacement controller SDK failure after browser exit");
+                Assert.IsType<System.Runtime.InteropServices.COMException>(initializationFailure);
                 Complete(preparation);
                 Assert.False(host.IsAvailable);
                 Assert.Null(View(host).CoreWebView2);
