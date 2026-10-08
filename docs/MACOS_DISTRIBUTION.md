@@ -1,6 +1,6 @@
 # macOS app and distribution
 
-Classroom Widgets for macOS is a signed and notarized desktop and menu-bar app for opening compact classroom widgets that stay above other apps. It requires macOS 13 or later. The native Swift host embeds a production build of the teacher interface for its widget content.
+Classroom Widgets for macOS is a signed and notarized desktop and menu-bar app for opening compact classroom widgets that stay above other apps. It requires macOS 13 or later on Apple silicon or Intel. The native Swift host embeds a production build of the teacher interface for its widget content.
 
 ## Install
 
@@ -94,6 +94,30 @@ This builds the teacher assets and the Swift package in `packages/macos-dashboar
 
 Other supported modes are `--debug`, `--logs`, and `--telemetry`; see `scripts/build_and_run.sh` for their exact behavior.
 
+### Native regression checks
+
+Build the teacher assets before running the native suite so the checkpoint tests
+exercise real WKWebViews rather than skipping for missing web content. These tests
+use non-persistent WebKit storage; they do not install the app or change its saved
+workspace. On a shared Mac, coordinate with other build owners and keep jobs bounded.
+
+```bash
+pnpm --filter @classroom-widgets/teacher build:desktop
+mkdir -p dist/macos-test-evidence
+set -o pipefail
+CLASSROOM_WIDGETS_WEB_ROOT="$PWD/packages/teacher/build" \
+CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR="$PWD/dist/macos-test-evidence" \
+CW_SHORTCUT_SCREENSHOT_DIR="$PWD/dist/macos-test-evidence" \
+swift test --package-path packages/macos-dashboard -j 2 \
+  2>&1 | tee dist/macos-test-evidence/native.log
+```
+
+The checkpoint scenarios delay a List acknowledgement and suppress a sibling QR
+checkpoint, then check the rebuilt text after reload and refused quit. Keyboard tests dispatch AppKit
+events through the menu pipeline and translate installed German layout data without
+selecting a different input source. The log and PNG captures are repeatable evidence;
+the tests do not require changing the user's keyboard layout.
+
 ## Local DMG
 
 Install [`create-dmg`](https://github.com/create-dmg/create-dmg), then run:
@@ -103,6 +127,23 @@ pnpm macos:dmg
 ```
 
 This creates an ad hoc signed local package at `dist/ClassroomWidgets-v<version>-macos.dmg` and installs the built app to `/Applications/Classroom Widgets Dashboard.app`. The version comes from the repo-root `version.json`. Use this only for local packaging checks; it is not suitable for public download.
+
+Both local and distribution packages contain `arm64` and `x86_64` executable slices.
+The build fails before packaging if either slice is absent. `SWIFT_BUILD_JOBS`
+defaults to 2 to limit compiler load on shared Macs.
+
+For an unsigned build check without installing the app, creating a DMG or ZIP, or
+accessing signing credentials:
+
+```bash
+RELEASE_ENV_FILE=/dev/null pnpm macos:dmg --build-only
+xcrun lipo "dist/Classroom Widgets Dashboard.app/Contents/MacOS/ClassroomWidgets" -archs
+xcrun vtool -show-build "dist/Classroom Widgets Dashboard.app/Contents/MacOS/ClassroomWidgets"
+```
+
+Expect both architectures and `minos 13.0` for each slice. `--build-only` cannot be
+combined with distribution signing or notarisation. It is a build artifact, not a
+public-download package; existing installed apps and packaged archives are untouched.
 
 ## Developer ID release
 
@@ -145,6 +186,9 @@ Replace `<version>` with the release version, then verify the app, DMG, notariza
 ```bash
 codesign -dvvv --entitlements :- "dist/Classroom Widgets Dashboard.app"
 codesign --verify --deep --strict --verbose=2 "dist/Classroom Widgets Dashboard.app"
+for architecture in arm64 x86_64; do
+  xcrun lipo "dist/Classroom Widgets Dashboard.app/Contents/MacOS/ClassroomWidgets" -verify_arch "$architecture"
+done
 codesign --verify --strict --verbose=2 "dist/ClassroomWidgets-v<version>-macos.dmg"
 xcrun stapler validate "dist/ClassroomWidgets-v<version>-macos.dmg"
 spctl -a -vv -t open --context context:primary-signature "dist/ClassroomWidgets-v<version>-macos.dmg"
