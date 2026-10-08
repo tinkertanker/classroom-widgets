@@ -68,9 +68,10 @@ public sealed class WebViewRecoveryTests
     // or the collected edit. Persistent failures must stop automatic retries,
     // while the tray's Reload action can retry once the runtime is healthy.
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void FailedBrowserReplacementRetriesWithoutLosingCollectedEdit(bool persistent)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void FailedBrowserReplacementRetriesWithoutLosingCollectedEdit(bool persistent, bool duringReplay)
         => WithBrowser((host, launcher) =>
         {
             Add(host, 2);
@@ -135,10 +136,39 @@ public sealed class WebViewRecoveryTests
                         };
                     })()
                     """);
+                if (duringReplay)
+                {
+                    var blockReplay = View(host).CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync("""
+                        (() => {
+                            let host;
+                            window.__blockedRecoveryWrites = 0;
+                            Object.defineProperty(window, 'classroomPanelHost', {
+                                configurable: true,
+                                get: () => host,
+                                set: value => {
+                                    host = value;
+                                    if (value) value.applyStateChange = () => {
+                                        window.__blockedRecoveryWrites++;
+                                        return false;
+                                    };
+                                }
+                            });
+                        })()
+                        """);
+                    Complete(blockReplay);
+                }
                 var preparation = host.ReloadWidgetsAsync();
                 WpfTestHost.PumpUntil(() => SafeBool(View(list), "window.__consumedEdit === 'ABC'"),
                     TimeSpan.FromSeconds(10), "real List collection to consume ABC before browser exit");
                 Assert.False(preparation.IsCompleted);
+                if (duringReplay)
+                {
+                    var crash = View(host).CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}");
+                    _ = crash.ContinueWith(task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                    WpfTestHost.PumpUntil(() => SafeBool(View(host), "window.__blockedRecoveryWrites > 0"),
+                        TimeSpan.FromSeconds(15), "actual renderer recovery replay awaiting an accepted write");
+                    Log("replacement initialization: real renderer recovery has ABC replay pending before the second browser failure");
+                }
                 environmentField.SetValue(null, unavailable);
                 var browserId = View(host).CoreWebView2.BrowserProcessId;
                 using (var process = Process.GetProcessById((int)browserId)) process.Kill();
@@ -156,6 +186,9 @@ public sealed class WebViewRecoveryTests
                     WpfTestHost.PumpFor(TimeSpan.FromSeconds(2));
                     Assert.Equal(attempts, replacements);
                     Assert.False(host.IsAvailable);
+                    var quit = host.PrepareForTerminationAsync();
+                    Complete(quit);
+                    Assert.False(quit.Result, "A stopped recovery must not report successful quit preparation.");
                     Log($"persistent SDK failure stopped after {attempts} replacements; restoring runtime before manual Reload");
                 }
                 environmentField.SetValue(null, healthyEnvironment);
@@ -165,10 +198,11 @@ public sealed class WebViewRecoveryTests
                 WaitForState(host, "ABC");
                 var restored = Panels(host).Single();
                 WaitForListText(View(restored), "ABC");
-                Capture($"initialization-recovered-list-{(persistent ? "manual" : "automatic")}.png", View(restored));
+                var suffix = duringReplay ? "overlapped-replay" : persistent ? "manual" : "automatic";
+                Capture($"initialization-recovered-list-{suffix}.png", View(restored));
                 launcher.Show();
-                AssertLauncherAddsWidget(host, launcher, $"initialization-recovered-launcher-{(persistent ? "manual" : "automatic")}.png");
-                Log($"replacement initialization recovered ABC and launcher action; persistent={persistent}, replacements={replacements}");
+                AssertLauncherAddsWidget(host, launcher, $"initialization-recovered-launcher-{suffix}.png");
+                Log($"replacement initialization recovered ABC and launcher action; persistent={persistent}, replay={duringReplay}, replacements={replacements}");
             }
             finally
             {
