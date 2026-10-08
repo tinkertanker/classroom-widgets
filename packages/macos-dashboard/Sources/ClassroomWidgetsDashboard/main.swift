@@ -1,6 +1,5 @@
 import AppKit
 
-let dashboardURLScheme = "classroom-widgets"
 private var appDelegate: AppDelegate?
 
 MainActor.assumeIsolated {

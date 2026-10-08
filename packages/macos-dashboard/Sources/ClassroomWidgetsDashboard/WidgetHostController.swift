@@ -7,7 +7,7 @@ import WebKit
 @MainActor
 final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
-    private let webView: WKWebView
+    let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private let widgetPanelCoordinator: WidgetPanelCoordinator
     private var pendingRecoveryChanges: [WidgetPanelStateChange]?
@@ -17,11 +17,12 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var widgetOptions: [CompactWidgetOption] = []
     var onWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
 
-    override init() {
+    init(websiteDataStore: WKWebsiteDataStore = .default(), panelCoordinator: WidgetPanelCoordinator? = nil) {
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         let appVersionJSON = (try? JSONEncoder().encode(appVersion))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"unknown\""
         let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = websiteDataStore
         configuration.setURLSchemeHandler(
             DashboardWebKitShared.schemeHandler,
             forURLScheme: dashboardURLScheme
@@ -34,7 +35,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         ))
 
         scriptMessageHandler = DashboardScriptMessageHandler()
-        widgetPanelCoordinator = WidgetPanelCoordinator(compactPresentationActive: true)
+        widgetPanelCoordinator = panelCoordinator ?? WidgetPanelCoordinator(compactPresentationActive: true)
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
@@ -140,7 +141,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         widgetPanelCoordinator.prepareForDeactivation { [weak self] changes, prepared in
             guard let self else { return }
             guard prepared else {
-                self.resumeAfterFailedDeactivation()
+                self.resumeAfterFailedDeactivation(changes)
                 return
             }
             self.flushChangesAndReload(changes)
@@ -170,8 +171,12 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             operation: { completion in
                 widgetPanelCoordinator.prepareForDeactivation { completion(($0, $1)) }
             }
-        ), preparation.1 else {
+        ) else {
             resumeAfterFailedDeactivation()
+            return false
+        }
+        guard preparation.1 else {
+            resumeAfterFailedDeactivation(preparation.0)
             return false
         }
 
@@ -190,7 +195,11 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         return false
     }
 
-    private func resumeAfterFailedDeactivation() {
+    private func resumeAfterFailedDeactivation(_ changes: [WidgetPanelStateChange] = []) {
+        // Successful checkpoints drain the panel's pending state even when a
+        // sibling fails. Send those edits before recreating panels; do not gate
+        // healthy edits on an unrelated failed Randomiser collection write.
+        changes.forEach { applyPanelStateChange($0) }
         hostWrites.acknowledgeFailure()
         reloadInProgress = false
         widgetPanelCoordinator.deactivate()
