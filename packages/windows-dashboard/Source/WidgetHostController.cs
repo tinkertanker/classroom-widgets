@@ -20,7 +20,6 @@ public sealed class WidgetHostController
     private IReadOnlyList<WidgetPanelStateChange>? _pendingRecoveryChanges;
     private bool _reloadInProgress;
     private bool _recoveryInProgress;
-    private bool _browserReplacementPending;
     private bool _initialized;
 
     public IReadOnlyList<CompactWidgetOption> WidgetOptions { get; private set; } = Array.Empty<CompactWidgetOption>();
@@ -263,22 +262,17 @@ public sealed class WidgetHostController
         }
         DashboardLog.Error($"Widget host process failed ({args.ProcessFailedKind}); reloading");
         IsAvailable = false;
-        if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
-        {
-            _initialized = false;
-            // A browser exit can arrive while renderer recovery is awaiting
-            // panel checkpoints. The active recovery must replace that control.
-            _browserReplacementPending = true;
-        }
+        var replaceBrowser = args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited;
+        if (replaceBrowser) _initialized = false;
         // Finish WebView2's failure callback before disposing its closed control.
-        _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync()));
+        _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync(replaceBrowser)));
     }
 
     /// <summary>
     /// Panels outlive a crashed host, so their unsent edits are collected first
     /// and replayed once the replacement host publishes its inventory.
     /// </summary>
-    private async Task RecoverFromHostFailureAsync()
+    private async Task RecoverFromHostFailureAsync(bool replaceBrowser)
     {
         if (_recoveryInProgress) return;
         _recoveryInProgress = true;
@@ -292,9 +286,8 @@ public sealed class WidgetHostController
             }
             _hostWrites.Reset();
             _coordinator.Deactivate();
-            if (_browserReplacementPending)
+            if (replaceBrowser)
             {
-                _browserReplacementPending = false;
                 var closed = _webView;
                 _webView = new WebView2();
                 _hostWindow.Content = _webView;
@@ -308,12 +301,7 @@ public sealed class WidgetHostController
             _reloadInProgress = false;
             DashboardLog.Error($"Unable to recover widget host: {error.Message}");
         }
-        finally
-        {
-            _recoveryInProgress = false;
-            if (_browserReplacementPending)
-                _ = _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync()));
-        }
+        finally { _recoveryInProgress = false; }
     }
 
     private void ReconcileWidgetPanels(WidgetPanelInventory inventory)
