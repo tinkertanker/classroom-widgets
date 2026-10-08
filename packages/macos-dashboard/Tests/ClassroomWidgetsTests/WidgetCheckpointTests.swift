@@ -318,11 +318,16 @@ final class WidgetCheckpointTests: XCTestCase {
         print("CHECKPOINT \(quit ? "refused-quit" : "failed-reload"): rebuiltList=\(text ?? "nil") hostContainsAB=\(saved)")
 
         if let directory = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"] {
+            let window = try XCTUnwrap(rebuilt.window)
+            print("CAPTURE \(quit ? "quit" : "reload") before: visible=\(window.isVisible) unoccluded=\(window.occlusionState.contains(.visible)) frame=\(window.frame)")
+            window.orderFrontRegardless()
+            try await waitUntil { window.occlusionState.contains(.visible) }
             // DOM readiness can precede the first compositor frame in WebKit.
             _ = try await rebuilt.callAsyncJavaScript(
                 "await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))); return true;",
                 arguments: [:], in: nil, in: .page
             )
+            print("CAPTURE \(quit ? "quit" : "reload") ready: unoccluded=\(window.occlusionState.contains(.visible))")
             let image = try await rebuilt.takeSnapshot(configuration: nil)
             let bitmap = try XCTUnwrap(image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:)))
             let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
