@@ -131,7 +131,7 @@ public sealed class WebViewRecoveryTests
     [InlineData(false, true)]
     [InlineData(true, true)]
     public void HostFailureDuringUserPreparationPreservesConsumedEdit(bool terminating, bool browserExit)
-        => WithBrowser((host, _) =>
+        => WithBrowser((host, launcher) =>
         {
             Add(host, 2);
             var list = Panels(host).Single();
