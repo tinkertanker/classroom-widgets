@@ -14,12 +14,6 @@ internal static class WpfTestHost
     private static readonly string? EvidenceDirectory =
         Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR");
 
-    static WpfTestHost()
-    {
-        // Pack resources belong to the app, not vstest's entry assembly.
-        Application.ResourceAssembly = typeof(ClassroomWidgets.App).Assembly;
-    }
-
     public static void Run(Action body)
     {
         Exception? failure = null;

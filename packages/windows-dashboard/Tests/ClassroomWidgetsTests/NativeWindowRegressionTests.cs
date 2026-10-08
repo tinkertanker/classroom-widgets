@@ -16,7 +16,7 @@ public sealed class NativeWindowRegressionTests
     // changing only the WPF setting leaves Display's native topmost flag set.
     [Fact]
     public void DisplayShowRestoresMinimizedWindowWithoutReplacingIt()
-        => WithSettings(settings =>
+        => WithSettings("display-restore", settings =>
         {
             using var preview = new DisplayPreviewCoordinator(settings, new DisplayCatalog());
             preview.Open();
@@ -33,7 +33,7 @@ public sealed class NativeWindowRegressionTests
 
     [Fact]
     public void TraySettingsRestoresMinimizedWindowWithoutReplacingIt()
-        => WithSettings(settings =>
+        => WithSettings("settings-restore", settings =>
         {
             var host = new WidgetHostController(settings);
             using var shortcuts = new WidgetShortcutManager(settings, host, _ => { });
@@ -58,7 +58,7 @@ public sealed class NativeWindowRegressionTests
 
     [Fact]
     public void DisplayHonorsTopmostPreferenceAtCreationAndWhileOpen()
-        => WithSettings(settings =>
+        => WithSettings("display-topmost", settings =>
         {
             settings.AlwaysOnTop = false;
             using var preview = new DisplayPreviewCoordinator(settings, new DisplayCatalog());
@@ -79,8 +79,13 @@ public sealed class NativeWindowRegressionTests
             SaveWindow("display-not-topmost.png", preview.Window!);
         });
 
-    private static void WithSettings(Action<DashboardSettings> scenario)
+    private static void WithSettings(string name, Action<DashboardSettings> scenario)
     {
+        if (!NativeMovementTests.IsChildProcess)
+        {
+            NativeMovementTests.RunScenario(name);
+            return;
+        }
         var original = DashboardSettings.DataDirectory;
         var directory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
         DashboardSettings.UseDataDirectory(directory);
