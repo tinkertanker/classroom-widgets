@@ -45,6 +45,119 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
+    func testHostRestartDuringFailedCheckpointWaitsForRecoveredInventory() async throws {
+        try await exerciseRestartDuringResumption(sameState: false)
+    }
+
+    @MainActor
+    func testHostRestartResumesSameStateCheckpointDespiteResetRevision() async throws {
+        try await exerciseRestartDuringResumption(sameState: true)
+    }
+
+    @MainActor
+    private func exerciseRestartDuringResumption(sameState: Bool) async throws {
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
+                          "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
+        _ = NSApplication.shared
+        let panels = WidgetPanelCoordinator()
+        let host = WidgetHostController(websiteDataStore: .nonPersistent(), panelCoordinator: panels)
+        defer { panels.deactivate(); host.webView.stopLoading() }
+        try await waitUntil { !host.widgetOptions.isEmpty }
+        host.addWidget(2)
+        host.addWidget(12)
+        try await waitUntil { self.panelWebView(title: "List") != nil && self.panelWebView(title: "QR Code") != nil }
+        let list = try XCTUnwrap(panelWebView(title: "List"))
+        let qr = try XCTUnwrap(panelWebView(title: "QR Code"))
+        try await waitUntil { (try? await list.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
+        try await waitUntil { (try? await qr.evaluateJavaScript("!!window.classroomWidgetPanel")) as? Bool == true }
+        _ = try await list.evaluateJavaScript("window.classroomWidgetPanel.receiveSnapshot = () => {}; true")
+        try await type("A", in: list)
+        try await waitUntil { try await self.hostContains("A", host: host) }
+        try await type("AB", in: list)
+        if sameState { try await type("A", in: list) }
+        _ = try await qr.evaluateJavaScript("window.classroomWidgetPanel.takePendingState = () => null; true")
+        _ = try await host.webView.evaluateJavaScript("""
+            window.classroomPanelHost.applyStateChange = () => {
+              window.oldCheckpointWaiting = true;
+              return new Promise(() => {});
+            }; true
+            """)
+        host.reloadWidgets()
+        try await waitUntil { (try? await host.webView.evaluateJavaScript("window.oldCheckpointWaiting === true")) as? Bool == true }
+        XCTAssertNil(panelWebView(title: "List"))
+
+        // Install the fault before the real replacement document loads. Keep the
+        // real host apply, its completion, and native inventory independently gated.
+        host.webView.configuration.userContentController.addUserScript(WKUserScript(source: """
+            window.restartCalls = [];
+            window.restartInventories = [];
+            const handler = window.webkit.messageHandlers.classroomDashboard;
+            const post = handler.postMessage.bind(handler);
+            handler.postMessage = message => {
+              if (message.type === 'widget-panels-changed') {
+                if (window.restartApplying) { window.restartInventories.push(message); return; }
+                const list = message.widgets.find(widget => widget.widgetType === 2);
+                if (list) window.restartInitialRevision = list.stateRevision;
+              }
+              post(message);
+            };
+            window.releaseRestartInventories = () => {
+              handler.postMessage = post;
+              window.restartInventories.splice(0).forEach(post);
+              return true;
+            };
+            let bridge;
+            Object.defineProperty(window, 'classroomPanelHost', {
+              configurable: true,
+              get: () => bridge,
+              set: value => {
+                bridge = value;
+                if (!value) return;
+                const apply = value.applyStateChange;
+                value.applyStateChange = change => {
+                  if (!change.flush) return apply(change);
+                  window.restartApplying = true;
+                  const accepted = apply(change);
+                  window.restartCalls.push({ accepted, baseRevision: change.baseRevision, text: change.state.items[0].text });
+                  return new Promise(resolve => { window.completeRestartApply = () => resolve(accepted); });
+                };
+              }
+            });
+            """, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // Inject the native termination notification, not a fake host response:
+        // the controller must navigate and initialise its actual replacement host.
+        host.webViewWebContentProcessDidTerminate(host.webView)
+        try await waitUntil { (try? await host.webView.evaluateJavaScript("window.restartCalls?.some(call => call.accepted)")) as? Bool == true }
+        XCTAssertNil(panelWebView(title: "List"), "Host restart must not reopen editors before retained apply completes")
+        let calls = try await host.webView.evaluateJavaScript("JSON.stringify(window.restartCalls)") as? String
+        let resetRevision = try await host.webView.evaluateJavaScript("window.restartInitialRevision") as? NSNumber
+        let baseRevision = try await host.webView.evaluateJavaScript("window.restartCalls[0].baseRevision") as? NSNumber
+        XCTAssertGreaterThan(try XCTUnwrap(baseRevision).intValue, try XCTUnwrap(resetRevision).intValue,
+                             "The replacement host must exercise a lower revision namespace")
+        _ = try await host.webView.evaluateJavaScript("window.completeRestartApply(); true")
+        if !sameState {
+            try await waitUntil { (try? await host.webView.evaluateJavaScript("window.restartInventories.length > 0")) as? Bool == true }
+            try await Task.sleep(nanoseconds: 600_000_000)
+            let stale = panelWebView(title: "List")
+            let staleText = try? await stale?.evaluateJavaScript("document.querySelector('textarea')?.value")
+            print("RESTART heldInventory: calls=\(calls ?? "nil") resetRevision=\(resetRevision?.intValue ?? -1) editorVisible=\(stale != nil) text=\(staleText as? String ?? "nil")")
+            XCTAssertNil(stale, "Recovered state must reach native inventory before any editable stale panel is recreated")
+        } else {
+            let publications = try await host.webView.evaluateJavaScript("window.restartInventories.length") as? NSNumber
+            XCTAssertEqual(publications?.intValue, 0, "A real same-state apply cannot publish a new inventory")
+            print("RESTART no-op: calls=\(calls ?? "nil") resetRevision=\(resetRevision?.intValue ?? -1) publications=\(publications?.intValue ?? -1)")
+        }
+        _ = try await host.webView.evaluateJavaScript("window.releaseRestartInventories()")
+        let expected = sameState ? "A" : "AB"
+        try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == expected }
+        try await waitUntil { try await self.hostContains(expected, host: host) }
+        let restored = try XCTUnwrap(panelWebView(title: "List"))
+        try await type("ABC", in: restored)
+        try await waitUntil { try await self.hostContains("ABC", host: host) }
+        print("RESTART restored=\(expected) followUpHost=ABC")
+    }
+
+    @MainActor
     private func exerciseSameStateCheckpoint(quit: Bool) async throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
