@@ -27,7 +27,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
   ipcMain.on('settings:set', (_event, update: unknown) => {
     if (typeof update !== 'object' || update === null) return;
     const partial = update as Record<string, unknown>;
-    let changedSetting: 'outputVolume' | undefined;
+    let changedSetting: 'outputVolume' | 'launchAtLogin' | undefined;
     if (typeof partial.backgroundOpacity === 'number' && Number.isFinite(partial.backgroundOpacity)) {
       settings.backgroundOpacity = Math.min(1, Math.max(0, Math.round(partial.backgroundOpacity * 100) / 100));
     }
@@ -43,6 +43,7 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     }
     if (typeof partial.launchAtLogin === 'boolean') {
       settings.launchAtLoginEnabled = partial.launchAtLogin;
+      changedSetting = 'launchAtLogin';
     }
     if (partial.linkShortener && typeof partial.linkShortener === 'object') {
       settings.linkShortener = readShortenerSettings(partial.linkShortener);
@@ -82,9 +83,10 @@ function installIpc(settings: DashboardSettings, shortcuts: WidgetShortcutContro
     }
   });
   settings.on('changed', (changedSetting) => {
-    if (changedSetting === 'outputVolume' && settingsWindow && !settingsWindow.isDestroyed()) {
+    if ((changedSetting === 'outputVolume' || changedSetting === 'launchAtLogin') && settingsWindow && !settingsWindow.isDestroyed()) {
       settingsWindow.webContents.send('settings:changed', {
         outputVolume: settings.outputVolume,
+        launchAtLogin: settings.launchAtLoginEnabled,
       });
     }
   });

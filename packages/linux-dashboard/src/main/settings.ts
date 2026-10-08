@@ -176,7 +176,7 @@ export class DashboardSettings extends EventEmitter {
     }
   }
 
-  notifyChanged(changedSetting?: 'outputVolume'): void {
+  notifyChanged(changedSetting?: 'outputVolume' | 'launchAtLogin'): void {
     this.save();
     this.emit('changed', changedSetting);
   }

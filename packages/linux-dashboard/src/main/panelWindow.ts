@@ -225,6 +225,7 @@ export class WidgetPanelWindow extends EventEmitter {
   }
 
   closePermanently(): void {
+    this.flushPendingFrame();
     this.closingPermanently = true;
     this.stopTimers();
     if (!this.win.isDestroyed()) this.win.destroy();
@@ -450,18 +451,22 @@ export class WidgetPanelWindow extends EventEmitter {
   private noteFrameChange(): void {
     if (this.closingPermanently || this.win.isDestroyed()) return;
     if (this.frameTimer) clearTimeout(this.frameTimer);
-    this.frameTimer = setTimeout(() => {
-      this.frameTimer = null;
-      if (this.win.isDestroyed()) return;
-      const bounds = this.win.getBounds();
-      if (this.lastProgrammaticBounds && boundsMatch(bounds, this.lastProgrammaticBounds)) return;
-      if (this.lastProgrammaticBounds && this.isAspectRatioSettled(bounds, this.lastProgrammaticBounds)) {
-        this.lastProgrammaticBounds = bounds;
-        return;
-      }
-      this.lastProgrammaticBounds = null;
-      this.emit('frameChanged', this.widgetId, bounds);
-    }, 400);
+    this.frameTimer = setTimeout(() => this.flushPendingFrame(), 400);
+  }
+
+  flushPendingFrame(): void {
+    if (!this.frameTimer) return;
+    clearTimeout(this.frameTimer);
+    this.frameTimer = null;
+    if (this.win.isDestroyed()) return;
+    const bounds = this.win.getBounds();
+    if (this.lastProgrammaticBounds && boundsMatch(bounds, this.lastProgrammaticBounds)) return;
+    if (this.lastProgrammaticBounds && this.isAspectRatioSettled(bounds, this.lastProgrammaticBounds)) {
+      this.lastProgrammaticBounds = bounds;
+      return;
+    }
+    this.lastProgrammaticBounds = null;
+    this.emit('frameChanged', this.widgetId, bounds);
   }
 
   private isAspectRatioSettled(bounds: RectFrame, target: RectFrame): boolean {
