@@ -14,6 +14,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private var pendingResumptionChanges: [WidgetPanelStateChange]?
     private let resumptionWrites = HostWriteTracker()
     private var resumptionApplied = false
+    private var resumptionGeneration = 0
     private var reloadInProgress = false
     private let hostWrites = HostWriteTracker()
 
@@ -141,6 +142,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func reloadWidgets() {
         guard !reloadInProgress else { return }
         reloadInProgress = true
+        if let changes = pendingResumptionChanges {
+            resumeAfterFailedDeactivation(changes)
+            return
+        }
         widgetPanelCoordinator.prepareForDeactivation { [weak self] changes, prepared in
             guard let self else { return }
             guard prepared else {
@@ -169,6 +174,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         flushPersistedState()
         guard !reloadInProgress else { return false }
         reloadInProgress = true
+        if let changes = pendingResumptionChanges {
+            resumeAfterFailedDeactivation(changes)
+            return false
+        }
         guard let preparation: ([WidgetPanelStateChange], Bool) = await resultWithTimeout(
             nanoseconds: 2_000_000_000,
             operation: { completion in
@@ -198,10 +207,12 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         return false
     }
 
-    private func resumeAfterFailedDeactivation(_ changes: [WidgetPanelStateChange] = []) {
+    private func resumeAfterFailedDeactivation(_ changes: [WidgetPanelStateChange] = [], retriesRemaining: Int = 20) {
         // Successful checkpoints drain the panel's pending state even when a
         // sibling fails. Await their applications independently of unrelated
         // failed Randomiser writes, then require matching inventory before editing.
+        resumptionGeneration += 1
+        let generation = resumptionGeneration
         resumptionWrites.reset()
         resumptionApplied = false
         pendingResumptionChanges = changes
@@ -214,8 +225,26 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             }
         }
         resumptionWrites.wait { [weak self] applied in
-            self?.resumptionApplied = applied
-            self?.finishResumptionIfReady()
+            guard let self, self.resumptionGeneration == generation,
+                  self.pendingResumptionChanges != nil else { return }
+            guard applied else {
+                guard retriesRemaining > 0 else {
+                    // Retain the drained edits and keep stale editors closed, but
+                    // permit a later Reload/Quit to retry when the host recovers.
+                    self.reloadInProgress = false
+                    DashboardLog.web.error("Unable to resume widget checkpoints; use Reload Widgets to retry")
+                    return
+                }
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    guard let self, self.resumptionGeneration == generation,
+                          self.pendingResumptionChanges != nil else { return }
+                    self.resumeAfterFailedDeactivation(changes, retriesRemaining: retriesRemaining - 1)
+                }
+                return
+            }
+            self.resumptionApplied = true
+            self.finishResumptionIfReady()
         }
     }
 
@@ -271,7 +300,8 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Widget host process terminated; reloading")
-        guard !reloadInProgress else {
+        guard !reloadInProgress, pendingResumptionChanges == nil else {
+            reloadInProgress = true
             if let changes = pendingResumptionChanges {
                 pendingRecoveryChanges = changes
                 pendingResumptionChanges = nil
