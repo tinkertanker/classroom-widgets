@@ -5,6 +5,8 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using ClassroomWidgets;
 using Xunit;
 using Forms = System.Windows.Forms;
@@ -30,14 +32,15 @@ public sealed class NativeMovementTests
     {
         using var process = new Process
         {
-            StartInfo = new ProcessStartInfo("dotnet")
+            // Launch the manifested apphost, not dotnet.exe: WPF can cache
+            // process DPI awareness before a late runtime opt-in takes effect.
+            StartInfo = new ProcessStartInfo(Path.ChangeExtension(typeof(NativeMovementTests).Assembly.Location, ".exe"))
             {
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             }
         };
-        process.StartInfo.ArgumentList.Add(typeof(NativeMovementTests).Assembly.Location);
         process.StartInfo.ArgumentList.Add(scenario);
         process.Start();
         var stdout = process.StandardOutput.ReadToEndAsync();
@@ -63,6 +66,11 @@ public sealed class NativeMovementTests
     {
         if (args.Length != 1) return 2;
         IsChildProcess = true;
+        if (!AreDpiAwarenessContextsEqual(GetThreadDpiAwarenessContext(), new IntPtr(-4)))
+        {
+            Console.Error.WriteLine("Fixture requires manifested PerMonitorV2 DPI awareness before WPF starts.");
+            return 2;
+        }
         if (args[0] is "display-restore" or "settings-restore" or "display-topmost")
         {
             try
@@ -83,11 +91,6 @@ public sealed class NativeMovementTests
             }
         }
         if (args[0] is not ("display" or "dpi")) return 2;
-        if (!SetProcessDpiAwarenessContext(new IntPtr(-4)))
-        {
-            Console.Error.WriteLine("Fixture requires PerMonitorV2 DPI awareness before creating any HWND.");
-            return 2;
-        }
         DashboardSettings.UseDataDirectory(Path.Combine(Path.GetTempPath(), "ClassroomWidgetsMovementTests", Guid.NewGuid().ToString("N")));
         var application = new App();
         application.InitializeComponent();
@@ -141,6 +144,10 @@ public sealed class NativeMovementTests
 
         if (scenario == "display")
         {
+            var sourceWindow = new SyntheticSourceWindow(new Rect(destination.WorkingArea.Left + 100,
+                destination.WorkingArea.Top + 100, 320, 240));
+            sourceWindow.Show();
+            await Task.Delay(200);
             preview.Open();
             var display = preview.Window!;
             Position(display, source.WorkingArea.Left + 650, source.WorkingArea.Top + 300);
@@ -159,8 +166,21 @@ public sealed class NativeMovementTests
             Assert.StartsWith("Preview suspended", display.StatusText.Text);
             Capture("movement-display-overlap-suspended.png", display);
             Press(0x25);
-            await Until(() => ScreenOf(display) == source.DeviceName && preview.Capture is not null, "Display move back and capture resume");
+            await Until(() => ScreenOf(display) == source.DeviceName && preview.Capture is not null
+                && display.PreviewImage.Source is not null, "Display move back and capture resume");
+            Assert.StartsWith("Live:", display.StatusText.Text);
+            var image = Assert.IsAssignableFrom<BitmapSource>(display.PreviewImage.Source);
+            var pixels = new byte[image.PixelWidth * image.PixelHeight * 4];
+            image.CopyPixels(pixels, image.PixelWidth * 4, 0);
+            var marker = Bounds(sourceWindow);
+            var color = SyntheticSourceWindow.TopLeft;
+            Assert.Equal((color.R, color.G, color.B, (byte)255), WpfTestHost.PixelAt(pixels, image.PixelWidth,
+                (int)(marker.X - destination.Bounds.Left + 20), (int)(marker.Y - destination.Bounds.Top + 20)));
+            // The HWND and image state update before the desktop compositor
+            // paints. Capture the rendered live state, not its old backing buffer.
+            await Task.Delay(200);
             Capture("movement-display-resumed.png", display);
+            sourceWindow.Close();
 
             var unrelated = new Window { Title = "Unrelated foreground window", Width = 300, Height = 200 };
             try
@@ -190,8 +210,15 @@ public sealed class NativeMovementTests
             Assert.InRange(Math.Abs(after.Height - before.Height * targetDpi / sourceDpi), 0, 2);
             host.Coordinator.FlushPersistedFrames();
             var persisted = DashboardSettings.Load().PanelFrames[timer.WidgetId];
-            Assert.InRange(Math.Abs(persisted.Left - timer.CurrentFrame.Left), 0, 0.01);
-            Assert.InRange(Math.Abs(persisted.Top - timer.CurrentFrame.Top), 0, 0.01);
+            var visualDpi = VisualTreeHelper.GetDpi(timer);
+            var transform = PresentationSource.FromVisual(timer)?.CompositionTarget?.TransformFromDevice;
+            Console.WriteLine($"D09 WPF dpi={visualDpi.PixelsPerInchX},{visualDpi.PixelsPerInchY}, fromDevice={transform}, "
+                + $"window={timer.Left},{timer.Top},{timer.ActualWidth},{timer.ActualHeight}, "
+                + $"persisted={persisted.Left},{persisted.Top},{persisted.Width},{persisted.Height}");
+            Assert.InRange(Math.Abs(persisted.Left - after.X * 96 / targetDpi), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Top - after.Y * 96 / targetDpi), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Width - after.Width * 96 / targetDpi), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Height - after.Height * 96 / targetDpi), 0, 0.01);
             Capture("movement-mixed-dpi-timer.png", timer);
             Press(0x25);
             await Until(() => ScreenOf(timer) == source.DeviceName, "previous display round trip");
@@ -251,7 +278,8 @@ public sealed class NativeMovementTests
 
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
-    [DllImport("user32.dll")] private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+    [DllImport("user32.dll")] private static extern IntPtr GetThreadDpiAwarenessContext();
+    [DllImport("user32.dll")] private static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
