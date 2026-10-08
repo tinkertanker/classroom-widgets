@@ -164,6 +164,8 @@ public sealed class NativeMovementTests
             Assert.Equal(destination.DeviceName, ScreenOf(display));
             Assert.Null(preview.Capture);
             Assert.StartsWith("Preview suspended", display.StatusText.Text);
+            // Like the resumed capture below, wait for the compositor to paint.
+            await Task.Delay(200);
             Capture("movement-display-overlap-suspended.png", display);
             Press(0x25);
             await Until(() => ScreenOf(display) == source.DeviceName && preview.Capture is not null
