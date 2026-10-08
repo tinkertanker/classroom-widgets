@@ -85,8 +85,8 @@ const RandomiserSettings: React.FC<RandomiserSettingsProps> = ({
   };
 
   const handleLoadFromCollection = (item: SavedRandomiserList) => {
-    setInput(item.choices.join('\n'));
-    setRemovedInput('');
+    updateInputAndNotify(stringifyChoiceList(item.choices));
+    updateRemovedInputAndNotify('');
     setShowSavedDialog(false);
   };
 

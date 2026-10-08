@@ -47,6 +47,7 @@ const ModalDialog: React.FC<ModalDialogProps> = ({
 
   return ReactDOM.createPortal(
     <div
+      data-modal-dialog="true"
       className="fixed inset-0 z-[1100] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleOverlayClick}
     >
