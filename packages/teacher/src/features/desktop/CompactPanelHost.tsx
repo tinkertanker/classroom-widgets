@@ -11,7 +11,7 @@ import type {
 } from '@shared/types/compactPanel';
 import { WidgetType } from '@shared/types';
 import { postNativeMessage } from '@shared/utils/nativeBridge';
-import { useWorkspaceStore } from '../../store/workspaceStore.simple';
+import { useWorkspaceStore, widgetStateEqual } from '../../store/workspaceStore.simple';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { compactWidgetMenuOptions } from './compactWidgetMenu';
 
@@ -228,8 +228,9 @@ const CompactPanelHost = ({ dashboardTheme = 'light', windowMode = 'compact' }: 
         if (!widgetExists) return change.flush === true;
         const previous = widgetRevisionsRef.current.get(change.widgetId);
         if (!change.flush && previous?.stateRevision !== change.baseRevision) return false;
+        // A store no-op cannot publish the revision we would otherwise reserve.
+        if (widgetStateEqual(useWorkspaceStore.getState().widgetStates.get(change.widgetId), change.state)) return true;
         const stateSignature = JSON.stringify(change.state);
-        if (previous?.stateSignature === stateSignature) return true;
         widgetRevisionsRef.current.set(change.widgetId, {
           revision: previous?.revision ?? change.baseRevision,
           signature: previous?.signature ?? '',
