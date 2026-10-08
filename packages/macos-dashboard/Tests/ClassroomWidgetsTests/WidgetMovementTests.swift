@@ -18,8 +18,13 @@ final class WidgetMovementTests: XCTestCase {
         try await Task.sleep(nanoseconds: 100_000_000)
         let suite = "WidgetMovementTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        let left = CGRect(x: 0, y: 0, width: 1440, height: 900)
-        let right = CGRect(x: 1440, y: 80, width: 1000, height: 760)
+        // AppKit constrains real windows to physical screens. Keep both injected
+        // work areas inside one screen without faking focus or frame assignment.
+        let screen = try XCTUnwrap(NSScreen.main).visibleFrame
+        let left = CGRect(x: screen.minX, y: screen.minY, width: 520, height: 640)
+        let right = CGRect(x: screen.minX + 520, y: screen.minY + 80, width: 500, height: 560)
+        XCTAssertTrue(screen.contains(left) && screen.contains(right), "Fixture needs a visible area of at least 1020 × 640")
+        print("MOVE work areas: screen=\(screen) left=\(left) right=\(right)")
         let source = DisplayDescriptor(id: 202, uuid: "source", name: "Source",
                                        bounds: right, isActive: true, mirrorMasterID: nil)
         var captureAllowed = false
@@ -56,7 +61,7 @@ final class WidgetMovementTests: XCTestCase {
             WidgetPanelDescriptor(id: widgetID, title: "Audit Timer", preferredContentSize: .init(width: 350, height: 415), snapshotPayload: [:])
         ]))
         let timer = try XCTUnwrap(NSApp.windows.first { $0.title == "Audit Timer" })
-        let timerFrame = CGRect(x: 70, y: 95, width: 350, height: 447)
+        let timerFrame = CGRect(x: left.minX + 24, y: left.minY + 32, width: 350, height: 447)
         timer.setFrame(timerFrame, display: true)
         try focus(timer)
         print("MOVE fixture: active=\(NSApp.isActive) policy=\(NSApp.activationPolicy().rawValue) key=\(NSApp.keyWindow?.title ?? "nil") timerKey=\(timer.isKeyWindow)")
@@ -64,8 +69,9 @@ final class WidgetMovementTests: XCTestCase {
         display.open()
         let preview = try XCTUnwrap(display.windowController)
         let window = try XCTUnwrap(preview.window)
-        window.setFrame(CGRect(x: 120, y: 160, width: 480, height: 400), display: true)
+        window.setFrame(CGRect(x: left.minX + 12, y: left.minY + 48, width: 480, height: 400), display: true)
         let original = window.frame
+        XCTAssertEqual(original.origin, CGPoint(x: left.minX + 12, y: left.minY + 48))
         try focus(window)
         XCTAssertTrue(window.isKeyWindow, "Use real focus, not an injected selected-window answer")
         captureAllowed = true
@@ -86,7 +92,7 @@ final class WidgetMovementTests: XCTestCase {
         XCTAssertNil(preview.previewView.fittedImageRectTopLeft(), "Overlap must clear the previously accepted frame")
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertEqual(timer.frame, timerFrame, "The previously focused Timer must stay put")
-        XCTAssertEqual(window.frame.origin, CGPoint(x: 1560, y: 240), "Injected second work area must produce real movement")
+        XCTAssertEqual(window.frame.origin, CGPoint(x: right.minX + 12, y: right.minY + 48), "Injected second work area must produce real movement")
         let movedOrigin = window.frame.origin
         XCTAssertNil(preview.presentedGeometry)
         if let directory = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"],
@@ -106,7 +112,7 @@ final class WidgetMovementTests: XCTestCase {
         try focus(timer)
         next()
         try await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(timer.frame.origin, CGPoint(x: 1510, y: 175), "Focused embedded widgets must still move")
+        XCTAssertEqual(timer.frame.origin, CGPoint(x: right.minX + 24, y: right.minY + 32), "Focused embedded widgets must still move")
         XCTAssertEqual(window.frame, original)
     }
 
