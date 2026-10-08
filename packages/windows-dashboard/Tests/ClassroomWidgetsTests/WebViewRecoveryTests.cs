@@ -15,8 +15,10 @@ public sealed class WebViewRecoveryTests
     // Failure modes: navigating a browser's closed control never restores the
     // host; a launcher's ready flag hides a crashed renderer; one failed panel
     // checkpoint discards another panel's destructively collected latest edit.
-    [Fact]
-    public void BrowserCrashRestoresHostPanelsAndLauncherWithSavedList()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BrowserCrashRestoresHostPanelsAndLauncherWithSavedList(bool duringRendererRecovery)
         => WithBrowser((host, launcher) =>
         {
             Add(host, 2);
@@ -28,6 +30,14 @@ public sealed class WebViewRecoveryTests
             // this scenario kills the browser, not just its renderer.
             WpfTestHost.PumpFor(TimeSpan.FromSeconds(7));
             var browserId = View(host).CoreWebView2.BrowserProcessId;
+            if (duringRendererRecovery)
+            {
+                var crash = View(host).CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}");
+                _ = crash.ContinueWith(task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+                WpfTestHost.PumpUntil(() => Field<bool>(host, "_recoveryInProgress"),
+                    TimeSpan.FromSeconds(15), "host collecting checkpoints after renderer failure");
+                Log("D11 browser exit injected while renderer recovery is collecting checkpoints");
+            }
             Log($"D11 killing owned browser PID {browserId}");
             using (var process = Process.GetProcessById((int)browserId)) process.Kill();
             WpfTestHost.PumpUntil(() => host.IsAvailable && BrowserId(View(host)) is { } id && id != browserId,
@@ -35,8 +45,9 @@ public sealed class WebViewRecoveryTests
             WaitForState(host, "Saved before browser crash");
             var restored = Panels(host).Single();
             WaitForListText(View(restored), "Saved before browser crash");
-            Capture("browser-recovered-list.png", View(restored));
-            AssertLauncherAddsWidget(host, launcher, "browser-recovered-launcher.png");
+            var suffix = duringRendererRecovery ? "during-recovery" : "idle";
+            Capture($"browser-recovered-list-{suffix}.png", View(restored));
+            AssertLauncherAddsWidget(host, launcher, $"browser-recovered-launcher-{suffix}.png");
             Log($"D11 recovered browser PID {BrowserId(View(host))}; saved List and launcher add action verified");
         });
 
