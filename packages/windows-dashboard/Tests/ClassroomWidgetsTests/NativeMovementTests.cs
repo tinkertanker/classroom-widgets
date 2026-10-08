@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ClassroomWidgets;
 using Xunit;
@@ -31,14 +32,15 @@ public sealed class NativeMovementTests
     {
         using var process = new Process
         {
-            StartInfo = new ProcessStartInfo("dotnet")
+            // Launch the manifested apphost, not dotnet.exe: WPF can cache
+            // process DPI awareness before a late runtime opt-in takes effect.
+            StartInfo = new ProcessStartInfo(Path.ChangeExtension(typeof(NativeMovementTests).Assembly.Location, ".exe"))
             {
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             }
         };
-        process.StartInfo.ArgumentList.Add(typeof(NativeMovementTests).Assembly.Location);
         process.StartInfo.ArgumentList.Add(scenario);
         process.Start();
         var stdout = process.StandardOutput.ReadToEndAsync();
@@ -64,6 +66,11 @@ public sealed class NativeMovementTests
     {
         if (args.Length != 1) return 2;
         IsChildProcess = true;
+        if (!AreDpiAwarenessContextsEqual(GetThreadDpiAwarenessContext(), new IntPtr(-4)))
+        {
+            Console.Error.WriteLine("Fixture requires manifested PerMonitorV2 DPI awareness before WPF starts.");
+            return 2;
+        }
         if (args[0] is "display-restore" or "settings-restore" or "display-topmost")
         {
             try
@@ -84,11 +91,6 @@ public sealed class NativeMovementTests
             }
         }
         if (args[0] is not ("display" or "dpi")) return 2;
-        if (!SetProcessDpiAwarenessContext(new IntPtr(-4)))
-        {
-            Console.Error.WriteLine("Fixture requires PerMonitorV2 DPI awareness before creating any HWND.");
-            return 2;
-        }
         DashboardSettings.UseDataDirectory(Path.Combine(Path.GetTempPath(), "ClassroomWidgetsMovementTests", Guid.NewGuid().ToString("N")));
         var application = new App();
         application.InitializeComponent();
@@ -208,6 +210,11 @@ public sealed class NativeMovementTests
             Assert.InRange(Math.Abs(after.Height - before.Height * targetDpi / sourceDpi), 0, 2);
             host.Coordinator.FlushPersistedFrames();
             var persisted = DashboardSettings.Load().PanelFrames[timer.WidgetId];
+            var visualDpi = VisualTreeHelper.GetDpi(timer);
+            var transform = PresentationSource.FromVisual(timer)?.CompositionTarget?.TransformFromDevice;
+            Console.WriteLine($"D09 WPF dpi={visualDpi.PixelsPerInchX},{visualDpi.PixelsPerInchY}, fromDevice={transform}, "
+                + $"window={timer.Left},{timer.Top},{timer.ActualWidth},{timer.ActualHeight}, "
+                + $"persisted={persisted.Left},{persisted.Top},{persisted.Width},{persisted.Height}");
             Assert.InRange(Math.Abs(persisted.Left - after.X * 96 / targetDpi), 0, 0.01);
             Assert.InRange(Math.Abs(persisted.Top - after.Y * 96 / targetDpi), 0, 0.01);
             Assert.InRange(Math.Abs(persisted.Width - after.Width * 96 / targetDpi), 0, 0.01);
@@ -271,7 +278,8 @@ public sealed class NativeMovementTests
 
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
-    [DllImport("user32.dll")] private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+    [DllImport("user32.dll")] private static extern IntPtr GetThreadDpiAwarenessContext();
+    [DllImport("user32.dll")] private static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
