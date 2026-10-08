@@ -1,5 +1,7 @@
 import AppKit
 import Carbon
+import CoreMedia
+import CoreVideo
 import WebKit
 import XCTest
 @testable import ClassroomWidgets
@@ -69,16 +71,23 @@ final class WidgetMovementTests: XCTestCase {
         captureAllowed = true
         preview.onToggleCapture?()
         let capture = try XCTUnwrap(display.session)
-        var lateFrames = 0
-        capture.onFrameActivity = { lateFrames += 1 }
+        let receiveFrame = try XCTUnwrap(capture.onFrame)
+        let sample = try frameSample()
+        window.contentView?.layoutSubtreeIfNeeded()
+        receiveFrame(sample, CGSize(width: 4, height: 4), 1)
+        XCTAssertNotNil(preview.presentedGeometry, "The actual coordinator must accept a frame before the move")
 
         next()
-        // Inspect synchronous overlap revocation before asynchronous capture stop.
-        capture.handleFrameStatus(.idle, sampleBuffer: nil)
+        // Exercise the coordinator's real guarded callback, not a replacement
+        // session callback which bypasses the presentation-generation check.
+        receiveFrame(sample, CGSize(width: 4, height: 4), 2)
+        let lateFrameRejected = preview.presentedGeometry == nil
+        XCTAssertTrue(lateFrameRejected, "Moving onto the source must reject stale frame presentation synchronously")
+        XCTAssertNil(preview.previewView.fittedImageRectTopLeft(), "Overlap must clear the previously accepted frame")
         try await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(lateFrames, 0, "Moving onto the source must revoke capture before queued frame delivery")
         XCTAssertEqual(timer.frame, timerFrame, "The previously focused Timer must stay put")
         XCTAssertEqual(window.frame.origin, CGPoint(x: 1560, y: 240), "Injected second work area must produce real movement")
+        let movedOrigin = window.frame.origin
         XCTAssertNil(preview.presentedGeometry)
         if let directory = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"],
            let view = window.contentView {
@@ -92,13 +101,30 @@ final class WidgetMovementTests: XCTestCase {
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertEqual(window.frame, original)
         XCTAssertEqual(timer.frame, timerFrame)
-        print("MOVE focusedDisplay: next=(1560,240) previous=\(window.frame.origin) timerUnchanged=\(timer.frame == timerFrame) lateFrames=\(lateFrames)")
+        print("MOVE focusedDisplay: next=\(movedOrigin) previous=\(window.frame.origin) timerUnchanged=\(timer.frame == timerFrame) lateFrameRejected=\(lateFrameRejected)")
 
         try focus(timer)
         next()
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertEqual(timer.frame.origin, CGPoint(x: 1510, y: 175), "Focused embedded widgets must still move")
         XCTAssertEqual(window.frame, original)
+    }
+
+    private func frameSample() throws -> CMSampleBuffer {
+        var pixels: CVPixelBuffer?
+        XCTAssertEqual(CVPixelBufferCreate(kCFAllocatorDefault, 4, 4, kCVPixelFormatType_32BGRA, nil, &pixels), kCVReturnSuccess)
+        let image = try XCTUnwrap(pixels)
+        var format: CMVideoFormatDescription?
+        XCTAssertEqual(CMVideoFormatDescriptionCreateForImageBuffer(
+            allocator: kCFAllocatorDefault, imageBuffer: image, formatDescriptionOut: &format
+        ), noErr)
+        var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 30), presentationTimeStamp: .zero, decodeTimeStamp: .invalid)
+        var sample: CMSampleBuffer?
+        XCTAssertEqual(CMSampleBufferCreateReadyWithImageBuffer(
+            allocator: kCFAllocatorDefault, imageBuffer: image, formatDescription: try XCTUnwrap(format),
+            sampleTiming: &timing, sampleBufferOut: &sample
+        ), noErr)
+        return try XCTUnwrap(sample)
     }
 
     @MainActor
