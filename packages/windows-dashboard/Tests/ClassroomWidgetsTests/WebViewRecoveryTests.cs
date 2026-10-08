@@ -30,8 +30,15 @@ public sealed class WebViewRecoveryTests
             // this scenario kills the browser, not just its renderer.
             WpfTestHost.PumpFor(TimeSpan.FromSeconds(7));
             var browserId = View(host).CoreWebView2.BrowserProcessId;
+            var overlappedRecovery = false;
             if (duringRendererRecovery)
             {
+                View(host).CoreWebView2.ProcessFailed += (_, args) =>
+                {
+                    if (args.ProcessFailedKind != CoreWebView2ProcessFailedKind.BrowserProcessExited) return;
+                    overlappedRecovery = Field<bool>(host, "_recoveryInProgress");
+                    Log($"D11 BrowserProcessExited during active recovery: {overlappedRecovery}");
+                };
                 var crash = View(host).CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}");
                 _ = crash.ContinueWith(task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
                 WpfTestHost.PumpUntil(() => Field<bool>(host, "_recoveryInProgress"),
@@ -42,6 +49,7 @@ public sealed class WebViewRecoveryTests
             using (var process = Process.GetProcessById((int)browserId)) process.Kill();
             WpfTestHost.PumpUntil(() => host.IsAvailable && BrowserId(View(host)) is { } id && id != browserId,
                 TimeSpan.FromSeconds(30), "a replacement browser and host inventory");
+            if (duringRendererRecovery) Assert.True(overlappedRecovery, "Fixture must exercise browser exit during active recovery.");
             WaitForState(host, "Saved before browser crash");
             var restored = Panels(host).Single();
             WaitForListText(View(restored), "Saved before browser crash");

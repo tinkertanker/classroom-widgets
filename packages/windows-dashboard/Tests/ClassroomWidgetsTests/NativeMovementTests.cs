@@ -208,8 +208,10 @@ public sealed class NativeMovementTests
             Assert.InRange(Math.Abs(after.Height - before.Height * targetDpi / sourceDpi), 0, 2);
             host.Coordinator.FlushPersistedFrames();
             var persisted = DashboardSettings.Load().PanelFrames[timer.WidgetId];
-            Assert.InRange(Math.Abs(persisted.Left - timer.CurrentFrame.Left), 0, 0.01);
-            Assert.InRange(Math.Abs(persisted.Top - timer.CurrentFrame.Top), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Left - after.X * 96 / targetDpi), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Top - after.Y * 96 / targetDpi), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Width - after.Width * 96 / targetDpi), 0, 0.01);
+            Assert.InRange(Math.Abs(persisted.Height - after.Height * 96 / targetDpi), 0, 0.01);
             Capture("movement-mixed-dpi-timer.png", timer);
             Press(0x25);
             await Until(() => ScreenOf(timer) == source.DeviceName, "previous display round trip");
