@@ -25,6 +25,16 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
+    func testFailedReloadRetriesRejectedHealthyCheckpointBeforeReopeningEditors() async throws {
+        try await exerciseFailedCheckpoint(quit: false, delayRecovery: true, rejectedApplies: 1)
+    }
+
+    @MainActor
+    func testRefusedQuitCanRetryRetainedCheckpointAfterRecoveryAttemptsFail() async throws {
+        try await exerciseFailedCheckpoint(quit: true, delayRecovery: true, rejectedApplies: 100)
+    }
+
+    @MainActor
     func testFailedReloadResumesAfterSameStateCheckpointCompletes() async throws {
         try await exerciseSameStateCheckpoint(quit: false)
     }
@@ -154,7 +164,7 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
-    private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false) async throws {
+    private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false, rejectedApplies: Int = 0) async throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
         _ = NSApplication.shared
@@ -189,9 +199,18 @@ final class WidgetCheckpointTests: XCTestCase {
                 (() => {
                   const apply = window.classroomPanelHost.applyStateChange;
                   window.deferredPanelChanges = [];
-                  window.classroomPanelHost.applyStateChange = change => new Promise(resolve => {
-                    window.deferredPanelChanges.push(() => resolve(apply(change)));
-                  });
+                  window.rejectedAppliesRemaining = \(rejectedApplies);
+                  window.rejectedCheckpoints = 0;
+                  window.classroomPanelHost.applyStateChange = change => {
+                    if (change.flush && window.rejectedAppliesRemaining > 0) {
+                      window.rejectedAppliesRemaining--;
+                      window.rejectedCheckpoints++;
+                      return false;
+                    }
+                    return new Promise(resolve => {
+                      window.deferredPanelChanges.push(() => resolve(apply(change)));
+                    });
+                  };
                   window.releasePanelChanges = () => {
                     window.classroomPanelHost.applyStateChange = apply;
                     window.deferredPanelChanges.splice(0).forEach(run => run());
@@ -222,6 +241,32 @@ final class WidgetCheckpointTests: XCTestCase {
             XCTAssertFalse(ready, "The unresponsive QR checkpoint must refuse quit")
         } else {
             host.reloadWidgets()
+        }
+        if rejectedApplies > 0 {
+            try await waitUntil { (try? await host.webView.evaluateJavaScript("window.rejectedCheckpoints > 0")) as? Bool == true }
+            if rejectedApplies > 1 {
+                // A persistently unavailable bridge must stop retrying, retain AB,
+                // and allow an explicit retry once the host is available again.
+                try await Task.sleep(nanoseconds: 4_000_000_000)
+                let before = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                try await Task.sleep(nanoseconds: 400_000_000)
+                let after = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                XCTAssertEqual(before, after, "Recovery attempts must be bounded")
+                XCTAssertNil(panelWebView(title: "List"), "Failed application must not expose stale A")
+                _ = try await host.webView.evaluateJavaScript("window.rejectedAppliesRemaining = 0; true")
+                host.reloadWidgets()
+            }
+            var retried = false
+            for _ in 0..<100 {
+                retried = (try? await host.webView.evaluateJavaScript("window.deferredPanelChanges.length > 0")) as? Bool == true
+                if retried { break }
+                try await Task.sleep(nanoseconds: 50_000_000)
+            }
+            let rejected = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+            let savedA = try await hostContains("A", host: host)
+            print("REJECTED-APPLY action=\(quit ? "quit" : "reload") rejected=\(rejected?.intValue ?? -1) retryQueued=\(retried) editorVisible=\(panelWebView(title: "List") != nil) hostContainsA=\(savedA)")
+            XCTAssertTrue(retried, "A failed healthy checkpoint must not strand resumption permanently")
+            guard retried else { return }
         }
         if delayRecovery {
             try await waitUntil { (try? await host.webView.evaluateJavaScript("window.deferredPanelChanges.length > 0")) as? Bool == true }
@@ -287,6 +332,11 @@ final class WidgetCheckpointTests: XCTestCase {
         let expectedText = delayRecovery ? "ABC" : "AB"
         try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == expectedText }
         print("CHECKPOINT follow-up reload: panel=\(expectedText)")
+        if rejectedApplies > 0 {
+            let ready = await host.prepareForTermination()
+            XCTAssertTrue(ready, "A recovered apply must not permanently refuse later quit")
+            print("REJECTED-APPLY follow-up quit: ready=\(ready)")
+        }
     }
 
     @MainActor
