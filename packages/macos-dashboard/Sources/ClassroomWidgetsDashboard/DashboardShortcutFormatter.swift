@@ -42,8 +42,11 @@ enum DashboardShortcutFormatter {
             return specialKey
         }
 
-        return translatedCharacter(for: keyCode, layoutData: layoutData)?.uppercased()
-            ?? keyCodeToUSKeyboardCharacter[keyCode] ?? "?"
+        guard let character = translatedCharacter(for: keyCode, layoutData: layoutData) else {
+            return keyCodeToUSKeyboardCharacter[keyCode] ?? "?"
+        }
+        let uppercase = character.uppercased()
+        return uppercase.count == 1 ? uppercase : character
     }
 
     static func currentLayoutData() -> CFData? {
