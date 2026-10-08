@@ -36,24 +36,33 @@ final class DashboardShortcutSettingsTests: XCTestCase {
         try await render(view, name: "recorder-before")
         let field = try recorder(in: view, label: "Keyboard shortcut")
 
-        for (code, character) in [(kVK_ANSI_W, "w"), (kVK_ANSI_Q, "q")] {
+        for (code, character, unmodified) in [
+            (kVK_ANSI_W, "w", "w"), (kVK_ANSI_Q, "q", "q"),
+            (kVK_ANSI_W, "w", "ц"), (kVK_ANSI_Q, "q", "й")
+        ] {
             XCTAssertTrue(field.accessibilityPerformPress())
             try await render(view, name: "recorder-recording")
             XCTAssertTrue(window.firstResponder === field)
             let event = try XCTUnwrap(NSEvent.keyEvent(
                 with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
                 windowNumber: window.windowNumber, context: nil, characters: character,
-                charactersIgnoringModifiers: character, isARepeat: false, keyCode: UInt16(code)
+                charactersIgnoringModifiers: unmodified, isARepeat: false, keyCode: UInt16(code)
             ))
             app.sendEvent(event)
-            XCTAssertTrue(captured.isEmpty, "Reserved keys must not become global shortcuts")
+            XCTAssertTrue(captured.isEmpty, "Reserved keys must not become global shortcuts, including Command-remapped \(unmodified) → \(character)")
             XCTAssertTrue(actions.keys.isEmpty, "Recording must intercept menu dispatch")
             XCTAssertEqual(field.accessibilityValue() as? String, "Reserved for app menus. Choose another shortcut.")
-            try await render(view, name: "recorder-reserved-\(character)")
+            try await render(view, name: "recorder-reserved-\(unmodified)")
             field.keyDown(with: try keyEvent(code: kVK_Escape, character: "\u{1b}", window: window))
-            app.sendEvent(event)
+            let menuEvent = try XCTUnwrap(NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: character,
+                charactersIgnoringModifiers: character, isARepeat: false, keyCode: UInt16(code)
+            ))
+            app.sendEvent(menuEvent)
             XCTAssertEqual(actions.keys, [character], "Outside recording the normal menu must still receive the key")
             actions.keys.removeAll()
+            captured.removeAll()
         }
         XCTAssertTrue(field.accessibilityPerformPress())
         field.keyDown(with: try keyEvent(code: kVK_ANSI_D, character: "d", window: window))
