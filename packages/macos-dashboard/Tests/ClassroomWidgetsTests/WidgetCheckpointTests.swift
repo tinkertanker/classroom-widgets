@@ -15,7 +15,12 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
-    private func exerciseFailedCheckpoint(quit: Bool) async throws {
+    func testFailedReloadDoesNotExposeStaleEditorWhileHealthyCheckpointIsPending() async throws {
+        try await exerciseFailedCheckpoint(quit: false, delayRecovery: true)
+    }
+
+    @MainActor
+    private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false) async throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
         _ = NSApplication.shared
@@ -43,11 +48,46 @@ final class WidgetCheckpointTests: XCTestCase {
         XCTAssertFalse(alreadySaved, "The last edit must still be pending, not already saved")
         _ = try await qr.evaluateJavaScript("window.classroomWidgetPanel.takePendingState = () => null; true")
 
+        if delayRecovery {
+            // Hold host applications in FIFO order, modelling a slow host without
+            // blocking the independent panel renderer or reordering user edits.
+            _ = try await host.webView.evaluateJavaScript("""
+                (() => {
+                  const apply = window.classroomPanelHost.applyStateChange;
+                  window.deferredPanelChanges = [];
+                  window.classroomPanelHost.applyStateChange = change => new Promise(resolve => {
+                    window.deferredPanelChanges.push(() => resolve(apply(change)));
+                  });
+                  window.releasePanelChanges = () => {
+                    window.classroomPanelHost.applyStateChange = apply;
+                    window.deferredPanelChanges.splice(0).forEach(run => run());
+                    return true;
+                  };
+                })()
+                """)
+        }
+
         if quit {
             let ready = await host.prepareForTermination()
             XCTAssertFalse(ready, "The unresponsive QR checkpoint must refuse quit")
         } else {
             host.reloadWidgets()
+        }
+        if delayRecovery {
+            try await waitUntil { (try? await host.webView.evaluateJavaScript("window.deferredPanelChanges.length > 0")) as? Bool == true }
+            try await Task.sleep(nanoseconds: 600_000_000)
+            let stale = panelWebView(title: "List")
+            if let stale {
+                try await waitUntil { (try? await stale.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
+                let before = try await stale.evaluateJavaScript("document.querySelector('textarea').value")
+                try await type("AC", in: stale)
+                try await waitUntil { (try? await host.webView.evaluateJavaScript("window.deferredPanelChanges.length == 2")) as? Bool == true }
+                let edited = try await stale.evaluateJavaScript("document.querySelector('textarea').value")
+                print("SLOW-HOST staleEditor=\(before) userEdited=\(edited) queuedApplications=2")
+            }
+            XCTAssertNil(stale, "Do not expose an editable stale snapshot while the healthy checkpoint is unapplied")
+            _ = try await host.webView.evaluateJavaScript("window.releasePanelChanges()")
+            try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "AB" }
         }
         try await waitUntil { self.panelWebView(title: "List").map { $0 !== list } == true }
         let rebuilt = try XCTUnwrap(panelWebView(title: "List"))
