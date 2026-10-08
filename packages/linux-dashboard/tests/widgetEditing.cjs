@@ -49,6 +49,7 @@ async function click(view, expression) {
   await delay(100);
 }
 async function fill(view, selector, value) {
+  await until(`input ${selector}`, () => exists(view, `document.querySelector(${JSON.stringify(selector)})`));
   await view.executeJavaScript(`(() => { const input = document.querySelector(${JSON.stringify(selector)}); input.focus(); input.select(); })()`);
   await view.insertText(value);
   await until('typed value rendered', () => view.executeJavaScript(`document.querySelector(${JSON.stringify(selector)})?.value === ${JSON.stringify(value)}`));
@@ -143,6 +144,7 @@ app.whenReady().then(async () => {
     .find(win => win !== window && win.webContents.getURL().endsWith('panel-chrome.html')));
   const timer = timerWindow.contentView.children[0].webContents;
   await until('Timer rendered', () => exists(timer, button('Start')));
+  timerWindow.focus();
   const displayedTime = () => timer.executeJavaScript(`Array.from(document.querySelectorAll('span[title="Click to edit"]')).map(e => e.textContent).join(':')`);
   const editSegment = async (index, value) => {
     await click(timer, `document.querySelectorAll('span[title="Click to edit"]')[${index}]`);
