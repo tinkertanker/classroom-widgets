@@ -110,8 +110,13 @@ launcher's renderer through its own DevTools connection; they verify widget stat
 and the launcher's actual add action after recovery. Checkpoint tests keep a List
 edit queued while another panel fails its checkpoint during reload or quit
 preparation, then verify the host and rendered List retain the latest edit even
-though preparation fails. These checks do not simulate a power loss or prove
-Chromium disk durability after an immediate forced termination.
+though preparation fails. Recovery-race cases crash the host renderer or browser
+after Reload/quit preparation has destructively collected an edit but before its
+checkpoint completes. They verify interrupted preparation does not report success
+and the recovered host and List retain that edit. Quit checks target the host
+preparation API; the existing app-level quit caller still exits on failure. These
+checks do not simulate a power loss or prove Chromium disk durability after an
+immediate forced termination.
 
 Movement tests run the production `App` and its hotkey wiring in isolated child
 processes. They require at least two Windows-visible extended monitors and skip

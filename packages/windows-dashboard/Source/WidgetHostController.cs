@@ -18,8 +18,10 @@ public sealed class WidgetHostController
     private readonly WidgetPanelCoordinator _coordinator;
     private readonly HostWriteTracker _hostWrites = new();
     private IReadOnlyList<WidgetPanelStateChange>? _pendingRecoveryChanges;
+    private Task<(IReadOnlyList<WidgetPanelStateChange> Changes, bool Prepared)>? _panelPreparation;
     private bool _reloadInProgress;
     private bool _recoveryInProgress;
+    private bool _hostFailurePending;
     private bool _browserReplacementPending;
     private bool _initialized;
 
@@ -149,16 +151,20 @@ public sealed class WidgetHostController
         if (_reloadInProgress || !_initialized) return;
         IsAvailable = false;
         _reloadInProgress = true;
-        var (changes, prepared) = await _coordinator.PrepareForDeactivationAsync();
+        _panelPreparation = _coordinator.PrepareForDeactivationAsync();
+        var (changes, prepared) = await _panelPreparation;
+        if (_hostFailurePending) return; // Recovery owns this collection now.
         // Collection consumes each healthy panel's queued edit even when
         // another panel misses its checkpoint. Preserve those edits first.
         var applied = await ApplyFinalPanelStateChangesAsync(changes);
+        if (_hostFailurePending) return;
         if (!prepared || !applied)
         {
             ResumeAfterFailedDeactivation();
             return;
         }
         _coordinator.Deactivate();
+        _panelPreparation = null;
         _hostWrites.Reset();
         LoadHost();
     }
@@ -171,22 +177,26 @@ public sealed class WidgetHostController
     public async Task<bool> PrepareForTerminationAsync()
     {
         _coordinator.FlushPersistedFrames();
+        if (_hostFailurePending) return false;
         if (!_initialized || _reloadInProgress) return !_initialized;
         IsAvailable = false;
         _reloadInProgress = true;
 
-        var preparation = _coordinator.PrepareForDeactivationAsync();
+        var preparation = _panelPreparation = _coordinator.PrepareForDeactivationAsync();
         if (await Task.WhenAny(preparation, Task.Delay(2000)) != preparation)
         {
             ResumeAfterFailedDeactivation();
             return false;
         }
         var (changes, prepared) = preparation.Result;
+        if (_hostFailurePending) return false;
 
         for (var attempt = 0; attempt <= 20; attempt++)
         {
             var apply = ApplyFinalPanelStateChangesAsync(changes);
-            if (await Task.WhenAny(apply, Task.Delay(1000)) == apply && apply.Result)
+            var completed = await Task.WhenAny(apply, Task.Delay(1000));
+            if (_hostFailurePending) return false;
+            if (completed == apply && apply.Result)
             {
                 if (!prepared)
                 {
@@ -194,6 +204,7 @@ public sealed class WidgetHostController
                     return false;
                 }
                 _coordinator.Deactivate();
+                _panelPreparation = null;
                 return true;
             }
             if (!prepared) break;
@@ -205,7 +216,9 @@ public sealed class WidgetHostController
 
     private void ResumeAfterFailedDeactivation()
     {
+        if (_hostFailurePending) return;
         _hostWrites.AcknowledgeFailure();
+        _panelPreparation = null;
         _reloadInProgress = false;
         _coordinator.Deactivate();
         _coordinator.Activate();
@@ -263,6 +276,7 @@ public sealed class WidgetHostController
         }
         DashboardLog.Error($"Widget host process failed ({args.ProcessFailedKind}); reloading");
         IsAvailable = false;
+        _hostFailurePending = true;
         if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
         {
             _initialized = false;
@@ -284,11 +298,15 @@ public sealed class WidgetHostController
         _recoveryInProgress = true;
         try
         {
-            if (!_reloadInProgress)
+            if (_pendingRecoveryChanges is null)
             {
                 _reloadInProgress = true;
-                var (changes, _) = await _coordinator.PrepareForDeactivationAsync();
+                // Reload/quit may already have consumed the panels' edits.
+                // Await that same collection before closing their WebViews.
+                _panelPreparation ??= _coordinator.PrepareForDeactivationAsync();
+                var (changes, _) = await _panelPreparation;
                 _pendingRecoveryChanges = changes;
+                _panelPreparation = null;
             }
             _hostWrites.Reset();
             _coordinator.Deactivate();
@@ -334,6 +352,7 @@ public sealed class WidgetHostController
             return;
         }
         _reloadInProgress = false;
+        _hostFailurePending = false;
         _coordinator.Activate();
     }
 
@@ -345,6 +364,7 @@ public sealed class WidgetHostController
             await Task.Delay(150);
         }
         _reloadInProgress = false;
+        _hostFailurePending = false;
         _coordinator.Activate();
     }
 
