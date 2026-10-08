@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <StartupObject>ClassroomWidgetsTests.NativeMovementTests</StartupObject>
+    <GenerateProgramFile>false</GenerateProgramFile>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
