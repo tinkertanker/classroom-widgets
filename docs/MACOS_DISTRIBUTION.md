@@ -115,8 +115,11 @@ swift test --package-path packages/macos-dashboard -j 2 \
 The checkpoint scenarios delay a List acknowledgement and suppress a sibling QR
 checkpoint, then check the rebuilt text after reload and refused quit. Keyboard tests dispatch AppKit
 events through the menu pipeline and translate installed German layout data without
-selecting a different input source. The log and PNG captures are repeatable evidence;
-the tests do not require changing the user's keyboard layout.
+selecting a different input source. Retain each run's log and inspect its PNGs before
+using them as visual evidence: WebKit can return a transparent reload snapshot even
+when the DOM and host-state assertions pass. Use separate evidence directories for
+separate runs so later captures do not overwrite earlier ones. The tests do not
+require changing the user's keyboard layout.
 
 ## Local DMG
 
