@@ -95,7 +95,9 @@ public sealed class NativeWindowRegressionTests
         var original = DashboardSettings.DataDirectory;
         var directory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
         DashboardSettings.UseDataDirectory(directory);
-        try { WpfTestHost.Run(() => scenario(new DashboardSettings())); }
+        // Run on the production App's dispatcher, initialized by the child
+        // process. A bare pumped STA does not reproduce App window lifecycle.
+        try { scenario(new DashboardSettings()); }
         finally
         {
             DashboardSettings.UseDataDirectory(original);

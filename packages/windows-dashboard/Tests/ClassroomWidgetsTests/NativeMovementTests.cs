@@ -71,7 +71,12 @@ public sealed class NativeMovementTests
             Console.Error.WriteLine("Fixture requires manifested PerMonitorV2 DPI awareness before WPF starts.");
             return 2;
         }
-        if (args[0] is "display-restore" or "settings-restore" or "display-topmost")
+        if (args[0] is not ("display" or "dpi" or "display-restore" or "settings-restore" or "display-topmost")) return 2;
+        DashboardSettings.UseDataDirectory(Path.Combine(Path.GetTempPath(), "ClassroomWidgetsMovementTests", Guid.NewGuid().ToString("N")));
+        var application = new App();
+        application.InitializeComponent();
+        var exitCode = 1;
+        application.Startup += (_, _) => application.Dispatcher.BeginInvoke(new Action(async () =>
         {
             try
             {
@@ -81,25 +86,8 @@ public sealed class NativeMovementTests
                     case "display-restore": windows.DisplayShowRestoresMinimizedWindowWithoutReplacingIt(); break;
                     case "settings-restore": windows.TraySettingsRestoresMinimizedWindowWithoutReplacingIt(); break;
                     case "display-topmost": windows.DisplayHonorsTopmostPreferenceAtCreationAndWhileOpen(); break;
+                    default: await ExerciseMovementAsync(application, args[0]); break;
                 }
-                return 0;
-            }
-            catch (Exception error)
-            {
-                Console.Error.WriteLine(error);
-                return 1;
-            }
-        }
-        if (args[0] is not ("display" or "dpi")) return 2;
-        DashboardSettings.UseDataDirectory(Path.Combine(Path.GetTempPath(), "ClassroomWidgetsMovementTests", Guid.NewGuid().ToString("N")));
-        var application = new App();
-        application.InitializeComponent();
-        var exitCode = 1;
-        application.Startup += (_, _) => application.Dispatcher.BeginInvoke(new Action(async () =>
-        {
-            try
-            {
-                await ExerciseMovementAsync(application, args[0]);
                 exitCode = 0;
             }
             catch (Exception error) { Console.Error.WriteLine(error); }
