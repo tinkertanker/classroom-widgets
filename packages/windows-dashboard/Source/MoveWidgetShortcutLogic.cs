@@ -99,7 +99,18 @@ internal static class WindowDisplayMovement
         if (!Place()) return false;
         // WM_DPICHANGED can apply its suggested rectangle during the first move.
         // Reapply the physical frame after WPF has adopted the destination DPI.
-        return Place();
+        if (!Place()) return false;
+        // WM_MOVE can precede the new DPI transform. An identical second
+        // placement sends no move notification, leaving Left/Top in the old
+        // units even though ActualWidth/Height use the new DPI. Synchronize
+        // only this shortcut's result before CurrentFrame is persisted.
+        if (PresentationSource.FromVisual(window)?.CompositionTarget is { } target)
+        {
+            var position = target.TransformFromDevice.Transform(new Point(Math.Round(moved.X), Math.Round(moved.Y)));
+            window.Left = position.X;
+            window.Top = position.Y;
+        }
+        return true;
     }
 
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
