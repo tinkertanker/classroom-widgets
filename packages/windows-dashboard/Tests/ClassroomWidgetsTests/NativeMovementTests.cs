@@ -16,15 +16,17 @@ namespace ClassroomWidgetsTests;
 // profile, without leaving Application.Current/IsShuttingDown in the test host.
 public sealed class NativeMovementTests
 {
+    internal static bool IsChildProcess { get; private set; }
+
     [MultiMonitorFact]
     public void FocusedDisplayOwnsMoveShortcutAndSuspendsOverlappingCapture()
-        => RunApplicationScenario("display");
+        => RunScenario("display");
 
     [MultiMonitorFact]
     public void MixedDpiMoveUsesPhysicalMonitorOriginsAndPersistsResult()
-        => RunApplicationScenario("dpi");
+        => RunScenario("dpi");
 
-    private static void RunApplicationScenario(string scenario)
+    internal static void RunScenario(string scenario)
     {
         using var process = new Process
         {
@@ -59,13 +61,33 @@ public sealed class NativeMovementTests
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Length != 1 || args[0] is not ("display" or "dpi")) return 2;
+        if (args.Length != 1) return 2;
+        IsChildProcess = true;
+        if (args[0] is "display-restore" or "settings-restore" or "display-topmost")
+        {
+            try
+            {
+                var windows = new NativeWindowRegressionTests();
+                switch (args[0])
+                {
+                    case "display-restore": windows.DisplayShowRestoresMinimizedWindowWithoutReplacingIt(); break;
+                    case "settings-restore": windows.TraySettingsRestoresMinimizedWindowWithoutReplacingIt(); break;
+                    case "display-topmost": windows.DisplayHonorsTopmostPreferenceAtCreationAndWhileOpen(); break;
+                }
+                return 0;
+            }
+            catch (Exception error)
+            {
+                Console.Error.WriteLine(error);
+                return 1;
+            }
+        }
+        if (args[0] is not ("display" or "dpi")) return 2;
         if (!SetProcessDpiAwarenessContext(new IntPtr(-4)))
         {
             Console.Error.WriteLine("Fixture requires PerMonitorV2 DPI awareness before creating any HWND.");
             return 2;
         }
-        Application.ResourceAssembly = typeof(App).Assembly;
         DashboardSettings.UseDataDirectory(Path.Combine(Path.GetTempPath(), "ClassroomWidgetsMovementTests", Guid.NewGuid().ToString("N")));
         var application = new App();
         application.InitializeComponent();
