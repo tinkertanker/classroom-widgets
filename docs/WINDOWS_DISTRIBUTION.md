@@ -39,8 +39,16 @@ Show opens or focuses the single preview window. Dismiss closes it and stops
 capture, including overlap resumption, while preserving the saved source and
 position. Reopening starts idle. Menu and launcher actions always show Display.
 **Move to Previous/Next Display** shortcuts (defaults: Ctrl-Alt-Shift-Left and
-Ctrl-Alt-Shift-Right) move the focused widget panel between monitors; both are
-configurable in Settings like the others.
+Ctrl-Alt-Shift-Right) move the focused widget panel or Display between monitors;
+both are configurable in Settings like the others. With another app focused,
+the most recently activated widget panel remains the target. Movement preserves
+the window's DIP size and physical work-area offset across different display
+scales. Moving Display onto its capture source suspends capture immediately;
+moving it away resumes capture. Maximized windows are not moved.
+
+Display follows **Keep widgets above other windows**, including changes made
+while its preview is open. Showing minimized Display or Settings restores the
+existing window rather than creating a second one.
 
 ### Where things live
 
@@ -100,8 +108,10 @@ flags, Settings controls, GDI capture, and the real bundled web app. Browser
 recovery tests kill only the browser in an isolated WebView2 profile or crash the
 launcher's renderer through its own DevTools connection; they verify widget state
 and the launcher's actual add action after recovery. Checkpoint tests keep a List
-edit queued while another panel fails its checkpoint, then verify the host and
-rendered List retain the latest edit.
+edit queued while another panel fails its checkpoint during reload or quit
+preparation, then verify the host and rendered List retain the latest edit even
+though preparation fails. These checks do not simulate a power loss or prove
+Chromium disk durability after an immediate forced termination.
 
 Movement tests run the production `App` and its hotkey wiring in isolated child
 processes. They require at least two Windows-visible extended monitors and skip

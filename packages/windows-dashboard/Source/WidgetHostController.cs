@@ -149,12 +149,10 @@ public sealed class WidgetHostController
         IsAvailable = false;
         _reloadInProgress = true;
         var (changes, prepared) = await _coordinator.PrepareForDeactivationAsync();
-        if (!prepared)
-        {
-            ResumeAfterFailedDeactivation();
-            return;
-        }
-        if (!await ApplyFinalPanelStateChangesAsync(changes))
+        // Collection consumes each healthy panel's queued edit even when
+        // another panel misses its checkpoint. Preserve those edits first.
+        var applied = await ApplyFinalPanelStateChangesAsync(changes);
+        if (!prepared || !applied)
         {
             ResumeAfterFailedDeactivation();
             return;
@@ -183,20 +181,21 @@ public sealed class WidgetHostController
             return false;
         }
         var (changes, prepared) = preparation.Result;
-        if (!prepared)
-        {
-            ResumeAfterFailedDeactivation();
-            return false;
-        }
 
         for (var attempt = 0; attempt <= 20; attempt++)
         {
             var apply = ApplyFinalPanelStateChangesAsync(changes);
             if (await Task.WhenAny(apply, Task.Delay(1000)) == apply && apply.Result)
             {
+                if (!prepared)
+                {
+                    ResumeAfterFailedDeactivation();
+                    return false;
+                }
                 _coordinator.Deactivate();
                 return true;
             }
+            if (!prepared) break;
             await Task.Delay(150);
         }
         ResumeAfterFailedDeactivation();
