@@ -20,6 +20,11 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
+    func testRefusedQuitDoesNotExposeStaleEditorWhileHealthyCheckpointIsPending() async throws {
+        try await exerciseFailedCheckpoint(quit: true, delayRecovery: true)
+    }
+
+    @MainActor
     private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false) async throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
@@ -63,6 +68,22 @@ final class WidgetCheckpointTests: XCTestCase {
                     window.deferredPanelChanges.splice(0).forEach(run => run());
                     return true;
                   };
+                  const handler = window.webkit.messageHandlers.classroomDashboard;
+                  const post = handler.postMessage.bind(handler);
+                  window.deferredInventories = [];
+                  handler.postMessage = message => {
+                    if (message.type === 'widget-panels-changed') {
+                      window.deferredInventories.push(message);
+                    } else {
+                      post(message);
+                    }
+                  };
+                  window.releaseInventories = () => {
+                    handler.postMessage = post;
+                    window.deferredInventories.splice(0).forEach(post);
+                    return true;
+                  };
+                  return true;
                 })()
                 """)
         }
@@ -83,10 +104,16 @@ final class WidgetCheckpointTests: XCTestCase {
                 try await type("AC", in: stale)
                 try await waitUntil { (try? await host.webView.evaluateJavaScript("window.deferredPanelChanges.length == 2")) as? Bool == true }
                 let edited = try await stale.evaluateJavaScript("document.querySelector('textarea').value")
-                print("SLOW-HOST staleEditor=\(before) userEdited=\(edited) queuedApplications=2")
+                print("SLOW-HOST staleEditor=\(before as? String ?? "unavailable") userEdited=\(edited as? String ?? "unavailable") queuedApplications=2")
             }
             XCTAssertNil(stale, "Do not expose an editable stale snapshot while the healthy checkpoint is unapplied")
             _ = try await host.webView.evaluateJavaScript("window.releasePanelChanges()")
+            try await waitUntil { (try? await host.webView.evaluateJavaScript("window.deferredInventories.length > 0")) as? Bool == true }
+            try await Task.sleep(nanoseconds: 600_000_000)
+            let unpublishedEditor = panelWebView(title: "List")
+            XCTAssertNil(unpublishedEditor, "Host application alone must not expose an editor before its fresh inventory arrives")
+            print("SLOW-HOST appliedButUnpublished editorVisible=\(unpublishedEditor != nil)")
+            _ = try await host.webView.evaluateJavaScript("window.releaseInventories()")
             do {
                 try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "AB" }
             } catch {
@@ -122,9 +149,15 @@ final class WidgetCheckpointTests: XCTestCase {
             let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
             try png.write(to: URL(fileURLWithPath: directory).appendingPathComponent(quit ? "refused-quit.png" : "failed-reload.png"))
         }
+        if delayRecovery {
+            try await type("ABC", in: rebuilt)
+            try await waitUntil { try await self.hostContains("ABC", host: host) }
+        }
         host.reloadWidgets()
         try await waitUntil { self.panelWebView(title: "List").map { $0 !== rebuilt } == true }
-        try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "AB" }
+        let expectedText = delayRecovery ? "ABC" : "AB"
+        try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == expectedText }
+        print("CHECKPOINT follow-up reload: panel=\(expectedText)")
     }
 
     @MainActor
