@@ -18,6 +18,8 @@ final class DashboardShortcutFormatterTests: XCTestCase {
         XCTAssertEqual(DashboardShortcutFormatter.keyEquivalent(for: kVK_ANSI_Z, layoutData: data), "y")
         XCTAssertEqual(DashboardShortcutFormatter.keyTitle(for: kVK_ANSI_Equal, layoutData: data), "´",
                        "A dead key needs a visible standalone character")
+        XCTAssertEqual(DashboardShortcutFormatter.keyTitle(for: kVK_ANSI_Minus, layoutData: data), "ß",
+                       "Uppercasing must not expand one physical key into two letters")
         XCTAssertEqual(DashboardShortcutFormatter.keyTitle(for: kVK_LeftArrow, layoutData: data), "←")
         XCTAssertEqual(DashboardShortcutFormatter.keyEquivalent(for: kVK_F2, layoutData: data), String(UnicodeScalar(NSF2FunctionKey)!))
         XCTAssertEqual(TISCopyCurrentKeyboardInputSource().takeRetainedValue(), current,
