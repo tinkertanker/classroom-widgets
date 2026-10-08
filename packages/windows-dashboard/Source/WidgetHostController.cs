@@ -148,6 +148,11 @@ public sealed class WidgetHostController
 
     public async Task ReloadWidgetsAsync()
     {
+        if (_hostFailurePending)
+        {
+            await RecoverFromHostFailureAsync();
+            return;
+        }
         if (_reloadInProgress || !_initialized) return;
         IsAvailable = false;
         _reloadInProgress = true;
@@ -296,40 +301,55 @@ public sealed class WidgetHostController
     {
         if (_recoveryInProgress) return;
         _recoveryInProgress = true;
+        var hostLoaded = false;
         try
         {
-            if (_pendingRecoveryChanges is null)
+            for (var attempt = 0; attempt < 3; attempt++)
             {
-                _reloadInProgress = true;
-                // Reload/quit may already have consumed the panels' edits.
-                // Await that same collection before closing their WebViews.
-                _panelPreparation ??= _coordinator.PrepareForDeactivationAsync();
-                var (changes, _) = await _panelPreparation;
-                _pendingRecoveryChanges = changes;
-                _panelPreparation = null;
+                try
+                {
+                    if (_pendingRecoveryChanges is null)
+                    {
+                        _reloadInProgress = true;
+                        // Reload/quit may already have consumed the panels' edits.
+                        // Await that same collection before closing their WebViews.
+                        _panelPreparation ??= _coordinator.PrepareForDeactivationAsync();
+                        var (changes, _) = await _panelPreparation;
+                        _pendingRecoveryChanges = changes;
+                        _panelPreparation = null;
+                    }
+                    _hostWrites.Reset();
+                    _coordinator.Deactivate();
+                    if (_browserReplacementPending)
+                    {
+                        _browserReplacementPending = false;
+                        var closed = _webView;
+                        _webView = new WebView2();
+                        _hostWindow.Content = _webView;
+                        closed.Dispose();
+                        await InitializeWebViewAsync();
+                    }
+                    LoadHost();
+                    hostLoaded = true;
+                    return;
+                }
+                catch (Exception error) when (error is WebView2RuntimeNotFoundException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+                {
+                    // A failed controller cannot be initialized again. Keep
+                    // replacement ownership and the collected edits for retry.
+                    _initialized = false;
+                    _browserReplacementPending = true;
+                    DashboardLog.Error($"Unable to recover widget host: {error.Message}");
+                }
+                if (attempt < 2) await Task.Delay(1000);
             }
-            _hostWrites.Reset();
-            _coordinator.Deactivate();
-            if (_browserReplacementPending)
-            {
-                _browserReplacementPending = false;
-                var closed = _webView;
-                _webView = new WebView2();
-                _hostWindow.Content = _webView;
-                closed.Dispose();
-                await InitializeWebViewAsync();
-            }
-            LoadHost();
-        }
-        catch (Exception error) when (error is WebView2RuntimeNotFoundException or InvalidOperationException or System.Runtime.InteropServices.COMException)
-        {
             _reloadInProgress = false;
-            DashboardLog.Error($"Unable to recover widget host: {error.Message}");
+            DashboardLog.Warn("Automatic widget host recovery stopped after 3 attempts; use Reload Widgets to retry");
         }
         finally
         {
             _recoveryInProgress = false;
-            if (_browserReplacementPending)
+            if (hostLoaded && _browserReplacementPending)
                 _ = _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync()));
         }
     }
