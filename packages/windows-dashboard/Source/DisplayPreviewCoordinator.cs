@@ -120,6 +120,19 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         }
     }
 
+    public bool TryMoveFocused(MoveDirection direction)
+    {
+        if (_window is not { IsActive: true } window) return false;
+        // Stop before moving: the 150ms frame debounce is longer than a
+        // capture interval, so moving onto the source must not capture itself.
+        StopCapture();
+        WindowDisplayMovement.Move(window, direction);
+        NoteFrameChange();
+        RefreshSources();
+        if (_wantsCapture && !_suspendedForOverlap && _capture is null) _ = StartAsync();
+        return true;
+    }
+
     public void Stop()
     {
         _wantsCapture = false;
