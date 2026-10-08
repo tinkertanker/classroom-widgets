@@ -18,9 +18,11 @@ function harness(t, getSources = async () => [{ id: 'screen:2:0', display_id: '2
     getBounds() { return this.bounds; }
     getContentSize() { return { width: 480, height: 360 }; }
     setBounds(bounds) { this.bounds = bounds; }
-    setSize() {}
+    setContentSize() {}
     show() { this.shows += 1; }
     focus() {}
+    isFocused() { return false; }
+    setAlwaysOnTop(value) { this.alwaysOnTop = value; }
     close() { this.emit('closed'); }
     setState(state) { this.state = state; }
     startStream(id) { this.streams.push(id); this.active = id; }

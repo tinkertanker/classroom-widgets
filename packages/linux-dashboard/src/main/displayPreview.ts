@@ -15,9 +15,11 @@ import {
   DisplayPreviewWindow,
 } from './displayPreviewWindow';
 import { movePointer } from './pointer';
+import { nextDisplayFrame, type MoveDirection } from './moveToNextDisplay';
 import { DISPLAY_RECONNECT_DEBOUNCE_MS, DisplayReconnectPolicy, STAND_IN_SWITCH_WINDOW_MS } from './displayReconnect';
 
 interface ScreenLike {
+  getAllDisplays(): Electron.Display[];
   getDisplayMatching(rect: Rect): Electron.Display;
   getCursorScreenPoint(): { x: number; y: number };
   on(event: string, listener: () => void): void;
@@ -38,11 +40,13 @@ export interface DisplayPreviewDeps {
 export interface DisplayPreviewWindowLike extends EventEmitter {
   getBounds(): Rect;
   setBounds(bounds: Rect): void;
-  setSize(size: { width: number; height: number }): void;
+  setContentSize(size: { width: number; height: number }): void;
   getContentSize(): { width: number; height: number };
   show(): void;
   showInactive?(): void;
   focus(): void;
+  isFocused(): boolean;
+  setAlwaysOnTop(alwaysOnTop: boolean): void;
   close(): void;
   setState(state: DisplayPreviewState): void;
   startStream(sourceId: string, size: { width: number; height: number }): void;
@@ -106,6 +110,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     const bounds = this.initialBounds();
     const window = this.deps.createWindow?.(bounds) ?? new DisplayPreviewWindow(bounds);
     this.window = window;
+    this.applySettings();
     this.attachWindow(window);
     if (activate) {
       window.show();
@@ -116,6 +121,23 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       window.show();
     }
     this.refreshSources();
+  }
+
+  applySettings(): void {
+    this.window?.setAlwaysOnTop(this.settings.alwaysOnTop);
+  }
+
+  /** Returns true when Display owns the focused move target, even if it cannot move. */
+  moveFocused(direction: MoveDirection): boolean {
+    if (!this.window?.isFocused()) return false;
+    const frame = nextDisplayFrame(this.window.getBounds(), this.deps.screen.getAllDisplays().map((display) => display.workArea), direction);
+    if (frame) {
+      this.window.setBounds(frame);
+      // Do not wait for queued native move events to suspend an overlapping stream.
+      this.refreshSources();
+      this.persistFrame();
+    }
+    return true;
   }
 
   close(): void {
@@ -395,22 +417,29 @@ export class DisplayPreviewCoordinator extends EventEmitter {
 
   private snapAspect(): void {
     if (!this.window || !this.selectedSource) return;
-    const host = this.deps.screen.getDisplayMatching(this.window.getBounds());
+    const bounds = this.window.getBounds();
+    const host = this.deps.screen.getDisplayMatching(bounds);
     const content = this.window.getContentSize();
     const size = aspectNormalizedWindowSize(
       this.selectedSource.bounds.width / this.selectedSource.bounds.height,
       { width: content.width, height: Math.max(content.height - DISPLAY_PREVIEW_CHROME_HEIGHT, 1) },
       DISPLAY_PREVIEW_CHROME_HEIGHT,
       MINIMUM_PREVIEW_SIZE,
-      host.workArea,
+      {
+        width: host.workArea.width - (bounds.width - content.width),
+        height: host.workArea.height - (bounds.height - content.height),
+      },
     );
-    this.window.setSize(size);
+    this.window.setContentSize(size);
   }
 
   private async moveTo(point: { x: number; y: number }, source: DisplayDescriptor): Promise<void> {
     const generation = this.startGeneration;
-    if (!(await movePointer(point.x * source.scaleFactor, point.y * source.scaleFactor)) && generation === this.startGeneration) {
-      this.publish('Could not move the pointer. Preview remains live.');
+    const result = await movePointer(point.x * source.scaleFactor, point.y * source.scaleFactor);
+    if (result !== 'moved' && generation === this.startGeneration) {
+      this.publish(result === 'missing'
+        ? 'Install xdotool to move the pointer (Debian/Ubuntu: sudo apt install xdotool). Preview remains live.'
+        : 'Could not move the pointer. Check that xdotool can access your X11/XWayland session; compositor restrictions may prevent it. Preview remains live.');
     }
   }
 
