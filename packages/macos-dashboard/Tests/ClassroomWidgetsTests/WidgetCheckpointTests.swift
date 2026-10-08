@@ -168,6 +168,10 @@ final class WidgetCheckpointTests: XCTestCase {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
         _ = NSApplication.shared
+        let oldPolicy = NSApp.activationPolicy()
+        NSApp.setActivationPolicy(.regular)
+        NSApp.finishLaunching()
+        defer { NSApp.setActivationPolicy(oldPolicy) }
         let panels = WidgetPanelCoordinator()
         let host = WidgetHostController(websiteDataStore: .nonPersistent(), panelCoordinator: panels)
         defer { panels.deactivate(); host.webView.stopLoading() }
@@ -320,7 +324,16 @@ final class WidgetCheckpointTests: XCTestCase {
         if let directory = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"] {
             let window = try XCTUnwrap(rebuilt.window)
             print("CAPTURE \(quit ? "quit" : "reload") before: visible=\(window.isVisible) unoccluded=\(window.occlusionState.contains(.visible)) frame=\(window.frame)")
-            window.orderFrontRegardless()
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            // XCTest pumps a CFRunLoop, not NSApplication.run(). Dispatch real
+            // AppKit activation/visibility events before asking WebKit to paint.
+            let deadline = Date().addingTimeInterval(2)
+            while !window.occlusionState.contains(.visible), Date() < deadline {
+                if let event = NSApp.nextEvent(matching: .any, until: Date().addingTimeInterval(0.05), inMode: .default, dequeue: true) {
+                    NSApp.sendEvent(event)
+                }
+            }
             try await waitUntil { window.occlusionState.contains(.visible) }
             // DOM readiness can precede the first compositor frame in WebKit.
             _ = try await rebuilt.callAsyncJavaScript(
