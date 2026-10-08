@@ -115,8 +115,9 @@ launcher's renderer through its own DevTools connection; they verify widget stat
 and the launcher's actual add action after recovery. Initialization-failure tests
 use incompatible options for a separate live browser's isolated profile to cause
 a real SDK controller error; they verify automatic retry, a bounded stop, manual
-Reload retry and retention of the already-collected List edit. Checkpoint tests keep a List
-edit queued while another panel fails its checkpoint during reload or quit
+Reload retry and retention of the already-collected List edit, including a second
+crash while an earlier recovery is replaying that edit. Checkpoint tests keep a
+List edit queued while another panel fails its checkpoint during reload or quit
 preparation, then verify the host and rendered List retain the latest edit even
 though preparation fails. Recovery-race cases crash the host renderer or browser
 after Reload/quit preparation has destructively collected an edit but before its
