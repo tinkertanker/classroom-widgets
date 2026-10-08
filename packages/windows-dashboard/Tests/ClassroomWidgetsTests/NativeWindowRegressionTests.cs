@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using ClassroomWidgets;
 using Xunit;
 
@@ -95,7 +96,12 @@ public sealed class NativeWindowRegressionTests
         var original = DashboardSettings.DataDirectory;
         var directory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
         DashboardSettings.UseDataDirectory(directory);
-        try { WpfTestHost.Run(() => scenario(new DashboardSettings())); }
+        // The manifested child already owns an STA, like the production App.
+        try
+        {
+            SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+            scenario(new DashboardSettings());
+        }
         finally
         {
             DashboardSettings.UseDataDirectory(original);
