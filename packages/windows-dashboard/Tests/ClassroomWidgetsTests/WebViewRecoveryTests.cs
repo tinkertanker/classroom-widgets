@@ -122,6 +122,87 @@ public sealed class WebViewRecoveryTests
             Log($"D13 refused {(terminating ? "quit" : "reload")} preserved ABC in both host inventory and rendered List");
         });
 
+    // A failure must not dispose a panel while another operation is consuming
+    // its edit. Browser exit also removes the checkpoint sender, so a valid
+    // returned edit must survive even when that checkpoint cannot arrive.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void HostFailureDuringUserPreparationPreservesConsumedEdit(bool terminating, bool browserExit)
+        => WithBrowser((host, launcher) =>
+        {
+            Add(host, 2);
+            var list = Panels(host).Single();
+            WaitForTextArea(View(list));
+            EnterText(View(list), "A");
+            WaitForState(host, "A");
+            Script(View(list), "window.classroomWidgetPanel.receiveSnapshot = () => {};");
+            EnterText(View(list), "AB");
+            WaitForState(host, "AB");
+            // Persist the old host value before a real process crash. ABC is
+            // deliberately still queued in the actual List, not in the host.
+            WpfTestHost.PumpFor(TimeSpan.FromSeconds(7));
+            EnterText(View(list), "ABC");
+            Assert.Equal("AB", ListState(host));
+            Script(View(list), """
+                (() => {
+                    const post = window.chrome.webview.postMessage.bind(window.chrome.webview);
+                    window.chrome.webview.postMessage = message => {
+                        if (message.type === 'panel-writes-checkpoint') setTimeout(() => post(message), 600);
+                        else post(message);
+                    };
+                    const take = window.classroomWidgetPanel.takePendingState;
+                    window.classroomWidgetPanel.takePendingState = () => {
+                        const change = take();
+                        window.__consumedEdit = change?.state?.inputs?.[0];
+                        return change;
+                    };
+                })()
+                """);
+            var oldInstance = Field<WidgetPanelInventory>(host.Coordinator, "_lastInventory").HostInstanceId;
+            var browserId = View(host).CoreWebView2.BrowserProcessId;
+            var failedDuringPreparation = false;
+            View(host).CoreWebView2.ProcessFailed += (_, args) =>
+            {
+                var expected = browserExit ? CoreWebView2ProcessFailedKind.BrowserProcessExited
+                    : CoreWebView2ProcessFailedKind.RenderProcessExited;
+                if (args.ProcessFailedKind != expected) return;
+                failedDuringPreparation = Field<bool>(host, "_reloadInProgress");
+                Log($"preparation race {terminating}/{browserExit}: {expected}, preparation active={failedDuringPreparation}");
+            };
+            Task<bool>? quit = terminating ? host.PrepareForTerminationAsync() : null;
+            var preparation = (Task?)quit ?? host.ReloadWidgetsAsync();
+            WpfTestHost.PumpUntil(() => SafeBool(View(list), "window.__consumedEdit === 'ABC'"),
+                TimeSpan.FromSeconds(10), "real destructive List collection to return ABC");
+            Assert.False(preparation.IsCompleted, "Failure must overlap pending preparation.");
+            Assert.False(Field<TaskCompletionSource>(list, "_writesCheckpoint").Task.IsCompleted,
+                "Fixture must withhold the checkpoint until after failure injection.");
+            Log($"preparation race {terminating}/{browserExit}: host AB, consumed ABC, checkpoint pending");
+            if (browserExit)
+            {
+                using var process = Process.GetProcessById((int)browserId);
+                process.Kill();
+            }
+            else
+            {
+                var crash = View(host).CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}");
+                _ = crash.ContinueWith(task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
+            }
+            WpfTestHost.PumpUntil(() => failedDuringPreparation, TimeSpan.FromSeconds(15), "actual host failure during preparation");
+            Complete(preparation);
+            if (quit is not null) Assert.False(quit.Result, "Interrupted quit preparation must not report success.");
+            WpfTestHost.PumpUntil(() => host.IsAvailable && Panels(host).Count == 1
+                && Field<WidgetPanelInventory>(host.Coordinator, "_lastInventory").HostInstanceId != oldInstance,
+                TimeSpan.FromSeconds(30), "replacement host after interrupted preparation");
+            WaitForState(host, "ABC");
+            var restored = Panels(host).Single();
+            WaitForListText(View(restored), "ABC");
+            Capture($"preparation-race-{(terminating ? "quit" : "reload")}-{(browserExit ? "browser" : "renderer")}.png", View(restored));
+            Log($"preparation race {terminating}/{browserExit}: recovered ABC in host and rendered List");
+        });
+
     private static void WithBrowser(Action<WidgetHostController, LauncherWindow> scenario)
     {
         var original = DashboardSettings.DataDirectory;
