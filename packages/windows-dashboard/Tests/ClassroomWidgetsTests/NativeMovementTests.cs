@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -71,8 +72,24 @@ public sealed class NativeMovementTests
             Console.Error.WriteLine("Fixture requires manifested PerMonitorV2 DPI awareness before WPF starts.");
             return 2;
         }
-        if (args[0] is not ("display" or "dpi" or "display-restore" or "settings-restore" or "display-topmost")) return 2;
+        if (args[0] is "display-restore" or "settings-restore")
+        {
+            try
+            {
+                var windows = new NativeWindowRegressionTests();
+                if (args[0] == "display-restore") windows.DisplayShowRestoresMinimizedWindowWithoutReplacingIt();
+                else windows.TraySettingsRestoresMinimizedWindowWithoutReplacingIt();
+                return 0;
+            }
+            catch (Exception error)
+            {
+                Console.Error.WriteLine(error);
+                return 1;
+            }
+        }
+        if (args[0] is not ("display" or "dpi" or "display-topmost")) return 2;
         DashboardSettings.UseDataDirectory(Path.Combine(Path.GetTempPath(), "ClassroomWidgetsMovementTests", Guid.NewGuid().ToString("N")));
+        if (args[0] == "display-topmost") new DashboardSettings { AlwaysOnTop = false }.Save();
         var application = new App();
         application.InitializeComponent();
         var exitCode = 1;
@@ -80,14 +97,8 @@ public sealed class NativeMovementTests
         {
             try
             {
-                var windows = new NativeWindowRegressionTests();
-                switch (args[0])
-                {
-                    case "display-restore": windows.DisplayShowRestoresMinimizedWindowWithoutReplacingIt(); break;
-                    case "settings-restore": windows.TraySettingsRestoresMinimizedWindowWithoutReplacingIt(); break;
-                    case "display-topmost": windows.DisplayHonorsTopmostPreferenceAtCreationAndWhileOpen(); break;
-                    default: await ExerciseMovementAsync(application, args[0]); break;
-                }
+                if (args[0] == "display-topmost") await ExerciseTopmostAsync(application);
+                else await ExerciseMovementAsync(application, args[0]);
                 exitCode = 0;
             }
             catch (Exception error) { Console.Error.WriteLine(error); }
@@ -95,6 +106,53 @@ public sealed class NativeMovementTests
         }));
         application.Run();
         return exitCode;
+    }
+
+    private static async Task ExerciseTopmostAsync(App application)
+    {
+        var settings = Field<DashboardSettings>(application, "_settings");
+        var preview = Field<DisplayPreviewCoordinator>(application, "_displayPreview");
+        Assert.False(settings.AlwaysOnTop);
+        preview.Open();
+        var display = preview.Window!;
+        await Until(() => display.IsLoaded, "production Display loaded");
+        var handle = Handle(display);
+        Console.WriteLine($"D10 created: HWND={handle}, style={GetWindowLong(handle, -20):X}");
+        Assert.Equal(0, GetWindowLong(handle, -20) & 0x8);
+
+        Field<TrayController>(application, "_tray").OpenSettings();
+        var settingsWindow = application.Windows.OfType<SettingsWindow>().Single();
+        var settingsHandle = Handle(settingsWindow);
+        // UIA must run off the UI thread so the real checkbox provider can
+        // dispatch its action while App.Run continues pumping messages.
+        var toggle = await Task.Run(() =>
+        {
+            var checkbox = AutomationElement.FromHandle(settingsHandle).FindFirst(TreeScope.Descendants,
+                new AndCondition(new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.CheckBox),
+                    new PropertyCondition(AutomationElement.NameProperty, "Keep widgets above other windows")));
+            Assert.NotNull(checkbox);
+            var pattern = (TogglePattern)checkbox.GetCurrentPattern(TogglePattern.Pattern);
+            Assert.Equal(ToggleState.Off, pattern.Current.ToggleState);
+            return pattern;
+        });
+        await Task.Run(toggle.Toggle);
+        await Until(() => settings.AlwaysOnTop && (GetWindowLong(handle, -20) & 0x8) != 0, "checkbox enables native Display topmost");
+        Assert.Same(display, preview.Window);
+        Assert.Equal(handle, Handle(display));
+        Console.WriteLine($"D10 checkbox enabled: HWND={handle}, style={GetWindowLong(handle, -20):X}");
+
+        await Task.Run(toggle.Toggle);
+        await Until(() => !settings.AlwaysOnTop && (GetWindowLong(handle, -20) & 0x8) == 0, "checkbox disables native Display topmost");
+        Assert.Equal(handle, Handle(display));
+        Console.WriteLine($"D10 checkbox disabled: HWND={handle}, style={GetWindowLong(handle, -20):X}");
+        Assert.False(DashboardSettings.Load().AlwaysOnTop);
+        settingsWindow.Close();
+        preview.Close();
+        preview.Open();
+        Assert.Equal(0, GetWindowLong(Handle(preview.Window!), -20) & 0x8);
+        Console.WriteLine($"D10 reopened: HWND={Handle(preview.Window!)}, style={GetWindowLong(Handle(preview.Window!), -20):X}");
+        await Task.Delay(200);
+        Capture("display-not-topmost.png", preview.Window!);
     }
 
     private static async Task ExerciseMovementAsync(App application, string scenario)
@@ -271,6 +329,7 @@ public sealed class NativeMovementTests
     [DllImport("user32.dll")] private static extern IntPtr GetThreadDpiAwarenessContext();
     [DllImport("user32.dll")] private static extern bool AreDpiAwarenessContextsEqual(IntPtr first, IntPtr second);
     [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] private static extern int GetWindowLong(IntPtr hwnd, int index);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr hwnd);
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(POINT point, uint flags);
