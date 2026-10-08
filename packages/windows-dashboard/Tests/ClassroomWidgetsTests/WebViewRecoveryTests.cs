@@ -59,8 +59,10 @@ public sealed class WebViewRecoveryTests
             Log("D12 reopened launcher added Timer through its actual web bridge");
         });
 
-    [Fact]
-    public void FailedCheckpointPreservesAnotherPanelsLatestQueuedEdit()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FailedCheckpointPreservesAnotherPanelsLatestQueuedEdit(bool terminating)
         => WithBrowser((host, _) =>
         {
             Add(host, 2);
@@ -82,12 +84,18 @@ public sealed class WebViewRecoveryTests
                 TimeSpan.FromSeconds(15), "QR panel bridge");
             Script(View(qr), "window.classroomWidgetPanel.takePendingState = () => null;");
             Log("D13 pre-reload: host AB, List textarea ABC, QR checkpoint intentionally absent");
-            Complete(host.ReloadWidgetsAsync());
+            if (terminating)
+            {
+                var preparation = host.PrepareForTerminationAsync();
+                Complete(preparation);
+                Assert.False(preparation.Result);
+            }
+            else Complete(host.ReloadWidgetsAsync());
             WaitForState(host, "ABC");
             var restored = Panels(host).Single(panel => Descriptor(panel).SnapshotPayload.GetProperty("widgetType").GetInt32() == 2);
             WaitForListText(View(restored), "ABC");
-            Capture("failed-checkpoint-preserved-list.png", View(restored));
-            Log("D13 refused reload preserved ABC in both host inventory and rendered List");
+            Capture($"failed-checkpoint-preserved-list-{(terminating ? "quit" : "reload")}.png", View(restored));
+            Log($"D13 refused {(terminating ? "quit" : "reload")} preserved ABC in both host inventory and rendered List");
         });
 
     private static void WithBrowser(Action<WidgetHostController, LauncherWindow> scenario)
