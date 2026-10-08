@@ -141,7 +141,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         widgetPanelCoordinator.prepareForDeactivation { [weak self] changes, prepared in
             guard let self else { return }
             guard prepared else {
-                self.resumeAfterFailedDeactivation()
+                self.resumeAfterFailedDeactivation(changes)
                 return
             }
             self.flushChangesAndReload(changes)
@@ -171,8 +171,12 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             operation: { completion in
                 widgetPanelCoordinator.prepareForDeactivation { completion(($0, $1)) }
             }
-        ), preparation.1 else {
+        ) else {
             resumeAfterFailedDeactivation()
+            return false
+        }
+        guard preparation.1 else {
+            resumeAfterFailedDeactivation(preparation.0)
             return false
         }
 
@@ -191,7 +195,11 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         return false
     }
 
-    private func resumeAfterFailedDeactivation() {
+    private func resumeAfterFailedDeactivation(_ changes: [WidgetPanelStateChange] = []) {
+        // Successful checkpoints drain the panel's pending state even when a
+        // sibling fails. Send those edits before recreating panels; do not gate
+        // healthy edits on an unrelated failed Randomiser collection write.
+        changes.forEach { applyPanelStateChange($0) }
         hostWrites.acknowledgeFailure()
         reloadInProgress = false
         widgetPanelCoordinator.deactivate()
