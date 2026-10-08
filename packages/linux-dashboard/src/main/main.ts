@@ -155,7 +155,9 @@ function bootstrap(): void {
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
       displayPreview,
-      (direction) => host?.panelCoordinator.moveSelectedPanel(direction),
+      (direction) => {
+        if (!displayPreview?.moveFocused(direction)) host?.panelCoordinator.moveSelectedPanel(direction);
+      },
     );
     shortcuts.updateOptions([], false);
     host.panelCoordinator.on('displayPreviewRequested', () => displayPreview?.open());
@@ -165,7 +167,10 @@ function bootstrap(): void {
       if (launcherRequested) openLauncher();
     });
     host.on('hostAvailabilityChanged', (available: boolean) => shortcuts?.setHostAvailable(available));
-    settings.on('changed', () => host?.applySettings());
+    settings.on('changed', () => {
+      host?.applySettings();
+      displayPreview?.applySettings();
+    });
     host.applySettings();
 
     updates = new UpdateController(version, () => void requestQuit());
