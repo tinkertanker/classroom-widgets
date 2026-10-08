@@ -137,9 +137,20 @@ final class WidgetCheckpointTests: XCTestCase {
         XCTAssertTrue(saved)
         XCTAssertNotNil(rebuilt, "An accepted same-state checkpoint must resume editors without waiting forever for an inventory that will not publish")
         guard let rebuilt else { return }
-        try await waitUntil { (try? await rebuilt.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "A" }
-        try await type("AB", in: rebuilt)
-        try await waitUntil { try await self.hostContains("AB", host: host) }
+        do {
+            try await waitUntil { (try? await rebuilt.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "A" }
+            print("NO-OP restoredEditor=A")
+            try await type("AB", in: rebuilt)
+            print("NO-OP follow-up edit dispatched")
+            try await waitUntil { try await self.hostContains("AB", host: host) }
+        } catch {
+            let panelText = try? await rebuilt.evaluateJavaScript("document.querySelector('textarea')?.value")
+            let calls = try? await host.webView.evaluateJavaScript("JSON.stringify(window.noOpCalls)")
+            let hostHasA = try? await hostContains("A", host: host)
+            let hostHasAB = try? await hostContains("AB", host: host)
+            print("NO-OP follow-up failure panel=\(panelText as? String ?? "nil") hostA=\(hostHasA ?? false) hostAB=\(hostHasAB ?? false) calls=\(calls as? String ?? "nil")")
+            throw error
+        }
     }
 
     @MainActor
