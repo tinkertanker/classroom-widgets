@@ -183,7 +183,9 @@ private final class RecorderNSView: NSView {
 
         let shortcutFlags = flags.intersection([.command, .option, .control, .shift])
         if shortcutFlags == .command,
-           ["w", "q"].contains(event.charactersIgnoringModifiers?.lowercased() ?? "") {
+           [event.characters, event.charactersIgnoringModifiers].contains(where: {
+               ["w", "q"].contains($0?.lowercased() ?? "")
+           }) {
             textField.stringValue = "Reserved by app"
             setAccessibilityValue("Reserved for app menus. Choose another shortcut.")
             return
