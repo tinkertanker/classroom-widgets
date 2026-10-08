@@ -9,12 +9,13 @@ namespace ClassroomWidgets;
 public sealed class LauncherWindow
 {
     private readonly Window _window;
-    private readonly WebView2 _webView;
+    private WebView2 _webView;
     private readonly Action<int> _addWidget;
     private readonly Action _openDisplayPreview;
     private bool _initializing;
     private bool _initialized;
     private bool _ready;
+    private bool _replaceWebView;
 
     public LauncherWindow(Action<int> addWidget, Action openDisplayPreview)
     {
@@ -50,14 +51,25 @@ public sealed class LauncherWindow
     private async Task InitializeAsync()
     {
         _initializing = true;
+        _ready = false;
         try
         {
+            if (_replaceWebView)
+            {
+                var closed = _webView;
+                _webView = new WebView2();
+                _window.Content = _webView;
+                closed.Dispose();
+                _replaceWebView = false;
+                _initialized = false;
+            }
             if (!_initialized)
             {
                 await DashboardWebView.InitializeAsync(_webView, string.Empty);
                 var initializedCore = _webView.CoreWebView2;
                 initializedCore.WebMessageReceived += OnWebMessageReceived;
                 initializedCore.NavigationCompleted += OnNavigationCompleted;
+                initializedCore.ProcessFailed += OnProcessFailed;
                 _initialized = true;
             }
             var core = _webView.CoreWebView2;
@@ -66,11 +78,25 @@ public sealed class LauncherWindow
                 ["surface"] = "widget-launcher"
             }));
         }
-        catch (Exception error) when (error is WebView2RuntimeNotFoundException or System.Runtime.InteropServices.COMException)
+        catch (Exception error) when (error is WebView2RuntimeNotFoundException or InvalidOperationException or System.Runtime.InteropServices.COMException)
         {
             DashboardLog.Error($"Unable to open widget launcher: {error.Message}");
             _initializing = false;
         }
+    }
+
+    private void OnProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs args)
+    {
+        if (args.ProcessFailedKind is not (CoreWebView2ProcessFailedKind.BrowserProcessExited
+            or CoreWebView2ProcessFailedKind.RenderProcessExited or CoreWebView2ProcessFailedKind.RenderProcessUnresponsive)) return;
+        DashboardLog.Error($"Widget launcher process failed ({args.ProcessFailedKind}); reloading");
+        _ready = false;
+        _initializing = false;
+        _replaceWebView |= args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited;
+        _window.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (!_initializing) _ = InitializeAsync();
+        }));
     }
 
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)

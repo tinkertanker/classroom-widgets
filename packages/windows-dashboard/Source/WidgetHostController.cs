@@ -13,12 +13,13 @@ namespace ClassroomWidgets;
 public sealed class WidgetHostController
 {
     private readonly Window _hostWindow;
-    private readonly WebView2 _webView;
+    private WebView2 _webView;
     private readonly DashboardSettings _settings;
     private readonly WidgetPanelCoordinator _coordinator;
     private readonly HostWriteTracker _hostWrites = new();
     private IReadOnlyList<WidgetPanelStateChange>? _pendingRecoveryChanges;
     private bool _reloadInProgress;
+    private bool _recoveryInProgress;
     private bool _initialized;
 
     public IReadOnlyList<CompactWidgetOption> WidgetOptions { get; private set; } = Array.Empty<CompactWidgetOption>();
@@ -60,7 +61,7 @@ public sealed class WidgetHostController
         _hostWindow.Show();
         try
         {
-            await DashboardWebView.InitializeAsync(_webView, DashboardAudioSettings.Script(_settings));
+            await InitializeWebViewAsync();
         }
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or System.Runtime.InteropServices.COMException)
         {
@@ -74,6 +75,12 @@ public sealed class WidgetHostController
             return;
         }
 
+        LoadHost();
+    }
+
+    private async Task InitializeWebViewAsync()
+    {
+        await DashboardWebView.InitializeAsync(_webView, DashboardAudioSettings.Script(_settings));
         var core = _webView.CoreWebView2;
         core.WebMessageReceived += OnWebMessageReceived;
         core.ProcessFailed += OnProcessFailed;
@@ -91,7 +98,6 @@ public sealed class WidgetHostController
             _ = core.ExecuteScriptAsync(DashboardAudioSettings.Script(_settings));
         };
         _initialized = true;
-        LoadHost();
     }
 
     public void ApplySettings()
@@ -256,28 +262,47 @@ public sealed class WidgetHostController
             return;
         }
         DashboardLog.Error($"Widget host process failed ({args.ProcessFailedKind}); reloading");
-        _ = RecoverFromHostFailureAsync();
+        IsAvailable = false;
+        var replaceBrowser = args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited;
+        if (replaceBrowser) _initialized = false;
+        // Finish WebView2's failure callback before disposing its closed control.
+        _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync(replaceBrowser)));
     }
 
     /// <summary>
     /// Panels outlive a crashed host, so their unsent edits are collected first
     /// and replayed once the replacement host publishes its inventory.
     /// </summary>
-    private async Task RecoverFromHostFailureAsync()
+    private async Task RecoverFromHostFailureAsync(bool replaceBrowser)
     {
-        IsAvailable = false;
-        if (_reloadInProgress)
+        if (_recoveryInProgress) return;
+        _recoveryInProgress = true;
+        try
         {
+            if (!_reloadInProgress)
+            {
+                _reloadInProgress = true;
+                var (changes, _) = await _coordinator.PrepareForDeactivationAsync();
+                _pendingRecoveryChanges = changes;
+            }
             _hostWrites.Reset();
+            _coordinator.Deactivate();
+            if (replaceBrowser)
+            {
+                var closed = _webView;
+                _webView = new WebView2();
+                _hostWindow.Content = _webView;
+                closed.Dispose();
+                await InitializeWebViewAsync();
+            }
             LoadHost();
-            return;
         }
-        _reloadInProgress = true;
-        var (changes, _) = await _coordinator.PrepareForDeactivationAsync();
-        _hostWrites.Reset();
-        _pendingRecoveryChanges = changes;
-        _coordinator.Deactivate();
-        LoadHost();
+        catch (Exception error) when (error is WebView2RuntimeNotFoundException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        {
+            _reloadInProgress = false;
+            DashboardLog.Error($"Unable to recover widget host: {error.Message}");
+        }
+        finally { _recoveryInProgress = false; }
     }
 
     private void ReconcileWidgetPanels(WidgetPanelInventory inventory)
