@@ -61,6 +61,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         // Listen while closed too, so a reconnect can bring Display back.
         SystemEvents.DisplaySettingsChanged += DisplaySettingsChanged;
         _systemEventsSubscribed = true;
+        _settings.Changed += ApplyPresentationSettings;
     }
 
     public void Open(bool activate = true)
@@ -69,6 +70,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _autoReopenedAt = activate ? null : DateTime.UtcNow;
         if (_window is not null)
         {
+            if (_window.WindowState == WindowState.Minimized) SystemCommands.RestoreWindow(_window);
             _window.Show();
             _window.Activate();
             return;
@@ -79,6 +81,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             ? new Rect(remembered.Left, remembered.Top, remembered.Width, remembered.Height)
             : new Rect(0, 0, 480, 402);
         _window = new DisplayPreviewWindow(initial);
+        ApplyPresentationSettings();
         _window.PowerToggleRequested += TogglePower;
         _window.MenuRequested += OpenMenu;
         _window.PreviewClicked += PreviewClicked;
@@ -133,9 +136,15 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         StopCapture();
         if (_window is not null) _window.Close();
         UnsubscribeDisplayEvents();
+        _settings.Changed -= ApplyPresentationSettings;
     }
 
     public void Dispose() => Shutdown();
+
+    private void ApplyPresentationSettings()
+    {
+        if (_window is not null) _window.Topmost = _settings.AlwaysOnTop;
+    }
 
     private void TogglePower()
     {
