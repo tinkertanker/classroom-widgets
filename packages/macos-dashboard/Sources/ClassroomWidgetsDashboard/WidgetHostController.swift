@@ -352,7 +352,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         if let changes = pendingRecoveryChanges {
             let widgetIDs = Set(descriptors.map(\.id))
             pendingRecoveryChanges = nil
-            finishRecovery(changes.filter { widgetIDs.contains($0.widgetID) })
+            resumeAfterFailedDeactivation(changes.filter { widgetIDs.contains($0.widgetID) })
             return
         }
         reloadInProgress = false
@@ -453,21 +453,6 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             self.widgetPanelCoordinator.deactivate()
             self.hostWrites.reset()
             self.loadHost()
-        }
-    }
-
-    private func finishRecovery(_ changes: [WidgetPanelStateChange], retriesRemaining: Int = 20) {
-        applyFinalPanelStateChanges(changes) { [weak self] applied in
-            guard let self else { return }
-            guard applied || retriesRemaining == 0 else {
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 150_000_000)
-                    self.finishRecovery(changes, retriesRemaining: retriesRemaining - 1)
-                }
-                return
-            }
-            self.reloadInProgress = false
-            self.widgetPanelCoordinator.activate()
         }
     }
 
