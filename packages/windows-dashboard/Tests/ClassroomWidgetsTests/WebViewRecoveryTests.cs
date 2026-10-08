@@ -64,6 +64,108 @@ public sealed class WebViewRecoveryTests
             Log($"D11 recovered browser PID {BrowserId(View(host))}; saved List and launcher add action verified");
         });
 
+    // A real SDK initialization failure must not consume replacement ownership
+    // or the collected edit. Persistent failures must stop automatic retries,
+    // while the tray's Reload action can retry once the runtime is healthy.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FailedBrowserReplacementRetriesWithoutLosingCollectedEdit(bool persistent)
+        => WithBrowser((host, launcher) =>
+        {
+            Add(host, 2);
+            var list = Panels(host).Single();
+            WaitForTextArea(View(list));
+            EnterText(View(list), "A");
+            WaitForState(host, "A");
+            Script(View(list), "window.classroomWidgetPanel.receiveSnapshot = () => {};");
+            EnterText(View(list), "AB");
+            WaitForState(host, "AB");
+            WpfTestHost.PumpFor(TimeSpan.FromSeconds(7));
+            EnterText(View(list), "ABC");
+            Assert.Equal("AB", ListState(host));
+
+            var environmentField = typeof(DashboardWebView).GetField("_environment", BindingFlags.Static | BindingFlags.NonPublic)!;
+            var healthyEnvironment = DashboardWebView.Environment;
+            var blockedProfile = Path.Combine(DashboardSettings.DataDirectory, "profile-is-a-file");
+            File.WriteAllText(blockedProfile, "not a directory");
+            async Task<CoreWebView2Environment> UnavailableEnvironment()
+                => await CoreWebView2Environment.CreateAsync(userDataFolder: blockedProfile);
+            var unavailable = UnavailableEnvironment();
+            WpfTestHost.PumpUntil(() => unavailable.IsCompleted, TimeSpan.FromSeconds(15), "actual SDK initialization failure");
+            Assert.True(unavailable.IsFaulted, "The SDK must reject a file as its profile directory.");
+            var failure = unavailable.Exception!.GetBaseException();
+            Assert.IsType<System.Runtime.InteropServices.COMException>(failure);
+            Log($"replacement initialization fixture: real SDK {failure.GetType().Name}, HRESULT=0x{failure.HResult:X8}, persistent={persistent}");
+
+            var replacements = 0;
+            var hostWindow = Field<Window>(host, "_hostWindow");
+            var contentProperty = System.ComponentModel.DependencyPropertyDescriptor.FromProperty(
+                System.Windows.Controls.ContentControl.ContentProperty, typeof(Window));
+            EventHandler replaced = (_, _) =>
+            {
+                replacements++;
+                Log($"replacement initialization: native host control replacement {replacements}");
+            };
+            contentProperty.AddValueChanged(hostWindow, replaced);
+            try
+            {
+                Script(View(list), """
+                    (() => {
+                        const post = window.chrome.webview.postMessage.bind(window.chrome.webview);
+                        window.chrome.webview.postMessage = message => {
+                            if (message.type === 'panel-writes-checkpoint') setTimeout(() => post(message), 600);
+                            else post(message);
+                        };
+                        const take = window.classroomWidgetPanel.takePendingState;
+                        window.classroomWidgetPanel.takePendingState = () => {
+                            const change = take();
+                            window.__consumedEdit = change?.state?.inputs?.[0];
+                            return change;
+                        };
+                    })()
+                    """);
+                var preparation = host.ReloadWidgetsAsync();
+                WpfTestHost.PumpUntil(() => SafeBool(View(list), "window.__consumedEdit === 'ABC'"),
+                    TimeSpan.FromSeconds(10), "real List collection to consume ABC before browser exit");
+                Assert.False(preparation.IsCompleted);
+                environmentField.SetValue(null, unavailable);
+                var browserId = View(host).CoreWebView2.BrowserProcessId;
+                using (var process = Process.GetProcessById((int)browserId)) process.Kill();
+                WpfTestHost.PumpUntil(() => replacements > 0 && Field<object?>(host, "_pendingRecoveryChanges") is not null,
+                    TimeSpan.FromSeconds(15), "replacement after actual browser exit and edit collection");
+                Complete(preparation);
+                Assert.False(host.IsAvailable);
+                Assert.Null(View(host).CoreWebView2);
+                if (persistent)
+                {
+                    WpfTestHost.PumpFor(TimeSpan.FromSeconds(5));
+                    Assert.InRange(replacements, 2, 3);
+                    var attempts = replacements;
+                    WpfTestHost.PumpFor(TimeSpan.FromSeconds(2));
+                    Assert.Equal(attempts, replacements);
+                    Assert.False(host.IsAvailable);
+                    Log($"persistent SDK failure stopped after {attempts} replacements; restoring runtime before manual Reload");
+                }
+                environmentField.SetValue(null, healthyEnvironment);
+                if (persistent) Complete(host.ReloadWidgetsAsync());
+                WpfTestHost.PumpUntil(() => host.IsAvailable && BrowserId(View(host)) is { } id && id != browserId,
+                    TimeSpan.FromSeconds(30), "host recovery after replacement initialization failed");
+                WaitForState(host, "ABC");
+                var restored = Panels(host).Single();
+                WaitForListText(View(restored), "ABC");
+                Capture($"initialization-recovered-list-{(persistent ? "manual" : "automatic")}.png", View(restored));
+                launcher.Show();
+                AssertLauncherAddsWidget(host, launcher, $"initialization-recovered-launcher-{(persistent ? "manual" : "automatic")}.png");
+                Log($"replacement initialization recovered ABC and launcher action; persistent={persistent}, replacements={replacements}");
+            }
+            finally
+            {
+                environmentField.SetValue(null, healthyEnvironment);
+                contentProperty.RemoveValueChanged(hostWindow, replaced);
+            }
+        });
+
     [Fact]
     public void LauncherRendererCrashRecoversAndReopenedLauncherCanAddWidget()
         => WithBrowser((host, launcher) =>
