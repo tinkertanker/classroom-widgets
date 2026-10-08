@@ -189,8 +189,8 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
-    /// A JavaScript apply result precedes React's inventory publication. Require
-    /// the checkpoint state and its newer revision before rebuilding an editor.
+    /// Called after checkpoint applications succeed. A matching base-revision
+    /// snapshot is enough for a no-op; changed state still needs fresh inventory.
     func hasAcknowledged(_ changes: [WidgetPanelStateChange]) -> Bool {
         guard let lastSnapshot else { return changes.isEmpty }
         return changes.allSatisfy { change in
@@ -198,7 +198,7 @@ final class WidgetPanelCoordinator: NSObject {
             guard let widget = lastSnapshot.widgets.first(where: { $0.id == change.widgetID }) else { return true }
             guard let revision = (widget.snapshotPayload["stateRevision"] as? NSNumber)?.intValue,
                   let baseRevision = (change.payload["baseRevision"] as? NSNumber)?.intValue,
-                  revision > baseRevision,
+                  revision >= baseRevision,
                   let state = widget.snapshotPayload["state"],
                   let expected = change.payload["state"],
                   let stateData = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys, .fragmentsAllowed]),
