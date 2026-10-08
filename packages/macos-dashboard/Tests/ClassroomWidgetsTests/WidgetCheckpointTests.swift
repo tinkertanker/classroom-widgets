@@ -25,6 +25,124 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
+    func testFailedReloadResumesAfterSameStateCheckpointCompletes() async throws {
+        try await exerciseSameStateCheckpoint(quit: false)
+    }
+
+    @MainActor
+    func testRefusedQuitResumesAfterSameStateCheckpointCompletes() async throws {
+        try await exerciseSameStateCheckpoint(quit: true)
+    }
+
+    @MainActor
+    private func exerciseSameStateCheckpoint(quit: Bool) async throws {
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
+                          "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
+        _ = NSApplication.shared
+        let panels = WidgetPanelCoordinator()
+        let host = WidgetHostController(websiteDataStore: .nonPersistent(), panelCoordinator: panels)
+        defer { panels.deactivate(); host.webView.stopLoading() }
+        try await waitUntil { !host.widgetOptions.isEmpty }
+        host.addWidget(2)
+        host.addWidget(12)
+        try await waitUntil { self.panelWebView(title: "List") != nil && self.panelWebView(title: "QR Code") != nil }
+        let list = try XCTUnwrap(panelWebView(title: "List"))
+        let qr = try XCTUnwrap(panelWebView(title: "QR Code"))
+        try await waitUntil { (try? await list.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
+        try await waitUntil { (try? await qr.evaluateJavaScript("!!window.classroomWidgetPanel")) as? Bool == true }
+
+        // Queue A again through real textarea edits before acknowledging A.
+        // Object property order is not part of the native bridge contract.
+        _ = try await list.evaluateJavaScript("""
+            window.receiveHeldSnapshot = window.classroomWidgetPanel.receiveSnapshot;
+            window.classroomWidgetPanel.receiveSnapshot = snapshot => { window.heldSnapshot = snapshot; };
+            true
+            """)
+        try await type("A", in: list)
+        try await waitUntil { try await self.hostContains("A", host: host) }
+        try await waitUntil { (try? await list.evaluateJavaScript("window.heldSnapshot?.state?.items?.[0]?.text === 'A'")) as? Bool == true }
+        try await type("AB", in: list)
+        try await type("A", in: list)
+        let revisionValue = try await list.evaluateJavaScript("window.heldSnapshot.stateRevision") as? NSNumber
+        let baseRevision = try XCTUnwrap(revisionValue).intValue
+
+        // Observe real host acceptance/publication, holding only flush completion.
+        // A >= revision check without awaiting apply must fail the early-open check.
+        _ = try await host.webView.evaluateJavaScript("""
+            (() => {
+              const apply = window.classroomPanelHost.applyStateChange;
+              window.noOpCalls = [];
+              window.noOpInventories = 0;
+              window.classroomPanelHost.applyStateChange = change => {
+                const run = () => {
+                  const accepted = apply(change);
+                  window.noOpCalls.push({ baseRevision: change.baseRevision, flush: !!change.flush,
+                    text: change.state.items[0].text, accepted });
+                  return accepted;
+                };
+                if (change.flush) return new Promise(resolve => { window.releaseNoOpFlush = () => resolve(run()); });
+                return run();
+              };
+              const handler = window.webkit.messageHandlers.classroomDashboard;
+              const post = handler.postMessage.bind(handler);
+              handler.postMessage = message => {
+                if (message.type === 'widget-panels-changed') window.noOpInventories++;
+                post(message);
+              };
+              return true;
+            })()
+            """)
+        _ = try await list.evaluateJavaScript("""
+            (() => {
+              const snapshot = window.heldSnapshot;
+              window.receiveHeldSnapshot({ ...snapshot, state: {
+                statuses: snapshot.state.statuses, inputs: snapshot.state.inputs, items: snapshot.state.items
+              }});
+              const take = window.classroomWidgetPanel.takePendingState;
+              window.classroomWidgetPanel.takePendingState = () => {
+                window.producedCheckpoint = take();
+                return window.producedCheckpoint;
+              };
+              return true;
+            })()
+            """)
+        try await waitUntil { (try? await host.webView.evaluateJavaScript("window.noOpCalls.length === 1 && window.noOpCalls[0].accepted")) as? Bool == true }
+        _ = try await qr.evaluateJavaScript("window.classroomWidgetPanel.takePendingState = () => null; true")
+        if quit {
+            let ready = await host.prepareForTermination()
+            XCTAssertFalse(ready)
+        } else {
+            host.reloadWidgets()
+        }
+        try await waitUntil { (try? await host.webView.evaluateJavaScript("typeof window.releaseNoOpFlush === 'function'")) as? Bool == true }
+        let checkpointRevision = try await list.evaluateJavaScript("window.producedCheckpoint.baseRevision") as? NSNumber
+        let checkpointText = try await list.evaluateJavaScript("window.producedCheckpoint.state.items[0].text") as? String
+        XCTAssertEqual(checkpointRevision?.intValue, baseRevision, "The real producer must checkpoint at the already-published revision")
+        XCTAssertEqual(checkpointText, "A")
+        try await Task.sleep(nanoseconds: 600_000_000)
+        XCTAssertNil(panelWebView(title: "List"), "An equal snapshot must not reopen editors before the asynchronous flush completes")
+        print("NO-OP beforeRelease action=\(quit ? "quit" : "reload") baseRevision=\(baseRevision) checkpointRevision=\(checkpointRevision?.intValue ?? -1) editorVisible=\(panelWebView(title: "List") != nil)")
+        _ = try await host.webView.evaluateJavaScript("window.releaseNoOpFlush(); true")
+        try await waitUntil { (try? await host.webView.evaluateJavaScript("window.noOpCalls.some(call => call.flush && call.accepted)")) as? Bool == true }
+        for _ in 0..<100 {
+            if panelWebView(title: "List") != nil { break }
+            try await Task.sleep(nanoseconds: 50_000_000)
+        }
+        let calls = try await host.webView.evaluateJavaScript("JSON.stringify(window.noOpCalls)") as? String
+        let publications = try await host.webView.evaluateJavaScript("window.noOpInventories") as? NSNumber
+        let saved = try await hostContains("A", host: host)
+        let rebuilt = panelWebView(title: "List")
+        print("NO-OP afterRelease action=\(quit ? "quit" : "reload") calls=\(calls ?? "nil") publications=\(publications?.intValue ?? -1) editorVisible=\(rebuilt != nil) hostContainsA=\(saved)")
+        XCTAssertEqual(publications?.intValue, 0, "The accepted same-state flush must exercise a real host no-op, not a fresh inventory")
+        XCTAssertTrue(saved)
+        XCTAssertNotNil(rebuilt, "An accepted same-state checkpoint must resume editors without waiting forever for an inventory that will not publish")
+        guard let rebuilt else { return }
+        try await waitUntil { (try? await rebuilt.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "A" }
+        try await type("AB", in: rebuilt)
+        try await waitUntil { try await self.hostContains("AB", host: host) }
+    }
+
+    @MainActor
     private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false) async throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
