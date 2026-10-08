@@ -50,6 +50,11 @@ Display follows **Keep widgets above other windows**, including changes made
 while its preview is open. Showing minimized Display or Settings restores the
 existing window rather than creating a second one.
 
+After a WebView2 process failure, the app preserves collected edits while
+rebuilding its widget host. If initialization fails, it tries up to three times,
+one second apart. If the runtime remains unavailable, use **Reload Widgets**
+after resolving the runtime problem to retry without restarting the app.
+
 ### Where things live
 
 | Item | Location |
@@ -107,7 +112,10 @@ It exercises registered hotkeys, minimized window restoration, native topmost
 flags, Settings controls, GDI capture, and the real bundled web app. Browser
 recovery tests kill only the browser in an isolated WebView2 profile or crash the
 launcher's renderer through its own DevTools connection; they verify widget state
-and the launcher's actual add action after recovery. Checkpoint tests keep a List
+and the launcher's actual add action after recovery. Initialization-failure tests
+use incompatible options for a separate live browser's isolated profile to cause
+a real SDK controller error; they verify automatic retry, a bounded stop, manual
+Reload retry and retention of the already-collected List edit. Checkpoint tests keep a List
 edit queued while another panel fails its checkpoint during reload or quit
 preparation, then verify the host and rendered List retain the latest edit even
 though preparation fails. Recovery-race cases crash the host renderer or browser
