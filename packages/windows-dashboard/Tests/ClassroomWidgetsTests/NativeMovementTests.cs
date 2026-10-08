@@ -141,6 +141,15 @@ public sealed class NativeMovementTests
         Assert.Equal(handle, Handle(display));
         Console.WriteLine($"D10 checkbox enabled: HWND={handle}, style={GetWindowLong(handle, -20):X}");
 
+        Assert.True(DashboardSettings.Load().AlwaysOnTop);
+        preview.Close();
+        preview.Open();
+        display = preview.Window!;
+        await Until(() => display.IsLoaded, "Display recreated with topmost enabled");
+        handle = Handle(display);
+        Assert.NotEqual(0, GetWindowLong(handle, -20) & 0x8);
+        Console.WriteLine($"D10 recreated while enabled: HWND={handle}, style={GetWindowLong(handle, -20):X}");
+
         await Task.Run(toggle.Toggle);
         await Until(() => !settings.AlwaysOnTop && (GetWindowLong(handle, -20) & 0x8) == 0, "checkbox disables native Display topmost");
         Assert.Equal(handle, Handle(display));
