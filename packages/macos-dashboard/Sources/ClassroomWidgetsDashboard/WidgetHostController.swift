@@ -245,6 +245,15 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             }
             self.resumptionApplied = true
             self.finishResumptionIfReady()
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard let self, self.resumptionGeneration == generation,
+                      self.pendingResumptionChanges != nil else { return }
+                // A lost inventory must not disable explicit retry indefinitely.
+                // Keep the checkpoint and closed editors until both barriers pass.
+                self.reloadInProgress = false
+                DashboardLog.web.error("Widget checkpoint inventory was not acknowledged; use Reload Widgets to retry")
+            }
         }
     }
 
