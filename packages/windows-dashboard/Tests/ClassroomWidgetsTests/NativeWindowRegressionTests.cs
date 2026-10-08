@@ -35,7 +35,6 @@ public sealed class NativeWindowRegressionTests
     public void TraySettingsRestoresMinimizedWindowWithoutReplacingIt()
         => WithSettings(settings =>
         {
-            Application.ResourceAssembly = typeof(App).Assembly;
             var host = new WidgetHostController(settings);
             using var shortcuts = new WidgetShortcutManager(settings, host, _ => { });
             using var tray = new TrayController(host, settings, shortcuts,
