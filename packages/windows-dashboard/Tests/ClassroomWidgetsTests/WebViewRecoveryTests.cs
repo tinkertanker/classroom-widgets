@@ -87,11 +87,18 @@ public sealed class WebViewRecoveryTests
 
             var environmentField = typeof(DashboardWebView).GetField("_environment", BindingFlags.Static | BindingFlags.NonPublic)!;
             var healthyEnvironment = DashboardWebView.Environment;
-            var blockedProfile = Path.Combine(DashboardSettings.DataDirectory, "profile-is-a-file");
-            File.WriteAllText(blockedProfile, "not a directory");
-            // Environment creation succeeds; controller initialization is the
-            // SDK operation that actually opens (and rejects) this profile.
-            var unavailable = CoreWebView2Environment.CreateAsync(userDataFolder: blockedProfile);
+            // Keep a separate real browser alive. The SDK refuses a controller
+            // sharing its profile with incompatible environment options, without
+            // the modal startup error produced by an inaccessible profile.
+            var occupiedProfile = Path.Combine(DashboardSettings.DataDirectory, "conflicting-runtime");
+            using var occupiedView = new WebView2();
+            var occupiedWindow = new Window { Content = occupiedView, Left = -32000, Top = -32000, ShowInTaskbar = false, ShowActivated = false };
+            occupiedWindow.Show();
+            var occupied = CoreWebView2Environment.CreateAsync(userDataFolder: occupiedProfile);
+            Complete(occupied);
+            Complete(occupiedView.EnsureCoreWebView2Async(occupied.Result));
+            var unavailable = CoreWebView2Environment.CreateAsync(userDataFolder: occupiedProfile,
+                options: new CoreWebView2EnvironmentOptions { AdditionalBrowserArguments = "--disable-gpu" });
             Complete(unavailable);
 
             var replacements = 0;
@@ -167,6 +174,7 @@ public sealed class WebViewRecoveryTests
             {
                 environmentField.SetValue(null, healthyEnvironment);
                 contentProperty.RemoveValueChanged(hostWindow, replaced);
+                occupiedWindow.Hide();
             }
         });
 
