@@ -87,7 +87,22 @@ final class WidgetCheckpointTests: XCTestCase {
             }
             XCTAssertNil(stale, "Do not expose an editable stale snapshot while the healthy checkpoint is unapplied")
             _ = try await host.webView.evaluateJavaScript("window.releasePanelChanges()")
-            try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "AB" }
+            do {
+                try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "AB" }
+            } catch {
+                let panelText = try? await panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")
+                let hostText = try? await host.webView.evaluateJavaScript("""
+                    (() => {
+                      const data = JSON.parse(localStorage.getItem('classroom-widgets-storage-v2') || 'null');
+                      const workspace = data?.workspaces?.[data.currentWorkspaceId];
+                      const listId = workspace?.widgets?.find(widget => widget.type === 2)?.id;
+                      const state = workspace?.widgetStates?.find(([id]) => id === listId)?.[1];
+                      return state?.items?.[0]?.text ?? state?.inputs?.[0] ?? null;
+                    })()
+                    """)
+                print("SLOW-HOST afterRelease panel=\(panelText as? String ?? "unavailable") host=\(hostText as? String ?? "unavailable")")
+                throw error
+            }
         }
         try await waitUntil { self.panelWebView(title: "List").map { $0 !== list } == true }
         let rebuilt = try XCTUnwrap(panelWebView(title: "List"))
