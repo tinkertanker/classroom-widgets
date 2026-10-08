@@ -11,6 +11,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private let widgetPanelCoordinator: WidgetPanelCoordinator
     private var pendingRecoveryChanges: [WidgetPanelStateChange]?
+    private var pendingResumptionChanges: [WidgetPanelStateChange]?
     private var reloadInProgress = false
     private let hostWrites = HostWriteTracker()
 
@@ -197,17 +198,25 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private func resumeAfterFailedDeactivation(_ changes: [WidgetPanelStateChange] = []) {
         // Successful checkpoints drain the panel's pending state even when a
-        // sibling fails. Send those edits before recreating panels; do not gate
-        // healthy edits on an unrelated failed Randomiser collection write.
-        changes.forEach { applyPanelStateChange($0) }
+        // sibling fails. Keep editors closed until the host publishes those
+        // edits, independently of unrelated failed Randomiser collection writes.
+        pendingResumptionChanges = changes
         hostWrites.acknowledgeFailure()
-        reloadInProgress = false
         widgetPanelCoordinator.deactivate()
+        changes.forEach { applyPanelStateChange($0) }
+        finishResumptionIfReady()
+    }
+
+    private func finishResumptionIfReady() {
+        guard let changes = pendingResumptionChanges,
+              widgetPanelCoordinator.hasAcknowledged(changes) else { return }
+        pendingResumptionChanges = nil
+        reloadInProgress = false
         widgetPanelCoordinator.activate()
     }
 
     func resumeAfterCancelledTermination() {
-        guard reloadInProgress else { return }
+        guard reloadInProgress, pendingResumptionChanges == nil else { return }
         resumeAfterFailedDeactivation()
     }
 
@@ -251,6 +260,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Widget host process terminated; reloading")
         guard !reloadInProgress else {
+            if let changes = pendingResumptionChanges {
+                pendingRecoveryChanges = changes
+                pendingResumptionChanges = nil
+            }
             hostWrites.reset()
             loadHost()
             return
@@ -289,6 +302,10 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             widgets: descriptors
         )) else { return }
 
+        if pendingResumptionChanges != nil {
+            finishResumptionIfReady()
+            return
+        }
         if let changes = pendingRecoveryChanges {
             let widgetIDs = Set(descriptors.map(\.id))
             pendingRecoveryChanges = nil
