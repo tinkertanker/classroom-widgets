@@ -35,6 +35,11 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
+    func testFailedReloadCanRetryAppliedCheckpointWithoutInventoryAcknowledgement() async throws {
+        try await exerciseFailedCheckpoint(quit: false, delayRecovery: true, lostInventory: true)
+    }
+
+    @MainActor
     func testFailedReloadResumesAfterSameStateCheckpointCompletes() async throws {
         try await exerciseSameStateCheckpoint(quit: false)
     }
@@ -277,7 +282,7 @@ final class WidgetCheckpointTests: XCTestCase {
     }
 
     @MainActor
-    private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false, rejectedApplies: Int = 0) async throws {
+    private func exerciseFailedCheckpoint(quit: Bool, delayRecovery: Bool = false, rejectedApplies: Int = 0, lostInventory: Bool = false) async throws {
         try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
                           "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
         _ = NSApplication.shared
@@ -404,6 +409,30 @@ final class WidgetCheckpointTests: XCTestCase {
             let unpublishedEditor = panelWebView(title: "List")
             XCTAssertNil(unpublishedEditor, "Host application alone must not expose an editor before its fresh inventory arrives")
             print("SLOW-HOST appliedButUnpublished editorVisible=\(unpublishedEditor != nil)")
+            if lostInventory {
+                // Keep the real accepted AB inventory withheld beyond recovery's
+                // bounded interval. A user retry must reapply retained AB without
+                // exposing cached A or pretending that an inventory arrived.
+                try await Task.sleep(nanoseconds: 4_000_000_000)
+                XCTAssertNil(panelWebView(title: "List"), "An acknowledgement timeout must not reopen stale editors")
+                _ = try await host.webView.evaluateJavaScript("""
+                    const apply = window.classroomPanelHost.applyStateChange;
+                    window.inventoryRetryCalls = [];
+                    window.classroomPanelHost.applyStateChange = change => {
+                      const accepted = apply(change);
+                      window.inventoryRetryCalls.push({ accepted, flush: !!change.flush, text: change.state.items[0].text });
+                      return accepted;
+                    }; true
+                    """)
+                host.reloadWidgets()
+                try await Task.sleep(nanoseconds: 600_000_000)
+                let retried = (try? await host.webView.evaluateJavaScript("window.inventoryRetryCalls.some(call => call.accepted && call.flush && call.text === 'AB')")) as? Bool == true
+                let calls = try await host.webView.evaluateJavaScript("JSON.stringify(window.inventoryRetryCalls)") as? String
+                print("MISSING-INVENTORY retryAccepted=\(retried) calls=\(calls ?? "nil") editorVisible=\(panelWebView(title: "List") != nil)")
+                XCTAssertTrue(retried, "An accepted checkpoint with no acknowledged inventory must allow a later explicit retry")
+                XCTAssertNil(panelWebView(title: "List"), "Retry completion still must not bypass inventory acknowledgement")
+                guard retried else { return }
+            }
             _ = try await host.webView.evaluateJavaScript("window.releaseInventories()")
             do {
                 try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "AB" }
