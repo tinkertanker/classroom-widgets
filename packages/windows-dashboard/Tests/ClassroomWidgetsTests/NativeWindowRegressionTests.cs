@@ -69,6 +69,8 @@ public sealed class NativeWindowRegressionTests
             Assert.Equal(0, GetWindowLong(handle, -20) & 0x8);
             settings.AlwaysOnTop = true;
             settings.NotifyChanged();
+            Console.WriteLine($"D10 immediately enabled: target={PresentationSource.FromVisual(preview.Window!)?.CompositionTarget is not null}, "
+                + $"handle={new WindowInteropHelper(preview.Window!).Handle}, style={GetWindowLong(handle, -20):X}");
             WpfTestHost.DoEvents();
             Console.WriteLine($"D10 enabled: open={preview.IsOpen}, managed={preview.Window!.Topmost}, style={GetWindowLong(handle, -20):X}");
             Assert.NotEqual(0, GetWindowLong(handle, -20) & 0x8);
