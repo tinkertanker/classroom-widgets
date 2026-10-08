@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
 using ClassroomWidgets;
 using Xunit;
 using Forms = System.Windows.Forms;
@@ -141,6 +142,10 @@ public sealed class NativeMovementTests
 
         if (scenario == "display")
         {
+            var sourceWindow = new SyntheticSourceWindow(new Rect(destination.WorkingArea.Left + 100,
+                destination.WorkingArea.Top + 100, 320, 240));
+            sourceWindow.Show();
+            await Task.Delay(200);
             preview.Open();
             var display = preview.Window!;
             Position(display, source.WorkingArea.Left + 650, source.WorkingArea.Top + 300);
@@ -159,8 +164,21 @@ public sealed class NativeMovementTests
             Assert.StartsWith("Preview suspended", display.StatusText.Text);
             Capture("movement-display-overlap-suspended.png", display);
             Press(0x25);
-            await Until(() => ScreenOf(display) == source.DeviceName && preview.Capture is not null, "Display move back and capture resume");
+            await Until(() => ScreenOf(display) == source.DeviceName && preview.Capture is not null
+                && display.PreviewImage.Source is not null, "Display move back and capture resume");
+            Assert.StartsWith("Live:", display.StatusText.Text);
+            var image = Assert.IsAssignableFrom<BitmapSource>(display.PreviewImage.Source);
+            var pixels = new byte[image.PixelWidth * image.PixelHeight * 4];
+            image.CopyPixels(pixels, image.PixelWidth * 4, 0);
+            var marker = Bounds(sourceWindow);
+            var color = SyntheticSourceWindow.TopLeft;
+            Assert.Equal((color.R, color.G, color.B, (byte)255), WpfTestHost.PixelAt(pixels, image.PixelWidth,
+                (int)(marker.X - destination.Bounds.Left + 20), (int)(marker.Y - destination.Bounds.Top + 20)));
+            // The HWND and image state update before the desktop compositor
+            // paints. Capture the rendered live state, not its old backing buffer.
+            await Task.Delay(200);
             Capture("movement-display-resumed.png", display);
+            sourceWindow.Close();
 
             var unrelated = new Window { Title = "Unrelated foreground window", Width = 300, Height = 200 };
             try
