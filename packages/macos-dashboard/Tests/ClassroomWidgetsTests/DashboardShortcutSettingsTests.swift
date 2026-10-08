@@ -6,6 +6,61 @@ import XCTest
 
 final class DashboardShortcutSettingsTests: XCTestCase {
     @MainActor
+    func testRecordingRejectsReservedMenuKeysButNormalMenuActionsStillWork() async throws {
+        let app = NSApplication.shared
+        let oldMenu = app.mainMenu
+        let actions = RecorderMenuActions()
+        let menu = NSMenu()
+        let root = NSMenuItem()
+        let submenu = NSMenu()
+        for (title, key) in [("Close", "w"), ("Quit", "q")] {
+            let item = NSMenuItem(title: title, action: #selector(RecorderMenuActions.invoked(_:)), keyEquivalent: key)
+            item.target = actions
+            submenu.addItem(item)
+        }
+        root.submenu = submenu
+        menu.addItem(root)
+        app.mainMenu = menu
+        var captured: [(Int, Int)] = []
+        let view = NSHostingView(rootView: KeyboardShortcutRecorder(
+            keyCode: .constant(kVK_ANSI_T), modifiers: .constant(Int(NSEvent.ModifierFlags.control.rawValue)),
+            onShortcutChanged: { captured.append(($0, $1)) }
+        ))
+        let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 320, height: 80),
+                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = view
+        app.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close(); app.mainMenu = oldMenu }
+        try await render(view, name: "recorder-before")
+        let field = try recorder(in: view, label: "Keyboard shortcut")
+
+        for (code, character) in [(kVK_ANSI_W, "w"), (kVK_ANSI_Q, "q")] {
+            XCTAssertTrue(field.accessibilityPerformPress())
+            try await render(view, name: "recorder-recording")
+            XCTAssertTrue(window.firstResponder === field)
+            let event = try XCTUnwrap(NSEvent.keyEvent(
+                with: .keyDown, location: .zero, modifierFlags: .command, timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: character,
+                charactersIgnoringModifiers: character, isARepeat: false, keyCode: UInt16(code)
+            ))
+            app.sendEvent(event)
+            XCTAssertTrue(captured.isEmpty, "Reserved keys must not become global shortcuts")
+            XCTAssertTrue(actions.keys.isEmpty, "Recording must intercept menu dispatch")
+            XCTAssertEqual(field.accessibilityValue() as? String, "Reserved for app menus. Choose another shortcut.")
+            try await render(view, name: "recorder-reserved-\(character)")
+            field.keyDown(with: try keyEvent(code: kVK_Escape, character: "\u{1b}", window: window))
+            app.sendEvent(event)
+            XCTAssertEqual(actions.keys, [character], "Outside recording the normal menu must still receive the key")
+            actions.keys.removeAll()
+        }
+        XCTAssertTrue(field.accessibilityPerformPress())
+        field.keyDown(with: try keyEvent(code: kVK_ANSI_D, character: "d", window: window))
+        XCTAssertEqual(captured.first?.0, kVK_ANSI_D, "An ordinary shortcut still records after rejection")
+    }
+
+    @MainActor
     func testDisplayRecordersRenderAndCaptureIndependentShortcutsWithAccessibleStatus() async throws {
         _ = NSApplication.shared
         let suiteName = "DashboardShortcutSettingsTests.\(UUID().uuidString)"
@@ -178,4 +233,10 @@ final class DashboardShortcutSettingsTests: XCTestCase {
         let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
         try png.write(to: URL(fileURLWithPath: directory).appendingPathComponent(name + ".png"))
     }
+}
+
+@MainActor
+private final class RecorderMenuActions: NSObject {
+    var keys: [String] = []
+    @objc func invoked(_ sender: NSMenuItem) { keys.append(sender.keyEquivalent) }
 }

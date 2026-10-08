@@ -123,6 +123,7 @@ private final class RecorderNSView: NSView {
     var placeholder = "Click to set"
 
     private var isRecording = false
+    private var recordingEventMonitor: Any?
     private var currentKeyCode = -1
     private var currentModifiers = 0
     private let textField: NSTextField = {
@@ -145,6 +146,7 @@ private final class RecorderNSView: NSView {
 
     deinit {
         NotificationCenter.default.removeObserver(self)
+        if let recordingEventMonitor { NSEvent.removeMonitor(recordingEventMonitor) }
     }
 
     override var acceptsFirstResponder: Bool { true }
@@ -176,6 +178,14 @@ private final class RecorderNSView: NSView {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let hasModifier = flags.contains(.command) || flags.contains(.option) || flags.contains(.control) || flags.contains(.shift)
         guard hasModifier, !Self.modifierOnlyKeys.contains(event.keyCode) else {
+            return
+        }
+
+        let shortcutFlags = flags.intersection([.command, .option, .control, .shift])
+        if shortcutFlags == .command,
+           ["w", "q"].contains(event.charactersIgnoringModifiers?.lowercased() ?? "") {
+            textField.stringValue = "Reserved by app"
+            setAccessibilityValue("Reserved for app menus. Choose another shortcut.")
             return
         }
 
@@ -249,6 +259,14 @@ private final class RecorderNSView: NSView {
         guard !isRecording else { return }
         isRecording = true
         window?.makeFirstResponder(self)
+        // NSHostingView does not forward every menu equivalent to its AppKit
+        // children. Intercept only events for this focused, active recorder.
+        recordingEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.isRecording, event.window === self.window,
+                  self.window?.firstResponder === self else { return event }
+            self.keyDown(with: event)
+            return nil
+        }
         textField.stringValue = "Press shortcut..."
         textField.textColor = .labelColor
         setAccessibilityValue("Recording shortcut")
@@ -258,6 +276,8 @@ private final class RecorderNSView: NSView {
     private func stopRecording() {
         guard isRecording else { return }
         isRecording = false
+        if let recordingEventMonitor { NSEvent.removeMonitor(recordingEventMonitor) }
+        recordingEventMonitor = nil
         window?.makeFirstResponder(nil)
         updateDisplayText()
         delegate?.recorderDidEndRecording()
