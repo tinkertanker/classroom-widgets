@@ -33,15 +33,20 @@ public sealed class WebViewRecoveryTests
             var overlappedRecovery = false;
             if (duringRendererRecovery)
             {
+                // Keep collection open for the real 900ms checkpoint timeout;
+                // healthy acknowledgements can finish within one dispatcher pump.
+                Script(View(list), "window.classroomWidgetPanel.takePendingState = () => null;");
+                var rendererFailed = false;
                 View(host).CoreWebView2.ProcessFailed += (_, args) =>
                 {
+                    rendererFailed |= args.ProcessFailedKind == CoreWebView2ProcessFailedKind.RenderProcessExited;
                     if (args.ProcessFailedKind != CoreWebView2ProcessFailedKind.BrowserProcessExited) return;
                     overlappedRecovery = Field<bool>(host, "_recoveryInProgress");
                     Log($"D11 BrowserProcessExited during active recovery: {overlappedRecovery}");
                 };
                 var crash = View(host).CoreWebView2.CallDevToolsProtocolMethodAsync("Page.crash", "{}");
                 _ = crash.ContinueWith(task => _ = task.Exception, TaskContinuationOptions.OnlyOnFaulted);
-                WpfTestHost.PumpUntil(() => Field<bool>(host, "_recoveryInProgress"),
+                WpfTestHost.PumpUntil(() => rendererFailed && Field<bool>(host, "_recoveryInProgress"),
                     TimeSpan.FromSeconds(15), "host collecting checkpoints after renderer failure");
                 Log("D11 browser exit injected while renderer recovery is collecting checkpoints");
             }
