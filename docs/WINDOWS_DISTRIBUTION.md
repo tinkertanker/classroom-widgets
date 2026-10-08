@@ -87,14 +87,38 @@ The project copies `packages/teacher/build/**` into the output `Web` folder, so 
 Run native tests on an interactive Windows desktop:
 
 ```powershell
+pnpm install --frozen-lockfile
+pnpm --filter @classroom-widgets/teacher build:desktop
+$env:CLASSROOM_WIDGETS_WEB_ROOT = (Resolve-Path packages/teacher/build).Path
+$env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR = Join-Path $env:TEMP 'classroom-widgets-test-evidence'
 dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests -c Release
 ```
 
 The suite references the real application assembly and serializes desktop tests.
-It exercises registered hotkeys, Settings controls, and GDI capture of a synthetic
-window, not a physical second monitor. Set `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`
-to save rendered Settings and capture screenshots. The Desktop tests workflow
-runs this suite for matching desktop pull requests and retains its evidence artifact.
+It exercises registered hotkeys, minimized window restoration, native topmost
+flags, Settings controls, GDI capture, and the real bundled web app. Browser
+recovery tests kill only the browser in an isolated WebView2 profile or crash the
+launcher's renderer through its own DevTools connection; they verify widget state
+and the launcher's actual add action after recovery. Checkpoint tests keep a List
+edit queued while another panel fails its checkpoint, then verify the host and
+rendered List retain the latest edit.
+
+Movement tests run the production `App` and its hotkey wiring in isolated child
+processes. They require at least two Windows-visible extended monitors and skip
+explicitly on single-monitor machines. The mixed-DPI case needs an adjacent
+increase in scale, such as a left display at 100% and a right display at 150%.
+A single-monitor CI pass does **not** verify focused Display movement or mixed
+DPI. Run those cases with:
+
+```powershell
+dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests -c Release --filter FullyQualifiedName~NativeMovementTests
+```
+
+`CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` receives rendered captures, browser recovery
+logs and movement logs with native bounds/DPI and observed results. Recovery and
+movement tests use disposable settings/profile directories, not the user's widget
+state. The Desktop tests workflow builds the teacher app, runs this suite for
+matching desktop pull requests, and retains its evidence artifact.
 
 ## Publishing a release
 

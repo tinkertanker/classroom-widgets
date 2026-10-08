@@ -29,4 +29,10 @@
     <ProjectReference Include="..\..\ClassroomWidgets.csproj" />
   </ItemGroup>
 
+  <!-- The subprocess is its own entry assembly; mirror the app's tray pack
+       resources rather than changing WPF's immutable ResourceAssembly. -->
+  <ItemGroup>
+    <Resource Include="..\..\Assets\TrayIcon-*.ico" Link="Assets\%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
