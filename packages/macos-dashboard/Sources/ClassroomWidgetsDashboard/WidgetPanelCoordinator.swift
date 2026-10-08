@@ -189,6 +189,25 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
+    /// A JavaScript apply result precedes React's inventory publication. Require
+    /// the checkpoint state and its newer revision before rebuilding an editor.
+    func hasAcknowledged(_ changes: [WidgetPanelStateChange]) -> Bool {
+        guard let lastSnapshot else { return changes.isEmpty }
+        return changes.allSatisfy { change in
+            // A removed widget's flush is a successful no-op in the host.
+            guard let widget = lastSnapshot.widgets.first(where: { $0.id == change.widgetID }) else { return true }
+            guard let revision = (widget.snapshotPayload["stateRevision"] as? NSNumber)?.intValue,
+                  let baseRevision = (change.payload["baseRevision"] as? NSNumber)?.intValue,
+                  revision > baseRevision,
+                  let state = widget.snapshotPayload["state"],
+                  let expected = change.payload["state"],
+                  let stateData = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys, .fragmentsAllowed]),
+                  let expectedData = try? JSONSerialization.data(withJSONObject: expected, options: [.sortedKeys, .fragmentsAllowed])
+            else { return false }
+            return stateData == expectedData
+        }
+    }
+
     private func showAll() {
         for controller in orderedControllers {
             controller.show()
