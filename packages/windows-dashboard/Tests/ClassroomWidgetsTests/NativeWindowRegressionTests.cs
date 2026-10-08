@@ -58,32 +58,7 @@ public sealed class NativeWindowRegressionTests
 
     [Fact]
     public void DisplayHonorsTopmostPreferenceAtCreationAndWhileOpen()
-        => WithSettings("display-topmost", settings =>
-        {
-            settings.AlwaysOnTop = false;
-            using var preview = new DisplayPreviewCoordinator(settings, new DisplayCatalog());
-            preview.Open();
-            var handle = new WindowInteropHelper(preview.Window!).Handle;
-            WpfTestHost.PumpUntil(() => preview.Window!.IsLoaded, TimeSpan.FromSeconds(5), "Display loaded before live preference changes");
-            Console.WriteLine($"D10 loaded={preview.Window!.IsLoaded}, managed={preview.Window.Topmost}, style={GetWindowLong(handle, -20):X}");
-            Assert.Equal(0, GetWindowLong(handle, -20) & 0x8);
-            settings.AlwaysOnTop = true;
-            settings.NotifyChanged();
-            Console.WriteLine($"D10 immediately enabled: target={PresentationSource.FromVisual(preview.Window!)?.CompositionTarget is not null}, "
-                + $"handle={new WindowInteropHelper(preview.Window!).Handle}, style={GetWindowLong(handle, -20):X}");
-            WpfTestHost.DoEvents();
-            Console.WriteLine($"D10 enabled: open={preview.IsOpen}, managed={preview.Window!.Topmost}, style={GetWindowLong(handle, -20):X}");
-            Assert.NotEqual(0, GetWindowLong(handle, -20) & 0x8);
-            settings.AlwaysOnTop = false;
-            settings.NotifyChanged();
-            WpfTestHost.DoEvents();
-            Console.WriteLine($"D10 disabled: open={preview.IsOpen}, managed={preview.Window!.Topmost}, style={GetWindowLong(handle, -20):X}");
-            Assert.Equal(0, GetWindowLong(handle, -20) & 0x8);
-            preview.Close();
-            preview.Open();
-            Assert.Equal(0, GetWindowLong(new WindowInteropHelper(preview.Window!).Handle, -20) & 0x8);
-            SaveWindow("display-not-topmost.png", preview.Window!);
-        });
+        => NativeMovementTests.RunScenario("display-topmost");
 
     private static void WithSettings(string name, Action<DashboardSettings> scenario)
     {
@@ -95,9 +70,7 @@ public sealed class NativeWindowRegressionTests
         var original = DashboardSettings.DataDirectory;
         var directory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
         DashboardSettings.UseDataDirectory(directory);
-        // Run on the production App's dispatcher, initialized by the child
-        // process. A bare pumped STA does not reproduce App window lifecycle.
-        try { scenario(new DashboardSettings()); }
+        try { WpfTestHost.Run(() => scenario(new DashboardSettings())); }
         finally
         {
             DashboardSettings.UseDataDirectory(original);
@@ -117,7 +90,4 @@ public sealed class NativeWindowRegressionTests
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsIconic(IntPtr hwnd);
-
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
-    private static extern int GetWindowLong(IntPtr hwnd, int index);
 }
