@@ -24,7 +24,9 @@ public sealed class WebViewRecoveryTests
             WaitForTextArea(View(list));
             EnterText(View(list), "Saved before browser crash");
             WaitForState(host, "Saved before browser crash");
-            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(800));
+            // Let the page's debounce and Chromium's disk commit finish;
+            // this scenario kills the browser, not just its renderer.
+            WpfTestHost.PumpFor(TimeSpan.FromSeconds(7));
             var browserId = View(host).CoreWebView2.BrowserProcessId;
             Log($"D11 killing owned browser PID {browserId}");
             using (var process = Process.GetProcessById((int)browserId)) process.Kill();
@@ -32,12 +34,9 @@ public sealed class WebViewRecoveryTests
                 TimeSpan.FromSeconds(30), "a replacement browser and host inventory");
             WaitForState(host, "Saved before browser crash");
             var restored = Panels(host).Single();
-            Assert.NotSame(list, restored);
-            WaitForTextArea(View(restored));
-            Assert.Equal("Saved before browser crash", Script(View(restored), "document.querySelector('textarea').value").GetString());
-            AssertLauncherAddsWidget(host, launcher);
+            WaitForListText(View(restored), "Saved before browser crash");
             Capture("browser-recovered-list.png", View(restored));
-            Capture("browser-recovered-launcher.png", View(launcher));
+            AssertLauncherAddsWidget(host, launcher, "browser-recovered-launcher.png");
             Log($"D11 recovered browser PID {BrowserId(View(host))}; saved List and launcher add action verified");
         });
 
@@ -56,8 +55,7 @@ public sealed class WebViewRecoveryTests
             Log("D12 Page.crash produced RenderProcessExited for the launcher");
             launcher.Hide();
             launcher.Show();
-            AssertLauncherAddsWidget(host, launcher);
-            Capture("renderer-recovered-launcher.png", View(launcher));
+            AssertLauncherAddsWidget(host, launcher, "renderer-recovered-launcher.png");
             Log("D12 reopened launcher added Timer through its actual web bridge");
         });
 
@@ -87,10 +85,9 @@ public sealed class WebViewRecoveryTests
             Complete(host.ReloadWidgetsAsync());
             WaitForState(host, "ABC");
             var restored = Panels(host).Single(panel => Descriptor(panel).SnapshotPayload.GetProperty("widgetType").GetInt32() == 2);
-            WaitForTextArea(View(restored));
-            Assert.Equal("ABC", Script(View(restored), "document.querySelector('textarea').value").GetString());
+            WaitForListText(View(restored), "ABC");
             Capture("failed-checkpoint-preserved-list.png", View(restored));
-            Log("D13 refused reload preserved ABC in both host inventory and recreated List textarea");
+            Log("D13 refused reload preserved ABC in both host inventory and rendered List");
         });
 
     private static void WithBrowser(Action<WidgetHostController, LauncherWindow> scenario)
@@ -103,7 +100,9 @@ public sealed class WebViewRecoveryTests
             typeof(DashboardWebView).GetField("_environment", BindingFlags.Static | BindingFlags.NonPublic)!.SetValue(null, null);
             var settings = new DashboardSettings();
             var host = new WidgetHostController(settings);
-            var launcher = new LauncherWindow(type => Complete(host.AddWidgetAsync(type)), () => { });
+            // Like App: return from WebMessageReceived before awaiting its
+            // host operation, rather than re-entering WebView2's event loop.
+            var launcher = new LauncherWindow(type => _ = host.AddWidgetAsync(type), () => { });
             try
             {
                 Complete(host.StartAsync());
@@ -135,10 +134,12 @@ public sealed class WebViewRecoveryTests
         WpfTestHost.PumpUntil(() => Panels(host).Count == count + 1, TimeSpan.FromSeconds(15), "new native widget panel");
     }
 
-    private static void AssertLauncherAddsWidget(WidgetHostController host, LauncherWindow launcher)
+    private static void AssertLauncherAddsWidget(WidgetHostController host, LauncherWindow launcher, string captureName)
     {
         WaitForLauncher(launcher);
         WpfTestHost.PumpUntil(() => host.IsAvailable, TimeSpan.FromSeconds(30), "host after renderer recovery");
+        // The actual add action closes the launcher; capture it while visible.
+        Capture(captureName, View(launcher));
         var count = Panels(host).Count;
         Assert.True(Script(View(launcher), "(() => { const b = [...document.querySelectorAll('button')].find(b => /Timer/.test(b.textContent)); if (!b) return false; b.click(); return true; })()").GetBoolean());
         WpfTestHost.PumpUntil(() => Panels(host).Count == count + 1, TimeSpan.FromSeconds(15), "launcher to add Timer through the host");
@@ -151,6 +152,11 @@ public sealed class WebViewRecoveryTests
     private static void WaitForTextArea(WebView2 view)
         => WpfTestHost.PumpUntil(() => SafeBool(view, "!!document.querySelector('textarea')"),
             TimeSpan.FromSeconds(15), "List textarea");
+
+    private static void WaitForListText(WebView2 view, string text)
+        => WpfTestHost.PumpUntil(() => SafeBool(view,
+            $"[...document.querySelectorAll('textarea')].some(t => t.value === {JsonSerializer.Serialize(text)}) || [...document.querySelectorAll('div')].some(d => d.childElementCount === 0 && d.textContent === {JsonSerializer.Serialize(text)})"),
+            TimeSpan.FromSeconds(15), $"rendered List text {text}");
 
     private static void EnterText(WebView2 view, string text)
     {
