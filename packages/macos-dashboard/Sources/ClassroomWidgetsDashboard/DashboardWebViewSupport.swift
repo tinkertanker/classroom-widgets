@@ -2,6 +2,8 @@ import AppKit
 import Foundation
 import WebKit
 
+let dashboardURLScheme = "classroom-widgets"
+
 enum ExternalLinkOpener {
     static let allowedSchemes: Set<String> = ["http", "https", "mailto"]
 

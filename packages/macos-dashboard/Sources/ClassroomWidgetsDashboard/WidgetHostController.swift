@@ -7,7 +7,7 @@ import WebKit
 @MainActor
 final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
-    private let webView: WKWebView
+    let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private let widgetPanelCoordinator: WidgetPanelCoordinator
     private var pendingRecoveryChanges: [WidgetPanelStateChange]?
@@ -17,11 +17,12 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private(set) var widgetOptions: [CompactWidgetOption] = []
     var onWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
 
-    override init() {
+    init(websiteDataStore: WKWebsiteDataStore = .default(), panelCoordinator: WidgetPanelCoordinator? = nil) {
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         let appVersionJSON = (try? JSONEncoder().encode(appVersion))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"unknown\""
         let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = websiteDataStore
         configuration.setURLSchemeHandler(
             DashboardWebKitShared.schemeHandler,
             forURLScheme: dashboardURLScheme
@@ -34,7 +35,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         ))
 
         scriptMessageHandler = DashboardScriptMessageHandler()
-        widgetPanelCoordinator = WidgetPanelCoordinator(compactPresentationActive: true)
+        widgetPanelCoordinator = panelCoordinator ?? WidgetPanelCoordinator(compactPresentationActive: true)
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
@@ -130,8 +131,8 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         widgetPanelCoordinator.arrange(layout)
     }
 
-    func moveSelectedWidget(_ direction: MoveDirection) {
-        widgetPanelCoordinator.moveSelectedPanel(direction)
+    func moveSelectedWidget(_ direction: MoveDirection, workAreas: [CGRect]) {
+        widgetPanelCoordinator.moveSelectedPanel(direction, workAreas: workAreas)
     }
 
     func reloadWidgets() {
