@@ -108,7 +108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
         DashboardDefaults.register()
         shortcutState = initialShortcutBindingState()
-        NSApp.setActivationPolicy(.regular)
+        let iconVisibility = AppIconVisibility(rawValue: defaults.string(forKey: DashboardSettingKeys.appIconVisibility) ?? "") ?? .both
+        NSApp.setActivationPolicy(iconVisibility == .menuBarOnly ? .accessory : .regular)
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         setupMainMenu()
 
@@ -119,9 +120,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         controller?.onDisplayPreviewRequested = { [weak self] in self?.displayPreviewCoordinator.open() }
         applyPresentationSettings()
-        setupStatusItem()
+        if iconVisibility != .dockOnly { setupStatusItem() }
         registerAcceptedSingleActionHotKeys()
         registerAcceptedDisplayHotKey()
+        // Accessory apps may not become active until a window is explicitly opened.
+        if iconVisibility == .menuBarOnly && initialActivationPending {
+            initialActivationPending = false
+            requestOpenLauncher()
+        }
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(10))
@@ -232,6 +238,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        populateWidgetMenu(menu, includeQuit: true)
+    }
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        populateWidgetMenu(menu, includeQuit: false)
+        return menu
+    }
+
+    private func populateWidgetMenu(_ menu: NSMenu, includeQuit: Bool) {
         menu.removeAllItems()
 
         WidgetMenu.addWidgetItems(
@@ -287,11 +304,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let aboutItem = NSMenuItem(title: "About Classroom Widgets", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
         menu.addItem(aboutItem)
-        menu.addItem(.separator())
-
-        let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
+        if includeQuit {
+            menu.addItem(.separator())
+            let quitItem = NSMenuItem(title: "Quit Classroom Widgets", action: #selector(quitApp), keyEquivalent: "q")
+            quitItem.target = self
+            menu.addItem(quitItem)
+        }
     }
 
     private func showUpdateAvailability(_ version: String?) {
