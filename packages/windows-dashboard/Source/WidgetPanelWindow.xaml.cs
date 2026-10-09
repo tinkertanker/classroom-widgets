@@ -212,14 +212,17 @@ public partial class WidgetPanelWindow : Window
         if (!_webReady) return (null, true);
         _writesCheckpoint = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var scriptTask = DashboardWebView.EvaluateAsync(WebView, "window.classroomWidgetPanel?.takePendingState?.() ?? null");
-        var completed = await Task.WhenAny(Task.WhenAll(scriptTask, _writesCheckpoint.Task), Task.Delay(900));
+        await Task.WhenAny(Task.WhenAll(scriptTask, _writesCheckpoint.Task), Task.Delay(900));
         var checkpoint = _writesCheckpoint;
         _writesCheckpoint = null;
-        if (!scriptTask.IsCompletedSuccessfully || !checkpoint.Task.IsCompleted || completed is null) return (null, false);
+        var prepared = checkpoint.Task.IsCompletedSuccessfully;
+        // The script destructively consumes queued state. A missing checkpoint
+        // still refuses preparation, but cannot discard a valid returned edit.
+        if (!scriptTask.IsCompletedSuccessfully) return (null, false);
 
         var result = scriptTask.Result;
         if (result is null) return (null, false);
-        if (result.Value.ValueKind == JsonValueKind.Null) return (null, true);
+        if (result.Value.ValueKind == JsonValueKind.Null) return (null, prepared);
         var payload = result.Value;
         if (payload.ValueKind != JsonValueKind.Object
             || !payload.TryGetProperty("schemaVersion", out var schema) || !schema.TryGetInt32(out var schemaVersion) || schemaVersion != 1
@@ -234,7 +237,7 @@ public partial class WidgetPanelWindow : Window
         var withFlush = new Dictionary<string, JsonElement>();
         foreach (var property in flushed.RootElement.EnumerateObject()) withFlush[property.Name] = property.Value.Clone();
         withFlush["flush"] = JsonSerializer.SerializeToElement(true);
-        return (new WidgetPanelStateChange(WidgetId, JsonSerializer.SerializeToElement(withFlush)), true);
+        return (new WidgetPanelStateChange(WidgetId, JsonSerializer.SerializeToElement(withFlush)), prepared);
     }
 
     protected override void OnClosing(CancelEventArgs args)

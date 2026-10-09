@@ -205,6 +205,8 @@ public sealed class TrayController : IDisposable
     {
         if (_settingsWindow is { IsLoaded: true })
         {
+            if (_settingsWindow.WindowState == System.Windows.WindowState.Minimized)
+                System.Windows.SystemCommands.RestoreWindow(_settingsWindow);
             _settingsWindow.Activate();
             return;
         }

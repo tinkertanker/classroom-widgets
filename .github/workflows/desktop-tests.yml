@@ -16,15 +16,23 @@ jobs:
   windows:
     name: Windows native tests
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @classroom-widgets/teacher build:desktop
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
       - name: Test application assembly and native controls
         env:
           CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/windows-test-evidence
+          CLASSROOM_WIDGETS_WEB_ROOT: ${{ github.workspace }}/packages/teacher/build
         run: dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests --configuration Release --logger "trx;LogFileName=windows.trx" --results-directory "${{ runner.temp }}/windows-test-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
