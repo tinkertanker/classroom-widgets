@@ -3,6 +3,26 @@ import Carbon
 import SwiftUI
 
 @MainActor
+private final class DockMenuAction: NSObject {
+    private let originalItem: NSMenuItem
+    private let originalSelector: Selector
+    private weak var originalTarget: AnyObject?
+
+    init(item: NSMenuItem, selector: Selector, target: AnyObject) {
+        originalItem = item
+        originalSelector = selector
+        originalTarget = target
+        super.init()
+    }
+
+    @objc func invoke() {
+        // The Dock invokes menu actions with a nil sender, so forward the original item.
+        guard let originalTarget else { return }
+        NSApp.sendAction(originalSelector, to: originalTarget, from: originalItem)
+    }
+}
+
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: WidgetHostController?
     private var launcherRequested = false
@@ -47,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var shortcutStatus: String?
     private var moveWidgetShortcutStatuses: [MoveDirection: String] = [:]
     private var statusItem: NSStatusItem?
+    private var dockMenuActions: [DockMenuAction] = []
     private var mainUpdateMenuItem: NSMenuItem?
     private var availableUpdateVersion: String?
     private let launchAtLoginManager = LaunchAtLoginManager()
@@ -242,10 +263,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        dockMenuActions.removeAll()
         let menu = NSMenu()
         menu.autoenablesItems = false
         populateWidgetMenu(menu, includeQuit: false)
+        adaptDockMenuActions(in: menu)
         return menu
+    }
+
+    private func adaptDockMenuActions(in menu: NSMenu) {
+        for item in menu.items {
+            if let submenu = item.submenu {
+                adaptDockMenuActions(in: submenu)
+                continue
+            }
+            guard let action = item.action, let target = item.target else { continue }
+            let adapter = DockMenuAction(item: item, selector: action, target: target)
+            dockMenuActions.append(adapter)
+            item.target = adapter
+            item.action = #selector(DockMenuAction.invoke)
+        }
     }
 
     private func populateWidgetMenu(_ menu: NSMenu, includeQuit: Bool) {
