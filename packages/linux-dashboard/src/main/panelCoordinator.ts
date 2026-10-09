@@ -228,6 +228,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     this.lastFocusedId = null;
     for (const panel of this.panels.values()) panel.closePermanently();
     this.panels.clear();
+    this.flushPersistedFrames();
     this.emit('changed');
   }
 
@@ -267,6 +268,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
   }
 
   flushPersistedFrames(): void {
+    for (const panel of this.panels.values()) panel.flushPendingFrame();
     if (!this.framesDirty) return;
     this.framesDirty = false;
     this.settings.save();
