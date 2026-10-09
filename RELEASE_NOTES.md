@@ -1,7 +1,5 @@
-More reliable desktop widgets and display controls.
+Choose where Classroom Widgets lives on your Mac.
 
-- Web and desktop: preserve saved choice-list edits and make Timer time editing more reliable.
-- macOS, Windows and Linux: improve widget state recovery and moving windows between displays.
-- macOS: fix focused Display movement and widget shortcuts; ship a universal app for Apple silicon and Intel Macs.
-- Windows: restore minimized Display and Settings windows, make Display follow Keep widgets above other windows, and recover widgets after WebView failures.
-- Linux: fix Display window layering, aspect-ratio sizing and shortcuts; improve lifecycle checkpoints, restored window frames and autostart handling.
+- macOS: show the app in the Dock, the menu bar, or both. Choose App Icon in Settings → General, then quit and reopen to apply.
+- macOS: right-click the Dock icon to add and arrange widgets, open the launcher or Settings, and access the other menu-bar actions.
+- Windows and Linux: rebuilt at the same version; existing tray behavior is unchanged.
