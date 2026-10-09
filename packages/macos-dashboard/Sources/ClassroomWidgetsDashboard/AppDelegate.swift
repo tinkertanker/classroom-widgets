@@ -50,7 +50,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var mainUpdateMenuItem: NSMenuItem?
     private var availableUpdateVersion: String?
     private let launchAtLoginManager = LaunchAtLoginManager()
-    private let displayPreviewCoordinator = DisplayPreviewCoordinator()
+    private let displayPreviewCoordinator: DisplayPreviewCoordinator
+    private let moveWorkAreas: @MainActor () -> [CGRect]
     private(set) lazy var settingsContext = DashboardSettingsContext(
         launchAtLoginManager: launchAtLoginManager,
         onShortcutChanged: { [weak self] shortcut in self?.settingsShortcutChanged(shortcut) },
@@ -81,10 +82,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     init(
         defaults: UserDefaults,
+        controller: WidgetHostController? = nil,
+        displayPreviewCoordinator: DisplayPreviewCoordinator? = nil,
+        moveWorkAreas: @escaping @MainActor () -> [CGRect] = {
+            NSScreen.screens.map { $0.visibleFrame.insetBy(dx: 12, dy: 12) }
+        },
         registerHotKey: DisplayShortcutRegistration.Register? = nil,
         displayShortcutAction: (@MainActor (WidgetShortcutAction?) -> Void)? = nil
     ) {
         self.defaults = defaults
+        self.controller = controller
+        self.displayPreviewCoordinator = displayPreviewCoordinator ?? DisplayPreviewCoordinator()
+        self.moveWorkAreas = moveWorkAreas
         widgetShortcutStore = WidgetLaunchShortcutStore(defaults: defaults)
         hotKeyRegistration = registerHotKey
         self.displayShortcutAction = displayShortcutAction
@@ -388,8 +397,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func performSingleAction(_ owner: ShortcutBindingState.Owner) {
         switch owner {
-        case .moveWidgetPrevious: controller?.moveSelectedWidget(.previous)
-        case .moveWidgetNext: controller?.moveSelectedWidget(.next)
+        case .moveWidgetPrevious: moveSelectedWidget(.previous)
+        case .moveWidgetNext: moveSelectedWidget(.next)
         default: showSettings()
         }
     }
@@ -959,7 +968,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func moveSelectedWidget(_ direction: MoveDirection) {
-        controller?.moveSelectedWidget(direction)
+        let workAreas = moveWorkAreas()
+        if let window = displayPreviewCoordinator.windowController?.window, window.isKeyWindow {
+            if let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: window.frame, workAreas: workAreas, direction: direction) {
+                // The native move callback persists the frame and revokes capture
+                // synchronously if Display now overlaps its source.
+                window.setFrame(moved, display: true)
+            }
+            return
+        }
+        controller?.moveSelectedWidget(direction, workAreas: workAreas)
     }
 
     private func shortcutModifiers() -> Int {
