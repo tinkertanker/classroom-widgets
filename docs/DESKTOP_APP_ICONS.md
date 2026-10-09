@@ -35,7 +35,7 @@ results.
 - In Dock-only mode, close the launcher and all widget windows. Reopen the
   launcher from the Dock; use the Dock menu to add a widget, arrange widgets,
   and open Settings. Confirm Arrange is disabled when no widgets are visible
-  and that widget ordering updates after use.
+  and that the Dock widget order matches the menu-bar menu.
 - In menu-bar-only mode, open Settings and widgets from the menu bar, and
   confirm the app does not appear in Command-Tab. Relaunch with `--background`
   and confirm it does not open the launcher. Check floating widgets over a
