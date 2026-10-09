@@ -17,10 +17,12 @@ start quietly. Opening the app again brings the launcher back in every mode.
 
 ## Windows and Linux
 
-These apps currently stay available from the system tray. Their launcher,
-Settings, and Display windows can have taskbar entries while open; widget
-panels do not. Unlike the macOS Dock, those entries belong to windows, not a
-persistent app icon. The macOS setting does not change these platforms.
+These apps stay available from the system tray. Launcher, Settings, and Display
+taskbar entries are window-specific. Widget panels are configured to stay out
+of the taskbar, but Linux behavior varies: KDE Plasma 5.24.7 on X11 showed a
+Timer entry during verification. Closing all windows leaves the tray as the
+persistent entry point; hiding the tray icon could leave no visible app access.
+The macOS setting does not change these platforms.
 
 ## Manual verification
 
