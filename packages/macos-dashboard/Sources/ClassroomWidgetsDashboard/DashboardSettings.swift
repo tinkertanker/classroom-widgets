@@ -39,6 +39,7 @@ enum DashboardAudioSettings {
 }
 
 enum DashboardSettingKeys {
+    static let appIconVisibility = "appIconVisibility"
     static let settingsShortcutKeyCode = "dashboardSettingsShortcutKeyCode"
     static let settingsShortcutModifiers = "dashboardSettingsShortcutModifiers"
     static let moveWidgetPreviousShortcutKeyCode = "moveWidgetPreviousShortcutKeyCode"
@@ -51,6 +52,20 @@ enum DashboardSettingKeys {
     static let displayPreviewShowOnReconnect = "displayPreviewShowOnReconnect"
 }
 
+enum AppIconVisibility: String, CaseIterable {
+    case both
+    case dockOnly
+    case menuBarOnly
+
+    var title: String {
+        switch self {
+        case .both: return "Dock and menu bar"
+        case .dockOnly: return "Dock only"
+        case .menuBarOnly: return "Menu bar only"
+        }
+    }
+}
+
 enum DashboardDefaults {
     static let settingsShortcutKeyCode = Int(kVK_ANSI_Comma)
     static let shortcutModifiers = Int(NSEvent.ModifierFlags([.command, .option]).rawValue)
@@ -60,6 +75,7 @@ enum DashboardDefaults {
 
     static func register() {
         UserDefaults.standard.register(defaults: [
+            DashboardSettingKeys.appIconVisibility: AppIconVisibility.both.rawValue,
             DashboardSettingKeys.settingsShortcutKeyCode: settingsShortcutKeyCode,
             DashboardSettingKeys.settingsShortcutModifiers: shortcutModifiers,
             DashboardSettingKeys.moveWidgetPreviousShortcutKeyCode: moveWidgetPreviousShortcutKeyCode,
@@ -146,6 +162,7 @@ final class DashboardSettingsContext: ObservableObject {
 }
 
 struct DashboardGeneralSettingsView: View {
+    @AppStorage(DashboardSettingKeys.appIconVisibility) private var appIconVisibility = AppIconVisibility.both
     @AppStorage(DashboardSettingKeys.keepOnAllSpaces) private var keepOnAllSpaces = true
     @AppStorage(DashboardSettingKeys.compactBackgroundOpacity) private var compactBackgroundOpacity = 1.0
     @AppStorage(DashboardSettingKeys.outputVolume) private var outputVolume = 1.0
@@ -156,6 +173,16 @@ struct DashboardGeneralSettingsView: View {
 
     var body: some View {
         Form {
+            Section("App Icon") {
+                Picker("Show in", selection: $appIconVisibility) {
+                    ForEach(AppIconVisibility.allCases, id: \.self) { visibility in
+                        Text(visibility.title).tag(visibility)
+                    }
+                }
+                Text("Changes apply after quitting and reopening Classroom Widgets.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Section("Startup") {
                 Toggle("Launch at login", isOn: launchAtLoginBinding)
                     .disabled(!context.canConfigureLaunchAtLogin)
