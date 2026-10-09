@@ -53,7 +53,6 @@ export class DisplayPreviewWindow extends EventEmitter {
       show: false,
       frame: true,
       resizable: true,
-      alwaysOnTop: true,
       autoHideMenuBar: true,
       minimizable: true,
       minWidth: 320,
@@ -128,8 +127,8 @@ export class DisplayPreviewWindow extends EventEmitter {
     if (!this.win.isDestroyed()) this.win.setBounds(bounds);
   }
 
-  setSize(size: Size): void {
-    if (!this.win.isDestroyed()) this.win.setSize(Math.round(size.width), Math.round(size.height));
+  setContentSize(size: Size): void {
+    if (!this.win.isDestroyed()) this.win.setContentSize(Math.round(size.width), Math.round(size.height));
   }
 
   getContentSize(): Size {
@@ -147,6 +146,14 @@ export class DisplayPreviewWindow extends EventEmitter {
 
   focus(): void {
     if (!this.win.isDestroyed()) this.win.focus();
+  }
+
+  isFocused(): boolean {
+    return !this.win.isDestroyed() && this.win.isFocused();
+  }
+
+  setAlwaysOnTop(alwaysOnTop: boolean): void {
+    if (!this.win.isDestroyed()) this.win.setAlwaysOnTop(alwaysOnTop);
   }
 
   close(): void {

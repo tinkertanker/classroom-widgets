@@ -6,6 +6,7 @@ Classroom Widgets for Linux is a system-tray app that opens compact classroom wi
 
 - 64-bit Linux with a desktop environment that provides a system tray. On GNOME you need an AppIndicator extension (e.g. *AppIndicator and KStatusNotifierItem Support*); KDE Plasma, Cinnamon and XFCE work out of the box.
 - Wayland sessions must provide XWayland. Classroom Widgets automatically uses Electron's X11 backend there because native Wayland does not support the always-on-top, positioning, and non-activating window operations that floating widgets require.
+- Display's pointer movement requires the system `xdotool` command. The `.deb` declares it as a dependency; AppImage users must install it separately (Debian/Ubuntu: `sudo apt install xdotool`). Capture and other widgets remain usable without it. Pointer movement also requires access to the X11/XWayland session; a Wayland compositor may restrict it.
 - For building: Node.js 22.13+ and pnpm 11+ (via `corepack enable`).
 
 ## Using the app
@@ -44,14 +45,19 @@ act independently. Existing Display Show assignments are retained and initially
 copied to Dismiss. Clearing either assignment keeps it unassigned. Show opens or
 launcher actions always show Display. **Move to Previous/Next Display**
 shortcuts (defaults: Ctrl-Alt-Shift-Left and Ctrl-Alt-Shift-Right) move the
-focused widget panel between monitors; both are configurable in Settings like
-the others.
+focused widget panel, including Display, between monitors; both are configurable
+in Settings like the others. When Display is focused, these shortcuts never move
+a previously focused widget. Display also follows **Keep widgets above other
+windows** in Settings, including live changes and reopening it.
 
 The display preview opens idle. Capture starts only after an explicit click or
 power-button action. Moving the preview onto any part of its selected display,
 including by rearranging displays, stops capture and clears the image. Moving
 fully clear resumes it unless you turned it off or closed it in the meantime.
 Pointer clicks map only a live image whose captured display geometry is current.
+If pointer movement fails, the status explains whether `xdotool` is missing or
+cannot access the X11/XWayland session. Hover the status to read its full message;
+the preview remains live.
 
 Capture requires Electron to identify a source with a `display_id` matching the
 selected display. A sole source with an empty, missing, or different ID is not
@@ -129,6 +135,26 @@ renumbering on disk and in Settings, and that adding a widget enables
 `classroom-widgets-test-evidence/linux-tray-menu` directory under the system
 temp directory).
 
+The Display shell check uses a decorated X11 desktop at least 2560 pixels wide,
+with `xdotool` and ImageMagick's `import` command installed. On headless Linux,
+start Xvfb at 2560x900 and Openbox in that X session, then run:
+
+```bash
+for case in move always-on-top aspect aspect-limit pointer-missing pointer-unavailable pointer-success; do
+  CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=/tmp/linux-display-evidence \
+    packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu \
+    packages/linux-dashboard/tests/displayShell.cjs --background --case="$case"
+done
+```
+
+It drives real windows, Settings, global move shortcuts, pointer actions and
+screen capture, and records logs and decorated screenshots. As with the arrange
+check, it reports the one X screen as two monitors; for capture, its real screen
+ID is assigned to the second fixture monitor. This does not validate physical
+multi-monitor identity or a Wayland compositor. The aspect case checks both the
+hidden and Alt-visible native menu, including repeated Match actions; aspect-limit
+checks that matching an oversized preview reserves menu space within the work area.
+
 The arrange check needs a 2560-pixel-wide X screen, which it reports to the
 app as two 1280x800 displays:
 
@@ -157,7 +183,7 @@ To build locally instead:
 pnpm linux:publish
 ```
 
-This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, producing an AppImage and a `.deb`. The `dist` script sets `XZ_DEFAULTS=-T0` so the `.deb` payload is xz-compressed on every core. The AppImage is self-contained; the `.deb` installs under `/opt/Classroom Widgets`.
+This runs `electron-builder --linux` into `packages/linux-dashboard/dist`, producing an AppImage and a `.deb`. The `dist` script sets `XZ_DEFAULTS=-T0` so the `.deb` payload is xz-compressed on every core. The AppImage bundles the app and Electron but still needs system `xdotool` for pointer movement; the `.deb` installs under `/opt/Classroom Widgets` and declares `xdotool` alongside Electron's default runtime dependencies.
 
 The native version comes from the repo-root `version.json` (shared with macOS and Windows; passed to electron-builder via `-c.extraMetadata.version`) and is independent of the web build ID. It is shown in the tray "About" item and reported to the web app as `__CLASSROOM_WIDGETS_LINUX_VERSION__`.
 

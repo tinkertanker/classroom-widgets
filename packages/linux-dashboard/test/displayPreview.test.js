@@ -19,11 +19,13 @@ class FakeWindow extends EventEmitter {
   }
   getBounds() { return this.bounds; }
   setBounds(bounds) { this.bounds = bounds; }
-  setSize() {}
+  setContentSize() {}
   getContentSize() { return { width: 480, height: 402 }; }
   show() {}
   showInactive() {}
   focus() { this.focused = true; }
+  isFocused() { return this.focused; }
+  setAlwaysOnTop(value) { this.alwaysOnTop = value; }
   close() { this.emit('closed'); }
   setState(state) { this.states.push(state); }
   startStream(sourceId, size) { this.activeStream = sourceId; this.streams.push({ sourceId, size }); }
@@ -353,7 +355,7 @@ for (const action of ['stop', 'powerToggle', 'close']) {
 
 test('pointer clicks require live captured geometry and refresh it after topology changes', async t => {
   const points = [];
-  t.mock.method(pointer, 'movePointer', async (x, y) => { points.push({ x, y }); return true; });
+  t.mock.method(pointer, 'movePointer', async (x, y) => { points.push({ x, y }); return 'moved'; });
   const { window, displays } = harness(t);
   const click = { x: 25, y: 75, imageRect: { x: 0, y: 0, width: 100, height: 100 } };
   window.emit('powerToggle');
