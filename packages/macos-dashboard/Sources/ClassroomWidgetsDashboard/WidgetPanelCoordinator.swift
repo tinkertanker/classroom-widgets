@@ -189,6 +189,23 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
+    /// Called only after checkpoint applications succeed. Revisions restart with
+    /// the host, so compare state rather than revision numbers across instances.
+    /// A no-op can use cached matching state; changed state needs fresh inventory.
+    func hasAcknowledged(_ changes: [WidgetPanelStateChange]) -> Bool {
+        guard let lastSnapshot else { return changes.isEmpty }
+        return changes.allSatisfy { change in
+            // A removed widget's flush is a successful no-op in the host.
+            guard let widget = lastSnapshot.widgets.first(where: { $0.id == change.widgetID }) else { return true }
+            guard let state = widget.snapshotPayload["state"],
+                  let expected = change.payload["state"],
+                  let stateData = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys, .fragmentsAllowed]),
+                  let expectedData = try? JSONSerialization.data(withJSONObject: expected, options: [.sortedKeys, .fragmentsAllowed])
+            else { return false }
+            return stateData == expectedData
+        }
+    }
+
     private func showAll() {
         for controller in orderedControllers {
             controller.show()
