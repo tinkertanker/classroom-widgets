@@ -20,7 +20,10 @@
       // process; standard-1 leaves CPU headroom for many concurrent classes.
       "instance_type": "standard-1",
       // In-memory sessions: exactly one container, ever.
-      "max_instances": 1
+      "max_instances": 1,
+      // Classrooms are in Southeast Asia; without this the container was
+      // placed in Los Angeles.
+      "constraints": { "regions": ["APAC"] }
     }
   ],
   "durable_objects": {
@@ -32,7 +35,9 @@
     "STUDENT_APP_URL": "https://go.tk.sg/student",
     // links.widgets.tk.sg is CNAMEd to cname.short.io
     "SHORTIO_DOMAIN": "links.widgets.tk.sg",
-    "SHORTIO_BASE_URL": "https://api.short.io/links/public",
+    // The Tinkertanker Short.io key is a secret (sk_) key, which needs the
+    // authenticated endpoint rather than /links/public.
+    "SHORTIO_BASE_URL": "https://api.short.io/links",
     "USAGE_TIMEZONE": "UTC",
     "USAGE_RETENTION_DAYS": "400"
   },

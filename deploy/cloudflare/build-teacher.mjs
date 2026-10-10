@@ -24,7 +24,7 @@ if (git('status', '--porcelain', '--', 'packages', 'scripts', 'package.json', 'p
 
 const viteEnv = {
   VITE_SERVER_URL: process.env.VITE_SERVER_URL || 'https://go.tk.sg',
-  VITE_LINK_SHORTENER_ENABLED: process.env.VITE_LINK_SHORTENER_ENABLED || 'false',
+  VITE_LINK_SHORTENER_ENABLED: process.env.VITE_LINK_SHORTENER_ENABLED || 'true',
   VITE_UMAMI_SCRIPT_URL: process.env.VITE_UMAMI_SCRIPT_URL || '',
   VITE_UMAMI_WEBSITE_ID: process.env.VITE_UMAMI_WEBSITE_ID || '',
   VITE_BUILD_ID: process.env.VITE_BUILD_ID || git('rev-parse', '--short=7', 'HEAD'),
