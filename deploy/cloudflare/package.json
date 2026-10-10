@@ -1,0 +1,21 @@
+{
+  "name": "classroom-widgets-cloudflare",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "build:teacher": "node build-teacher.mjs",
+    "typecheck": "tsc --noEmit -p web && tsc --noEmit -p backend",
+    "dry-run:web": "wrangler deploy --dry-run -c web/wrangler.jsonc",
+    "dry-run:backend": "wrangler deploy --dry-run -c backend/wrangler.jsonc",
+    "deploy:backend": "wrangler deploy -c backend/wrangler.jsonc",
+    "deploy:web": "wrangler deploy -c web/wrangler.jsonc"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261009.1",
+    "typescript": "^5.9.3",
+    "wrangler": "4.149.0"
+  }
+}

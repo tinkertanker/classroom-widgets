@@ -1,0 +1,25 @@
+// widgets.tk.sg: teacher SPA (static assets) plus the /admin proxy.
+// Build the assets first: `pnpm build:teacher` (see ../README.md).
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "classroom-widgets-web",
+  "account_id": "b8b1032c61d9475cd00229c74db7ec72",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "widgets.tk.sg", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // nginx: try_files $uri $uri/ /index.html
+    "not_found_handling": "single-page-application",
+    // /admin*: nginx `location ^~ /admin` (served by the backend, not the SPA).
+    // /assets/*: missing hashed bundles get 404, not index.html (src/index.ts).
+    "run_worker_first": ["/admin*", "/assets/*"]
+  },
+  // Same-account Worker call: keeps Host: widgets.tk.sg for the dashboard's
+  // same-origin check, as nginx's `proxy_set_header Host $host` did.
+  "services": [{ "binding": "BACKEND", "service": "classroom-widgets-backend" }],
+  "observability": { "enabled": true }
+}
