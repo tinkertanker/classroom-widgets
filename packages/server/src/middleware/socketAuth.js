@@ -77,9 +77,10 @@ const EVENT_RATE_LIMITS = {
   // Activity state refresh - 5 per second
   'activity:requestState': { windowMs: 1000, max: 5 },
 
-  // Teacher app usage events (app open, widget added) - 60 per minute per
-  // connection is far above real use and caps how fast one client can pad counts
-  'usage:track': { windowMs: 60_000, max: 60 }
+  // Teacher app usage events (app open, widget added) - 300 per minute per IP,
+  // so reconnecting cannot reset the budget and pad counts. The budget is
+  // shared by every teacher behind one school network address.
+  'usage:track': { windowMs: 60_000, max: 300, scope: 'ip' }
 };
 
 /**

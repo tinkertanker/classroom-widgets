@@ -8,7 +8,8 @@
 // 2 devices, 3 visits, 1 session, 1 student join, Timer added twice on two
 // devices and Poll once, with metric tabs switching the chart. The live panel
 // must read "2 teachers ... 1 live session with 1 student" with a Poll running,
-// list the recent activity without names, drop to 1 teacher by itself (no
+// list the recent activity without names, lose and regain a teacher when device A's
+// connection is cut and returns without a reload (no extra app open), drop to 1 teacher by itself (no
 // reload) when device B closes the app, and draw the last-hour trend once a
 // second minute is sampled. The raw log must hold no student name.
 // From the repository root:
@@ -83,6 +84,17 @@ try {
   const deviceA = await newTeacherContext(browser);
   const teacherA = await deviceA.newPage();
   activePage = teacherA;
+  // Keep device A's server WebSocket reachable so the test can cut it later.
+  const socketsA = [];
+  let deviceAOffline = false;
+  await teacherA.routeWebSocket(/socket\.io/, (ws) => {
+    if (deviceAOffline) {
+      ws.close();
+      return;
+    }
+    ws.connectToServer();
+    socketsA.push(ws);
+  });
   await teacherA.goto(teacherUrl);
   await addWidget(teacherA, 'Timer');
   await addWidget(teacherA, 'Poll');
@@ -163,6 +175,23 @@ try {
   await admin.locator('.metric[data-metric="uniqueClients"]').click();
   await admin.screenshot({ path: join(evidence, '3-dashboard.png'), fullPage: true });
   step('PASS history shows Timer 2 on 2 devices and Poll 1; clicking a metric switches the chart');
+
+  // Device A loses its connection and gets it back without a reload. The new
+  // server socket must be recognised as a teacher again, without another open.
+  const totalsBefore = (await usage(serverUrl)).totals;
+  assert.ok(socketsA.length > 0, 'device A has a WebSocket to cut');
+  deviceAOffline = true;
+  await Promise.all(socketsA.map((ws) => ws.close()));
+  await admin.waitForFunction(() =>
+    document.querySelector('[data-live="teachersOnline"]')?.textContent === '1 teacher', null, { timeout: 60_000 });
+  step('PASS live panel dropped to 1 teacher when device A\'s connection was cut');
+  deviceAOffline = false;
+  await admin.waitForFunction(() =>
+    document.querySelector('[data-live="teachersOnline"]')?.textContent === '2 teachers', null, { timeout: 60_000 });
+  const totalsAfter = (await usage(serverUrl)).totals;
+  assert.equal(totalsAfter.appOpens, totalsBefore.appOpens, 'a reconnect must not count another app open');
+  assert.equal(totalsAfter.visits, totalsBefore.visits, 'a reconnect must not count another visit');
+  step(`PASS device A reconnected without a reload: back to 2 teachers, app opens still ${totalsAfter.appOpens}`);
 
   // Device B closes the app; the open dashboard must notice without a reload.
   const updatedBefore = await admin.locator('#liveUpdated').textContent();

@@ -13,6 +13,8 @@ module.exports = function usageHandler(io, socket) {
     if (!event) return;
     // Marks this connection as an open teacher app for the live figures,
     // which are kept even when the log itself is off.
+    // One app_open per connection: a repeat would only inflate the counts.
+    if (event.e === 'app_open' && socket.data.usageClientId) return;
     if (event.e === 'app_open' || event.e === 'app_resume') socket.data.usageClientId = event.c;
     // A reconnect gets a fresh server-side socket, so the client re-identifies
     // it with app_resume; the visit was already counted by its app_open.
