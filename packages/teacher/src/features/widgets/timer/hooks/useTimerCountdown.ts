@@ -232,7 +232,7 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
     originalTimeRef.current = newInitialTime;
   }, [clearScheduledTick]);
 
-  const adjustTime = useCallback((deltaSeconds: number) => {
+  const adjustTime = useCallback((deltaSeconds: number, editedTime: number = time) => {
     const safeDelta = Math.max(0, Math.floor(deltaSeconds));
 
     if (safeDelta === 0 || status.kind === 'finished') {
@@ -249,17 +249,19 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
       setTime(nextTime);
       setInitialTime(prev => prev + safeDelta);
       onTickRef.current?.(nextTime);
-      return;
+      return nextTime;
     }
 
-    const nextTime = time + safeDelta;
+    // Idle/paused segments are editable drafts, just as they are for Start/Resume.
+    const nextTime = editedTime + safeDelta;
 
     pausedTimeRef.current = nextTime;
-    originalTimeRef.current += safeDelta;
+    originalTimeRef.current = status.kind === 'idle' ? nextTime : originalTimeRef.current + safeDelta;
 
     setTime(nextTime);
-    setInitialTime(prev => prev + safeDelta);
+    setInitialTime(prev => status.kind === 'idle' || editedTime !== time ? nextTime : prev + safeDelta);
     onTickRef.current?.(nextTime);
+    return nextTime;
   }, [getRunningRemainingTime, status, time]);
 
   // Calculate progress percentage

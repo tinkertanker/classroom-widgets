@@ -13,6 +13,6 @@ contextBridge.exposeInMainWorld('classroomSettings', {
   resetShortcuts: () => ipcRenderer.send('settings:reset-shortcuts'),
   setCapturing: (active: boolean) => ipcRenderer.send('settings:capturing', active),
   onShortcutsChanged: (callback: (shortcuts: unknown, displayShortcut: unknown, moveWidgetShortcut: unknown) => void) => ipcRenderer.on('settings:shortcuts-changed', (_event, shortcuts, displayShortcut, moveWidgetShortcut) => callback(shortcuts, displayShortcut, moveWidgetShortcut)),
-  onSettingsChanged: (callback: (settings: { outputVolume: number }) => void) => ipcRenderer.on('settings:changed', (_event, settings) => callback(settings)),
+  onSettingsChanged: (callback: (settings: { outputVolume?: number; launchAtLogin?: boolean }) => void) => ipcRenderer.on('settings:changed', (_event, settings) => callback(settings)),
 });
 contextBridge.exposeInMainWorld('__CLASSROOM_SETTINGS_VERSION__', appVersion);

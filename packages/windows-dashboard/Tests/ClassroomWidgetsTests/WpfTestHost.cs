@@ -21,6 +21,8 @@ internal static class WpfTestHost
         {
             try
             {
+                SynchronizationContext.SetSynchronizationContext(
+                    new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
                 body();
             }
             catch (Exception error)

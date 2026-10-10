@@ -253,6 +253,9 @@
     if (Number.isFinite(Number(state.outputVolume))) {
       updateVolumeChoice(state.outputVolume);
     }
+    if (typeof state.launchAtLogin === 'boolean') {
+      launchAtLogin.checked = state.launchAtLogin;
+    }
   });
 
   version.textContent = 'Classroom Widgets for Linux v' + (window.__CLASSROOM_SETTINGS_VERSION__ || '0.0.0');

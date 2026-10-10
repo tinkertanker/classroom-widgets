@@ -7,21 +7,26 @@ import WebKit
 @MainActor
 final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
-    private let webView: WKWebView
+    let webView: WKWebView
     private let scriptMessageHandler: DashboardScriptMessageHandler
     private let widgetPanelCoordinator: WidgetPanelCoordinator
     private var pendingRecoveryChanges: [WidgetPanelStateChange]?
+    private var pendingResumptionChanges: [WidgetPanelStateChange]?
+    private let resumptionWrites = HostWriteTracker()
+    private var resumptionApplied = false
+    private var resumptionGeneration = 0
     private var reloadInProgress = false
     private let hostWrites = HostWriteTracker()
 
     private(set) var widgetOptions: [CompactWidgetOption] = []
     var onWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
 
-    override init() {
+    init(websiteDataStore: WKWebsiteDataStore = .default(), panelCoordinator: WidgetPanelCoordinator? = nil) {
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         let appVersionJSON = (try? JSONEncoder().encode(appVersion))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"unknown\""
         let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = websiteDataStore
         configuration.setURLSchemeHandler(
             DashboardWebKitShared.schemeHandler,
             forURLScheme: dashboardURLScheme
@@ -34,7 +39,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         ))
 
         scriptMessageHandler = DashboardScriptMessageHandler()
-        widgetPanelCoordinator = WidgetPanelCoordinator(compactPresentationActive: true)
+        widgetPanelCoordinator = panelCoordinator ?? WidgetPanelCoordinator(compactPresentationActive: true)
         webView = WKWebView(frame: .zero, configuration: configuration)
         super.init()
 
@@ -130,17 +135,21 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         widgetPanelCoordinator.arrange(layout)
     }
 
-    func moveSelectedWidget(_ direction: MoveDirection) {
-        widgetPanelCoordinator.moveSelectedPanel(direction)
+    func moveSelectedWidget(_ direction: MoveDirection, workAreas: [CGRect]) {
+        widgetPanelCoordinator.moveSelectedPanel(direction, workAreas: workAreas)
     }
 
     func reloadWidgets() {
         guard !reloadInProgress else { return }
         reloadInProgress = true
+        if let changes = pendingResumptionChanges {
+            resumeAfterFailedDeactivation(changes)
+            return
+        }
         widgetPanelCoordinator.prepareForDeactivation { [weak self] changes, prepared in
             guard let self else { return }
             guard prepared else {
-                self.resumeAfterFailedDeactivation()
+                self.resumeAfterFailedDeactivation(changes)
                 return
             }
             self.flushChangesAndReload(changes)
@@ -165,13 +174,21 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         flushPersistedState()
         guard !reloadInProgress else { return false }
         reloadInProgress = true
+        if let changes = pendingResumptionChanges {
+            resumeAfterFailedDeactivation(changes)
+            return false
+        }
         guard let preparation: ([WidgetPanelStateChange], Bool) = await resultWithTimeout(
             nanoseconds: 2_000_000_000,
             operation: { completion in
                 widgetPanelCoordinator.prepareForDeactivation { completion(($0, $1)) }
             }
-        ), preparation.1 else {
+        ) else {
             resumeAfterFailedDeactivation()
+            return false
+        }
+        guard preparation.1 else {
+            resumeAfterFailedDeactivation(preparation.0)
             return false
         }
 
@@ -190,15 +207,66 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         return false
     }
 
-    private func resumeAfterFailedDeactivation() {
+    private func resumeAfterFailedDeactivation(_ changes: [WidgetPanelStateChange] = [], retriesRemaining: Int = 20) {
+        // Successful checkpoints drain the panel's pending state even when a
+        // sibling fails. Await their applications independently of unrelated
+        // failed Randomiser writes, then require matching inventory before editing.
+        resumptionGeneration += 1
+        let generation = resumptionGeneration
+        resumptionWrites.reset()
+        resumptionApplied = false
+        pendingResumptionChanges = changes
         hostWrites.acknowledgeFailure()
-        reloadInProgress = false
         widgetPanelCoordinator.deactivate()
+        for change in changes {
+            let generation = resumptionWrites.begin()
+            applyPanelStateChange(change) { [weak self] applied in
+                self?.resumptionWrites.finish(succeeded: applied, generation: generation)
+            }
+        }
+        resumptionWrites.wait { [weak self] applied in
+            guard let self, self.resumptionGeneration == generation,
+                  self.pendingResumptionChanges != nil else { return }
+            guard applied else {
+                guard retriesRemaining > 0 else {
+                    // Retain the drained edits and keep stale editors closed, but
+                    // permit a later Reload/Quit to retry when the host recovers.
+                    self.reloadInProgress = false
+                    DashboardLog.web.error("Unable to resume widget checkpoints; use Reload Widgets to retry")
+                    return
+                }
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 150_000_000)
+                    guard let self, self.resumptionGeneration == generation,
+                          self.pendingResumptionChanges != nil else { return }
+                    self.resumeAfterFailedDeactivation(changes, retriesRemaining: retriesRemaining - 1)
+                }
+                return
+            }
+            self.resumptionApplied = true
+            self.finishResumptionIfReady()
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 3_000_000_000)
+                guard let self, self.resumptionGeneration == generation,
+                      self.pendingResumptionChanges != nil else { return }
+                // A lost inventory must not disable explicit retry indefinitely.
+                // Keep the checkpoint and closed editors until both barriers pass.
+                self.reloadInProgress = false
+                DashboardLog.web.error("Widget checkpoint inventory was not acknowledged; use Reload Widgets to retry")
+            }
+        }
+    }
+
+    private func finishResumptionIfReady() {
+        guard resumptionApplied, let changes = pendingResumptionChanges,
+              widgetPanelCoordinator.hasAcknowledged(changes) else { return }
+        pendingResumptionChanges = nil
+        reloadInProgress = false
         widgetPanelCoordinator.activate()
     }
 
     func resumeAfterCancelledTermination() {
-        guard reloadInProgress else { return }
+        guard reloadInProgress, pendingResumptionChanges == nil else { return }
         resumeAfterFailedDeactivation()
     }
 
@@ -241,7 +309,13 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         DashboardLog.web.error("Widget host process terminated; reloading")
-        guard !reloadInProgress else {
+        guard !reloadInProgress, pendingResumptionChanges == nil else {
+            reloadInProgress = true
+            if let changes = pendingResumptionChanges {
+                pendingRecoveryChanges = changes
+                pendingResumptionChanges = nil
+                resumptionWrites.reset()
+            }
             hostWrites.reset()
             loadHost()
             return
@@ -280,10 +354,14 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             widgets: descriptors
         )) else { return }
 
+        if pendingResumptionChanges != nil {
+            finishResumptionIfReady()
+            return
+        }
         if let changes = pendingRecoveryChanges {
             let widgetIDs = Set(descriptors.map(\.id))
             pendingRecoveryChanges = nil
-            finishRecovery(changes.filter { widgetIDs.contains($0.widgetID) })
+            resumeAfterFailedDeactivation(changes.filter { widgetIDs.contains($0.widgetID) })
             return
         }
         reloadInProgress = false
@@ -384,21 +462,6 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
             self.widgetPanelCoordinator.deactivate()
             self.hostWrites.reset()
             self.loadHost()
-        }
-    }
-
-    private func finishRecovery(_ changes: [WidgetPanelStateChange], retriesRemaining: Int = 20) {
-        applyFinalPanelStateChanges(changes) { [weak self] applied in
-            guard let self else { return }
-            guard applied || retriesRemaining == 0 else {
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 150_000_000)
-                    self.finishRecovery(changes, retriesRemaining: retriesRemaining - 1)
-                }
-                return
-            }
-            self.reloadInProgress = false
-            self.widgetPanelCoordinator.activate()
         }
     }
 

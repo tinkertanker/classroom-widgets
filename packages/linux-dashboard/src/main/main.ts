@@ -78,6 +78,7 @@ function bootstrap(): void {
   let shortcuts: WidgetShortcutController | null = null;
   let displayPreview: DisplayPreviewCoordinator | null = null;
   let shuttingDown = false;
+  let quitReady = false;
   let terminationPrepared = false;
   let launcherRequested = !isBackgroundLaunch(process.argv);
 
@@ -115,6 +116,7 @@ function bootstrap(): void {
     } catch (error) {
       log.warn(`Storage flush before quit failed: ${error instanceof Error ? error.message : String(error)}`);
     }
+    quitReady = true;
     app.quit();
   };
 
@@ -125,14 +127,17 @@ function bootstrap(): void {
     // Tray app: panels may all be closed; keep running.
   });
 
-  app.on('before-quit', () => {
-    shuttingDown = true;
-    displayPreview?.shutdown();
-    host?.markShuttingDown();
-    host?.panelCoordinator.flushPersistedFrames();
-    // Panels must not preventDefault the close events that quit triggers.
-    host?.panelCoordinator.deactivate();
-    settings?.save();
+  app.on('before-quit', (event) => {
+    // Electron's default Quit role and external app.quit() calls use the
+    // same checkpoint as tray Quit. Repeated requests wait for it too.
+    if (quitReady) {
+      // A late host inventory can recreate panels during the storage flush.
+      // Destroy them before Electron sends user-facing window close events.
+      host?.panelCoordinator.deactivate();
+      return;
+    }
+    event.preventDefault();
+    void requestQuit();
   });
 
   void app.whenReady().then(() => {
@@ -155,7 +160,9 @@ function bootstrap(): void {
       (widgetType) => void host?.dismissWidget(widgetType),
       (widgetType) => void host?.toggleWidget(widgetType),
       displayPreview,
-      (direction) => host?.panelCoordinator.moveSelectedPanel(direction),
+      (direction) => {
+        if (!displayPreview?.moveFocused(direction)) host?.panelCoordinator.moveSelectedPanel(direction);
+      },
     );
     shortcuts.updateOptions([], false);
     host.panelCoordinator.on('displayPreviewRequested', () => displayPreview?.open());
@@ -165,7 +172,10 @@ function bootstrap(): void {
       if (launcherRequested) openLauncher();
     });
     host.on('hostAvailabilityChanged', (available: boolean) => shortcuts?.setHostAvailable(available));
-    settings.on('changed', () => host?.applySettings());
+    settings.on('changed', () => {
+      host?.applySettings();
+      displayPreview?.applySettings();
+    });
     host.applySettings();
 
     updates = new UpdateController(version, () => void requestQuit());

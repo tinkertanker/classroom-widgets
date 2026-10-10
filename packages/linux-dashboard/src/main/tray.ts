@@ -45,6 +45,9 @@ export class TrayController {
     this.host.on('widgetOptionsChanged', () => this.rebuildMenu());
     this.host.panelCoordinator.on('changed', () => this.rebuildMenu());
     this.shortcuts.on('changed', () => this.rebuildMenu());
+    this.settings.on('changed', (changedSetting) => {
+      if (changedSetting === 'launchAtLogin') this.rebuildMenu();
+    });
   }
 
   rebuildMenu(): void {
@@ -86,7 +89,7 @@ export class TrayController {
         checked: this.settings.launchAtLoginEnabled,
         click: (item) => {
           this.settings.launchAtLoginEnabled = item.checked;
-          this.rebuildMenu();
+          this.settings.notifyChanged('launchAtLogin');
         },
       },
       { type: 'separator' },

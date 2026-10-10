@@ -189,6 +189,23 @@ final class WidgetPanelCoordinator: NSObject {
         return true
     }
 
+    /// Called only after checkpoint applications succeed. Revisions restart with
+    /// the host, so compare state rather than revision numbers across instances.
+    /// A no-op can use cached matching state; changed state needs fresh inventory.
+    func hasAcknowledged(_ changes: [WidgetPanelStateChange]) -> Bool {
+        guard let lastSnapshot else { return changes.isEmpty }
+        return changes.allSatisfy { change in
+            // A removed widget's flush is a successful no-op in the host.
+            guard let widget = lastSnapshot.widgets.first(where: { $0.id == change.widgetID }) else { return true }
+            guard let state = widget.snapshotPayload["state"],
+                  let expected = change.payload["state"],
+                  let stateData = try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys, .fragmentsAllowed]),
+                  let expectedData = try? JSONSerialization.data(withJSONObject: expected, options: [.sortedKeys, .fragmentsAllowed])
+            else { return false }
+            return stateData == expectedData
+        }
+    }
+
     private func showAll() {
         for controller in orderedControllers {
             controller.show()
@@ -294,9 +311,8 @@ final class WidgetPanelCoordinator: NSObject {
     /// only visible one) to the previous/next display in NSScreen order,
     /// keeping its size and work-area offset. Mirrors a manual drag: the new
     /// frame is persisted and arrange bookkeeping stays untouched.
-    func moveSelectedPanel(_ direction: MoveDirection) {
+    func moveSelectedPanel(_ direction: MoveDirection, workAreas: [CGRect]) {
         guard let controller = selectedPanelController(), let frame = controller.window?.frame else { return }
-        let workAreas = NSScreen.screens.map { $0.visibleFrame.insetBy(dx: 12, dy: 12) }
         guard let moved = WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: workAreas, direction: direction) else { return }
         controller.setFrame(moved, animate: true)
         persist(frame: moved, for: controller.widgetID)
@@ -947,7 +963,8 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         guard let frameView = panel.contentView?.superview else { return }
         if let titlebarView = panel.standardWindowButton(.closeButton)?.superview {
             chromeBackground.material = .headerView
-            chromeBackground.blendingMode = .withinWindow
+            // The clear panel has no content beneath its title bar to blend with.
+            chromeBackground.blendingMode = .behindWindow
             chromeBackground.state = .active
             chromeBackground.wantsLayer = true
             chromeBackground.layer?.cornerRadius = 10

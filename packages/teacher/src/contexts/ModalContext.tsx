@@ -56,6 +56,11 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Global click handler to close modal when clicking outside
   useEffect(() => {
     const handleGlobalClick = (event: MouseEvent) => {
+      // Nested shared dialogs portal to document.body, including their backdrop.
+      // Let that dialog handle the event instead of dismissing its parent.
+      if (event.target instanceof Element && event.target.closest('[data-modal-dialog]')) {
+        return;
+      }
       if (isOpen && modalContentRef.current && !modalContentRef.current.contains(event.target as Node)) {
         hideModal();
       }

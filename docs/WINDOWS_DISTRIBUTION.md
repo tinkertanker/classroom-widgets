@@ -39,8 +39,21 @@ Show opens or focuses the single preview window. Dismiss closes it and stops
 capture, including overlap resumption, while preserving the saved source and
 position. Reopening starts idle. Menu and launcher actions always show Display.
 **Move to Previous/Next Display** shortcuts (defaults: Ctrl-Alt-Shift-Left and
-Ctrl-Alt-Shift-Right) move the focused widget panel between monitors; both are
-configurable in Settings like the others.
+Ctrl-Alt-Shift-Right) move the focused widget panel or Display between monitors;
+both are configurable in Settings like the others. With another app focused,
+the most recently activated widget panel remains the target. Movement preserves
+the window's DIP size and physical work-area offset across different display
+scales. Moving Display onto its capture source suspends capture immediately;
+moving it away resumes capture. Maximized windows are not moved.
+
+Display follows **Keep widgets above other windows**, including changes made
+while its preview is open. Showing minimized Display or Settings restores the
+existing window rather than creating a second one.
+
+After a WebView2 process failure, the app preserves collected edits while
+rebuilding its widget host. If initialization fails, it tries up to three times,
+one second apart. If the runtime remains unavailable, use **Reload Widgets**
+after resolving the runtime problem to retry without restarting the app.
 
 ### Where things live
 
@@ -87,14 +100,49 @@ The project copies `packages/teacher/build/**` into the output `Web` folder, so 
 Run native tests on an interactive Windows desktop:
 
 ```powershell
+pnpm install --frozen-lockfile
+pnpm --filter @classroom-widgets/teacher build:desktop
+$env:CLASSROOM_WIDGETS_WEB_ROOT = (Resolve-Path packages/teacher/build).Path
+$env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR = Join-Path $env:TEMP 'classroom-widgets-test-evidence'
 dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests -c Release
 ```
 
 The suite references the real application assembly and serializes desktop tests.
-It exercises registered hotkeys, Settings controls, and GDI capture of a synthetic
-window, not a physical second monitor. Set `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`
-to save rendered Settings and capture screenshots. The Desktop tests workflow
-runs this suite for matching desktop pull requests and retains its evidence artifact.
+It exercises registered hotkeys, minimized window restoration, native topmost
+flags, Settings controls, GDI capture, and the real bundled web app. Browser
+recovery tests kill only the browser in an isolated WebView2 profile or crash the
+launcher's renderer through its own DevTools connection; they verify widget state
+and the launcher's actual add action after recovery. Initialization-failure tests
+use incompatible options for a separate live browser's isolated profile to cause
+a real SDK controller error; they verify automatic retry, a bounded stop, manual
+Reload retry and retention of the already-collected List edit, including a second
+crash while an earlier recovery is replaying that edit. Checkpoint tests keep a
+List edit queued while another panel fails its checkpoint during reload or quit
+preparation, then verify the host and rendered List retain the latest edit even
+though preparation fails. Recovery-race cases crash the host renderer or browser
+after Reload/quit preparation has destructively collected an edit but before its
+checkpoint completes. They verify interrupted preparation does not report success
+and the recovered host and List retain that edit. Quit checks target the host
+preparation API; the existing app-level quit caller still exits on failure. These
+checks do not simulate a power loss or prove Chromium disk durability after an
+immediate forced termination.
+
+Movement tests run the production `App` and its hotkey wiring in isolated child
+processes. They require at least two Windows-visible extended monitors and skip
+explicitly on single-monitor machines. The mixed-DPI case needs an adjacent
+increase in scale, such as a left display at 100% and a right display at 150%.
+A single-monitor CI pass does **not** verify focused Display movement or mixed
+DPI. Run those cases with:
+
+```powershell
+dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests -c Release --filter FullyQualifiedName~NativeMovementTests
+```
+
+`CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` receives rendered captures, browser recovery
+logs and movement logs with native bounds/DPI and observed results. Recovery and
+movement tests use disposable settings/profile directories, not the user's widget
+state. The Desktop tests workflow builds the teacher app, runs this suite for
+matching desktop pull requests, and retains its evidence artifact.
 
 ## Publishing a release
 

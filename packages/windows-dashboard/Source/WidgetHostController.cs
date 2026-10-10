@@ -13,12 +13,18 @@ namespace ClassroomWidgets;
 public sealed class WidgetHostController
 {
     private readonly Window _hostWindow;
-    private readonly WebView2 _webView;
+    private WebView2 _webView;
     private readonly DashboardSettings _settings;
     private readonly WidgetPanelCoordinator _coordinator;
     private readonly HostWriteTracker _hostWrites = new();
     private IReadOnlyList<WidgetPanelStateChange>? _pendingRecoveryChanges;
+    private Task<(IReadOnlyList<WidgetPanelStateChange> Changes, bool Prepared)>? _panelPreparation;
+    private int _hostFailureGeneration;
+    private int _recoveryReplayGeneration = -1;
     private bool _reloadInProgress;
+    private bool _recoveryInProgress;
+    private bool _hostFailurePending;
+    private bool _browserReplacementPending;
     private bool _initialized;
 
     public IReadOnlyList<CompactWidgetOption> WidgetOptions { get; private set; } = Array.Empty<CompactWidgetOption>();
@@ -60,7 +66,7 @@ public sealed class WidgetHostController
         _hostWindow.Show();
         try
         {
-            await DashboardWebView.InitializeAsync(_webView, DashboardAudioSettings.Script(_settings));
+            await InitializeWebViewAsync();
         }
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or System.Runtime.InteropServices.COMException)
         {
@@ -74,6 +80,12 @@ public sealed class WidgetHostController
             return;
         }
 
+        LoadHost();
+    }
+
+    private async Task InitializeWebViewAsync()
+    {
+        await DashboardWebView.InitializeAsync(_webView, DashboardAudioSettings.Script(_settings));
         var core = _webView.CoreWebView2;
         core.WebMessageReceived += OnWebMessageReceived;
         core.ProcessFailed += OnProcessFailed;
@@ -91,7 +103,6 @@ public sealed class WidgetHostController
             _ = core.ExecuteScriptAsync(DashboardAudioSettings.Script(_settings));
         };
         _initialized = true;
-        LoadHost();
     }
 
     public void ApplySettings()
@@ -139,21 +150,28 @@ public sealed class WidgetHostController
 
     public async Task ReloadWidgetsAsync()
     {
+        if (_hostFailurePending)
+        {
+            if (!_reloadInProgress) await RecoverFromHostFailureAsync();
+            return;
+        }
         if (_reloadInProgress || !_initialized) return;
         IsAvailable = false;
         _reloadInProgress = true;
-        var (changes, prepared) = await _coordinator.PrepareForDeactivationAsync();
-        if (!prepared)
-        {
-            ResumeAfterFailedDeactivation();
-            return;
-        }
-        if (!await ApplyFinalPanelStateChangesAsync(changes))
+        _panelPreparation = _coordinator.PrepareForDeactivationAsync();
+        var (changes, prepared) = await _panelPreparation;
+        if (_hostFailurePending) return; // Recovery owns this collection now.
+        // Collection consumes each healthy panel's queued edit even when
+        // another panel misses its checkpoint. Preserve those edits first.
+        var applied = await ApplyFinalPanelStateChangesAsync(changes);
+        if (_hostFailurePending) return;
+        if (!prepared || !applied)
         {
             ResumeAfterFailedDeactivation();
             return;
         }
         _coordinator.Deactivate();
+        _panelPreparation = null;
         _hostWrites.Reset();
         LoadHost();
     }
@@ -166,31 +184,37 @@ public sealed class WidgetHostController
     public async Task<bool> PrepareForTerminationAsync()
     {
         _coordinator.FlushPersistedFrames();
+        if (_hostFailurePending) return false;
         if (!_initialized || _reloadInProgress) return !_initialized;
         IsAvailable = false;
         _reloadInProgress = true;
 
-        var preparation = _coordinator.PrepareForDeactivationAsync();
+        var preparation = _panelPreparation = _coordinator.PrepareForDeactivationAsync();
         if (await Task.WhenAny(preparation, Task.Delay(2000)) != preparation)
         {
             ResumeAfterFailedDeactivation();
             return false;
         }
         var (changes, prepared) = preparation.Result;
-        if (!prepared)
-        {
-            ResumeAfterFailedDeactivation();
-            return false;
-        }
+        if (_hostFailurePending) return false;
 
         for (var attempt = 0; attempt <= 20; attempt++)
         {
             var apply = ApplyFinalPanelStateChangesAsync(changes);
-            if (await Task.WhenAny(apply, Task.Delay(1000)) == apply && apply.Result)
+            var completed = await Task.WhenAny(apply, Task.Delay(1000));
+            if (_hostFailurePending) return false;
+            if (completed == apply && apply.Result)
             {
+                if (!prepared)
+                {
+                    ResumeAfterFailedDeactivation();
+                    return false;
+                }
                 _coordinator.Deactivate();
+                _panelPreparation = null;
                 return true;
             }
+            if (!prepared) break;
             await Task.Delay(150);
         }
         ResumeAfterFailedDeactivation();
@@ -199,7 +223,9 @@ public sealed class WidgetHostController
 
     private void ResumeAfterFailedDeactivation()
     {
+        if (_hostFailurePending) return;
         _hostWrites.AcknowledgeFailure();
+        _panelPreparation = null;
         _reloadInProgress = false;
         _coordinator.Deactivate();
         _coordinator.Activate();
@@ -256,7 +282,18 @@ public sealed class WidgetHostController
             return;
         }
         DashboardLog.Error($"Widget host process failed ({args.ProcessFailedKind}); reloading");
-        _ = RecoverFromHostFailureAsync();
+        IsAvailable = false;
+        _hostFailurePending = true;
+        _hostFailureGeneration++;
+        if (args.ProcessFailedKind == CoreWebView2ProcessFailedKind.BrowserProcessExited)
+        {
+            _initialized = false;
+            // A browser exit can arrive while renderer recovery is awaiting
+            // panel checkpoints. The active recovery must replace that control.
+            _browserReplacementPending = true;
+        }
+        // Finish WebView2's failure callback before disposing its closed control.
+        _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync()));
     }
 
     /// <summary>
@@ -265,19 +302,59 @@ public sealed class WidgetHostController
     /// </summary>
     private async Task RecoverFromHostFailureAsync()
     {
-        IsAvailable = false;
-        if (_reloadInProgress)
-        {
-            _hostWrites.Reset();
-            LoadHost();
-            return;
-        }
+        if (_recoveryInProgress) return;
+        _recoveryInProgress = true;
         _reloadInProgress = true;
-        var (changes, _) = await _coordinator.PrepareForDeactivationAsync();
-        _hostWrites.Reset();
-        _pendingRecoveryChanges = changes;
-        _coordinator.Deactivate();
-        LoadHost();
+        var hostLoaded = false;
+        try
+        {
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                try
+                {
+                    if (_pendingRecoveryChanges is null)
+                    {
+                        // Reload/quit may already have consumed the panels' edits.
+                        // Await that same collection before closing their WebViews.
+                        _panelPreparation ??= _coordinator.PrepareForDeactivationAsync();
+                        var (changes, _) = await _panelPreparation;
+                        _pendingRecoveryChanges = changes;
+                        _panelPreparation = null;
+                    }
+                    _hostWrites.Reset();
+                    _coordinator.Deactivate();
+                    if (_browserReplacementPending)
+                    {
+                        _browserReplacementPending = false;
+                        var closed = _webView;
+                        _webView = new WebView2();
+                        _hostWindow.Content = _webView;
+                        closed.Dispose();
+                        await InitializeWebViewAsync();
+                    }
+                    LoadHost();
+                    hostLoaded = true;
+                    return;
+                }
+                catch (Exception error) when (error is not OutOfMemoryException)
+                {
+                    // SDK errors can surface as .NET exceptions, not just COM.
+                    // Preserve replacement ownership and collected edits.
+                    _initialized = false;
+                    _browserReplacementPending = true;
+                    DashboardLog.Error($"Unable to recover widget host: {error.Message}");
+                }
+                if (attempt < 2) await Task.Delay(1000);
+            }
+            _reloadInProgress = false;
+            DashboardLog.Warn("Automatic widget host recovery stopped after 3 attempts; use Reload Widgets to retry");
+        }
+        finally
+        {
+            _recoveryInProgress = false;
+            if (hostLoaded && _browserReplacementPending)
+                _ = _hostWindow.Dispatcher.BeginInvoke(new Action(() => _ = RecoverFromHostFailureAsync()));
+        }
     }
 
     private void ReconcileWidgetPanels(WidgetPanelInventory inventory)
@@ -292,23 +369,35 @@ public sealed class WidgetHostController
         }
         if (_pendingRecoveryChanges is { } recovery)
         {
-            _pendingRecoveryChanges = null;
-            var widgetIds = inventory.Widgets.Select(widget => widget.Id).ToHashSet();
-            _ = FinishRecoveryAsync(recovery.Where(change => widgetIds.Contains(change.WidgetId)).ToList());
+            // Keep the buffer reachable if another failure interrupts replay;
+            // inventories from the replay itself must not start a second one.
+            if (_recoveryReplayGeneration != _hostFailureGeneration)
+            {
+                _recoveryReplayGeneration = _hostFailureGeneration;
+                var widgetIds = inventory.Widgets.Select(widget => widget.Id).ToHashSet();
+                _ = FinishRecoveryAsync(recovery.Where(change => widgetIds.Contains(change.WidgetId)).ToList(), _hostFailureGeneration);
+            }
             return;
         }
         _reloadInProgress = false;
+        _hostFailurePending = false;
         _coordinator.Activate();
     }
 
-    private async Task FinishRecoveryAsync(IReadOnlyList<WidgetPanelStateChange> changes)
+    private async Task FinishRecoveryAsync(IReadOnlyList<WidgetPanelStateChange> changes, int generation)
     {
         for (var attempt = 0; attempt <= 20; attempt++)
         {
-            if (await ApplyFinalPanelStateChangesAsync(changes)) break;
+            if (generation != _hostFailureGeneration) return;
+            var applied = await ApplyFinalPanelStateChangesAsync(changes);
+            if (generation != _hostFailureGeneration) return;
+            if (applied) break;
             await Task.Delay(150);
         }
+        if (generation != _hostFailureGeneration) return;
+        _pendingRecoveryChanges = null;
         _reloadInProgress = false;
+        _hostFailurePending = false;
         _coordinator.Activate();
     }
 

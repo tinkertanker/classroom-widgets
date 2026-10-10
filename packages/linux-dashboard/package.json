@@ -52,6 +52,9 @@
       "maintainer": "Tinkertanker",
       "icon": "assets/icon.png",
       "artifactName": "ClassroomWidgets-v${version}-linux-${arch}.${ext}"
+    },
+    "deb": {
+      "fpm": ["--depends", "xdotool"]
     }
   }
 }

@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <StartupObject>ClassroomWidgetsTests.NativeMovementTests</StartupObject>
+    <GenerateProgramFile>false</GenerateProgramFile>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
@@ -9,6 +12,7 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>..\..\app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,6 +28,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\ClassroomWidgets.csproj" />
+  </ItemGroup>
+
+  <!-- The subprocess is its own entry assembly; mirror the app's tray pack
+       resources rather than changing WPF's immutable ResourceAssembly. -->
+  <ItemGroup>
+    <Resource Include="..\..\Assets\TrayIcon-*.ico" Link="Assets\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

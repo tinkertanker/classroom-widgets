@@ -133,14 +133,12 @@ public sealed class WidgetPanelCoordinator
     {
         var panel = SelectedPanel();
         if (panel is null) return;
-        var moved = MoveToNextDisplayGeometry.NextDisplayFrame(panel.CurrentFrame, ScreenGeometry.AllWorkAreas(), direction);
-        if (moved is not { } frame) return;
+        if (!WindowDisplayMovement.Move(panel, direction)) return;
         if (_layout != WidgetPanelLayout.Freeform)
         {
             _layout = WidgetPanelLayout.Freeform;
             _freeformFrames.Clear();
         }
-        panel.SetFrame(frame);
         Persist(panel.CurrentFrame, panel.WidgetId);
     }
 

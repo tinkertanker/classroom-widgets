@@ -144,11 +144,10 @@ export class WidgetHostController extends EventEmitter {
     if (this.reloadInProgress || !this.initialized) return;
     this.reloadInProgress = true;
     const { changes, prepared } = await this.coordinator.prepareForDeactivation();
-    if (!prepared) {
-      this.resumeAfterFailedDeactivation();
-      return;
-    }
-    if (!await this.applyFinalPanelStateChanges(changes)) {
+    // A failed panel checkpoint must not discard edits collected from the
+    // other panels before recreating their editors from the host inventory.
+    const applied = await this.applyFinalPanelStateChanges(changes);
+    if (!prepared || !applied) {
       this.resumeAfterFailedDeactivation();
       return;
     }
@@ -172,17 +171,14 @@ export class WidgetHostController extends EventEmitter {
       this.resumeAfterFailedDeactivation();
       return false;
     }
-    if (!preparation.prepared) {
-      this.resumeAfterFailedDeactivation();
-      return false;
-    }
 
     for (let attempt = 0; attempt <= 20; attempt++) {
       const apply = this.applyFinalPanelStateChanges(preparation.changes);
       const result = await raceTimeout(apply, 1000);
       if (result !== 'timeout' && result === true) {
-        this.coordinator.deactivate();
-        return true;
+        if (preparation.prepared) this.coordinator.deactivate();
+        else this.resumeAfterFailedDeactivation();
+        return preparation.prepared;
       }
       await delay(150);
     }

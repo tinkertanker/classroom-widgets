@@ -485,7 +485,8 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         guard let frameView = panel.contentView?.superview else { return }
         if let titlebarView = panel.standardWindowButton(.closeButton)?.superview {
             chromeBackground.material = .headerView
-            chromeBackground.blendingMode = .withinWindow
+            // The clear panel has no content beneath its title bar to blend with.
+            chromeBackground.blendingMode = .behindWindow
             chromeBackground.state = .active
             chromeBackground.wantsLayer = true
             chromeBackground.layer?.cornerRadius = 10
