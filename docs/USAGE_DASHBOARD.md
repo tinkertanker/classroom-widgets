@@ -4,7 +4,10 @@ A small, admin-only view of how much Classroom Widgets is used and which widgets
 teachers add. It runs inside the existing backend: no database, no extra
 container, and no third-party analytics service, so it fits a free-tier VM.
 
-Open it at `https://<BACKEND_DOMAIN>/admin` (locally, `http://localhost:3001/admin`).
+Open it at `https://<FRONTEND_DOMAIN>/admin` or `https://<BACKEND_DOMAIN>/admin`
+(locally, `http://localhost:3001/admin`). The backend serves it; in production
+the frontend container's Nginx (`nginx.prod.conf`) forwards `/admin` to the
+backend. You sign in separately on each address.
 
 ## What it shows
 
