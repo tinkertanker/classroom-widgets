@@ -15,6 +15,7 @@ const questionsHandler = require('./handlers/questionsHandler');
 const handoutHandler = require('./handlers/handoutHandler');
 const activityHandler = require('./handlers/activityHandler');
 const adminHandler = require('./handlers/adminHandler');
+const usageHandler = require('./handlers/usageHandler');
 
 const SOCKET_DEBUG = process.env.SOCKET_DEBUG === 'true';
 
@@ -47,6 +48,7 @@ function setupSocketHandlers(io, sessionManager) {
     handoutHandler(io, socket, sessionManager, getCurrentSessionCode);
     activityHandler(io, socket, sessionManager, getCurrentSessionCode);
     adminHandler(io, socket, sessionManager);
+    usageHandler(io, socket);
 
     // Handle disconnection
     socket.on('disconnect', () => {

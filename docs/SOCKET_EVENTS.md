@@ -237,6 +237,15 @@ For Poll widgets specifically:
 *   `Teacher → Server`: `session:questions:clearAll` with `{ sessionCode, widgetId }`
 *   `Server → All`: `questions:allCleared` with `{ widgetId }`
 
+## Usage Events
+
+Anonymous counts for the [admin usage dashboard](./USAGE_DASHBOARD.md). Fire-and-forget: no callback, and the server silently drops malformed or rate-limited events (60 per minute per connection), or all of them when `USAGE_LOG_DIR` is unset.
+
+*   `Teacher → Server`: `usage:track` with `{ event: 'app_open' | 'widget_add', clientId, visitId, widget?, surface? }`
+    - `clientId`, `visitId`: random IDs, 8-64 characters of `[A-Za-z0-9-]`
+    - `widget`: the `WidgetType` enum key, e.g. `POLL` (required for `widget_add`)
+    - `surface`: `'web'` or `'desktop'`
+
 ## Admin Events (Read-Only)
 
 The admin interface is accessed via the student app by entering "ADMIN" as the session code.

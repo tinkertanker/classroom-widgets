@@ -67,8 +67,8 @@ async function waitForHttp(url, what) {
 }
 
 // Starts server, teacher app and student app. `stop()` is safe to call after a
-// partial start.
-export async function startStack() {
+// partial start. `serverEnv` adds environment variables for the server.
+export async function startStack({ serverEnv = {} } = {}) {
   const [teacherPort, serverPort, studentPort] = await Promise.all([freePort(), freePort(), freePort()]);
   const stack = {
     teacherUrl: `http://localhost:${teacherPort}`,
@@ -92,6 +92,7 @@ export async function startStack() {
         PORT: String(serverPort),
         NODE_ENV: 'development',
         CORS_ORIGINS: [teacherPort, studentPort].map((port) => `http://localhost:${port}`).join(','),
+        ...serverEnv,
       },
       stdio: ['ignore', 'ignore', 'inherit'],
     });

@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Usage Dashboard</title>
+<link rel="icon" href="/admin/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Colours follow the teacher app (packages/shared/constants/colors.ts):
+     warm greys, sage for actions and data, amber and terracotta for warmth.
+     The live panel borrows the brown, faceted look of the teacher board. */
+  :root {
+    color-scheme: light;
+    --bg: #f7f5f2;
+    --surface: #fdfcfb;
+    --surface-sunk: #f5f3f0;
+    --border: #e8e5e0;
+    --grid: #efece8;
+    --text: #2d2926;
+    --text-2: #6b635a;
+    --text-3: #948b7f;
+    --sage: #4a8f5f;
+    --sage-strong: #39744c;
+    --sage-tint: #d9e8dc;
+    --sage-wash: #eef1ef;
+    --up: #39744c;
+    --down: #975230;
+    --danger: #963232;
+    --shadow: 0 1px 2px rgb(45 41 38 / 0.05), 0 8px 24px rgb(45 41 38 / 0.06);
+    --board-1: #5e381b;
+    --board-2: #7a4a22;
+    --board-3: #a9692b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #2d2926;
+      --surface: #3d3835;
+      --surface-sunk: #353130;
+      --border: #514b44;
+      --grid: #48423d;
+      --text: #faf9f7;
+      --text-2: #d6d2cc;
+      --text-3: #b8b2a8;
+      --sage: #52a26e;
+      --sage-strong: #67a47f;
+      --sage-tint: #2d5c3c;
+      --sage-wash: #2f3b32;
+      --up: #8fbba0;
+      --down: #e8bb99;
+      --danger: #efc0c0;
+      --shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px rgb(0 0 0 / 0.2);
+      --board-1: #4a2b14;
+      --board-2: #6a3f1d;
+      --board-3: #915a26;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #2d2926;
+    --surface: #3d3835;
+    --surface-sunk: #353130;
+    --border: #514b44;
+    --grid: #48423d;
+    --text: #faf9f7;
+    --text-2: #d6d2cc;
+    --text-3: #b8b2a8;
+    --sage: #52a26e;
+    --sage-strong: #67a47f;
+    --sage-tint: #2d5c3c;
+    --sage-wash: #2f3b32;
+    --up: #8fbba0;
+    --down: #e8bb99;
+    --danger: #efc0c0;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 8px 24px rgb(0 0 0 / 0.2);
+    --board-1: #4a2b14;
+    --board-2: #6a3f1d;
+    --board-3: #915a26;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 Poppins, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, p { margin: 0; }
+  button, input { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .num { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; border-radius: 4px; }
+
+  /* Top bar, as on the app's About and widget pages */
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); }
+  .topbar-inner { max-width: 1120px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand img { width: 36px; height: 36px; flex: none; }
+  .brand-name { font-weight: 600; font-size: 17px; line-height: 1.2; }
+  .brand-sub { font-size: 12px; color: var(--text-2); }
+  .account { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--text-2); min-width: 0; }
+  .account span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .link-button { background: none; border: 0; padding: 4px 0; color: var(--sage-strong); font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .link-button:hover { text-decoration: underline; }
+
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 56px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+  .panel-title { font-size: 16px; font-weight: 600; }
+  .panel-sub { font-size: 13px; color: var(--text-2); }
+
+  /* ---------- Live board ---------- */
+  .board {
+    position: relative; overflow: hidden; border-radius: 20px; color: #fdfcfb; margin-bottom: 36px;
+    padding: 28px 30px 26px;
+    display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 28px 40px; align-items: end;
+    background:
+      linear-gradient(118deg, rgb(255 255 255 / 0.07) 0 22%, transparent 22%),
+      linear-gradient(205deg, rgb(0 0 0 / 0.16) 0 34%, transparent 34%),
+      linear-gradient(152deg, transparent 52%, rgb(255 255 255 / 0.05) 52% 71%, transparent 71%),
+      linear-gradient(28deg, transparent 64%, rgb(0 0 0 / 0.10) 64%),
+      linear-gradient(135deg, var(--board-1), var(--board-2) 55%, var(--board-3));
+    box-shadow: 0 1px 2px rgb(45 41 38 / 0.12), 0 14px 40px rgb(94 56 27 / 0.22);
+  }
+  .board-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; color: #e8d9c8; margin-bottom: 16px; }
+  .live-badge { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; letter-spacing: 0.08em; font-size: 12px; text-transform: uppercase; color: #fdfcfb;
+    background: rgb(255 255 255 / 0.12); padding: 3px 10px 3px 8px; border-radius: 999px; }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #8fe0a8; animation: pulse 2s ease-out infinite; }
+  .live-dot.stale { background: #b8b2a8; animation: none; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgb(143 224 168 / 0.6); }
+    70% { box-shadow: 0 0 0 8px rgb(143 224 168 / 0); }
+    100% { box-shadow: 0 0 0 0 rgb(143 224 168 / 0); }
+  }
+  .live-sentence { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.25; font-weight: 500; letter-spacing: -0.015em; max-width: 24ch; text-wrap: balance; }
+  .live-sentence b { font-weight: 700; color: #f2d09e; white-space: nowrap; border-radius: 6px; transition: background-color 0.6s; }
+  .live-sentence b.changed { background-color: rgb(242 208 158 / 0.22); }
+  .live-sentence .quiet { color: #e8d9c8; }
+  .live-rooms { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; }
+  .live-rooms-label { font-size: 13px; color: #e8d9c8; margin-right: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; background: rgb(255 255 255 / 0.12); border: 1px solid rgb(255 255 255 / 0.18); font-size: 13px; font-weight: 500; }
+  .chip-count { color: #f2d09e; font-weight: 600; }
+  .board-foot { margin-top: 16px; font-size: 12px; color: #d9c3ab; }
+
+  .pulse-chart { align-self: stretch; display: flex; flex-direction: column; justify-content: flex-end; min-height: 170px; }
+  .pulse-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: #e8d9c8; margin-bottom: 6px; }
+  .pulse-head strong { color: #fdfcfb; font-weight: 600; }
+  .pulse-wrap { position: relative; }
+  .pulse-wrap svg { display: block; width: 100%; height: 130px; overflow: visible; }
+  .pulse-wrap .area { fill: #f2d09e; fill-opacity: 0.16; }
+  .pulse-wrap .line { fill: none; stroke: #f2d09e; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .pulse-wrap .guide { stroke: rgb(255 255 255 / 0.14); }
+  .pulse-wrap .cursor { stroke: rgb(255 255 255 / 0.5); stroke-width: 1; }
+  .pulse-wrap .dot { fill: #f2d09e; stroke: var(--board-2); stroke-width: 2; }
+  .pulse-wrap text { fill: #d9c3ab; font-size: 11px; font-family: inherit; }
+  .pulse-empty { font-size: 13px; color: #d9c3ab; border-top: 1px dashed rgb(255 255 255 / 0.25); padding-top: 10px; }
+  .pulse-tip { position: absolute; pointer-events: none; display: none; white-space: nowrap; transform: translateX(-50%);
+    background: #fdfcfb; color: #2d2926; border-radius: 8px; padding: 6px 10px; font-size: 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.25); }
+
+  /* ---------- History ---------- */
+  .history-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .history-head h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .history-head p { font-size: 13px; color: var(--text-2); }
+  .segmented { display: inline-flex; padding: 3px; background: var(--surface-sunk); border: 1px solid var(--border); border-radius: 10px; }
+  .segmented button { border: 0; background: none; padding: 6px 12px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; }
+  .segmented button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(45 41 38 / 0.12); }
+
+  .row { display: grid; grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); gap: 20px; margin-bottom: 20px; }
+  @media (max-width: 860px) { .row, .board { grid-template-columns: minmax(0, 1fr); } }
+
+  .metrics { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 6px 8px 0; border-bottom: 1px solid var(--grid); }
+  .metrics::-webkit-scrollbar { display: none; }
+  .metric { flex: 1 0 128px; scroll-snap-align: start; text-align: left; background: none; border: 0; cursor: pointer; padding: 12px 12px 14px; position: relative; border-radius: 10px 10px 0 0; }
+  .metric::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: transparent; transition: background-color 0.2s; }
+  .metric[aria-selected="true"]::after { background: var(--sage); }
+  .metric:hover:not([aria-selected="true"]) { background: var(--surface-sunk); }
+  .metric-label { display: block; font-size: 13px; color: var(--text-2); }
+  .metric[aria-selected="true"] .metric-label { color: var(--text); font-weight: 500; }
+  .metric-value { display: block; font-size: 26px; font-weight: 600; line-height: 1.25; margin: 2px 0; }
+  .metric-delta { display: block; font-size: 12px; color: var(--text-3); white-space: nowrap; }
+  .metric-delta.up { color: var(--up); }
+  .metric-delta.down { color: var(--down); }
+
+  .chart-wrap { padding: 16px 20px 6px; }
+  .chart { position: relative; }
+  .chart svg { display: block; width: 100%; height: 230px; overflow: visible; }
+  .chart .bar { fill: var(--sage); }
+  .chart .bar.today { fill: url(#todayHatch); stroke: var(--sage); stroke-width: 1.5; }
+  .chart .hit { fill: transparent; }
+  .chart .hit:hover + .bar { opacity: 0.8; }
+  .chart .gridline { stroke: var(--grid); }
+  .chart .baseline { stroke: var(--border); }
+  .chart text { fill: var(--text-3); font-size: 11px; font-family: inherit; font-variant-numeric: tabular-nums; }
+  .tooltip { position: absolute; pointer-events: none; z-index: 2; display: none; white-space: nowrap; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-size: 13px; box-shadow: var(--shadow); }
+  .tooltip .t-date { color: var(--text-2); font-size: 12px; }
+  .tooltip .t-value { font-weight: 600; }
+  .chart-foot { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-3); padding: 4px 20px 16px; }
+  .swatch-today { display: inline-block; width: 10px; height: 10px; border-radius: 2px; border: 1.5px solid var(--sage); background: repeating-linear-gradient(135deg, var(--sage-tint) 0 2px, transparent 2px 4px); vertical-align: -1px; margin-right: 6px; }
+  .chart-foot button { color: var(--text-2); font-size: 12px; }
+  .table-scroll { overflow-x: auto; padding: 0 20px 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-2); font-weight: 500; }
+
+  /* Activity feed */
+  .feed-panel { padding: 20px 20px 12px; display: flex; flex-direction: column; min-height: 0; }
+  .feed-panel .panel-sub { margin-bottom: 12px; }
+  .feed { list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 330px; }
+  .feed li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; }
+  .feed li + li { border-top: 1px solid var(--grid); }
+  .feed-icon { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--sage-wash); color: var(--sage-strong); }
+  .feed-icon svg { width: 15px; height: 15px; }
+  .feed-text { font-size: 13px; line-height: 1.35; }
+  .feed-text b { font-weight: 600; }
+  .feed-time { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+  .feed-empty { font-size: 13px; color: var(--text-2); padding: 12px 0; }
+
+  /* Widgets and how it's used */
+  .widgets-panel, .facts-panel { padding: 20px; }
+  .widgets-panel .panel-sub, .facts-panel .panel-sub { margin-bottom: 14px; }
+  .ranking { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .ranking li { position: relative; display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; overflow: hidden; }
+  .ranking li .fill { position: absolute; inset: 0 auto 0 0; background: var(--sage-wash); border-radius: 10px; z-index: 0; }
+  .ranking li > :not(.fill) { position: relative; z-index: 1; }
+  .ranking li:first-child .fill { background: var(--sage-tint); }
+  .rank { font-size: 13px; color: var(--text-3); font-weight: 500; }
+  .w-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .w-figures { font-size: 13px; white-space: nowrap; }
+  .w-adds { font-weight: 600; }
+  .w-devices { color: var(--text-2); }
+  .empty { color: var(--text-2); font-size: 14px; padding: 8px 0; }
+
+  .fact { padding: 14px 0; border-top: 1px solid var(--grid); }
+  .fact:first-of-type { border-top: 0; padding-top: 2px; }
+  .fact-label { font-size: 13px; color: var(--text-2); }
+  .fact-value { font-size: 24px; font-weight: 600; line-height: 1.3; }
+  .fact-note { font-size: 12px; color: var(--text-3); }
+  .split-bar { display: flex; gap: 2px; height: 10px; margin: 10px 0 8px; border-radius: 5px; overflow: hidden; background: var(--surface-sunk); }
+  .split-bar span { display: block; height: 100%; }
+  .split-bar .web { background: var(--sage); }
+  .split-bar .desktop { background: var(--sage-tint); }
+  .split-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--text-2); }
+  .split-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .split-legend .web i { background: var(--sage); }
+  .split-legend .desktop i { background: var(--sage-tint); }
+
+  .notice { padding: 14px 18px; margin-bottom: 24px; font-size: 14px; color: var(--text-2); }
+  .error { color: var(--danger); font-size: 14px; min-height: 1.4em; margin-top: 10px; }
+  footer { margin-top: 28px; font-size: 12px; color: var(--text-3); max-width: 80ch; }
+
+  /* ---------- Sign-in ---------- */
+  .signin-page { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+    background: radial-gradient(60% 50% at 15% 10%, rgb(74 143 95 / 0.10), transparent 70%),
+                radial-gradient(50% 50% at 90% 90%, rgb(204 125 74 / 0.12), transparent 70%), var(--bg); }
+  .signin { width: 100%; max-width: 400px; padding: 32px 28px 24px; text-align: center; }
+  .signin img { width: 56px; height: 56px; margin-bottom: 14px; }
+  .signin h1 { font-size: 22px; font-weight: 600; }
+  .signin p.lead { color: var(--text-2); font-size: 14px; margin: 6px 0 22px; }
+  .token-form { display: flex; gap: 8px; }
+  .token-form input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-size: 14px; }
+  .token-form input:focus { outline: 2px solid var(--sage); outline-offset: -1px; border-color: transparent; }
+  .primary { border: 0; border-radius: 8px; padding: 10px 16px; background: var(--sage-strong); color: #fff; font-weight: 500; font-size: 14px; cursor: pointer; }
+  .primary:hover { filter: brightness(1.06); }
+  :root[data-theme="dark"] .primary { color: #1a3323; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .primary { color: #1a3323; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+    .live-sentence b, .metric::after { transition: none; }
+  }
+  @media (max-width: 560px) {
+    .board { padding: 22px 18px 20px; border-radius: 16px; }
+    .brand-sub { display: none; }
+    .metric { flex-basis: 118px; }
+    .metric-value { font-size: 22px; }
+    .chart-wrap { padding: 12px 10px 4px; }
+  }
+</style>
+</head>
+<body>
+<div id="signIn" class="signin-page" hidden>
+  <section class="panel signin" aria-labelledby="signInTitle">
+    <img src="/admin/logo.svg" alt="">
+    <h1 id="signInTitle">Classroom Widgets usage</h1>
+    <p class="lead">Enter the admin password to see how the app is being used.</p>
+    <div id="tokenSection" hidden>
+      <form id="tokenForm" class="token-form">
+        <input id="tokenInput" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" required>
+        <button type="submit" class="primary">Sign in</button>
+      </form>
+    </div>
+    <p id="noSignIn" class="lead" hidden>No password is set yet. Set ADMIN_TOKEN on the server.</p>
+    <p id="signInError" class="error" role="alert"></p>
+  </section>
+</div>
+
+<div id="dashboard" hidden>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="/admin/logo.svg" alt="">
+        <div>
+          <div class="brand-name">Classroom Widgets</div>
+          <div class="brand-sub">Usage</div>
+        </div>
+      </div>
+      <div class="account">
+        <span id="whoami"></span>
+        <button id="signOut" type="button" class="link-button">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="board" aria-labelledby="liveSentence">
+      <div>
+        <div class="board-meta">
+          <span class="live-badge"><span class="live-dot" id="liveDot" aria-hidden="true"></span>Live</span>
+          <span id="liveUpdated" aria-live="polite"></span>
+        </div>
+        <h1 class="live-sentence" id="liveSentence">Checking who's online…</h1>
+        <div class="live-rooms" id="liveRooms"></div>
+        <p class="board-foot" id="liveFoot"></p>
+      </div>
+      <div class="pulse-chart">
+        <div class="pulse-head"><span>Teachers online each minute, last hour</span><span id="pulsePeak"></span></div>
+        <div class="pulse-wrap" id="pulseWrap">
+          <svg id="pulseSvg" role="img" aria-label="Most teachers online at once in each minute of the last hour"></svg>
+          <div class="pulse-tip" id="pulseTip"></div>
+        </div>
+        <p class="pulse-empty" id="pulseEmpty" hidden>The trend fills in minute by minute; check back shortly.</p>
+      </div>
+    </section>
+
+    <p id="loggingOff" class="panel notice" hidden>History is off on this server. Set <code>USAGE_LOG_DIR</code> to start recording usage over time; the live view above works either way.</p>
+    <p id="loadError" class="error" role="alert"></p>
+
+    <div class="history-head">
+      <div>
+        <h2 id="historyTitle">Last 30 days</h2>
+        <p id="rangeLabel"></p>
+      </div>
+      <div class="segmented" role="group" aria-label="Date range" id="rangeButtons">
+        <button type="button" data-days="7">7 days</button>
+        <button type="button" data-days="30">30 days</button>
+        <button type="button" data-days="90">90 days</button>
+        <button type="button" data-days="365">12 months</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <section class="panel" aria-label="Trend" id="trendPanel">
+        <div class="metrics" role="tablist" aria-label="Metric" id="metrics"></div>
+        <div class="chart-wrap" role="tabpanel" id="chartPanel">
+          <div class="chart" id="chart">
+            <svg id="chartSvg" role="img" aria-labelledby="chartTitle"><title id="chartTitle"></title></svg>
+            <div class="tooltip" id="tooltip"></div>
+          </div>
+        </div>
+        <div class="chart-foot">
+          <span><span class="swatch-today" aria-hidden="true"></span>Today so far</span>
+          <button type="button" class="link-button" id="tableToggle" aria-expanded="false" aria-controls="dailyTableWrap">Show as a table</button>
+        </div>
+        <div class="table-scroll" id="dailyTableWrap" hidden>
+          <table>
+            <thead><tr><th>Date</th><th>Devices</th><th>Visits</th><th>Sessions</th><th>Student joins</th><th>Widgets added</th></tr></thead>
+            <tbody id="dailyTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel feed-panel" aria-labelledby="feedTitle">
+        <h3 class="panel-title" id="feedTitle">Just now</h3>
+        <p class="panel-sub">The latest activity since the server started</p>
+        <ul class="feed" id="feed"></ul>
+      </section>
+    </div>
+
+    <div class="row" id="usageRow">
+      <section class="panel widgets-panel" aria-labelledby="widgetsTitle">
+        <h3 class="panel-title" id="widgetsTitle">Most used widgets</h3>
+        <p class="panel-sub">Times added to a board, and on how many devices</p>
+        <ol class="ranking" id="widgetList"></ol>
+        <p class="empty" id="noWidgets" hidden>No widgets added in this period yet.</p>
+      </section>
+
+      <section class="panel facts-panel" aria-labelledby="usedTitle">
+        <h3 class="panel-title" id="usedTitle">How it's used</h3>
+        <p class="panel-sub">Over the same period</p>
+        <div class="fact">
+          <div class="fact-label">Web and desktop</div>
+          <div class="split-bar" id="surfaceBar" aria-hidden="true"></div>
+          <div class="split-legend" id="surfaceLegend"></div>
+        </div>
+        <div class="fact">
+          <div class="fact-label">Students per session</div>
+          <div class="fact-value num" id="studentsPerSession">–</div>
+          <div class="fact-note">Average joins per classroom session</div>
+        </div>
+        <div class="fact">
+          <div class="fact-label">Visits per device</div>
+          <div class="fact-value num" id="visitsPerDevice">–</div>
+          <div class="fact-note">How often a teacher comes back</div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      The live view refreshes every 10 seconds and history every minute while this tab is open.
+      A device is one browser or desktop app, known only by a random ID the teacher app keeps locally; a visit is one load of the app.
+      No names, IP addresses or classroom content are recorded.
+    </footer>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const number = new Intl.NumberFormat('en-GB');
+  const decimal = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
+  const clockTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const fullTime = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  const METRICS = [
+    { key: 'uniqueClients', label: 'Devices', noun: ['device', 'devices'] },
+    { key: 'visits', label: 'Visits', noun: ['visit', 'visits'] },
+    { key: 'sessions', label: 'Sessions', noun: ['session', 'sessions'] },
+    { key: 'studentJoins', label: 'Student joins', noun: ['student join', 'student joins'] },
+    { key: 'widgetAdds', label: 'Widgets added', noun: ['widget added', 'widgets added'] }
+  ];
+  const RANGES = { 7: 'Last 7 days', 30: 'Last 30 days', 90: 'Last 90 days', 365: 'Last 12 months' };
+  // Names as the teacher app shows them (packages/teacher/src/services/WidgetRegistry.ts).
+  const WIDGET_NAMES = {
+    QRCODE: 'QR Code', RT_FEEDBACK: 'RT Feedback', QUESTIONS: 'Questions & Comments', LINK_SHARE: 'Drop Box',
+    SOUND_MONITOR: 'Volume Monitor', IMAGE_DISPLAY: 'Image', STAMP: 'Sticker', TIC_TAC_TOE: 'Tic Tac Toe',
+    FILL_BLANK: 'Fill in the Blanks', CODE_FILL_BLANK: 'Code Fill-in-the-Blanks'
+  };
+  const ROOM_NAMES = {
+    poll: 'Poll', questions: 'Questions & Comments', rtfeedback: 'RT Feedback',
+    linkShare: 'Drop Box', handout: 'Handout', activity: 'Activity'
+  };
+  const ICONS = {
+    app_open: 'M3 5h18v11H3zM8 20h8M12 16v4',
+    widget_add: 'M4 4h16v16H4zM12 8v8M8 12h8',
+    session_start: 'M8 5l11 7-11 7z',
+    student_join: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0'
+  };
+
+  const store = {
+    get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+    set(key, value) { try { localStorage.setItem(key, value); } catch {} }
+  };
+  let rangeDays = RANGES[store.get('cw-admin-range')] ? Number(store.get('cw-admin-range')) : 30;
+  let metricKey = METRICS.some(m => m.key === store.get('cw-admin-metric')) ? store.get('cw-admin-metric') : 'uniqueClients';
+  let usage = null;
+  let live = null;
+
+  function h(tag, attrs = {}, ...children) {
+    const node = attrs.svg ? document.createElementNS(SVG_NS, tag) : document.createElement(tag);
+    for (const [key, value] of Object.entries(attrs)) {
+      if (key !== 'svg' && value !== undefined && value !== null && value !== false) node.setAttribute(key, value);
+    }
+    node.append(...children.filter(c => c !== null && c !== undefined && c !== false));
+    return node;
+  }
+  const plural = (n, [one, many]) => `${number.format(n)} ${n === 1 ? one : many}`;
+  const widgetName = (key) => WIDGET_NAMES[key]
+    || key.toLowerCase().split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+  const formatDate = (key, options = { day: 'numeric', month: 'short' }) =>
+    new Date(`${key}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', ...options });
+  function relativeTime(t, now) {
+    const seconds = Math.max(0, Math.round((now - t) / 1000));
+    if (seconds < 45) return 'just now';
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    return hours < 24 ? `${hours} h ago` : clockTime.format(t);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(`/admin${path}`, {
+      credentials: 'same-origin',
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(body.message || body.error || `Request failed (${response.status})`);
+      error.status = response.status;
+      throw error;
+    }
+    return body;
+  }
+
+  /* ---------- Sign-in ---------- */
+
+  function showSignIn(session) {
+    stopPolling();
+    $('dashboard').hidden = true;
+    $('signIn').hidden = false;
+    $('tokenSection').hidden = !session.tokenLoginEnabled;
+    $('noSignIn').hidden = session.tokenLoginEnabled;
+  }
+
+  $('tokenForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('signInError').textContent = '';
+    try {
+      await api('/auth/token', { method: 'POST', body: JSON.stringify({ token: $('tokenInput').value }) });
+      $('tokenInput').value = '';
+      await start();
+    } catch (error) {
+      $('signInError').textContent = error.status === 401 ? 'That password is not right.' : error.message;
+    }
+  });
+
+  $('signOut').addEventListener('click', async () => {
+    await api('/auth/logout', { method: 'POST', body: '{}' }).catch(() => {});
+    await start();
+  });
+
+  /* ---------- Live ---------- */
+
+  function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  }
+
+  const previousLive = {};
+  function figure(key, value, noun) {
+    const node = h('b', { 'data-live': key, class: 'num' }, plural(value, noun));
+    if (previousLive[key] !== undefined && previousLive[key] !== value) {
+      node.classList.add('changed');
+      setTimeout(() => node.classList.remove('changed'), 1200);
+    }
+    previousLive[key] = value;
+    return node;
+  }
+
+  function renderLive() {
+    const sentence = $('liveSentence');
+    const teachers = figure('teachersOnline', live.teachersOnline, ['teacher', 'teachers']);
+    const sessions = figure('activeSessions', live.activeSessions, ['live session', 'live sessions']);
+    const students = figure('studentsConnected', live.studentsConnected, ['student', 'students']);
+    const verb = live.teachersOnline === 1 ? 'has' : 'have';
+
+    if (live.teachersOnline === 0 && live.activeSessions === 0) {
+      sentence.replaceChildren(h('span', { class: 'quiet' }, 'All quiet. No one has Classroom Widgets open right now.'),
+        h('span', { hidden: '' }, teachers, sessions, students));
+    } else if (live.activeSessions === 0) {
+      sentence.replaceChildren(teachers, ` ${verb} Classroom Widgets open`,
+        h('span', { class: 'quiet' }, ', with no classes running.'), h('span', { hidden: '' }, sessions, students));
+    } else {
+      sentence.replaceChildren(teachers, ` ${verb} Classroom Widgets open, running `, sessions, ' with ', students, '.');
+    }
+
+    const rooms = live.rooms.map(room => h('span', { class: 'chip', 'data-room': room.roomType },
+      ROOM_NAMES[room.roomType] || room.roomType, h('span', { class: 'chip-count num' }, number.format(room.count))));
+    $('liveRooms').replaceChildren(...(rooms.length
+      ? [h('span', { class: 'live-rooms-label' }, 'Running for students'), ...rooms]
+      : [h('span', { class: 'live-rooms-label' }, 'No student widgets running.')]));
+
+    const foot = [`${plural(live.teacherApps, ['app window', 'app windows'])} open`];
+    if (live.waitingSessions) foot.push(`${plural(live.waitingSessions, ['session', 'sessions'])} waiting for a teacher to reconnect`);
+    foot.push(`server up ${formatUptime(live.uptimeSeconds)}`);
+    $('liveFoot').textContent = foot.join(' · ');
+
+    $('liveDot').classList.remove('stale');
+    $('liveUpdated').textContent = `Updated ${fullTime.format(live.at)}`;
+    renderPulse();
+    renderFeed();
+  }
+
+  function renderPulse() {
+    const points = live.lastHour || [];
+    const svg = $('pulseSvg');
+    $('pulseEmpty').hidden = points.length >= 2;
+    svg.style.display = points.length >= 2 ? '' : 'none';
+    const peak = Math.max(0, ...points.map(p => p.teachersOnline));
+    $('pulsePeak').replaceChildren(...(points.length >= 2 ? ['Peak ', h('strong', { class: 'num' }, number.format(peak))] : []));
+    if (points.length < 2) { svg.replaceChildren(); return; }
+
+    const width = svg.clientWidth || 360;
+    const height = 130;
+    const top = 8;
+    const bottom = 18;
+    const plotH = height - top - bottom;
+    const max = Math.max(2, peak);
+    // Span the samples there are; a server up for five minutes draws five
+    // minutes edge to edge rather than a sliver at the right of an empty hour.
+    const start = points[0].t;
+    const fullHour = points.at(-1).t - start >= 59 * 60_000;
+    const x = (t) => ((t - start) / Math.max(1, points.at(-1).t - start)) * width;
+    const y = (v) => top + plotH - (v / max) * plotH;
+    const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)},${y(p.teachersOnline).toFixed(1)}`).join(' ');
+    const base = top + plotH;
+
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.replaceChildren(
+      h('line', { svg: true, class: 'guide', x1: 0, x2: width, y1: y(max), y2: y(max) }),
+      h('line', { svg: true, class: 'guide', x1: 0, x2: width, y1: base, y2: base }),
+      h('path', { svg: true, class: 'area', d: `${path} L${x(points.at(-1).t)},${base} L${x(points[0].t)},${base} Z` }),
+      h('path', { svg: true, class: 'line', d: path }),
+      h('circle', { svg: true, class: 'dot', cx: x(points.at(-1).t), cy: y(points.at(-1).teachersOnline), r: 4 }),
+      h('text', { svg: true, x: 0, y: height - 2 }, fullHour ? '60 min ago' : `Since ${clockTime.format(start)}`),
+      h('text', { svg: true, x: width, y: height - 2, 'text-anchor': 'end' }, 'Now'),
+      h('text', { svg: true, x: width, y: y(max) - 4, 'text-anchor': 'end' }, number.format(max))
+    );
+
+    const cursor = h('line', { svg: true, class: 'cursor', y1: top, y2: base, visibility: 'hidden' });
+    const marker = h('circle', { svg: true, class: 'dot', r: 4, visibility: 'hidden' });
+    svg.append(cursor, marker);
+    const tip = $('pulseTip');
+    svg.onpointermove = (event) => {
+      const rect = svg.getBoundingClientRect();
+      const px = ((event.clientX - rect.left) / rect.width) * width;
+      const nearest = points.reduce((best, p) => Math.abs(x(p.t) - px) < Math.abs(x(best.t) - px) ? p : best);
+      const cx = x(nearest.t);
+      cursor.setAttribute('x1', cx); cursor.setAttribute('x2', cx); cursor.setAttribute('visibility', 'visible');
+      marker.setAttribute('cx', cx); marker.setAttribute('cy', y(nearest.teachersOnline)); marker.setAttribute('visibility', 'visible');
+      tip.textContent = `${clockTime.format(nearest.t)} · ${plural(nearest.teachersOnline, ['teacher', 'teachers'])} · ${plural(nearest.studentsConnected, ['student', 'students'])}`;
+      tip.style.display = 'block';
+      const left = Math.min(Math.max(tip.offsetWidth / 2, (cx / width) * rect.width), rect.width - tip.offsetWidth / 2);
+      tip.style.left = `${left}px`;
+      tip.style.top = `${Math.max(-30, (y(nearest.teachersOnline) / height) * rect.height - 40)}px`;
+    };
+    svg.onpointerleave = () => {
+      cursor.setAttribute('visibility', 'hidden');
+      marker.setAttribute('visibility', 'hidden');
+      tip.style.display = 'none';
+    };
+  }
+
+  // Consecutive events of the same kind collapse into one line, so a class of
+  // thirty joining at once reads as one entry rather than filling the feed.
+  function groupRecent(events) {
+    const groups = [];
+    for (const event of events) {
+      const last = groups.at(-1);
+      if (last && last.e === event.e && last.w === event.w && last.t - event.t < 5 * 60_000) {
+        last.count++;
+        last.earliest = event.t;
+      } else {
+        groups.push({ ...event, count: 1, earliest: event.t });
+      }
+    }
+    return groups;
+  }
+
+  function feedText(group) {
+    const n = group.count;
+    switch (group.e) {
+      case 'app_open':
+        return [h('b', {}, n === 1 ? 'A teacher' : `${number.format(n)} teachers`), ` opened the app${group.s === 'desktop' ? ' on desktop' : ''}`];
+      case 'widget_add':
+        return [h('b', {}, widgetName(group.w)), n === 1 ? ' added to a board' : ` added ${number.format(n)} times`];
+      case 'session_start':
+        return [h('b', {}, n === 1 ? 'A class' : `${number.format(n)} classes`), ' started a session'];
+      case 'student_join':
+        return [h('b', {}, n === 1 ? 'A student' : `${number.format(n)} students`), ' joined a session'];
+      default:
+        return [group.e];
+    }
+  }
+
+  function renderFeed() {
+    const groups = groupRecent(live.recent || []).slice(0, 12);
+    if (!groups.length) {
+      $('feed').replaceChildren(h('li', { class: 'feed-empty' }, 'Nothing yet. Activity appears here as teachers use the app.'));
+      return;
+    }
+    $('feed').replaceChildren(...groups.map(group => h('li', { 'data-event': group.e },
+      h('span', { class: 'feed-icon', 'aria-hidden': 'true' },
+        h('svg', { svg: true, viewBox: '0 0 24 24', fill: group.e === 'session_start' ? 'currentColor' : 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' },
+          h('path', { svg: true, d: ICONS[group.e] || ICONS.widget_add }))),
+      h('span', { class: 'feed-text' }, ...feedText(group)),
+      h('time', { class: 'feed-time', datetime: new Date(group.t).toISOString() }, relativeTime(group.t, live.at)))));
+  }
+
+  async function loadLive() {
+    try {
+      live = await api('/api/live');
+      renderLive();
+    } catch (error) {
+      if (error.status === 401) return start();
+      $('liveDot').classList.add('stale');
+      $('liveUpdated').textContent = `Could not refresh: ${error.message}`;
+    }
+  }
+
+  /* ---------- History ---------- */
+
+  function renderRangeButtons() {
+    for (const button of $('rangeButtons').querySelectorAll('button')) {
+      button.setAttribute('aria-pressed', String(Number(button.dataset.days) === rangeDays));
+    }
+    $('historyTitle').textContent = RANGES[rangeDays];
+  }
+
+  $('rangeButtons').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-days]');
+    if (!button) return;
+    rangeDays = Number(button.dataset.days);
+    store.set('cw-admin-range', String(rangeDays));
+    renderRangeButtons();
+    loadUsage();
+  });
+
+  function deltaText(current, previous) {
+    // No comparison until the previous period is retained and has anything in it.
+    const hasEarlier = usage.previous && Object.values(usage.previous.totals).some(v => v > 0);
+    if (!hasEarlier) return { text: 'No earlier data', cls: '' };
+    if (previous === 0) return current === 0 ? { text: 'No change', cls: '' } : { text: 'New this period', cls: 'up' };
+    const change = Math.round(((current - previous) / previous) * 100);
+    if (change === 0) return { text: 'No change', cls: '' };
+    return { text: `${change > 0 ? '↑' : '↓'} ${Math.abs(change)}% vs previous`, cls: change > 0 ? 'up' : 'down' };
+  }
+
+  function renderMetrics() {
+    $('metrics').replaceChildren(...METRICS.map(metric => {
+      const value = usage.totals[metric.key];
+      const delta = deltaText(value, usage.previous?.totals[metric.key] ?? 0);
+      const button = h('button', {
+        type: 'button', class: 'metric', role: 'tab', 'data-metric': metric.key,
+        'aria-selected': String(metric.key === metricKey), 'aria-controls': 'chartPanel',
+        tabindex: metric.key === metricKey ? '0' : '-1'
+      },
+      h('span', { class: 'metric-label' }, metric.label),
+      h('span', { class: 'metric-value num' }, number.format(value)),
+      h('span', { class: `metric-delta ${delta.cls}` }, delta.text));
+      button.addEventListener('click', () => selectMetric(metric.key));
+      return button;
+    }));
+  }
+
+  function selectMetric(key, focus = false) {
+    metricKey = key;
+    store.set('cw-admin-metric', key);
+    renderMetrics();
+    renderChart();
+    if (focus) $('metrics').querySelector(`[data-metric="${key}"]`).focus();
+  }
+
+  $('metrics').addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const index = METRICS.findIndex(m => m.key === metricKey);
+    const next = (index + (event.key === 'ArrowRight' ? 1 : -1) + METRICS.length) % METRICS.length;
+    selectMetric(METRICS[next].key, true);
+    event.preventDefault();
+  });
+
+  function niceMax(value) {
+    if (value <= 4) return 4;
+    const magnitude = 10 ** Math.floor(Math.log10(value));
+    for (const step of [1, 2, 2.5, 5, 10]) {
+      if (step * magnitude >= value) return step * magnitude;
+    }
+    return 10 * magnitude;
+  }
+
+  function renderChart() {
+    if (!usage?.days) return;
+    const metric = METRICS.find(m => m.key === metricKey);
+    const days = usage.days;
+    const svg = $('chartSvg');
+    const width = svg.clientWidth || 700;
+    const height = 230;
+    const margin = { top: 10, right: 4, bottom: 24, left: 32 };
+    const plotW = width - margin.left - margin.right;
+    const plotH = height - margin.top - margin.bottom;
+    const max = niceMax(Math.max(...days.map(d => d[metricKey]), 0));
+    const slot = plotW / days.length;
+    const gap = days.length > 60 ? 1 : 2;
+    const barW = Math.max(1, Math.min(slot - gap, 36));
+    const offset = (slot - barW) / 2;
+    const baseY = margin.top + plotH;
+
+    $('chartTitle').textContent = `${metric.label} per day, ${RANGES[rangeDays].toLowerCase()}`;
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const hatch = h('pattern', { svg: true, id: 'todayHatch', width: 5, height: 5, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' },
+      h('rect', { svg: true, width: 5, height: 5, fill: 'var(--sage-wash)' }),
+      h('rect', { svg: true, width: 2, height: 5, fill: 'var(--sage)' }));
+    svg.replaceChildren($('chartTitle'), h('defs', { svg: true }, hatch));
+
+    for (let i = 1; i <= 4; i++) {
+      const value = (max / 4) * i;
+      const y = baseY - (value / max) * plotH;
+      svg.append(h('line', { svg: true, class: 'gridline', x1: margin.left, x2: width - margin.right, y1: y, y2: y }));
+      svg.append(h('text', { svg: true, x: margin.left - 8, y: y + 4, 'text-anchor': 'end' }, number.format(value)));
+    }
+    svg.append(h('line', { svg: true, class: 'baseline', x1: margin.left, x2: width - margin.right, y1: baseY, y2: baseY }));
+    svg.append(h('text', { svg: true, x: margin.left - 8, y: baseY + 4, 'text-anchor': 'end' }, '0'));
+
+    const labelEvery = Math.ceil(days.length / Math.max(1, Math.floor(plotW / 70)));
+    days.forEach((day, i) => {
+      const isToday = i === days.length - 1;
+      const value = day[metricKey];
+      const x = margin.left + i * slot + offset;
+      const barH = (value / max) * plotH;
+      const y = baseY - barH;
+      const r = Math.min(4, barW / 2, barH);
+      const hit = h('rect', { svg: true, class: 'hit', x: margin.left + i * slot, y: margin.top, width: slot, height: plotH });
+      const bar = h('path', {
+        svg: true,
+        class: `bar${isToday ? ' today' : ''}`,
+        d: barH > 0 ? `M${x},${baseY} V${y + r} Q${x},${y} ${x + r},${y} H${x + barW - r} Q${x + barW},${y} ${x + barW},${y + r} V${baseY} Z` : ''
+      });
+      hit.addEventListener('mouseenter', () => showTooltip(day, metric, isToday, x + barW / 2, y));
+      hit.addEventListener('mouseleave', hideTooltip);
+      svg.append(hit, bar);
+      if ((days.length - 1 - i) % labelEvery === 0) {
+        svg.append(h('text', { svg: true, x: x + barW / 2, y: height - 6, 'text-anchor': 'middle' }, isToday ? 'Today' : formatDate(day.date)));
+      }
+    });
+  }
+
+  function showTooltip(day, metric, isToday, x, y) {
+    const tooltip = $('tooltip');
+    tooltip.replaceChildren(
+      h('div', { class: 't-date' }, formatDate(day.date, { weekday: 'short', day: 'numeric', month: 'short' }) + (isToday ? ' · so far' : '')),
+      h('div', { class: 't-value num' }, plural(day[metric.key], metric.noun)));
+    tooltip.style.display = 'block';
+    const chart = $('chart');
+    const scale = chart.clientWidth / ($('chartSvg').viewBox.baseVal.width || chart.clientWidth);
+    tooltip.style.left = `${Math.min(Math.max(0, x * scale - tooltip.offsetWidth / 2), chart.clientWidth - tooltip.offsetWidth)}px`;
+    tooltip.style.top = `${Math.max(0, y * scale - tooltip.offsetHeight - 10)}px`;
+  }
+  function hideTooltip() { $('tooltip').style.display = 'none'; }
+
+  $('tableToggle').addEventListener('click', () => {
+    const open = $('dailyTableWrap').hidden;
+    $('dailyTableWrap').hidden = !open;
+    $('tableToggle').setAttribute('aria-expanded', String(open));
+    $('tableToggle').textContent = open ? 'Hide table' : 'Show as a table';
+  });
+
+  function renderDailyTable() {
+    $('dailyTable').replaceChildren(...usage.days.slice().reverse().map(day => h('tr', {},
+      h('td', {}, formatDate(day.date, { weekday: 'short', day: 'numeric', month: 'short' })),
+      ...['uniqueClients', 'visits', 'sessions', 'studentJoins', 'widgetAdds'].map(k => h('td', {}, number.format(day[k]))))));
+  }
+
+  function renderWidgets() {
+    const widgets = usage.widgets;
+    const max = Math.max(1, ...widgets.map(w => w.adds));
+    $('noWidgets').hidden = widgets.length > 0;
+    $('widgetList').replaceChildren(...widgets.slice(0, 10).map((widget, i) => {
+      const fill = h('span', { class: 'fill', 'aria-hidden': 'true' });
+      fill.style.width = `${Math.max(4, (widget.adds / max) * 100)}%`;
+      return h('li', { 'data-widget': widget.widget },
+        fill,
+        h('span', { class: 'rank num' }, String(i + 1)),
+        h('span', { class: 'w-name' }, widgetName(widget.widget)),
+        h('span', { class: 'w-figures num' },
+          h('span', { class: 'w-adds' }, number.format(widget.adds)),
+          h('span', { class: 'w-devices' }, ` · ${plural(widget.uniqueClients, ['device', 'devices'])}`)));
+    }));
+  }
+
+  function renderFacts() {
+    const { webClients, desktopClients, studentJoins, sessions, visits, uniqueClients } = usage.totals;
+    const total = webClients + desktopClients;
+    const parts = [];
+    if (webClients) { const s = h('span', { class: 'web' }); s.style.flex = String(webClients); parts.push(s); }
+    if (desktopClients) { const s = h('span', { class: 'desktop' }); s.style.flex = String(desktopClients); parts.push(s); }
+    $('surfaceBar').replaceChildren(...parts);
+    const share = (n) => total ? ` (${Math.round((n / total) * 100)}%)` : '';
+    $('surfaceLegend').replaceChildren(
+      h('span', { class: 'web' }, h('i'), `Web ${number.format(webClients)}${share(webClients)}`),
+      h('span', { class: 'desktop' }, h('i'), `Desktop ${number.format(desktopClients)}${share(desktopClients)}`));
+    $('studentsPerSession').textContent = sessions ? decimal.format(studentJoins / sessions) : '–';
+    $('visitsPerDevice').textContent = uniqueClients ? decimal.format(visits / uniqueClients) : '–';
+  }
+
+  async function loadUsage() {
+    $('loadError').textContent = '';
+    try {
+      const data = await api(`/api/usage?days=${rangeDays}`);
+      $('loggingOff').hidden = data.enabled;
+      for (const id of ['trendPanel', 'usageRow']) $(id).hidden = !data.enabled;
+      document.querySelector('.history-head').hidden = !data.enabled;
+      if (!data.enabled) return;
+      usage = data;
+      $('rangeLabel').textContent = `${formatDate(data.from, { day: 'numeric', month: 'short', year: 'numeric' })} to today · days in ${data.timeZone}`;
+      renderMetrics();
+      renderChart();
+      renderDailyTable();
+      renderWidgets();
+      renderFacts();
+    } catch (error) {
+      if (error.status === 401) return start();
+      $('loadError').textContent = error.message;
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    renderChart();
+    if (live) renderPulse();
+  });
+
+  /* ---------- Polling ---------- */
+
+  // Poll only while the tab is visible; catch up as soon as it is shown again.
+  let timers = [];
+  function stopPolling() {
+    timers.forEach(clearInterval);
+    timers = [];
+  }
+  function startPolling() {
+    stopPolling();
+    timers = [setInterval(loadLive, 10_000), setInterval(loadUsage, 60_000)];
+  }
+  document.addEventListener('visibilitychange', () => {
+    if ($('dashboard').hidden) return;
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      loadLive();
+      loadUsage();
+      startPolling();
+    }
+  });
+
+  async function start() {
+    const session = await api('/session');
+    if (!session.authenticated) return showSignIn(session);
+    $('signIn').hidden = true;
+    $('dashboard').hidden = false;
+    renderRangeButtons();
+    await Promise.all([loadLive(), loadUsage()]);
+    startPolling();
+  }
+
+  start().catch((error) => {
+    $('signIn').hidden = false;
+    $('signInError').textContent = error.message;
+  });
+})();
+</script>
+</body>
+</html>

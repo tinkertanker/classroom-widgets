@@ -39,6 +39,7 @@ For platform-specific installation and usage, see the [macOS](./docs/MACOS_DISTR
 - [Architecture](./docs/architecture.md)
 - [Adding a widget](./docs/ADDING_NEW_WIDGET.md)
 - [Deployment](./docs/DEPLOYMENT.md)
+- [Admin usage dashboard](./docs/USAGE_DASHBOARD.md)
 - [Desktop releases](./docs/RELEASING.md)
 - [App icon](./docs/APP_ICON.md)
 - [Display widget demo video](./docs/display-widget-demo-video.md)

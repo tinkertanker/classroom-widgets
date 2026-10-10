@@ -75,7 +75,11 @@ const EVENT_RATE_LIMITS = {
   'session:activity:retry': { windowMs: 2000, max: 2 },
 
   // Activity state refresh - 5 per second
-  'activity:requestState': { windowMs: 1000, max: 5 }
+  'activity:requestState': { windowMs: 1000, max: 5 },
+
+  // Teacher app usage events (app open, widget added) - 60 per minute per
+  // connection is far above real use and caps how fast one client can pad counts
+  'usage:track': { windowMs: 60_000, max: 60 }
 };
 
 /**

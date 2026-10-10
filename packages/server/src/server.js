@@ -20,6 +20,9 @@ const { logger } = require('./utils/logger');
 
 // Import services
 const SessionManager = require('./services/SessionManager');
+const { usageLog } = require('./services/usageLog');
+const { createAdminAuth } = require('./services/adminAuth');
+const { getLiveStats, LiveHistory } = require('./services/liveStats');
 
 // Import socket manager
 const { setupSocketHandlers } = require('./sockets/socketManager');
@@ -27,6 +30,7 @@ const { setupSocketHandlers } = require('./sockets/socketManager');
 // Import routes
 const apiRoutes = require('./routes/api');
 const staticRoutes = require('./routes/static');
+const { createAdminRouter } = require('./routes/admin');
 
 const normaliseOrigin = (value) => {
   try {
@@ -54,6 +58,8 @@ class AppServer {
     this.server = http.createServer(this.app);
     this.io = null;
     this.sessionManager = new SessionManager();
+    this.liveHistory = new LiveHistory();
+    this.liveSampleHandle = null;
     
     // Setup global error handlers
     setupGlobalErrorHandlers();
@@ -100,6 +106,16 @@ class AppServer {
     // Gzip responses (skip websocket upgrade frames automatically).
     this.app.use(compression());
 
+    // Admin usage dashboard. Same-origin only, so it sits ahead of CORS and
+    // of the production SPA fallback.
+    this.app.use('/admin', createAdminRouter({
+      adminAuth: createAdminAuth(),
+      usageLog,
+      // Socket.IO is configured after middleware, so look it up per request.
+      getLiveStats: () => this.getLiveStats(),
+      secureCookies: serverConfig.IS_PRODUCTION
+    }));
+
     // Static file serving should come BEFORE CORS in production
     // This prevents CORS checks on static assets served from the same domain
     if (serverConfig.IS_PRODUCTION) {
@@ -138,6 +154,10 @@ class AppServer {
         next();
       });
     }
+  }
+
+  getLiveStats() {
+    return getLiveStats(this.io, this.sessionManager, { history: this.liveHistory, usageLog });
   }
 
   /**
@@ -203,6 +223,10 @@ class AppServer {
       this.configureMiddleware();
       this.configureSocketIO();
       this.configureRoutes();
+      usageLog.startPruning();
+      // Sample the live figures every minute for the dashboard's last-hour trend.
+      this.liveSampleHandle = setInterval(() => this.getLiveStats(), 60_000);
+      this.liveSampleHandle.unref();
 
       // Start listening
       const port = serverConfig.PORT;
@@ -249,6 +273,9 @@ class AppServer {
           this.sessionManager.stopCleanupInterval();
         }
         stopRateLimiterCleanup();
+        usageLog.stopPruning();
+        clearInterval(this.liveSampleHandle);
+        await usageLog.flush();
 
         // Stop accepting new connections
         this.server.close(() => {

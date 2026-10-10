@@ -89,6 +89,8 @@ Optional services, started only with `--profile analytics`:
 
 See [Analytics Setup](./ANALYTICS.md) for Umami configuration.
 
+The backend also serves an admin-only usage dashboard at `https://<BACKEND_DOMAIN>/admin`, protected by a password and with logs kept in the `usage-data` volume. It needs no extra services; see [Admin Usage Dashboard](./USAGE_DASHBOARD.md).
+
 ### Production Deployment
 
 ```bash

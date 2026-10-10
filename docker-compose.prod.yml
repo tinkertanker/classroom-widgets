@@ -50,11 +50,18 @@ services:
       - SHORTIO_API_KEY=${SHORTIO_API_KEY}
       - SHORTIO_DOMAIN=${SHORTIO_DOMAIN}
       - SHORTIO_BASE_URL=${SHORTIO_BASE_URL:-https://api.short.io/links/public}
+      # ADMIN_TOKEN is also the password for the usage dashboard at https://<BACKEND_DOMAIN>/admin (docs/USAGE_DASHBOARD.md)
       - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - ADMIN_SESSION_SECRET=${ADMIN_SESSION_SECRET:-}
+      - USAGE_LOG_DIR=${USAGE_LOG_DIR:-/data/usage}
+      - USAGE_TIMEZONE=${USAGE_TIMEZONE:-UTC}
+      - USAGE_RETENTION_DAYS=${USAGE_RETENTION_DAYS:-400}
       # Backend sits behind one nginx-proxy hop; needed for per-IP rate limits
       - TRUST_PROXY=${TRUST_PROXY:-1}
       - VIRTUAL_HOST=${BACKEND_DOMAIN}
       - VIRTUAL_PORT=3001
+    volumes:
+      - usage-data:/data
     networks:
       - classroom-widgets-prod
       - devtksg
@@ -114,3 +121,4 @@ networks:
 
 volumes:
   umami-db-data:
+  usage-data:

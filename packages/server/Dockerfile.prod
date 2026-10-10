@@ -40,8 +40,10 @@ RUN pnpm --filter @classroom-widgets/student build
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Change ownership of app directory
-RUN chown -R nodejs:nodejs /usr/src/app
+# Change ownership of app directory, and create the usage log directory so a
+# fresh named volume mounted at /data inherits the nodejs owner
+RUN chown -R nodejs:nodejs /usr/src/app \
+ && mkdir -p /data/usage && chown -R nodejs:nodejs /data
 
 # Switch to non-root user
 USER nodejs
