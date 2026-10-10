@@ -20,14 +20,13 @@ part of the app workspace.
   [`web/_headers`](web/_headers) in `web/dist`. The defaults are:
   - `VITE_SERVER_URL=https://go.tk.sg`
   - `VITE_BUILD_ID=<7-char HEAD sha>`, as the Deploy Web workflow sets it
-  - `VITE_LINK_SHORTENER_ENABLED=false`
+  - `VITE_LINK_SHORTENER_ENABLED=true` (the web Link Shortener is shown)
   - `VITE_UMAMI_*` unset
 
-  Override any of them through the environment. The office host's
-  `.env.production` was lost, so whether production enabled the web Link
-  Shortener or Umami is unknown. Set `VITE_LINK_SHORTENER_ENABLED=true` to show
-  the widget. The backend half (Short.io key and domain) is configured either
-  way, because the desktop apps use it.
+  Override any of them through the environment. Umami is left off because the
+  office host's `.env.production` was not recoverable. The backend's Short.io
+  key is a secret (`sk_`) key, so `SHORTIO_BASE_URL` is the authenticated
+  `https://api.short.io/links` endpoint, not `/links/public`.
 - **SPA fallback and headers.** `not_found_handling: single-page-application`
   replaces nginx's `try_files`. `_headers` carries the nginx security headers
   and its one-year immutable caching for the same file extensions. Cloudflare
@@ -89,7 +88,7 @@ pnpm install --frozen-lockfile
 # Read-only preflight
 pnpm exec wrangler whoami
 pnpm typecheck
-pnpm build:teacher                       # VITE_LINK_SHORTENER_ENABLED=true pnpm build:teacher to show the widget
+pnpm build:teacher
 pnpm dry-run:backend && pnpm dry-run:web
 ```
 
