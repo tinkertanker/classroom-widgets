@@ -38,7 +38,7 @@ const visitId = randomId();
 let socket: Socket | null = null;
 let appOpenSent = false;
 
-function emit(event: 'app_open' | 'widget_add', extra: Record<string, string> = {}) {
+function emit(event: 'app_open' | 'app_resume' | 'widget_add', extra: Record<string, string> = {}) {
   socket?.emit('usage:track', {
     event,
     clientId: getClientId(),
@@ -53,15 +53,20 @@ export function attachUsageSocket(next: Socket): () => void {
   socket = next;
   // Wait for a real connection so a socket torn down before connecting
   // (React StrictMode, a server URL change) does not swallow the event.
-  const sendAppOpen = () => {
-    if (appOpenSent) return;
+  // Every later connection is a reconnect: the server socket is new, so
+  // re-identify it without counting another app open.
+  const onConnect = () => {
+    if (appOpenSent) {
+      emit('app_resume');
+      return;
+    }
     appOpenSent = true;
     emit('app_open');
   };
-  if (next.connected) sendAppOpen();
-  else next.once('connect', sendAppOpen);
+  if (next.connected) onConnect();
+  next.on('connect', onConnect);
   return () => {
-    next.off('connect', sendAppOpen);
+    next.off('connect', onConnect);
     if (socket === next) socket = null;
   };
 }

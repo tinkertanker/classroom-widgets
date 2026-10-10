@@ -64,7 +64,10 @@ test('malformed client payloads are dropped', () => {
     { ...base, event: 'widget_add' },
     { ...base, event: 'widget_add', widget: 'poll; drop' },
     { ...base, event: 'widget_add', widget: 'A'.repeat(41) },
-    { ...base, event: 'widget_add', widget: 11 }
+    { ...base, event: 'widget_add', widget: 11 },
+    // Empty segments would break the dashboard's name formatter
+    { ...base, event: 'widget_add', widget: 'POLL__X' },
+    { ...base, event: 'widget_add', widget: 'POLL_' }
   ];
   for (const payload of rejected) {
     assert.equal(normaliseClientEvent(payload), null, JSON.stringify(payload));
@@ -249,4 +252,11 @@ test('recent events are newest first, capped, and carry no IDs', () => {
     { t: now - 1000, e: 'session_start' },
     { t: now - 2000, e: 'widget_add', w: 'POLL', s: 'web' }
   ]);
+});
+
+test('a reconnect notice is accepted without a widget and keeps only the known fields', () => {
+  assert.deepEqual(
+    normaliseClientEvent({ event: 'app_resume', clientId: CLIENT, visitId: VISIT, surface: 'web', widget: 'POLL' }),
+    { e: 'app_resume', c: CLIENT, v: VISIT, s: 'web' }
+  );
 });

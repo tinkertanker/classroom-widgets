@@ -471,7 +471,7 @@
   }
   const plural = (n, [one, many]) => `${number.format(n)} ${n === 1 ? one : many}`;
   const widgetName = (key) => WIDGET_NAMES[key]
-    || key.toLowerCase().split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+    || key.toLowerCase().split('_').filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
   const formatDate = (key, options = { day: 'numeric', month: 'short' }) =>
     new Date(`${key}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', ...options });
   function relativeTime(t, now) {

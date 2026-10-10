@@ -13,7 +13,9 @@ module.exports = function usageHandler(io, socket) {
     if (!event) return;
     // Marks this connection as an open teacher app for the live figures,
     // which are kept even when the log itself is off.
-    if (event.e === 'app_open') socket.data.usageClientId = event.c;
-    usageLog.record(event);
+    if (event.e === 'app_open' || event.e === 'app_resume') socket.data.usageClientId = event.c;
+    // A reconnect gets a fresh server-side socket, so the client re-identifies
+    // it with app_resume; the visit was already counted by its app_open.
+    if (event.e !== 'app_resume') usageLog.record(event);
   });
 };
